@@ -144,11 +144,11 @@ final class IdeTerminalTest extends TestCase
                     $this->assertCount(2, $this->sessions($ide));
                     $sessionTwoProcess = $this->sessions($ide)[1]->process;
 
-                    // Click the × of the first (inactive) session tab on the dock strip.
+                    // Click the ✖ of the first (inactive) session tab on the dock strip.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
-                    $closeCol = (int) \mb_strpos($strip, needle: '×');
+                    $closeCol = (int) \mb_strpos($strip, needle: '✖');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
 
                     $this->assertCount(1, $this->sessions($ide), 'the clicked tab closed');

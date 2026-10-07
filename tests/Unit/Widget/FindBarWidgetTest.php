@@ -678,7 +678,7 @@ final class FindBarWidgetTest extends TestCase
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())));
 
         // The toggles follow the 32-column box and its gutter, six columns
-        // each boxed: .* spans 33-38, \b 39-44; the last button, ×, ends at 70.
+        // each boxed: .* spans 33-38, \b 39-44; the last button, ✖, ends at 70.
         $bar->handleClick(1, 41);
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
 
@@ -736,7 +736,7 @@ final class FindBarWidgetTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
 
         $this->assertStringContainsString('[1/2]', $rows[2]);
-        $this->assertStringEndsWith(' .*  \\b  Aa  ↑  ↓  ∀  × ', $rows[1], 'beside the tags and buttons, which still fit');
+        $this->assertStringEndsWith(' .*  \\b  Aa  ↑  ↓  ∀  ✖ ', $rows[1], 'beside the tags and buttons, which still fit');
         $this->assertStringEndsWith('⏎/F3 next  Shift+F3 prev', $rows[0], 'the middle row is the tags\', so the hints keep above them');
         $this->assertStringEndsWith('Alt+X .*  Alt+W \\b  Esc ', $rows[2], 'and below');
     }
@@ -867,7 +867,7 @@ final class FindBarWidgetTest extends TestCase
         // A boxed toggle is its caption plus the rails and padding: six
         // columns for .*, \b and Aa; a boxed button five. They follow the
         // 32-column box and its gutter: regex 33-38, word 39-44, case 45-50,
-        // then ↑ 51-55, ↓ 56-60, ∀ 61-65 and × 66-70.
+        // then ↑ 51-55, ↓ 56-60, ∀ 61-65 and ✖ 66-70.
         $this->assertFalse($bar->hoverAt(1, 32), 'the gutter before the regex zone: no tag');
         $this->assertTrue($bar->hoverAt(1, 33), 'the regex zone starts at 33');
         $this->assertFalse($bar->hoverAt(1, 38), 'still the regex zone (33-38): no change');
@@ -876,7 +876,7 @@ final class FindBarWidgetTest extends TestCase
         $this->assertTrue($bar->hoverAt(1, 45), 'the case zone, 45-50');
         $this->assertTrue($bar->hoverAt(1, 51), 'the ↑ button, 51-55');
         $this->assertTrue($bar->hoverAt(1, 61), 'the ∀ button, 61-65');
-        $this->assertTrue($bar->hoverAt(1, 66), 'the × button, 66-70');
+        $this->assertTrue($bar->hoverAt(1, 66), 'the ✖ button, 66-70');
         $bar->clearHover();
         $this->assertFalse($bar->hoverAt(1, 71), 'past the last button: nothing, no change from already-cleared');
         $this->assertTrue($bar->hoverAt(0, 34), 'the top border is the toggle too');
@@ -892,7 +892,7 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertCount(1, $rows, 'Find and Replace side by side on the one row');
         $this->assertStringContainsString('Replace ', $rows[0]);
-        $this->assertStringContainsString(' .*  \b  Aa  ↑  ↓  ∀  × ', $rows[0]);
+        $this->assertStringContainsString(' .*  \b  Aa  ↑  ↓  ∀  ✖ ', $rows[0]);
         $this->assertTrue($bar->hoverAt(0, 67), 'the regex tag, after two 32-column fields and their gutters: 66-69');
         $this->assertTrue($bar->hoverAt(1, 67), 'below the one row is off it: the hover clears');
         $this->assertFalse($bar->hoverAt(1, 67), 'and stays clear');
@@ -1222,7 +1222,7 @@ final class FindBarWidgetTest extends TestCase
         $this->assertCount(2, $this->allMatches($bar), 'clicked off again');
     }
 
-    /** ↑ and ↓ step through the matches as Shift+F3 and F3 do; × closes as Esc does. */
+    /** ↑ and ↓ step through the matches as Shift+F3 and F3 do; ✖ closes as Esc does. */
     public function testTheButtonsStepAndClose(): void
     {
         $bar = new FindBarWidget(new Translator('en'));
@@ -1238,10 +1238,10 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleClick(0, 53); // its top border: a button is its whole box
         $this->assertStringContainsString('[3/3]', $position(), 'wrapping');
         $this->assertTrue($bar->hoverAt(1, 68));
-        $this->assertStringContainsString("\e[4m", $bar->render(new RenderContext(80, 3))[1], 'the × under the pointer underlines');
-        $bar->handleClick(1, 68); // ×, past ∀
+        $this->assertStringContainsString("\e[4m", $bar->render(new RenderContext(80, 3))[1], 'the ✖ under the pointer underlines');
+        $bar->handleClick(1, 68); // ✖, past ∀
         $this->assertFalse($bar->isOpen());
-        $this->assertNull($target->selected, 'closed by ×, not by Select All closing it');
+        $this->assertNull($target->selected, 'closed by ✖, not by Select All closing it');
     }
 
     /** The query's caret moves: a typo mid-word is fixed where it is. */
@@ -1357,7 +1357,7 @@ final class FindBarWidgetTest extends TestCase
 
         $rows = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(160, 3))));
         $this->assertStringNotContainsString('∀', $rows, 'neither the button nor its hint');
-        $this->assertStringContainsString('│ × │', $rows, 'the other buttons are drawn');
+        $this->assertStringContainsString('│ ✖ │', $rows, 'the other buttons are drawn');
 
         $bar->handleInput("\x1b\r");
         $this->assertTrue($bar->isOpen(), 'the target refused, so the bar stays');

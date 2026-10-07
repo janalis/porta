@@ -173,7 +173,7 @@ reload automatically within a second.
 - **Pinned tabs** (`Pin Tab` on the tab menu) carry a `⌾` and survive every
   bulk close — Close Others, Close All, and both close-to-the-side verbs. The
   pin is saved with the session, so a tab you deliberately kept is still there
-  next launch. Pinning does not reorder the strip. A pinned tab shows no `×`;
+  next launch. Pinning does not reorder the strip. A pinned tab shows no `✖`;
   `Ctrl+W` or the tab menu still close it.
 - **Column selection** by mouse (`Alt+Shift+drag`) or keyboard: `Alt+C` toggles
   column mode — the status bar shows `COLUMN` — and `Shift`+arrows then build a
@@ -904,7 +904,7 @@ a click or the wheel puts it away.
   diagnostic at the caret, and what each clickable cell does. A plugin's cell
   may carry its own.
 - **Tabs, tree, breadcrumbs, results:** the full path or text wherever the row
-  had to cut it; the `●`, `⌾`, change and diagnostic marks in words; a tab's `×`.
+  had to cut it; the `●`, `⌾`, change and diagnostic marks in words; a tab's `✖`.
 - **Gutter and marker stripe:** what each mark is and what a click does.
 - **Code:** a squiggle's [problems](#problems), with the fix and its key.
 - **Completion popup:** abbreviated kinds spelled out (`iface` → Interface).

@@ -83,7 +83,7 @@ final class SearchUiWiring
         $this->resultsPanel->setContextProvider(fn (string $relativePath, int $line): array => $this->resultContext->around($relativePath, $line));
 
         // A Search tab taking the display rehydrates its frozen query
-        // definition; ×ing one records its query/mask and cancels its run.
+        // definition; ✖ing one records its query/mask and cancels its run.
 
         // Per-tab close recording happens in onToolClosed; the widget-level
         // close (last tab gone, picker close) only returns the focus.

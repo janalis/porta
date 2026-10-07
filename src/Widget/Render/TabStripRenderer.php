@@ -16,8 +16,8 @@ use Symfony\Component\Tui\Style\Style;
  * Every horizontal tab strip — the editor's, the bottom dock's and the git
  * view's mode tabs: cells laid left to right, scrolling on overflow with
  * clickable `‹`/`›` indicators, windowed by {@see StripWindow}. A tab may
- * carry a `marker` (the dirty `●`) before its `×`, and a tab that cannot be
- * closed (`closable: false` — a pinned editor tab, a git mode) draws no `×`
+ * carry a `marker` (the dirty `●`) before its `✖`, and a tab that cannot be
+ * closed (`closable: false` — a pinned editor tab, a git mode) draws no `✖`
  * and reports a close zone of width 0. Returns the styled run, the columns it used, the hit
  * map the caller feeds its click/close/hover zones from, the indicator zones
  * for `‹`/`›` clicks, and the clamped scroll/active state the caller stores.
@@ -27,18 +27,18 @@ use Symfony\Component\Tui\Style\Style;
  * than the divider between siblings. Without it the strip claimed every gap
  * was the same and then silently ignored half the drags.
  *
- * The single tab cell (` label ●× ` + divider) lives here too, as
+ * The single tab cell (` label ●✖ ` + divider) lives here too, as
  * {@see measureCell}/{@see renderCell}. The strips used to assemble their
  * cells two and three times over, and the git tabs measured theirs with
  * `mb_strwidth` and kept a click zone for a tab the pane had cut off. The shading is {@see TabStyle}'s (compact) or {@see TabPillStyle}'s (roomy); the windowing is
  * {@see StripWindow}'s. Cell widths are display columns throughout: `width`
- * includes the divider, `closeOffset` is the ×'s column within the cell, and
+ * includes the divider, `closeOffset` is the ✖'s column within the cell, and
  * both are consumed as click zones, so a line whose visible width disagrees
  * with them garbles the strip.
  */
 final class TabStripRenderer
 {
-    /** The × cell plus its trailing space — the close zone's clickable width. */
+    /** The ✖ cell plus its trailing space — the close zone's clickable width. */
     public const int CLOSE_WIDTH = 2;
 
     /**
@@ -71,7 +71,7 @@ final class TabStripRenderer
      * what keeps the tint from going stale when the strip relabels or a tab
      * closes under a resting pointer — the caller stores only the column.
      *
-     * The pointer on a tab's `×` lights the `×` alone, underlined: which of
+     * The pointer on a tab's `✖` lights the `✖` alone, underlined: which of
      * the two a click would do is shown before it is done.
      *
      * At {@see ROWS} rows each tab is a pill: its label row shaded as a file
@@ -88,7 +88,7 @@ final class TabStripRenderer
      * @param ?int                                                                                         $hoverCol   widget-relative column under the pointer, or null when off the strip
      * @param int                                                                                          $scroll     the caller's stored scroll offset
      * @param ?int                                                                                         $lastActive the caller's stored last active index (null on the first frame)
-     * @param ?int                                                                                         $hoverRow   the pointer's row in the strip, or null for the label row — a `×` lights only where a click on it closes
+     * @param ?int                                                                                         $hoverRow   the pointer's row in the strip, or null for the label row — a `✖` lights only where a click on it closes
      *
      * @return array{lines: list<string>, labelRow: int, footRow: ?int, used: int, hitMap: list<array{index: int, start: int, width: int, closeStart: int, closeWidth: int}>, indicatorZones: list<array{row: int, col: int, width: int, step: int}>, scroll: int, lastActive: int}
      */
@@ -208,7 +208,7 @@ final class TabStripRenderer
     }
 
     /**
-     * Measure ` $label $marker× ` + its divider — ` $label $marker` when the
+     * Measure ` $label $marker✖ ` + its divider — ` $label $marker` when the
      * tab cannot be closed. $marker is the dirty ● (or the session ○ some
      * callers bake into the label); pass '' for a bare tab.
      *
@@ -233,16 +233,16 @@ final class TabStripRenderer
     /**
      * The styled cell + its divider, from what {@see measureCell()} built.
      *
-     * The × is measured as a bare glyph and only styled here, then spliced in
+     * The ✖ is measured as a bare glyph and only styled here, then spliced in
      * BY COLUMN: styling it earlier would leave measure() counting escape bytes
-     * as display columns, and matching it by string would restyle a × that
-     * happens to sit in the label itself (a file `a×b.php`). The close offset
+     * as display columns, and matching it by string would restyle a ✖ that
+     * happens to sit in the label itself (a file `a✖b.php`). The close offset
      * is the real close glyph's column, so the splice lands on it alone. It is
      * safe because {@see TabCloseGlyph} emits a foreground-only span, so the
      * tab's background runs underneath it uninterrupted.
      *
      * Under the pointer the label underlines, a link's hover — or, with the
-     * pointer on the × ($onClose), the × alone does, bright.
+     * pointer on the ✖ ($onClose), the ✖ alone does, bright.
      *
      * $divider closes the cell; every one is a single column, so which one a
      * strip picks cannot move its hit map.

@@ -90,7 +90,7 @@ final readonly class WorkbenchActions
 
     /**
      * Alt+D: dismiss the newest notification — the top card — from the
-     * keyboard, as its × does under the pointer. The log keeps it.
+     * keyboard, as its ✖ does under the pointer. The log keeps it.
      */
     public function dismissToast(): void
     {

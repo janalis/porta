@@ -12,7 +12,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
 /**
  * The presenter tests' shared fake pane: records what lands in the overlay
  * span slots (modal, toast and tooltip) plus the backdrop flag, and renders a
- * rows×columns block of dots so a real Renderer pass gives it a rect for the
+ * rows✖columns block of dots so a real Renderer pass gives it a rect for the
  * delivery bounds to lay out against. The backdrop still routes through the
  * real trait, and render composites through withMenuOverlay, so a test can
  * also assert the faint dim the way WelcomeModalControllerTest does.

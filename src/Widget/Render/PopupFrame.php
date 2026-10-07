@@ -12,7 +12,7 @@ use Symfony\Component\Tui\Style\Style;
 /**
  * {@see ModalFrame}'s anchored-popup sibling: the same rounded corners, accent
  * border and tee rows, but tight — one border cell per side, no padding, no
- * title bar, no Esc/× affordance, no resize grab. Menu dropdowns, the context
+ * title bar, no Esc/✖ affordance, no resize grab. Menu dropdowns, the context
  * menu and the caret-anchored editor popups wear this frame, because every
  * row/column of footprint fights the anchor they hang from.
  *

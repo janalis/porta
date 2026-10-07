@@ -41,12 +41,12 @@ final class ModalFrameTest extends TestCase
     {
         $bar = $this->plainBar('Welcome', 24);
 
-        $this->assertSame('╭─ Welcome ───────────☒╮', $bar, 'the full bar layout: the rule into both corners, no Esc spelled out');
+        $this->assertSame('╭─ Welcome ─────────[✖]╮', $bar, 'the full bar layout: the rule into both corners, no Esc spelled out');
         $this->assertSame(24, \mb_strwidth($bar));
     }
 
-    /** The ☒ sits at width − 2 in every layout — the geometry ModalBox::closeHit mirrors. */
-    public function testTheCloseGlyphSitsAtTheCloseOffset(): void
+    /** The `[✖]` ends the bar in every layout, against the corner — the geometry ModalBox::closeHit mirrors. */
+    public function testTheCloseButtonEndsTheBar(): void
     {
         foreach ([
             ['Welcome',                              40],
@@ -55,7 +55,7 @@ final class ModalFrameTest extends TestCase
         ] as [$title, $width]) {
             $bar = $this->plainBar($title, $width);
 
-            $this->assertSame(Glyphs::WINDOW_CLOSE, \mb_substr($bar, $width - 2, length: 1), "width {$width}");
+            $this->assertSame(Glyphs::WINDOW_CLOSE, \mb_substr($bar, $width - 4, length: 3), "width {$width}");
             $this->assertSame(Glyphs::MODAL_TOP_RIGHT, \mb_substr($bar, $width - 1, length: 1));
         }
     }
@@ -65,7 +65,7 @@ final class ModalFrameTest extends TestCase
     {
         $bar = $this->plainBar('Settings and more', 14);
 
-        $this->assertSame('╭─ Settin… ─☒╮', $bar);
+        $this->assertSame('╭─ Sett… ─[✖]╮', $bar);
         $this->assertSame(14, \mb_strwidth($bar));
     }
 
@@ -88,10 +88,10 @@ final class ModalFrameTest extends TestCase
         $normal = ModalFrame::titleBar('Welcome', 24, Styles::dark());
         $hovered = ModalFrame::titleBar('Welcome', 24, Styles::dark(), hot: WindowZone::Close);
 
-        $this->assertNotSame($normal, $hovered, 'the ☒ restyles under the pointer');
+        $this->assertNotSame($normal, $hovered, 'the ✖ restyles under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
         // Direction, not just difference: hovered darkens to the deep red, with
-        // no fill behind it, and the resting ☒ is the faint one.
+        // no fill behind it, and the resting ✖ is the faint one.
         $this->assertStringContainsString(Styles::dark()->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE), $hovered);
         $this->assertStringContainsString(Styles::dark()->of(Role::Gutter)->apply(Glyphs::WINDOW_CLOSE), $normal);
     }
@@ -155,27 +155,28 @@ final class ModalFrameTest extends TestCase
 
     /**
      * Each resize handle heavies under the pointer, and only it: the frame of
-     * a 6-wide, one-row box, as plain text, with $zone hot.
+     * an 8-wide, one-row box — the least that fits the bar's chrome — as
+     * plain text, with $zone hot.
      *
      * @return iterable<string, array{WindowZone, list<string>}>
      */
     public static function hotHandles(): iterable
     {
-        yield 'nothing hot' => [WindowZone::Content, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '╰────╯']];
-        yield 'the top-left corner' => [WindowZone::TopLeft, ['┏─  ☒╮', '│    │', '│ x  │', '│    │', '╰────╯']];
-        yield 'the top-right corner' => [WindowZone::TopRight, ['╭─  ☒┓', '│    │', '│ x  │', '│    │', '╰────╯']];
-        yield 'the left rail' => [WindowZone::Left, ['╭─  ☒╮', '┃    │', '┃ x  │', '┃    │', '╰────╯']];
-        yield 'the right rail' => [WindowZone::Right, ['╭─  ☒╮', '│    ┃', '│ x  ┃', '│    ┃', '╰────╯']];
-        yield 'the bottom border' => [WindowZone::Bottom, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '╰━━━━╯']];
-        yield 'the bottom-left corner' => [WindowZone::BottomLeft, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '┗────╯']];
-        yield 'the bottom-right corner' => [WindowZone::BottomRight, ['╭─  ☒╮', '│    │', '│ x  │', '│    │', '╰────┛']];
+        yield 'nothing hot' => [WindowZone::Content, ['╭─  [✖]╮', '│      │', '│ x    │', '│      │', '╰──────╯']];
+        yield 'the top-left corner' => [WindowZone::TopLeft, ['┏─  [✖]╮', '│      │', '│ x    │', '│      │', '╰──────╯']];
+        yield 'the top-right corner' => [WindowZone::TopRight, ['╭─  [✖]┓', '│      │', '│ x    │', '│      │', '╰──────╯']];
+        yield 'the left rail' => [WindowZone::Left, ['╭─  [✖]╮', '┃      │', '┃ x    │', '┃      │', '╰──────╯']];
+        yield 'the right rail' => [WindowZone::Right, ['╭─  [✖]╮', '│      ┃', '│ x    ┃', '│      ┃', '╰──────╯']];
+        yield 'the bottom border' => [WindowZone::Bottom, ['╭─  [✖]╮', '│      │', '│ x    │', '│      │', '╰━━━━━━╯']];
+        yield 'the bottom-left corner' => [WindowZone::BottomLeft, ['╭─  [✖]╮', '│      │', '│ x    │', '│      │', '┗──────╯']];
+        yield 'the bottom-right corner' => [WindowZone::BottomRight, ['╭─  [✖]╮', '│      │', '│ x    │', '│      │', '╰──────┛']];
     }
 
     /** @param list<string> $expected */
     #[DataProvider('hotHandles')]
     public function testOnlyTheHotHandleHeavies(WindowZone $hot, array $expected): void
     {
-        $rows = [ModalFrame::titleBar('', 6, Styles::dark(), $hot), ...ModalFrame::wrap(['x'], 2, Styles::dark(), $hot)];
+        $rows = [ModalFrame::titleBar('', 8, Styles::dark(), $hot), ...ModalFrame::wrap(['x'], 4, Styles::dark(), $hot)];
 
         $this->assertSame($expected, \array_map(AnsiUtils::stripAnsiCodes(...), $rows));
     }
@@ -191,12 +192,12 @@ final class ModalFrameTest extends TestCase
     {
         $bar = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 24, Styles::dark(), closeButton: CloseButton::Mac));
 
-        $this->assertSame('╭⊗───── Settings ──────╮', $bar, 'the button first, the title in the middle, the rule into the corner');
+        $this->assertSame('╭(✖)─── Settings ──────╮', $bar, 'the button first, the title in the middle, the rule into the corner');
         $this->assertSame(24, AnsiUtils::visibleWidth($bar));
 
-        $narrow = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 16, Styles::dark(), closeButton: CloseButton::Mac));
-        $this->assertSame('╭⊗─ Settings ──╮', $narrow, 'too little fill to centre it: the title leads');
-        $this->assertSame(16, AnsiUtils::visibleWidth($narrow));
+        $narrow = AnsiUtils::stripAnsiCodes(ModalFrame::titleBar('Settings', 18, Styles::dark(), closeButton: CloseButton::Mac));
+        $this->assertSame('╭(✖)─ Settings ──╮', $narrow, 'too little fill to centre it: the title leads');
+        $this->assertSame(18, AnsiUtils::visibleWidth($narrow));
     }
 
     public function testTheMacButtonIsRedAndDarkensUnderThePointer(): void

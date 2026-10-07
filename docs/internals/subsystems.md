@@ -554,10 +554,11 @@ size (80%, centred, for a view window; the content's, a third down, for the
 others) — and hit-tests through `ModalBox::zoneAt()`. A press on the close
 button or beside the window closes it, and Esc does; the bars do not spell Esc
 out. The close button is the platform's (`Overlay/State/WindowControls`): a red
-`⊗` leading the title bar on macOS, with the title centred, and a `☒` ending it
-elsewhere; under the pointer it darkens. `Input/ModalWindowRouter` answers for
-the Welcome modal and the view window's frame; the pickers and Find in Files
-answer through `OverlayHost` and the editor's `continueWindowDrag()`.
+`(✖)` leading the title bar on macOS, with the title centred, and a `[✖]`
+ending it elsewhere; under the pointer it darkens.
+`Input/ModalWindowRouter` answers for the Welcome modal and the view window's
+frame; the pickers and Find in Files answer through `OverlayHost` and the
+editor's `continueWindowDrag()`.
 
 `Overlay/` is organised by a strict three-tier rule, and a new floating feature
 lands one class in each:
@@ -755,7 +756,7 @@ interchangeable.
 the widget, is the source of truth. The single `ResultsPanelWidget` displays
 exactly one tab, and tool tabs coexist: each Find-in-Project query, Problems,
 TODO, each Usages list, the logs, Local History — one strip tab apiece, closed
-only by its ×.
+only by its ✖.
 
 **Bookmarks** (`F11` to toggle, `Alt+2` to list) is a tab like any other, and is
 the one core tool whose rows outlive their buffers. `Editor\Bookmarks` owns the

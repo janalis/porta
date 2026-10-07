@@ -51,9 +51,9 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertCount(1, $lines);
         $this->assertSame(80, AnsiUtils::visibleWidth($lines[0]), 'exactly one full-width row');
         $plain = AnsiUtils::stripAnsiCodes($lines[0]);
-        $this->assertStringContainsString('Terminal ×', $plain);
-        $this->assertStringContainsString('Problems ×', $plain);
-        $this->assertSame(2, \substr_count($plain, needle: '×'), 'one close glyph per tab');
+        $this->assertStringContainsString('Terminal ✖', $plain);
+        $this->assertStringContainsString('Problems ✖', $plain);
+        $this->assertSame(2, \substr_count($plain, needle: '✖'), 'one close glyph per tab');
         $this->assertStringContainsString("\x1b[1m", $lines[0], 'the active tab renders bold');
     }
 
@@ -74,10 +74,10 @@ final class DockTabsWidgetTest extends TestCase
         });
         $bar->render(new RenderContext(80, 1));
 
-        // ' Terminal × │ Debug × ': tab 1 body starts at col 0, its × at col 10.
+        // ' Terminal ✖ │ Debug ✖ ': tab 1 body starts at col 0, its ✖ at col 10.
         $this->assertTrue($bar->handleTabClick(2), 'a label click hits');
         $this->assertSame([[DockTab::Terminal, '']], $selected);
-        $this->assertTrue($bar->handleTabClick(10), 'the × zone closes');
+        $this->assertTrue($bar->handleTabClick(10), 'the ✖ zone closes');
         $this->assertSame([[DockTab::Terminal, '']], $closed);
         $this->assertTrue($bar->handleTabClick(14), 'the second tab body selects it');
         $this->assertSame(
@@ -132,15 +132,15 @@ final class DockTabsWidgetTest extends TestCase
         // The close zone: both its edges close, the cell after it does not.
         $closeEnd = $first['closeStart'] + $first['closeWidth'];
         $this->assertNull($bar->dragSourceAt($closeEnd - 1), 'the last close cell cannot arm a drag');
-        $this->assertLessThan($firstEnd, $closeEnd, 'sanity: the × is followed by more of the tab body');
-        $this->assertSame(DockTab::Terminal, $bar->dragSourceAt($closeEnd)['tab'] ?? null, 'the body cell right after the × arms one again');
+        $this->assertLessThan($firstEnd, $closeEnd, 'sanity: the ✖ is followed by more of the tab body');
+        $this->assertSame(DockTab::Terminal, $bar->dragSourceAt($closeEnd)['tab'] ?? null, 'the body cell right after the ✖ arms one again');
         $bar->handleTabClick($first['closeStart']);
         $bar->handleTabClick($closeEnd - 1);
-        $this->assertSame([DockTab::Terminal, DockTab::Terminal], $closed, 'both edges of the × close');
+        $this->assertSame([DockTab::Terminal, DockTab::Terminal], $closed, 'both edges of the ✖ close');
         $bar->handleTabClick($closeEnd);
-        $this->assertSame([DockTab::Terminal, DockTab::Terminal], $closed, 'the cell after the × does not');
+        $this->assertSame([DockTab::Terminal, DockTab::Terminal], $closed, 'the cell after the ✖ does not');
         $bar->handleTabClick($second['closeStart']);
-        $this->assertSame([DockTab::Terminal, DockTab::Terminal, DockTab::Debug], $closed, "a LATER tab's × is reached too — the scan does not stop at the first zone it misses");
+        $this->assertSame([DockTab::Terminal, DockTab::Terminal, DockTab::Debug], $closed, "a LATER tab's ✖ is reached too — the scan does not stop at the first zone it misses");
 
         // Activation, on the second tab's first cell and the cell past its end.
         $activated = [];
@@ -295,7 +295,7 @@ final class DockTabsWidgetTest extends TestCase
         $this->assertNull($bar->familyIndexAt(99), 'the empty tail is no tab');
 
         $this->assertSame(['tab' => DockTab::Results, 'index' => 0], $bar->dragSourceAt($problems), 'a body press arms a drag');
-        $this->assertNull($bar->dragSourceAt((int) \mb_strpos($plain, needle: '×', offset: $problems)), 'a close press must not arm one');
+        $this->assertNull($bar->dragSourceAt((int) \mb_strpos($plain, needle: '✖', offset: $problems)), 'a close press must not arm one');
 
         $moves = [];
         $events->addListener(DockTabMoveRequested::class, static function (DockTabMoveRequested $event) use (&$moves): void {
@@ -410,7 +410,7 @@ final class DockTabsWidgetTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(40, 3)));
 
         $this->assertSame(\str_repeat('▄', times: 12).\str_repeat('─', times: 28), $rows[0], 'a rule along the top holding the pill\'s upper half, then the grab running it on');
-        $this->assertSame(' Problems × '.\str_repeat(' ', times: 18).'3 results ', $rows[1], 'the status, right-aligned level with the label');
+        $this->assertSame(' Problems ✖ '.\str_repeat(' ', times: 18).'3 results ', $rows[1], 'the status, right-aligned level with the label');
         $this->assertSame(\str_repeat('▀', times: 12).\str_repeat('─', times: 28), $rows[2], 'and the baseline, the pill\'s lower half in it');
         $this->assertStringNotContainsString('48;5;235', $bar->render(new RenderContext(40, 3))[1], 'roomy, the strip sits on nothing, the status too');
 

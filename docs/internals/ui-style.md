@@ -82,7 +82,7 @@ only the box and a column either side of it toggle.
   flips it) and the caption carries the state, on in the selection's shade and
   off faint; one row, it is the tag, `[.*]` on and ` .* ` off. Either way it is
   its whole box to the pointer: the find bar, Find in Files' options band and
-  the diff toolbar hit-test the band, not a row. The find bar's ↑ ↓ × are boxed
+  the diff toolbar hit-test the band, not a row. The find bar's ↑ ↓ ✖ are boxed
   `FieldBox::button()`s beside boxed toggles; a pane too narrow for both keeps
   boxed fields with one-row tags on their value row. Its key hints centre on
   the boxes past the buttons: one line on the middle row, two on the top and
@@ -134,14 +134,14 @@ parted from the docs by a tee.
 
 A toast's frame says its severity by shape: double (`FieldState::Danger`) for
 an error, heavy for a warning, rounded for the rest, so a failure never looks
-like a success in monochrome. A hovered `×` is `TabCloseGlyph::hovered()`,
+like a success in monochrome. A hovered `✖` is `TabCloseGlyph::hovered()`,
 underlined as well as bright, on a toast as on a tab. A window's close button
 is its own (below).
 
 Pointing at a card stops its timer (`ToastCenter::hoverAt`, measured on an
 injectable clock) and moving away restarts it with the time it had left, never
 less than a second. `Alt+D` (`ide_dismiss_toast`) removes the top card, as its
-`×` would.
+`✖` would.
 
 Every hint set into a bottom border (a field's trailing hint, a clipped list's
 `3/40`, a card's) is `BorderHint::bottom()`: faint, a stroke on each side, left
@@ -157,12 +157,14 @@ Every entry in the notification log carries its glyph, Info's `◦` included.
 Every floating window — a picker, Find in Files, Welcome, a view window —
 wears `ModalFrame`'s frame and moves and resizes through `WindowFrame`:
 
-- **The title bar is the platform's.** On macOS a red `⊗` leads it and the
-  title sits in the middle (`╭⊗─── Title ───╮`); elsewhere the title leads and
-  a `☒` ends it (`╭─ Title ────☒╮`). The rule runs unbroken into both corners
-  and up to the button — a space beside either reads as a break. Both glyphs
-  are East Asian Neutral, one column in every terminal (`GlyphsWidthTest`); no
-  window spells Esc out, every one closes on it.
+- **The title bar is the platform's.** On macOS a red `(✖)` leads it and the
+  title sits in the middle (`╭(✖)─── Title ───╮`); elsewhere the title leads
+  and a `[✖]` ends it (`╭─ Title ──[✖]╮`). Either is three columns, every one
+  of them the button (`CloseButton::COLUMNS`). The rule runs unbroken into both
+  corners and up to the button — a space beside either reads as a break. The
+  cross is the heavy `✖`, never the small multiplication sign `×`, and every
+  character is East Asian Neutral or Narrow, one column in every terminal
+  (`GlyphsWidthTest`); no window spells Esc out, every one closes on it.
 - **The button darkens under the pointer**, to the theme's deep red with no
   fill; a theme with one red, and monochrome, dim it instead.
 - **Every edge but the title bar's is a handle.** At rest it is the frame;
@@ -234,7 +236,7 @@ the workspace rules as `┬` `┴` — or ends at a bar's half, which joins noth
 and the first and last tabs' outer halves land in those edge rows too. Beside a shaded tab — the shown one, the hovered one — the
 rule opens: its pill and its halves run across the rule's column, a blank of
 the pill's, so the tab and the editor read as one surface while its name and
-`×` stay in their columns. A gap owns no tab. The inner edge is a logical end: under
+`✖` stay in their columns. A gap owns no tab. The inner edge is a logical end: under
 RTL the row reverses, so `WorkspaceLayout::setMirrored` tells the strip its
 reading direction along with its seat. A compact screen keeps the one-row list
 with its selection bar.
@@ -247,8 +249,8 @@ the same rule to the terminal rows it already has. The git mode tabs are a
 plugin widget: they read the density `ViewServices` hands the view.
 
 Hit-testing: a tab is its whole shape (`tabIndexAt` ignores the row on a
-horizontal strip, and matches a side tab's three rows), and a `×` is on the
-label row alone (`closeIndexAt`, and the renderer lights a `×` only for a
+horizontal strip, and matches a side tab's three rows), and a `✖` is on the
+label row alone (`closeIndexAt`, and the renderer lights a `✖` only for a
 pointer on that row). `‹`/`›` page from any row. The dock's top-row tail is
 the resize grab (the dock's top edge, the strip's height above the panel,
 which is what `armPanelResize` arms); its status sits level with the labels,

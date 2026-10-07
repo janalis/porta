@@ -155,12 +155,14 @@ final class Glyphs
     public const string SESSION_STOPPED = '○';
     public const string SEPARATOR = '│'; // between two tabs of one family
     public const string FAMILY_SEPARATOR = '┃'; // between two families — heavier, because a drag cannot cross it
-    // A pinned tab, prefixed to its label. Distinct from DIRTY ● and CLOSE ×,
+    // A pinned tab, prefixed to its label. Distinct from DIRTY ● and CLOSE ✖,
     // which share the tab surface with it; one display column, like every
     // glyph here.
     public const string PINNED = '⌾';
 
-    public const string CLOSE = '×'; // the tab's close affordance; {@see \Porta\Widget\Render\TabCloseGlyph} owns its shade
+    // The heavy cross, not the multiplication sign ×: that one reads too small
+    // beside a label, and it is East Asian Ambiguous, which this is not.
+    public const string CLOSE = '✖'; // the tab's close affordance; {@see \Porta\Widget\Render\TabCloseGlyph} owns its shade
     public const string SCROLL_PREV = '‹';
     public const string SCROLL_NEXT = '›';
     public const string SCROLL_UP = '▲';
@@ -292,13 +294,16 @@ final class Glyphs
     // disjoint surfaces (a field's border vs a window's).
     public const string MODAL_RESIZE_GRAB = '┛';
 
-    // A floating window's close button, the platform's: macOS draws a red
-    // circled cross at the title bar's left, everything else a boxed cross at
-    // its right. Both East Asian Neutral, so every terminal draws them one
-    // column wide — ⓧ, the circled LETTER x, is Ambiguous, and a terminal that
-    // draws those wide pushed the whole title bar a column out.
-    public const string WINDOW_CLOSE_MAC = '⊗';
-    public const string WINDOW_CLOSE = '☒';
+    // A floating window's close button, the platform's, three columns — a
+    // button, not a mark: macOS draws a red, rounded `(✖)` at the title bar's
+    // left, everything else a squared `[✖]` at its right. Every character
+    // East Asian Neutral or Narrow, so every terminal draws it one column wide
+    // — ⓧ, the circled LETTER x, is Ambiguous, and a terminal that draws those
+    // wide pushed the whole title bar a column out. The cross is CLOSE's
+    // value — disjoint surfaces (a window's title bar vs a tab, a toast, the
+    // find bar).
+    public const string WINDOW_CLOSE_MAC = '(✖)';
+    public const string WINDOW_CLOSE = '[✖]';
     public const string MODAL_GRAB_TOP_LEFT = '┏';
     public const string MODAL_GRAB_TOP_RIGHT = '┓';
     public const string MODAL_GRAB_BOTTOM_LEFT = '┗';

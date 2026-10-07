@@ -2743,8 +2743,8 @@
         <target>Mode sélection en colonne : Shift+flèches sélectionnent un rectangle — Alt+C le désactive</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>Épinglé : reste ouvert, sans ×</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>Épinglé : reste ouvert, sans ✖</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

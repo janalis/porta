@@ -2743,8 +2743,8 @@
         <target>מצב בחירת עמודה: Shift+חצים בוחרים מלבן — Alt+C מכבה אותו</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>מוצמד: נשאר פתוח, ללא ×</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>מוצמד: נשאר פתוח, ללא ✖</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

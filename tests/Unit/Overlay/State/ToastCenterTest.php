@@ -18,7 +18,7 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The toast stack: auto-expiry timers cancelled on every dismissal path, the
- * stack cap, and the ×/body/miss click triage against the presenter's boxes.
+ * stack cap, and the ✖/body/miss click triage against the presenter's boxes.
  */
 final class ToastCenterTest extends TestCase
 {
@@ -121,7 +121,7 @@ final class ToastCenterTest extends TestCase
         $this->assertTrue($center->clickAt(2, 65), 'a card-body click is swallowed');
         $this->assertFalse($center->isEmpty(), 'and dismisses nothing');
 
-        $this->assertTrue($center->clickAt(1, 77), 'the × (width − 2) dismisses');
+        $this->assertTrue($center->clickAt(1, 77), 'the ✖ (width − 2) dismisses');
         $this->assertTrue($center->isEmpty());
         $this->assertNotSame([], $this->scheduler->cancelled, 'the dismissed toast cancelled its expiry');
     }
@@ -136,10 +136,10 @@ final class ToastCenterTest extends TestCase
         $this->assertFalse($center->hoverAt(10, 10), 'off every card');
         $this->assertNull($center->closeHoveredId());
         Probe::set($this->tui, 'renderRequested', false);
-        $this->assertTrue($center->hoverAt(1, 77), 'over the ×');
+        $this->assertTrue($center->hoverAt(1, 77), 'over the ✖');
         $this->assertSame($id, $center->closeHoveredId());
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the × hover changed — a frame is needed to paint the tint');
-        $this->assertTrue($center->hoverAt(2, 65), 'over the body clears the × tint');
+        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the ✖ hover changed — a frame is needed to paint the tint');
+        $this->assertTrue($center->hoverAt(2, 65), 'over the body clears the ✖ tint');
         $this->assertNull($center->closeHoveredId());
     }
 
@@ -156,7 +156,7 @@ final class ToastCenterTest extends TestCase
 
         $close = $center->tooltipAt(1, 77, new Translator('en'));
         $this->assertSame(['toast:'.$id, 'Dismiss', 1, 77, 78], [$close?->key, $close?->text, $close?->row, $close?->colStart, $close?->colEnd]);
-        $this->assertSame('toast:'.($id + 1), $center->tooltipAt(5, 77, new Translator('en'))?->key, 'each card its own ×');
+        $this->assertSame('toast:'.($id + 1), $center->tooltipAt(5, 77, new Translator('en'))?->key, 'each card its own ✖');
         $this->assertNull($center->tooltipAt(2, 65, new Translator('en')), "a card's words need no tooltip");
     }
 

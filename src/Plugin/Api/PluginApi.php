@@ -1115,7 +1115,7 @@ final class PluginApi
 
     /**
      * Replace this tool's rows in place — no open, no focus steal, the user's
-     * selection and collapse preserved. A silent no-op once the user has ×'d
+     * selection and collapse preserved. A silent no-op once the user has ✖'d
      * the tab, which is why an async tool publishes by id and never holds one.
      *
      * @param list<ResultRow> $rows

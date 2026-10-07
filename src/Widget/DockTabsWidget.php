@@ -41,7 +41,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * dock slot. Content comes from a provider on {@see \Porta\Workbench\Dock\BottomDock} so
  * it always reflects the models' state; an empty provider result (dock
  * hidden, or a transient picker bypassing the dock) renders zero rows.
- * Clicking a tab reveals its panel, the × closes it (a session tab stops its
+ * Clicking a tab reveals its panel, the ✖ closes it (a session tab stops its
  * process); dragging reorders within a family; a press on the empty tail
  * falls through to the panel-resize grab.
  */
@@ -177,7 +177,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     }
 
     /**
-     * A drag SOURCE: the family position at $col excluding its close ×, or null.
+     * A drag SOURCE: the family position at $col excluding its close ✖, or null.
      *
      * @return array{tab: ?DockTab, index: int}|null
      */
@@ -281,7 +281,7 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
     }
 
     /**
-     * A click on the strip (widget-relative column): the close × zone closes
+     * A click on the strip (widget-relative column): the close ✖ zone closes
      * that tool, elsewhere on a tab reveals it. Returns whether the column
      * landed on a tab — the caller lets a miss (the empty tail) fall through
      * to the panel-resize grab.

@@ -13,7 +13,7 @@ use Porta\Ui\Theme\Styles;
  * One corner notification card in the modal design language: the rounded
  * frame in the toast's severity role (error red, warning orange, info yellow,
  * success green — the diagnostics palette), the severity glyph on the top
- * border, the tab strips' × affordance, and the message WRAPPED across rows
+ * border, the tab strips' ✖ affordance, and the message WRAPPED across rows
  * rather than truncated — a clipped error message is no message, and the E2e
  * suite greps full flash texts off the terminal.
  *
@@ -28,7 +28,7 @@ final class ToastCard
     /**
      * The frame says the severity by shape as well as colour — an error's is
      * double, a warning's heavy, the rest rounded — so a failure never reads
-     * like a "Saved" under the monochrome theme. The × under the pointer wears
+     * like a "Saved" under the monochrome theme. The ✖ under the pointer wears
      * {@see TabCloseGlyph::hovered()}. $hint, when given, is set into the
      * bottom border: the key to the notification log on an error, or how many
      * more are waiting on the last card.
@@ -42,8 +42,8 @@ final class ToastCard
         $close = $closeHovered ? TabCloseGlyph::hovered($styles) : TabCloseGlyph::inactive($styles);
         [$topLeft, $topRight, $bottomLeft, $bottomRight, $rule, $side] = self::frame($toast->severity)->glyphs();
 
-        // `╭ ✗ ──── ×╮`: glyph chrome is 4 columns (corner, spaces, glyph),
-        // close chrome 3 (space, ×, corner) — the × lands at width − 2, the
+        // `╭ ✗ ──── ✖╮`: glyph chrome is 4 columns (corner, spaces, glyph),
+        // close chrome 3 (space, ✖, corner) — the ✖ lands at width − 2, the
         // exact cell ModalBox::closeHit answers for.
         $fill = \max(0, $innerWidth - 5);
         $top = $accent->apply($topLeft.' ').$accent->withBold()->apply($toast->severity->glyph()).' '.$accent->apply(\str_repeat($rule, $fill)).' '.$close.$accent->apply($topRight);

@@ -46,7 +46,7 @@ final class WindowFrame
 
     private ?WindowGeometry $dragStart = null;
 
-    /** The handle under the pointer (the × or a resize handle), for the frame's hot glyphs. */
+    /** The handle under the pointer (the ✖ or a resize handle), for the frame's hot glyphs. */
     private ?WindowZone $hovered = null;
 
     /** The last placement, the floors it was placed with, and the bounds it was clamped to. */
@@ -108,7 +108,7 @@ final class WindowFrame
     /**
      * A left press on the drawn $box: the title bar arms a move, an edge or a
      * corner arms a resize from the box as it was last placed. Answers the
-     * zone, so the window can close on the × or an outside press and route a
+     * zone, so the window can close on the ✖ or an outside press and route a
      * content press to what it holds.
      */
     public function press(ModalBox $box, int $row, int $col): WindowZone

@@ -58,7 +58,7 @@ final readonly class DockToolController
      *
      * A silent no-op when the tab is gone — that is the async-completion
      * staleness guard, and it is why a plugin publishes by id and never holds a
-     * tab: the user may × a tool while its work is still in flight, and a late
+     * tab: the user may ✖ a tool while its work is still in flight, and a late
      * answer must not resurrect it.
      *
      * @param list<mixed> $rows

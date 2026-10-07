@@ -63,7 +63,7 @@ final class GlyphsWidthTest extends TestCase
     }
 
     /**
-     * A window's close button is one column in EVERY terminal: never East
+     * A close button is one column a character in EVERY terminal: never East
      * Asian Ambiguous, which a terminal set for CJK draws two wide. The circled
      * letter ⓧ was, and pushed a title bar a column out on a real screen; the
      * frame's box glyphs are Ambiguous too, but every TUI draws those narrow.
@@ -75,11 +75,13 @@ final class GlyphsWidthTest extends TestCase
         if (!\extension_loaded('intl')) {
             $this->markTestSkipped('the intl extension reads the Unicode width property');
         }
-        foreach ([Glyphs::WINDOW_CLOSE, Glyphs::WINDOW_CLOSE_MAC] as $glyph) {
+        // Every character, not the first: the bracketed button's [ is narrow
+        // whatever its cross is.
+        foreach (\mb_str_split(Glyphs::CLOSE.Glyphs::WINDOW_CLOSE.Glyphs::WINDOW_CLOSE_MAC) as $character) {
             $this->assertContains(
-                \IntlChar::getIntPropertyValue(\mb_ord($glyph), \IntlChar::PROPERTY_EAST_ASIAN_WIDTH),
+                \IntlChar::getIntPropertyValue(\mb_ord($character), \IntlChar::PROPERTY_EAST_ASIAN_WIDTH),
                 [\IntlChar::EA_NEUTRAL, \IntlChar::EA_NARROW, \IntlChar::EA_HALFWIDTH],
-                $glyph.' is narrow whatever the terminal',
+                $character.' is narrow whatever the terminal',
             );
         }
     }

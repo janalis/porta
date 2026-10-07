@@ -77,7 +77,7 @@ final class WelcomeModalController implements ContributedView
     /** Where the user moved the box and how big they made it. */
     private readonly WindowFrame $frame;
 
-    /** Which end of the title bar the × sits at: the platform's. */
+    /** Which end of the title bar the ✖ sits at: the platform's. */
     private readonly CloseButton $closeButton;
 
     private ?ModalBox $box = null;
@@ -245,7 +245,7 @@ final class WelcomeModalController implements ContributedView
     }
 
     /**
-     * A left press while the modal is open. The × and a press outside the box
+     * A left press while the modal is open. The ✖ and a press outside the box
      * close it; the title bar and the frame's edges arm a move or a resize; a
      * content cell selects its card.
      */
@@ -270,7 +270,7 @@ final class WelcomeModalController implements ContributedView
         return true;
     }
 
-    /** Tint the card (or the ×) under the pointer; returns whether anything changed. */
+    /** Tint the card (or the ✖) under the pointer; returns whether anything changed. */
     public function hoverAt(int $row, int $col): bool
     {
         $box = $this->box;

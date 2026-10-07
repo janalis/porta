@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The corner toast surface end-to-end: a real notification renders as a
- * framed card in the workspace's top-right corner, the × dismisses it through
+ * framed card in the workspace's top-right corner, the ✖ dismisses it through
  * the mouse router, a hover only tints, and the auto-expiry timer clears the
  * stack without outliving the loop.
  */
@@ -52,7 +52,7 @@ final class IdeToastsTest extends TestCase
                     $this->assertStringContainsString('✓ ', $screen, 'the success glyph on the card border — a save is a success');
                 },
                 400 => function ($tui, $terminal, Ide $ide): void {
-                    // The presenter's regions place the card; its × sits at the
+                    // The presenter's regions place the card; its ✖ sits at the
                     // top border's width − 2 (ModalBox::closeHit).
                     $notifier = Services::resolve($ide, Notifier::class);
                     $center = Probe::get($notifier, 'toasts');
@@ -64,10 +64,10 @@ final class IdeToastsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $box->col + 3, $box->startRow + 2));
                     $this->assertNotSame([], Toasts::all($ide), 'a body hover dismisses nothing');
 
-                    // Hover then click the ×.
+                    // Hover then click the ✖.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $box->col + $box->width - 2, $box->startRow + 1));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $box->col + $box->width - 2, $box->startRow + 1));
-                    $this->assertSame([], Toasts::all($ide), 'the × dismissed the toast');
+                    $this->assertSame([], Toasts::all($ide), 'the ✖ dismissed the toast');
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // A short-lived toast expires on its own timer.
@@ -78,7 +78,7 @@ final class IdeToastsTest extends TestCase
                     $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the error glyph renders');
                     $this->await(static fn (): bool => [] === Toasts::all($ide));
 
-                    // Alt+D takes the top card from the keyboard, as its × does.
+                    // Alt+D takes the top card from the keyboard, as its ✖ does.
                     $notifier->warn('first');
                     $notifier->warn('second');
                     $tui->handleInput("\x1bd");

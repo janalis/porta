@@ -310,7 +310,7 @@ final class OverlayHost
 
     /**
      * A left-click while the search modal is open: on a hit row it picks it,
-     * on the × or outside the box it closes, and anywhere else inside the box
+     * on the ✖ or outside the box it closes, and anywhere else inside the box
      * (the query field, a header, the frame) it is swallowed — a click in a
      * dialog is never a request to leave it. Returns false when the modal is
      * not open.
@@ -598,7 +598,7 @@ final class OverlayHost
 
     /**
      * A left-click while the list overlay is open (editor-pane-relative
-     * coords): on an item it picks it, on the × or outside the box it
+     * coords): on an item it picks it, on the ✖ or outside the box it
      * dismisses, and elsewhere inside the box it is swallowed. Always
      * consumed; returns false when the overlay is not open.
      */
@@ -667,7 +667,7 @@ final class OverlayHost
         return true;
     }
 
-    /** Hover for the mini prompt: only its × restyles; returns whether it changed. */
+    /** Hover for the mini prompt: only its ✖ restyles; returns whether it changed. */
     public function promptHoverAt(int $relRow, int $relCol): bool
     {
         if (null === $this->prompt) {
@@ -889,7 +889,7 @@ final class OverlayHost
 
     /**
      * Route a left-click (screen coords) to the topmost open surface: on an
-     * item it picks, on the × it closes, anywhere else it dismisses. Returns
+     * item it picks, on the ✖ it closes, anywhere else it dismisses. Returns
      * false only when no surface is open.
      */
     public function pickerClickAt(int $row, int $col): bool
@@ -900,7 +900,7 @@ final class OverlayHost
         }
 
         // The frame first, as every window's: the title bar arms a move and
-        // an edge a resize. The surface answers the press too — the ×, an
+        // an edge a resize. The surface answers the press too — the ✖, an
         // item, a press outside — and swallows one on its frame.
         $box = $this->boxOf($surface);
         if (null !== $box) {

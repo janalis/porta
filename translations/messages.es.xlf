@@ -2743,8 +2743,8 @@
         <target>Selección en columna: Shift+flechas seleccionan un rectángulo — Alt+C la desactiva</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>Fijada: se mantiene abierta, sin ×</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>Fijada: se mantiene abierta, sin ✖</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

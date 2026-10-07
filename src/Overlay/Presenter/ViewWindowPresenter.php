@@ -154,7 +154,7 @@ final class ViewWindowPresenter
     }
 
     /**
-     * A left press while the window is open, answered for the frame: the ×
+     * A left press while the window is open, answered for the frame: the ✖
      * and a press outside the window — on the workspace behind it — close
      * the view; the title bar and the edges arm a move or a resize. False on
      * the content, which the view's own pointer answers, and on the chrome

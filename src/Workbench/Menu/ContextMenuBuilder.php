@@ -98,7 +98,7 @@ final readonly class ContextMenuBuilder
 
     /**
      * A dock-strip tab's menu: a session tab offers a new sibling next to its
-     * close; tool/Debug tabs close (the same action as their strip ×).
+     * close; tool/Debug tabs close (the same action as their strip ✖).
      *
      * @return list<MenuItem>
      */

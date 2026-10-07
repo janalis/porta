@@ -195,7 +195,7 @@ final class MouseRouter
         $this->panes->editor->cancelWindowDrags();
         $this->layout->cancelDrags();
 
-        // The toast stack floats above every modal: its × dismisses, a card
+        // The toast stack floats above every modal: its ✖ dismisses, a card
         // body swallows the click, anywhere else falls straight through.
         if ($this->toasts->clickAt($mouse->row, $mouse->col)) {
             $this->tui->requestRender();
@@ -506,7 +506,7 @@ final class MouseRouter
     private function clickedFloating(MouseEvent $mouse): bool
     {
         // The floating pickers (list overlay, Search Everywhere, the mini
-        // prompt): item/×/outside-dismiss in screen coordinates. No
+        // prompt): item/✖/outside-dismiss in screen coordinates. No
         // attachment guard — the pickers are painted above every pane, so a
         // click on a visible box belongs to it wherever the editor is.
         if ($this->panes->editor->isAnyPickerOpen()) {
@@ -514,7 +514,7 @@ final class MouseRouter
 
             return $this->rendered();
         }
-        // The floating Find-in-Files modal: ×, drags and zone clicks land in
+        // The floating Find-in-Files modal: ✖, drags and zone clicks land in
         // screen coordinates; an outside click closes it (its own semantics —
         // unlike the Welcome modal it is dismissable).
         if ($this->panes->editor->isFindModalOpen()) {
@@ -524,7 +524,7 @@ final class MouseRouter
         }
 
         // The Welcome modal, then the view window's frame (the menu bar stays
-        // reachable over both): the ×, a drag or a click outside. A press on
+        // reachable over both): the ✖, a drag or a click outside. A press on
         // the view window's content falls through to the view's own pointer.
         return $this->windows->press($mouse);
     }
@@ -584,7 +584,7 @@ final class MouseRouter
             return true;
         }
         // Resolve the drag source BEFORE the click runs — a close click mutates
-        // the strip. dragSourceAt is null on a close ×, so only a select arms.
+        // the strip. dragSourceAt is null on a close ✖, so only a select arms.
         $source = $this->dockTabs->dragSourceAt($col);
         if (!$this->dockTabs->handleTabClick($col)) {
             return false;
@@ -657,7 +657,7 @@ final class MouseRouter
     }
 
     /**
-     * Tab bar click: the close × closes that tab; the body switches to it and
+     * Tab bar click: the close ✖ closes that tab; the body switches to it and
      * arms a drag-to-reorder.
      */
     private function clickedTabs(MouseEvent $mouse, ?WidgetRect $tabsRect): bool

@@ -681,7 +681,7 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
 
-        // Press the title bar (off the ×), drag down-left, release.
+        // Press the title bar (off the ✖), drag down-left, release.
         $this->assertTrue($modal->clickAt($box->startRow, $box->col + 2), 'a title-bar press is consumed');
         $this->assertTrue($modal->isOpen(), 'and does not dismiss');
         $this->assertTrue($modal->continueDragTo($box->startRow + 3, $box->col - 2, release: false));
@@ -756,21 +756,21 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
 
-        // The direction matters, not just "it changed": the ☒ starts dim and
+        // The direction matters, not just "it changed": the ✖ starts dim and
         // only the pointer lights it, never the reverse.
         $styles = Styles::dark();
         $resting = $styles->of(Role::Gutter)->apply(Glyphs::WINDOW_CLOSE);
         $lit = $styles->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE);
-        $this->assertStringContainsString($resting, $normalBar, 'the ☒ starts dim, not hot');
+        $this->assertStringContainsString($resting, $normalBar, 'the ✖ starts dim, not hot');
         $this->assertStringNotContainsString($lit, $normalBar);
 
-        $this->assertTrue($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertTrue($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ✖');
         $hoveredBar = $this->compose($modal)[$box->startRow];
-        $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
-        $this->assertStringContainsString($lit, $hoveredBar, 'hovering the ☒ darkens it');
+        $this->assertNotSame($normalBar, $hoveredBar, 'the ✖ restyled under the pointer');
+        $this->assertStringContainsString($lit, $hoveredBar, 'hovering the ✖ darkens it');
         $this->assertStringNotContainsString($resting, $hoveredBar);
 
-        $this->assertTrue($modal->hoverAt($box->startRow + 2, $box->col + 3), 'off the ×');
+        $this->assertTrue($modal->hoverAt($box->startRow + 2, $box->col + 3), 'off the ✖');
     }
 
     public function testTheCloseButtonCloses(): void
@@ -787,11 +787,11 @@ final class FindInFilesModalTest extends TestCase
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
 
-        $this->assertTrue($modal->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
+        $this->assertTrue($modal->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ✖');
         $this->assertTrue($closed);
-        // The × press must not ALSO fall through into the title-bar-drag
+        // The ✖ press must not ALSO fall through into the title-bar-drag
         // press on the same row: nothing should be armed afterward.
-        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the × click armed no drag');
+        $this->assertFalse($modal->continueDragTo(10, 10, release: false), 'the ✖ click armed no drag');
     }
 
     public function testMouseClickFocusesFieldRows(): void
@@ -1064,11 +1064,11 @@ final class FindInFilesModalTest extends TestCase
         $this->compose($modal);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
-        $modal->hoverAt($box->startRow, $box->col + $box->width - 2); // onto the × → hotspot changes
+        $modal->hoverAt($box->startRow, $box->col + $box->width - 2); // onto the ✖ → hotspot changes
         $this->assertSame($expected + 1, $this->invalidateCount, 'hoverAt() hotspot change');
         $expected = $this->invalidateCount;
 
-        // Off the × first, onto a row hoverAt() doesn't specially handle: this
+        // Off the ✖ first, onto a row hoverAt() doesn't specially handle: this
         // alone resets the hotspot to null, isolating the NEXT call's hoveredRow
         // change from also re-firing the hotspot-changed invalidate.
         $modal->hoverAt($box->startRow, $box->col + 2);
@@ -1646,7 +1646,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $box);
         $modal->close();
 
-        $this->assertFalse($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'closed: the × hover-hotspot must not compute against a stale box');
+        $this->assertFalse($modal->hoverAt($box->startRow, $box->col + $box->width - 2), 'closed: the ✖ hover-hotspot must not compute against a stale box');
     }
 
     public function testPreviewIndexAtOnePastTheLastVisibleRowIsInvalid(): void

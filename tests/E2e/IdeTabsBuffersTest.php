@@ -429,10 +429,10 @@ final class IdeTabsBuffersTest extends TestCase
                 },
                 450 => function (Tui $tui, $terminal, $ide) use ($tabsRect): void {
                     $rect = $tabsRect($tui, $ide);
-                    // The × of row 1 (B) sits in the right-aligned close zone.
+                    // The ✖ of row 1 (B) sits in the right-aligned close zone.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + TabBarWidget::VERTICAL_WIDTH - 1, $rect->row + 2));
                     $tui->tick();
-                    $this->assertSame(['A.php', 'C.php'], $this->tabNames($tui), "clicking a row's × closed that tab");
+                    $this->assertSame(['A.php', 'C.php'], $this->tabNames($tui), "clicking a row's ✖ closed that tab");
                 },
                 600 => function (Tui $tui, $terminal, $ide) use ($tabsRect): void {
                     $rect = $tabsRect($tui, $ide);
@@ -606,11 +606,11 @@ final class IdeTabsBuffersTest extends TestCase
                 300 => function (Tui $tui): void {
                     $tui->tick();
                     $this->assertSame(['A.php', 'B.php'], $this->tabNames($tui));
-                    // Tab A ' A.php × ': its × sits at SGR col 39 (0-based 38 = rel 7).
+                    // Tab A ' A.php ✖ ': its ✖ sits at SGR col 39 (0-based 38 = rel 7).
                     $tui->handleInput("\x1b[<0;39;2M");
                 },
                 400 => function (Tui $tui): void {
-                    $this->assertSame(['B.php'], $this->tabNames($tui), 'clicking A\'s × closed it');
+                    $this->assertSame(['B.php'], $this->tabNames($tui), 'clicking A\'s ✖ closed it');
                     $this->assertStringEndsWith('B.php', (string) Widgets::editor($tui)->getFilePath());
                 },
             ],
@@ -762,9 +762,9 @@ final class IdeTabsBuffersTest extends TestCase
     }
 
     /**
-     * Folder tabs, wired end to end on a 40-row terminal: the lid above a ×
+     * Folder tabs, wired end to end on a 40-row terminal: the lid above a ✖
      * and the foot below it are the tab, so a click there selects it, and
-     * only the × on the label row closes — the geometry the unit tests pin,
+     * only the ✖ on the label row closes — the geometry the unit tests pin,
      * through the real router.
      */
     public function testARoomyTabsHalfSelectsAndItsLabelRowCloses(): void
@@ -792,16 +792,16 @@ final class IdeTabsBuffersTest extends TestCase
                     );
                     $col = $rect->col + $zone['closeStart'] + 1;
 
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the baseline below its ×
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the baseline below its ✖
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
                     $this->frame($tui);
-                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath(), 'the half below the × selected the tab');
+                    $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath(), 'the half below the ✖ selected the tab');
                     $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and closed nothing');
 
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the × itself
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the ✖ itself
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 1));
                     $this->frame($tui);
-                    $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the × on the label row closed it');
+                    $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the ✖ on the label row closed it');
                 },
             ],
             rows: 40,
@@ -810,8 +810,8 @@ final class IdeTabsBuffersTest extends TestCase
 
     /**
      * Side folder tabs, wired end to end on a 40-row terminal: each tab is
-     * three rows to a click, the row over its × selects rather than closes,
-     * and the × on its middle row closes — through the real router.
+     * three rows to a click, the row over its ✖ selects rather than closes,
+     * and the ✖ on its middle row closes — through the real router.
      */
     public function testASideTabIsItsRowAndTheGapUnderItIsNoTab(): void
     {
@@ -844,16 +844,16 @@ final class IdeTabsBuffersTest extends TestCase
                     );
                     $col = $rect->col + $zone['closeStart'] + 1;
 
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the gap under its ×
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 2)); // the gap under its ✖
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 2));
                     $this->frame($tui);
                     $this->assertStringEndsWith('b.php', (string) Widgets::editor($tui)->getFilePath(), 'the gap is no tab: nothing is selected');
                     $this->assertCount(2, Services::resolve($ide, BufferManager::class)->all(), 'and nothing closed');
 
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the × itself
+                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $rect->row + 1)); // the ✖ itself
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $rect->row + 1));
                     $this->frame($tui);
-                    $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the × on the tab\'s row closed it');
+                    $this->assertCount(1, Services::resolve($ide, BufferManager::class)->all(), 'the ✖ on the tab\'s row closed it');
                 },
             ],
             rows: 40,

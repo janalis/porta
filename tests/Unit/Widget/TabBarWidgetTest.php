@@ -267,15 +267,15 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $plain = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(60, 1))[0]);
 
-        $this->assertSame(2, \substr_count($plain, needle: '×'), 'a close × per tab');
-        $this->assertStringContainsString('a.php ×', $plain, 'clean tab: name then ×');
-        $this->assertStringContainsString('b.php ●×', $plain, 'dirty tab: name, dirty dot, then ×');
+        $this->assertSame(2, \substr_count($plain, needle: '✖'), 'a close ✖ per tab');
+        $this->assertStringContainsString('a.php ✖', $plain, 'clean tab: name then ✖');
+        $this->assertStringContainsString('b.php ●✖', $plain, 'dirty tab: name, dirty dot, then ✖');
     }
 
     /**
      * The strip's click zones are columns into the line it painted, so the two
      * must be measured the same way. A wide (CJK) name is where a byte count
-     * would diverge from a display-column count: the × would then sit somewhere
+     * would diverge from a display-column count: the ✖ would then sit somewhere
      * other than where closeIndexAt() says it does, and every zone after it
      * would be off by the difference.
      */
@@ -296,14 +296,14 @@ final class TabBarWidgetTest extends TestCase
                 ++$col;
             }
             $this->assertLessThan(60, $col, "tab {$index} has a close zone");
-            $this->assertSame('×', self::glyphAtColumn($plain, $col), "tab {$index}'s close zone lands on its ×");
+            $this->assertSame('✖', self::glyphAtColumn($plain, $col), "tab {$index}'s close zone lands on its ✖");
         }
     }
 
     public function testCloseIndexAtColumn(): void
     {
-        // Tab a ' a.php × ' (cols 0-9): × at col 7. Tab b ' b.php ●× ' (starts col
-        // 10): dirty ● at col 17, × at col 18.
+        // Tab a ' a.php ✖ ' (cols 0-9): ✖ at col 7. Tab b ' b.php ●✖ ' (starts col
+        // 10): dirty ● at col 17, ✖ at col 18.
         $bar = new TabBarWidget();
         $bar->setProvider(static fn (): array => [
             ['name' => 'a.php', 'dirty' => false, 'active' => true],
@@ -312,8 +312,8 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertSame(0, $bar->closeIndexAt(0, 7), "first tab's × closes tab 0");
-        $this->assertSame(1, $bar->closeIndexAt(0, 18), "second tab's × closes tab 1");
+        $this->assertSame(0, $bar->closeIndexAt(0, 7), "first tab's ✖ closes tab 0");
+        $this->assertSame(1, $bar->closeIndexAt(0, 18), "second tab's ✖ closes tab 1");
         $this->assertNull($bar->closeIndexAt(0, 2), 'the tab body is not a close zone');
         $this->assertNull($bar->closeIndexAt(0, 17), 'the dirty dot is not the close zone');
         $this->assertNull($bar->closeIndexAt(0, 500), 'past every tab');
@@ -321,7 +321,7 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(1, $bar->tabIndexAt(0, 17), 'the dirty dot is still tab-1 body');
     }
 
-    /** A tab says its file in full and its marks in words; its × says what it does; nothing past the tabs. */
+    /** A tab says its file in full and its marks in words; its ✖ says what it does; nothing past the tabs. */
     public function testTabsAndTheirCloseGlyphsExplainThemselves(): void
     {
         $bar = new TabBarWidget();
@@ -345,7 +345,7 @@ final class TabBarWidgetTest extends TestCase
     /**
      * Roomy, a tab's card stands clear of its whole pill — the label row and
      * the rows holding its halves — on the side away from the screen edge its
-     * strip sits on, toward the editor. Its × asks the same.
+     * strip sits on, toward the editor. Its ✖ asks the same.
      */
     public function testARoomyTabsCardClearsItsPillTowardTheEditor(): void
     {
@@ -369,7 +369,7 @@ final class TabBarWidgetTest extends TestCase
             $tip = $bar->tooltipAt($labelRow, 3);
             $this->assertSame([$labelRow - 1, 3, $side], [$tip?->row, $tip?->rows, $tip?->side], "{$position->value}: the pill's three rows, toward the editor");
             $close = $bar->tooltipAt($labelRow, $position->isSide() ? 21 + (TabBarPosition::Right === $position ? 1 : 0) : 7);
-            $this->assertSame(['tab:close:0', $labelRow - 1, 3, $side], [$close?->key, $close?->row, $close?->rows, $close?->side], "{$position->value}: and the × the same");
+            $this->assertSame(['tab:close:0', $labelRow - 1, 3, $side], [$close?->key, $close?->row, $close?->rows, $close?->side], "{$position->value}: and the ✖ the same");
         }
 
         $compact = new TabBarWidget();
@@ -583,8 +583,8 @@ final class TabBarWidgetTest extends TestCase
         $this->assertStringContainsString('a.php', AnsiUtils::stripAnsiCodes($lines[0]));
         $row1 = AnsiUtils::stripAnsiCodes($lines[1]);
         $this->assertStringContainsString('b.php', $row1);
-        $this->assertStringContainsString('●×', $row1, 'dirty dot right-aligned beside the close ×');
-        $this->assertStringContainsString(' × ', AnsiUtils::stripAnsiCodes($lines[0]), 'clean tab keeps a blank marker cell before its ×');
+        $this->assertStringContainsString('●✖', $row1, 'dirty dot right-aligned beside the close ✖');
+        $this->assertStringContainsString(' ✖ ', AnsiUtils::stripAnsiCodes($lines[0]), 'clean tab keeps a blank marker cell before its ✖');
         $this->assertStringContainsString("\x1b[48;5;238m", $lines[1], 'active row background');
         $this->assertSame(\str_repeat(' ', TabBarWidget::VERTICAL_WIDTH), $lines[2], 'filler row below the last tab');
     }
@@ -639,7 +639,7 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame(0, $bar->tabIndexAt(0, 1), 'row 0 body is tab 0');
         $this->assertSame(1, $bar->tabIndexAt(1, $closeCol - 1), 'the dirty dot is still tab-1 body');
         $this->assertNull($bar->tabIndexAt(3, 1), 'a filler row misses');
-        $this->assertSame(1, $bar->closeIndexAt(1, $closeCol), "row 1's × closes tab 1");
+        $this->assertSame(1, $bar->closeIndexAt(1, $closeCol), "row 1's ✖ closes tab 1");
         $this->assertSame(1, $bar->closeIndexAt(1, $closeCol + 1), 'and the column after it, the last');
         $this->assertNull($bar->closeIndexAt(1, $closeCol - 1), 'but not the dirty dot before it');
         $this->assertNull($bar->closeIndexAt(1, 2), 'the row body is not a close zone');
@@ -673,9 +673,9 @@ final class TabBarWidgetTest extends TestCase
 
         $this->assertSame(
             [
-                ' a.php   × │',
+                ' a.php   ✖ │',
                 '▄▄▄▄▄▄▄▄▄▄▄▄',
-                ' b.php  ●×  ',
+                ' b.php  ●✖  ',
                 '▀▀▀▀▀▀▀▀▀▀▀▀',
                 '           │',
                 '           │',
@@ -712,11 +712,11 @@ final class TabBarWidgetTest extends TestCase
         $right->setPosition(TabBarPosition::Right);
         $right->setStripRows(2);
         $this->assertSame(
-            ['  a.php   × ', '▀▀▀▀▀▀▀▀▀▀▀▀', '│           ', '│           '],
+            ['  a.php   ✖ ', '▀▀▀▀▀▀▀▀▀▀▀▀', '│           ', '│           '],
             \array_map(AnsiUtils::stripAnsiCodes(...), $right->render(new RenderContext(12, 4))),
             'the shown tab opens into the editor: no rule beside it',
         );
-        $this->assertSame(0, $right->closeIndexAt(0, 10), 'its × where every tab\'s is with the rule first');
+        $this->assertSame(0, $right->closeIndexAt(0, 10), 'its ✖ where every tab\'s is with the rule first');
         $this->assertNull($right->closeIndexAt(0, 8));
 
         $rest = $this->verticalBar([['name' => 'a.php', 'dirty' => false, 'active' => false], ['name' => 'b.php', 'dirty' => false, 'active' => true]]);
@@ -726,9 +726,9 @@ final class TabBarWidgetTest extends TestCase
         $rest->setStripRows(2);
         $this->assertSame(
             [
-                '│ a.php   × ',
+                '│ a.php   ✖ ',
                 '▄▄▄▄▄▄▄▄▄▄▄▄',
-                '  b.php   × ',
+                '  b.php   ✖ ',
                 '▀▀▀▀▀▀▀▀▀▀▀▀',
                 '│           ',
                 '│           ',
@@ -756,12 +756,12 @@ final class TabBarWidgetTest extends TestCase
 
         $close = TabBarWidget::VERTICAL_WIDTH - 3;
         $this->assertSame([0, null, 1, null, null, null], \array_map(static fn (int $row): ?int => $bar->tabIndexAt($row, 5), \range(start: 0, end: 5)), 'a gap is no tab, as in the tree');
-        $this->assertSame(0, $bar->closeIndexAt(0, $close), "the shown tab's × where every tab's is: the open rule's column is a blank of its pill");
+        $this->assertSame(0, $bar->closeIndexAt(0, $close), "the shown tab's ✖ where every tab's is: the open rule's column is a blank of its pill");
         $this->assertNull($bar->closeIndexAt(0, $close - 1));
-        $this->assertSame(1, $bar->closeIndexAt(2, $close), "the second tab's × is on its row");
+        $this->assertSame(1, $bar->closeIndexAt(2, $close), "the second tab's ✖ is on its row");
         $this->assertSame(1, $bar->closeIndexAt(2, $close + 1), 'with the column after it');
         $this->assertNull($bar->closeIndexAt(2, $close + 2), 'not the rule');
-        $this->assertNull($bar->closeIndexAt(1, $close), 'the gap above the × is no tab');
+        $this->assertNull($bar->closeIndexAt(1, $close), 'the gap above the ✖ is no tab');
         $this->assertNull($bar->closeIndexAt(3, $close), 'nor the one below it');
         $this->assertSame(['row' => 2, 'col' => 0, 'rows' => 1], $bar->tabAnchor(1));
 
@@ -785,9 +785,9 @@ final class TabBarWidgetTest extends TestCase
         $rows = $three->render(new RenderContext(24, 10));
         $this->assertSame(\str_repeat('▄', times: 24), AnsiUtils::stripAnsiCodes($rows[3]), 'a hovered tab opens as the shown one does: its halves cross the rule\'s column');
         $this->assertSame(\str_repeat('▀', times: 24), AnsiUtils::stripAnsiCodes($rows[5]));
-        $this->assertSame(' c.php               ×  ', AnsiUtils::stripAnsiCodes($rows[4]), 'its name and × where they were, the rule\'s column a blank of its pill');
-        $this->assertSame(' b.php               × │', AnsiUtils::stripAnsiCodes($rows[2]), 'a tab at rest keeps the rule');
-        $this->assertStringContainsString(TabCloseGlyph::active(Styles::dark()), $lines[0], 'the shown tab wears the active ×');
+        $this->assertSame(' c.php               ✖  ', AnsiUtils::stripAnsiCodes($rows[4]), 'its name and ✖ where they were, the rule\'s column a blank of its pill');
+        $this->assertSame(' b.php               ✖ │', AnsiUtils::stripAnsiCodes($rows[2]), 'a tab at rest keeps the rule');
+        $this->assertStringContainsString(TabCloseGlyph::active(Styles::dark()), $lines[0], 'the shown tab wears the active ✖');
         $this->assertStringContainsString(TabCloseGlyph::inactive(Styles::dark()), $lines[2], 'the others the resting one');
     }
 
@@ -859,8 +859,8 @@ final class TabBarWidgetTest extends TestCase
     }
 
     /**
-     * A pinned tab draws no × on either strip and has no close zone: the
-     * column a × would take is the tab's body, and a click there selects.
+     * A pinned tab draws no ✖ on either strip and has no close zone: the
+     * column a ✖ would take is the tab's body, and a click there selects.
      */
     public function testAnUncloseableTabHasNoCloseOnEitherStrip(): void
     {
@@ -873,22 +873,22 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $line = AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 1))[0]);
 
-        $this->assertStringStartsWith(' kept.php │ b.php × │', $line);
+        $this->assertStringStartsWith(' kept.php │ b.php ✖ │', $line);
         foreach (\range(start: 0, end: 10) as $col) {
             $this->assertNull($bar->closeIndexAt(0, $col), "column {$col} of the pinned tab closes nothing");
         }
         $this->assertSame(0, $bar->tabIndexAt(0, 9));
-        $this->assertSame(1, $bar->closeIndexAt(0, 18), 'the closable tab keeps its ×');
+        $this->assertSame(1, $bar->closeIndexAt(0, 18), 'the closable tab keeps its ✖');
 
         $vertical = $this->verticalBar($tabs);
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $vertical->render(new RenderContext(80, 3)));
         $closeCol = TabBarWidget::VERTICAL_WIDTH - 2;
-        $this->assertStringNotContainsString('×', $rows[0]);
+        $this->assertStringNotContainsString('✖', $rows[0]);
         $this->assertNull($vertical->closeIndexAt(0, $closeCol));
         $this->assertSame(1, $vertical->closeIndexAt(1, $closeCol));
     }
 
-    /** The pointer on a × lights the × alone; on the name, the name. */
+    /** The pointer on a ✖ lights the ✖ alone; on the name, the name. */
     public function testHoveringTheCloseLightsTheCloseAlone(): void
     {
         $bar = new TabBarWidget();
@@ -899,12 +899,12 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(80, 1));
 
-        $bar->hoverTab(0, 18); // b.php's ×: ` a.php × │` is ten columns, ` b.php ` seven more
+        $bar->hoverTab(0, 18); // b.php's ✖: ` a.php ✖ │` is ten columns, ` b.php ` seven more
         $onClose = $bar->render(new RenderContext(80, 1))[0];
         $bar->hoverTab(0, 12); // b.php's name
         $onName = $bar->render(new RenderContext(80, 1))[0];
 
-        $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*×/', $onClose);
+        $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*✖/', $onClose);
         $this->assertStringNotContainsString("\x1b[4mb.php", $onClose);
         $this->assertStringContainsString("\x1b[4mb.php", $onName);
     }
@@ -922,13 +922,13 @@ final class TabBarWidgetTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(30, 2)));
 
         $this->assertSame(
-            [' a.php ×  b.php ×             ', '▀▀▀▀▀▀▀▀▀─────────────────────'],
+            [' a.php ✖  b.php ✖             ', '▀▀▀▀▀▀▀▀▀─────────────────────'],
             $rows,
             'the labels, then the baseline holding the lower half: the upper is the frame\'s, in the rule above',
         );
         $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 2], $bar->tabAnchor(0), 'anchored on the whole tab');
         $this->assertSame(0, $bar->closeIndexAt(0, 8));
-        $this->assertNull($bar->closeIndexAt(1, 8), 'the half below the × is the tab');
+        $this->assertNull($bar->closeIndexAt(1, 8), 'the half below the ✖ is the tab');
         $this->assertSame(0, $bar->tabIndexAt(0, 8));
         $this->assertSame(0, $bar->tabIndexAt(1, 8));
     }
@@ -944,7 +944,7 @@ final class TabBarWidgetTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(20, 2)));
 
         $this->assertSame('▄▄▄▄▄▄▄▄▄───────────', $rows[0], 'the baseline on top, holding the upper half; the lower is the frame\'s, in the rule below');
-        $this->assertStringStartsWith(' a.php ×', $rows[1]);
+        $this->assertStringStartsWith(' a.php ✖', $rows[1]);
         $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 2], $bar->tabAnchor(0));
         $this->assertSame(0, $bar->closeIndexAt(1, 8));
         $this->assertNull($bar->closeIndexAt(0, 8));

@@ -38,7 +38,7 @@ final readonly class ProjectSearchDockListener
         }
     }
 
-    /** ×ing a Search tab is what records its query and mask into history. */
+    /** ✖ing a Search tab is what records its query and mask into history. */
     #[AsEventListener]
     public function onToolClosed(DockToolClosed $event): void
     {

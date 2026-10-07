@@ -78,7 +78,7 @@ final class PickerLayout
         // filter took, so it never re-centres under the reader.
         $boxRows = \max(1, \min(\count($overlay['items']), $rows - 6 - $fieldRows, PopupMetrics::PICKER_ROWS));
 
-        $width = AnsiUtils::visibleWidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ×) needs its room
+        $width = AnsiUtils::visibleWidth($overlay['title']) + 8; // the frame's title-bar chrome (corners, hint, ✖) needs its room
         // Measured over the UNFILTERED list, and over all of it rather than the
         // visible window: a box sized from what survives the filter shrinks and
         // re-centres on every keystroke, walking out from under the eye reading
@@ -331,7 +331,7 @@ final class PickerLayout
         $place = $frame->place($bounds, $innerWidth + ModalFrame::CHROME_COLS, $rows, WindowPlacement::UpperThird, self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS, $rows, maxRows: $rows);
         $innerWidth = $place->width - ModalFrame::CHROME_COLS;
         // The prompt is a framed modal like its siblings: the frame's title
-        // bar carries the label, the Esc hint and the ×, so the boxed field
+        // bar carries the label, the Esc hint and the ✖, so the boxed field
         // needs no legend. It always takes the keys; a destructive prompt's
         // border is the double one, so "this answer deletes" reads by shape
         // under --no-ansi as well as by its red. Centered like the list and

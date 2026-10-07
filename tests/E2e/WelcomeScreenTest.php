@@ -461,7 +461,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->tick();
             },
             240 => function ($tui, $terminal, Ide $ide): void {
-                $this->assertFalse(Services::resolve($ide, WelcomeModalController::class)->isOpen(), 'the × closed the modal');
+                $this->assertFalse(Services::resolve($ide, WelcomeModalController::class)->isOpen(), 'the ✖ closed the modal');
                 $this->assertSame('editor', $tui->getFocus()?->getId(), 'focus returned to the editor');
             },
         ]);

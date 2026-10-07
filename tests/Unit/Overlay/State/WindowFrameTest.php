@@ -204,7 +204,7 @@ final class WindowFrameTest extends TestCase
     /** @return iterable<string, array{int, int, WindowZone}> */
     public static function inert(): iterable
     {
-        yield 'the ×' => [7, 58, WindowZone::Close];
+        yield 'the ✖' => [7, 58, WindowZone::Close];
         yield 'the content' => [10, 30, WindowZone::Content];
         yield 'outside' => [0, 0, WindowZone::Outside];
     }
@@ -240,9 +240,9 @@ final class WindowFrameTest extends TestCase
         $frame = new WindowFrame();
         $box = self::box($this->place($frame));
 
-        $this->assertTrue($frame->hover($box, 7, 58), 'onto the ×');
+        $this->assertTrue($frame->hover($box, 7, 58), 'onto the ✖');
         $this->assertSame(WindowZone::Close, $frame->hot());
-        $this->assertFalse($frame->hover($box, 7, 57), 'still on the × zone: no change');
+        $this->assertFalse($frame->hover($box, 7, 57), 'still on the ✖ zone: no change');
         $this->assertTrue($frame->hover($box, 12, 59), 'onto the right edge');
         $this->assertSame(WindowZone::Right, $frame->hot());
         $this->assertTrue($frame->hover($box, 7, 30), 'onto the title bar, which is not lit');

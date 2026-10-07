@@ -54,7 +54,7 @@ interface MenuOverlayHost
 
     /**
      * The floating tooltip card's spans, composited above the toasts (it
-     * explains whatever the pointer rests on, a toast's × included) and under
+     * explains whatever the pointer rests on, a toast's ✖ included) and under
      * the menu dropdowns, which close any card by owning the pointer.
      *
      * @param list<array{row: int, col: int, width: int, segment: string}> $spans

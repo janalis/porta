@@ -18,13 +18,6 @@ namespace Porta\Overlay\Region;
 final readonly class ModalBox
 {
     /**
-     * The close affordance's column span, measured in from the box's edge on
-     * its {@see CloseButton}: the `×` and the space beside it, leaving the
-     * corner glyph out.
-     */
-    public const int CLOSE_OFFSET = 2;
-
-    /**
      * $optionsRow and $footerRow are the find modal's two clickable chrome
      * rows in the owner's space (-1 = the box has none). They are passed, not
      * derived: both encode that modal's frame layout (ModalFrame chrome + the
@@ -75,16 +68,20 @@ final readonly class ModalBox
         return $this->startRow + $this->headerRows;
     }
 
-    /** Whether the cell hits the title bar's close `×` (checked before any item mapping). */
+    /**
+     * Whether the cell hits the title bar's close button (checked before any
+     * item mapping): its {@see CloseButton::COLUMNS} in from the box's edge
+     * on its side, the corner glyph left out.
+     */
     public function closeHit(int $row, int $col): bool
     {
-        $first = $this->closeButton->leads() ? $this->col + 1 : $this->col + $this->width - self::CLOSE_OFFSET - 1;
+        $first = $this->closeButton->leads() ? $this->col + 1 : $this->col + $this->width - CloseButton::COLUMNS - 1;
 
-        return $row === $this->startRow && $col >= $first && $col < ($first + self::CLOSE_OFFSET);
+        return $row === $this->startRow && $col >= $first && $col < ($first + CloseButton::COLUMNS);
     }
 
     /**
-     * The frame part under the cell: the × and the rest of the title bar, the
+     * The frame part under the cell: the ✖ and the rest of the title bar, the
      * two side rails, the bottom border and the four corners, the content
      * inside, or outside the box altogether.
      */

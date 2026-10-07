@@ -14,7 +14,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The one place a floating modal's frame is drawn: a box-glyph title bar —
- * `╭ Title ─── Esc ☒╮` — and the side rails + bottom row that wrap the
+ * `╭─ Title ───[✖]╮` — and the side rails + bottom row that wrap the
  * content. Shared by the Welcome modal and the centered pickers so every
  * floating surface speaks the same visual language: accent-coloured border
  * ({@see Role::TabAccent}, the image pane's focus-frame precedent), bold
@@ -30,12 +30,12 @@ final class ModalFrame
     /**
      * The full top row of a $width-column box: the title and the close
      * button, set into the border. The title yields to the fixed chrome so
-     * the button stays put at {@see \Porta\Overlay\Region\ModalBox::CLOSE_OFFSET}
-     * from its edge. $hot is the handle under the pointer: the button lights,
-     * a top corner heavies. The bar is the platform's window's: on macOS a
-     * red `⊗` leads it and the title sits in the middle — `╭⊗─── Title ───╮`
-     * — elsewhere the title leads and a `☒` ends it — `╭─ Title ────☒╮` — as
-     * on Windows. The rule runs unbroken into both corners and up to the
+     * the button stays put against its edge, where
+     * {@see \Porta\Overlay\Region\ModalBox::closeHit()} finds it. $hot is
+     * the handle under the pointer: the button lights, a top corner heavies.
+     * The bar is the platform's window's: on macOS a red `(✖)` leads it and
+     * the title sits in the middle — `╭(✖)─── Title ───╮` — elsewhere the
+     * title leads and a `[✖]` ends it — `╭─ Title ──[✖]╮` — as on Windows. The rule runs unbroken into both corners and up to the
      * button: a space beside either reads as a break in the border. Esc is
      * not spelled out: every window closes on it.
      */
@@ -49,8 +49,8 @@ final class ModalFrame
         // the title, and one stroke of rule — after the button where it
         // leads, out of the corner where the title does. The stroke is the
         // first column a too-narrow box gives up: the button never is.
-        $stroke = $width >= 6;
-        $room = $width - ($stroke ? 6 : 5);
+        $stroke = $width >= (5 + CloseButton::COLUMNS);
+        $room = $width - ($stroke ? 5 : 4) - CloseButton::COLUMNS;
         // A title too long to fit gives up one more column, so the rule still
         // reaches the corner (or the button) after it.
         $label = AnsiText::truncate($title, \max(0, AnsiUtils::visibleWidth($title) > $room ? $room - 1 : $room));
@@ -60,7 +60,7 @@ final class ModalFrame
         // before it takes what centring asks of the fill, and leaves the rule
         // after it at least one stroke into the corner when there is one.
         $rule = $fill + ($stroke ? 1 : 0);
-        $before = $leads ? \max(\min($rule, 1), \min($rule - 1, \intdiv($width - $labelWidth, num2: 2) - 3)) : (int) $stroke;
+        $before = $leads ? \max(\min($rule, 1), \min($rule - 1, \intdiv($width - $labelWidth, num2: 2) - 2 - CloseButton::COLUMNS)) : (int) $stroke;
         $after = $rule - $before;
 
         $bar =

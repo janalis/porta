@@ -272,7 +272,7 @@ final class Bidi
         // the adjacent Latin run rather than taking the direction of the text
         // around it, and lands on the wrong side of the name it belongs to.
         // Forty of Glyphs' seventy-six constants did exactly that — arrows,
-        // triangles, blocks, ticks and the close ×. The list is held honest by
+        // triangles, blocks, ticks and the close cross. The list is held honest by
         // a test that derives its set from {@see \Porta\Ui\Glyphs} rather than
         // repeating it, since a list of glyphs is wrong the first time someone
         // adds one.
@@ -314,7 +314,7 @@ final class Bidi
             || 0xAB === $cp
             || 0xBB === $cp // « » — in MIRROR, so they must be able to reach L4
             || 0xB7 === $cp // · MIDDLE DOT (the hint severity, and a shown space)
-            || 0xD7 === $cp // × MULTIPLICATION SIGN (the close button)
+            || 0xD7 === $cp // × MULTIPLICATION SIGN (a size, `80 × 24`)
             || $cp >= 0x21 && $cp <= 0x2F
             || $cp >= 0x3A && $cp <= 0x40
             || $cp >= 0x5B && $cp <= 0x60
@@ -327,7 +327,7 @@ final class Bidi
             || $cp >= 0x2500 && $cp <= 0x257F // box drawing (frame borders)
             || $cp >= 0x2580 && $cp <= 0x259F // block elements (the error stripe)
             || $cp >= 0x25A0 && $cp <= 0x25FF // geometric shapes (▸ ▾ ● ◆)
-            || $cp >= 0x2600 && $cp <= 0x27BF; // misc symbols and dingbats (✓ ✗)
+            || $cp >= 0x2600 && $cp <= 0x27BF; // misc symbols and dingbats (✓ ✗ ✖)
         if ($asciiNeutral || $symbolNeutral) {
             return 'N';
         }

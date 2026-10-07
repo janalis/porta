@@ -441,7 +441,7 @@ final class IdeDockToolsTest extends TestCase
                 },
                 1000 => function ($tui, $terminal, $ide) use ($project, $dock): void {
                     $tui->tick();
-                    // × the beta tab: its query lands in the search history.
+                    // ✖ the beta tab: its query lands in the search history.
                     foreach ($dock($ide)->aliveTabs() as $entry) {
                         if ('Find in Project: beta' !== $entry['label']) {
                             continue;
@@ -450,7 +450,7 @@ final class IdeDockToolsTest extends TestCase
                         $dock($ide)->closeTab($entry['tab'], $entry['key']);
                     }
                     $tui->tick();
-                    $this->assertContains('beta', new SearchHistoryStore($project->dir)->queries, '×ing a search tab records its query');
+                    $this->assertContains('beta', new SearchHistoryStore($project->dir)->queries, '✖ing a search tab records its query');
                     $labels = \array_column($dock($ide)->aliveTabs(), 'label');
                     $this->assertNotContains('Find in Project: beta', $labels);
                     $this->assertContains('Find in Project: alpha', $labels, 'the alpha tab survives');
@@ -558,7 +558,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertStringContainsString('1 result', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), 'the inactive-tab refresh is visible on arrival');
                 },
                 600 => function (Tui $tui, $terminal, $ide) use ($dock): void {
-                    // × tabs one by one: the last close gives the slot back via the MRU.
+                    // ✖ tabs one by one: the last close gives the slot back via the MRU.
                     $strip = $dock($ide);
                     while ([] !== ($tabs = $strip->aliveTabs())) {
                         $entry = $tabs[0];
@@ -638,7 +638,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close'));
                     $this->assertStringContainsString('Close', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
-                    $tui->handleInput("\r"); // run Close — the same action as the strip ×
+                    $tui->handleInput("\r"); // run Close — the same action as the strip ✖
                     $tui->tick();
                     $this->assertSame([], $dock($ide)->aliveTabs(), 'the menu Close really closed the tool');
                     $this->assertFalse(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isOpen());

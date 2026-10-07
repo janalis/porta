@@ -35,7 +35,7 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  * truth: the single results panel widget displays exactly one tab, async
  * completions write into their tab and {@see refreshIfBound()} pushes to the
  * widget only when that tab is the one on display. Tabs coexist (opening a
- * tool never closes another) and only their strip × closes them. Switching
+ * tool never closes another) and only their strip ✖ closes them. Switching
  * tabs preserves rows/title/searching (and a Search tab's query definition)
  * AND the per-tab view state — filter text, grouping, collapse, context and
  * selection ride each tab as a frozen {@see ResultsViewState}, captured from
@@ -258,7 +258,7 @@ final class BottomDock
         $this->reveal($next['tab'], $next['key']);
     }
 
-    /** The × of the tab on display, from the keyboard (Ctrl+Shift+F4). */
+    /** The ✖ of the tab on display, from the keyboard (Ctrl+Shift+F4). */
     public function closeActive(): void
     {
         foreach ($this->aliveTabs() as $entry) {
@@ -271,7 +271,7 @@ final class BottomDock
         }
     }
 
-    /** The strip's ×: close the tab for real — a session tab stops its process too. */
+    /** The strip's ✖: close the tab for real — a session tab stops its process too. */
     public function closeTab(?DockTab $tab, string $key = ''): void
     {
         if (DockTab::Terminal === $tab) {
@@ -304,7 +304,7 @@ final class BottomDock
             return;
         }
         if (null !== $neighbour) {
-            $this->bind($neighbour); // no focus steal on a mouse ×
+            $this->bind($neighbour); // no focus steal on a mouse ✖
             $this->tui->requestRender();
 
             return;
@@ -401,7 +401,7 @@ final class BottomDock
         return $this->resultsPanel->isOpen() ? $this->tools->active() : null;
     }
 
-    /** A contributed tool's tab, or null once the user has ×'d it — the staleness guard for a publisher that holds only an id. */
+    /** A contributed tool's tab, or null once the user has ✖'d it — the staleness guard for a publisher that holds only an id. */
     public function findTool(string $id): ?DockToolTab
     {
         return $this->tools->findByToolId($id);

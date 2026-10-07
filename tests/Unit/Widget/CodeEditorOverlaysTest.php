@@ -730,7 +730,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertFalse($editor->handlePopupHover(3, 3));
     }
 
-    /** Hover routes to the open prompt (its × brightens under the pointer). */
+    /** Hover routes to the open prompt (its ✖ brightens under the pointer). */
     public function testPromptHoverRoutesToTheOverlayHost(): void
     {
         $editor = $this->editor();
@@ -741,7 +741,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $box = Probe::get($host, 'promptBox');
         $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
-        $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ✖');
         $this->assertFalse($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'unchanged on the same cell');
     }
 

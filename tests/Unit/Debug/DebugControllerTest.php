@@ -995,7 +995,7 @@ final class DebugControllerTest extends TestCase
         $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
         $this->assertTrue($this->panel->isVisible(), 'a stop reveals the concealed Debug tab');
 
-        // Closed outright (the strip ×): the next stop re-opens it, watches reseeded.
+        // Closed outright (the strip ✖): the next stop re-opens it, watches reseeded.
         $this->panel->close();
         $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
         $this->assertTrue($this->panel->isVisible(), 'a stop re-opens a closed Debug tab');

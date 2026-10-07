@@ -2743,8 +2743,8 @@
         <target>Column selection mode: Shift+arrows select a rectangle — Alt+C turns it off</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>Pinned: kept open, with no ×</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>Pinned: kept open, with no ✖</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

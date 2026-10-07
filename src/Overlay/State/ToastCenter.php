@@ -13,8 +13,8 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The live toast stack: push, auto-expiry (one {@see Scheduler} delay per
- * toast, cancelled on any dismissal), the × / body hit-tests against the
- * screen-space boxes the presenter records each frame, and the ×-hover tint.
+ * toast, cancelled on any dismissal), the ✖ / body hit-tests against the
+ * screen-space boxes the presenter records each frame, and the ✖-hover tint.
  * Rendering belongs to {@see \Porta\Widget\Render\ToastCard}; delivery to
  * {@see \Porta\Overlay\Presenter\ToastPresenter}.
  */
@@ -30,7 +30,7 @@ final class ToastCenter
     /** @var list<array{box: ModalBox, id: int}> screen-space card boxes, recorded by the presenter each frame */
     private array $boxes = [];
 
-    /** The toast whose × is under the pointer, or null. */
+    /** The toast whose ✖ is under the pointer, or null. */
     private ?int $closeHoveredId = null;
 
     /** @var \Closure(): float seconds, monotonic — the clock the hover pause measures against */
@@ -130,7 +130,7 @@ final class ToastCenter
     }
 
     /**
-     * A left-click against the stack: the × dismisses its toast, a card body
+     * A left-click against the stack: the ✖ dismisses its toast, a card body
      * swallows the click (a toast is not a control surface), anywhere else
      * falls through to the panes. Returns whether the click was consumed.
      */
@@ -151,7 +151,7 @@ final class ToastCenter
     }
 
     /**
-     * Track whether a toast's × is under the pointer (brightened like every
+     * Track whether a toast's ✖ is under the pointer (brightened like every
      * close affordance), and hold still the card being read: its timer stops
      * while the pointer is on it and resumes, with the time it had left, when
      * the pointer goes — a message does not vanish from under the reader.
@@ -190,7 +190,7 @@ final class ToastCenter
     }
 
     /**
-     * The × says what it does; the rest of a card is its own words already.
+     * The ✖ says what it does; the rest of a card is its own words already.
      * Screen coordinates, like every hit-test here.
      */
     public function tooltipAt(int $row, int $col, Translator $translator): ?Tooltip
@@ -230,13 +230,13 @@ final class ToastCenter
         return true;
     }
 
-    /** The toast whose × should render brightened, or null. */
+    /** The toast whose ✖ should render brightened, or null. */
     public function closeHoveredId(): ?int
     {
         return $this->closeHoveredId;
     }
 
-    /** Dismiss one toast (its ×), cancelling the pending expiry. */
+    /** Dismiss one toast (its ✖), cancelling the pending expiry. */
     public function dismiss(int $id): void
     {
         $this->remove($id);

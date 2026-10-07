@@ -8,7 +8,7 @@ use Porta\Ui\Markup\Markup;
 
 /**
  * One live corner notification: identity for dismissal (the auto-expiry timer
- * and the × both address the toast, not a position — the stack reorders as
+ * and the ✖ both address the toast, not a position — the stack reorders as
  * neighbours expire). A toast in a $slot is the one message of its kind: a
  * later push to the same slot replaces it in place (a "Fetching…" becomes its
  * outcome instead of lingering beside it).

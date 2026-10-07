@@ -42,7 +42,7 @@ final readonly class TodoScan
             TodoTags::pattern((string) $this->api->setting('tags')),
             function (array $results): void {
                 // No staleness check here: publishing by id is what makes a
-                // late answer to a ×'d tab a silent no-op.
+                // late answer to a ✖'d tab a silent no-op.
                 $this->api->updateList(self::TOOL, $results);
             },
             new SearchOptions(regex: true, caseSensitive: true),

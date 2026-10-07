@@ -214,7 +214,7 @@ final class ActionCatalog
         // panel with no default key and no Settings → Keymap line to give it
         // one — reachable only by someone who already knew it was there.
         'ide_notifications' => ['label' => 'Notification Log', 'keys' => ['alt+9']],
-        // D for dismiss: the keyboard's way to the top card's ×. Not Alt+N —
+        // D for dismiss: the keyboard's way to the top card's ✖. Not Alt+N —
         // a terminal's ESC n is the legacy spelling of Alt+↓, as ESC p, b
         // and f are of the other arrows, so it never arrives as a letter.
         'ide_dismiss_toast' => ['label' => 'Dismiss Notification', 'keys' => ['alt+d']],
@@ -255,7 +255,7 @@ final class ActionCatalog
         'ide_terminal_new' => ['label' => 'New Terminal Session', 'keys' => ['ctrl+shift+`', 'alt+f11']],
         'dock_next_panel' => ['label' => 'Next Dock Panel', 'keys' => ['alt+page_down']],
         'dock_prev_panel' => ['label' => 'Previous Dock Panel', 'keys' => ['alt+page_up']],
-        // PhpStorm's Close Active Tab, for a tool window: the × of the dock
+        // PhpStorm's Close Active Tab, for a tool window: the ✖ of the dock
         // tab on display. Esc only hides the dock; this closes the tab.
         'dock_close_tab' => ['label' => 'Close Dock Tab', 'keys' => ['ctrl+shift+f4']],
         'terminal_next_session' => ['label' => 'Next Terminal'],

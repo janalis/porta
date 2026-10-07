@@ -40,7 +40,7 @@ final class ToastCardTest extends TestCase
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $this->card('disk full', ToastSeverity::Error));
 
         $this->assertStringContainsString('✗', $rows[0], 'the severity glyph on the top border');
-        $this->assertStringContainsString('×', $rows[0], 'the close affordance');
+        $this->assertStringContainsString('✖', $rows[0], 'the close affordance');
         $this->assertStringStartsWith('╔', $rows[0], 'an error is double-framed');
         $this->assertStringContainsString('disk full', $rows[1]);
         $this->assertStringStartsWith('╚', $rows[\count($rows) - 1]);
@@ -79,14 +79,14 @@ final class ToastCardTest extends TestCase
         $this->assertSame(['╔', '┏', '╭', '╭'], \array_map($corners, [ToastSeverity::Error, ToastSeverity::Warn, ToastSeverity::Info, ToastSeverity::Success]));
     }
 
-    /** A hint is set into the bottom border when it fits, and left out when it does not; the × under the pointer underlines. */
+    /** A hint is set into the bottom border when it fits, and left out when it does not; the ✖ under the pointer underlines. */
     public function testTheBottomBorderCarriesAHintAndTheCloseUnderlines(): void
     {
         $rows = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), 20, Styles::dark(), closeHovered: true, hint: 'Alt+9 log');
 
         $this->assertMatchesRegularExpression('/^╚═+ Alt\+9 log ═╝$/u', AnsiUtils::stripAnsiCodes(\array_last($rows)));
         $this->assertSame(22, AnsiUtils::visibleWidth(\array_last($rows)));
-        $this->assertMatchesRegularExpression('/\e\[4m(\e\[[0-9;]*m)*×/', $rows[0], 'the hovered × underlined');
+        $this->assertMatchesRegularExpression('/\e\[4m(\e\[[0-9;]*m)*✖/', $rows[0], 'the hovered ✖ underlined');
 
         $narrow = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), 8, Styles::dark(), hint: 'Alt+9 log');
         $this->assertSame('╚════════╝', AnsiUtils::stripAnsiCodes(\array_last($narrow)), 'no room: no hint');
@@ -112,7 +112,7 @@ final class ToastCardTest extends TestCase
         $normal = $this->card('hi')[0];
         $hovered = $this->card('hi', closeHovered: true)[0];
 
-        $this->assertNotSame($normal, $hovered, 'the × restyles under the pointer');
+        $this->assertNotSame($normal, $hovered, 'the ✖ restyles under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normal), AnsiUtils::stripAnsiCodes($hovered), 'same text, different shade');
     }
 

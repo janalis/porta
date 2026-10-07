@@ -780,7 +780,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->closeSearch(new SearchTabState('kept-query', new SearchOptions(), ['.'], '*.tpl', ScopeKind::Project));
 
-        $this->assertContains('kept-query', new SearchHistoryStore($project->dir)->queries, '×ing a search tab records its query');
+        $this->assertContains('kept-query', new SearchHistoryStore($project->dir)->queries, '✖ing a search tab records its query');
         $this->assertContains('*.tpl', Probe::get(new SearchPrefsStore($project->dir), 'recentMasks'), 'and its mask');
     }
 

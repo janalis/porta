@@ -2743,8 +2743,8 @@
         <target>Selezione a colonna: Shift+frecce selezionano un rettangolo — Alt+C la disattiva</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>Fissata: resta aperta, senza ×</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>Fissata: resta aperta, senza ✖</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

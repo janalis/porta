@@ -36,7 +36,7 @@ final readonly class TabListProvider
                 'name' => ($b->pinned ? Glyphs::PINNED.' ' : '').$title,
                 'dirty' => $b->isDirty(),
                 'active' => $b === $this->buffers->active(),
-                // A pinned tab draws no ×: pinning is what keeps it open. Ctrl+W
+                // A pinned tab draws no ✖: pinning is what keeps it open. Ctrl+W
                 // and its context menu still close it, deliberately.
                 'closable' => !$b->pinned,
                 // The name may be cut, qualified or a title; its marks are
@@ -145,7 +145,7 @@ final readonly class TabListProvider
     {
         $lines = [$this->paths->relative($b->path)];
         if ($b->pinned) {
-            $lines[] = $this->translator->trans('Pinned: kept open, with no ×');
+            $lines[] = $this->translator->trans('Pinned: kept open, with no ✖');
         }
         if ($b->isDirty()) {
             $lines[] = $this->translator->trans('Unsaved changes');

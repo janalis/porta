@@ -14,7 +14,7 @@ use Symfony\Component\Tui\Style\Style;
  *
  * This is the one thing all four strips share — the editor tab bar in both
  * orientations, the bottom dock's strip and the git view's mode tabs. Their
- * cells differ (only two carry a close ×, only one is a column of rows), but
+ * cells differ (only two carry a close ✖, only one is a column of rows), but
  * a tab that shades differently from strip to strip is the drift worth
  * preventing. The shades themselves are the bar-chrome family's, so this pins
  * {@see BarChromeStyle} to the tab strips' {@see Role::Toolbar} rest background.

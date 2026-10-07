@@ -55,10 +55,11 @@ final class ModalBoxTest extends TestCase
      */
     public static function zones(): iterable
     {
-        yield 'the ×' => [4, 28, WindowZone::Close];
-        yield 'the space before the ×' => [4, 27, WindowZone::Close];
+        yield 'the button\'s ]' => [4, 28, WindowZone::Close];
+        yield 'the button\'s ✖' => [4, 27, WindowZone::Close];
+        yield 'the button\'s [' => [4, 26, WindowZone::Close];
         yield 'the title bar' => [4, 15, WindowZone::Title];
-        yield 'the title bar just short of the ×' => [4, 26, WindowZone::Title];
+        yield 'the title bar just short of the button' => [4, 25, WindowZone::Title];
         yield 'the top-left corner' => [4, 10, WindowZone::TopLeft];
         yield 'the top-right corner' => [4, 29, WindowZone::TopRight];
         yield 'the left rail' => [6, 10, WindowZone::Left];
@@ -86,15 +87,16 @@ final class ModalBoxTest extends TestCase
         $this->assertSame(4, $this->box()->innerCol(16));
     }
 
-    /** The `×` and the space before it, on the title row only; the corner stays out. */
+    /** The whole `[✖]`, on the title row only; the corner stays out. */
     public function testCloseHitCoversTheCloseZone(): void
     {
         $box = $this->box();
 
-        $this->assertTrue($box->closeHit(4, 28), 'the × itself (width − 2)');
-        $this->assertTrue($box->closeHit(4, 27), 'the space before it');
+        $this->assertTrue($box->closeHit(4, 28), 'the ] (width − 2)');
+        $this->assertTrue($box->closeHit(4, 27), 'the ✖');
+        $this->assertTrue($box->closeHit(4, 26), 'the [ (width − 4)');
         $this->assertFalse($box->closeHit(4, 29), 'the corner glyph');
-        $this->assertFalse($box->closeHit(4, 26), 'the hint area');
+        $this->assertFalse($box->closeHit(4, 25), 'the rule before it');
         $this->assertFalse($box->closeHit(5, 28), 'not on the title row');
     }
 
@@ -109,18 +111,19 @@ final class ModalBoxTest extends TestCase
     }
 
     /**
-     * On a left-close platform the × sits just inside the top-left corner;
+     * On a left-close platform the (✖) sits just inside the top-left corner;
      * the right end of the title bar is plain title bar again.
      *
      * @return iterable<string, array{int, int, WindowZone}>
      */
     public static function leftCloseZones(): iterable
     {
-        yield 'the ×' => [4, 11, WindowZone::Close];
-        yield 'the space after the ×' => [4, 12, WindowZone::Close];
-        yield 'the title past it' => [4, 13, WindowZone::Title];
+        yield 'the button\'s (' => [4, 11, WindowZone::Close];
+        yield 'the button\'s ✖' => [4, 12, WindowZone::Close];
+        yield 'the button\'s )' => [4, 13, WindowZone::Close];
+        yield 'the title past it' => [4, 14, WindowZone::Title];
         yield 'the top-left corner' => [4, 10, WindowZone::TopLeft];
-        yield 'where the × would be on the right' => [4, 28, WindowZone::Title];
+        yield 'where the [✖] would be on the right' => [4, 28, WindowZone::Title];
     }
 
     #[DataProvider('leftCloseZones')]

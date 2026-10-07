@@ -43,7 +43,7 @@ final class TabListProviderTest extends TestCase
         $this->assertSame([Glyphs::PINNED.' kept.php', 'other.php'], $names);
     }
 
-    /** Pinning is what keeps a tab open, so a pinned tab offers no ×. */
+    /** Pinning is what keeps a tab open, so a pinned tab offers no ✖. */
     public function testAPinnedTabIsNotClosableFromItsStrip(): void
     {
         $buffers = new BufferManager();
@@ -181,7 +181,7 @@ final class TabListProviderTest extends TestCase
 
         $tips = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), TestAgentPresence::create())->tabs(), 'tooltip');
 
-        $this->assertSame("src/deep/Name.php\nPinned: kept open, with no ×", $tips[0]);
+        $this->assertSame("src/deep/Name.php\nPinned: kept open, with no ✖", $tips[0]);
     }
 
     public function testATabShowsTheAgentsAtWorkOnItsFileInTheirColours(): void

@@ -25,7 +25,7 @@ hidden.
 Every session is a first-class tab on the bottom pane's single tab strip,
 next to the tool tabs (Problems, search results, …): `` Ctrl+Shift+` `` (or
 `Alt+F11`) opens another shell, `Ctrl+Page Up` / `Ctrl+Page Down` cycle
-between sessions, `Ctrl+Shift+W` (or a click on a tab's `×`) closes one —
+between sessions, `Ctrl+Shift+W` (or a click on a tab's `✖`) closes one —
 closing the last closes the panel. Click a tab to switch to it, drag it to
 reorder your sessions, or right-click it (or press `Ctrl+F10` in the panel)
 for a New Session / Close Session menu; each session keeps its own

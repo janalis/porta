@@ -2743,8 +2743,8 @@
         <target>Spaltenauswahl: Shift+Pfeiltasten wählen ein Rechteck — Alt+C schaltet sie aus</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>Angeheftet: bleibt offen, ohne ×</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>Angeheftet: bleibt offen, ohne ✖</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

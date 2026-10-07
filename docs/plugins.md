@@ -685,7 +685,7 @@ $api->updateList('offenders', [
   for you; a row missing `path`, `line` or `text` is dropped rather than shown
   blank. An optional `ranges` of `['start' => …, 'length' => …]` display
   columns bolds the match.
-- **You publish by id, never by a handle.** The user can × your tab at any
+- **You publish by id, never by a handle.** The user can ✖ your tab at any
   moment, including while your scan is still running — `updateList()` on a
   closed tab is a silent no-op, which is exactly what you want for an async
   result that arrives late.
@@ -1008,7 +1008,7 @@ Actions (from handlers/hooks):
 | `setCommentMarks(string $path, array $marks)` | Mark the lines a conversation hangs on — a review thread: `0-based line => one-line summary`. Each gets `✎` in the gutter's marker column and on the scrollbar stripe, and the pointer over it reads the summary. Scoped to your plugin like `setDiagnostics`, kept across tab switches; `[]` clears |
 | `copyToClipboard(string $text)` | Put text on the system clipboard — for a view that copies a commit hash or a path and has no business injecting a service to do it |
 | `syntaxTheme()` | The `TerminalTheme` core is currently painting with, for a backend that bakes colours into its own output. Safe during `activate()`; pair it with `onThemeChanged()`, since a theme switch has no other hook |
-| `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ×'d the tab |
+| `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ✖'d the tab |
 | `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
 | `trans(string $id, array $params = [])` | Translate through the IDE's catalogs and your own — see [Translating your strings](#translating-your-strings); an unknown string passes through |
 | `pick(string $title, array $items, \Closure $onPick): \Closure` | Ask the user to choose from `value => label`, or from full rows (`['label' => …, 'hint' => …, 'value' => …]`) when the list needs a dimmed second column. Calling what it returns withdraws the question, when the list is still open |

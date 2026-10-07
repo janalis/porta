@@ -194,7 +194,7 @@ final class ToastPresenterTest extends TestCase
         // about to hover", which a flipped `===`/`!==` comparison against a
         // null closeHoveredId can't distinguish from the correct baseline.
         $beforeTitles = \implode('', \array_column($before, 'segment'));
-        $this->assertStringNotContainsString("\x1b[38;5;252m×", $beforeTitles, 'no card starts out showing the active (hovered) close glyph');
+        $this->assertStringNotContainsString("\x1b[38;5;252m✖", $beforeTitles, 'no card starts out showing the active (hovered) close glyph');
 
         // Boxes carry the real (non-shadow-inclusive) width the closeHit
         // geometry is defined against — regions() is 1 wider (shadow column).

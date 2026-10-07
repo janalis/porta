@@ -2743,8 +2743,8 @@
         <target>矩形選択モード: Shift+矢印で矩形を選択 — Alt+C で解除</target>
       </trans-unit>
       <trans-unit id="968">
-        <source>Pinned: kept open, with no ×</source>
-        <target>ピン留め: × なしで開いたまま</target>
+        <source>Pinned: kept open, with no ✖</source>
+        <target>ピン留め: ✖ なしで開いたまま</target>
       </trans-unit>
       <trans-unit id="969">
         <source>Version control: %change%</source>

@@ -23,7 +23,7 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The drain a plugin's list tool publishes through. Everything here is driven
- * by ID, never by a tab handle — that is what makes a late answer to a ×'d tab
+ * by ID, never by a tab handle — that is what makes a late answer to a ✖'d tab
  * a no-op instead of a resurrection.
  */
 final class DockToolControllerTest extends TestCase
@@ -85,7 +85,7 @@ final class DockToolControllerTest extends TestCase
         $this->assertFalse($tab->searching);
         $this->assertSame('landed', $tab->rows[0]['text']);
 
-        // The staleness guard: the user ×s the tab while a scan is still out.
+        // The staleness guard: the user ✖s the tab while a scan is still out.
         $this->dock->closeTab(DockTab::Results, (string) $tab->id);
         $controller->update('demo:todo', [['path' => 'b.php', 'line' => 0, 'text' => 'too late']]);
 

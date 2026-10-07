@@ -66,7 +66,7 @@ final readonly class HoverRouter
         // what the thing under the pointer IS.
         $this->tooltips->route($mouse, $view);
 
-        // The toast stack floats above every modal: over a card, only its ×
+        // The toast stack floats above every modal: over a card, only its ✖
         // tint reacts, and the hover never leaks to what is beneath.
         if ($this->toasts->hoverAt($mouse->row, $mouse->col)) {
             return;
@@ -123,7 +123,7 @@ final readonly class HoverRouter
         // An open view window owns its hover targets exclusively; the
         // tree/editor behind it are out of reach. The menu bar rides along
         // over any window, so it gets first refusal, then the window's frame
-        // (its × and resize handles light), then the region.
+        // (its ✖ and resize handles light), then the region.
         if (null !== $view && $this->views->isAnyOpen()) {
             $this->hoverViewWindow($mouse, $view);
 

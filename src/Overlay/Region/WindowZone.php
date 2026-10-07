@@ -10,7 +10,7 @@ namespace Porta\Overlay\Region;
  * and closes the same way.
  *
  * The title bar is the move handle, so the top edge has no resize band of its
- * own: only its two corner cells resize. The × sits on the title bar and wins
+ * own: only its two corner cells resize. The ✖ sits on the title bar and wins
  * over it.
  */
 enum WindowZone

@@ -13,12 +13,12 @@ use Symfony\Component\Tui\Tui;
 /**
  * Mouse routing for the floating windows that own no pane rect of their own:
  * the Welcome modal, and the view window's FRAME (its title bar, edges and
- * ×; what the window holds answers through the open view's own pointer,
+ * ✖; what the window holds answers through the open view's own pointer,
  * whose widgets do have rects). Owns their handles so {@see MouseRouter}
  * does not, and delegates to each one's box geometry
  * ({@see \Porta\Overlay\Region\ModalBox}).
  *
- * Both behave as every window does: the × and a press outside close them,
+ * Both behave as every window does: the ✖ and a press outside close them,
  * the title bar moves them, the edges resize them. The Welcome modal is
  * app-modal besides — while it is open every wheel and left press is its
  * (the menu branches run first in the router, so the menu bar stays
@@ -64,7 +64,7 @@ final readonly class ModalWindowRouter implements ViewPointer
         return $this->window->press($mouse->row, $mouse->col);
     }
 
-    /** Light the card, the × or the handle under the pointer; a miss clears it. */
+    /** Light the card, the ✖ or the handle under the pointer; a miss clears it. */
     #[\Override]
     public function hover(MouseEvent $mouse): void
     {

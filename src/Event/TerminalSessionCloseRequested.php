@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Event;
 
 /**
- * A terminal session should be closed for real — its × was pressed, on the tab
+ * A terminal session should be closed for real — its ✖ was pressed, on the tab
  * strip or inside the panel.
  *
  * `-1` means "whichever session is active", which is the panel's own key path:

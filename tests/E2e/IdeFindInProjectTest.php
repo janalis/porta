@@ -851,7 +851,7 @@ final class IdeFindInProjectTest extends TestCase
                 $this->assertStringContainsString(Glyphs::MODAL_TOP_LEFT, $treeText, "the modal's title bar paints over the tree pane");
                 $this->assertStringContainsString("\x1b[2m", \implode('', $treeRows), 'the tree renders dimmed beneath the modal');
 
-                // A bare hover-move (mouse mode 1003) over the × routes to the
+                // A bare hover-move (mouse mode 1003) over the ✖ routes to the
                 // floating modal in screen coordinates and brightens it.
                 $close = $left->closeButton->leads() ? $left->col + 1 : $left->col + $left->width - 2;
                 $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $close + 1, $left->startRow + 1));

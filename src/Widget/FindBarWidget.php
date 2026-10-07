@@ -372,7 +372,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     /**
      * A click on an option tag toggles it, exactly as its Alt+X / Alt+W /
      * Alt+C key does; ↑ and ↓ step to the previous and next match as
-     * Shift+F3 and F3 do, ∀ selects every match as Alt+Enter does, × closes
+     * Shift+F3 and F3 do, ∀ selects every match as Alt+Enter does, ✖ closes
      * as Esc does; a click in a field box makes it the field typing edits.
      */
     public function handleClick(int $row, int $col): void

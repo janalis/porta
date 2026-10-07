@@ -162,7 +162,7 @@ final class ProjectSearchController
         $this->lastSearchResults = $tab->rows;
     }
 
-    /** A Search tab was ×'d: record its query/mask like a panel close used to, and drop any in-flight run. */
+    /** A Search tab was ✖'d: record its query/mask like a panel close used to, and drop any in-flight run. */
     public function closeSearch(SearchTabState $state): void
     {
         $this->history->add($state->query);

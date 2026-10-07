@@ -240,7 +240,7 @@ final class IdeDebugTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<35;8;%dM", $rect->row + 3)); // hover a row
                     $tui->handleInput(\sprintf("\x1b[<64;8;%dM", $rect->row + 3)); // wheel scrolls the list
                     // Strip clicks switch tools through the real mouse path:
-                    // ' Debug: prog.php × │ Debug: prog.php × ' (the debuggee's
+                    // ' Debug: prog.php ✖ │ Debug: prog.php ✖ ' (the debuggee's
                     // output session, then the debug panel) — refetch the strip
                     // rect per click, since its row shifts with panel height.
                     $stripRow = static fn (): int => $renderer->getWidgetRect($tui->getById('dock-tabs'))->row + 1;

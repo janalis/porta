@@ -442,13 +442,13 @@ final class OverlayHostTest extends TestCase
     {
         $host = $this->host();
         $host->openPrompt('Go to line', '', static fn (): null => null);
-        $host->layout([0, 0, 2, 40]); // box [4, 36): × at col 34
+        $host->layout([0, 0, 2, 40]); // box [4, 36): ✖ at col 34
 
-        $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ×');
+        $this->assertTrue($host->promptClickAt(0, 34), 'the title bar ✖');
         $this->assertNull(Probe::get($host, 'prompt'));
     }
 
-    /** Hovering a picker's × brightens it, exactly like the tab strips' close glyph. */
+    /** Hovering a picker's ✖ brightens it, exactly like the tab strips' close glyph. */
     public function testHoveringTheCloseBrightensItPerSurface(): void
     {
         $host = $this->host();
@@ -458,16 +458,16 @@ final class OverlayHostTest extends TestCase
         $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
         $normalBar = $lines[$box->startRow];
 
-        $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertTrue($host->hoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ✖');
         $hoveredBar = $this->canvas($host, 80, 20)[$box->startRow];
-        $this->assertNotSame($normalBar, $hoveredBar, 'the × restyled under the pointer');
+        $this->assertNotSame($normalBar, $hoveredBar, 'the ✖ restyled under the pointer');
         $this->assertSame(AnsiUtils::stripAnsiCodes($normalBar), AnsiUtils::stripAnsiCodes($hoveredBar), 'same text, different shade');
 
-        $this->assertTrue($host->hoverAt($box->startRow + 3, $box->col + 3), 'off the × again');
+        $this->assertTrue($host->hoverAt($box->startRow + 3, $box->col + 3), 'off the ✖ again');
         $this->assertFalse($host->hoverAt($box->startRow + 3, $box->col + 3), 'no change → no repaint');
     }
 
-    /** The prompt's only hover affordance is its ×. */
+    /** The prompt's only hover affordance is its ✖. */
     public function testPromptHoverTracksTheClose(): void
     {
         $host = $this->host();
@@ -478,7 +478,7 @@ final class OverlayHostTest extends TestCase
         $box = Probe::get($host, 'promptBox');
         $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
-        $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ×');
+        $this->assertTrue($host->promptHoverAt($box->startRow, $box->col + $box->width - 2), 'onto the ✖');
         $this->assertTrue($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'off it');
         $this->assertFalse($host->promptHoverAt($box->startRow + 2, $box->col + 2), 'unchanged');
     }
@@ -493,7 +493,7 @@ final class OverlayHostTest extends TestCase
         $host->layout([0, 0, 8, 40]);
         $box = Probe::get($host, 'promptBox');
         $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
-        $host->promptClickAt($box->startRow, $box->col + $box->width - 2); // the × → dismiss
+        $host->promptClickAt($box->startRow, $box->col + $box->width - 2); // the ✖ → dismiss
         $this->assertNull(Probe::get($host, 'prompt'));
 
         $this->clearRepaint();
@@ -513,10 +513,10 @@ final class OverlayHostTest extends TestCase
         Assert::assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->clearRepaint();
-        $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
+        $this->assertTrue($host->clickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ✖');
         $this->assertNull(Probe::get($host, 'overlay'));
         $this->assertNull($picked, 'the close click never picks an item');
-        $this->assertTrue($this->repainted(), 'closing via × requests a render');
+        $this->assertTrue($this->repainted(), 'closing via ✖ requests a render');
     }
 
     public function testListOverlayClickOnAnItemPicksItAndRequestsARender(): void
@@ -618,7 +618,7 @@ final class OverlayHostTest extends TestCase
         $box = Probe::get($host, 'overlayBox');
         Assert::assertInstanceOf(ModalBox::class, $box);
 
-        $this->assertTrue($host->clickAt($box->startRow, $box->col + 2), 'the title bar, left of the ×');
+        $this->assertTrue($host->clickAt($box->startRow, $box->col + 2), 'the title bar, left of the ✖');
         $this->assertNotNull(Probe::get($host, 'overlay'), 'still open');
         $this->assertNull($picked);
     }
@@ -634,7 +634,7 @@ final class OverlayHostTest extends TestCase
         $box = Probe::get($host, 'searchBox');
         Assert::assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
-        $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ×');
+        $this->assertTrue($host->searchClickAt($box->startRow, $box->col + $box->width - 2), 'the title bar ✖');
         $this->assertSame(1, $closed, 'exactly once — a removed early return would fall through to the elsewhere-click close too');
     }
 
@@ -1180,7 +1180,7 @@ final class OverlayHostTest extends TestCase
         Assert::assertInstanceOf(ModalBox::class, $box, 'the search modal laid out a modal box');
 
         $this->assertTrue($host->pickerHoverAt($box->windowTop() + 1, $box->col + 1), 'routes to searchHoverAt, not the list/prompt path');
-        $this->assertTrue($host->pickerClickAt($box->startRow, $box->col + $box->width - 2), 'routes to searchClickAt: the × closes it');
+        $this->assertTrue($host->pickerClickAt($box->startRow, $box->col + $box->width - 2), 'routes to searchClickAt: the ✖ closes it');
         $this->assertSame(1, $closed);
     }
 
@@ -1246,12 +1246,12 @@ final class OverlayHostTest extends TestCase
         $listBox = Probe::get($host, 'overlayBox');
         $this->assertInstanceOf(ModalBox::class, $listBox, 'the overlay laid out a modal box');
 
-        $host->hoverAt($listBox->startRow, $listBox->col + $listBox->width - 2); // only the list's ×
+        $host->hoverAt($listBox->startRow, $listBox->col + $listBox->width - 2); // only the list's ✖
         [$listPlaced, $searchPlaced, $promptPlaced] = $host->layout([0, 0, 24, 100]);
 
         $hovered = $styles->of(Role::DiagErrorDim)->apply(Glyphs::WINDOW_CLOSE);
         $inactive = $styles->of(Role::Gutter)->apply(Glyphs::WINDOW_CLOSE);
-        $this->assertStringContainsString($hovered, $listPlaced['rows'][0], 'the hovered surface shows the hovered ×');
+        $this->assertStringContainsString($hovered, $listPlaced['rows'][0], 'the hovered surface shows the hovered ✖');
         $this->assertStringContainsString($inactive, $searchPlaced['rows'][0], 'search must stay inactive');
         $this->assertStringContainsString($inactive, $promptPlaced['rows'][0], 'the prompt must stay inactive');
     }

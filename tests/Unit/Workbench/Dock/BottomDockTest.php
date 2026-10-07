@@ -324,11 +324,11 @@ final class BottomDockTest extends TestCase
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
         $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
 
-        $dock->closeTab(DockTab::Results, (string) $problems->id); // × an INACTIVE instance
-        $this->assertFalse($dock->isToolAlive($problems), 'the strip × really closes a tool');
+        $dock->closeTab(DockTab::Results, (string) $problems->id); // ✖ an INACTIVE instance
+        $this->assertFalse($dock->isToolAlive($problems), 'the strip ✖ really closes a tool');
         $this->assertSame($todo, $dock->activeTool(), 'the displayed tool is untouched');
 
-        $dock->closeTab(DockTab::Results); // × the last (active) instance
+        $dock->closeTab(DockTab::Results); // ✖ the last (active) instance
         $this->assertFalse($this->results->isOpen(), 'the last tool close closes the panel');
         $this->assertSame($this->terminal, $dock->visiblePanel(), 'the previous dock tab comes back');
         $dock->closeTab(DockTab::Results, '42'); // unknown key: a no-op
@@ -340,14 +340,14 @@ final class BottomDockTest extends TestCase
         });
         $dock->closeTab(DockTab::Terminal, 'shell:1');
         $dock->closeTab(DockTab::Terminal, 'nope'); // unknown session: a no-op
-        $this->assertSame([0], $closed, "a session tab's × routes its index to the controller");
+        $this->assertSame([0], $closed, "a session tab's ✖ routes its index to the controller");
 
         $this->debug->open('a.php');
         $dock->closeTab(DockTab::Debug);
-        $this->assertFalse($this->debug->isOpen(), 'the Debug × closes the panel for real');
+        $this->assertFalse($this->debug->isOpen(), 'the Debug ✖ closes the panel for real');
     }
 
-    /** Ctrl+Shift+F4: the × of the tab on display, and only that one. */
+    /** Ctrl+Shift+F4: the ✖ of the tab on display, and only that one. */
     public function testCloseActiveClosesTheTabOnDisplay(): void
     {
         $dock = $this->dock(new EventDispatcher());
@@ -374,7 +374,7 @@ final class BottomDockTest extends TestCase
         });
 
         $dock->closeTab(DockTab::Results, (string) $todo->id);
-        $this->assertSame([$todo], $closed, 'the close event carried the ×ed tab');
+        $this->assertSame([$todo], $closed, 'the close event carried the ✖ed tab');
         $this->assertSame($problems, $dock->activeTool(), 'the neighbour instance took the slot');
         $this->assertSame(ResultsPanelMode::Problems, $dock->mode());
         $this->assertTrue($this->results->isOpen(), 'the panel stays open while instances remain');
@@ -425,7 +425,7 @@ final class BottomDockTest extends TestCase
         $this->debug->open('a.php');
 
         $this->strip->render(new RenderContext(100, 1));
-        // ' Terminal × │ Debug × ': the first tab's label starts at column 1.
+        // ' Terminal ✖ │ Debug ✖ ': the first tab's label starts at column 1.
         $this->assertTrue($this->strip->handleTabClick(2), 'the label zone is a tab hit');
         $this->assertSame($this->terminal, $dock->visiblePanel(), 'clicking the Terminal tab revealed it');
 

@@ -53,7 +53,7 @@ final class DockToolTabs
         return null;
     }
 
-    /** The tab a contributed tool owns, or null when the user has ×'d it. */
+    /** The tab a contributed tool owns, or null when the user has ✖'d it. */
     public function findByToolId(string $id): ?DockToolTab
     {
         foreach ($this->tabs as $tab) {

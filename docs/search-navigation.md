@@ -48,7 +48,7 @@ counter and matches nothing.
 
 A query that can find nothing draws the Find box with a **double** border: a bad
 pattern, one the engine gave up on, or no hit at all. The problem shows by
-shape as well as by the counter. `↑`, `↓` and `×` beside the tags step to the
+shape as well as by the counter. `↑`, `↓` and `✖` beside the tags step to the
 previous and next match and close the bar, like `Shift+F3`, `F3` and `Esc`.
 The query field takes the caret keys: `←`/`→`, `Home`/`End`, `Delete`,
 `Ctrl+W`.
@@ -88,7 +88,7 @@ Search Scopes" pins one so it is never evicted.
 - `Enter` opens the selected match.
 - `Alt+Enter` promotes the whole result set to its own tab on the
   bottom dock — every search keeps its tab (same query re-uses it,
-  a new query opens another) until you close it with the tab's `×`;
+  a new query opens another) until you close it with the tab's `✖`;
   `F5` re-runs the shown tab's query.
 - **Replace**: with Replace filled, each match previews as `old → new`
   with an exclude checkbox (`Delete` toggles). `Alt+A` applies to every

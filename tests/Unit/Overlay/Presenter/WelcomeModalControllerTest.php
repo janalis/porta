@@ -50,7 +50,7 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 /**
  * The Welcome modal's lifecycle and geometry: the view registry's interlock
  * (a floating modal, so the editor layout is NOT "detached"), the span push
- * into the pane it floats over, click routing on the box (×, title-bar drag,
+ * into the pane it floats over, click routing on the box (✖, title-bar drag,
  * card select, outside swallow), and the per-frame re-sync that lays the box
  * out once rects exist.
  */
@@ -309,11 +309,11 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // The region is one column wider than the box (the shadow band), so
-        // the × sits at region width − 3.
+        // the ✖ sits at region width − 3.
         $consumed = $controller->clickAt($region->top, $region->col + $region->width - 3);
 
         $this->assertTrue($consumed);
-        $this->assertFalse($controller->isOpen(), 'the × closed the modal');
+        $this->assertFalse($controller->isOpen(), 'the ✖ closed the modal');
     }
 
     /** Closing in the middle of a drag drops it: the pointer's next drag is the workspace's, not a closed box's. */
@@ -345,7 +345,7 @@ final class WelcomeModalControllerTest extends TestCase
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
-        // Press on the title bar (off the ×), drag down-and-left one column
+        // Press on the title bar (off the ✖), drag down-and-left one column
         // (the 76-wide, 22-row box on an 80×24 pane leaves little room).
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 2, $region->col + 1, release: false));
@@ -472,7 +472,7 @@ final class WelcomeModalControllerTest extends TestCase
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
-        $this->assertTrue($controller->hoverAt($region->top, $region->col + $region->width - 3), 'onto the ×'); // region width − 3: the shadow band
+        $this->assertTrue($controller->hoverAt($region->top, $region->col + $region->width - 3), 'onto the ✖'); // region width − 3: the shadow band
         $this->assertTrue($controller->hoverAt($region->top + 10, $region->col - 1), 'off the box again');
         $this->assertFalse($controller->hoverAt($region->top + 10, $region->col - 1), 'no change → no repaint');
     }
@@ -798,7 +798,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($consumed);
         $this->assertFalse($controller->isOpen());
 
-        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'closing via the × left no drag armed behind it');
+        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'closing via the ✖ left no drag armed behind it');
     }
 
     public function testAFreshDragAfterTheBoxHasAlreadyMovedUsesTheNewOffset(): void

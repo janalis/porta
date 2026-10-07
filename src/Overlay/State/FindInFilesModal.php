@@ -153,7 +153,7 @@ final class FindInFilesModal
         ?Styles $styles = null,
         ?CursorStyle $cursorStyle = null,
         ?Translator $translator = null,
-        /** Which end of the title bar the × sits at: the platform's. */
+        /** Which end of the title bar the ✖ sits at: the platform's. */
         private readonly CloseButton $closeButton = CloseButton::Standard,
     ) {
         $this->initStyles($styles);
@@ -354,7 +354,7 @@ final class FindInFilesModal
         ];
     }
 
-    /** Esc, the title-bar × and an outside click all leave through here. */
+    /** Esc, the title-bar ✖ and an outside click all leave through here. */
     private function fireClose(): void
     {
         if (null !== $this->callbacks->onClose) {

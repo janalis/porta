@@ -12,9 +12,9 @@ use Porta\Widget\Render\TabCloseGlyph;
 final class TabCloseGlyphTest extends TestCase
 {
     /**
-     * Under the pointer the × is underlined, not only brightened: the one
+     * Under the pointer the ✖ is underlined, not only brightened: the one
      * change of face that still reads in the monochrome theme, and what sets
-     * the hover apart from the active tab's bright ×.
+     * the hover apart from the active tab's bright ✖.
      */
     public function testTheHoveredCloseIsUnderlinedInEveryTheme(): void
     {

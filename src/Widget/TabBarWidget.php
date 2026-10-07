@@ -79,7 +79,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     /** @var list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>}> the tabs the last render drew from */
     private array $lastTabs = [];
 
-    /** @var list<array{index: int, row: int, rows: int, labelRow: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render: each tab's top row, its height, and the row its × is on */
+    /** @var list<array{index: int, row: int, rows: int, labelRow: int, start: int, width: int, closeStart: int, closeWidth: int}> layout from the last render: each tab's top row, its height, and the row its ✖ is on */
     private array $lastLayout = [];
 
     /** @var positive-int the strip's height: one row, or {@see TabStripRenderer::ROWS} on a roomy screen — where a side strip spaces its tabs */
@@ -244,7 +244,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
 
         // The shared strip: the overflow window (reserve ‹/› cells, clamp,
         // follow-active-on-change), the cells and their hit map, exactly as the
-        // dock and the git view draw theirs. Each tab ends with a clickable ×
+        // dock and the git view draw theirs. Each tab ends with a clickable ✖
         // unless it is pinned; the dirty ● (when present) sits just before it.
         $bottom = TabBarPosition::Bottom === $this->position;
         $strip = TabStripRenderer::render(
@@ -341,7 +341,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
                 $pill = TabPillStyle::of($this->styles, $state, $this->drawnFocus);
                 // A shaded tab — the shown one, the hovered one — opens into
                 // the editor: no rule beside it, its pill across the strip's
-                // whole width. Its label and × stay where they were: the
+                // whole width. Its label and ✖ stay where they were: the
                 // rule's column is a blank of the pill's at whichever end.
                 $open = $tall && TabState::Plain !== $state;
                 $body = ' '.$this->tabBody($tab, $width - 2);
@@ -364,7 +364,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
                     'labelRow' => $top,
                     'start' => 0,
                     'width' => $width,
-                    // The × is right-aligned: past it a pill has the rule's
+                    // The ✖ is right-aligned: past it a pill has the rule's
                     // column when the rule is its last, the list nothing.
                     'closeStart' => $width - TabStripRenderer::CLOSE_WIDTH - ($tall && $this->ruleAtEnd() ? 1 : 0),
                     'closeWidth' => $tab['closable'] ?? true ? TabStripRenderer::CLOSE_WIDTH : 0,
@@ -393,7 +393,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     }
 
     /**
-     * A one-row list entry: '▌name…    ●× ', the dirty ● and the close ×
+     * A one-row list entry: '▌name…    ●✖ ', the dirty ● and the close ✖
      * right-aligned, and the active tab wearing the lists' selection bar — a
      * column list, read the way the tree beside it is: `▌` while its pane has
      * the keys, `▎` while it does not.
@@ -472,8 +472,8 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     }
 
     /**
-     * `name…  ●× ` in $width columns: the name truncated, then the dirty ●
-     * (or a blank) and the × (a blank on a pinned tab) at the end.
+     * `name…  ●✖ ` in $width columns: the name truncated, then the dirty ●
+     * (or a blank) and the ✖ (a blank on a pinned tab) at the end.
      *
      * @param array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>} $tab
      */
@@ -595,7 +595,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
 
     /**
      * A tab says which file it holds, in full, and what its marks mean; its
-     * × says what it does. The span is the tab's (or the ×'s); on a roomy
+     * ✖ says what it does. The span is the tab's (or the ✖'s); on a roomy
      * screen it is the whole pill — the label row and the rows holding its
      * halves — so the card stands clear of the shade rather than over half
      * of it, and it goes on the side away from the screen edge the strip
@@ -643,15 +643,15 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     }
 
     /**
-     * Which tab's close × zone sits at the given widget-relative cell, or
-     * null. Checked before {@see tabIndexAt} so a click on the × closes the
+     * Which tab's close ✖ zone sits at the given widget-relative cell, or
+     * null. Checked before {@see tabIndexAt} so a click on the ✖ closes the
      * tab instead of switching to it.
      */
     public function closeIndexAt(int $row, int $col): ?int
     {
         foreach ($this->lastLayout as $entry) {
-            // Every orientation: a pill's × is on its label row, and the
-            // halves around it are the tab's, not the ×'s.
+            // Every orientation: a pill's ✖ is on its label row, and the
+            // halves around it are the tab's, not the ✖'s.
             if ($entry['labelRow'] !== $row) {
                 continue;
             }

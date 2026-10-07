@@ -171,7 +171,7 @@ final class DockToolTabsTest extends TestCase
 
         $this->assertNotSame($mine, $theirs, 'same title, different plugins, different tabs');
         $this->assertSame($mine, $tabs->findByToolId('todo:todo'));
-        $this->assertNull($tabs->findByToolId('nobody:nothing'), 'a ×\'d tool answers null — the staleness guard');
+        $this->assertNull($tabs->findByToolId('nobody:nothing'), 'a ✖\'d tool answers null — the staleness guard');
         $this->assertSame($core, $tabs->findByMode(ResultsPanelMode::Problems), 'core tabs still resolve by mode');
         foreach (ResultsPanelMode::cases() as $mode) {
             $this->assertNotSame($mine, $tabs->findByMode($mode), $mode->name.' must not reach a contributed tab');

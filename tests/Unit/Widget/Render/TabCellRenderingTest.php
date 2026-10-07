@@ -17,18 +17,18 @@ final class TabCellRenderingTest extends TestCase
     {
         $cell = TabStripRenderer::measureCell('one');
 
-        $this->assertSame(' one × ', $cell['text']);
+        $this->assertSame(' one ✖ ', $cell['text']);
         $this->assertSame(8, $cell['width'], 'seven columns of cell plus the divider');
-        $this->assertSame(5, $cell['closeOffset'], 'the × sits after " one "');
+        $this->assertSame(5, $cell['closeOffset'], 'the ✖ sits after " one "');
     }
 
     public function testAMarkerShiftsTheCloseZoneWithoutBreakingTheWidth(): void
     {
         $cell = TabStripRenderer::measureCell('one', Glyphs::DIRTY);
 
-        $this->assertSame(' one ●× ', $cell['text']);
+        $this->assertSame(' one ●✖ ', $cell['text']);
         $this->assertSame(9, $cell['width']);
-        $this->assertSame(6, $cell['closeOffset'], 'the dirty ● pushes the × one column right');
+        $this->assertSame(6, $cell['closeOffset'], 'the dirty ● pushes the ✖ one column right');
     }
 
     public function testAWideLabelIsMeasuredInDisplayColumnsNotBytes(): void
@@ -64,15 +64,15 @@ final class TabCellRenderingTest extends TestCase
 
         $active = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Active);
         $this->assertStringEndsWith(Glyphs::SEPARATOR, AnsiUtils::stripAnsiCodes($active), 'the divider closes the cell');
-        $this->assertStringContainsString("\x1b[38;5;252m", $active, 'the active tab takes the bright × shade');
+        $this->assertStringContainsString("\x1b[38;5;252m", $active, 'the active tab takes the bright ✖ shade');
 
         $inactive = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Plain);
-        $this->assertStringContainsString("\x1b[38;5;240m", $inactive, 'an inactive tab takes the dim × shade');
+        $this->assertStringContainsString("\x1b[38;5;240m", $inactive, 'an inactive tab takes the dim ✖ shade');
     }
 
     public function testTheCloseGlyphNeverPunchesAHoleInTheTabBackground(): void
     {
-        // The × is a foreground-only span: it must not emit a full reset, which
+        // The ✖ is a foreground-only span: it must not emit a full reset, which
         // would drop the tab's background for the rest of the cell.
         $cell = TabStripRenderer::measureCell('one');
         $rendered = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Active);
@@ -84,21 +84,21 @@ final class TabCellRenderingTest extends TestCase
 
     public function testACloseGlyphInTheLabelIsNotRestyledAsACloseButton(): void
     {
-        // A file named a×b.php: the label's own × must stay plain, and only the
-        // real close × at closeOffset gets the affordance shade.
-        $cell = TabStripRenderer::measureCell('a×b.php');
+        // A file named a✖b.php: the label's own ✖ must stay plain, and only the
+        // real close ✖ at closeOffset gets the affordance shade.
+        $cell = TabStripRenderer::measureCell('a✖b.php');
         $rendered = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Active);
 
         $plain = AnsiUtils::stripAnsiCodes($rendered);
-        $this->assertSame(' a×b.php × '.Glyphs::SEPARATOR, $plain, 'both × survive as plain text');
-        // Exactly one × carries the bright close shade; the label × does not.
-        $this->assertSame(1, \substr_count($rendered, needle: "\x1b[38;5;252m×"), 'only the real close glyph is shaded');
-        $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), 'the label × did not shift the width');
+        $this->assertSame(' a✖b.php ✖ '.Glyphs::SEPARATOR, $plain, 'both ✖ survive as plain text');
+        // Exactly one ✖ carries the bright close shade; the label ✖ does not.
+        $this->assertSame(1, \substr_count($rendered, needle: "\x1b[38;5;252m✖"), 'only the real close glyph is shaded');
+        $this->assertSame($cell['width'], AnsiUtils::visibleWidth($rendered), 'the label ✖ did not shift the width');
     }
 
     /**
      * Under the pointer the label underlines, a link's hover — and with the
-     * pointer on the × the × alone does, so which of the two a click would do
+     * pointer on the ✖ the ✖ alone does, so which of the two a click would do
      * is shown before it is done.
      */
     public function testHoverUnderlinesTheLabelOrTheCloseButNeverBoth(): void
@@ -109,12 +109,12 @@ final class TabCellRenderingTest extends TestCase
         $onClose = TabStripRenderer::renderCell($cell, Styles::dark(), TabState::Hovered, onClose: true);
 
         $this->assertStringContainsString("\x1b[4mone\x1b[24m", $onLabel);
-        $this->assertStringNotContainsString("\x1b[4m×", $onLabel);
+        $this->assertStringNotContainsString("\x1b[4m✖", $onLabel);
         $this->assertStringNotContainsString("\x1b[4mone", $onClose);
-        $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*×/', $onClose);
+        $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*✖/', $onClose);
     }
 
-    /** A tab that cannot close draws no ×, claims no column for one, and says so to the hit map. */
+    /** A tab that cannot close draws no ✖, claims no column for one, and says so to the hit map. */
     public function testAnUncloseableTabHasNoClose(): void
     {
         $cell = TabStripRenderer::measureCell('History', closable: false);
