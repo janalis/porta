@@ -162,7 +162,10 @@ final class TooltipRouter
         // Past the gutter, the code: the problems a squiggle there is about,
         // in every diagnostic-message mode — the card is where the message
         // is read when the line does not say it. Its fix line arrives later.
-        $tip ??= $this->problems->tooltipAt($relRow, $relCol, $editor->viewport(), fn (Tooltip $card) => $this->tooltips->refresh($card->moved($rect->row, $rect->col)));
+        // Not while cards are off: building one asks the servers for its fix.
+        if (null === $tip && $this->tooltips->enabled()) {
+            $tip = $this->problems->tooltipAt($relRow, $relCol, $editor->viewport(), fn (Tooltip $card) => $this->tooltips->refresh($card->moved($rect->row, $rect->col)));
+        }
         // Then its inlay hints, while they show as cards.
         if (null === $tip && InlayHintMode::Tooltip === $editor->display->inlayHints) {
             $tip = $editor->mouse->inlayTooltipAt($relRow, $relCol, $editor->viewport());

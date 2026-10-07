@@ -547,8 +547,10 @@ final class LspMapper
             if (null !== $code) {
                 $mapped['code'] = $code;
             }
+            // Kept only as the string the spec says it is: a server sending
+            // anything else would have the problem card's origin line choke.
             $source = $diag['source'] ?? null;
-            if (null !== $source) {
+            if (\is_string($source)) {
                 $mapped['source'] = $source;
             }
             // `tags` say what KIND of thing this is — unused, deprecated —

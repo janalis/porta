@@ -219,6 +219,19 @@ final class AnsiText
     }
 
     /**
+     * Text a server sent, made safe to splice into a row: one line, its runs
+     * of whitespace one space, trimmed, and every control character gone —
+     * collapsing whitespace alone keeps an escape byte, and a message or a
+     * title carrying `ESC ] 52` would write to the clipboard.
+     */
+    public static function oneLine(string $text): string
+    {
+        $printable = (string) \preg_replace('/[\x00-\x08\x0e-\x1f\x7f]|\xc2[\x80-\x9f]/', replacement: '', subject: $text);
+
+        return \trim((string) \preg_replace('/\s+/u', replacement: ' ', subject: $printable));
+    }
+
+    /**
      * $text without its hardware-cursor markers (every shape). The pattern is
      * built from the vendor's own prefix, so a marker change upstream cannot
      * leave a stale literal matching nothing.

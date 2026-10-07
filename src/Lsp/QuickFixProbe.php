@@ -42,6 +42,9 @@ final class QuickFixProbe
     /** The problem asked about last: the only one whose answer is announced. */
     private ?string $current = null;
 
+    /** @var (\Closure(FixLookup): void)|null who hears the current problem's answer */
+    private ?\Closure $onSettled = null;
+
     public function __construct(
         private readonly LspSessionPool $lsp,
         private readonly CodeEditorWidget $editor,
@@ -64,18 +67,25 @@ final class QuickFixProbe
             return FixLookup::none();
         }
         $key = \hash('xxh128', \serialize([$path, $line, $diag['col'], $diag['endCol'] ?? null, $diag['message'], $diag['code'] ?? null, $diag['source'] ?? null]));
+        // The latest asker is the one that hears: a card the pointer opened
+        // and then Ctrl+F1 on the same problem ask once, and the popup — the
+        // one now on screen — is told.
         $this->current = $key;
+        $this->onSettled = $onSettled;
         $known = $this->known[$key] ?? null;
         if (null !== $known) {
             return $known;
         }
-        $this->known[$key] = FixLookup::pending();
+        if (\array_key_exists($key, $this->asking)) {
+            return FixLookup::pending(); // already out: its answer comes to the latest asker
+        }
+        $this->asking[$key] = ['offered' => [], 'answered' => 0, 'asked' => \PHP_INT_MAX];
         $lspDiag = CodeActionContext::lspDiagnostic($line, $diag);
-        $this->scheduler->delay(0.0, function () use ($key, $path, $lspDiag, $onSettled): void {
-            $this->ask($key, $path, $lspDiag, $onSettled);
+        $this->scheduler->delay(0.0, function () use ($key, $path, $lspDiag): void {
+            $this->ask($key, $path, $lspDiag);
         });
 
-        return $this->known[$key];
+        return FixLookup::pending();
     }
 
     /** The file's problems changed: what was offered for the old ones may not hold. */
@@ -91,20 +101,19 @@ final class QuickFixProbe
         $this->forget();
     }
 
-    /** Every answer, and every question still out: one that lands later is about problems gone. */
+    /**
+     * Every answer kept. A question still out stays out: its problem is
+     * keyed by its line, columns and words, so an answer that lands is still
+     * about it — and dropping it would leave the card waiting for nothing.
+     */
     private function forget(): void
     {
         $this->known = [];
-        $this->asking = [];
     }
 
-    /**
-     * @param array<string, mixed>      $lspDiag
-     * @param \Closure(FixLookup): void $onSettled
-     */
-    private function ask(string $key, string $path, array $lspDiag, \Closure $onSettled): void
+    /** @param array<string, mixed> $lspDiag */
+    private function ask(string $key, string $path, array $lspDiag): void
     {
-        $this->asking[$key] = ['offered' => [], 'answered' => 0, 'asked' => \PHP_INT_MAX];
         $asked = $this->lsp->requestAll(
             'textDocument/codeAction',
             [
@@ -113,15 +122,15 @@ final class QuickFixProbe
                 'context' => ['diagnostics' => [$lspDiag], 'triggerKind' => self::TRIGGER_AUTOMATIC],
             ],
             'codeActionProvider',
-            function (mixed $result, ?array $error) use ($key, $onSettled): void {
-                $this->answer($key, null === $error && \is_array($result) ? $result : [], $onSettled);
+            function (mixed $result, ?array $error) use ($key): void {
+                $this->answer($key, null === $error && \is_array($result) ? $result : []);
             },
         );
         // Answers arrive on a later loop turn, never inside requestAll():
         // each one is a server's reply over its pipe.
         $this->asking[$key]['asked'] = $asked;
         if (0 === $asked) {
-            $this->settle($key, FixLookup::none(), $onSettled);
+            $this->settle($key, FixLookup::none());
         }
     }
 
@@ -129,10 +138,9 @@ final class QuickFixProbe
      * One server's answer. A preferred fix is the answer whoever else is
      * still thinking; otherwise every server that was asked has its say.
      *
-     * @param array<array-key, mixed>   $result
-     * @param \Closure(FixLookup): void $onSettled
+     * @param array<array-key, mixed> $result
      */
-    private function answer(string $key, array $result, \Closure $onSettled): void
+    private function answer(string $key, array $result): void
     {
         $asking = $this->asking[$key] ?? null;
         if (null === $asking) {
@@ -145,22 +153,21 @@ final class QuickFixProbe
         $fix = CodeActionContext::firstQuickFix($offered);
         $last = $answered >= $asking['asked'];
         if (null !== $fix && (true === ($fix['isPreferred'] ?? null) || $last)) {
-            $this->settle($key, FixLookup::found((string) $fix['title'], \count($offered)), $onSettled);
+            $this->settle($key, FixLookup::found((string) $fix['title'], \count($offered)));
 
             return;
         }
         if ($last) {
-            $this->settle($key, FixLookup::none(\count($offered)), $onSettled);
+            $this->settle($key, FixLookup::none(\count($offered)));
         }
     }
 
-    /** @param \Closure(FixLookup): void $onSettled */
-    private function settle(string $key, FixLookup $lookup, \Closure $onSettled): void
+    private function settle(string $key, FixLookup $lookup): void
     {
         unset($this->asking[$key]);
         $this->known[$key] = $lookup;
-        if ($key === $this->current) {
-            $onSettled($lookup);
+        if ($key === $this->current && null !== $this->onSettled) {
+            ($this->onSettled)($lookup);
         }
     }
 }

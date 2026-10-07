@@ -8,8 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
 use Porta\Editor\InlayHint;
+use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WrapLayout;
 use Porta\Ui\CursorStyle;
@@ -52,6 +54,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
             $document,
             new FoldModel($document),
             $store,
+            new InlayLines($store, new EditorDisplayOptions(static function (): void {})),
             LineNumberMode::Off,
             false,
             false,

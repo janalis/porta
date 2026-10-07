@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
+use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Ui\Sgr;
@@ -44,7 +46,8 @@ final class MemberSeparatorRenderTest extends TestCase
         $assembler = new EditorRowAssembler(
             $doc,
             new FoldModel($doc),
-            new DecorationStore(static function (): void {}),
+            $inlayStore = new DecorationStore(static function (): void {}),
+            new InlayLines($inlayStore, new EditorDisplayOptions(static function (): void {})),
             LineNumberMode::Absolute,
             indentGuides: false,
             vcsGutter: false,

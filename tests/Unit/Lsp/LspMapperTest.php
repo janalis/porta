@@ -462,6 +462,18 @@ final class LspMapperTest extends TestCase
         $this->assertSame(DiagnosticSeverity::Warning, $byLine[4][0]['severity'], 'and the fields that always worked still do');
     }
 
+    /** `source` is a string by the spec; anything else from the wire is not kept. */
+    public function testASourceThatIsNotAStringIsDropped(): void
+    {
+        $byLine = LspMapper::diagnosticsByLine([
+            'diagnostics' => [
+                ['message' => 'm', 'source' => ['not' => 'a string'], 'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]]],
+            ],
+        ]);
+
+        $this->assertArrayNotHasKey('source', $byLine[0][0]);
+    }
+
     public function testADiagnosticWithoutThemCarriesNoEmptyKeys(): void
     {
         // Absent, not null or '': RefactorController copies whatever is set, so

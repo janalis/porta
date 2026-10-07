@@ -462,4 +462,12 @@ final class AnsiTextTest extends TestCase
             'a clipboard write, a clear screen, a C1 CSI, other controls, a marker that is not one: text',
         );
     }
+
+    /** Server text spliced into a row: one line, and no byte that would act on the terminal. */
+    public function testOneLineMakesServerTextSafeToDraw(): void
+    {
+        $this->assertSame('a b c', AnsiText::oneLine("  a\n\t b \r\n c  "));
+        $this->assertSame(']52;c;eA==red', AnsiText::oneLine("\x1b]52;c;eA==\x07red\x7f\u{9b}"));
+        $this->assertSame('é ✗', AnsiText::oneLine('é ✗'), 'printable text is untouched');
+    }
 }

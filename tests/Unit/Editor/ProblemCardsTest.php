@@ -87,6 +87,22 @@ final class ProblemCardsTest extends TestCase
         $this->assertSame(60, $body->maxText, 'a message is read, so the card may run wider than a hint');
     }
 
+    /** A server's words reach the terminal as text: an escape in a message, a source or a code acts on nothing. */
+    public function testServerTextCannotCarryAnEscape(): void
+    {
+        $cards = $this->cards(server: false);
+
+        $body = $cards->body(
+            [['severity' => DiagnosticSeverity::Error, 'message' => "boom\x1b]52;c;eA==\x07", 'col' => 0, 'source' => "x\x1b[2J", 'code' => "c\x07"]],
+            1,
+            static function (TooltipBody $body): void {},
+        );
+
+        $this->assertStringNotContainsString("\x1b", $body->plain());
+        $this->assertStringNotContainsString("\x07", $body->plain());
+        $this->assertSame(['✗ boom]52;c;eA==', '  x[2J · c'], self::texts($body));
+    }
+
     public function testTheFixAndTheListBehindItArriveWithTheirKeys(): void
     {
         $cards = $this->cards();

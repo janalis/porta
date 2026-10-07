@@ -364,7 +364,7 @@ final class RefactorControllerTest extends TestCase
         $request = \end($this->client->requests);
         /** @var array{context: array{diagnostics: list<array<string, mixed>>}} $params */
         $params = $request['params'];
-        $this->assertSame(['E1'], \array_column($params['context']['diagnostics'], 'code'), 'about the problem at the caret, not the whole line');
+        $this->assertSame(['E1'], \array_column($params['context']['diagnostics'], 'code'), 'about the worst problem at the caret, as the card asks');
 
         $request['respond']([self::renameTo('z', kind: 'refactor.rewrite'), self::renameTo('y')], error: null);
 
@@ -382,6 +382,21 @@ final class RefactorControllerTest extends TestCase
         \end($second->requests)['respond']([self::renameTo('w')], error: null);
 
         $this->assertSame("<?php\ny = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText());
+    }
+
+    /** The card names a slower server's preferred fix; the key must apply that one, not the first to arrive. */
+    public function testApplyQuickFixWaitsForAPreferredFixFromASlowerServer(): void
+    {
+        [$controller] = $this->ready(servers: 2);
+        $this->problemOnX();
+        $controller->requestApplyQuickFix(1, 1);
+        [$first, $second] = $this->clients;
+
+        \end($first->requests)['respond']([self::renameTo('y')], error: null);
+        $this->assertSame("<?php\n\$x = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText(), 'a plain fix waits for the other server');
+        \end($second->requests)['respond']([['isPreferred' => true] + self::renameTo('w')], error: null);
+
+        $this->assertSame("<?php\nw = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText());
     }
 
     public function testApplyQuickFixWaitsForEveryServerBeforeSayingThereIsNone(): void

@@ -175,10 +175,10 @@ final class RefactorController extends AbstractLspController implements EditorRe
     }
 
     /**
-     * PhpStorm's Alt+Shift+Enter: the first fix for the problem at the caret,
-     * applied without a list — the same one the problem card's "Fix:" line
-     * names ({@see CodeActionContext::firstQuickFix()}). Once applied, a
-     * slower server's answer is dropped.
+     * PhpStorm's Alt+Shift+Enter: the first fix for the worst problem at the
+     * caret, applied without a list — asked and chosen as the problem card's
+     * "Fix:" line is ({@see QuickFixProbe}), so the key applies what the
+     * card names. Once applied, a slower server's answer is dropped.
      */
     #[\Override]
     public function requestApplyQuickFix(int $line, int $col): void
@@ -195,8 +195,10 @@ final class RefactorController extends AbstractLspController implements EditorRe
             only: null,
             // @mago-expect lint:no-boolean-flag-parameter -- whether every server has answered is the request's state, not a second responsibility.
             present: function (array $actions, bool $final): void {
+                // The card's rule: a server's preferred fix at once, otherwise
+                // the first fix once every server has had its say.
                 $fix = CodeActionContext::firstQuickFix($actions);
-                if (null !== $fix) {
+                if (null !== $fix && (true === ($fix['isPreferred'] ?? null) || $final)) {
                     ++$this->actionGeneration;
                     $this->applyOrResolve($fix);
 
@@ -207,7 +209,9 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 }
             },
             empty: 'No quick fix for this problem',
-            diagnostics: \array_map(static fn (array $diag): array => CodeActionContext::lspDiagnostic($line, $diag), $here),
+            // The worst problem alone, as the card asks: the same question
+            // gets the same fix.
+            diagnostics: [CodeActionContext::lspDiagnostic($line, $here[0])],
         );
     }
 

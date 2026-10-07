@@ -9,7 +9,6 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
-use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
 use Porta\Editor\GutterPart;
 use Porta\Editor\InlayLine;
@@ -41,8 +40,6 @@ final readonly class EditorRowAssembler
 {
     private Styles $styles;
 
-    private InlayLines $inlays;
-
     /** @var array<int, true> */
     private array $breakpointSet;
 
@@ -56,6 +53,8 @@ final readonly class EditorRowAssembler
         private Document $document,
         private FoldModel $foldModel,
         private DecorationStore $store,
+        /** Which hints each line draws, and where. */
+        private InlayLines $inlays,
         private LineNumberMode $lineNumbers,
         private bool $indentGuides,
         private bool $vcsGutter,
@@ -80,11 +79,8 @@ final readonly class EditorRowAssembler
         private bool $showWhitespace = false,
         /** Speaks the collapsed-region marker ("⋯ 12 lines") in the UI's language. */
         private Translator $translator = new Translator('en'),
-        /** Which hints each line draws, and where; every hint in the store, inline, when not given. */
-        ?InlayLines $inlays = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
-        $this->inlays = $inlays ?? new InlayLines($store, new EditorDisplayOptions(static function (): void {}));
         $this->breakpointSet = \array_fill_keys($store->breakpointLines, value: true);
         $this->conditionalBreakpointSet = \array_fill_keys($store->conditionalBreakpointLines, value: true);
         $this->logpointSet = \array_fill_keys($store->logpointLines, value: true);
@@ -127,6 +123,8 @@ final readonly class EditorRowAssembler
         // Rows of the top line hidden above the viewport: scrolling INTO a
         // wrapped line taller than the pane starts the walk partway down it.
         $rowInLine = $vScrollSegment;
+        $inlayLine = null;
+        $inlay = InlayLine::none();
         for ($row = 0; $row < $contentRows; ++$row) {
             $lineIndex = $walk < $lineCount ? $walk : null;
             $atRow = $rowInLine;
@@ -156,7 +154,11 @@ final readonly class EditorRowAssembler
                 continue;
             }
             $rowSegment = $atRow - \count($this->store->codeLensesAt($lineIndex));
-            $inlay = $this->inlays->forLine($this->document, $lineIndex, null === $this->wrap ? null : $geo->contentWidth);
+            // Once per line, not per row: a wrapped line's rows share it.
+            if ($lineIndex !== $inlayLine) {
+                $inlayLine = $lineIndex;
+                $inlay = $this->inlays->forLine($this->document, $lineIndex, null === $this->wrap ? null : $geo->contentWidth);
+            }
 
             // The caret's SEGMENT is where its character is, not where it is
             // drawn: the hints before it widen the row, not the text.

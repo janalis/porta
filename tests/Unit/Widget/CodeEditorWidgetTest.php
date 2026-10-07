@@ -12,6 +12,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
 use Porta\Editor\InlayHint;
+use Porta\Editor\InlayHintKind;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\OccurrenceHighlights;
 use Porta\Editor\SelectionMode;
@@ -68,6 +69,18 @@ final class CodeEditorWidgetTest extends TestCase
         $cell = $editor->caretScreenCell();
         $this->assertSame(2, $cell['row']);
         $this->assertSame($editor->gutterWidth() + 4, $cell['col']);
+    }
+
+    /** A popup anchored on the caret opens where the caret is drawn: past the hints before it. */
+    public function testCaretScreenCellIsWhereTheCaretIsDrawnPastItsHints(): void
+    {
+        $editor = $this->editor("<?php\nf(42, \$y);\n");
+        $editor->decorations->setInlayHints([1 => [new InlayHint(2, 'n:', InlayHintKind::Parameter, padRight: true)]]);
+        $editor->render(new RenderContext(80, 10));
+
+        $editor->getDocument()->setCursor(1, 3);
+
+        $this->assertSame($editor->gutterWidth() + 3 + 3, $editor->caretScreenCell()['col'], 'three cells of `n: ` before it');
     }
 
     public function testCaretScreenCellClampsToTheGutterWhenScrolledPastTheCaret(): void

@@ -9,12 +9,14 @@ use Porta\I18n\Translator;
 use Porta\Lsp\FixLookup;
 use Porta\Lsp\FixState;
 use Porta\Lsp\QuickFixProbe;
+use Porta\Support\AnsiText;
 use Porta\Ui\KeyHints;
 use Porta\Ui\Role;
 use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipBody;
 use Porta\Ui\TooltipLine;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * PhpStorm's problem card: what a squiggle means, said where it is. Each
@@ -85,16 +87,18 @@ final readonly class ProblemCards
     {
         $lines = [];
         foreach ($diags as $diag) {
+            // Server text, every part of it: a plugin's message may span
+            // lines, and none of it may carry a control character.
             $glyph = $diag['severity']->glyph().' ';
-            $lines[] = new TooltipLine(\trim((string) \preg_replace('/\s+/u', replacement: ' ', subject: $diag['message'])), lead: $glyph, leadRole: $diag['severity']->role());
-            $origin = \implode(' · ', \array_filter([$diag['source'] ?? '', (string) ($diag['code'] ?? '')], static fn (string $part): bool => '' !== $part));
+            $lines[] = new TooltipLine(AnsiText::oneLine($diag['message']), lead: $glyph, leadRole: $diag['severity']->role());
+            $origin = \implode(' · ', \array_filter([AnsiText::oneLine($diag['source'] ?? ''), AnsiText::oneLine((string) ($diag['code'] ?? ''))], static fn (string $part): bool => '' !== $part));
             if ('' !== $origin) {
-                $lines[] = new TooltipLine($origin, role: Role::Faint, lead: \str_repeat(' ', \max(0, \mb_strwidth($glyph))));
+                $lines[] = new TooltipLine($origin, role: Role::Faint, lead: \str_repeat(' ', \max(0, AnsiUtils::visibleWidth($glyph))));
             }
         }
         $keys = $this->editor->getKeybindings();
         if (FixState::Found === $fix->state) {
-            $lines[] = new TooltipLine($this->translator->trans('Fix: %title%', ['%title%' => (string) $fix->title]), KeyHints::key('apply_quick_fix', $keys));
+            $lines[] = new TooltipLine($this->translator->trans('Fix: %title%', ['%title%' => AnsiText::oneLine((string) $fix->title)]), KeyHints::key('apply_quick_fix', $keys));
         }
         if ($fix->actions > 0) {
             $lines[] = new TooltipLine($this->translator->trans('More actions…'), KeyHints::key('code_action', $keys));

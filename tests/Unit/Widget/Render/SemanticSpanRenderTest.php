@@ -8,7 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
+use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\PlainTerminalTheme;
@@ -36,6 +38,7 @@ final class SemanticSpanRenderTest extends TestCase
             $doc,
             new FoldModel($doc),
             $store,
+            new InlayLines($store, new EditorDisplayOptions(static function (): void {})),
             LineNumberMode::Absolute,
             indentGuides: false,
             vcsGutter: false,

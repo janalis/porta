@@ -65,6 +65,12 @@ final class TooltipCenter
         }
     }
 
+    /** Whether cards show at all — what asks a server for a card's words checks it first. */
+    public function enabled(): bool
+    {
+        return $this->enabled;
+    }
+
     /** The `tooltipDelay` setting, in milliseconds; negative reads as none. */
     public function setDelayMs(int $milliseconds): void
     {

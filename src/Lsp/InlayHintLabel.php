@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\AnsiText;
+
 /**
  * The text an LSP `InlayHint` puts on screen, and the margins around it.
  *
@@ -35,14 +37,13 @@ final class InlayHintLabel
             // label is an InlayHintLabelPart[]; concatenate the parts' text.
             $label = \implode('', \array_map(static fn ($part): string => \is_array($part) ? (string) ($part['value'] ?? '') : (string) $part, $label));
         }
-        $printable = (string) \preg_replace('/[\x00-\x08\x0e-\x1f\x7f]|\xc2[\x80-\x9f]/', replacement: '', subject: (string) $label);
-        $collapsed = (string) \preg_replace('/\s+/u', replacement: ' ', subject: $printable);
-        $text = \trim($collapsed);
+        $text = AnsiText::oneLine((string) $label);
         if ('' === $text) {
             return null;
         }
-        $left = true === ($hint['paddingLeft'] ?? null) || \str_starts_with($collapsed, ' ');
-        $right = true === ($hint['paddingRight'] ?? null) || \str_ends_with($collapsed, ' ');
+        // The edges as sent: a leading or trailing whitespace is a margin.
+        $left = true === ($hint['paddingLeft'] ?? null) || 1 === \preg_match('/^\s/u', (string) $label);
+        $right = true === ($hint['paddingRight'] ?? null) || 1 === \preg_match('/\s$/u', (string) $label);
 
         return ['text' => $text, 'left' => $left, 'right' => $right];
     }

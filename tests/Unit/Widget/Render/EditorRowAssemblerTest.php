@@ -11,8 +11,10 @@ use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
 use Porta\Editor\InlayHint;
+use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
@@ -41,6 +43,7 @@ final class EditorRowAssemblerTest extends TestCase
             $document,
             $foldModel,
             $store,
+            new InlayLines($store, new EditorDisplayOptions(static function (): void {})),
             $lineNumbers,
             $indentGuides,
             $vcsGutter,

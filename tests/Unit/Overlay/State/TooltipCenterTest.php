@@ -192,6 +192,16 @@ final class TooltipCenterTest extends TestCase
         $this->assertNull($center->shown());
     }
 
+    public function testItSaysWhetherCardsShowAtAll(): void
+    {
+        $center = $this->center();
+        $this->assertTrue($center->enabled());
+
+        $center->setEnabled(false);
+
+        $this->assertFalse($center->enabled(), 'what would ask a server for a card asks this first');
+    }
+
     public function testADelayOfZeroShowsAtOnce(): void
     {
         $center = $this->center();

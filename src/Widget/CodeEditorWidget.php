@@ -720,7 +720,10 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function caretScreenCell(): array
     {
         $row = \max(0, $this->foldModel->screenRowFor($this->scroll->vScroll, $this->document->cursorLine)) + \count($this->stickyLines);
-        $col = \max($this->lastGutterWidth, $this->lastGutterWidth + $this->document->getCursorDisplayCol() - $this->scroll->hScroll);
+        // Where the caret is DRAWN: past the inlay hints before it, as the
+        // scroll measures — a popup anchored on the raw column opened left of it.
+        $drawn = $this->inlays()->forLine($this->document, $this->document->cursorLine)->screenCol($this->document->getCursorDisplayCol());
+        $col = \max($this->lastGutterWidth, $this->lastGutterWidth + $drawn - $this->scroll->hScroll);
 
         return ['row' => $row, 'col' => $col];
     }
@@ -1410,6 +1413,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $doc,
                 $this->foldModel,
                 $this->decorations,
+                $this->inlays(),
                 $this->display->lineNumbers,
                 $this->display->indentGuides,
                 $this->display->vcsGutter,
@@ -1436,7 +1440,6 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->display->methodSeparators ? MemberSeparators::linesFor($this->scopes()) : [],
                 $this->display->showWhitespace,
                 $this->translator,
-                $this->inlays(),
             );
             $result = $assembler->assemble(
                 $geo,

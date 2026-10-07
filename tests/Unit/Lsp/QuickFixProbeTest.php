@@ -175,11 +175,44 @@ final class QuickFixProbeTest extends TestCase
 
         $probe->onDiagnosticsChanged(new DiagnosticsChanged());
         $this->assertSame(FixState::Pending, $this->ask($probe)->state, 'asked again');
-
         $this->scheduler->fire();
         $probe->onActiveBufferChanged(new ActiveBufferChanged('/tmp/proj/b.php'));
-        $this->codeActionRequests()[1]['respond']([['title' => 'Stale']], error: null);
-        $this->assertCount(1, $this->heard, 'an answer about problems gone is dropped');
-        $this->assertSame(FixState::Pending, $this->ask($probe)->state);
+        $this->assertSame(FixState::Pending, $this->ask($probe)->state, 'still out: not asked twice');
+        $this->assertSame([], $this->scheduler->scheduled);
+    }
+
+    /**
+     * A question still out when the file's problems are republished is still
+     * about its problem — it is keyed by line, columns and words — so its
+     * answer reaches the card instead of leaving it waiting.
+     */
+    public function testAnAnswerStillOutWhenProblemsAreRepublishedIsKept(): void
+    {
+        $probe = $this->probe();
+        $this->ask($probe);
+        $this->scheduler->fire();
+
+        $probe->onDiagnosticsChanged(new DiagnosticsChanged());
+        $this->codeActionRequests()[0]['respond']([['title' => 'Fix']], error: null);
+
+        $this->assertEquals([FixLookup::found('Fix', 1)], $this->heard);
+    }
+
+    /** The card asks, then Ctrl+F1 asks about the same problem: one question, and the popup hears it. */
+    public function testTheLatestAskerHearsTheAnswer(): void
+    {
+        $probe = $this->probe();
+        $card = [];
+        $probe->lookup(1, self::problem(), static function (FixLookup $answer) use (&$card): void {
+            $card[] = $answer;
+        });
+        $this->ask($probe);
+        $this->scheduler->fire();
+
+        $this->assertCount(1, $this->codeActionRequests(), 'asked once');
+        $this->codeActionRequests()[0]['respond']([['title' => 'Fix']], error: null);
+
+        $this->assertEquals([FixLookup::found('Fix', 1)], $this->heard, 'the popup, opened last');
+        $this->assertSame([], $card);
     }
 }
