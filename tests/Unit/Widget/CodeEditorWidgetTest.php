@@ -11,6 +11,7 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FindMode;
+use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\OccurrenceHighlights;
 use Porta\Editor\SelectionMode;
@@ -834,9 +835,9 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->decorations
             ->setInlayHints([
                 1 => [
-                    ['col' => 0, 'text' => '»'],
-                    ['col' => 2, 'text' => ': int'],
-                    ['col' => 9, 'text' => '⟵end'],
+                    new InlayHint(0, '»'),
+                    new InlayHint(2, ': int'),
+                    new InlayHint(9, '⟵end'),
                 ],
             ]);
         $doc->setCursor(1, 9); // end of line, after the mid hint

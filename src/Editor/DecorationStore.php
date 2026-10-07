@@ -108,7 +108,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var array{errors: int, warnings: int} maintained by {@see recountDiagnostics} on every diagnostics change */
     public private(set) array $diagnosticCounts = ['errors' => 0, 'warnings' => 0];
 
-    /** @var array<int, list<array{col: int, text: string}>> inlay hints per line: byte col => dim label */
+    /** @var array<int, list<InlayHint>> inlay hints per line, unfiltered: {@see InlayLines} decides which show */
     private array $inlayHints = [];
     /** @var array<int, string> 0-based line => the debugger's values for it */
     public private(set) array $debugValues = [];
@@ -637,7 +637,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
-    /** @return list<array{col: int, text: string}> the inlay hints on one line */
+    /** @return list<InlayHint> every inlay hint on one line, shown or not */
     public function inlayHintsAt(int $line): array
     {
         return $this->inlayHints[$line] ?? [];

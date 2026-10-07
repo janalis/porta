@@ -12,6 +12,7 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
+use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Ui\Glyphs;
@@ -294,6 +295,28 @@ final class EditorRowAssemblerTest extends TestCase
         $plain = AnsiUtils::stripAnsiCodes($rows[0]);
         $this->assertStringContainsString('abcdef', $plain);
         $this->assertMatchesRegularExpression('/\x1b\[0m\x1b\[[0-9;]*4[08]/', $rows[0], 'a background code re-opens right after the interior reset');
+    }
+
+    /**
+     * Scrolled past a hint, the window's first screen column shows an EARLIER
+     * character than its number says — the hint moved the text right. The
+     * spans are clipped in document columns, so they have to be clipped by
+     * the character the window starts at: clipped by the screen column, a
+     * match on the leftmost visible text was cut away.
+     */
+    public function testAMatchJustInsideAWindowScrolledPastAHintKeepsItsShade(): void
+    {
+        $doc = new Document("abcdefghij\n");
+        [$assembler, , $store] = $this->assembler($doc);
+        $store->setInlayHints([0 => [new InlayHint(0, 'XXXX')]]);
+        $store->setSearchMatches([0 => [['start' => 4, 'end' => 6, 'current' => false]]]);
+        $geo = new EditorGeometry(numberWidth: 0, gutterWidth: 0, contentWidth: 8, stripeCol: 0);
+
+        // Screen column 6 is the c: four hint cells, then a, b.
+        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['abcdefghij'], stripe: [''], contentRows: 1, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 6);
+
+        $this->assertStringStartsWith('cdefghij', AnsiUtils::stripAnsiCodes($rows[0]));
+        $this->assertStringContainsString("\x1b[48;", \substr($rows[0], offset: 0, length: (int) \strpos($rows[0], needle: 'ef')), 'the match on e and f is still shaded');
     }
 
     public function testASpanLeftOfTheScrolledWindowIsClippedAway(): void

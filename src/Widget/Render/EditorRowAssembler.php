@@ -9,9 +9,11 @@ use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\FoldModel;
 use Porta\Editor\GutterPart;
-use Porta\Editor\InlayHintMode;
+use Porta\Editor\InlayLine;
+use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WhitespaceGlyphs;
 use Porta\Editor\WrapLayout;
@@ -38,6 +40,8 @@ use Tempest\Highlight\TerminalTheme;
 final readonly class EditorRowAssembler
 {
     private Styles $styles;
+
+    private InlayLines $inlays;
 
     /** @var array<int, true> */
     private array $breakpointSet;
@@ -76,10 +80,11 @@ final readonly class EditorRowAssembler
         private bool $showWhitespace = false,
         /** Speaks the collapsed-region marker ("⋯ 12 lines") in the UI's language. */
         private Translator $translator = new Translator('en'),
-        /** Only {@see InlayHintMode::Inline} splices the hints into the line; a hover card is not painted here. */
-        private InlayHintMode $inlayHints = InlayHintMode::Inline,
+        /** Which hints each line draws, and where; every hint in the store, inline, when not given. */
+        ?InlayLines $inlays = null,
     ) {
         $this->styles = $styles ?? Styles::dark();
+        $this->inlays = $inlays ?? new InlayLines($store, new EditorDisplayOptions(static function (): void {}));
         $this->breakpointSet = \array_fill_keys($store->breakpointLines, value: true);
         $this->conditionalBreakpointSet = \array_fill_keys($store->conditionalBreakpointLines, value: true);
         $this->logpointSet = \array_fill_keys($store->logpointLines, value: true);
@@ -151,8 +156,11 @@ final readonly class EditorRowAssembler
                 continue;
             }
             $rowSegment = $atRow - \count($this->store->codeLensesAt($lineIndex));
+            $inlay = $this->inlays->forLine($this->document, $lineIndex, null === $this->wrap ? null : $geo->contentWidth);
 
-            $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($cursorDisplayCol, $geo->contentWidth));
+            // The caret's SEGMENT is where its character is, not where it is
+            // drawn: the hints before it widen the row, not the text.
+            $isCursorLine = $lineIndex === $cursorLine && (null === $this->wrap || $rowSegment === WrapLayout::segmentOf($inlay->hit($cursorDisplayCol)['displayCol'], $geo->contentWidth));
             $lineDiags = $this->store->diagnostics[$lineIndex] ?? [];
 
             // A continuation row is the same line, so it carries no number and
@@ -178,19 +186,23 @@ final readonly class EditorRowAssembler
                 $code,
                 $decorations,
                 $lineDiags,
-                // The window THIS ROW shows. Under soft wrap that is the
-                // segment's offset, not the widget's hScroll (which wrapping
-                // forces to zero) — the padding bound below is about what is
-                // visible, and on a wrapped line that differs per row.
-                null === $this->wrap ? $hScroll : WrapLayout::offsetOf($rowSegment, $geo->contentWidth),
+                // The DOCUMENT window this row shows. Under soft wrap that is
+                // the segment's offset, not the widget's hScroll (which
+                // wrapping forces to zero); scrolled, it is the character the
+                // scroll's screen column shows — hints before it moved the
+                // text right, and clipping the spans by the screen column cut
+                // off the ones on the leftmost visible cells.
+                null === $this->wrap ? $inlay->hit($hScroll)['displayCol'] : WrapLayout::offsetOf($rowSegment, $geo->contentWidth),
                 $geo->contentWidth,
                 $this->separatorFrom($lineIndex, $rowSegment, $geo->contentWidth),
+                $inlay,
             );
 
-            // The column this ROW starts at: the horizontal scroll normally,
-            // the segment's own offset when the line is wrapped. Everything
-            // placed after the text has to measure from the same origin.
-            $rowOffset = null === $this->wrap ? $hScroll : WrapLayout::offsetOf($rowSegment, $geo->contentWidth);
+            // The SCREEN column this row starts at: the horizontal scroll
+            // normally, the segment's own start when the line is wrapped —
+            // past the hints drawn before it. Everything placed after the text
+            // has to measure from the same origin.
+            $rowOffset = null === $this->wrap ? $hScroll : $inlay->rowStart($rowSegment, $geo->contentWidth);
 
             $content = EditorRenderer::renderContentLine(
                 $rowOffset,
@@ -566,7 +578,8 @@ final readonly class EditorRowAssembler
         array $lineDiags,
         int $hScroll,
         int $contentWidth,
-        ?int $separatorFrom = null,
+        ?int $separatorFrom,
+        InlayLine $inlay,
     ): string {
         $doc = $this->document;
         $hlLine = $this->indentGuides ? EditorRenderer::applyIndentGuides($doc, $highlighted, $lineIndex, $this->styles) : $highlighted;
@@ -596,11 +609,9 @@ final readonly class EditorRowAssembler
         // fold was exponential in same-word spans per line (prose killer).
         $hlLine = LineDecorator::applyAll($hlLine, LineSpans::clip($spans, $hScroll, $hScroll + $contentWidth));
 
-        // Inlay hints: dim virtual text inserted after all decorations so
-        // their SGR spans stay attached to the real characters.
-        if (InlayHintMode::Inline === $this->inlayHints) {
-            $hlLine = EditorRenderer::applyInlayHints($doc, $lineIndex, $this->store->inlayHintsAt($lineIndex), $hlLine, $this->styles);
-        }
+        // Inlay hints: virtual text inserted after all decorations so their
+        // SGR spans stay attached to the real characters.
+        $hlLine = EditorRenderer::applyInlayHints($inlay, $hlLine, $this->styles);
 
         // Collapsed-region marker on the fold-start line.
         if (null !== ($foldEnd = $this->foldModel->foldEndAt($lineIndex))) {

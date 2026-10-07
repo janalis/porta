@@ -9,6 +9,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHint;
+use Porta\Editor\InlayHintKind;
 use Porta\Lsp\CompletionDeprecation;
 use Porta\Lsp\LspMapper;
 
@@ -27,14 +29,14 @@ final class LspMapperTest extends TestCase
             ['position' => ['line' => 2, 'character' => 2], 'label' => ': int'],
         ]);
 
-        $this->assertSame(
+        $this->assertEquals(
             [
                 1 => [
-                    ['col' => 2, 'text' => ': int'],
-                    ['col' => 4, 'text' => 'ab'],
+                    new InlayHint(2, ': int'),
+                    new InlayHint(4, 'ab'),
                 ],
                 2 => [
-                    ['col' => 2, 'text' => ': int'],
+                    new InlayHint(2, ': int'),
                 ],
             ],
             $hints,
@@ -59,11 +61,51 @@ final class LspMapperTest extends TestCase
             ['position' => ['line' => 0, 'character' => 0], 'label' => 'x', 'paddingLeft' => false, 'paddingRight' => false],
         ]);
 
-        $this->assertSame(
-            [' 46 references', 'type: ', ' backed', 'a b ', 'x'],
-            \array_column($hints[0], 'text'),
-            'a leading or trailing space, or a padding flag, keeps ONE space on that side; inner runs collapse',
+        $this->assertEquals(
+            [
+                new InlayHint(15, '46 references', padLeft: true),
+                new InlayHint(5, 'type:', padRight: true),
+                new InlayHint(16, 'backed', padLeft: true),
+                new InlayHint(23, 'a b', padRight: true),
+                new InlayHint(0, 'x'),
+            ],
+            $hints[0],
+            'a leading or trailing space, or a padding flag, asks for a margin on that side; inner runs collapse',
         );
+    }
+
+    /** The kind says which setting governs a hint; one this editor does not know is none. */
+    public function testAHintKeepsItsKind(): void
+    {
+        $doc = new Document("f(42, \$x);\n");
+
+        $hints = LspMapper::mapInlayHints($doc, [
+            ['position' => ['line' => 0, 'character' => 2], 'label' => 'n:', 'kind' => 2, 'paddingRight' => true],
+            ['position' => ['line' => 0, 'character' => 9], 'label' => ': int', 'kind' => 1],
+            ['position' => ['line' => 0, 'character' => 9], 'label' => 'other', 'kind' => 7],
+            ['position' => ['line' => 0, 'character' => 9], 'label' => 'none'],
+        ]);
+
+        $this->assertSame(
+            [InlayHintKind::Parameter, InlayHintKind::Type, null, null],
+            \array_map(static fn (InlayHint $hint): ?InlayHintKind => $hint->kind, $hints[0]),
+        );
+    }
+
+    /**
+     * A label is server text spliced straight into a row: an escape byte in
+     * it would be an escape sequence on the terminal, and collapsing
+     * whitespace does not remove one.
+     */
+    public function testALabelLosesItsControlCharacters(): void
+    {
+        $doc = new Document("\$x;\n");
+
+        $hints = LspMapper::mapInlayHints($doc, [
+            ['position' => ['line' => 0, 'character' => 2], 'label' => "\x1b[31mred\x07\x7f\u{9b}2J"],
+        ]);
+
+        $this->assertSame('[31mred2J', $hints[0][0]->label);
     }
 
     public function testMapInlayHintsWithNoUsableHintsReturnsEmpty(): void

@@ -8,6 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHint;
+use Porta\Editor\InlayLine;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
@@ -25,28 +27,6 @@ final class EditorRendererTest extends TestCase
     private function styles(): Styles
     {
         return Styles::dark();
-    }
-
-    public function testInlayShiftAtCountsOnlyHintsAtOrBeforeTheTarget(): void
-    {
-        $doc = new Document("abcdefgh\n");
-        // One hint before the target display column, one after it.
-        $hints = [['col' => 2, 'text' => '»'], ['col' => 6, 'text' => ': int']];
-
-        // Target display column 4: the col-6 hint sits past it and is skipped
-        // (the `continue`), so only the col-2 hint contributes to the shift.
-        $this->assertSame(\mb_strwidth('»'), EditorRenderer::inlayShiftAt($doc, 0, $hints, 4));
-
-        // A target past both hints includes both widths.
-        $this->assertSame(\mb_strwidth('»') + \mb_strwidth(': int'), EditorRenderer::inlayShiftAt($doc, 0, $hints, 10));
-    }
-
-    public function testInlayShiftAtIncludesAHintExactlyAtTheTargetColumn(): void
-    {
-        $doc = new Document("abcdefgh\n");
-        // The hint sits exactly ON the target column: "at or before" must
-        // include it (a `>` vs `>=` boundary the same-column case distinguishes).
-        $this->assertSame(\mb_strwidth('»'), EditorRenderer::inlayShiftAt($doc, 0, [['col' => 2, 'text' => '»']], 2));
     }
 
     public function testMatchingBracketsFindsTheCloseOnTheSameLine(): void
@@ -181,13 +161,13 @@ final class EditorRendererTest extends TestCase
         $doc = new Document(\str_repeat('fn(x), ', times: 12)."\n");
         $hints = [];
         for ($i = 0; $i < 12; ++$i) {
-            $hints[] = ['col' => 3 + ($i * 7), 'text' => 'p:'];
+            $hints[] = new InlayHint(3 + ($i * 7), 'p:');
         }
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.php');
         $hlLine = $highlighter->highlight([\str_repeat('fn(x), ', times: 12)], 1)[0];
 
-        $out = EditorRenderer::applyInlayHints($doc, 0, $hints, $hlLine, $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place($hints, $doc, 0), $hlLine, $this->styles());
 
         $this->assertLessThan(4_096, \strlen($out), 'hint insertion must stay linear, never multiply per hint');
         $this->assertSame(12, \substr_count(AnsiUtils::stripAnsiCodes($out), needle: 'p:'), 'every hint landed');
@@ -204,11 +184,11 @@ final class EditorRendererTest extends TestCase
         $doc = new Document("enum StatusTone: string\n");
         $highlighted = LineDecorator::applyAll('enum StatusTone: string', [[5, 15, "\x1b[48;5;100m", Sgr::DEFAULT_BG, null]]);
 
-        $out = EditorRenderer::applyInlayHints($doc, 0, [['col' => 15, 'text' => ' 46 references']], $highlighted, $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(15, '46 references', null, padLeft: true)], $doc, 0), $highlighted, $this->styles());
 
         $this->assertSame('enum StatusTone 46 references: string', AnsiUtils::stripAnsiCodes($out));
         $this->assertTrue(self::backgroundOpenBefore($out, 'StatusTone'), 'the word itself keeps its highlight');
-        $this->assertFalse(self::backgroundOpenBefore($out, ' 46 references'), 'the hint does not');
+        $this->assertFalse(self::backgroundOpenBefore($out, '46 references'), 'the hint does not');
         $this->assertFalse(self::backgroundOpenBefore($out, ': string'), 'nor does the code after it');
     }
 
@@ -218,9 +198,9 @@ final class EditorRendererTest extends TestCase
         $doc = new Document("enum StatusTone: string\n");
         $selected = LineDecorator::applyAll('enum StatusTone: string', [[0, 23, "\x1b[48;5;100m", Sgr::DEFAULT_BG, null]]);
 
-        $out = EditorRenderer::applyInlayHints($doc, 0, [['col' => 15, 'text' => ' 46 references']], $selected, $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(15, '46 references', null, padLeft: true)], $doc, 0), $selected, $this->styles());
 
-        $this->assertFalse(self::backgroundOpenBefore($out, ' 46 references'), 'the hint is off the span');
+        $this->assertFalse(self::backgroundOpenBefore($out, '46 references'), 'the hint is off the span');
         $this->assertTrue(self::backgroundOpenBefore($out, ': string'), 'and the span resumes after it');
     }
 
@@ -247,16 +227,7 @@ final class EditorRendererTest extends TestCase
         // Two hints at one column: the fold inserted rightmost-first, so the
         // LATER-listed hint ended up left. The single pass must match.
         $doc = new Document("abcd\n");
-        $out = EditorRenderer::applyInlayHints(
-            $doc,
-            0,
-            [
-                ['col' => 2, 'text' => 'A'],
-                ['col' => 2, 'text' => 'B'],
-            ],
-            'abcd',
-            $this->styles(),
-        );
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(2, 'A'), new InlayHint(2, 'B')], $doc, 0), 'abcd', $this->styles());
 
         $this->assertSame('abBAcd', AnsiUtils::stripAnsiCodes($out));
     }
@@ -264,32 +235,14 @@ final class EditorRendererTest extends TestCase
     public function testAnInlayHintAtColumnZeroPrependsCleanly(): void
     {
         $doc = new Document("abcd\n");
-        $out = EditorRenderer::applyInlayHints(
-            $doc,
-            0,
-            [
-                ['col' => 0, 'text' => 'H'],
-                ['col' => 2, 'text' => 'I'],
-            ],
-            'abcd',
-            $this->styles(),
-        );
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(0, 'H'), new InlayHint(2, 'I')], $doc, 0), 'abcd', $this->styles());
 
         // Exact: a stale segment cursor would duplicate or drop characters.
         $this->assertSame('HabIcd', AnsiUtils::stripAnsiCodes($out));
 
         // Interior gaps with a non-zero start: an over-long segment slice
         // would duplicate the characters after the gap.
-        $mid = EditorRenderer::applyInlayHints(
-            $doc,
-            0,
-            [
-                ['col' => 1, 'text' => 'H'],
-                ['col' => 3, 'text' => 'I'],
-            ],
-            'abcd',
-            $this->styles(),
-        );
+        $mid = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(1, 'H'), new InlayHint(3, 'I')], $doc, 0), 'abcd', $this->styles());
         $this->assertSame('aHbcId', AnsiUtils::stripAnsiCodes($mid));
     }
 
@@ -357,7 +310,7 @@ final class EditorRendererTest extends TestCase
     public function testApplyInlayHintsIsANoOpWithNoHints(): void
     {
         $doc = new Document("x\n");
-        $this->assertSame('x', EditorRenderer::applyInlayHints($doc, 0, [], 'x', $this->styles()));
+        $this->assertSame('x', EditorRenderer::applyInlayHints(InlayLine::place([], $doc, 0), 'x', $this->styles()));
     }
 
     public function testApplyIndentGuidesIsANoOpWithNoLeadingWhitespace(): void

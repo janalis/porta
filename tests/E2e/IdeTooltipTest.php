@@ -7,6 +7,7 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\InlayHint;
 use Porta\Editor\InlayHintMode;
 use Porta\I18n\Translator;
 use Porta\Ide;
@@ -430,7 +431,7 @@ final class IdeTooltipTest extends TestCase
                 100 => static function (Tui $tui): void {
                     $editor = Widgets::editor($tui);
                     $editor->display->setInlayHints(InlayHintMode::Inline);
-                    $editor->decorations->setInlayHints([1 => [['col' => 15, 'text' => ' 46 references']]]);
+                    $editor->decorations->setInlayHints([1 => [new InlayHint(15, '46 references', null, padLeft: true)]]);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'StatusTone 46 references');

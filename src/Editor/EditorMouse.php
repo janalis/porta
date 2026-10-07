@@ -29,8 +29,10 @@ final class EditorMouse
     public function __construct(
         private readonly Document $document,
         private readonly FoldModel $foldModel,
-        /** Lens rows shift everything below them, so hit-testing counts them too; a hover reads the inlay hints. */
+        /** Lens rows shift everything below them, so hit-testing counts them too. */
         private readonly DecorationStore $lenses,
+        /** The hints drawn into a line move the text right of them; a hover card lists them. */
+        private readonly InlayLines $inlays,
         private readonly MultiCaret $multiCaret,
         private readonly \Closure $invalidate,
         private readonly \Closure $closeCompletion,
@@ -47,14 +49,14 @@ final class EditorMouse
 
             return;
         }
-        ['line' => $line, 'col' => $col, 'lens' => $lens] = $this->positionAt($relRow, $relCol, $vp);
-        $this->document->setCursor($line, $col);
+        $at = $this->pointAt($relRow, $relCol, $vp);
+        $this->document->setCursor($at->line, $at->col);
         ($this->closeCompletion)();
         ($this->invalidate)();
-        if (null !== $lens) {
+        if (null !== $at->lens) {
             // The caret still moves to the line the lens describes — clicking
             // it is also a way of going there — and then the lens runs.
-            ($this->runCodeLens)($line, $lens);
+            ($this->runCodeLens)($at->line, $at->lens);
         }
     }
 
@@ -66,8 +68,8 @@ final class EditorMouse
 
             return;
         }
-        ['line' => $line, 'col' => $col] = $this->positionAt($relRow, $relCol, $vp);
-        $this->document->setCursor($line, $col);
+        $at = $this->pointAt($relRow, $relCol, $vp);
+        $this->document->setCursor($at->line, $at->col);
         $this->document->beginSelect();
         ($this->closeCompletion)();
         ($this->invalidate)();
@@ -76,9 +78,9 @@ final class EditorMouse
     /** Extend the selection to the pointer (drag / release / Shift+click), anchoring at the caret if needed. */
     public function extendSelectionTo(int $relRow, int $relCol, EditorViewport $vp): void
     {
-        ['line' => $line, 'col' => $col] = $this->positionAt($relRow, $relCol, $vp);
+        $at = $this->pointAt($relRow, $relCol, $vp);
         $this->document->beginSelect();
-        $this->document->setCursor($line, $col, selection: SelectionMode::Keep);
+        $this->document->setCursor($at->line, $at->col, selection: SelectionMode::Keep);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }
@@ -86,16 +88,16 @@ final class EditorMouse
     /** Select the word under the pointer (double-click); places a bare caret when off a word. */
     public function selectWordAt(int $relRow, int $relCol, EditorViewport $vp): void
     {
-        ['line' => $line, 'col' => $col] = $this->positionAt($relRow, $relCol, $vp);
-        $range = $this->document->wordRangeAt($line, $col);
+        $at = $this->pointAt($relRow, $relCol, $vp);
+        $range = $this->document->wordRangeAt($at->line, $at->col);
         if (null === $range) {
-            $this->document->setCursor($line, $col);
+            $this->document->setCursor($at->line, $at->col);
             ($this->closeCompletion)();
             ($this->invalidate)();
 
             return;
         }
-        $this->document->setSelectionRange($line, $range['startCol'], $line, $range['endCol']);
+        $this->document->setSelectionRange($at->line, $range['startCol'], $at->line, $range['endCol']);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }
@@ -103,7 +105,7 @@ final class EditorMouse
     /** Select the whole line under the pointer (triple-click). */
     public function selectLineAt(int $relRow, int $relCol, EditorViewport $vp): void
     {
-        ['line' => $line] = $this->positionAt($relRow, $relCol, $vp);
+        $line = $this->pointAt($relRow, $relCol, $vp)->line;
         $this->document->setSelectionRange($line, 0, $line, \strlen($this->document->getLine($line)));
         ($this->closeCompletion)();
         ($this->invalidate)();
@@ -112,9 +114,9 @@ final class EditorMouse
     /** Add a caret at the pointer, or remove the one already there (Alt+Click). */
     public function addOrRemoveCaretAt(int $relRow, int $relCol, EditorViewport $vp): void
     {
-        ['line' => $line, 'col' => $col] = $this->positionAt($relRow, $relCol, $vp);
+        $at = $this->pointAt($relRow, $relCol, $vp);
         $this->document->clearSelection();
-        $this->multiCaret->toggleCaretAt($line, $col);
+        $this->multiCaret->toggleCaretAt($at->line, $at->col);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }
@@ -122,11 +124,11 @@ final class EditorMouse
     /** Begin a mouse column (rectangular) selection at the press (Alt+Shift+drag). */
     public function beginColumnSelectionAt(int $relRow, int $relCol, EditorViewport $vp): void
     {
-        ['line' => $line, 'col' => $col, 'displayCol' => $displayCol] = $this->positionAt($relRow, $relCol, $vp);
-        $this->columnAnchorLine = $line;
-        $this->columnAnchorDisplayCol = $displayCol;
+        $at = $this->pointAt($relRow, $relCol, $vp);
+        $this->columnAnchorLine = $at->line;
+        $this->columnAnchorDisplayCol = $at->displayCol;
         $this->multiCaret->clear();
-        $this->document->setCursor($line, $col);
+        $this->document->setCursor($at->line, $at->col);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }
@@ -134,8 +136,8 @@ final class EditorMouse
     /** Extend the column selection to the pointer, rebuilding the rectangle. */
     public function extendColumnSelectionTo(int $relRow, int $relCol, EditorViewport $vp): void
     {
-        ['line' => $line, 'displayCol' => $displayCol] = $this->positionAt($relRow, $relCol, $vp);
-        $this->multiCaret->setColumnSelection($this->columnAnchorLine, $this->columnAnchorDisplayCol, $line, $displayCol);
+        $at = $this->pointAt($relRow, $relCol, $vp);
+        $this->multiCaret->setColumnSelection($this->columnAnchorLine, $this->columnAnchorDisplayCol, $at->line, $at->displayCol);
         ($this->closeCompletion)();
         ($this->invalidate)();
     }
@@ -143,24 +145,27 @@ final class EditorMouse
     /**
      * The document character under an editor-relative cell, for a hover to
      * ask about — or null when the cell shows none: the gutter, the stripe, a
-     * lens row, past the end of the line or below the last one. Unlike a
-     * click, which always lands SOMEWHERE, nothing is snapped here.
+     * lens row, an inlay hint, past the end of the line or below the last
+     * one. Unlike a click, which always lands SOMEWHERE, nothing is snapped
+     * here.
      *
      * @return array{line: int, col: int}|null
      */
     public function characterAt(int $relRow, int $relCol, EditorViewport $vp): ?array
     {
-        $stickyCount = \count($vp->stickyLines);
-        if ($relCol < $vp->gutterWidth || $relCol >= $vp->stripeCol || $relRow < 0) {
-            return null;
-        }
-        $found = $relRow < $stickyCount ? [$vp->stickyLines[$relRow], 0] : $this->lineAtRow($relRow - $stickyCount, $vp);
-        if (null === $found || $found[1] < 0) {
-            return null;
-        }
-        ['line' => $line, 'col' => $col, 'displayCol' => $displayCol] = $this->positionAt($relRow, $relCol, $vp);
+        $at = $this->cellAt($relRow, $relCol, $vp);
 
-        return $displayCol < $this->document->lineDisplayWidth($line) ? ['line' => $line, 'col' => $col] : null;
+        return (
+            null === $at || null !== $at->hint || $at->displayCol >= $this->document->lineDisplayWidth($at->line)
+                ? null
+                : ['line' => $at->line, 'col' => $at->col]
+        );
+    }
+
+    /** The inlay hint drawn in an editor-relative cell, or null when the cell shows none. */
+    public function inlayHintAt(int $relRow, int $relCol, EditorViewport $vp): ?InlayHint
+    {
+        return $this->cellAt($relRow, $relCol, $vp)?->hint;
     }
 
     /**
@@ -179,24 +184,27 @@ final class EditorMouse
             return null;
         }
         $labels = [];
-        foreach ($this->lenses->inlayHintsAt($at['line']) as $hint) {
-            if ($hint['col'] < $word['startCol'] || $hint['col'] > $word['endCol']) {
+        foreach ($this->inlays->shown($at['line']) as $hint) {
+            if ($hint->col < $word['startCol'] || $hint->col > $word['endCol']) {
                 continue;
             }
-            $labels[] = \trim($hint['text']);
+            $labels[] = $hint->label;
         }
 
         return [] === $labels ? null : new Tooltip('inlay:'.$at['line'].':'.$word['startCol'], \implode(' · ', $labels), $relRow, $relCol, $relCol + 1);
     }
 
     /**
-     * Convert an editor-relative click cell to a document (line, byte-col),
-     * honouring the gutter width, vertical scroll (with folds) and horizontal
-     * scroll. Shared by the click and mouse-selection entry points.
+     * The document position an editor-relative cell shows, honouring the
+     * gutter width, vertical scroll (with folds), horizontal scroll, soft wrap
+     * and the inlay hints drawn into the line — a cell on a hint answers the
+     * character the hint sits before. Every click, drag and hover goes through
+     * here, so none of them can land somewhere the screen does not show.
      *
-     * @return array{line: int, col: int, displayCol: int, lens: int|null}
+     * A click always lands SOMEWHERE: below the last line it is the last line,
+     * on a pinned sticky header it is that header's line.
      */
-    private function positionAt(int $relRow, int $relCol, EditorViewport $vp): array
+    public function pointAt(int $relRow, int $relCol, EditorViewport $vp): EditorPoint
     {
         $doc = $this->document;
         $stickyCount = \count($vp->stickyLines);
@@ -207,12 +215,37 @@ final class EditorMouse
         [$line, $segment] = $onSticky
             ? [$vp->stickyLines[$relRow], 0]
             : $this->lineAtRow(\max(0, $relRow - $stickyCount), $vp) ?? [$this->document->getLineCount() - 1, 0];
-        // Wrapping forces hScroll to 0, so exactly one of these is ever non-zero.
-        $displayCol = $segment < 0
-            ? 0 // a lens row: the line it describes, at its start
-            : \max(0, $relCol - $vp->gutterWidth) + $vp->hScroll + WrapLayout::offsetOf($segment, $vp->wrapWidth ?? 0);
+        if ($segment < 0) {
+            // A lens row: the line it describes, at its start.
+            return new EditorPoint($line, 0, 0, lens: -$segment - 1);
+        }
+        // A sticky header is drawn without hints; a content row with the ones
+        // its line places. Wrapping forces hScroll to 0, so the row starts at
+        // its segment's own screen column instead.
+        $inlay = $onSticky ? InlayLine::none() : $this->inlays->forLine($doc, $line, $vp->wrapWidth);
+        $rowStart = null === $vp->wrapWidth ? $vp->hScroll : $inlay->rowStart($segment, $vp->wrapWidth);
+        ['displayCol' => $displayCol, 'hint' => $hint] = $inlay->hit(\max(0, $relCol - $vp->gutterWidth) + $rowStart);
 
-        return ['line' => $line, 'col' => $doc->byteColForDisplayCol($line, $displayCol), 'displayCol' => $displayCol, 'lens' => $segment < 0 ? -$segment - 1 : null];
+        return new EditorPoint($line, $doc->byteColForDisplayCol($line, $displayCol), $displayCol, hint: $hint);
+    }
+
+    /**
+     * {@see pointAt()} for a cell that shows the document — null for the
+     * gutter, the stripe, a lens row or a row past the last line, where a
+     * hover has nothing to ask about.
+     */
+    private function cellAt(int $relRow, int $relCol, EditorViewport $vp): ?EditorPoint
+    {
+        $stickyCount = \count($vp->stickyLines);
+        if ($relCol < $vp->gutterWidth || $relCol >= $vp->stripeCol || $relRow < 0) {
+            return null;
+        }
+        $found = $relRow < $stickyCount ? [$vp->stickyLines[$relRow], 0] : $this->lineAtRow($relRow - $stickyCount, $vp);
+        if (null === $found || $found[1] < 0) {
+            return null;
+        }
+
+        return $this->pointAt($relRow, $relCol, $vp);
     }
 
     /**

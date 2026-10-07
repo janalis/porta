@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\InlayHint;
 use Porta\Editor\InlayHintMode;
 use Porta\Tests\Support\Probe;
 use Porta\Ui\Tooltip;
@@ -27,7 +28,7 @@ final class CodeEditorInlayHintModeTest extends TestCase
         $editor->setFocused(true);
         $editor->display->setInlayHints($mode);
         // What phpantom sends after a class name, as the mapper keeps it.
-        $editor->decorations->setInlayHints([1 => [['col' => 15, 'text' => ' 46 references']]]);
+        $editor->decorations->setInlayHints([1 => [new InlayHint(15, '46 references', null, padLeft: true)]]);
 
         return $editor;
     }
@@ -50,7 +51,7 @@ final class CodeEditorInlayHintModeTest extends TestCase
             $editor->openFile('a.php', "<?php\n\$x = foo();\n");
             $editor->display->setInlayHints($mode);
             $editor->getDocument()->setCursor(1, 11);
-            $editor->decorations->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
+            $editor->decorations->setInlayHints([1 => [new InlayHint(11, ': int')]]);
             $editor->render(new RenderContext(20, 10));
 
             return Probe::get($editor, 'scroll')->hScroll;

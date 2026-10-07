@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Widget;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\InlayHint;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -168,7 +169,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // into them. The debug value rides the same slot as the inline
         // diagnostic and inherits the same rule.
         $editor = $this->editor("<?php\n\$r = add(1, 2);\n", 'hints.php');
-        $editor->decorations->setInlayHints([1 => [['col' => 9, 'text' => 'a:'], ['col' => 12, 'text' => 'b:']]]);
+        $editor->decorations->setInlayHints([1 => [new InlayHint(9, 'a:'), new InlayHint(12, 'b:')]]);
         $editor->decorations->setDebugValues([1 => '$r = 3']);
 
         $row = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 5))[1]);

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\EditorScroll;
+use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
@@ -474,7 +475,7 @@ final class CodeEditorGeometryTest extends TestCase
     {
         $editor = $this->editor("<?php\n\$x = foo();\n");
         $editor->getDocument()->setCursor(1, 11); // just after "foo()"
-        $editor->decorations->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
+        $editor->decorations->setInlayHints([1 => [new InlayHint(11, ': int')]]);
 
         $editor->render(new RenderContext(80, 10));
 
@@ -485,7 +486,7 @@ final class CodeEditorGeometryTest extends TestCase
         // narrow edge in view.
         $narrow = $this->editor("<?php\n\$x = foo();\n");
         $narrow->getDocument()->setCursor(1, 11);
-        $narrow->decorations->setInlayHints([1 => [['col' => 11, 'text' => ': int']]]);
+        $narrow->decorations->setInlayHints([1 => [new InlayHint(11, ': int')]]);
         $narrow->render(new RenderContext(15, 10));
         $scroll = Probe::get($narrow, 'scroll');
 

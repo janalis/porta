@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\SelectionMode;
 use Porta\Widget\CodeEditorWidget;
@@ -161,7 +162,7 @@ final class EditorRenderGoldenTest extends TestCase
                     $e->openFile('demo.php', $php);
                     $e->setFocused(true);
                     $e->decorations->setInlayHints([
-                        2 => [['col' => 0, 'text' => '»'], ['col' => 14, 'text' => ': string']],
+                        2 => [new InlayHint(0, '»'), new InlayHint(14, ': string')],
                     ]);
                 },
                 80,

@@ -13,6 +13,7 @@ use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Tests\Support\EditorState;
@@ -816,7 +817,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $hint = ': SomeType';
         $message = 'undefined variable';
         $editor = $this->editor("<?php\n\$x = 1;\n");
-        $editor->decorations->setInlayHints([1 => [['col' => 7, 'text' => $hint]]]);
+        $editor->decorations->setInlayHints([1 => [new InlayHint(7, $hint)]]);
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => $message, 'col' => 0]]]);
 
         $plain = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(80, 5))[1]);

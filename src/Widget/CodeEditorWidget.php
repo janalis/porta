@@ -41,7 +41,7 @@ use Porta\Editor\FoldModel;
 use Porta\Editor\GutterHint;
 use Porta\Editor\GutterPart;
 use Porta\Editor\IndentKind;
-use Porta\Editor\InlayHintMode;
+use Porta\Editor\InlayLines;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\MemberSeparators;
 use Porta\Editor\ModalHost;
@@ -294,6 +294,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             $document,
             $this->foldModel,
             $this->decorations,
+            $this->inlays(),
             $this->multiCaret,
             $this->invalidate(...),
             $this->closeCompletion(...),
@@ -1431,7 +1432,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $this->display->methodSeparators ? MemberSeparators::linesFor($this->scopes()) : [],
                 $this->display->showWhitespace,
                 $this->translator,
-                $this->display->inlayHints,
+                $this->inlays(),
             );
             $result = $assembler->assemble(
                 $geo,
@@ -1501,18 +1502,29 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
+     * Which inlay hints each line shows and where they land — the one reader
+     * the render, the caret and the mouse share. Stateless over the store and
+     * the display options, so it is built where it is needed rather than kept.
+     */
+    public function inlays(): InlayLines
+    {
+        return new InlayLines($this->decorations, $this->display);
+    }
+
+    /**
      * Advance the horizontal scroll to keep the caret in view and return its
-     * display column (shifted right by any inlay hints before it). Follows only
-     * when the caret actually moved since the last frame, so a manual scroll
-     * (scrollHBy) survives parked-caret renders.
+     * SCREEN column (shifted right by the inlay hints drawn before it). Follows
+     * only when the caret actually moved since the last frame, so a manual
+     * scroll (scrollHBy) survives parked-caret renders.
      */
     private function followCaret(Document $doc, int $cursorLine, int $contentWidth): int
     {
-        $cursorDisplayCol = $doc->getCursorDisplayCol();
-        // Only hints painted into the line push the caret along it.
-        if (InlayHintMode::Inline === $this->display->inlayHints) {
-            $cursorDisplayCol += EditorRenderer::inlayShiftAt($doc, $cursorLine, $this->decorations->inlayHintsAt($cursorLine), $cursorDisplayCol);
-        }
+        // Only hints painted into the line push the caret along it — and under
+        // soft wrap only those that fit, so the same placement the row draws.
+        $cursorDisplayCol = $this
+            ->inlays()
+            ->forLine($doc, $cursorLine, $this->display->softWrap ? $contentWidth : null)
+            ->screenCol($doc->getCursorDisplayCol());
         $cursorMoved = [$cursorLine, $doc->cursorCol] !== $this->lastFollowedCursor;
         $this->lastFollowedCursor = [$cursorLine, $doc->cursorCol];
         $this->scroll->followCursor($cursorDisplayCol, $contentWidth, $cursorMoved ? CaretMotion::Moved : CaretMotion::Parked);

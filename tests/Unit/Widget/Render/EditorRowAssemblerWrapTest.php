@@ -9,6 +9,7 @@ use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
+use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
 use Porta\Editor\WrapLayout;
 use Porta\Ui\CursorStyle;
@@ -89,6 +90,24 @@ final class EditorRowAssemblerWrapTest extends TestCase
             ['aaaaaaaaaa', 'bbbbbbbbbb', 'ccccc', 'tail', '', ''],
             $this->rows($text, wrap: new WrapLayout(new Document($text))),
             'each segment is the next slice, and the walk moves on when the line runs out',
+        );
+    }
+
+    /**
+     * A hint never pushes text off a wrapped row: the text keeps its own
+     * columns, and only the free cells after the line's last character take
+     * hints. One on a full row is not drawn — rather than wrapping the code
+     * under it out of view.
+     */
+    public function testHintsOnAWrappedLineNeverPushItsTextOffARow(): void
+    {
+        $text = \str_repeat('a', times: 10).\str_repeat('b', times: 10).'ccccc'."\ntail\n";
+
+        $this->assertSame(
+            ['aaaaaaaaaa', 'bbbbbbbbbb', 'ccccHc', 'tail', '', ''],
+            $this->rows($text, new WrapLayout(new Document($text)), decorate: static function (DecorationStore $store): void {
+                $store->setInlayHints([0 => [new InlayHint(3, 'MID'), new InlayHint(24, 'H')]]);
+            }),
         );
     }
 

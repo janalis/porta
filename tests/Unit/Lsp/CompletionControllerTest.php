@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHint;
 use Porta\Editor\InlayHintMode;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
@@ -219,7 +220,7 @@ final class CompletionControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->readyOn($controller, '/p/a.php', "<?php\n\$a=1;\n");
-        $this->editor->decorations->setInlayHints([1 => [['col' => 2, 'text' => ': int']]]);
+        $this->editor->decorations->setInlayHints([1 => [new InlayHint(2, ': int')]]);
 
         $controller->applyInlayHintMode(InlayHintMode::None);
 

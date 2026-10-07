@@ -7,9 +7,11 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorMouse;
 use Porta\Editor\EditorViewport;
 use Porta\Editor\FoldModel;
+use Porta\Editor\InlayLines;
 use Porta\Editor\MultiCaret;
 
 /**
@@ -38,6 +40,7 @@ final class WrapClickMappingTest extends TestCase
             $this->document,
             new FoldModel($this->document),
             $this->store = new DecorationStore($noop),
+            new InlayLines($this->store, new EditorDisplayOptions($noop)),
             new MultiCaret($this->document, $noop, $noop),
             $noop,
             $noop,

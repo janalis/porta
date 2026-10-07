@@ -8,6 +8,8 @@ use Porta\Editor\CodeScopeKind;
 use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHint;
+use Porta\Editor\InlayHintKind;
 
 /**
  * Pure translation between raw Language Server Protocol payloads and the shapes
@@ -217,11 +219,12 @@ final class LspMapper
     /**
      * Group inlay hints by (0-based) line, converting UTF-16 columns to byte
      * columns against the given document.
-     * The label keeps the spacing the server asked for ({@see InlayHintLabel}).
+     * The label keeps the margins the server asked for ({@see InlayHintLabel})
+     * and the hint its kind — a kind this editor does not know is none.
      *
      * @param list<array<string, mixed>> $hints
      *
-     * @return array<int, list<array{col: int, text: string}>>
+     * @return array<int, list<InlayHint>>
      */
     public static function mapInlayHints(Document $doc, array $hints): array
     {
@@ -235,10 +238,13 @@ final class LspMapper
                 continue;
             }
             $line = (int) $hint['position']['line'];
-            $byLine[$line][] = [
-                'col' => $doc->utf16ColToByteCol($line, (int) $hint['position']['character']),
-                'text' => $label,
-            ];
+            $byLine[$line][] = new InlayHint(
+                $doc->utf16ColToByteCol($line, (int) $hint['position']['character']),
+                $label['text'],
+                InlayHintKind::tryFrom((int) ($hint['kind'] ?? 0)),
+                $label['left'],
+                $label['right'],
+            );
         }
 
         return $byLine;

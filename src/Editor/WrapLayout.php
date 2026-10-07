@@ -16,8 +16,9 @@ namespace Porta\Editor;
  * decorated one. Inlay hints and inline diagnostics ride in the same row and
  * would otherwise change where the text breaks as they arrive and go — the
  * text would reflow because a hint appeared, which is the opposite of what a
- * reader wants. They are trailing decorations; they clip at the row edge as
- * they already do when a line is too long.
+ * reader wants. A trailing decoration clips at the row edge as it does when a
+ * line is too long; an inlay hint is drawn only where the row has free cells
+ * for it ({@see InlayLine}), so it can never push code off its row.
  *
  * A wrapped SEGMENT is rendered by the same primitive horizontal scroll uses:
  * `renderContentLine()` slices a decorated line at a display column, so

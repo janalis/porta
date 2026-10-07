@@ -108,7 +108,7 @@ interface EditorDecorationSink
     /**
      * Replace the inlay hints (parameter names / inferred types) shown inline.
      *
-     * @param array<int, list<array{col: int, text: string}>> $hints line => byte-col hints
+     * @param array<int, list<InlayHint>> $hints line => hints, every one the server sent
      */
     public function setInlayHints(array $hints): void;
 }

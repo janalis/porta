@@ -10,6 +10,7 @@ use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Editor\InlayLine;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
@@ -200,26 +201,7 @@ final class EditorRenderer
     }
 
     /**
-     * Total display width of a line's inlay hints at or before display column $displayCol.
-     *
-     * @param list<array{col: int, text: string}> $lineHints
-     */
-    public static function inlayShiftAt(Document $doc, int $line, array $lineHints, int $displayCol): int
-    {
-        $shift = 0;
-        foreach ($lineHints as $hint) {
-            if ($doc->displayColAt($line, $hint['col']) > $displayCol) {
-                continue;
-            }
-
-            $shift += AnsiUtils::visibleWidth($hint['text']);
-        }
-
-        return $shift;
-    }
-
-    /**
-     * Insert a line's inlay hints as dim virtual text, right-to-left so offsets stay valid.
+     * Splice a line's placed inlay hints into it as virtual text.
      *
      * Each hint opens on a clean pen. It lands on a column boundary of a line
      * that is already decorated, so whatever span is open there — the
@@ -227,35 +209,28 @@ final class EditorRenderer
      * otherwise paint the hint as part of the word. The slice after it
      * replays the state still open, and the caret-line band re-asserts its
      * background after every reset ({@see LineDecorator::applyFullWidth}).
-     *
-     * @param list<array{col: int, text: string}> $lineHints
+     * Its margins are bare cells: only the label is the hint's.
      */
-    public static function applyInlayHints(Document $doc, int $line, array $lineHints, string $hlLine, Styles $styles): string
+    public static function applyInlayHints(InlayLine $inlay, string $hlLine, Styles $styles): string
     {
-        if ([] === $lineHints) {
+        $placed = $inlay->placed();
+        if ([] === $placed) {
             return $hlLine;
         }
         // One left-to-right pass over the raw line, NOT a per-hint insert fold: each
         // insert re-slices the accumulated result and the slicer's escape
         // replay multiplies the escapes per hint (the indent-guide/span-fold
-        // disease) — a parameter-hint-happy LSP line went exponential. Equal
-        // columns keep the fold's order: the later-listed hint lands left.
-        $placed = [];
-        foreach ($lineHints as $i => $hint) {
-            $placed[] = [$doc->displayColAt($line, $hint['col']), -$i, Sgr::RESET.$styles->of(Role::Inlay)->apply($hint['text'])];
-        }
-        \usort($placed, static fn (array $a, array $b): int => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
-
+        // disease) — a parameter-hint-happy LSP line went exponential.
         $lineWidth = AnsiUtils::visibleWidth($hlLine);
         $out = '';
         $prev = 0;
-        foreach ($placed as [$col, , $text]) {
+        foreach ($placed as ['hint' => $hint, 'displayCol' => $col]) {
             $col = \min($col, $lineWidth);
             if ($col > $prev) {
                 $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
                 $prev = $col;
             }
-            $out .= $text;
+            $out .= Sgr::RESET.($hint->padLeft ? ' ' : '').$styles->of(Role::Inlay)->apply($hint->label).($hint->padRight ? ' ' : '');
         }
         if ($prev < $lineWidth) {
             $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $lineWidth - $prev);
