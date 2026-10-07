@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\Editor;
 
+use Porta\Ui\TooltipBody;
 use Symfony\Component\Tui\Input\Keybindings;
 
 /**
  * A symbol's documentation, read in place: the text the server sent for the
- * symbol at the caret, in a read-only popup anchored under it — a browser's
+ * symbol at the caret — under the problems there, when there are any — in a
+ * read-only popup anchored under it — a browser's
  * tooltip, where the list overlay it replaced was a picker with nothing to
  * pick. It scrolls (↑/↓, PgUp/PgDn, the wheel) within what the renderer
  * reports it can, and any other key closes it and then does what it does.
@@ -28,6 +30,8 @@ final class DocPopup
 
     public function __construct(
         public readonly string $text,
+        /** The problems at the caret, above the text; their fix line arrives later. */
+        public ?TooltipBody $problems = null,
     ) {}
 
     /**

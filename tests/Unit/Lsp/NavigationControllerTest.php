@@ -9,20 +9,24 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Editor\JumpHistory;
 use Porta\Editor\LineTextReader;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\ProblemCards;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
+use Porta\Lsp\QuickFixProbe;
 use Porta\Lsp\StructurePanelRefresher;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
@@ -42,6 +46,9 @@ use Symfony\Component\Tui\Tui;
 
 final class NavigationControllerTest extends TestCase
 {
+    /** Where the problem card's fix question waits for its loop turn. */
+    private FakeScheduler $scheduler;
+
     /** @var list<string> */
     private array $opened = [];
     private CodeEditorWidget $editor;
@@ -109,6 +116,7 @@ final class NavigationControllerTest extends TestCase
             new DocsUrlOpener($notifier, $translator, '/p'),
             new JumpHistory(),
             new LineTextReader($this->buffers),
+            new ProblemCards($this->editor, new QuickFixProbe($pool, $this->editor, $this->scheduler = new FakeScheduler()), $translator),
         );
     }
 
@@ -223,6 +231,77 @@ final class NavigationControllerTest extends TestCase
 
         $this->editor->handleInput("\x1b");
         $this->assertStringNotContainsString('line30', $this->screen(), 'Esc closes it');
+    }
+
+    private function problemOn(int $line, int $col, int $endCol, string $message = 'Undefined variable $x'): void
+    {
+        $this->editor->decorations->setDiagnostics([$line => [['severity' => DiagnosticSeverity::Error, 'message' => $message, 'col' => $col, 'endCol' => $endCol, 'source' => 'phpstan']]]);
+    }
+
+    /** PhpStorm's Ctrl+F1: the problems at the caret, in full, with no server needed. */
+    public function testErrorDescriptionShowsTheProblemAtTheCaret(): void
+    {
+        $controller = $this->controller();
+        $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
+        $this->problemOn(1, 0, 2);
+
+        $controller->requestErrorDescription(1, 2);
+        $this->assertSame([], $this->scheduler->scheduled, 'no server to ask for a fix');
+
+        $screen = $this->screen();
+        $this->assertStringContainsString('✗ Undefined variable $x', $screen);
+        $this->assertStringContainsString('phpstan', $screen, 'where it came from');
+    }
+
+    public function testErrorDescriptionAwayFromAProblemSaysSo(): void
+    {
+        $controller = $this->controller();
+        $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
+        $this->problemOn(1, 0, 2);
+
+        $controller->requestErrorDescription(1, 5);
+
+        $this->assertStringContainsString('No problem at the caret', $this->flashed());
+    }
+
+    /** PhpStorm's combined popup: Shift+F1 on a problem puts it above the documentation, parted by a tee. */
+    public function testDocumentationOnAProblemIsHeadedByIt(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->problemOn(1, 0, 2);
+
+        $controller->requestHover(1, 1);
+        \array_last($this->client->requests)['respond'](['contents' => 'An integer.'], error: null);
+        // The fix question gets its turn; this server offers no code actions,
+        // so the popup's problems are said again as they were.
+        $this->scheduler->fire();
+
+        $rows = \explode("\n", $this->screen());
+        $problem = \array_key_first(\array_filter($rows, static fn (string $row): bool => \str_contains($row, 'Undefined variable')));
+        $docs = \array_key_first(\array_filter($rows, static fn (string $row): bool => \str_contains($row, 'An integer.')));
+        $this->assertNotNull($problem);
+        $this->assertSame($problem + 3, $docs, 'the problem, where it came from, the tee, then the docs');
+        $this->assertStringContainsString('├', $rows[$problem + 2]);
+    }
+
+    public function testOnAProblemWithoutDocumentationOrAServerTheProblemIsTheAnswer(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = 1;\n");
+        $this->problemOn(1, 0, 2);
+
+        $controller->requestHover(1, 1);
+        \array_last($this->client->requests)['respond'](null, error: null);
+        $this->assertStringContainsString('Undefined variable', $this->screen(), 'no documentation: the problem alone');
+        $this->assertStringNotContainsString('No documentation found', $this->flashed());
+
+        $offline = $this->controller();
+        $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
+        $this->problemOn(1, 0, 2, message: 'Offline problem');
+        $offline->requestHover(1, 1);
+        $this->assertStringContainsString('Offline problem', $this->screen(), 'no server: the problem alone, and nothing to explain');
+        $this->assertSame('', \trim($this->flashed()));
     }
 
     /** Any other key closes it and does what it does; a click on it stays on it, one elsewhere closes it. */

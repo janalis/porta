@@ -78,6 +78,7 @@ use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
 use Porta\Ui\TextEcho;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\TooltipBody;
 use Porta\Widget\Render\CaretPopupRenderer;
 use Porta\Widget\Render\CaretSide;
 use Porta\Widget\Render\EditorDecorations;
@@ -553,11 +554,13 @@ final class CodeEditorWidget extends AbstractWidget implements
      * question was asked. It replaces the completion list: one caret, one
      * read-out at a time.
      */
-    public function showDocPopup(string $text): void
+    public function showDocPopup(string $text, ?TooltipBody $problems = null): DocPopup
     {
         $this->completion->close();
-        $this->caretPopups->doc = new DocPopup($text);
+        $this->caretPopups->doc = new DocPopup($text, $problems);
         $this->invalidate();
+
+        return $this->caretPopups->doc;
     }
 
     #[\Override]
@@ -1308,6 +1311,7 @@ final class CodeEditorWidget extends AbstractWidget implements
                 $doc->text,
                 $doc->scroll,
                 $this->styles,
+                $doc->problems,
             );
             $taken = null === $doc->drawn ? $taken : CaretSide::of($doc->drawn['rect'][0], $cursorScreenRow);
         }

@@ -17,6 +17,9 @@ interface EditorRefactorHandler
     /** Quick fixes at (line, utf16 col). */
     public function requestCodeActions(int $line, int $col): void;
 
+    /** PhpStorm's Alt+Shift+Enter: the first fix for the problem at (line, utf16 col), applied at once. */
+    public function requestApplyQuickFix(int $line, int $col): void;
+
     /** The `refactor` kinds alone — PhpStorm's "Refactor This". */
     public function requestRefactorings(int $line, int $col): void;
 

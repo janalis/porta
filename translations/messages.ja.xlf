@@ -3374,6 +3374,22 @@
         <source>More actions…</source>
         <target>その他のアクション…</target>
       </trans-unit>
+      <trans-unit id="1165">
+        <source>Apply Quick Fix</source>
+        <target>クイックフィックスを適用</target>
+      </trans-unit>
+      <trans-unit id="1166">
+        <source>Error Description</source>
+        <target>エラーの説明</target>
+      </trans-unit>
+      <trans-unit id="1167">
+        <source>No problem at the caret</source>
+        <target>キャレット位置に問題はありません</target>
+      </trans-unit>
+      <trans-unit id="1168">
+        <source>No quick fix for this problem</source>
+        <target>この問題のクイックフィックスはありません</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

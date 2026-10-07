@@ -165,6 +165,8 @@ final class ActionCatalog
         'call_hierarchy' => ['label' => 'Call Hierarchy'],
         'outgoing_calls' => ['label' => 'Calls From Here'],
         'code_action' => ['label' => 'Show Quick Fixes'],
+        'apply_quick_fix' => ['label' => 'Apply Quick Fix'],
+        'show_error_description' => ['label' => 'Error Description'],
         'refactor_this' => ['label' => 'Refactor This'],
         'inline_refactoring' => ['label' => 'Inline'],
         'organize_imports' => ['label' => 'Optimize Imports'],

@@ -198,11 +198,13 @@ settings.
 | `Ctrl+Shift+H` / `Ctrl+Alt+Shift+H` | Callers of / calls from the symbol at the caret |
 | `Shift+F6` | Rename symbol (cross-file `WorkspaceEdit`) |
 | `Alt+Enter` | Quick fixes / code actions (headed by the line's problems when diagnostic messages are set to `menu`) |
+| `Alt+Shift+Enter` | Apply the first fix for the problem at the caret, without the list — the one the problem card's `Fix:` line names. Needs a terminal that reports modifiers on Enter (kitty's keyboard protocol, or xterm's modifyOtherKeys); elsewhere it arrives as `Alt+Enter` and opens the list |
 | `Ctrl+Alt+Shift+T` | Refactor This |
 | `Ctrl+Alt+N` | Inline |
 | `Ctrl+Alt+O` | Optimize imports (`source.organizeImports`; applied straight away when the server offers one) |
 | `Ctrl+Shift+P` | Parameter info — re-summon the signature popup (PhpStorm's `Ctrl+P`, which Go to File owns here) |
-| `Shift+F1` | Quick documentation, in a popup under the caret (`↑`/`↓`, `PgUp`/`PgDn` or the wheel scroll it; `Esc` or any other key closes it) |
+| `Shift+F1` | Quick documentation, in a popup under the caret, headed by the problems there when the caret is on one (`↑`/`↓`, `PgUp`/`PgDn` or the wheel scroll it; `Esc` or any other key closes it) |
+| `Ctrl+F1` / `Alt+Q` | Error description: the problems at the caret, in full, with their fix. On macOS, where Ctrl+F1 is the system's, the hint names `Alt+Q` |
 | `Ctrl+F12` | File structure popup (type to filter — the symbol's KIND counts, so `method` narrows a class to its methods) |
 | `Alt+7` | Structure panel (persistent, on the dock) |
 | `F2` / `Shift+F2` | Next / previous problem in this file (wraps, and says so) |

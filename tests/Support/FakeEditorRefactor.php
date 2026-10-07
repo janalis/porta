@@ -15,12 +15,20 @@ final readonly class FakeEditorRefactor implements EditorRefactorHandler
         private ?\Closure $requestRefactorings = null,
         private ?\Closure $requestInline = null,
         private ?\Closure $requestOrganizeImports = null,
+        private ?\Closure $requestApplyQuickFix = null,
     ) {}
 
     public function requestPrepareRename(int $line, int $col, string $word): void
     {
         if (null !== $this->requestPrepareRename) {
             ($this->requestPrepareRename)($line, $col, $word);
+        }
+    }
+
+    public function requestApplyQuickFix(int $line, int $col): void
+    {
+        if (null !== $this->requestApplyQuickFix) {
+            ($this->requestApplyQuickFix)($line, $col);
         }
     }
 

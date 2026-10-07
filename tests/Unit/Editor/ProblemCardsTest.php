@@ -19,6 +19,7 @@ use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipBody;
 use Porta\Ui\TooltipLine;
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -102,7 +103,25 @@ final class ProblemCardsTest extends TestCase
         \array_last($this->client->requests)['respond']([['title' => 'Create function foo', 'kind' => 'quickfix'], ['title' => 'Ignore']], error: null);
 
         $this->assertInstanceOf(TooltipBody::class, $updated);
-        $this->assertSame(['✗ Undefined function foo', '  phpantom · E1', 'Fix: Create function foo', 'More actions… [Alt+⏎]'], self::texts($updated), 'a key only where the keymap binds one');
+        $this->assertSame(['✗ Undefined function foo', '  phpantom · E1', 'Fix: Create function foo [Alt+Shift+⏎]', 'More actions… [Alt+⏎]'], self::texts($updated), 'each with the key that does it');
+    }
+
+    /** The keys are the LIVE keymap's: rebound, the card says the new one; unbound, it says none. */
+    public function testTheKeysAreTheOnesTheKeymapBindsNow(): void
+    {
+        $cards = $this->cards();
+        $this->editor->setKeybindings(new Keybindings(['apply_quick_fix' => ['ctrl+alt+f'], 'code_action' => []]));
+        $updated = null;
+
+        $cards->body([$this->editor->decorations->diagnostics[1][1]], 1, static function (TooltipBody $body) use (&$updated): void {
+            $updated = $body;
+        });
+        $this->scheduler->fire();
+        $this->assertInstanceOf(FakeLspClient::class, $this->client);
+        \array_last($this->client->requests)['respond']([['title' => 'Create function foo']], error: null);
+
+        $this->assertInstanceOf(TooltipBody::class, $updated);
+        $this->assertSame(['Fix: Create function foo [Ctrl+Alt+F]', 'More actions…'], \array_slice(self::texts($updated), offset: 2));
     }
 
     public function testACardAnchorsOnTheSquiggleAndKeepsItsKeyAlongIt(): void

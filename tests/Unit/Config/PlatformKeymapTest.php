@@ -48,8 +48,12 @@ final class PlatformKeymapTest extends TestCase
 
     public function testTheMacResetsWithItsDeleteKeyEvenWithoutCmdChords(): void
     {
-        // The Mac "delete" key sends Backspace; Delete is fn+delete.
-        $this->assertSame(['reset_binding' => ['backspace', 'delete']], PlatformKeymap::withoutCmd(KeymapPlatform::MacOs));
+        // The Mac "delete" key sends Backspace; Delete is fn+delete. And
+        // Ctrl+F1 is the system's there, so Error Description leads with Alt+Q.
+        $this->assertSame(
+            ['reset_binding' => ['backspace', 'delete'], 'show_error_description' => ['alt+q', 'ctrl+f1']],
+            PlatformKeymap::withoutCmd(KeymapPlatform::MacOs),
+        );
     }
 
     public function testEveryCmdChordIsAddedAndCtrlLeadsUntilOneArrives(): void

@@ -19,6 +19,7 @@ final readonly class FakeEditorNavigation implements EditorNavigationHandler
         private ?\Closure $requestPeek = null,
         private ?\Closure $requestCallHierarchy = null,
         private ?\Closure $requestOutgoingCalls = null,
+        private ?\Closure $requestErrorDescription = null,
     ) {}
 
     public function requestDefinition(int $line, int $utf16Col): void
@@ -53,6 +54,13 @@ final readonly class FakeEditorNavigation implements EditorNavigationHandler
     {
         if (null !== $this->requestHover) {
             ($this->requestHover)($line, $col);
+        }
+    }
+
+    public function requestErrorDescription(int $line, int $col): void
+    {
+        if (null !== $this->requestErrorDescription) {
+            ($this->requestErrorDescription)($line, $col);
         }
     }
 

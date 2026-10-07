@@ -9,6 +9,7 @@ use Porta\Support\IntMath;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Ui\TooltipBody;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Style;
 
@@ -162,25 +163,33 @@ final class CaretPopupRenderer
      * when it fits, above when that fits, else on the roomier side cut to the
      * room — never over the line the question was asked on. Wrapped to the
      * docblock pane's width, scrolled $scroll rows in, with a `▲`/`▼` in the
-     * border while there is more that way.
+     * border while there is more that way. The problems at the caret, when
+     * there are any, head it — PhpStorm's Shift+F1 — parted from the
+     * documentation by a tee; with no documentation they are all of it.
      *
      * @param list<string> $lines
      *
      * @return array{rect: array{int, int, int, int}, maxScroll: int}|null the popup as drawn — [top, col, width, height] — and how far it can scroll; null when no room
      */
-    public static function docPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, int $scroll, Styles $styles): ?array
+    public static function docPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, int $scroll, Styles $styles, ?TooltipBody $problems = null): ?array
     {
         $width = \min(PopupMetrics::COMPLETION_DOC_INNER, $columns - PopupFrame::CHROME_COLS - 1);
         if ($width < 8) {
             return null;
         }
-        $body = [];
-        foreach (\explode("\n", $text) as $paragraph) {
+        // Each row ready to frame, or null for the tee that parts the problems
+        // from the documentation under them.
+        $body = null === $problems ? [] : TooltipCard::rows(TooltipCard::layout($problems, $width - 2), $width, $styles);
+        if ([] !== $body && '' !== $text) {
+            $body[] = null;
+        }
+        $plain = $styles->of(Role::PopupRow);
+        foreach ('' === $text ? [] : \explode("\n", $text) as $paragraph) {
             // Two columns narrower than the frame: every box pads its content
             // a column either side, and a docblock hard against the rail
             // reads as part of it.
             foreach (AnsiText::wrap($paragraph, $width - 2) as $wrapped) {
-                $body[] = $wrapped;
+                $body[] = $plain->apply(AnsiText::truncate(' '.$wrapped, $width, pad: true));
             }
         }
         $wanted = \min(\count($body), PopupMetrics::COMPLETION_ROWS);
@@ -200,7 +209,7 @@ final class CaretPopupRenderer
 
         $framed = [PopupFrame::top($width, $styles, mark: $scroll > 0 ? Glyphs::SCROLL_UP : '')];
         foreach (\array_slice($body, $scroll, $shown) as $row) {
-            $framed[] = PopupFrame::rail($styles->of(Role::PopupRow)->apply(AnsiText::truncate(' '.$row, $width, pad: true)), $width, $styles);
+            $framed[] = null === $row ? PopupFrame::tee($width, $styles) : PopupFrame::rail($row, $width, $styles);
         }
         $framed[] = PopupFrame::bottom($width, $styles, mark: $scroll < $maxScroll ? Glyphs::SCROLL_DOWN : '');
         foreach ($framed as $i => $row) {

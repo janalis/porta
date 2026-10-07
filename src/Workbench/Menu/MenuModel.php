@@ -95,6 +95,7 @@ final class MenuModel
         'Code' => [
             'e:trigger_completion',
             'e:code_action',
+            'e:apply_quick_fix',
             'e:refactor_this',
             'e:inline_refactoring',
             'e:organize_imports',
@@ -165,6 +166,7 @@ final class MenuModel
             self::SEP,
             'i:ide_command_palette',
             'e:quick_doc',
+            'e:show_error_description',
         ],
     ];
 

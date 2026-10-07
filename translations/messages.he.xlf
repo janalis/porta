@@ -3374,6 +3374,22 @@
         <source>More actions…</source>
         <target>פעולות נוספות…</target>
       </trans-unit>
+      <trans-unit id="1165">
+        <source>Apply Quick Fix</source>
+        <target>החלת תיקון מהיר</target>
+      </trans-unit>
+      <trans-unit id="1166">
+        <source>Error Description</source>
+        <target>תיאור השגיאה</target>
+      </trans-unit>
+      <trans-unit id="1167">
+        <source>No problem at the caret</source>
+        <target>אין בעיה במיקום הסמן</target>
+      </trans-unit>
+      <trans-unit id="1168">
+        <source>No quick fix for this problem</source>
+        <target>אין תיקון מהיר לבעיה זו</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

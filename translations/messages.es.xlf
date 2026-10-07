@@ -3374,6 +3374,22 @@
         <source>More actions…</source>
         <target>Más acciones…</target>
       </trans-unit>
+      <trans-unit id="1165">
+        <source>Apply Quick Fix</source>
+        <target>Aplicar corrección rápida</target>
+      </trans-unit>
+      <trans-unit id="1166">
+        <source>Error Description</source>
+        <target>Descripción del error</target>
+      </trans-unit>
+      <trans-unit id="1167">
+        <source>No problem at the caret</source>
+        <target>Ningún problema en el cursor</target>
+      </trans-unit>
+      <trans-unit id="1168">
+        <source>No quick fix for this problem</source>
+        <target>Ninguna corrección rápida para este problema</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

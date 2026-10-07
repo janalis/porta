@@ -114,6 +114,14 @@ final class EditorKeymap
 
             'quick_doc' => ['shift+f1'], // plain F1 is the IDE-level docs browser
             'code_action' => ['alt+enter'],
+            // PhpStorm's: the problem's first fix, no list. Only a terminal
+            // that reports modifiers on Enter (kitty's protocol, xterm's
+            // modifyOtherKeys) can send it; elsewhere it arrives as Alt+Enter,
+            // which opens the list the fix is the first row of.
+            'apply_quick_fix' => ['alt+shift+enter'],
+            // PhpStorm's Error Description. macOS keeps Ctrl+F1 for keyboard
+            // access and XFCE for its workspaces, so Alt+Q stands by.
+            'show_error_description' => ['ctrl+f1', 'alt+q'],
             // PhpStorm's Refactor This. Ctrl+Alt+M (extract method) is the
             // phpantom plugin's fix command and Ctrl+F6 is focus_previous,
             // so extraction is reached through this list rather than by

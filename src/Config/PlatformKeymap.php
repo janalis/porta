@@ -62,6 +62,9 @@ final class PlatformKeymap
      */
     private const array MAC_KEYS = [
         'reset_binding' => ['backspace', 'delete'],
+        // Ctrl+F1 is the system's "turn keyboard access on or off" there, and
+        // the F keys are media keys: the hint names the key that arrives.
+        'show_error_description' => ['alt+q', 'ctrl+f1'],
     ];
 
     /**

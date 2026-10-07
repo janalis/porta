@@ -116,6 +116,11 @@ final class EditorActionRouterTest extends TestCase
                 $this->recording[] = "quick_doc:{$line}:{$col}";
             }
 
+            public function requestErrorDescription(int $line, int $col): void
+            {
+                $this->recording[] = "show_error_description:{$line}:{$col}";
+            }
+
             public function requestReferences(int $line, int $col): void
             {
                 $this->recording[] = "find_usages:{$line}:{$col}";
@@ -152,6 +157,11 @@ final class EditorActionRouterTest extends TestCase
             public function requestCodeActions(int $line, int $col): void
             {
                 $this->recording[] = "code_action:{$line}:{$col}";
+            }
+
+            public function requestApplyQuickFix(int $line, int $col): void
+            {
+                $this->recording[] = "apply_quick_fix:{$line}:{$col}";
             }
 
             public function requestRefactorings(int $line, int $col): void
@@ -350,6 +360,18 @@ final class EditorActionRouterTest extends TestCase
 
         $this->assertTrue($router->run('quick_doc'));
         $this->assertSame(['quick_doc:2:9'], $f['recording']);
+    }
+
+    /** PhpStorm's Ctrl+F1 and Alt+Shift+Enter, both about the problem at the caret. */
+    public function testTheProblemVerbsRunAtTheCaret(): void
+    {
+        $f = $this->fakes();
+        $callbacks = new EditorCallbacks(null, $f['navigation'], null, $f['refactor']);
+        $router = new EditorActionRouter(static fn (): EditorCallbacks => $callbacks, static fn (): array => [4, 1]);
+
+        $this->assertTrue($router->run('show_error_description'));
+        $this->assertTrue($router->run('apply_quick_fix'));
+        $this->assertSame(['show_error_description:4:1', 'apply_quick_fix:4:1'], $f['recording']);
     }
 
     public function testRunReturnsFalseForAnUnknownId(): void

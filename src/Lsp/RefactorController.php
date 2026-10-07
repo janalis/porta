@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiagnosticHit;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticStyle;
 use Porta\I18n\Translator;
@@ -26,6 +27,11 @@ final class RefactorController extends AbstractLspController implements EditorRe
 {
     /** Which codeAction request the list on screen belongs to. */
     private int $actionGeneration = 0;
+
+    /** Servers asked by the current code-action request, and how many have answered. */
+    private int $asked = 0;
+
+    private int $answers = 0;
 
     /**
      * The actions merged so far for {@see $actionGeneration}.
@@ -169,6 +175,43 @@ final class RefactorController extends AbstractLspController implements EditorRe
     }
 
     /**
+     * PhpStorm's Alt+Shift+Enter: the first fix for the problem at the caret,
+     * applied without a list — the same one the problem card's "Fix:" line
+     * names ({@see CodeActionContext::firstQuickFix()}). Once applied, a
+     * slower server's answer is dropped.
+     */
+    #[\Override]
+    public function requestApplyQuickFix(int $line, int $col): void
+    {
+        $here = DiagnosticHit::atCaret($this->buffers->active()?->diagnostics[$line] ?? [], $col);
+        if ([] === $here) {
+            $this->flash($this->trans('No problem at the caret'));
+
+            return;
+        }
+        $this->requestActions(
+            $line,
+            $col,
+            only: null,
+            // @mago-expect lint:no-boolean-flag-parameter -- whether every server has answered is the request's state, not a second responsibility.
+            present: function (array $actions, bool $final): void {
+                $fix = CodeActionContext::firstQuickFix($actions);
+                if (null !== $fix) {
+                    ++$this->actionGeneration;
+                    $this->applyOrResolve($fix);
+
+                    return;
+                }
+                if ($final) {
+                    $this->flash($this->trans('No quick fix for this problem'));
+                }
+            },
+            empty: 'No quick fix for this problem',
+            diagnostics: \array_map(static fn (array $diag): array => CodeActionContext::lspDiagnostic($line, $diag), $here),
+        );
+    }
+
+    /**
      * The caret line's diagnostics as rows to read, worst first — only while
      * the messages are shown in this menu. Notes: the list never selects or
      * runs a row that is there to be read, and draws it plain rather than
@@ -260,16 +303,17 @@ final class RefactorController extends AbstractLspController implements EditorRe
      * the three entry points above.
      *
      * @param list<string>|null                  $only
-     * @param \Closure(list<array<string, mixed>>): void $present
+     * @param \Closure(list<array<string, mixed>>, bool): void $present the actions so far, and whether every server has answered
      * @param string|\Closure(): void $empty what to flash when the answer is nothing, or what to do instead
+     * @param list<array<string, mixed>>|null $diagnostics what the request is about: the caret line's problems unless given
      */
-    private function requestActions(int $line, int $col, ?array $only, \Closure $present, string|\Closure $empty = 'No quick fixes here'): void
+    private function requestActions(int $line, int $col, ?array $only, \Closure $present, string|\Closure $empty = 'No quick fixes here', ?array $diagnostics = null): void
     {
         if (null === ($path = $this->readyOrExplain())) {
             return;
         }
 
-        $diagnostics = $this->diagnosticsAt($line);
+        $diagnostics ??= $this->diagnosticsAt($line);
         $context = ['diagnostics' => $diagnostics, 'triggerKind' => self::TRIGGER_INVOKED];
         if (null !== $only) {
             $context['only'] = $only;
@@ -277,7 +321,8 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
         $generation = ++$this->actionGeneration;
         $this->actions = [];
-        $this->lsp->requestAll(
+        $this->answers = 0;
+        $this->asked = $this->lsp->requestAll(
             'textDocument/codeAction',
             [
                 'textDocument' => ['uri' => $this->uri($path)],
@@ -289,6 +334,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 if ($generation !== $this->actionGeneration) {
                     return; // a later request is what the user is waiting on
                 }
+                ++$this->answers;
                 /** @var list<array<string, mixed>> $offered */
                 $offered = null === $error && \is_array($result)
                     ? \array_values(\array_filter($result, static fn ($a): bool => \is_array($a) && '' !== (string) ($a['title'] ?? '')))
@@ -305,7 +351,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
                     return;
                 }
-                $present(CodeActionContext::preferredFirst($this->actions));
+                $present(CodeActionContext::preferredFirst($this->actions), $this->answers >= $this->asked);
                 $this->tui->requestRender();
             },
         );

@@ -113,12 +113,26 @@ final class TooltipCard
         $inner = \max(0, self::width($lines) - PopupFrame::CHROME_COLS);
 
         $rows = [PopupFrame::top($inner, $styles)];
-        foreach ($lines as $line) {
-            $rows[] = PopupFrame::rail(self::row($line, $inner, $styles), $inner, $styles);
+        foreach (self::rows($lines, $inner, $styles) as $row) {
+            $rows[] = PopupFrame::rail($row, $inner, $styles);
         }
         $rows[] = PopupFrame::bottom($inner, $styles);
 
         return $rows;
+    }
+
+    /**
+     * The rows' contents without the frame, each exactly $inner columns — for
+     * a box that frames them itself, as the documentation popup does under
+     * its problems.
+     *
+     * @param list<TooltipLine> $lines
+     *
+     * @return list<string>
+     */
+    public static function rows(array $lines, int $inner, Styles $styles): array
+    {
+        return \array_map(static fn (TooltipLine $line): string => self::row($line, $inner, $styles), $lines);
     }
 
     /** One row's content, exactly $inner columns: padding, lead, words, the fill, the key. */

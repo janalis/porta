@@ -10,11 +10,14 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\JumpHistory;
 use Porta\Editor\LineTextReader;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\ProblemCards;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
+use Porta\Lsp\QuickFixProbe;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestBottomDock;
@@ -45,8 +48,9 @@ final class NavigationControllerNativeDocsTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24));
         $notifier = new Notifier(new StatusBarWidget(), $tui);
         $translator = new Translator('en');
+        $pool = new LspSessionPool('/p', new FixedActiveFile(), $translator);
         $controller = new NavigationController(
-            new LspSessionPool('/p', new FixedActiveFile(), $translator),
+            $pool,
             $editor,
             $tui,
             $notifier,
@@ -59,6 +63,7 @@ final class NavigationControllerNativeDocsTest extends TestCase
             new DocsUrlOpener($notifier, $translator, '/p'),
             new JumpHistory(),
             new LineTextReader(new BufferManager()),
+            new ProblemCards($editor, new QuickFixProbe($pool, $editor, new FakeScheduler()), $translator),
         );
 
         /** @var string|null $url */

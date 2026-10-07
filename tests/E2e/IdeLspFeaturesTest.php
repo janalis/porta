@@ -529,6 +529,91 @@ final class IdeLspFeaturesTest extends TestCase
         );
     }
 
+    /** PhpStorm's Ctrl+F1 on the mock's problem: the error, described where the caret is. */
+    public function testCtrlF1DescribesTheProblemAtTheCaret(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $document = Widgets::editor($tui)->getDocument();
+
+                    $document->setCursor(1, 2);
+                    $tui->handleInput("\x1b[1;5P");
+                    $this->awaitPainted($tui, $terminal, 'No problem at the caret');
+
+                    $document->setCursor(0, 0);
+                    $tui->handleInput("\x1b[1;5P");
+                    // The popup's row, not the status bar's: it is framed.
+                    $this->awaitPainted($tui, $terminal, '│ ✗ Mock diagnostic');
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Says hello'), 'the problem alone: no documentation was asked for');
+                },
+            ],
+        );
+    }
+
+    /** Shift+F1 on a problem: the problem heads the documentation. */
+    public function testShiftF1PutsTheProblemAboveTheDocs(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    Widgets::editor($tui)->getDocument()->setCursor(0, 0);
+                    $tui->handleInput("\x1b[1;2P"); // shift+f1
+
+                    $this->awaitPainted($tui, $terminal, 'Says hello');
+                    $grid = $this->screenGrid($tui, $terminal);
+                    $problem = $this->rowOf($grid, '│ ✗ Mock diagnostic');
+                    $this->assertNotNull($problem);
+                    $docs = $this->rowOf($grid, 'Says hello');
+                    $this->assertNotNull($docs, 'the documentation is there too');
+                    $this->assertGreaterThan($problem, $docs, 'under the problem');
+                },
+            ],
+        );
+    }
+
+    /** PhpStorm's Alt+Shift+Enter, sent the way kitty's protocol does: the first fix, applied without the list. */
+    public function testAltShiftEnterAppliesTheFirstFix(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Problem.php' => "<?php\necho 1;\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Problem.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
+                    $document = Widgets::editor($tui)->getDocument();
+                    $document->setCursor(0, 0);
+                    $tui->handleInput("\x1b[13;4u");
+
+                    $this->await(static fn (): bool => 'use Acme\\Imported;' === $document->getLine(1), what: 'the fix applied');
+                    $this->awaitPainted($tui, $terminal, 'Applied "Import class"');
+                    $this->assertNull($this->rowOf($this->screenGrid($tui, $terminal), 'Generate method'), 'no list was opened');
+                },
+            ],
+        );
+    }
+
     /**
      * A parameter's name is a shaded pill before a literal argument and
      * nothing before a variable, as in PhpStorm — until the setting asks for

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\EditorConfig\ResolvedEditorConfig;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
@@ -323,6 +324,90 @@ final class RefactorControllerTest extends TestCase
             $this->editor->handleInput("\x1b[B");
         }
         $this->editor->handleInput("\r");
+    }
+
+    /** @return array<string, mixed> a fix that renames the `$x` on line 1 to $name */
+    private static function renameTo(string $name, string $kind = 'quickfix'): array
+    {
+        return [
+            'title' => "Rename to {$name}",
+            'kind' => $kind,
+            'edit' => [
+                'changes' => [
+                    'file:///tmp/proj/a.php' => [
+                        ['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]], 'newText' => $name],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    private function problemOnX(): void
+    {
+        $buffer = $this->buffers->active();
+        $this->assertInstanceOf(Buffer::class, $buffer);
+        $buffer->diagnostics = [
+            1 => [
+                ['severity' => DiagnosticSeverity::Error, 'message' => 'Undefined variable', 'col' => 0, 'endCol' => 2, 'code' => 'E1'],
+                ['severity' => DiagnosticSeverity::Hint, 'message' => 'Elsewhere', 'col' => 5, 'endCol' => 6],
+            ],
+        ];
+    }
+
+    /** PhpStorm's Alt+Shift+Enter: the problem's first fix, without the list. */
+    public function testApplyQuickFixAppliesTheFirstFixForTheProblemAtTheCaret(): void
+    {
+        [$controller] = $this->ready();
+        $this->problemOnX();
+
+        $controller->requestApplyQuickFix(1, 1);
+        $request = \end($this->client->requests);
+        /** @var array{context: array{diagnostics: list<array<string, mixed>>}} $params */
+        $params = $request['params'];
+        $this->assertSame(['E1'], \array_column($params['context']['diagnostics'], 'code'), 'about the problem at the caret, not the whole line');
+
+        $request['respond']([self::renameTo('z', kind: 'refactor.rewrite'), self::renameTo('y')], error: null);
+
+        $this->assertSame("<?php\ny = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText(), 'the quick fix, not the refactoring before it');
+    }
+
+    public function testApplyQuickFixAppliesOnceWhateverAnswersLater(): void
+    {
+        [$controller] = $this->ready(servers: 2);
+        $this->problemOnX();
+        $controller->requestApplyQuickFix(1, 1);
+        [$first, $second] = $this->clients;
+
+        \end($first->requests)['respond']([self::renameTo('y')], error: null);
+        \end($second->requests)['respond']([self::renameTo('w')], error: null);
+
+        $this->assertSame("<?php\ny = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText());
+    }
+
+    public function testApplyQuickFixWaitsForEveryServerBeforeSayingThereIsNone(): void
+    {
+        [$controller] = $this->ready(servers: 2);
+        $this->problemOnX();
+        $controller->requestApplyQuickFix(1, 1);
+        [$first, $second] = $this->clients;
+
+        \end($first->requests)['respond']([self::renameTo('z', kind: 'refactor')], error: null);
+        $this->assertStringNotContainsString('No quick fix', $this->flashed(), 'the other server may still have one');
+        \end($second->requests)['respond']([self::renameTo('v', kind: 'source')], error: null);
+
+        $this->assertStringContainsString('No quick fix for this problem', $this->flashed());
+        $this->assertSame("<?php\n\$x = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText());
+    }
+
+    public function testApplyQuickFixAwayFromAProblemAsksNothing(): void
+    {
+        [$controller] = $this->ready();
+        $this->problemOnX();
+
+        $controller->requestApplyQuickFix(1, 4);
+
+        $this->assertStringContainsString('No problem at the caret', $this->flashed());
+        $this->assertSame([], \array_filter($this->client->requests, static fn (array $r): bool => 'textDocument/codeAction' === $r['method']));
     }
 
     public function testNoQuickFixesFlashesWhenTheResultIsEmptyOrErrored(): void

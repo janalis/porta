@@ -249,6 +249,13 @@
     "code_action": [
         "alt+enter"
     ],
+    "apply_quick_fix": [
+        "alt+shift+enter"
+    ],
+    "show_error_description": [
+        "ctrl+f1",
+        "alt+q"
+    ],
     "refactor_this": [
         "ctrl+alt+shift+t"
     ],

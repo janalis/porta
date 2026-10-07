@@ -23,6 +23,9 @@ interface EditorNavigationHandler
     /** Quick documentation (hover). */
     public function requestHover(int $line, int $col): void;
 
+    /** PhpStorm's Error Description (Ctrl+F1): the problems at the caret, in full. */
+    public function requestErrorDescription(int $line, int $col): void;
+
     /** Find usages (references). */
     public function requestReferences(int $line, int $col): void;
 

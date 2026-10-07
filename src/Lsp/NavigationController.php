@@ -5,15 +5,19 @@ declare(strict_types=1);
 namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\DiagnosticHit;
+use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\FileOpener;
 use Porta\Editor\JumpHistory;
 use Porta\Editor\LineTextReader;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\ProblemCards;
 use Porta\I18n\Translator;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\NativeDocs;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
+use Porta\Ui\TooltipBody;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorNavigationHandler;
 use Porta\Widget\Support\ResultsPanelFields;
@@ -51,6 +55,7 @@ final class NavigationController extends AbstractLspController implements Editor
         private readonly DocsUrlOpener $docsUrls,
         private readonly JumpHistory $history,
         private readonly LineTextReader $text,
+        private readonly ProblemCards $problems,
     ) {
         parent::__construct($lsp, $editor, $tui, $notifier, $translator);
     }
@@ -345,9 +350,36 @@ final class NavigationController extends AbstractLspController implements Editor
         });
     }
 
+    /**
+     * PhpStorm's Shift+F1 with the caret on a problem: the problem heads the
+     * documentation, as in PhpStorm's combined popup — and is said on its own
+     * when there is no documentation, or no server to ask for it.
+     */
     #[\Override]
     public function requestHover(int $line, int $col): void
     {
+        $here = $this->problemsAtCaret($line, $col);
+        if ([] !== $here) {
+            // Bare ready(), not readyOrExplain(): the problem is the answer
+            // with or without a server, so "no server" is nothing to say.
+            if (null === ($path = $this->ready())) {
+                $this->showProblems('', $here, $line);
+
+                return;
+            }
+            $this->send(
+                'textDocument/hover',
+                $this->positionParams($path, $line, $col),
+                function (mixed $result) use ($here, $line): bool {
+                    $this->showProblems(LspMapper::hoverToText($result) ?? '', $here, $line);
+
+                    return true;
+                },
+                fn () => $this->showProblems('', $here, $line),
+            );
+
+            return;
+        }
         $this->requestAt(
             'textDocument/hover',
             $line,
@@ -366,6 +398,50 @@ final class NavigationController extends AbstractLspController implements Editor
             },
             fn () => $this->flash($this->trans('No documentation found')),
         );
+    }
+
+    /**
+     * PhpStorm's Error Description (Ctrl+F1): the problems at the caret, in
+     * full, in the popup the documentation uses — no server needed, the
+     * problems are already here.
+     */
+    #[\Override]
+    public function requestErrorDescription(int $line, int $col): void
+    {
+        $here = $this->problemsAtCaret($line, $col);
+        if ([] === $here) {
+            $this->flash($this->trans('No problem at the caret'));
+
+            return;
+        }
+        $this->showProblems('', $here, $line);
+    }
+
+    /**
+     * @return list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>
+     */
+    private function problemsAtCaret(int $line, int $col): array
+    {
+        return DiagnosticHit::atCaret($this->editor->decorations->diagnostics[$line] ?? [], $col);
+    }
+
+    /**
+     * The popup, headed by the problems; their fix line, when a server offers
+     * one, arrives in that same popup — never in one opened since.
+     *
+     * @param non-empty-list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}> $here
+     */
+    private function showProblems(string $text, array $here, int $line): void
+    {
+        $popup = $this->editor->showDocPopup($text);
+        // Set on THIS popup: one closed or replaced since never shows it.
+        $popup->problems = $this->problems->body($here, $line, function (TooltipBody $body) use ($popup): void {
+            $popup->problems = $body;
+            $this->editor->invalidate();
+            $this->tui->requestRender();
+        });
+        $this->editor->invalidate();
+        $this->tui->requestRender();
     }
 
     #[\Override]

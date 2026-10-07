@@ -49,6 +49,9 @@ final class LspRefusalTest extends TestCase
     private const array SILENT_BY_DESIGN = [
         'CompletionController.php' => ['requestCompletion', 'requestSignatureHelp'],
         'RefactorController.php' => ['requestCodeActions'],
+        // Shift+F1 on a problem: the problem is the answer with or without a
+        // server, so there is no "no server" to say — the docs only join it.
+        'NavigationController.php' => ['requestHover'],
     ];
 
     /**
