@@ -52,9 +52,12 @@ final class ErrorStripe
             // content left open; the styles then close themselves. The mark
             // under the pointer underlines, as every click target does.
             $thumb = $showThumb && $r >= $thumbTop && $r <= $thumbBottom;
+            $role = null === $mark ? null : $mark['kind']->role($mark['severity'], $mark['change']);
+            $fill = null === $mark ? null : self::fill($mark, $styles);
             $style = match (true) {
-                null !== $mark && $thumb => $styles->merge(Role::RowHighlightBg, $mark['kind']->role($mark['severity'], $mark['change'])),
-                null !== $mark => $styles->of($mark['kind']->role($mark['severity'], $mark['change'])),
+                null !== $role && null !== $fill => $styles->merge($fill, $role),
+                null !== $role && $thumb => $styles->merge(Role::RowHighlightBg, $role),
+                null !== $role => $styles->of($role),
                 $thumb => $styles->merge(Role::RowHighlightBg, Role::Faint),
                 default => null,
             };
@@ -70,6 +73,29 @@ final class ErrorStripe
         }
 
         return $cells;
+    }
+
+    /**
+     * A problem's cell is filled with its severity's colour, as its line's
+     * gutter is — the glyph drawn in that colour too, so the cell reads as
+     * one block whatever its density. Not for a hint (the gutter marks none),
+     * and not without colour, where the glyph's density is what says the
+     * severity and a reversed full block would read as empty.
+     *
+     * @param array{kind: StripeMark, line: int, severity: ?DiagnosticSeverity, change: ?ChangeMarkKind} $mark
+     */
+    private static function fill(array $mark, Styles $styles): ?Role
+    {
+        if (StripeMark::Diagnostic !== $mark['kind'] || !$styles->hasColor()) {
+            return null;
+        }
+
+        return match ($mark['severity']) {
+            DiagnosticSeverity::Error, null => Role::GutterError,
+            DiagnosticSeverity::Warning => Role::GutterWarning,
+            DiagnosticSeverity::Information => Role::GutterNotice,
+            DiagnosticSeverity::Hint => null,
+        };
     }
 
     /**

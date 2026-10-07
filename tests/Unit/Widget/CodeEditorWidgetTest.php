@@ -1079,8 +1079,8 @@ final class CodeEditorWidgetTest extends TestCase
 
         // The stripe carries a block whose density encodes the worst severity,
         // mapped to its proportional row.
-        $this->assertStringContainsString("\x1b[38;5;203m█", \implode('', $rendered), 'error: full block, colored red, in the stripe');
-        $this->assertStringContainsString("\x1b[38;5;220m▒", \implode('', $rendered), 'info: medium-shade block in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;203m█", \implode('', $rendered), 'error: a red-filled cell in the stripe');
+        $this->assertStringContainsString("\x1b[38;5;220m\x1b[48;5;220m▒", \implode('', $rendered), 'info: a yellow-filled cell in the stripe');
         $this->assertStringContainsString("\x1b[38;5;244m░", \implode('', $rendered), 'hint: light-shade block in the stripe');
 
         // Inline message on line 1 shows the worst (error) message + a "+1" count.
@@ -1105,8 +1105,8 @@ final class CodeEditorWidgetTest extends TestCase
 
         // The stripe (last column) marks both problems even though line 55 is off-screen.
         $all = \implode('', $rendered);
-        $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;236m█", $all, 'error block in the stripe, over the viewport thumb');
-        $this->assertStringContainsString("\x1b[38;5;208m▓", $all, 'off-screen warning shown as a dashed orange block');
+        $this->assertStringContainsString("\x1b[38;5;203m\x1b[48;5;203m█", $all, 'error cell in the stripe, filled over the viewport thumb');
+        $this->assertStringContainsString("\x1b[38;5;208m\x1b[48;5;208m▓", $all, 'off-screen warning shown as an orange-filled cell');
         $this->assertSame(1, \substr_count($all, needle: '█'), 'the empty list draws no stripe mark');
         $this->assertSame(1, \substr_count($all, needle: '▓'), 'one warning mark');
 

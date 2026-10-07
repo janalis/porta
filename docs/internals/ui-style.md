@@ -109,7 +109,10 @@ it. A severity tint's background is that severity's own colour (`DiagError`,
 `DiagWarn`, `DiagInfo`) and the hint tint's is the inlay pill's —
 `ThemeLockTest` holds both — so the IDE says a severity in one colour wherever
 it says it. No problem glyph is drawn in the gutter; monochrome says severity
-by reverse (error) and underline.
+by reverse (error) and underline. The marker stripe fills a problem's cell
+with the same tint's colour (`ErrorStripe::fill`), the glyph in it too, so the
+two margins say a severity alike; a hint, and the monochrome theme, keep the
+glyph alone.
 
 ## Inlay hints and the problem card
 

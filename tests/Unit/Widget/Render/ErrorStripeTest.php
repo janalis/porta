@@ -105,9 +105,33 @@ final class ErrorStripeTest extends TestCase
         $this->assertSame(Sgr::RESET.' ', $cells[9], 'below the thumb stays blank');
         $marked = $cells[5];
         $this->assertSame(Glyphs::STRIPE_ERROR, AnsiUtils::stripAnsiCodes($marked), 'the diagnostic mark rides the thumb row');
-        $plainMark = $this->cells($diagnostics, rows: 10, lineCount: 100)[5];
-        $this->assertNotSame($plainMark, $marked, 'the thumb background merges under the mark');
+        $this->assertSame($this->cells($diagnostics, rows: 10, lineCount: 100)[5], $marked, 'a problem\'s fill is its own, on the thumb or off it');
         $this->assertStringStartsWith(Sgr::RESET, $marked, 'the leading reset shields the cell from prior row state, same as every other cell');
+
+        // Any other mark keeps the thumb's shade under it.
+        $change = new StripeMarks([], [55 => ChangeMarkKind::Modified], [], []);
+        $this->assertNotSame($this->stripe($change, 10, 100)[5], $this->stripe($change, 10, 100, 50, 79)[5], 'the thumb background merges under a change mark');
+    }
+
+    /**
+     * A problem's cell is filled with its severity's colour, as its line's
+     * gutter is; a hint's keeps its faint glyph, and without colour the
+     * glyph's density alone says it.
+     */
+    public function testAProblemFillsItsCellWithItsSeveritysColour(): void
+    {
+        foreach ([
+            [DiagnosticSeverity::Error,       203],
+            [DiagnosticSeverity::Warning,     208],
+            [DiagnosticSeverity::Information, 220],
+        ] as [$severity, $colour]) {
+            $cell = $this->stripe(new StripeMarks([0 => $severity], [], [], []), 1, 1)[0];
+            $this->assertStringContainsString("\e[38;5;{$colour}m\e[48;5;{$colour}m", $cell, "{$severity->name}: glyph and cell in its colour");
+        }
+        $hint = $this->stripe(new StripeMarks([0 => DiagnosticSeverity::Hint], [], [], []), 1, 1)[0];
+        $this->assertStringNotContainsString("\e[48;5;", $hint, 'a hint is not filled');
+        $mono = $this->stripe(new StripeMarks([0 => DiagnosticSeverity::Error], [], [], []), 1, 1, styles: new Styles(MonochromeTheme::definition()))[0];
+        $this->assertSame(Sgr::RESET.Glyphs::STRIPE_ERROR, $mono, 'monochrome: the block alone, never reversed into a blank');
     }
 
     /** The file exactly fills the viewport: no scrolling possible, so no thumb at all. */

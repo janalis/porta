@@ -632,7 +632,7 @@ the file, and the kinds resolve by strict precedence:
 | Mark | Means |
 | --- | --- |
 | `▶` | the debugger's stopped line |
-| `█` `▓` `▒` `░` | a diagnostic — the block gets heavier with the severity |
+| `█` `▓` `▒` `░` | a diagnostic — the block gets heavier with the severity; with colour an error's, a warning's or a notice's cell is filled with its colour, as its line's gutter is |
 | `●` | a breakpoint |
 | `━` | the search hit `F3` is on |
 | `▎` `┆` `▁` | a git change — added / modified / deleted, the same marks the gutter draws |
