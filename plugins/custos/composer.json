@@ -1,0 +1,14 @@
+{
+    "name": "porta/custos",
+    "description": "custos, the PHP inspector and fixer, as a supplementary language server and a file fixer",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\Custos\\": "src/"
+        }
+    }
+}

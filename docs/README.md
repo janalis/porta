@@ -39,6 +39,7 @@ plugin's guide also opens from its page under **Settings → Plugins**.
 | [PHPantom](../plugins/phpantom/docs/README.md) | The suggested PHP language server, and its fixer |
 | [Phpactor](../plugins/phpactor/docs/README.md) | Phpactor as the PHP language server instead |
 | [Symfony language server](../plugins/symfony-lsp/docs/README.md) | Twig, YAML, XML, JSON and dotenv intelligence, installed and updated for you |
+| [custos](../plugins/custos/docs/README.md) | PHP inspections and quick-fixes beside your language server, and Fix File |
 | [PHPStan](../plugins/phpstan/docs/README.md) | Analyse the current file, or every file on save |
 | [Psalm](../plugins/psalm/docs/README.md) | Analyse the current file, or every file on save |
 | [Mago](../plugins/mago/docs/README.md) | Format and lint, on demand or on save |

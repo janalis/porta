@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="fr" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>%tool%: save %file% first — the fix runs on the file on disk</source>
+        <target>%tool% : enregistrez d'abord %file% — la correction s'applique au fichier sur le disque</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

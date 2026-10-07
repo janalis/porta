@@ -25,7 +25,8 @@ their whole implementation and PROVIDE their pane (`graph-viewer` requires
 `image-viewer`, because a graph is painted with the same rasterizer); `review`
 is the reference use of `setCommentMarks` and `setLineBlocks` (and requires
 `git` for its classes); `chroma` is an external-highlighter example;
-`symfony-lsp` downloads and updates its own server binary; `todo`,
+`symfony-lsp` downloads and updates its own server binary; `custos` runs a
+supplementary language server beside the primary PHP one; `todo`,
 `local-history` and `git` are core features that moved out, keeping their ids
 by adoption. Every bundled plugin surfaces its commands in the Plugins menu and
 its knobs on its own settings page.

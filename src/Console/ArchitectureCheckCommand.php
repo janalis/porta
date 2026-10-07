@@ -117,6 +117,10 @@ final class ArchitectureCheckCommand extends Command
         'Console>Plugin', // PluginCommands reads bundled manifests for `porta <name>`, and runs only a Plugin\Api\PluginCommand
         'Console>Support',
         'Container>Config',
+        // The custos plugin's own code (plugins/custos/src): ServerNotFound, so
+        // a php claim with no binary leaves custos out instead of launching a
+        // broken process. Its plugin.php does the rest of the wiring.
+        'Custos>Plugin',
         'Debug>Container',
         'Debug>Editor',
         'Debug>Event',
