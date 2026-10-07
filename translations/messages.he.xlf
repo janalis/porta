@@ -3334,6 +3334,14 @@
         <source>Invalid key "%key%" bound to "%action%"</source>
         <target>מקש לא חוקי "%key%" משויך ל-"%action%"</target>
       </trans-unit>
+      <trans-unit id="1155">
+        <source>Parameter name hints</source>
+        <target>רמזי שמות פרמטרים</target>
+      </trans-unit>
+      <trans-unit id="1156">
+        <source>Type hints</source>
+        <target>רמזי טיפוסים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -40,6 +40,10 @@ final class MonochromeTheme
                 // A placeholder must not read as a typed value; Dim is plain
                 // here, so the placeholder carries its own dim + italic.
                 Role::FieldPlaceholder->selector() => new Style(dim: true, italic: true),
+                // A hint is not code: with no shade to put it on, it is faint
+                // and slanted, as a placeholder is — never plain text.
+                Role::InlayParameter->selector() => new Style(dim: true, italic: true),
+                Role::InlayType->selector() => new Style(dim: true, italic: true),
                 Role::BarHoverBg->selector() => new Style(underline: true),
                 // Character selection is reverse (like the row selection); search
                 // and occurrence highlights are underline. Without these, selecting

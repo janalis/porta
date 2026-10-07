@@ -24,6 +24,10 @@ final class EditorDisplayOptions
 {
     public private(set) DiagnosticMessageMode $diagnosticMessages = DiagnosticMessageMode::Inline;
     public private(set) InlayHintMode $inlayHints = InlayHintMode::Inline;
+
+    /** PhpStorm's default: a parameter's name only where the argument is a literal. */
+    public private(set) InlayParameterHints $inlayParameterHints = InlayParameterHints::Literals;
+    public private(set) bool $inlayTypeHints = true;
     public private(set) LineNumberMode $lineNumbers = LineNumberMode::Absolute;
     public private(set) bool $vcsGutter = true;
     public private(set) bool $stickyScroll = true;
@@ -62,6 +66,16 @@ final class EditorDisplayOptions
     public function setInlayHints(InlayHintMode $mode): bool
     {
         return $this->apply($this->inlayHints, $mode);
+    }
+
+    public function setInlayParameterHints(InlayParameterHints $which): bool
+    {
+        return $this->apply($this->inlayParameterHints, $which);
+    }
+
+    public function setInlayTypeHints(bool $on): bool
+    {
+        return $this->apply($this->inlayTypeHints, $on);
     }
 
     public function setLineNumbers(LineNumberMode $mode): bool

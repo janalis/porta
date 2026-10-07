@@ -10,6 +10,7 @@ use Porta\Editor\CompletionItem;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
+use Porta\Editor\InlayHintKind;
 use Porta\Editor\InlayLine;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
@@ -209,7 +210,9 @@ final class EditorRenderer
      * otherwise paint the hint as part of the word. The slice after it
      * replays the state still open, and the caret-line band re-asserts its
      * background after every reset ({@see LineDecorator::applyFullWidth}).
-     * Its margins are bare cells: only the label is the hint's.
+     * A hint is a shaded pill, a parameter's name in one shade and a type in
+     * another; its margins are bare cells outside the shade, so the pill sits
+     * beside the code rather than swallowing the space next to it.
      */
     public static function applyInlayHints(InlayLine $inlay, string $hlLine, Styles $styles): string
     {
@@ -230,7 +233,8 @@ final class EditorRenderer
                 $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $col - $prev);
                 $prev = $col;
             }
-            $out .= Sgr::RESET.($hint->padLeft ? ' ' : '').$styles->of(Role::Inlay)->apply($hint->label).($hint->padRight ? ' ' : '');
+            $role = InlayHintKind::Parameter === $hint->kind ? Role::InlayParameter : Role::InlayType;
+            $out .= Sgr::RESET.($hint->padLeft ? ' ' : '').$styles->of($role)->apply($hint->label).($hint->padRight ? ' ' : '');
         }
         if ($prev < $lineWidth) {
             $out .= AnsiUtils::sliceByColumn($hlLine, $prev, $lineWidth - $prev);

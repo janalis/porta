@@ -13,6 +13,7 @@ use Porta\Ui\Theme\LightTheme;
 use Porta\Ui\Theme\MonochromeTheme;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\ThemeDefinition;
+use Symfony\Component\Tui\Style\Color;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -56,6 +57,8 @@ final class ThemeLockTest extends TestCase
         yield 'placeholder' => [Role::Placeholder, new Style(color: 238)];
         yield 'rule' => [Role::Rule, new Style(color: 238)];
         yield 'inlay' => [Role::Inlay, new Style(color: 243)];
+        yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 238, color: 250)];
+        yield 'inlay-type' => [Role::InlayType, new Style(background: 238, color: 245)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 149)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 238)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 114)];
@@ -132,6 +135,8 @@ final class ThemeLockTest extends TestCase
         yield 'placeholder' => [Role::Placeholder, new Style(color: 250)];
         yield 'rule' => [Role::Rule, new Style(color: 250)];
         yield 'inlay' => [Role::Inlay, new Style(color: 245)];
+        yield 'inlay-parameter' => [Role::InlayParameter, new Style(background: 254, color: 240)];
+        yield 'inlay-type' => [Role::InlayType, new Style(background: 254, color: 243)];
         yield 'debug-value' => [Role::DebugValue, new Style(color: 28)];
         yield 'indent-guide' => [Role::IndentGuide, new Style(color: 250)];
         yield 'git-added' => [Role::VcsAdded, new Style(color: 28)];
@@ -272,6 +277,8 @@ final class ThemeLockTest extends TestCase
             Role::RowHighlightBg,
             Role::DropTargetRow,
             Role::FieldPlaceholder,
+            Role::InlayParameter,
+            Role::InlayType,
             Role::BarHoverBg,
             Role::SelectionBg,
             Role::SearchBg,
@@ -293,6 +300,40 @@ final class ThemeLockTest extends TestCase
             }
             $this->assertTrue($mono->of($role)->isPlain(), $role->name.' must stay plain');
             $this->assertSame('', $mono->underline($role), $role->name.' must have no underline color');
+        }
+    }
+
+    /**
+     * A hint pill sits in the code, so its shade must never be mistaken for
+     * one the code wears: the hover or current-line band, a selection, a
+     * search match or an occurrence.
+     */
+    #[DataProvider('colourThemes')]
+    public function testAnInlayPillHasAShadeOfItsOwn(ThemeDefinition $theme): void
+    {
+        $others = [Role::RowHighlightBg, Role::SelectionBg, Role::SearchBg, Role::SearchCurrentBg, Role::OccurrenceBg, Role::OccurrenceWriteBg];
+        foreach ([Role::InlayParameter, Role::InlayType] as $pill) {
+            $shade = $theme->of($pill)->getBackground();
+            $this->assertInstanceOf(Color::class, $shade, "{$pill->name} is shaded");
+            foreach ($others as $other) {
+                $this->assertNotEquals($theme->of($other)->getBackground(), $shade, "{$pill->name} differs from {$other->name}");
+            }
+        }
+    }
+
+    /** @return iterable<string, array{ThemeDefinition}> */
+    public static function colourThemes(): iterable
+    {
+        yield 'dark' => [DarkTheme::definition()];
+        yield 'light' => [LightTheme::definition()];
+        yield 'high contrast' => [HighContrastTheme::definition()];
+    }
+
+    public function testMonochromeDrawsAHintFaintAndSlantedNeverAsCode(): void
+    {
+        $mono = MonochromeTheme::definition();
+        foreach ([Role::InlayParameter, Role::InlayType] as $pill) {
+            $this->assertEquals(new Style(dim: true, italic: true), $mono->of($pill));
         }
     }
 

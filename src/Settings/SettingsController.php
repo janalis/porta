@@ -9,6 +9,7 @@ use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
+use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\TooltipCenter;
@@ -173,6 +174,23 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyInlayHints((string) $v),
                 'options' => ['none', 'inline', 'tooltip'],
+            ],
+            'inlayParameterHints' => [
+                'label' => 'Parameter name hints',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'interface',
+                'fieldset' => 'Editor',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v): bool => $editor->setInlayParameterHints(InlayParameterHints::tryFrom((string) $v) ?? InlayParameterHints::Literals),
+                'options' => ['none', 'literals', 'all'],
+            ],
+            'inlayTypeHints' => [
+                'label' => 'Type hints',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'fieldset' => 'Editor',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v): bool => $editor->setInlayTypeHints((bool) $v),
             ],
             'tooltips' => [
                 'label' => 'Show tooltips',

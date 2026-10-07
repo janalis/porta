@@ -22,12 +22,30 @@ final readonly class InlayLines
     /**
      * The hints a line shows, whatever the mode: the hover card of
      * {@see InlayHintMode::Tooltip} lists the same ones the line would draw.
+     * Each kind answers to its own setting; a parameter's name, by default,
+     * only before a literal argument — read from the line as it is now. A
+     * by-reference parameter (`&name:`) always says so: that it may write
+     * back is not something the argument shows.
      *
      * @return list<InlayHint>
      */
-    public function shown(int $line): array
+    public function shown(Document $doc, int $line): array
     {
-        return $this->store->inlayHintsAt($line);
+        $hints = $this->store->inlayHintsAt($line);
+        if ([] === $hints) {
+            return [];
+        }
+        $text = $doc->getLine($line);
+
+        return \array_values(\array_filter($hints, fn (InlayHint $hint): bool => match ($hint->kind) {
+            InlayHintKind::Type => $this->display->inlayTypeHints,
+            InlayHintKind::Parameter => match ($this->display->inlayParameterHints) {
+                InlayParameterHints::None => false,
+                InlayParameterHints::All => true,
+                InlayParameterHints::Literals => \str_starts_with($hint->label, '&') || InlayArgument::isLiteral($text, $hint->col),
+            },
+            null => true,
+        }));
     }
 
     /** The hints drawn INTO the line: only in {@see InlayHintMode::Inline}. */
@@ -37,6 +55,6 @@ final readonly class InlayLines
             return InlayLine::none();
         }
 
-        return InlayLine::place($this->shown($line), $doc, $line, $wrapWidth);
+        return InlayLine::place($this->shown($doc, $line), $doc, $line, $wrapWidth);
     }
 }

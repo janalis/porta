@@ -204,7 +204,10 @@ final class EditorRendererTest extends TestCase
         $this->assertTrue(self::backgroundOpenBefore($out, ': string'), 'and the span resumes after it');
     }
 
-    /** Whether a background colour is in force where $needle starts in $ansi. */
+    /**
+     * Whether the decoration's background (48;5;100 in these tests) is in
+     * force where $needle starts in $ansi — a pill's own shade is not it.
+     */
     private static function backgroundOpenBefore(string $ansi, string $needle): bool
     {
         $at = \strpos($ansi, $needle);
@@ -213,8 +216,8 @@ final class EditorRendererTest extends TestCase
         $open = false;
         foreach ($codes[1] as $params) {
             $open = match (true) {
-                '' === $params, '0' === $params, '49' === $params => false,
-                \str_starts_with($params, '48;') => true,
+                '48;5;100' === $params => true,
+                '' === $params, '0' === $params, '49' === $params, \str_starts_with($params, '48;') => false,
                 default => $open,
             };
         }

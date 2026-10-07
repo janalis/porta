@@ -51,6 +51,8 @@ final class DarkTheme
                 Role::Rule->selector() => new Style(color: 238),
                 Role::DebugValue->selector() => new Style(color: 149),
                 Role::Inlay->selector() => new Style(color: 243),
+                Role::InlayParameter->selector() => new Style(background: 238, color: 250),
+                Role::InlayType->selector() => new Style(background: 238, color: 245),
                 Role::IndentGuide->selector() => new Style(color: 238),
                 Role::VcsAdded->selector() => new Style(color: 114),
                 Role::VcsModified->selector() => new Style(color: 75),

@@ -272,18 +272,29 @@ precedence when enabled — see [configuration.md](configuration.md).
 Line numbers (absolute or relative), git change markers (added / modified /
 deleted vs `HEAD`, refreshed on open and save), diagnostic markers,
 breakpoint dots, fold triangles, indent guides, identifier-occurrence and matching-bracket
-highlighting, and dimmed inline parameter-name/type **inlay hints** from
-the language server.
+highlighting, and parameter-name/type **inlay hints** from the language
+server.
 
 **Inlay hints** (Settings → Interface → Editor, or `Cycle Inlay Hints`) show
 in one of three ways:
-- `inline` puts them in the line, keeping the space the server asks for, so
-  phpantom's reference count reads `StatusTone 46 references`;
+- `inline` draws each one in the line as a shaded pill, with the space the
+  server asks for left outside it, so `sum(base: 42)` and phpantom's
+  `StatusTone 46 references` read as code with a note beside it. A
+  parameter's name and a type have different shades; under the monochrome
+  theme a hint is faint and slanted;
 - `tooltip` puts them on a [card](#tooltips) when the pointer rests on the
   word they belong to;
 - `none` does not request them at all.
 
-A switch applies at once.
+As in PhpStorm, a parameter's name shows only before an argument that says
+nothing about its purpose on its own — a number, a string, an array, `null`,
+`true` or `false` — and always for a by-reference parameter (`&name:`).
+**Parameter name hints** shows them for `all` arguments or `none`; **Type
+hints** turns the inferred types off. A switch applies at once.
+
+A hint never moves your text: a click on it lands on the character it sits
+before, and on a soft-wrapped line a hint is drawn only where its row has room
+— one that would push code off the row is left out.
 
 The caret line's number is bold. With colour, a shaded band marks the whole
 caret line. In the monochrome theme (and under `--no-ansi`) there is no band;

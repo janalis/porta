@@ -195,9 +195,16 @@ foreach (readFrames($in) as $message) {
         // unaffected. Exercises string labels, label parts, and skips.
         $uri = (string) ($message['params']['textDocument']['uri'] ?? '');
         $hints = [];
-        if (str_contains($uri, 'Inlay')) {
+        if (str_contains($uri, 'Params')) {
+            // A call's parameter names, PhpStorm-style: one before a literal
+            // (shown by default), one before a variable (shown only on `all`).
             $hints = [
-                ['position' => ['line' => 1, 'character' => 2], 'label' => ': int'],
+                ['position' => ['line' => 1, 'character' => 2], 'label' => 'n:', 'kind' => 2, 'paddingRight' => true],
+                ['position' => ['line' => 1, 'character' => 6], 'label' => 'm:', 'kind' => 2, 'paddingRight' => true],
+            ];
+        } elseif (str_contains($uri, 'Inlay')) {
+            $hints = [
+                ['position' => ['line' => 1, 'character' => 2], 'label' => ': int', 'kind' => 1],
                 ['position' => ['line' => 1, 'character' => 0], 'label' => [['value' => 'x'], ['value' => '= ']]],
                 ['position' => ['line' => 1, 'character' => 5], 'label' => '   '], // trims to empty -> skipped
                 ['label' => 'no-position-skipped'],

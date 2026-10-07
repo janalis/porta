@@ -16,6 +16,7 @@ use Porta\Ide;
 use Porta\Lsp\LspLog;
 use Porta\Lsp\Uri;
 use Porta\Onboarding\OnboardingState;
+use Porta\Settings\SettingsController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Paint;
@@ -26,7 +27,9 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
+use Porta\Ui\Role;
 use Porta\Ui\Sgr;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\ResultsPanelWidget;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -485,6 +488,34 @@ final class IdeLspFeaturesTest extends TestCase
                     $this->awaitPainted($tui, $terminal, ': int');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString(': int', $screen, 'inlay type hint rendered inline');
+                },
+            ],
+        );
+    }
+
+    /**
+     * A parameter's name is a shaded pill before a literal argument and
+     * nothing before a variable, as in PhpStorm — until the setting asks for
+     * all of them, which applies without asking the server again.
+     */
+    public function testParameterHintsArePillsBeforeLiteralsOnly(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => $this->mockLspConfig(),
+            'src/Params.php' => "<?php\nf(42, \$y);\n",
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('src/Params.php'),
+            [
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitPainted($tui, $terminal, 'f(n: 42, $y);');
+                    $pill = Styles::dark()->of(Role::InlayParameter)->apply('n:');
+                    $this->assertStringContainsString($pill, $terminal->getOutput(), 'the name is drawn as a pill');
+
+                    Services::resolve($ide, SettingsController::class)->changeSetting('inlayParameterHints', 'all');
+                    $this->awaitPainted($tui, $terminal, 'f(n: 42, m: $y);');
                 },
             ],
         );

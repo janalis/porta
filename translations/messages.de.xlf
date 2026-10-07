@@ -3334,6 +3334,14 @@
         <source>Invalid key "%key%" bound to "%action%"</source>
         <target>Ungültige Taste „%key%" für „%action%"</target>
       </trans-unit>
+      <trans-unit id="1155">
+        <source>Parameter name hints</source>
+        <target>Parameternamen-Hinweise</target>
+      </trans-unit>
+      <trans-unit id="1156">
+        <source>Type hints</source>
+        <target>Typ-Hinweise</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

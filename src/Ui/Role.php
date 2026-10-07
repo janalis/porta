@@ -93,6 +93,16 @@ enum Role
     case Inlay;
 
     /**
+     * An inlay hint drawn into the code, PhpStorm's way: a shaded pill, so
+     * virtual text never reads as source. A parameter's name (`name:` before
+     * an argument) and an inferred type (`: int`) each have their own, so
+     * the two can be told apart at a glance. {@see Inlay} stays the plain grey
+     * of trailing annotations and block rows, which are not in the code.
+     */
+    case InlayParameter;
+    case InlayType;
+
+    /**
      * The debugger's value for a line, in the trailing slot. Its own role
      * rather than {@see Inlay}'s grey: an inlay hint is what the code MEANS and
      * is always there, a debug value is what it currently HOLDS and is there

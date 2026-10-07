@@ -3334,6 +3334,14 @@
         <source>Invalid key "%key%" bound to "%action%"</source>
         <target>「%action%」に割り当てられたキー「%key%」は無効です</target>
       </trans-unit>
+      <trans-unit id="1155">
+        <source>Parameter name hints</source>
+        <target>パラメーター名のヒント</target>
+      </trans-unit>
+      <trans-unit id="1156">
+        <source>Type hints</source>
+        <target>型のヒント</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -50,6 +50,8 @@ final class LightTheme
                 Role::Rule->selector() => new Style(color: 250),
                 Role::DebugValue->selector() => new Style(color: 28),
                 Role::Inlay->selector() => new Style(color: 245),
+                Role::InlayParameter->selector() => new Style(background: 254, color: 240),
+                Role::InlayType->selector() => new Style(background: 254, color: 243),
                 Role::IndentGuide->selector() => new Style(color: 250),
                 Role::VcsAdded->selector() => new Style(color: 28),
                 Role::VcsModified->selector() => new Style(color: 25),

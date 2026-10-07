@@ -172,7 +172,9 @@ catalog validation and bind if the plugin loads.
 | `language` | `"auto"` | UI locale: `auto` (the system's: `LC_ALL`, `LC_MESSAGES` or `LANG` on Linux and macOS, the display language on Windows via ext-intl; English when Porta has no catalog for it), `en`, `fr`, `de`, `es`, `it`, `ja`, `he` (Hebrew mirrors the layout right-to-left) |
 | `theme` | `"dark"` | Color theme: `dark`, `light` or `high-contrast` (WCAG-AAA pairings) — swaps chrome and syntax colors live |
 | `diagnosticMessages` | `"inline"` | Where a diagnostic's message shows: `none`, `inline` (dimmed after the line's code) or `menu` (at the top of the Alt+Enter quick-fix list). The squiggle, gutter mark, stripe and Problems panel show in every mode. Replaces `inlineDiagnostics` (`true` → `inline`, `false` → `none`), which still loads and is retired the first time this one is written |
-| `inlayHints` | `"inline"` | Where the language server's inlay hints (parameter names, types, reference counts) show: `none` (not requested at all), `inline` (dim text in the line) or `tooltip` (a card when the pointer rests on the word) |
+| `inlayHints` | `"inline"` | Where the language server's inlay hints (parameter names, types, reference counts) show: `none` (not requested at all), `inline` (a shaded pill in the line) or `tooltip` (a card when the pointer rests on the word) |
+| `inlayParameterHints` | `"literals"` | Which parameter-name hints show: `none`, `literals` (only before an argument that is a number, a string, an array, `null`, `true` or `false`, as PhpStorm does; a by-reference parameter always shows) or `all` |
+| `inlayTypeHints` | `true` | Show the inferred-type hints (`: int` after a variable) |
 | `lineNumbers` | `"absolute"` | Gutter numbering: `off`, `absolute` or `relative`. Replaces `relativeLineNumbers`, which still loads and is retired the first time this one is written |
 | `autoPairs` | `true` | Auto-closing brackets and quotes |
 | `breadcrumbs` | `true` | The navigation bar above the editor: the file's path, then the scopes around the caret. Off, a previewed file (Markdown, SVG, a diagram) still shows its `Editor` / `Split` / `Preview` toggles on that row |

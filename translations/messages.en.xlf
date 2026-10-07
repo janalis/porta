@@ -3334,6 +3334,14 @@
         <source>Invalid key "%key%" bound to "%action%"</source>
         <target>Invalid key "%key%" bound to "%action%"</target>
       </trans-unit>
+      <trans-unit id="1155">
+        <source>Parameter name hints</source>
+        <target>Parameter name hints</target>
+      </trans-unit>
+      <trans-unit id="1156">
+        <source>Type hints</source>
+        <target>Type hints</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -51,6 +51,8 @@ final class HighContrastTheme
                 Role::Rule->selector() => new Style(color: 244),
                 Role::DebugValue->selector() => new Style(color: 118),
                 Role::Inlay->selector() => new Style(color: 250),
+                Role::InlayParameter->selector() => new Style(background: 238, color: 231),
+                Role::InlayType->selector() => new Style(background: 238, color: 252),
                 Role::IndentGuide->selector() => new Style(color: 242),
                 Role::VcsAdded->selector() => new Style(color: 120),
                 Role::VcsModified->selector() => new Style(color: 51),

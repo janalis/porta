@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\InlayHintMode;
+use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 
 /**
@@ -56,6 +57,7 @@ final class EditorDisplayOptionsTest extends TestCase
             'indentGuides' => [$options->setIndentGuides(...), static fn (): bool => $options->indentGuides],
             'autoPairs' => [$options->setAutoPairs(...), static fn (): bool => $options->autoPairs],
             'softWrap' => [$options->setSoftWrap(...), static fn (): bool => $options->softWrap],
+            'inlayTypeHints' => [$options->setInlayTypeHints(...), static fn (): bool => $options->inlayTypeHints],
         ];
 
         $expected = 0;
@@ -82,11 +84,13 @@ final class EditorDisplayOptionsTest extends TestCase
         $this->assertSame(LineNumberMode::Absolute, $options->lineNumbers, 'absolute by default');
         $this->assertSame(DiagnosticMessageMode::Inline, $options->diagnosticMessages, 'messages after the code by default');
         $this->assertSame(InlayHintMode::Inline, $options->inlayHints, 'hints in the line by default');
+        $this->assertSame(InlayParameterHints::Literals, $options->inlayParameterHints, 'a name only before a literal, as PhpStorm');
 
         $modes = [
             'lineNumbers' => [$options->setLineNumbers(...), static fn (): \BackedEnum => $options->lineNumbers, LineNumberMode::Relative],
             'diagnosticMessages' => [$options->setDiagnosticMessages(...), static fn (): \BackedEnum => $options->diagnosticMessages, DiagnosticMessageMode::Menu],
             'inlayHints' => [$options->setInlayHints(...), static fn (): \BackedEnum => $options->inlayHints, InlayHintMode::Tooltip],
+            'inlayParameterHints' => [$options->setInlayParameterHints(...), static fn (): \BackedEnum => $options->inlayParameterHints, InlayParameterHints::All],
         ];
 
         $expected = 0;

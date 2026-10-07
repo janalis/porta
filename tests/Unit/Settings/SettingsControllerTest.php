@@ -15,6 +15,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
+use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\LocaleChanged;
@@ -244,6 +245,8 @@ final class SettingsControllerTest extends TestCase
                 'methodSeparators',
                 'diagnosticMessages',
                 'inlayHints',
+                'inlayParameterHints',
+                'inlayTypeHints',
                 'tooltips',
                 'tooltipDelay',
             ],
@@ -284,6 +287,26 @@ final class SettingsControllerTest extends TestCase
     }
 
     /** The tooltip rows: a switch and a stepped delay, both applied to the one tooltip live. */
+    public function testTheHintKindRowsApplyLive(): void
+    {
+        $project = new TempProject();
+        $editor = new CodeEditorWidget();
+        $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), ['inlayParameterHints' => 'sideways'] + IdeConfig::DEFAULT_SETTINGS);
+        $byKey = \array_column($controller->interfaceRows(), null, 'key');
+        $this->assertSame(['none', 'literals', 'all'], $byKey['inlayParameterHints']->options);
+        $this->assertSame(SettingsRowKind::Bool, $byKey['inlayTypeHints']->kind);
+
+        $controller->applyAll();
+        $this->assertSame(InlayParameterHints::Literals, $editor->display->inlayParameterHints, 'a value outside the options falls back to the default');
+
+        $controller->changeSetting('inlayParameterHints', 'all');
+        $controller->changeSetting('inlayTypeHints', false);
+
+        $this->assertSame(InlayParameterHints::All, $editor->display->inlayParameterHints);
+        $this->assertFalse($editor->display->inlayTypeHints);
+        $this->assertSame(['all', false], [$this->written($project)['settings']['inlayParameterHints'] ?? null, $this->written($project)['settings']['inlayTypeHints'] ?? null]);
+    }
+
     public function testTheTooltipRowsApplyLive(): void
     {
         $project = new TempProject();

@@ -184,7 +184,7 @@ final class EditorMouse
             return null;
         }
         $labels = [];
-        foreach ($this->inlays->shown($at['line']) as $hint) {
+        foreach ($this->inlays->shown($this->document, $at['line']) as $hint) {
             if ($hint->col < $word['startCol'] || $hint->col > $word['endCol']) {
                 continue;
             }

@@ -3334,6 +3334,14 @@
         <source>Invalid key "%key%" bound to "%action%"</source>
         <target>Tecla no válida «%key%» asignada a «%action%»</target>
       </trans-unit>
+      <trans-unit id="1155">
+        <source>Parameter name hints</source>
+        <target>Sugerencias de nombres de parámetros</target>
+      </trans-unit>
+      <trans-unit id="1156">
+        <source>Type hints</source>
+        <target>Sugerencias de tipo</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
