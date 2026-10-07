@@ -32,7 +32,7 @@ final class GutterHintTest extends TestCase
         $this->assertSame('Logpoint · click to remove', $hint(3));
         $this->assertSame('Bookmark', $hint(4));
         $this->assertSame('Paused here', $hint(5));
-        $this->assertSame('▲ unused', $hint(6));
+        $this->assertNull($hint(6), 'a problem marks no gutter cell: its squiggle has the card');
         $this->assertNull($hint(0), 'no mark, no hint');
     }
 

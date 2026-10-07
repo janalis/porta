@@ -7,7 +7,6 @@ namespace Porta\Widget\Render;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
-use Porta\Editor\DiagnosticStyle;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
 use Porta\Editor\GutterPart;
@@ -174,7 +173,7 @@ final readonly class EditorRowAssembler
             $gutter = match (true) {
                 0 === $geo->gutterWidth => '',
                 $rowSegment > 0 => AnsiText::blank($geo->gutterWidth),
-                default => $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $lineDiags, $geo->numberWidth),
+                default => $this->gutterCell($lineIndex, $isCursorLine ? CaretLine::Current : CaretLine::Other, $geo->numberWidth),
             };
             // Per rendered ROW, not over the whole array: the file may be
             // fifty thousand lines and forty of them are on screen. It needs
@@ -439,36 +438,24 @@ final readonly class EditorRowAssembler
     }
 
     /**
-     * The gutter cell for one document line: git strip, line number colored by
-     * the line's worst diagnostic (or highlighted on the caret line), marker.
-     *
-     * @param list<array{col: int, endCol?: int, message: string, severity: DiagnosticSeverity, code?: int|string, source?: string, tags?: list<int>, data?: mixed}> $lineDiags
+     * The gutter cell for one document line: git strip, line number
+     * (highlighted on the caret line), marker. A problem is not repeated
+     * here: its squiggle, its card, the marker stripe, the status bar and the
+     * Problems panel say it, and a number coloured by severity read as one
+     * more mark to decode.
      */
-    private function gutterCell(int $lineIndex, CaretLine $isCursorLine, array $lineDiags, int $numberWidth): string
+    private function gutterCell(int $lineIndex, CaretLine $isCursorLine, int $numberWidth): string
     {
-        $numStyle = match (true) {
-            [] !== $lineDiags => $this->styles->of(DiagnosticStyle::worst($lineDiags)->role()),
-            CaretLine::Current === $isCursorLine => $this->styles->of(Role::CurrentLineNumber),
-            default => $this->styles->of(Role::Gutter),
-        };
+        $numStyle = CaretLine::Current === $isCursorLine ? $this->styles->of(Role::CurrentLineNumber) : $this->styles->of(Role::Gutter);
         // The caret line's number is bold in every theme — its weight says
         // "here" where its colour cannot.
         if (CaretLine::Current === $isCursorLine) {
             $numStyle = $numStyle->withBold();
         }
-        // The marker column, one glyph by priority: the debugger's stopped line,
-        // then the breakpoint dot, then the BOOKMARK, then a conversation's
-        // COMMENT mark, then the worst diagnostic's severity glyph — so each
-        // state also reads without color. The comment outranks the diagnostic
-        // for the bookmark's reason below: it has nowhere else in the gutter.
-        //
-        // The bookmark outranks the diagnostic because it is the only one of
-        // the two with nowhere else to show. A diagnostic already colours the
-        // line NUMBER beside this cell, paints the error stripe in the right
-        // margin, writes its message inline at the end of the line and lists
-        // itself in the Problems panel; a bookmark has this cell and nothing
-        // else. Ordered the other way, a single HINT — the weakest severity
-        // there is — made a bookmark invisible.
+        // The marker column, one glyph by priority: the debugger's stopped
+        // line, then the breakpoint dot, then the bookmark, then a
+        // conversation's comment mark — so each state also reads without
+        // colour.
         $marker = match (true) {
             $lineIndex === $this->store->debugLine => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
             ($this->logpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::LOGPOINT),
@@ -476,17 +463,10 @@ final readonly class EditorRowAssembler
             ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
             \array_key_exists($lineIndex, $this->store->commentMarks) => $this->styles->of(Role::Hunk)->apply(Glyphs::COMMENT),
-            [] !== $lineDiags => $numStyle->apply(DiagnosticStyle::worst($lineDiags)->glyph()),
             // Without colour the free column points at the caret line.
             CaretLine::Current === $isCursorLine && !$this->styles->hasColor() => $numStyle->apply(Glyphs::CARET_LINE),
             default => ' ',
         };
-        // A breakpoint or a bookmark took the column a diagnostic's glyph
-        // would have had: the number it coloured is underlined as well, so
-        // the finding still reads where there is no colour.
-        if ([] !== $lineDiags && !\str_contains(AnsiUtils::stripAnsiCodes($marker), DiagnosticStyle::worst($lineDiags)->glyph())) {
-            $numStyle = $numStyle->withUnderline();
-        }
         // The number label: empty when hidden (so str_pad to the 0-width column
         // yields nothing, and the marker column survives); relative distance from
         // the caret on non-caret lines in Relative mode (Vim "relativenumber").

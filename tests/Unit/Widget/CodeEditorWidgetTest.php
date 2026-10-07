@@ -873,10 +873,11 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertSame(0, $counts['warnings']);
 
         $rendered = $editor->render(new RenderContext(80, 20));
-        // The left gutter shows the severity glyph in the marker column and the
-        // line number colored red; the stripe repeats it as a density block.
-        $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($rendered[2], 0, 10)), 'error glyph in the left gutter');
-        $this->assertStringContainsString("\x1b[38;5;203m", $rendered[2], 'line number colored for the error');
+        // The left gutter does not repeat the problem; the stripe marks it as
+        // a density block.
+        $gutter = AnsiUtils::sliceByColumn($rendered[2], 0, $editor->gutterWidth());
+        $this->assertStringNotContainsString('✗', AnsiUtils::stripAnsiCodes($gutter), 'no glyph in the left gutter');
+        $this->assertStringNotContainsString("\x1b[38;5;203m", $gutter, 'no error colour on the line number');
         $stripe = '';
         foreach ($rendered as $row) {
             $stripe .= AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 79, 1));
@@ -1055,7 +1056,7 @@ final class CodeEditorWidgetTest extends TestCase
     public function testDiagnosticSeverityStylingWorstFirst(): void
     {
         // line 1: an error and a warning share the line → error (worst) wins the
-        // gutter/inline; line 2: a lone info; line 3: a lone hint.
+        // inline message; line 2: a lone info; line 3: a lone hint.
         $editor = $this->editor("<?php\n\$a = f();\n\$b = g();\n\$c = h();\n", 'sev.php');
         $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline); // the inline message's colour is part of it
         $editor->decorations
@@ -1071,11 +1072,6 @@ final class CodeEditorWidgetTest extends TestCase
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertExactWidth($rendered, 80);
 
-        // Line-number color by worst severity per line (no icon in the left gutter).
-        $this->assertStringContainsString("\x1b[38;5;203m", $rendered[1], 'error color (worst of error+warning)');
-        $this->assertStringContainsString("\x1b[38;5;220m", $rendered[2], 'info color');
-        $this->assertStringContainsString("\x1b[38;5;244m", $rendered[3], 'hint color');
-
         // Each diagnostic underlined in its own severity color.
         $this->assertStringContainsString("\x1b[58;5;203m", $rendered[1], 'error underline color');
         $this->assertStringContainsString("\x1b[58;5;208m", $rendered[1], 'warning underline color');
@@ -1086,11 +1082,6 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[38;5;203m█", \implode('', $rendered), 'error: full block, colored red, in the stripe');
         $this->assertStringContainsString("\x1b[38;5;220m▒", \implode('', $rendered), 'info: medium-shade block in the stripe');
         $this->assertStringContainsString("\x1b[38;5;244m░", \implode('', $rendered), 'hint: light-shade block in the stripe');
-
-        // The gutter marker column repeats the severity as a glyph.
-        $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($rendered[1]), 'error glyph in the gutter');
-        $this->assertStringContainsString('◦', AnsiUtils::stripAnsiCodes($rendered[2]), 'info glyph in the gutter');
-        $this->assertStringContainsString('·', AnsiUtils::stripAnsiCodes($rendered[3]), 'hint glyph in the gutter');
 
         // Inline message on line 1 shows the worst (error) message + a "+1" count.
         $plain1 = AnsiUtils::stripAnsiCodes($rendered[1]);

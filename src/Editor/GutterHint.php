@@ -30,8 +30,8 @@ final class GutterHint
 
             return $clickShowsChange ? $translator->trans('%change% · click to see the change', ['%change%' => $label]) : $label;
         }
-        $worst = $store->diagnosticAt($line);
 
+        // No problem here: the gutter does not mark one; its squiggle's card says it.
         return match (true) {
             $line === $store->debugLine => $translator->trans('Paused here'),
             \in_array($line, $store->logpointLines, strict: true) => $translator->trans('Logpoint · click to remove'),
@@ -39,7 +39,6 @@ final class GutterHint
             \in_array($line, $store->breakpointLines, strict: true) => $translator->trans('Breakpoint · click to remove'),
             $store->isBookmarked($line) => $translator->trans('Bookmark'),
             \array_key_exists($line, $store->commentMarks) => Glyphs::COMMENT.' '.$store->commentMarks[$line],
-            null !== $worst => $worst['severity']->glyph().' '.$worst['message'],
             default => null,
         };
     }

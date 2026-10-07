@@ -366,19 +366,40 @@ final class EditorRowAssemblerTest extends TestCase
         $this->assertStringContainsString("\e[1m", AnsiUtils::sliceByColumn($rows[1], 0, 2), 'and the number is bold here too');
     }
 
-    /** A breakpoint over a diagnostic's glyph leaves the number underlined, so the finding still shows. */
-    public function testAMarkerHidingADiagnosticUnderlinesTheNumber(): void
+    /**
+     * A problem is not repeated in the gutter: no colour on its line's number,
+     * no glyph in the marker column — in monochrome either. Its squiggle, its
+     * card, the stripe, the status bar and the Problems panel say it.
+     */
+    public function testAProblemLeavesTheGutterAlone(): void
     {
         $doc = new Document("a\nb\n");
         $store = new DecorationStore(static function (): void {});
-        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]], 1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'w', 'col' => 0]]]);
-        $store->setBreakpointLines([0]);
-        [$assembler] = $this->assembler($doc, styles: new Styles(MonochromeTheme::definition()), store: $store);
+        $store->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
         $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
-        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
 
-        $this->assertStringStartsWith("\e[4m1", $rows[0], 'hidden under the breakpoint: underlined');
-        $this->assertStringNotContainsString("\e[4m", AnsiUtils::sliceByColumn($rows[1], 0, 1), 'its glyph shown: no need');
+        foreach ([Styles::dark(), new Styles(MonochromeTheme::definition())] as $styles) {
+            [$assembler] = $this->assembler($doc, styles: $styles, store: $store);
+            $rows = $assembler->assemble(
+                $geo,
+                $this->noSelection(),
+                sticky: [],
+                highlighted: ['a', 'b'],
+                stripe: ['', ''],
+                contentRows: 2,
+                vScroll: 0,
+                cursorLine: -1,
+                cursorDisplayCol: 0,
+                hScroll: 0,
+            );
+
+            // Line 2's gutter with its number swapped for 1: the same styling.
+            $this->assertSame(
+                (string) \preg_replace('/(^|m)2/', replacement: '${1}1', subject: AnsiUtils::sliceByColumn($rows[1], 0, 3)),
+                AnsiUtils::sliceByColumn($rows[0], 0, 3),
+                'the problem line\'s gutter is any other line\'s',
+            );
+        }
     }
 
     /** Without colour the sticky band is ruled off from the code under it. */

@@ -63,7 +63,7 @@ final class CodeEditorDebugTest extends TestCase
         $this->assertStringNotContainsString("\x1b[48;5;52m", \implode("\n", $this->render($editor)));
     }
 
-    public function testStoppedLineArrowOutranksBreakpointDotAndDiagnosticGlyph(): void
+    public function testStoppedLineArrowOutranksTheBreakpointDot(): void
     {
         $editor = $this->editor();
         $editor->decorations->setBreakpointLines([1]);
@@ -74,17 +74,16 @@ final class CodeEditorDebugTest extends TestCase
         $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], 0, $editor->gutterWidth()));
         $this->assertStringContainsString("\x1b[38;5;203m▶", $lines[1], 'the stopped-line arrow wins the marker column');
         $this->assertStringNotContainsString('●', $gutter, 'breakpoint dot yields to the arrow');
-        $this->assertStringNotContainsString('✗', $gutter, 'diagnostic glyph yields to the arrow');
 
         $editor->decorations->setDebugLine(null);
         $lines = $this->render($editor);
         $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], 0, $editor->gutterWidth()));
         $this->assertStringContainsString('●', $gutter, 'breakpoint dot returns once the debugger moves on');
-        $this->assertStringNotContainsString('✗', $gutter, 'diagnostic glyph yields to the dot');
 
         $editor->decorations->setBreakpointLines([]);
         $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($this->render($editor)[1], 0, $editor->gutterWidth()));
-        $this->assertStringContainsString('✗', $gutter, 'diagnostic glyph shows once dot and arrow are gone');
+        $this->assertStringNotContainsString('●', $gutter, 'and leaves once it is removed');
+        $this->assertStringNotContainsString('✗', $gutter, 'the problem on the line marks no gutter cell');
     }
 
     public function testDocumentLineAtResolvesStickyHeadersAndScrolledRows(): void
