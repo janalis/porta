@@ -140,6 +140,47 @@ final class LanguageMap
         return \str_starts_with($name, '.env') ? 'dotenv' : null;
     }
 
+    /**
+     * A fenced code block's language name that is not a file extension, as GitHub reads it.
+     *
+     * @var array<string, string>
+     */
+    private const array FENCE_ALIASES = [
+        'shell' => 'bash',
+        'console' => 'bash',
+        'sh-session' => 'bash',
+        'shell-session' => 'bash',
+        'zsh' => 'bash',
+        'js' => 'javascript',
+        'node' => 'javascript',
+        'ts' => 'typescript',
+        'py' => 'python',
+        'yml' => 'yaml',
+        'dotenv' => 'dotenv',
+        'docker' => 'dockerfile',
+        'patch' => 'diff',
+    ];
+
+    /**
+     * The grammar for a fenced code block's language (` ```php `): a grammar
+     * name, an extension, or one of GitHub's aliases; null when unknown.
+     */
+    public static function highlightForFence(string $language): ?string
+    {
+        $language = \strtolower(\trim($language));
+        if ('' === $language) {
+            return null;
+        }
+        if (\array_key_exists($language, self::FENCE_ALIASES)) {
+            return self::FENCE_ALIASES[$language];
+        }
+        if (\in_array($language, self::grammars(), strict: true)) {
+            return $language;
+        }
+
+        return self::EXTENSIONS[$language][0] ?? null;
+    }
+
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
     public static function lspForPath(string $path): string
     {

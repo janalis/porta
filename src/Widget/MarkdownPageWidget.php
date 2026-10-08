@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Editor\Document;
+use Porta\Help\Layout\AlertTitles;
 use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
+use Porta\Highlight\CodeHighlighterFactory;
+use Porta\I18n\Translator;
 use Porta\Search\FindTarget;
 use Porta\Support\AnsiText;
 use Porta\Support\Files;
@@ -72,12 +75,17 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     private ?\Closure $moreRoots = null;
     /** @var array{0: string, 1: ?string}|null the tree the current page sits in — its dir, and a name when it is not the docs root — found when the page is taken, so a render never globs */
     private ?array $tree = null;
+    /** An anchor to bring to the top once the page it is on is laid out: a link to `page.md#section`. */
+    private ?string $pendingAnchor = null;
+    /** @var array<int, true> the `<details>` the reader opened, by where each starts in the source */
+    private array $openDetails = [];
     private readonly MarkdownRenderer $renderer;
 
-    public function __construct(?Styles $styles = null)
+    public function __construct(?Styles $styles = null, ?CodeHighlighterFactory $highlighters = null, ?Translator $translator = null)
     {
         $this->initStyles($styles);
-        $this->renderer = new MarkdownRenderer($this->styles);
+        $alertTitles = null === $translator ? null : new AlertTitles($translator->trans(...));
+        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $alertTitles);
         $this->headerZones = new ClickZones();
     }
 
@@ -116,6 +124,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         if ($fromTop) {
             $this->scrollTop = 0;
             $this->currentLink = -1;
+            $this->openDetails = [];
         }
         ++$this->findVersion;
         $this->invalidate();
@@ -160,6 +169,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     #[\Override]
     public function refreshTheme(): void
     {
+        $this->renderer->refreshTheme();
         $this->doc = null;
         $this->invalidate();
     }
@@ -221,34 +231,29 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
 
             return true;
         }
-        $source = $doc->origins[$line] ?? null;
-        if (null !== $source) {
-            $this->pointAtSource($source, $this->wordAt(AnsiUtils::stripAnsiCodes($doc->lines[$line] ?? ''), $relCol));
+        $point = $doc->sourcePointAt($line, $relCol);
+        if (null !== $point) {
+            $this->pointAtSource(...$point);
         }
 
         return false;
     }
 
     /**
-     * A click on the page's text, away from any link: the source line the
-     * clicked block starts on, and the word under the pointer ('' between
-     * words). A page with a source to show — the preview — takes the reader
-     * there; the help browser's pages have none, and ignore it.
+     * A click on the page's text, away from any link: the source line and
+     * byte column of what was drawn under the pointer — exact inside text
+     * drawn as written, the start of its block elsewhere. A page with a
+     * source to show — the preview — takes the reader there; the help
+     * browser's pages have none, and ignore it.
      */
-    protected function pointAtSource(int $sourceLine, string $word): void {}
+    protected function pointAtSource(int $sourceLine, int $byteCol): void {}
 
-    /** The run of non-blank characters covering display column $col of a plain line, or ''. */
-    private function wordAt(string $line, int $col): string
-    {
-        $at = $this->byteAtColumn($line, $col);
-        if ($at >= \strlen($line) || ' ' === $line[$at]) {
-            return '';
-        }
-        $start = \strrpos(\substr($line, offset: 0, length: $at), needle: ' ');
-        $end = \strpos($line, needle: ' ', offset: $at);
-
-        return \substr($line, false === $start ? 0 : $start + 1, false === $end ? null : $end - (false === $start ? 0 : $start + 1));
-    }
+    /**
+     * A task's box was followed: $start to $end in the source holds its
+     * `[ ]` or `[x]`. A page whose text can be edited — the preview — ticks
+     * it there; the help browser's pages are read-only, and ignore it.
+     */
+    protected function toggleTask(int $start, int $end): void {}
 
     /** @return list<string> */
     #[\Override]
@@ -269,7 +274,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             // other text: keep the source line at the top instead. A new text
             // (no page to measure against) keeps the offset as it was.
             $anchor = $this->doc?->origins[$this->scrollTop] ?? null;
-            $doc = $this->renderer->render($this->markdown, $width);
+            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails);
             $this->doc = $doc;
             $this->renderedWidth = $width;
             if (null !== $anchor) {
@@ -279,6 +284,11 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             $this->scrollTop = $this->clampScroll($this->scrollTop);
             $this->currentLink = \min($this->currentLink, $doc->groupCount() - 1);
             ++$this->findVersion; // re-wrapped: match offsets are stale
+        }
+        if (null !== $this->pendingAnchor) {
+            $target = $this->doc?->anchor($this->pendingAnchor);
+            $this->scrollTop = null === $target ? $this->scrollTop : $this->clampScroll($target);
+            $this->pendingAnchor = null;
         }
         if (null !== $this->followLine) {
             $this->scrollTop = $this->clampScroll($this->scrollToShow($this->doc->origins ?? [], $this->followLine));
@@ -526,15 +536,66 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         }
     }
 
-    /** Route a link target: browser URL, another doc page, or a plain file. */
+    /**
+     * Route a link target: a place on this page (`#anchor`), a page action (a
+     * task's box, a `<details>`), a browser URL, another doc page — at its
+     * anchor, when the link names one — or a plain file.
+     */
     private function follow(string $target): void
     {
-        if (1 === \preg_match('#^https?://#i', $target)) {
+        $m = [];
+        if (1 === \preg_match('/^task:(\d+)-(\d+)$/', $target, $m)) {
+            $this->toggleTask((int) $m[1], (int) $m[2]);
+
+            return;
+        }
+        if (1 === \preg_match('/^details:(\d+)$/', $target, $m)) {
+            $this->toggleDetails((int) $m[1]);
+
+            return;
+        }
+        if (1 === \preg_match('#^(?:https?|mailto|ftp):#i', $target)) {
             $this->docs()?->openUrl($target);
 
             return;
         }
-        $resolved = Files::resolve(\str_starts_with($target, '/') ? $target : \dirname((string) $this->path).'/'.$target);
+        [$file, $anchor] = \array_pad(\explode('#', $target, limit: 2), length: 2, value: null);
+        if ('' === $file) {
+            $this->goToAnchor((string) $anchor);
+
+            return;
+        }
+        $this->followFile(\rawurldecode((string) $file), $target, $anchor);
+    }
+
+    /** Bring an anchor of this page (a heading, a footnote) to the top of the view. */
+    private function goToAnchor(string $anchor): void
+    {
+        $line = $this->doc?->anchor(\rawurldecode($anchor));
+        if (null === $line) {
+            $this->docs()?->missingTarget('#'.$anchor);
+
+            return;
+        }
+        $this->scrollTop = $this->clampScroll($line);
+        $this->invalidate();
+    }
+
+    private function toggleDetails(int $start): void
+    {
+        $open = !\array_key_exists($start, $this->openDetails);
+        unset($this->openDetails[$start]);
+        if ($open) {
+            $this->openDetails[$start] = true;
+        }
+        $this->doc = null;
+        $this->invalidate();
+    }
+
+    /** Follow a link to a file: another doc page (scrolled to $anchor once shown), or a plain file. */
+    private function followFile(string $file, string $target, ?string $anchor): void
+    {
+        $resolved = Files::resolve(\str_starts_with($file, '/') ? $file : \dirname((string) $this->path).'/'.$file);
         // Containment mirrors hierarchyCrumbs(): a target must resolve inside
         // the docs root or one of the plugins' docs trees, so a link that
         // escapes (an absolute path, a ../ chain into a plugin's src/) is not
@@ -547,6 +608,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         if (\str_ends_with($resolved, '.md')) {
             $this->history[] = ['path' => (string) $this->path, 'scrollTop' => $this->scrollTop, 'currentLink' => $this->currentLink];
             $this->forward = []; // a fresh navigation invalidates the forward trail
+            $this->pendingAnchor = null === $anchor ? null : \rawurldecode($anchor);
             $this->docs()?->openHelp($resolved);
 
             return;

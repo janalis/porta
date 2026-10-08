@@ -151,6 +151,16 @@ final class CodeHighlighter implements HighlightSink
         $this->inFlightLines = null;
     }
 
+    /**
+     * Highlight as $language under the id $documentId, for text that is no
+     * file: a fenced code block in a markdown page.
+     */
+    public function setLanguage(string $documentId, ?string $language): void
+    {
+        $this->setFile($documentId);
+        $this->language = $language;
+    }
+
     public function getLanguage(): ?string
     {
         return $this->language;

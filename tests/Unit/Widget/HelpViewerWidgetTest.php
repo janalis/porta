@@ -99,7 +99,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringContainsString('‹ ›', $screen[0], 'the navigation header leads');
         $this->assertStringContainsString('README', $screen[0], 'with the current page as its crumb');
         $this->assertSame('Guides', \rtrim($screen[2]), 'the heading renders without markdown syntax');
-        $this->assertSame('══════', \rtrim($screen[3]), 'an H1 gets a title-width rule');
+        $this->assertSame(\str_repeat('═', times: 60), \rtrim($screen[3]), 'an H1 gets a rule the page\'s full width, as GitHub draws it');
         $this->assertStringNotContainsString('](', \implode("\n", $screen));
 
         $viewer->scrollBy(6);

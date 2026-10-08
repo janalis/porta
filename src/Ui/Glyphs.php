@@ -179,6 +179,21 @@ final class Glyphs
     public const string MD_HEADING_RULE = '═';
     public const string MD_BULLET = '•';
     public const string MD_QUOTE_BAR = '│'; // same value as SEPARATOR — disjoint surface
+    /** A nested list's bullets, by depth after the first. */
+    public const string MD_BULLET_2 = '◦';
+    public const string MD_BULLET_3 = '▪';
+    /** An alert's bar: heavier than a quote's, in the alert's colour. */
+    public const string MD_ALERT_BAR = '┃';
+    /** A table's column rule, and where it crosses the header's underline. */
+    public const string MD_TABLE_BAR = '│';
+    public const string MD_TABLE_CROSS = '┼';
+    /** A done task's mark, inside its brackets. */
+    public const string MD_CHECK = '✓';
+    /** A collapsed and an expanded `<details>`. */
+    public const string MD_DETAILS_CLOSED = '▸';
+    public const string MD_DETAILS_OPEN = '▾';
+    /** A footnote's way back to where it was referenced. */
+    public const string MD_BACKREF = '↩';
 
     // The draggable column between two panes. Thin at rest, heavy while the
     // pointer is on it or dragging it: the affordance is the GLYPH, so it

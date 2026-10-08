@@ -50,6 +50,9 @@ final class Sgr
     /** Cancel underline (leaving other attributes intact). */
     public const string NO_UNDERLINE = "\x1b[24m";
 
+    /** Italic on. */
+    public const string ITALIC = "\x1b[3m";
+
     /**
      * The attribute-specific close that matches $style's own open
      * ({@see Style::getAnsiRestore()}): reset exactly what it set, so a span

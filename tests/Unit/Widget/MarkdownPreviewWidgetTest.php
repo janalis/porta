@@ -149,12 +149,12 @@ final class MarkdownPreviewWidgetTest extends TestCase
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'more.') + 1);
         $pane->press($row('some words'), (int) \strpos($rows[$row('some words')], needle: 'words') + 5); // the space after it
         $pane->press(2, 3); // the heading
-        $pane->press($row('last'), (int) \strpos($rows[$row('last')], needle: 'last'));
+        $pane->press($row('last'), \mb_strpos($rows[$row('last')], needle: 'last')); // a column: the bullet before it is one cell, three bytes
 
         $this->assertSame(
-            ['reveal:3:0', 'reveal:3:12', 'reveal:2:0', 'reveal:0:2', 'reveal:5:2'],
+            ['reveal:3:2', 'reveal:3:13', 'reveal:2:0', 'reveal:0:4', 'reveal:5:2'],
             $this->handler->events,
-            'the word\'s line and byte in the text — "here," on the paragraph\'s second line, "more." inside its markup — or the block\'s start',
+            'the very byte clicked — the "r" of "here,", the "o" of "more" inside its markup, the heading\'s "t", the item\'s "l" — or, on the space between words, the block\'s start',
         );
     }
 

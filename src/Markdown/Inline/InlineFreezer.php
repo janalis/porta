@@ -32,16 +32,22 @@ final readonly class InlineFreezer
     /** @return list<Inline> */
     public function freeze(InlineItem $parent): array
     {
+        /** @var list<Inline> $nodes */
         $nodes = [];
+        $joinable = false;
         for ($item = $parent->first; null !== $item; $item = $item->next) {
-            foreach ($this->node($item) as $node) {
-                $last = $nodes[\count($nodes) - 1] ?? null;
-                if ($node instanceof Text && $last instanceof Text) {
-                    $nodes[\count($nodes) - 1] = new Text($last->literal.$node->literal, $last->range->union($node->range));
-                    continue;
-                }
-                $nodes[] = $node;
+            // Text written as-is joins the text before it; text drawn from an
+            // escape or an entity stays a node of its own, so each keeps the
+            // exact source it maps to.
+            $verbatim = ItemKind::Text === $item->kind && \substr($this->text->text, $item->start, $item->end - $item->start) === $item->literal;
+            $last = $nodes[\count($nodes) - 1] ?? null;
+            if ($verbatim && $joinable && $last instanceof Text && '' !== $item->literal) {
+                \array_pop($nodes);
+                $nodes[] = new Text($last->literal.$item->literal, $last->range->union($this->text->range($item->start, $item->end)));
+                continue;
             }
+            \array_push($nodes, ...$this->node($item));
+            $joinable = $verbatim && '' !== $item->literal || $joinable && '' === $item->literal;
         }
 
         return $nodes;
