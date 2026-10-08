@@ -26,7 +26,7 @@ final class StartupWiringTest extends TestCase
     {
         $project = new TempProject([
             'composer.json' => '{}',
-            '.porta.json' => (string) \json_encode(['settings' => ['bogusSetting' => true]]),
+            '.porta.json' => (string) \json_encode(['settings' => ['bogusSetting' => true]], \JSON_THROW_ON_ERROR),
         ]);
         new OnboardingState($project->dir)->markWelcomeSeen();
 

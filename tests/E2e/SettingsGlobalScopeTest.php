@@ -126,7 +126,7 @@ final class SettingsGlobalScopeTest extends TestCase
                     $global = $this->home->path('.porta/config.json');
                     $this->assertFileExists($global, 'the global file was created on first write');
 
-                    $written = \json_decode((string) \file_get_contents($global), associative: true);
+                    $written = \json_decode((string) \file_get_contents($global), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($written);
                     $this->assertFalse(
                         $written['settings']['stickyScroll'] ?? null,
@@ -182,7 +182,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 ...$this->reachTheStickyScrollRow("\r"),
                 700 => function (Tui $tui, $terminal, Ide $ide): void {
                     $global = $this->home->path('.porta/config.json');
-                    $written = \json_decode((string) \file_get_contents($global), associative: true);
+                    $written = \json_decode((string) \file_get_contents($global), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($written);
                     $this->assertArrayHasKey('stickyScroll', $written['settings'] ?? [], 'the global write happened');
 
@@ -302,7 +302,7 @@ final class SettingsGlobalScopeTest extends TestCase
                 // 'r' resets the row to its default rather than toggling it.
                 ...$this->reachTheStickyScrollRow('r'),
                 700 => function ($tui, $terminal, Ide $ide): void {
-                    $written = \json_decode((string) \file_get_contents($this->home->path('.porta/config.json')), associative: true);
+                    $written = \json_decode((string) \file_get_contents($this->home->path('.porta/config.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($written);
                     $this->assertArrayNotHasKey(
                         'stickyScroll',
@@ -565,11 +565,11 @@ final class SettingsGlobalScopeTest extends TestCase
                     $global = $this->home->path('.porta/config.json');
                     $this->assertFileExists($global, 'the plugin setting went to the user file');
 
-                    $written = \json_decode((string) \file_get_contents($global), associative: true);
+                    $written = \json_decode((string) \file_get_contents($global), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($written);
                     $this->assertSame(4, $written['plugins']['noisy']['volume'] ?? null, 'stepped and stored there');
 
-                    $project = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
+                    $project = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($project);
                     $this->assertArrayNotHasKey(
                         'plugins',

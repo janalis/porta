@@ -246,7 +246,7 @@ final class IdeDocsTest extends TestCase
             docsDir: $docs->dir,
         );
 
-        $session = \json_decode((string) \file_get_contents($project->path('.porta/session.json')), associative: true);
+        $session = \json_decode((string) \file_get_contents($project->path('.porta/session.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $paths = \array_column($session['buffers'] ?? [], 'path');
         $this->assertNotContains(\realpath($docs->path('README.md')), $paths, 'the docs are never a buffer to restore');
         $this->assertNotEmpty(\array_filter($paths, static fn (string $p): bool => \str_ends_with($p, 'a.php')), 'the code tab persists');

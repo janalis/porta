@@ -123,11 +123,12 @@ final class ImageLayout
     private static function file(string $source, ?string $baseDir, ?string $root): ?string
     {
         $path = \rawurldecode(\explode('?', \explode('#', $source)[0])[0]);
-        if ('' === $path || 1 === \preg_match('#^[a-z][a-z0-9+.-]*:#i', $path) || null === $baseDir) {
+        if (null === $baseDir || '' === $path || 1 === \preg_match('#^[a-z][a-z0-9+.-]*:#i', $path)) {
             return null;
         }
         $file = \realpath(\str_starts_with($path, '/') ? ($root ?? $baseDir).$path : $baseDir.'/'.$path);
         $fence = \realpath($root ?? $baseDir);
+        // @noinspection NotOptimalIfConditionsInspection -- is_file() touches the disk and takes no false: it goes last
         if (false === $file || false === $fence || !\str_starts_with($file, \rtrim($fence, characters: '/').'/') || !\is_file($file)) {
             return null;
         }

@@ -69,7 +69,7 @@ final class IdeGraphViewerTest extends TestCase
         // through to plugins.graph-viewer from onReady, so the file stops
         // answering the same question twice.
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'settings' => ['dotPath' => self::fakeDot()]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'settings' => ['dotPath' => self::fakeDot()]], \JSON_THROW_ON_ERROR),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -82,7 +82,7 @@ final class IdeGraphViewerTest extends TestCase
                     Previews::alone($ide); // the graph's own status segment, with the keys
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'nodes'), what: 'the adopted dotPath laying out the graph');
                     $this->await(static function () use ($project): bool {
-                        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
 
                         return \is_array($file) && ($file['plugins']['graph-viewer']['dotPath'] ?? null) === self::fakeDot();
                     }, what: 'the adoption written through to plugins.graph-viewer');
@@ -98,12 +98,15 @@ final class IdeGraphViewerTest extends TestCase
         // path and the pane the mode, so editing either in Settings did
         // nothing until the next launch — which their hints admitted.
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode([
-                // image-viewer too: graph-viewer `requires` it, and PluginOrder
-                // skips a plugin whose requirement is off.
-                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
-                'plugins' => ['graph-viewer' => ['dotPath' => '/nonexistent/dot']],
-            ]),
+            '.porta.json' => (string) \json_encode(
+                [
+                    // image-viewer too: graph-viewer `requires` it, and PluginOrder
+                    // skips a plugin whose requirement is off.
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['dotPath' => '/nonexistent/dot']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'g.dot' => self::SMALL_DOT,
             'h.dot' => self::SMALL_DOT,
         ]);
@@ -158,7 +161,7 @@ final class IdeGraphViewerTest extends TestCase
         // open nothing at all. Its own session — opening a menu mid-script
         // perturbs the interactions the long test above asserts on.
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -185,7 +188,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testDotFileOpensInTheGraphViewerWithZoomPanAndSelection(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -256,7 +259,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheFindKeyOpensAPickerThatFiltersAndSelectsTheNode(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -297,7 +300,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheFindCommandSaysSoWhenNoGraphIsOpen(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
         $this->phpOnlyPath($project);
@@ -320,7 +323,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheBitmapPaintsAndTheRenderModeKeyFlipsBackToTheCells(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);
@@ -350,10 +353,13 @@ final class IdeGraphViewerTest extends TestCase
     public function testAPlantUmlDocumentOpensInTheDiagramPane(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode([
-                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
-                'plugins' => ['graph-viewer' => ['plantumlPath' => \dirname(__DIR__, levels: 3).'/tests/Support/fake-plantuml']],
-            ]),
+            '.porta.json' => (string) \json_encode(
+                [
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['plantumlPath' => \dirname(__DIR__, levels: 3).'/tests/Support/fake-plantuml']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'seq.puml' => "@startuml\nBob -> Alice : hello\n@enduml\n",
         ]);
         $this->phpOnlyPath($project);
@@ -422,7 +428,7 @@ final class IdeGraphViewerTest extends TestCase
     public function testGraphTabReusesAndClosesLikeAnyTab(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'g.dot' => self::SMALL_DOT,
             'src/A.php' => "<?php\n",
             'big.dot' => \str_repeat('/* pad */ ', times: 1_100_000).'digraph {}',
@@ -499,8 +505,8 @@ final class IdeGraphViewerTest extends TestCase
     public function testArchitectureCommandScansOpensReusesAndExports(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
-            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]], \JSON_THROW_ON_ERROR),
             'src/Editor/Doc.php' => "<?php\nnamespace App\\Editor;\nuse App\\Support\\Text;\nfinal class Doc {}\n",
             'src/Support/Text.php' => "<?php\nnamespace App\\Support;\nfinal class Text {}\n",
         ]);
@@ -536,14 +542,17 @@ final class IdeGraphViewerTest extends TestCase
     public function testTheOutputDirectorySettingPlacesTheArtifact(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode([
-                // BOTH: this plugin `requires` the image viewer for the shared
-                // rasterizer, and boot skips a plugin whose requirement is off
-                // rather than quietly enabling it.
-                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
-                'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'outputDir' => 'docs/arch']],
-            ]),
-            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            '.porta.json' => (string) \json_encode(
+                [
+                    // BOTH: this plugin `requires` the image viewer for the shared
+                    // rasterizer, and boot skips a plugin whose requirement is off
+                    // rather than quietly enabling it.
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'outputDir' => 'docs/arch']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]], \JSON_THROW_ON_ERROR),
             'src/A.php' => "<?php\nnamespace App;\nfinal class A {}\n",
         ]);
         $this->phpOnlyPath($project);
@@ -570,10 +579,13 @@ final class IdeGraphViewerTest extends TestCase
     public function testConfiguredGeneratorCommandTakesPrecedence(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode([
-                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
-                'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'printf \'digraph FromCommand { X -> Y; }\'']],
-            ]),
+            '.porta.json' => (string) \json_encode(
+                [
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'printf \'digraph FromCommand { X -> Y; }\'']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         ]);
         $this->phpOnlyPath($project);
 
@@ -593,10 +605,13 @@ final class IdeGraphViewerTest extends TestCase
     public function testGeneratorFailuresFlashInsteadOfOpening(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode([
-                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
-                'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'echo doomed >&2; exit 3']],
-            ]),
+            '.porta.json' => (string) \json_encode(
+                [
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'echo doomed >&2; exit 3']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         ]);
         $this->phpOnlyPath($project);
 
@@ -616,10 +631,13 @@ final class IdeGraphViewerTest extends TestCase
     public function testEmptyGeneratorOutputFlashes(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode([
-                'enabledPlugins' => ['graph-viewer', 'image-viewer'],
-                'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'true']],
-            ]),
+            '.porta.json' => (string) \json_encode(
+                [
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'command' => 'true']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         ]);
         $this->phpOnlyPath($project);
 
@@ -641,10 +659,10 @@ final class IdeGraphViewerTest extends TestCase
         $project = new TempProject([
             // The configured output directory cannot be created: a FILE sits
             // where its parent would have to be.
-            '.porta.json' => (string) \json_encode(['plugins' => ['graph-viewer' => ['outputDir' => 'blocked/sub']]]),
+            '.porta.json' => (string) \json_encode(['plugins' => ['graph-viewer' => ['outputDir' => 'blocked/sub']]], \JSON_THROW_ON_ERROR),
             'blocked' => 'a FILE squatting on the output path',
             'src/A.php' => "<?php\n",
-            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]], \JSON_THROW_ON_ERROR),
         ]);
         $this->phpOnlyPath($project);
 
@@ -670,7 +688,7 @@ final class IdeGraphViewerTest extends TestCase
         // Past the editor's 2 MB the preview declines and the viewer claim
         // takes the file, under the viewer's own 10 MB cap.
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot()]]], \JSON_THROW_ON_ERROR),
             'huge.dot' => '/* '.\str_repeat('x', times: 2_200_000).' */ '.self::SMALL_DOT,
             'huge-binary.dot' => "\xff\xfe\x00digraph".\str_repeat('x', times: 2_200_000),
         ]);
@@ -701,7 +719,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testASyntaxErrorIsTheEditorsBesideTheTextAndThePicturesAlone(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'renderMode' => 'cells']]]),
+            '.porta.json' => (string) \json_encode(
+                ['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'renderMode' => 'cells']]],
+                \JSON_THROW_ON_ERROR,
+            ),
             'g.dot' => "digraph G {\n  A -> B;\n}\n",
         ]);
         $this->phpOnlyPath($project);
@@ -738,7 +759,10 @@ final class IdeGraphViewerTest extends TestCase
     public function testAClickOnANodeSendsTheCaretToWhereTheTextWritesIt(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'renderMode' => 'cells']]]),
+            '.porta.json' => (string) \json_encode(
+                ['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => self::fakeDot(), 'renderMode' => 'cells']]],
+                \JSON_THROW_ON_ERROR,
+            ),
             'g.dot' => self::SMALL_DOT,
         ]);
         $this->phpOnlyPath($project);

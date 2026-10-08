@@ -182,7 +182,7 @@ final class RuleHalvesTest extends TestCase
     public function testCodesBesideTheBasicColoursAreNoColour(): void
     {
         foreach ([29, 89, 98, 99, 108] as $code) { // 38 and 48 open an extended colour, read above
-            $this->assertSame([], self::spans([self::rule(1), "\x1b[{$code};7;27mx"], [new WidgetRect(1, 0, 1, 1)]), "{$code}");
+            $this->assertSame([], self::spans([self::rule(1), "\x1b[{$code};7;27mx"], [new WidgetRect(1, 0, 1, 1)]), (string) $code);
         }
     }
 

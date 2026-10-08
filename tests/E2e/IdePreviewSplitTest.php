@@ -194,7 +194,7 @@ final class IdePreviewSplitTest extends TestCase
                     $this->frame($tui);
                     $after = self::rect($ide, $editor)->columns;
                     $this->assertLessThan($before - 8, $after, 'the editor gave the preview its columns');
-                    $persisted = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $persisted = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($persisted);
                     $this->assertSame($split->percent(), $persisted['previewSplitPercent'] ?? null, 'the proportion is written down');
 
@@ -402,7 +402,7 @@ final class IdePreviewSplitTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['settings' => ['language' => 'he']]),
+            '.porta.json' => (string) \json_encode(['settings' => ['language' => 'he']], \JSON_THROW_ON_ERROR),
             'README.md' => self::README,
         ]);
 

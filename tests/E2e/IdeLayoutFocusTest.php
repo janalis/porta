@@ -59,7 +59,7 @@ final class IdeLayoutFocusTest extends TestCase
                 },
                 320 => function (Tui $tui) use ($project): void {
                     $this->assertSame(44, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), 'sidebar resized by the drag');
-                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(28, $layout['sidebarWidthPercent'], 'saved as a percentage (round(44/160))');
                 },
             ],
@@ -97,7 +97,7 @@ final class IdeLayoutFocusTest extends TestCase
                 },
                 320 => function ($tui) use ($project): void {
                     $this->assertSame(15, Probe::get($tui->getById('terminal'), 'visibleRows'), 'panel grew by the drag (clamped at rows-8, less the navigation bar\'s row)');
-                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(63, $layout['bottomPanelHeightPercent'], 'saved as a percentage (round(15/24))');
                 },
             ],
@@ -136,7 +136,7 @@ final class IdeLayoutFocusTest extends TestCase
                 320 => function ($tui) use ($project, &$expected): void {
                     $this->assertSame($expected, Probe::get($tui->getById('results'), 'visibleRows'), 'the results pane grew by the drag');
                     $this->assertSame($expected, Probe::get($tui->getById('terminal'), 'visibleRows'), 'shared bottom-panel height stays in sync');
-                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame((int) \round(($expected * 100) / 24), $layout['bottomPanelHeightPercent'], 'saved as a percentage of the 24 rows');
                 },
             ],
@@ -188,7 +188,7 @@ final class IdeLayoutFocusTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/layout.json'),
-            \json_encode(['sidebarWidthPercent' => 25, 'bottomPanelHeightPercent' => 40]),
+            \json_encode(['sidebarWidthPercent' => 25, 'bottomPanelHeightPercent' => 40], \JSON_THROW_ON_ERROR),
         );
 
         $this->runIde(
@@ -388,7 +388,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame($shrunk, $panel->visibleRows(), 'back to the hand-chosen height');
 
                     $this->assertFileExists($project->dir.'/.porta/layout.json');
-                    $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
                     // The hand-chosen 15 of 24 rows, not the maximised 17:
                     // maximising is a thing you are doing now, not a layout you
                     // chose, so it never reaches the file.
@@ -469,7 +469,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $this->assertSame($rows + 1, Probe::get($tui->getById('terminal'), 'visibleRows'));
                 },
                 500 => function () use ($project): void {
-                    $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->dir.'/.porta/layout.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(19, $layout['sidebarWidthPercent'], 'the last tree width (30 of 160 cols) persisted');
                     $this->assertArrayHasKey('bottomPanelHeightPercent', $layout, 'the panel grow persisted too');
                 },

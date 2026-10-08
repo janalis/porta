@@ -112,7 +112,7 @@ final class HtmlInlineTags
     public static function parse(string $literal): ?array
     {
         $m = [];
-        if (1 !== \preg_match('/^<(\/?)([A-Za-z][A-Za-z0-9-]*)((?:\s[^>]*)?)\/?>$/s', \trim($literal), $m)) {
+        if (1 !== \preg_match('/^<(\/?)([A-Za-z][A-Za-z0-9-]*)((?:\s[^>]*)?)\/?>$/', \trim($literal), $m)) {
             return null;
         }
         $attributes = [];

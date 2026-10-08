@@ -47,7 +47,7 @@ final class FuzzyMatcher
             if (false === $pos) {
                 return null;
             }
-            $score += 1;
+            ++$score;
             if ($pos === ($prevPos + 1)) {
                 $score += 5; // consecutive
             }

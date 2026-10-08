@@ -433,7 +433,7 @@ final class ThemeLockTest extends TestCase
             8,
         ]), 'a ninth agent shares the first colour');
         foreach ([DarkTheme::definition(), LightTheme::definition(), HighContrastTheme::definition()] as $theme) {
-            $backgrounds = \array_map(static fn (Role $role): string => \json_encode($theme->of($role)->getAnsiRestore()), [
+            $backgrounds = \array_map(static fn (Role $role): string => \json_encode($theme->of($role)->getAnsiRestore(), \JSON_THROW_ON_ERROR), [
                 Role::Agent1,
                 Role::Agent2,
                 Role::Agent3,

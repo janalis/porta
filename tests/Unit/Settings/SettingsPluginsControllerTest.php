@@ -131,7 +131,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $dir = $this->project->dir.'/src/'.$name;
         \mkdir($dir, permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/plugin.php', data: "<?php\n");
-        \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
+        \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR));
 
         return $dir;
     }

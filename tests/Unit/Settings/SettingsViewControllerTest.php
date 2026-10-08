@@ -438,7 +438,7 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->form->handleInput("\x1b[B"); // past the "Save changes to" lead row
         $this->form->handleInput("\x1b[C"); // → steps the default choice off "auto" (Enter would open its list)
-        $config = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
+        $config = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
 
         $this->assertArrayHasKey('highlight', \is_array($config) ? $config : []);
     }
@@ -601,7 +601,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->form->handleInput("\r"); // toggle the first own row off its default
         $this->assertFalse(IdeConfig::load($this->project->dir)->settings['autoPairs'], 'set first');
         $this->form->handleInput('r');
-        $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
+        $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertArrayNotHasKey('autoPairs', $written['settings'] ?? [], 'reset removed the key rather than writing the default');
 
         // A language page: the indent rows spell their default `auto`.
@@ -913,6 +913,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->controller();
 
         $sidebar = $this->regions->find('settings')?->sidebar();
+        // @noinspection UnnecessaryAssertionInspection -- `?->` makes it nullable; rector asks for this form over assertNotNull()
         $this->assertInstanceOf(ContainerWidget::class, $sidebar);
         $this->assertSame([$this->nav], $sidebar->all(), 'the nav widget is actually added to the sidebar container');
         $this->assertSame($this->nav, $this->regions->find('settings')?->sidebarPanes(), 'the nav is registered as the resizable sidebar unit');

@@ -99,7 +99,7 @@ final class SearchPrefsStoreTest extends TestCase
         // would collapse this to a single entry).
         $project = new TempProject([]);
         $raw = \array_map(static fn (int $i): string => "*.x{$i}", \range(start: 0, end: 24));
-        $project->write('.porta/search-prefs.json', (string) \json_encode(['recentMasks' => $raw]));
+        $project->write('.porta/search-prefs.json', (string) \json_encode(['recentMasks' => $raw], \JSON_THROW_ON_ERROR));
 
         $loaded = Probe::get(new SearchPrefsStore($project->dir), 'recentMasks');
         $this->assertCount(20, $loaded);
@@ -122,11 +122,14 @@ final class SearchPrefsStoreTest extends TestCase
         $mixed = new TempProject([]);
         $mixed->write(
             '.porta/search-prefs.json',
-            (string) \json_encode([
-                'scope' => 'bogus',
-                'mask' => 42,
-                'recentMasks' => ['*.php', 7, '', null],
-            ]),
+            (string) \json_encode(
+                [
+                    'scope' => 'bogus',
+                    'mask' => 42,
+                    'recentMasks' => ['*.php', 7, '', null],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         );
         $store = new SearchPrefsStore($mixed->dir);
         $this->assertSame(ScopeKind::Project, $store->lastScope());

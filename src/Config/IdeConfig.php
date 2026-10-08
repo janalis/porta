@@ -384,6 +384,7 @@ final readonly class IdeConfig
                 continue;
             }
             // `cmd+s` is what a Mac user writes; the parser's name for it is `super`.
+            // @noinspection TypesCastingCanBeUsedInspection -- a key may be an int; mago calls a (string) cast here redundant, strval() it reads right
             $keymap[$action] = \array_values(\array_map(
                 static fn (mixed $key): string => (string) \preg_replace(pattern: '/(^|\+)cmd(?=\+)/i', replacement: '$1super', subject: \strval($key)),
                 $keys,

@@ -147,7 +147,7 @@ final class BlockParser
 
             return;
         }
-        if ($cursor->offset < \strlen($cursor->line) && !$cursor->blank) {
+        if (!$cursor->blank && $cursor->offset < \strlen($cursor->line)) {
             $paragraph = $this->addChild(BlockKind::Paragraph, $cursor->nextNonspace);
             $cursor->advanceNextNonspace();
             $this->appendText($paragraph);
@@ -175,7 +175,7 @@ final class BlockParser
         if ($block->bodyStart < 0 && (!$block->fenced || [] !== $block->lines)) {
             $block->bodyStart = $cursor->source($tab);
         }
-        if ('' !== \trim($rest, characters: " \t") && (!$block->fenced || [] !== $block->lines)) {
+        if ((!$block->fenced || [] !== $block->lines) && '' !== \trim($rest, characters: " \t")) {
             $block->bodyEnd = $cursor->lineStart + \strlen(\rtrim($cursor->line, characters: " \t"));
         }
         $block->lines[] = $spaces.$rest;

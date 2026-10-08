@@ -285,7 +285,7 @@ final class SettingsKeymapControllerTest extends TestCase
     private function configFile(string $rootDir): array
     {
         $file = $rootDir.'/.porta.json';
-        $decoded = \is_file($file) ? \json_decode((string) \file_get_contents($file), associative: true) : null;
+        $decoded = \is_file($file) ? \json_decode((string) \file_get_contents($file), associative: true, flags: \JSON_THROW_ON_ERROR) : null;
 
         return \is_array($decoded) ? $decoded : [];
     }

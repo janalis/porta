@@ -101,7 +101,7 @@ final class IdeCustosRealServerTest extends TestCase
             200 => function (Tui $tui, $terminal, Ide $ide): void {
                 $this->await(static fn (): bool => [] !== self::custosDiagnostics($ide), what: 'custos to publish diagnostics for a.php', timeout: 20.0);
                 $nested = \array_values(\array_filter(self::custosDiagnostics($ide), static fn (array $d): bool => 'NestedNotOperators' === ($d['code'] ?? null)));
-                $this->assertCount(1, $nested, 'one NestedNotOperators finding: '.\json_encode(self::custosDiagnostics($ide)));
+                $this->assertCount(1, $nested, 'one NestedNotOperators finding: '.\json_encode(self::custosDiagnostics($ide), \JSON_THROW_ON_ERROR));
                 $diagnostic = $nested[0];
                 $this->assertSame(11, $diagnostic['col'], 'the finding starts at the `!!`');
                 $this->assertGreaterThan(11, $diagnostic['endCol'] ?? 0);
@@ -120,7 +120,7 @@ final class IdeCustosRealServerTest extends TestCase
                 );
                 $actions = self::offered($refactor);
                 $kinds = \array_map(static fn (array $a): string => (string) ($a['kind'] ?? ''), $actions);
-                $this->assertContains('source.fixAll.custos', $kinds, 'the fix-all action is offered: '.\json_encode($actions));
+                $this->assertContains('source.fixAll.custos', $kinds, 'the fix-all action is offered: '.\json_encode($actions, \JSON_THROW_ON_ERROR));
                 $quickFixes = \array_values(\array_filter(
                     $actions,
                     static fn (array $a): bool => (
@@ -128,7 +128,7 @@ final class IdeCustosRealServerTest extends TestCase
                         && \in_array('NestedNotOperators', \array_map(static fn (mixed $d): mixed => \is_array($d) ? $d['code'] ?? null : null, (array) ($a['diagnostics'] ?? [])), strict: true)
                     ),
                 ));
-                $this->assertCount(1, $quickFixes, 'one quick-fix for the finding: '.\json_encode($actions));
+                $this->assertCount(1, $quickFixes, 'one quick-fix for the finding: '.\json_encode($actions, \JSON_THROW_ON_ERROR));
                 $this->assertArrayNotHasKey('edit', $quickFixes[0], 'custos defers the edit to codeAction/resolve, so this proves the resolve path');
 
                 Probe::invoke($refactor, 'applyOrResolve', $quickFixes[0]);

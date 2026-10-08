@@ -337,6 +337,6 @@ final class SettingsHighlightControllerTest extends TestCase
     private function written(): array
     {
         /** @var array<string, mixed> */
-        return \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true);
+        return \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
     }
 }

@@ -123,19 +123,19 @@ final class SettingsLanguageControllerTest extends TestCase
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
 
         $controller->changeLanguageSetting('php', 'indentSize', '4');
-        $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(4, $raw['languages']['php']['indentSize'], 'a numeric, non-auto indentSize is stored as a JSON int');
 
         // The int-cast is gated on the key being indentSize specifically, not
         // merely on the value looking numeric.
         $controller->changeLanguageSetting('php', 'indentStyle', '4');
-        $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('4', $raw['languages']['php']['indentStyle'], 'a numeric-looking value for a non-indentSize key stays a string');
 
         // The false branch's own (string) cast: an already-non-string value
         // routed there must still come out as a genuine string.
         $controller->changeLanguageSetting('php', 'indentStyle', true);
-        $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('1', $raw['languages']['php']['indentStyle']);
     }
 

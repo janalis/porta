@@ -44,7 +44,7 @@ final class VerifyGatesMatchCiTest extends TestCase
         $root = \dirname(__DIR__, levels: 3);
 
         /** @var array{scripts: array<string, list<string>|string>} $composer */
-        $composer = \json_decode((string) \file_get_contents($root.'/composer.json'), associative: true);
+        $composer = \json_decode((string) \file_get_contents($root.'/composer.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $scripts = $composer['scripts'];
 
         \preg_match_all('/^\s*(?:- )?run: composer ([a-z:]+)/m', (string) \file_get_contents($root.'/.github/workflows/ci.yml'), $matches);

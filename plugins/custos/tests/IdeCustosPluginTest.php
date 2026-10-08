@@ -93,7 +93,7 @@ final class IdeCustosPluginTest extends TestCase
         $options = [];
         foreach (\array_filter(\explode("\n", (string) \file_get_contents($log))) as $line) {
             /** @var array{method?: string, params?: array{initializationOptions?: array<string, mixed>}}|null $message */
-            $message = \json_decode($line, associative: true);
+            $message = \json_decode($line, associative: true, flags: \JSON_THROW_ON_ERROR);
             if (\is_array($message) && 'initialize' === ($message['method'] ?? null)) {
                 $options[] = $message['params']['initializationOptions'] ?? null;
             }

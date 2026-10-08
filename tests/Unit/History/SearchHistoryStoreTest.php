@@ -23,7 +23,7 @@ final class SearchHistoryStoreTest extends TestCase
         $project = new TempProject();
         $queries = \array_map(static fn (int $n): string => 'query '.$n, \range(1, end: 40));
         \mkdir($project->dir.'/.porta', permissions: 0o755, recursive: true);
-        \file_put_contents($project->dir.'/.porta/search-history.json', \json_encode(['queries' => $queries]));
+        \file_put_contents($project->dir.'/.porta/search-history.json', \json_encode(['queries' => $queries], \JSON_THROW_ON_ERROR));
 
         $all = new SearchHistoryStore($project->dir)->queries;
 
@@ -104,7 +104,7 @@ final class SearchHistoryStoreTest extends TestCase
 
         // Non-string entries are filtered out.
         $mixed = new TempProject([]);
-        $mixed->write('.porta/search-history.json', (string) \json_encode(['queries' => ['ok', 123, '', null]]));
+        $mixed->write('.porta/search-history.json', (string) \json_encode(['queries' => ['ok', 123, '', null]], \JSON_THROW_ON_ERROR));
         $this->assertSame(['ok'], new SearchHistoryStore($mixed->dir)->queries);
     }
 
@@ -114,7 +114,7 @@ final class SearchHistoryStoreTest extends TestCase
         // scanning (instead of skipping just that one entry) would drop the
         // valid entry that follows it.
         $project = new TempProject([]);
-        $project->write('.porta/search-history.json', (string) \json_encode(['queries' => [123, 'ok']]));
+        $project->write('.porta/search-history.json', (string) \json_encode(['queries' => [123, 'ok']], \JSON_THROW_ON_ERROR));
 
         $this->assertSame(['ok'], new SearchHistoryStore($project->dir)->queries);
     }
@@ -124,7 +124,7 @@ final class SearchHistoryStoreTest extends TestCase
         // `null === $data` is false here (the file parses), so this only
         // exercises the second half of the guard — a non-array `queries`.
         $project = new TempProject([]);
-        $project->write('.porta/search-history.json', (string) \json_encode(['queries' => 'not-an-array']));
+        $project->write('.porta/search-history.json', (string) \json_encode(['queries' => 'not-an-array'], \JSON_THROW_ON_ERROR));
 
         $this->assertSame([], new SearchHistoryStore($project->dir)->queries);
     }
@@ -132,7 +132,7 @@ final class SearchHistoryStoreTest extends TestCase
     public function testAnUnencodableQueryStaysLiveAndPersistenceDegradesSilently(): void
     {
         // Searching for an invalid-UTF-8 needle must not crash the IDE:
-        // json_encode(JSON_THROW_ON_ERROR) throws, the widened catch keeps
+        // json_encode(\JSON_THROW_ON_ERROR) throws, the widened catch keeps
         // save() best-effort, and the in-memory history still works.
         $project = new TempProject();
         $store = new SearchHistoryStore($project->dir);

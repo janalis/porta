@@ -14,7 +14,7 @@ final class NamespaceGraphScannerTest extends TestCase
     private function project(): TempProject
     {
         return new TempProject([
-            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]]),
+            'composer.json' => (string) \json_encode(['autoload' => ['psr-4' => ['App\\' => 'src/']]], \JSON_THROW_ON_ERROR),
             'src/Editor/Document.php' => "<?php\nnamespace App\\Editor;\nuse App\\Support\\Text;\nuse App\\Editor\\Cursor;\nfinal class Document {}\n",
             'src/Editor/Cursor.php' => "<?php\nnamespace App\\Editor;\nfinal class Cursor {}\n",
             'src/Support/Text.php' => "<?php\nnamespace App\\Support;\nuse Psr\\Log\\LoggerInterface;\nfinal class Text {}\n",

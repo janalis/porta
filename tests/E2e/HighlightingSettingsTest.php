@@ -98,7 +98,7 @@ final class HighlightingSettingsTest extends TestCase
                 $tui->handleInput("\r"); // actuate the button
                 $this->frame($tui); // a bare tick inside the 60fps cap window is not a frame
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, RecommendedPlugin::Highlighter->value],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,

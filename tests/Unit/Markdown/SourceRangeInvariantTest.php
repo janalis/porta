@@ -67,7 +67,7 @@ final class SourceRangeInvariantTest extends TestCase
                 $parent::class,
                 $parent->range->start,
                 $parent->range->end,
-                \json_encode($markdown),
+                \json_encode($markdown, \JSON_THROW_ON_ERROR),
             );
             $this->assertLessThanOrEqual($child->range->end, $child->range->start, $where);
             $this->assertTrue($parent->range->contains($child->range), 'outside its parent: '.$where);

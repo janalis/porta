@@ -249,6 +249,7 @@ final readonly class SettingsKeymapController
     private static function fileKeymap(?string $path): array
     {
         /** @var mixed $config */
+        // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
         $config = null === $path || !\is_file($path) ? null : \json_decode((string) \file_get_contents($path), associative: true);
         /** @var mixed $keymap */
         $keymap = \is_array($config) ? $config['keymap'] ?? null : null;

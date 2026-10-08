@@ -1244,7 +1244,7 @@ final class IdeHelpersTest extends TestCase
         $service->onBufferRepointRequested(new BufferRepointRequested($old, $new));
 
         $paths = \array_map(static fn (Buffer $buffer): string => $buffer->path, $buffers->all());
-        $this->assertNotContains((string) \realpath(\dirname($old)).'/Before.php', $paths, 'the stale buffer is gone');
+        $this->assertNotContains(\realpath(\dirname($old)).'/Before.php', $paths, 'the stale buffer is gone');
         $this->assertContains((string) \realpath($new), $paths, 'and the new path is open in its place');
     }
 

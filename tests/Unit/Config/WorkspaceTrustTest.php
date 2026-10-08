@@ -122,7 +122,7 @@ final class WorkspaceTrustTest extends TestCase
         $this->assertTrue($trust->isTrusted($project->dir), 'and back again');
         $this->assertSame(
             ['trusted' => [(string) \realpath($project->dir)], 'restricted' => []],
-            \json_decode((string) \file_get_contents($home->path('.porta/trusted-projects.json')), associative: true),
+            \json_decode((string) \file_get_contents($home->path('.porta/trusted-projects.json')), associative: true, flags: \JSON_THROW_ON_ERROR),
             'one answer per project',
         );
 

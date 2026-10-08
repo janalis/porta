@@ -123,7 +123,7 @@ final class SnippetParser
         if (\preg_match('/^(\d+):(.*)$/s', $inner, $m)) {
             return [(int) $m[1], $m[2]];
         }
-        if (\preg_match('/^(\d+)\|([^|]*)\|$/s', $inner, $m)) {
+        if (\preg_match('/^(\d+)\|([^|]*)\|$/', $inner, $m)) {
             $choices = \explode(',', $m[2]);
 
             return [(int) $m[1], $choices[0]];
@@ -153,10 +153,8 @@ final class SnippetParser
 
                 continue;
             }
-            if ('}' === $s[$i]) {
-                if (0 === --$depth) {
-                    return $i;
-                }
+            if ('}' === $s[$i] && 0 === --$depth) {
+                return $i;
             }
         }
 

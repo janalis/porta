@@ -43,7 +43,7 @@ final class LayoutStoreTest extends TestCase
         if (!\is_dir($project->path('.porta'))) {
             \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => 'nope']));
+        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => 'nope'], \JSON_THROW_ON_ERROR));
 
         $loaded = new LayoutStore($project->dir)->load();
         $this->assertInstanceOf(LayoutPrefs::class, $loaded);
@@ -59,7 +59,7 @@ final class LayoutStoreTest extends TestCase
         if (!\is_dir($project->path('.porta'))) {
             \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => '18']));
+        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['sidebarWidthPercent' => '18'], \JSON_THROW_ON_ERROR));
 
         $this->assertSame(18, new LayoutStore($project->dir)->load()?->sidebarWidthPercent);
     }
@@ -99,10 +99,13 @@ final class LayoutStoreTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/layout.json'),
-            \json_encode([
-                'gitSidebarWidthPercent' => 28,
-                'settingsSidebarWidthPercent' => 19,
-            ]),
+            \json_encode(
+                [
+                    'gitSidebarWidthPercent' => 28,
+                    'settingsSidebarWidthPercent' => 19,
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $this->assertSame(['git' => 28, 'settings' => 19], new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent);
@@ -119,10 +122,13 @@ final class LayoutStoreTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/layout.json'),
-            \json_encode([
-                'gitSidebarWidthPercent' => 28,
-                'viewSidebarWidthPercent' => ['git' => 44, 'lsp-explorer' => 12],
-            ]),
+            \json_encode(
+                [
+                    'gitSidebarWidthPercent' => 28,
+                    'viewSidebarWidthPercent' => ['git' => 44, 'lsp-explorer' => 12],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $this->assertSame(
@@ -144,7 +150,7 @@ final class LayoutStoreTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/layout.json'),
-            \json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number']]),
+            \json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number']], \JSON_THROW_ON_ERROR),
         );
 
         $this->assertSame([], new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent);
@@ -152,7 +158,7 @@ final class LayoutStoreTest extends TestCase
 
     public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
     {
-        // An invalid-UTF-8 view id makes json_encode(JSON_THROW_ON_ERROR)
+        // An invalid-UTF-8 view id makes json_encode(\JSON_THROW_ON_ERROR)
         // throw; the widened catch degrades that to the IO-error false.
         $project = new TempProject();
 

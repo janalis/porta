@@ -54,6 +54,7 @@ final class LinkCloser
         $m = [];
         $end = $after;
         $label = null;
+        // @noinspection NotOptimalRegularExpressionsInspection -- `\\\\.` is a backslash and ANY character, newline too: the /s is needed
         if (1 === \preg_match('/\G\[((?:[^\\\\\[\]]|\\\\.){0,999})\]/s', $subject, $m, flags: 0, offset: $after)) {
             $end = $after + \strlen($m[0]);
             $label = '' === $m[1] ? null : $m[1];

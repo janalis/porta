@@ -32,6 +32,7 @@ final readonly class SettingsDebugController
     {
         $launch = $this->adapters->launchOverrides($language);
 
+        // @noinspection JsonEncodingApiUsageInspection -- a launch config that cannot be encoded shows as an empty field, not a crash (SettingsDebugControllerTest)
         return [
             new SettingsRow(
                 key: 'debugAdapter',
@@ -87,6 +88,7 @@ final readonly class SettingsDebugController
         $launch = [];
         if ('' !== $json) {
             /** @var array<array-key, mixed>|scalar|null $decoded */
+            // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
             $decoded = \json_decode($json, associative: true);
             if (!\is_array($decoded) || \array_is_list($decoded)) {
                 // FALSE, so the form keeps the editor open with what was

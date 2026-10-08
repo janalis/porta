@@ -3,6 +3,8 @@
   "paths": ["src", "plugins", "tests", "bin", "config"],
   "rules": {
     "ElvisOperatorCanBeUsed": { "enabled": false },
-    "ClassConstantCanBeUsed": { "enabled": false }
+    "ClassConstantCanBeUsed": { "enabled": false },
+    "UnnecessaryCasting": { "enabled": false },
+    "ClassMethodNameMatchesFieldName": { "enabled": false }
   }
 }

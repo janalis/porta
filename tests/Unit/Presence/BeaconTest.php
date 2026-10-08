@@ -25,7 +25,7 @@ final class BeaconTest extends TestCase
 
         $this->assertEquals($beacon, Beacon::fromJson($beacon->toJson()));
         $this->assertStringContainsString('"src/Été.php"', $beacon->toJson(), 'slashes and accents written as they are');
-        $this->assertEquals(new Beacon(self::ID, 'Ada', 'ssh', null, 3, 4, 1, 2, 1_700_000_000), Beacon::fromJson((string) \json_encode(self::fields(['path' => null]))));
+        $this->assertEquals(new Beacon(self::ID, 'Ada', 'ssh', null, 3, 4, 1, 2, 1_700_000_000), Beacon::fromJson((string) \json_encode(self::fields(['path' => null]), \JSON_THROW_ON_ERROR)));
     }
 
     /** @return iterable<string, array{array<string, mixed>|string}> */
@@ -50,7 +50,7 @@ final class BeaconTest extends TestCase
     #[DataProvider('notBeacons')]
     public function testWhatIsNotABeaconIsNone(array|string $json): void
     {
-        $this->assertNull(Beacon::fromJson(\is_string($json) ? $json : (string) \json_encode($json)));
+        $this->assertNull(Beacon::fromJson(\is_string($json) ? $json : (string) \json_encode($json, \JSON_THROW_ON_ERROR)));
     }
 
     /** @return iterable<string, array{mixed}> */
@@ -67,7 +67,7 @@ final class BeaconTest extends TestCase
     #[DataProvider('notPaths')]
     public function testAPathOutsideTheProjectIsNoPath(mixed $path): void
     {
-        $beacon = Beacon::fromJson((string) \json_encode(self::fields(['path' => $path])));
+        $beacon = Beacon::fromJson((string) \json_encode(self::fields(['path' => $path]), \JSON_THROW_ON_ERROR));
 
         $this->assertInstanceOf(Beacon::class, $beacon, 'the rest of the beacon still says who is here');
         $this->assertNull($beacon->path);
@@ -75,7 +75,7 @@ final class BeaconTest extends TestCase
 
     public function testANameIsCleanedAndCut(): void
     {
-        $beacon = Beacon::fromJson((string) \json_encode(self::fields(['name' => "  \u{202E}Ada\e[31m".\str_repeat('é', times: 100)])));
+        $beacon = Beacon::fromJson((string) \json_encode(self::fields(['name' => "  \u{202E}Ada\e[31m".\str_repeat('é', times: 100)]), \JSON_THROW_ON_ERROR));
 
         $this->assertInstanceOf(Beacon::class, $beacon);
         $this->assertSame('Ada[31m'.\str_repeat('é', Beacon::MAX_NAME - 7), $beacon->name, 'no control or format character, 40 characters at most');

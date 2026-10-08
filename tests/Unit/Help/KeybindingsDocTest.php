@@ -520,7 +520,7 @@ final class KeybindingsDocTest extends TestCase
     {
         /** @var array<string, list<string>> $defaults */
         $defaults = EditorKeymap::defaults();
-        $specs = (string) \json_encode(new \ReflectionClass(MenuModel::class)->getConstant('DEFS'));
+        $specs = (string) \json_encode(new \ReflectionClass(MenuModel::class)->getConstant('DEFS'), \JSON_THROW_ON_ERROR);
 
         $onAMenu = [];
         foreach ($defaults as $id => $keys) {

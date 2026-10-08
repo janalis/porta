@@ -29,7 +29,7 @@ require __DIR__.'/lsp-stub.php';
 
 foreach (readFrames($in) as $message) {
     if (null !== $log) {
-        file_put_contents($log, json_encode($message)."\n", FILE_APPEND);
+        file_put_contents($log, json_encode($message, \JSON_THROW_ON_ERROR)."\n", FILE_APPEND);
     }
     $method = $message['method'] ?? '';
 

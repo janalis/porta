@@ -109,10 +109,8 @@ final readonly class RunConfigs
         foreach (\explode("\n", (string) \file_get_contents($file)) as $line) {
             // "target: deps" at column 0 — skip pattern rules and variables.
             $m = [];
-            if (\preg_match('/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)\s*:(?!=)/', $line, $m)) {
-                if (!\in_array($m[1], $targets, strict: true)) {
-                    $targets[] = $m[1];
-                }
+            if (\preg_match('/^([a-zA-Z0-9][a-zA-Z0-9_.-]*)\s*:(?!=)/', $line, $m) && !\in_array($m[1], $targets, strict: true)) {
+                $targets[] = $m[1];
             }
         }
 

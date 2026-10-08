@@ -97,14 +97,17 @@ final class SessionStoreTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/session.json'),
-            \json_encode([
-                'buffers' => [
-                    ['noPath' => true],
-                    ['path' => '/p/a.php'],
-                    ['path' => '/p/b.php', 'line' => '9', 'col' => '3'],
+            \json_encode(
+                [
+                    'buffers' => [
+                        ['noPath' => true],
+                        ['path' => '/p/a.php'],
+                        ['path' => '/p/b.php', 'line' => '9', 'col' => '3'],
+                    ],
+                    'active' => null,
                 ],
-                'active' => null,
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $loaded = new SessionStore($project->dir)->load();
@@ -128,14 +131,17 @@ final class SessionStoreTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/session.json'),
-            \json_encode([
-                'buffers' => [
-                    ['path' => '/p/ok.php', 'line' => 2],
-                    ['noPath' => true],
-                    'not an array',
+            \json_encode(
+                [
+                    'buffers' => [
+                        ['path' => '/p/ok.php', 'line' => 2],
+                        ['noPath' => true],
+                        'not an array',
+                    ],
+                    'active' => 42, // wrong type -> null
                 ],
-                'active' => 42, // wrong type -> null
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $loaded = new SessionStore($project->dir)->load();
@@ -147,7 +153,7 @@ final class SessionStoreTest extends TestCase
     public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
     {
         // A path can carry invalid UTF-8 (byte-wise edits produce them), and
-        // json_encode(JSON_THROW_ON_ERROR) then throws where dumpFile never
+        // json_encode(\JSON_THROW_ON_ERROR) then throws where dumpFile never
         // ran — only the widened catch turns that into the same best-effort
         // false an IO error produces.
         $project = new TempProject();

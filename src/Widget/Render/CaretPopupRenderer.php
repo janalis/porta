@@ -82,7 +82,7 @@ final class CaretPopupRenderer
             default => -1,
         };
         $width = \min($natural, $columns - $gutterWidth - 1);
-        if ($row < 0 || $row >= \count($lines) || $width < 4) {
+        if ($width < 4 || $row < 0 || $row >= \count($lines)) {
             return;
         }
         $popup = self::signatureContent($hint, $width, $activeRange, $styles, $counter);

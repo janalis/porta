@@ -46,7 +46,7 @@ final class IdeViewerPluginsTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => []]), // explicit: BOTH viewers off
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => []], \JSON_THROW_ON_ERROR), // explicit: BOTH viewers off
             'g.dot' => self::SMALL_DOT,
             'img.png' => $this->onePixelPng(),
         ]);
@@ -76,7 +76,7 @@ final class IdeViewerPluginsTest extends TestCase
     public function testLiveToggleRoutesSubsequentOpensAndKeepsOpenTabs(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['plugins' => ['graph-viewer' => ['dotPath' => \dirname(__DIR__).'/Support/fake-dot']]]),
+            '.porta.json' => (string) \json_encode(['plugins' => ['graph-viewer' => ['dotPath' => \dirname(__DIR__).'/Support/fake-dot']]], \JSON_THROW_ON_ERROR),
             'a.dot' => self::SMALL_DOT,
             'b.dot' => self::SMALL_DOT,
             'c.dot' => self::SMALL_DOT,
@@ -124,7 +124,7 @@ final class IdeViewerPluginsTest extends TestCase
         // enable must build the pane, not just the claim.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => []]), // viewers off AT BOOT
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => []], \JSON_THROW_ON_ERROR), // viewers off AT BOOT
             'a.php' => "<?php\n",
             'img.png' => $this->onePixelPng(),
         ]);
@@ -360,7 +360,7 @@ final class IdeViewerPluginsTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['image-viewer']]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['image-viewer']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
             'b.php' => "<?php\necho 'b';\n",
             'img.png' => $this->onePixelPng(),

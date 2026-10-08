@@ -336,7 +336,7 @@ final readonly class PluginManifest
         $platform = [];
         /** @var mixed $constraint */
         foreach (\is_array($data['require'] ?? null) ? $data['require'] : [] as $need => $constraint) {
-            if (!\is_string($need) || \str_contains($need, needle: '/') || !\is_string($constraint)) {
+            if (!\is_string($constraint) || !\is_string($need) || \str_contains($need, needle: '/')) {
                 continue;
             }
             $platform[$need] = $constraint;

@@ -176,7 +176,7 @@ final class IdePluginTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
-            '.porta.json' => (string) \json_encode(['keymap' => ['demo:hello' => ['f8']]]),
+            '.porta.json' => (string) \json_encode(['keymap' => ['demo:hello' => ['f8']]], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 

@@ -22,7 +22,7 @@ while (!feof($in)) {
         && preg_match('/Content-Length:\s*(\d+)/i', substr($buffer, offset: 0, length: $headerEnd), $m)
         && \strlen($buffer) >= ($headerEnd + 4 + (int) $m[1])
     ) {
-        $message = json_decode(substr($buffer, $headerEnd + 4, (int) $m[1]), associative: true);
+        $message = json_decode(substr($buffer, $headerEnd + 4, (int) $m[1]), associative: true, flags: \JSON_THROW_ON_ERROR);
         $buffer = substr($buffer, $headerEnd + 4 + (int) $m[1]);
 
         if ('initialize' === ($message['method'] ?? '')) {

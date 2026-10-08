@@ -614,7 +614,7 @@ final class KeybindingsListWidgetTest extends TestCase
             $columns[] = \mb_strpos($mirrored, needle: 'Ctrl+S', encoding: 'UTF-8');
         }
 
-        $this->assertCount(1, \array_unique($columns), 'every chord is in the same column: '.\json_encode($columns));
+        $this->assertCount(1, \array_unique($columns), 'every chord is in the same column: '.\json_encode($columns, \JSON_THROW_ON_ERROR));
     }
 
     /**

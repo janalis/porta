@@ -72,7 +72,7 @@ final class PluginSettingsTest extends TestCase
         $this->assertSame('/opt/tool', $settings->value('demo', 'binary'), 'the live map updated');
         $this->assertSame('low', $settings->value('demo', 'level'));
         $this->assertSame(9, $settings->value('demo', 'jobs'));
-        $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('/opt/tool', $config['plugins']['demo']['binary'], 'persisted to .porta.json');
         $this->assertArrayNotHasKey('ghost', $config['plugins']['demo']);
 
@@ -83,7 +83,7 @@ final class PluginSettingsTest extends TestCase
 
     public function testResetDropsTheLiveValueAndThePersistedOne(): void
     {
-        $project = new TempProject(['.porta.json' => (string) \json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]])]);
+        $project = new TempProject(['.porta.json' => (string) \json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]], \JSON_THROW_ON_ERROR)]);
         $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]], null, self::projectScope($project->dir));
         $settings->registerFor('demo', [$this->descriptor('binary', 'text', '/default/bin'), $this->descriptor('strict', 'bool', false)]);
         $this->assertSame('/usr/bin/x', $settings->value('demo', 'binary'));
@@ -91,7 +91,7 @@ final class PluginSettingsTest extends TestCase
         $settings->reset('demo', 'binary');
 
         $this->assertSame('/default/bin', $settings->value('demo', 'binary'), 'the live value falls back to the descriptor default');
-        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertArrayNotHasKey('binary', $file['plugins']['demo'], 'and the key is gone from disk, not set to the default');
         $this->assertArrayHasKey('strict', $file['plugins']['demo'], 'the plugin\'s other settings are untouched');
     }
@@ -99,13 +99,13 @@ final class PluginSettingsTest extends TestCase
     /** An emptied plugin entry — and then an emptied block — is removed rather than left as `{}`. */
     public function testResettingAPluginsLastSettingDropsItsEntryAndTheBlock(): void
     {
-        $project = new TempProject(['.porta.json' => (string) \json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x']]])]);
+        $project = new TempProject(['.porta.json' => (string) \json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x']]], \JSON_THROW_ON_ERROR)]);
         $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x']], null, self::projectScope($project->dir));
         $settings->registerFor('demo', [$this->descriptor('binary', 'text', '')]);
 
         $settings->reset('demo', 'binary');
 
-        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertArrayNotHasKey('plugins', $file);
     }
 }

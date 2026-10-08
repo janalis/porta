@@ -162,7 +162,7 @@ final class IdeLiveViewPluginsTest extends TestCase
         // on the screen the user actually touches.
         $embedded = $this->embeddedViewFixture();
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []], \JSON_THROW_ON_ERROR)]);
 
         $this->runIde(
             $project,
@@ -188,7 +188,7 @@ final class IdeLiveViewPluginsTest extends TestCase
 
                     $this->assertNotNull($views->find('demo-view'), 'the view was built from the Settings screen');
                     $this->assertInstanceOf(ViewRegion::class, $regions->find('demo-view'), 'and its region minted');
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(['demo'], \is_array($config) ? $config['enabledPlugins'] ?? null : null, 'and the choice persisted');
 
                     // Leave the settings view — through the same command that
@@ -226,7 +226,7 @@ final class IdeLiveViewPluginsTest extends TestCase
     {
         $embedded = $this->embeddedViewFixture();
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []], \JSON_THROW_ON_ERROR)]);
 
         $this->runIde(
             $project,
@@ -303,7 +303,7 @@ final class IdeLiveViewPluginsTest extends TestCase
                 };
                 PHP]);
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []])]);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => (string) \json_encode(['enabledPlugins' => []], \JSON_THROW_ON_ERROR)]);
 
         $this->runIde(
             $project,

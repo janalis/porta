@@ -37,7 +37,7 @@ final class IdePluginDocsTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => []]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => []], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
 

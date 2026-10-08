@@ -258,7 +258,7 @@ final class PluginInstaller
             }
             $landed = $this->project->packageDir($root, $packageName);
             [, $type] = $this->packageManifest($landed);
-            if (!\is_file($landed.'/plugin.php') || 'porta-plugin' !== $type) {
+            if ('porta-plugin' !== $type || !\is_file($landed.'/plugin.php')) {
                 $this->startComposer($composerDir, ['remove', $packageName, '--no-interaction'], static function (int $exitCode): void {});
                 $this->fail($onDone, $this->translator->trans('"%source%" is not a Porta plugin package', ['%source%' => $packageName]));
 

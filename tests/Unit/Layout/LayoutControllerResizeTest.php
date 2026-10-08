@@ -150,7 +150,7 @@ final class LayoutControllerResizeTest extends TestCase
         $file = $this->project->dir.'/.porta/layout.json';
         $this->assertTrue(\is_file($file), 'the release persisted the new width');
         /** @var array<string, mixed> $saved */
-        $saved = \json_decode((string) \file_get_contents($file), associative: true);
+        $saved = \json_decode((string) \file_get_contents($file), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(35, $saved['sidebarWidthPercent'], 'persisted as a percent of the 100-column terminal');
 
         // The drag is now disarmed: a further drag (no fresh press) must not move it.

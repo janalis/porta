@@ -36,7 +36,7 @@ final class SearchScopeStoreTest extends TestCase
         $store->forget('docs'); // takes the middle one out
 
         $raw = (string) \file_get_contents($project->dir.'/.porta/search-scopes.json');
-        $decoded = \json_decode($raw, associative: true);
+        $decoded = \json_decode($raw, associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('scopes', $decoded);
         $this->assertSame(
@@ -104,12 +104,15 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) \json_encode([
-                'scopes' => [
-                    ['label' => 'other', 'paths' => ['o'], 'pinned' => false],
-                    ['label' => 'target', 'paths' => ['t'], 'pinned' => true],
+            (string) \json_encode(
+                [
+                    'scopes' => [
+                        ['label' => 'other', 'paths' => ['o'], 'pinned' => false],
+                        ['label' => 'target', 'paths' => ['t'], 'pinned' => true],
+                    ],
                 ],
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         new SearchScopeStore($project->dir)->addRecent('target', ['t2']);
@@ -127,12 +130,15 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) \json_encode([
-                'scopes' => [
-                    ['label' => 'dup', 'paths' => ['first'], 'pinned' => false],
-                    ['label' => 'dup', 'paths' => ['second'], 'pinned' => true],
+            (string) \json_encode(
+                [
+                    'scopes' => [
+                        ['label' => 'dup', 'paths' => ['first'], 'pinned' => false],
+                        ['label' => 'dup', 'paths' => ['second'], 'pinned' => true],
+                    ],
                 ],
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         new SearchScopeStore($project->dir)->addRecent('dup', ['new']);
@@ -146,7 +152,7 @@ final class SearchScopeStoreTest extends TestCase
         // `null === $data` is false here (the file parses), so this only
         // exercises the second half of the guard — a non-array `scopes`.
         $project = new TempProject([]);
-        $project->write('.porta/search-scopes.json', (string) \json_encode(['scopes' => 'not-an-array']));
+        $project->write('.porta/search-scopes.json', (string) \json_encode(['scopes' => 'not-an-array'], \JSON_THROW_ON_ERROR));
 
         $this->assertSame([], new SearchScopeStore($project->dir)->scopes);
     }
@@ -158,12 +164,15 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) \json_encode([
-                'scopes' => [
-                    ['label' => 'bad'], // missing paths
-                    ['label' => 'ok', 'paths' => ['x']],
+            (string) \json_encode(
+                [
+                    'scopes' => [
+                        ['label' => 'bad'], // missing paths
+                        ['label' => 'ok', 'paths' => ['x']],
+                    ],
                 ],
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $this->assertSame(['ok'], \array_column(new SearchScopeStore($project->dir)->scopes, 'label'));
@@ -178,14 +187,17 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) \json_encode([
-                'scopes' => [['label' => 'ok', 'paths' => [7, 'src', '']]],
-            ]),
+            (string) \json_encode(
+                [
+                    'scopes' => [['label' => 'ok', 'paths' => [7, 'src', '']]],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $loaded = new SearchScopeStore($project->dir)->scopes;
         $this->assertSame(['src'], $loaded[0]['paths']);
-        $this->assertSame('["src"]', \json_encode($loaded[0]['paths']), 'stays a JSON array, not an object');
+        $this->assertSame('["src"]', \json_encode($loaded[0]['paths'], \JSON_THROW_ON_ERROR), 'stays a JSON array, not an object');
     }
 
     public function testLoadKeepsEveryValidScopeNotJustTheFirst(): void
@@ -193,12 +205,15 @@ final class SearchScopeStoreTest extends TestCase
         $project = new TempProject([]);
         $project->write(
             '.porta/search-scopes.json',
-            (string) \json_encode([
-                'scopes' => [
-                    ['label' => 'a', 'paths' => ['a']],
-                    ['label' => 'b', 'paths' => ['b']],
+            (string) \json_encode(
+                [
+                    'scopes' => [
+                        ['label' => 'a', 'paths' => ['a']],
+                        ['label' => 'b', 'paths' => ['b']],
+                    ],
                 ],
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
 
         $this->assertSame(['a', 'b'], \array_column(new SearchScopeStore($project->dir)->scopes, 'label'));
@@ -222,14 +237,17 @@ final class SearchScopeStoreTest extends TestCase
         $mixed = new TempProject([]);
         $mixed->write(
             '.porta/search-scopes.json',
-            (string) \json_encode([
-                'scopes' => [
-                    ['label' => 'ok', 'paths' => ['src', 7, ''], 'pinned' => true],
-                    ['label' => 'no-paths', 'paths' => []],
-                    ['paths' => ['x']], // missing label
-                    'garbage',
+            (string) \json_encode(
+                [
+                    'scopes' => [
+                        ['label' => 'ok', 'paths' => ['src', 7, ''], 'pinned' => true],
+                        ['label' => 'no-paths', 'paths' => []],
+                        ['paths' => ['x']], // missing label
+                        'garbage',
+                    ],
                 ],
-            ]),
+                \JSON_THROW_ON_ERROR,
+            ),
         );
         $kept = new SearchScopeStore($mixed->dir)->scopes;
         $this->assertSame([['label' => 'ok', 'paths' => ['src'], 'pinned' => true]], $kept);

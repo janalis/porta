@@ -171,7 +171,7 @@ final class LineOperations
      */
     public static function blockUnwrapped(string $text, string $open, string $close): ?string
     {
-        if (\strlen($text) < (\strlen($open) + \strlen($close)) || !\str_starts_with($text, $open) || !\str_ends_with($text, $close)) {
+        if (!\str_ends_with($text, $close) || !\str_starts_with($text, $open) || \strlen($text) < (\strlen($open) + \strlen($close))) {
             return null;
         }
 

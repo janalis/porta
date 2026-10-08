@@ -80,7 +80,7 @@ trait ScreenReads
         foreach ($tokens as $token) {
             if (\str_starts_with($token[0], "\x1b")) {
                 $params = $token[1] ?? null;
-                if (\str_ends_with($token[0], 'm') && null !== $params) {
+                if (null !== $params && \str_ends_with($token[0], 'm')) {
                     $bg = self::backgroundAfter($bg, '' === $params ? [0] : \array_map(\intval(...), \explode(';', $params)));
                 }
                 continue;

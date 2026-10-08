@@ -1019,7 +1019,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $outcome = $this->workspaceEditor()->applyWorkspaceEdit(['documentChanges' => \array_map($resolve, $changes)]);
 
-        $this->assertSame($honourable, !$outcome->isRefused(), $because.' — refusal said: '.(string) $outcome->refused);
+        $this->assertSame($honourable, !$outcome->isRefused(), $because.' — refusal said: '.$outcome->refused);
     }
 
     /** @return \Generator<string, array{list<array<string, mixed>>, bool, string}> */

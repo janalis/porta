@@ -536,6 +536,7 @@ final class ArchitectureCheckCommand extends Command
         $manifests = \glob($pluginsDir.'/*/composer.json');
         foreach (false === $manifests ? [] : $manifests as $path) {
             /** @var array<array-key, mixed>|scalar|null $data */
+            // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
             $data = \json_decode((string) \file_get_contents($path), associative: true);
             $autoload = \is_array($data) && \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
             /** @var mixed $relatives */

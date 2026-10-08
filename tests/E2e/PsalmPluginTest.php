@@ -83,7 +83,7 @@ final class PsalmPluginTest extends TestCase
     {
         $project = $this->project($this->errorStub());
         // The message after the code is what this reads; PhpStorm's default shows none.
-        $project->write('.porta.json', (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']]));
+        $project->write('.porta.json', (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']], \JSON_THROW_ON_ERROR));
 
         $this->runIde(
             $project,
@@ -167,7 +167,7 @@ final class PsalmPluginTest extends TestCase
         // A .porta.json seeded with autoLint=true behaves as if the toggle had
         // been flipped in an earlier session: the first save analyses, no toggle needed.
         $project = $this->project($this->errorStub());
-        $project->write('.porta.json', (string) \json_encode(['plugins' => ['psalm' => ['autoLint' => true]]]));
+        $project->write('.porta.json', (string) \json_encode(['plugins' => ['psalm' => ['autoLint' => true]]], \JSON_THROW_ON_ERROR));
 
         $this->runIde(
             $project,

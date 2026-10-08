@@ -118,7 +118,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r"); // the selected step: enable highlighting
                 $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "tempest" enabled'), what: 'the enable flash');
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -133,7 +133,7 @@ final class WelcomeScreenTest extends TestCase
     {
         $project = new TempProject([
             'a.php' => "<?php\nreturn 1;\n",
-            'composer.json' => (string) \json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]),
+            'composer.json' => (string) \json_encode(['require' => ['symfony/framework-bundle' => '^7.0']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->runIde($project, $project->path('a.php'), [
@@ -147,7 +147,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Plugin "symfony-lsp" enabled'), what: 'the enable flash');
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'symfony-lsp'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -239,7 +239,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'phpantom'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -278,7 +278,7 @@ final class WelcomeScreenTest extends TestCase
                     $tui->handleInput("\r");
                     $tui->tick();
 
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(
                         [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'phpantom'],
                         \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -311,7 +311,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest', 'phpantom'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -338,7 +338,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'php-cs-fixer'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -370,7 +370,7 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput("\r");
                 $tui->tick();
 
-                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                 $this->assertSame(
                     [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'mago'],
                     \is_array($config) ? $config['enabledPlugins'] ?? null : null,
@@ -428,7 +428,7 @@ final class WelcomeScreenTest extends TestCase
                 // A right-press over the box is swallowed: no context menu opens.
                 $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $region->col + 4, $region->top + 5 + 1));
                 $tui->tick();
-                $this->assertInstanceOf(DropdownRegion::class, $this->modalRegion($ide), 'still open');
+                $this->modalRegion($ide); // awaits the modal: still open
 
                 // Drag by the title bar: press, move left two columns and
                 // down two rows, release. On a 24-row terminal the box fills

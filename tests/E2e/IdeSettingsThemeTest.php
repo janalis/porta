@@ -308,7 +308,7 @@ final class IdeSettingsThemeTest extends TestCase
         if (!\is_dir($project->path('.porta'))) {
             \mkdir($project->path('.porta'), permissions: 0o777, recursive: true);
         }
-        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['settingsSidebarWidthPercent' => 25]));
+        \file_put_contents($project->path('.porta/layout.json'), \json_encode(['settingsSidebarWidthPercent' => 25], \JSON_THROW_ON_ERROR));
 
         $this->runIde(
             $project,
@@ -327,7 +327,7 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 900 => function (Tui $tui) use ($project): void {
                     $this->assertSame(21, Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class)->width(), 'the drag resized the sidebar');
-                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true);
+                    $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(17, $layout['viewSidebarWidthPercent']['settings'], 'saved as a share of the window (round(21/124))');
                 },
             ],

@@ -83,6 +83,7 @@ final readonly class Beacon
     public static function fromJson(string $json): ?self
     {
         // @mago-expect analysis:mixed-assignment -- another machine's file: every field is narrowed below
+        // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
         $data = \json_decode($json, associative: true);
         if (!\is_array($data)) {
             return null;

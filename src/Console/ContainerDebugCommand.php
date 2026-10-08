@@ -133,7 +133,7 @@ final class ContainerDebugCommand extends Command
         foreach ($tagged as $id => $tags) {
             /** @var mixed $attributes */
             foreach ($tags as $attributes) {
-                $rows[] = [$id, [] === $attributes ? '' : (string) \json_encode($attributes)];
+                $rows[] = [$id, [] === $attributes ? '' : \json_encode($attributes, \JSON_THROW_ON_ERROR)];
             }
         }
         $io->table(['Service', 'Tag attributes'], $rows);

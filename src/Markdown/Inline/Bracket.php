@@ -15,7 +15,7 @@ final class Bracket
         public readonly bool $image,
         /** Where its `[` sits in the text. */
         public readonly int $index,
-        public readonly ?Bracket $previous,
+        public readonly ?self $previous,
         public readonly ?Delimiter $previousDelimiter,
     ) {}
 }

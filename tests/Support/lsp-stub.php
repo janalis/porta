@@ -15,7 +15,7 @@ declare(strict_types=1);
  */
 function sendMessage($out, array $message): void
 {
-    $json = json_encode($message, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $json = json_encode($message, JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR);
     fwrite($out, 'Content-Length: '.strlen($json)."\r\n\r\n".$json);
     fflush($out);
 }
@@ -45,7 +45,7 @@ function readFrames($in): Generator
             if (strlen($buffer) < ($bodyStart + $length)) {
                 break;
             }
-            $message = json_decode(substr($buffer, $bodyStart, $length), associative: true);
+            $message = json_decode(substr($buffer, $bodyStart, $length), associative: true, flags: \JSON_THROW_ON_ERROR);
             $buffer = substr($buffer, $bodyStart + $length);
             if (is_array($message)) {
                 yield $message;

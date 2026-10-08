@@ -35,7 +35,7 @@ final class IdePixelGraphicsTest extends TestCase
     {
         $fakeDot = \dirname(__DIR__, levels: 3).'/tests/Support/fake-dot';
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => $fakeDot]]]),
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer'], 'plugins' => ['graph-viewer' => ['dotPath' => $fakeDot]]], \JSON_THROW_ON_ERROR),
             'g.dot' => "digraph G { A -> B; }\n",
         ]);
         $bin = $project->path('.php-only-bin');

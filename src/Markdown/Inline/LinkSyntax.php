@@ -94,9 +94,7 @@ final class LinkSyntax
     public static function title(string $text, int $at): ?array
     {
         $m = [];
-        if (
-            1 !== \preg_match('/\G(?:"((?:\\\\[!-\/:-@\[-`{-~]|[^"\x00])*)"|\'((?:\\\\[!-\/:-@\[-`{-~]|[^\'\x00])*)\'|\(((?:\\\\[!-\/:-@\[-`{-~]|[^()\x00])*)\))/s', $text, $m, flags: 0, offset: $at)
-        ) {
+        if (1 !== \preg_match('/\G(?:"((?:\\\\[!-\/:-@\[-`{-~]|[^"\x00])*)"|\'((?:\\\\[!-\/:-@\[-`{-~]|[^\'\x00])*)\'|\(((?:\\\\[!-\/:-@\[-`{-~]|[^()\x00])*)\))/', $text, $m, flags: 0, offset: $at)) {
             return null;
         }
 

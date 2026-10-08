@@ -47,7 +47,7 @@ final class OpenBlock
         public readonly BlockKind $kind,
         public readonly int $start,
         public readonly int $startLine,
-        public ?OpenBlock $parent = null,
+        public ?self $parent = null,
     ) {
         $this->end = $start;
         $this->endLine = $startLine;

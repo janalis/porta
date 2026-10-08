@@ -79,7 +79,7 @@ final class PhpstanPluginTest extends TestCase
     {
         $project = $this->project($this->errorStub());
         // The message after the code is what this reads; PhpStorm's default shows none.
-        $project->write('.porta.json', (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']]));
+        $project->write('.porta.json', (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']], \JSON_THROW_ON_ERROR));
 
         $this->runIde(
             $project,

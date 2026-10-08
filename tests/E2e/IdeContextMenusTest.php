@@ -1240,7 +1240,7 @@ final class IdeContextMenusTest extends TestCase
                     $labels = \array_map(static fn (MenuItem $item): string => $item->label, $items);
                     $this->assertContains(\basename($project->dir), $labels, 'this project, among them');
                     $this->assertSame('Open Project…', \end($labels), 'and the switcher last');
-                    $pick = \array_first(\array_filter($items, static fn (MenuItem $item): bool => \basename($other->dir) === $item->label)) ?? null;
+                    $pick = \array_first(\array_filter($items, static fn (MenuItem $item): bool => \basename($other->dir) === $item->label));
                     $this->assertInstanceOf(MenuItem::class, $pick, 'the folder beside it is offered');
 
                     ($pick->run)();

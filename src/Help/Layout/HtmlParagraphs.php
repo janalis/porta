@@ -52,7 +52,7 @@ final class HtmlParagraphs
     private function text(string $text): void
     {
         $text = \preg_replace('/\s+/', replacement: ' ', subject: \html_entity_decode($text, \ENT_QUOTES | \ENT_HTML5, encoding: 'UTF-8')) ?? $text;
-        if ('' === \trim($text) && [] === $this->current) {
+        if ([] === $this->current && '' === \trim($text)) {
             return;
         }
         $this->current[] = new Fragment($text, $this->style, $this->target, $this->group, $this->source);

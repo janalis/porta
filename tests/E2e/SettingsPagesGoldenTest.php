@@ -125,13 +125,13 @@ final class SettingsPagesGoldenTest extends TestCase
         $actual = $this->renderPages();
 
         if (\getenv('UPDATE_SETTINGS_PAGES_GOLDEN')) {
-            \file_put_contents(self::GOLDEN, \json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+            \file_put_contents(self::GOLDEN, \json_encode($actual, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
 
         $this->assertFileExists(self::GOLDEN, 'run once with UPDATE_SETTINGS_PAGES_GOLDEN=1 to seed');
         /** @var array<string, list<string>> $expected */
-        $expected = \json_decode((string) \file_get_contents(self::GOLDEN), associative: true);
+        $expected = \json_decode((string) \file_get_contents(self::GOLDEN), associative: true, flags: \JSON_THROW_ON_ERROR);
 
         // Page by page, so a failure names the page rather than the whole file.
         foreach ($expected as $page => $lines) {
@@ -185,7 +185,7 @@ final class SettingsPagesGoldenTest extends TestCase
         try {
             $this->capturePages($pages);
         } finally {
-            \putenv('HOME='.(string) $home);
+            \putenv('HOME='.$home);
         }
 
         return $pages;

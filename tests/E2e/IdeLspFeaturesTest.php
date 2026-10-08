@@ -574,7 +574,10 @@ final class IdeLspFeaturesTest extends TestCase
     public function testClickingAProblemRowInTheQuickFixesOpensItInProblems(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['settings' => ['diagnosticMessages' => 'menu']] + (array) \json_decode($this->mockLspConfig(), associative: true)),
+            '.porta.json' => (string) \json_encode(
+                ['settings' => ['diagnosticMessages' => 'menu']] + (array) \json_decode($this->mockLspConfig(), associative: true, flags: \JSON_THROW_ON_ERROR),
+                \JSON_THROW_ON_ERROR,
+            ),
             'src/Problem.php' => "<?php\necho 1;\n",
         ]);
 
@@ -756,7 +759,10 @@ final class IdeLspFeaturesTest extends TestCase
     {
         $project = new TempProject([
             // Starts from the message after the code, which PhpStorm's default does not show.
-            '.porta.json' => (string) \json_encode(['settings' => ['diagnosticMessages' => 'inline']] + (array) \json_decode($this->mockLspConfig(), associative: true)),
+            '.porta.json' => (string) \json_encode(
+                ['settings' => ['diagnosticMessages' => 'inline']] + (array) \json_decode($this->mockLspConfig(), associative: true, flags: \JSON_THROW_ON_ERROR),
+                \JSON_THROW_ON_ERROR,
+            ),
             'src/Inlay.php' => "<?php\n\$x = f();\n",
         ]);
         $lineShows = fn (Tui $tui, VirtualTerminal $terminal, string $needle): bool => null !== $this->rowOf($this->screenGrid($tui, $terminal), $needle);

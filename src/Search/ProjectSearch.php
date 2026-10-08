@@ -60,7 +60,7 @@ final class ProjectSearch
         $this->cancel();
         $this->gaveUp = false;
         $paths = \is_array($scope) ? \array_values($scope) : [$scope];
-        if ('' === \trim($query) || [] === $paths) {
+        if ([] === $paths || '' === \trim($query)) {
             $onDone([]);
 
             return;

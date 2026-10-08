@@ -169,7 +169,7 @@ final class IdePhpLspPluginsTest extends TestCase
         $binPath = $project->path('phpantom_stub');
         \file_put_contents($binPath, $stub);
         \chmod($binPath, permissions: 0o755);
-        \file_put_contents($project->path('.porta.json'), \json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => $binPath]]]));
+        \file_put_contents($project->path('.porta.json'), \json_encode(['enabledPlugins' => ['phpantom'], 'plugins' => ['phpantom' => ['binary' => $binPath]]], \JSON_THROW_ON_ERROR));
 
         return $project;
     }

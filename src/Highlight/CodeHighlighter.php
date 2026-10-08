@@ -483,7 +483,7 @@ final class CodeHighlighter implements HighlightSink
             return null;
         }
 
-        if (null === $old || $newCount < self::INCREMENTAL_MIN_LINES || \abs($newCount - \count($old)) > self::MAX_LOCAL_CHANGE || $this->staleEdits >= self::REPAIR_EVERY) {
+        if ($this->staleEdits >= self::REPAIR_EVERY || null === $old || $newCount < self::INCREMENTAL_MIN_LINES || \abs($newCount - \count($old)) > self::MAX_LOCAL_CHANGE) {
             return null;
         }
 

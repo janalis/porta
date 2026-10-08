@@ -149,6 +149,7 @@ final class Ide
         // The shipped user guides (F1), package-relative like the translations.
         $docsDir ??= \dirname(__DIR__).'/docs';
         $config = IdeConfig::load($this->rootDir);
+        // @noinspection UnusedConstructorDependenciesInspection -- the compiled container: tests reach services through it (tests/Support/Services)
         $this->container = new IdeContainerFactory()->build(
             $this->rootDir,
             $config,

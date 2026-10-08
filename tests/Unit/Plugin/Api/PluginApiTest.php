@@ -791,7 +791,7 @@ final class PluginApiTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n", 'dirty.php' => "<?php\n", 'dir/x.php' => "<?php\n"]);
         $api = $this->api();
         $files = $api->openBuffers();
-        $at = static fn (string $name): string => (string) \realpath($project->dir).'/'.$name;
+        $at = static fn (string $name): string => \realpath($project->dir).'/'.$name;
 
         $this->assertNull($files->create($at('new/b.php'), "<?php\n// b\n"));
         $this->assertSame("<?php\n// b\n", \file_get_contents($at('new/b.php')), 'folders on the way too');

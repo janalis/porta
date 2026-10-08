@@ -174,7 +174,7 @@ final class BufferManager
     public function cycle(int $offset): ?Buffer
     {
         $paths = \array_keys($this->buffers);
-        if (\count($paths) < 2 || null === $this->activePath) {
+        if (null === $this->activePath || \count($paths) < 2) {
             return null;
         }
         $index = \array_search($this->activePath, $paths, strict: true);

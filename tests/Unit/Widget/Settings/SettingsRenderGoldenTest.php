@@ -42,12 +42,12 @@ final class SettingsRenderGoldenTest extends TestCase
             if (!\is_dir(\dirname(self::GOLDEN))) {
                 \mkdir(\dirname(self::GOLDEN), permissions: 0o777, recursive: true);
             }
-            \file_put_contents(self::GOLDEN, \json_encode($actual, \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+            \file_put_contents(self::GOLDEN, \json_encode($actual, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
 
         $this->assertFileExists(self::GOLDEN, 'run once with UPDATE_SETTINGS_GOLDEN=1 to seed');
-        $expected = \json_decode((string) \file_get_contents(self::GOLDEN), associative: true);
+        $expected = \json_decode((string) \file_get_contents(self::GOLDEN), associative: true, flags: \JSON_THROW_ON_ERROR);
 
         // Compare scenario by scenario for a readable diff on failure.
         foreach ($expected as $name => $rows) {

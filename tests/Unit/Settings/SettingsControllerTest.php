@@ -858,6 +858,6 @@ final class SettingsControllerTest extends TestCase
     private function written(TempProject $project): array
     {
         /** @var array<string, mixed> */
-        return \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        return \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
     }
 }

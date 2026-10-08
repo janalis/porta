@@ -123,7 +123,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\r");
                     $this->frame($tui);
 
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame('/opt/tool', $config['plugins']['bundled']['binary'] ?? null, 'the setting persisted');
 
                     // Outside the settings view (which gates every non-safe item),
@@ -151,7 +151,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertNotContains('Plugins', \array_column($this->menus($tui), 'title'), 'the only plugin gone → no Plugins menu');
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertNotContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'));
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame([], $config['enabledPlugins'] ?? null, 'a bundled plugin disables by leaving the list — kept explicit, or the absent-key default would flip back on');
 
                     // And re-enable it live from the same page.
@@ -160,7 +160,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertStringContainsString('Plugin "bundled" enabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertContains('Plugins', \array_column($this->menus($tui), 'title'));
                     $this->assertContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'));
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(['bundled'], $config['enabledPlugins'] ?? null, 're-enabling opts it back in');
                 },
             ],
@@ -376,7 +376,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         if ([] !== $requires) {
             $manifest['extra'] = ['porta' => ['requires' => $requires]];
         }
-        \file_put_contents($project->path('.porta/plugins/'.$name.'/composer.json'), data: (string) \json_encode($manifest));
+        \file_put_contents($project->path('.porta/plugins/'.$name.'/composer.json'), data: (string) \json_encode($manifest, \JSON_THROW_ON_ERROR));
     }
 
     /** A project plugin directory: an entry file, and a manifest when $requires is given. */
@@ -386,7 +386,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         \mkdir($dir, permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/plugin.php', data: $this->namedPlugin($name, \ucfirst($name).' Run'));
         if ([] !== $requires) {
-            \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['extra' => ['porta' => ['requires' => $requires]]]));
+            \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['extra' => ['porta' => ['requires' => $requires]]], \JSON_THROW_ON_ERROR));
         }
     }
 
@@ -428,7 +428,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     public function testEnablingBringsWhatItRequiresAndDisablingTakesItsDependents(): void
     {
         $project = new TempProject([
-            '.porta.json' => (string) \json_encode(['disabledPlugins' => ['app', 'zbase']]),
+            '.porta.json' => (string) \json_encode(['disabledPlugins' => ['app', 'zbase']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
         $this->projectPlugin($project, 'zbase');
@@ -506,7 +506,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // the user to run composer by hand. Now Porta runs it.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
@@ -542,7 +542,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'zbase');
         $this->needyPlugin($project, 'app', ['zbase']);
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['app', 'zbase']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['app', 'zbase']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
@@ -577,7 +577,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // would be worse than a message — and the next boot picks it up.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH=/nonexistent');
 
         $this->runIde(
@@ -605,7 +605,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // packages are not. The choice stands, and the next boot retries.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project, exitCode: 3));
 
         $this->runIde(
@@ -637,7 +637,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // has already flashed, so there is nothing left to say.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
@@ -677,7 +677,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'busy');
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['busy', 'needy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['busy', 'needy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
@@ -711,7 +711,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // trade, and it only applies to trees Porta made.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(
@@ -772,7 +772,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
         $this->needyPlugin($project, 'busy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy', 'busy']]));
+        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy', 'busy']], \JSON_THROW_ON_ERROR));
         \putenv('PATH='.$this->fakeComposerPath($project));
 
         $this->runIde(

@@ -123,7 +123,7 @@ final class RunConfigsTest extends TestCase
 
     public function testEmptyStringScriptNameIsFiltered(): void
     {
-        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['' => 'do-nothing', 'test' => 'phpunit']])]);
+        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['' => 'do-nothing', 'test' => 'phpunit']], \JSON_THROW_ON_ERROR)]);
         $this->assertSame(['test'], new RunConfigs($project->dir)->composerScripts());
     }
 
@@ -131,10 +131,10 @@ final class RunConfigsTest extends TestCase
     {
         // The empty key sorts BEFORE the valid one, so filtering it out
         // leaves a gap unless the result is reindexed.
-        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['' => 'x', 'test' => 'phpunit']])]);
+        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['' => 'x', 'test' => 'phpunit']], \JSON_THROW_ON_ERROR)]);
         $names = new RunConfigs($project->dir)->composerScripts();
         $this->assertSame(['test'], $names);
-        $this->assertSame('["test"]', \json_encode($names), 'stays a JSON array, not an object');
+        $this->assertSame('["test"]', \json_encode($names, \JSON_THROW_ON_ERROR), 'stays a JSON array, not an object');
     }
 
     public function testAPurelyNumericScriptNameDoesNotCrashDiscovery(): void
@@ -142,7 +142,7 @@ final class RunConfigsTest extends TestCase
         // JSON decodes a numeric string key ("0") back to an int array key
         // — composerScripts() must still hand the filter closure a real
         // string, or a strict-typed parameter throws under strict_types.
-        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['0' => 'legacy', 'test' => 'phpunit']])]);
+        $project = new TempProject(['composer.json' => (string) \json_encode(['scripts' => ['0' => 'legacy', 'test' => 'phpunit']], \JSON_THROW_ON_ERROR)]);
         $this->assertSame(['0', 'test'], new RunConfigs($project->dir)->composerScripts());
     }
 

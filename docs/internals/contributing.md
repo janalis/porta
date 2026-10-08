@@ -18,7 +18,7 @@ composer fix            # rector, then format — the two fixers in the order th
 composer rector:check   # rector dry run — fails on any change it would still make
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
-composer custos         # custos — no inspection error or warning (custos.json; info is advice)
+composer custos         # custos — zero inspection findings, info included (custos.json)
 composer verify         # all nine: the seven static gates stopping at the first failure, then both coverage passes at once
 composer verify:quick   # the seven fast ones, stopping at the first failure
 composer check          # the same seven run to the end, then one line naming every red gate — the mid-work check
@@ -353,16 +353,19 @@ token streams, so the theme tables, the per-grammar `match` tables and the
 four analyzer plugin files — the structures people expect it to flag — are
 invisible to it, because their literals differ. It finds copied CODE.
 
-**`composer custos`** — **no error or warning**, from `janalis/custos` (a Php
-Inspections EA port; the Composer package is a wrapper that downloads its
-prebuilt binary on first run). `custos.json` sets the paths — `src`, `plugins`,
-`tests`, `bin`, `config` — and PHP 8.5. Info findings are printed but never
-fail; they are advice. A false positive is suppressed where it stands, with
-`// @noinspection <Rule>Inspection -- why` (or in a class docblock for a whole
-trait); a rule that contradicts mago or rector is switched off in `custos.json`
-instead, with the reason in `decisions.md`, since JSON takes no comments.
-Its precedence check asks for `a || (b && c)`, which is why mago's formatter
-keeps redundant logical parentheses (`mago.toml`).
+**`composer custos`** — **zero findings, info included** (`--fail-on=info`),
+from `janalis/custos` (a Php Inspections EA port; the Composer package is a
+wrapper that downloads its prebuilt binary on first run). `custos.json` sets the
+paths — `src`, `plugins`, `tests`, `bin`, `config` — and PHP 8.5. A false
+positive is suppressed where it stands, with `// @noinspection <Rule>Inspection
+-- why` on the line above the STATEMENT it reports (inside an argument list it
+is not seen), or in a class docblock for a whole trait. A rule that contradicts
+mago or rector is switched off in `custos.json` instead, with the reason in
+`decisions.md`, since JSON takes no comments. Its precedence check asks for
+`a || (b && c)`, which is why mago's formatter keeps redundant logical
+parentheses (`mago.toml`). Its quick-fixes write `json_decode($x, true, 512,
+JSON_THROW_ON_ERROR)`; the house form is `associative: true, flags:
+\JSON_THROW_ON_ERROR`.
 
 **`composer format:check`** — clean.
 

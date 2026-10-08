@@ -458,6 +458,7 @@ final class BidiTuiTest extends TestCase
         // deadlock at 99%, so the rule is suppressed here rather than left to
         // be rediscovered.
         // @mago-expect lint:no-empty-loop -- the fread in the condition is the body
+        // @noinspection MissingOrEmptyGroupStatementInspection -- as above: the fread in the condition is the body
         while ('' !== (string) \fread($pair[1], length: 65_536)) {
         }
         $tui->stop();

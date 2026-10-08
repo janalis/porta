@@ -72,20 +72,23 @@ final class SelfUpdateTest extends TestCase
     {
         $url = (string) \end($command);
         if (\str_ends_with($url, '/releases/latest')) {
-            return [0, (string) \json_encode(['tag_name' => 'v1.3.0'])];
+            return [0, (string) \json_encode(['tag_name' => 'v1.3.0'], \JSON_THROW_ON_ERROR)];
         }
         if (\str_contains($url, '/releases/tags/')) {
             return [
                 0,
-                (string) \json_encode([
-                    'assets' => [
-                        ['name' => 'porta.phar', 'url' => 'https://api/asset/1'],
-                        ['name' => 'porta.phar.sha256', 'url' => 'https://api/asset/2'],
-                        ['name' => 'notes.txt', 'url' => 'https://api/asset/3'],
-                        ['name' => 'porta.phar'], // malformed: no url — skipped, not fatal
-                        'garbage',
+                (string) \json_encode(
+                    [
+                        'assets' => [
+                            ['name' => 'porta.phar', 'url' => 'https://api/asset/1'],
+                            ['name' => 'porta.phar.sha256', 'url' => 'https://api/asset/2'],
+                            ['name' => 'notes.txt', 'url' => 'https://api/asset/3'],
+                            ['name' => 'porta.phar'], // malformed: no url — skipped, not fatal
+                            'garbage',
+                        ],
                     ],
-                ]),
+                    \JSON_THROW_ON_ERROR,
+                ),
             ];
         }
         $out = $command[\array_search('-o', $command, strict: true) + 1];

@@ -40,7 +40,7 @@ final class ModalShadow
         $cell = $styles->rule('.modal::shadow')->apply(' ');
 
         for ($row = $startRow + 1; $row < ($startRow + $rows); ++$row) {
-            if ($row >= \count($lines) || ($col + $width) >= $columns) {
+            if (($col + $width) >= $columns || $row >= \count($lines)) {
                 continue;
             }
             $lines[$row] = OverlayCompositor::into($lines[$row], $col + $width, 1, $columns, $cell);

@@ -40,13 +40,16 @@ final class IdeDebugTest extends TestCase
     /** A .porta.json wiring php files to the scripted mock adapter. */
     private function mockDapConfig(): string
     {
-        return (string) \json_encode([
-            'languages' => [
-                'php' => ['debug' => [
-                    'adapter' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-dap-adapter.php',
-                ]],
+        return (string) \json_encode(
+            [
+                'languages' => [
+                    'php' => ['debug' => [
+                        'adapter' => \PHP_BINARY.' '.__DIR__.'/../Support/mock-dap-adapter.php',
+                    ]],
+                ],
             ],
-        ]);
+            \JSON_THROW_ON_ERROR,
+        );
     }
 
     /** @return string the program fixture: 8 comment lines so breakpoints have targets */
@@ -441,7 +444,7 @@ final class IdeDebugTest extends TestCase
             ],
         );
 
-        $saved = \json_decode((string) \file_get_contents($project->path('.porta/debug.json')), associative: true);
+        $saved = \json_decode((string) \file_get_contents($project->path('.porta/debug.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('$x > 1', \array_first($saved['breakpoints'])[0]['condition'], 'the condition persisted');
         $this->assertSame(4, \array_first($saved['breakpoints'])[0]['line']);
         $this->assertSame(['$x'], $saved['watches']);

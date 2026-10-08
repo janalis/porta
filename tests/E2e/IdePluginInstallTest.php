@@ -77,7 +77,7 @@ final class IdePluginInstallTest extends TestCase
     /** The composer.json a plugin source dir needs for a path/vcs install to find it. */
     private function pluginManifest(string $name): string
     {
-        return (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']);
+        return (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR);
     }
 
     /** Open settings and select the Plugins section, leaving focus on the form. */
@@ -178,12 +178,12 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r"); // toggle off
                     $this->awaitPainted($tui, $terminal, 'Plugin "installee" disabled');
                     $this->assertStringContainsString('Plugin "installee" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(['installee'], $config['disabledPlugins'] ?? null, 'a project plugin disables via disabledPlugins');
 
                     $tui->handleInput("\r"); // toggle back on
                     $tui->tick();
-                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertArrayNotHasKey('disabledPlugins', $config, 're-enabling clears the list');
                 },
             ],

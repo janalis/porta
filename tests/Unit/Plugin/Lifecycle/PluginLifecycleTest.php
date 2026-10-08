@@ -84,9 +84,12 @@ final class PluginLifecycleTest extends TestCase
             };
             PHP);
         if ([] !== $requires) {
-            \file_put_contents($dir.'/composer.json', \json_encode([
-                'extra' => ['porta' => ['requires' => $requires]],
-            ]));
+            \file_put_contents($dir.'/composer.json', \json_encode(
+                [
+                    'extra' => ['porta' => ['requires' => $requires]],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ));
         }
     }
 
@@ -118,7 +121,7 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertFalse($lifecycle->isDisabled('acme'), 'enable() flips the live state');
         $this->assertTrue($this->hasCommand($ide, 'acme:boom'), 'enable() actually loads the plugin');
-        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true);
+        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame([], $onDisk['disabledPlugins'] ?? [], 'the choice is persisted, not just held in memory');
     }
 
@@ -134,7 +137,7 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertTrue($lifecycle->isDisabled('acme'));
         $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'no other copy exists, so nothing reloads');
-        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true);
+        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(['acme'], $onDisk['disabledPlugins'] ?? []);
     }
 
@@ -288,7 +291,7 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle->enable('acme-ls');
         $lifecycle->enable('other');
         $pool = Services::resolve($ide, LspSessionPool::class);
-        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'));
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'), \JSON_THROW_ON_ERROR);
         $this->assertStringContainsString('acme-ls-1', $servers());
 
         \file_put_contents($this->project->dir.'/ls-argv', data: '/opt/acme-ls-2');

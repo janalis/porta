@@ -28,7 +28,7 @@ final class KeyHintWiringTest extends TestCase
     {
         $project = new TempProject([
             'composer.json' => '{}',
-            '.porta.json' => (string) \json_encode(['keymap' => ['ide_quit' => ['ctrl+w'], 'debug_step_over' => ['f10']]]),
+            '.porta.json' => (string) \json_encode(['keymap' => ['ide_quit' => ['ctrl+w'], 'debug_step_over' => ['f10']]], \JSON_THROW_ON_ERROR),
         ]);
         new OnboardingState($project->dir)->markWelcomeSeen();
 

@@ -98,7 +98,7 @@ trait BuildsLayoutController
         }
 
         /** @var array<string, int|bool|array<string, int>> */
-        return \json_decode((string) \file_get_contents($file), associative: true);
+        return \json_decode((string) \file_get_contents($file), associative: true, flags: \JSON_THROW_ON_ERROR);
     }
 
     /**

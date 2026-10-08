@@ -1264,7 +1264,7 @@ final class SettingsFormWidgetTest extends TestCase
 
         // Measured at the mark: the selected row's box is heavy, `┃✓┃`, so its
         // rails are not `[`/`]`, and the mark stands in the same place in both.
-        $this->assertCount(1, \array_unique($columns), 'every checkbox is in the same column: '.\json_encode($columns));
+        $this->assertCount(1, \array_unique($columns), 'every checkbox is in the same column: '.\json_encode($columns, \JSON_THROW_ON_ERROR));
     }
 
     /** And the label itself is not torn around the control. */

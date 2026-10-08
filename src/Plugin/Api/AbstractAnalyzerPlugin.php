@@ -170,6 +170,7 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
     private function publish(PluginApi $api, string $file, int $code, string $stdout): void
     {
         /** @var array<array-key, mixed>|scalar|null $report */
+        // @noinspection JsonEncodingApiUsageInspection -- another program's output that is not JSON reads as none, it does not throw
         $report = \json_decode($stdout, associative: true);
         if (!$this->acceptsExitCode($code) || !\is_array($report)) {
             $this->flashFailure($api, $code);

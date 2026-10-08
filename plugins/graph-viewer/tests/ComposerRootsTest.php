@@ -13,10 +13,13 @@ final class ComposerRootsTest extends TestCase
     public function testReadsPsr4RootsFromBothAutoloadSections(): void
     {
         $project = new TempProject([
-            'composer.json' => (string) \json_encode([
-                'autoload' => ['psr-4' => ['App\\' => 'src/']],
-                'autoload-dev' => ['psr-4' => ['App\\Tests\\' => 'tests/']],
-            ]),
+            'composer.json' => (string) \json_encode(
+                [
+                    'autoload' => ['psr-4' => ['App\\' => 'src/']],
+                    'autoload-dev' => ['psr-4' => ['App\\Tests\\' => 'tests/']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'src/.keep' => '',
             'tests/.keep' => '',
         ]);
@@ -27,9 +30,12 @@ final class ComposerRootsTest extends TestCase
     public function testMissingDirsAndOddShapesAreSkipped(): void
     {
         $project = new TempProject([
-            'composer.json' => (string) \json_encode([
-                'autoload' => ['psr-4' => ['App\\' => 'nonexistent/', 'Lib\\' => ['also-missing/', 'lib/'], 'Bad\\' => 42]],
-            ]),
+            'composer.json' => (string) \json_encode(
+                [
+                    'autoload' => ['psr-4' => ['App\\' => 'nonexistent/', 'Lib\\' => ['also-missing/', 'lib/'], 'Bad\\' => 42]],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'lib/.keep' => '',
         ]);
 
@@ -39,10 +45,13 @@ final class ComposerRootsTest extends TestCase
     public function testNonArrayPsr4AndNumericPrefixesAreSkipped(): void
     {
         $project = new TempProject([
-            'composer.json' => (string) \json_encode([
-                'autoload' => ['psr-4' => 'not-an-array'],
-                'autoload-dev' => ['psr-4' => ['0' => 'src/', 'App\\' => 'src/']],
-            ]),
+            'composer.json' => (string) \json_encode(
+                [
+                    'autoload' => ['psr-4' => 'not-an-array'],
+                    'autoload-dev' => ['psr-4' => ['0' => 'src/', 'App\\' => 'src/']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
             'src/.keep' => '',
         ]);
 

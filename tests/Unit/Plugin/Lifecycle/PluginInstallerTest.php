@@ -92,7 +92,7 @@ final class PluginInstallerTest extends TestCase
             \file_put_contents($dir.'/plugin.php', "<?php\n// {$name}\n");
         }
         if (Presence::With === $withManifest) {
-            \file_put_contents($dir.'/composer.json', (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin']));
+            \file_put_contents($dir.'/composer.json', (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR));
         }
 
         return $dir;
@@ -221,7 +221,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testNameInstallRollsBackAPackageThatIsNotAPortaPlugin(): void
     {
-        $composer = $this->fakeComposer(packages: ['acme/wrong' => ['composerJson' => (string) \json_encode(['name' => 'acme/wrong', 'type' => 'library'])]]);
+        $composer = $this->fakeComposer(packages: ['acme/wrong' => ['composerJson' => (string) \json_encode(['name' => 'acme/wrong', 'type' => 'library'], \JSON_THROW_ON_ERROR)]]);
         [$error, $file] = $this->install($this->installer(composer: $composer), 'acme/wrong');
 
         $this->assertSame('"acme/wrong" is not a Porta plugin package', $error);
@@ -280,7 +280,7 @@ final class PluginInstallerTest extends TestCase
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/repo-plugin/plugin.php', $file);
         $this->assertTrue(\is_link($this->project->dir.'/.porta/plugins/repo-plugin'));
-        $composerJson = \json_decode((string) \file_get_contents($this->project->dir.'/.porta/composer.json'), associative: true);
+        $composerJson = \json_decode((string) \file_get_contents($this->project->dir.'/.porta/composer.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('dev-'.$branch, $composerJson['require']['test/repo-plugin'] ?? null, 'requires the exact peeked branch, not a released version');
     }
 
@@ -313,11 +313,11 @@ final class PluginInstallerTest extends TestCase
     {
         $git = $this->git();
 
-        $badName = $this->repoWithManifest((string) \json_encode(['name' => 'acme/a.b', 'type' => 'porta-plugin']));
+        $badName = $this->repoWithManifest((string) \json_encode(['name' => 'acme/a.b', 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR));
         [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file://'.$badName);
         $this->assertSame('"a.b" is not a valid plugin name', $error);
 
-        $dup = $this->repoWithManifest((string) \json_encode(['name' => 'acme/demo', 'type' => 'porta-plugin']));
+        $dup = $this->repoWithManifest((string) \json_encode(['name' => 'acme/demo', 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR));
         $installer = $this->installer(git: $git, composer: $this->fakeComposer());
         $this->install($installer, 'file://'.$dup);
         [$error] = $this->install($installer, 'file://'.$dup);

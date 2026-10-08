@@ -60,13 +60,13 @@ final class BookmarkStoreTest extends TestCase
         \file_put_contents($file, data: '{"bookmarks":"nope"}');
         $this->assertSame([], new BookmarkStore($project->dir)->load(), 'bookmarks must be a map');
 
-        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => 'nope']]));
+        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => 'nope']], \JSON_THROW_ON_ERROR));
         $this->assertSame([], new BookmarkStore($project->dir)->load(), 'a file entry must be a list');
 
-        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => [-1, 'x', 2]]]));
+        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => [-1, 'x', 2]]], \JSON_THROW_ON_ERROR));
         $this->assertSame([$project->path('src/A.php') => [2]], new BookmarkStore($project->dir)->load(), 'non-lines are dropped, the rest survives');
 
-        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => [-1]]]));
+        \file_put_contents($file, \json_encode(['bookmarks' => [$project->path('src/A.php') => [-1]]], \JSON_THROW_ON_ERROR));
         $this->assertSame([], new BookmarkStore($project->dir)->load(), 'a file left with no usable line is dropped whole');
     }
 
@@ -135,7 +135,7 @@ final class BookmarkStoreTest extends TestCase
         $project->write('src/A.php', "<?php\n");
         $file = $project->path('.porta/bookmarks.json');
         \mkdir(\dirname($file), permissions: 0o777, recursive: true);
-        \file_put_contents($file, (string) \json_encode(['bookmarks' => [$project->path('src/A.php') => ['1' => 7, '0' => 2]]]));
+        \file_put_contents($file, (string) \json_encode(['bookmarks' => [$project->path('src/A.php') => ['1' => 7, '0' => 2]]], \JSON_THROW_ON_ERROR));
 
         $this->assertSame([$project->path('src/A.php') => [7, 2]], new BookmarkStore($project->dir)->load());
     }

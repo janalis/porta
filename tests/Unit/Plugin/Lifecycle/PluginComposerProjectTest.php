@@ -35,7 +35,7 @@ final class PluginComposerProjectTest extends TestCase
 
         // A second call is idempotent — it must not clobber an entry a
         // require/repository call already added.
-        \file_put_contents($path, (string) \json_encode(['name' => 'porta/local-plugins', 'require' => ['acme/x' => '^1.0']]));
+        \file_put_contents($path, (string) \json_encode(['name' => 'porta/local-plugins', 'require' => ['acme/x' => '^1.0']], \JSON_THROW_ON_ERROR));
         $this->project->ensureScaffold($this->scope->dir);
         $this->assertSame(['acme/x' => '^1.0'], JsonFile::read($path)['require'] ?? null, 'scaffold left an existing file untouched');
     }

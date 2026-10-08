@@ -131,13 +131,10 @@ final class LanguageMap
         $path = self::withoutDistSuffix($path);
         $name = \strtolower(\basename($path));
         $mapped = self::FILENAMES[$name] ?? self::EXTENSIONS[ProjectPaths::extension($path)][0] ?? null;
-        if (null !== $mapped) {
-            return $mapped;
-        }
 
         // The `.env*` basename fallback runs AFTER the lookups, same as the
         // LSP column: `.env.local.php` is real PHP, not a dotenv file.
-        return \str_starts_with($name, '.env') ? 'dotenv' : null;
+        return $mapped ?? (\str_starts_with($name, '.env') ? 'dotenv' : null);
     }
 
     /**

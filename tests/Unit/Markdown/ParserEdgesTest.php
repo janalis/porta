@@ -156,7 +156,7 @@ final class ParserEdgesTest extends TestCase
     #[DataProvider('corners')]
     public function testACorner(string $markdown, string $html): void
     {
-        $this->assertSame($html, self::html($markdown), (string) \json_encode($markdown));
+        $this->assertSame($html, self::html($markdown), (string) \json_encode($markdown, \JSON_THROW_ON_ERROR));
     }
 
     public function testTasksAlertsAndFlagsTheTreeCarries(): void

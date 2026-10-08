@@ -36,6 +36,7 @@ trait ProviderFingerprint
     /** Repaint when the provided content changed since the last frame. */
     private function refreshFingerprint(mixed $provided): void
     {
+        // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
         $fingerprint = (string) \json_encode($provided);
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;

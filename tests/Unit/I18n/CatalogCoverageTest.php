@@ -414,7 +414,7 @@ final class CatalogCoverageTest extends TestCase
                 continue;
             }
             $resolved = (string) \realpath($path);
-            $found[] = \str_replace([(string) \realpath(self::ROOT).'/src/', (string) \realpath(self::ROOT).'/'], replace: '', subject: $resolved);
+            $found[] = \str_replace([\realpath(self::ROOT).'/src/', \realpath(self::ROOT).'/'], replace: '', subject: $resolved);
         }
         \sort($found);
         $pinned = self::ENUM_LABEL_CALLS;

@@ -417,7 +417,7 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
 
             return;
         }
-        if (\in_array($row->kind, [DebugRowKind::Scope, DebugRowKind::Variable, DebugRowKind::Watch], strict: true) && $row->ref > 0) {
+        if ($row->ref > 0 && \in_array($row->kind, [DebugRowKind::Scope, DebugRowKind::Variable, DebugRowKind::Watch], strict: true)) {
             $this->toggleExpand($row->ref);
         }
     }

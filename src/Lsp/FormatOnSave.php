@@ -99,6 +99,7 @@ final class FormatOnSave
                     // the user wrote it and the save below still happens — which
                     // is the whole contract of format-on-save: the save is the
                     // point, the formatting is the courtesy.
+                    // @noinspection NestedPositiveIfStatementsInspection -- applying the edits is an action, not a guard: it stays out of the version check
                     if (WorkspaceEditor::applyTextEdits($buffer->document, $result)) {
                         $this->lsp->notifyFullChange($buffer->path, $buffer->document);
                         $this->editor->invalidate();

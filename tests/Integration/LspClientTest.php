@@ -57,11 +57,11 @@ final class LspClientTest extends TestCase
         // test that echoed it. The reasons live beside the values now.
         $this->assertFileExists(self::CAPABILITIES_GOLDEN, 'run once with UPDATE_LSP_CAPABILITIES_GOLDEN=1 to seed');
         if (\getenv('UPDATE_LSP_CAPABILITIES_GOLDEN')) {
-            \file_put_contents(self::CAPABILITIES_GOLDEN, \json_encode($params['capabilities'], \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
+            \file_put_contents(self::CAPABILITIES_GOLDEN, \json_encode($params['capabilities'], \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE));
             $this->markTestSkipped('Golden regenerated.');
         }
         $this->assertSame(
-            \json_decode((string) \file_get_contents(self::CAPABILITIES_GOLDEN), associative: true),
+            \json_decode((string) \file_get_contents(self::CAPABILITIES_GOLDEN), associative: true, flags: \JSON_THROW_ON_ERROR),
             $params['capabilities'],
             'the advertised capabilities changed — if intended, rerun with UPDATE_LSP_CAPABILITIES_GOLDEN=1',
         );
@@ -551,7 +551,7 @@ final class LspClientTest extends TestCase
             );
 
             $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
-            $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
+            $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true, flags: \JSON_THROW_ON_ERROR), $lines);
 
             $this->assertSame(['jsonrpc', 'id', 'method', 'params'], \array_keys($messages[0] ?? []), 'the initialize request()');
             $this->assertSame('2.0', $messages[0]['jsonrpc'] ?? null);
@@ -565,7 +565,7 @@ final class LspClientTest extends TestCase
             $client->notify('porta/bareNote', null);
             $this->await(static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"), timeout: 15.0, what: 'both bare messages to be logged');
             $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
-            $bare = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
+            $bare = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true, flags: \JSON_THROW_ON_ERROR), $lines);
             $this->assertSame(['jsonrpc' => '2.0', 'id' => 2, 'method' => 'porta/bare'], $bare[0] ?? null, 'a request() without params');
             $this->assertSame(['jsonrpc' => '2.0', 'method' => 'porta/bareNote'], $bare[1] ?? null, 'a notify() without params');
         } finally {
@@ -693,7 +693,7 @@ final class LspClientTest extends TestCase
             $this->await(static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"), timeout: 90.0, what: 'the shutdown and exit notifications to both arrive');
 
             $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
-            $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true), $lines);
+            $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true, flags: \JSON_THROW_ON_ERROR), $lines);
 
             // No `params` member at all: JSON-RPC has no null params, and a
             // strict server (symfony-lsp) answers `"params": null` with -32600.

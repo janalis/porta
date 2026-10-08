@@ -81,7 +81,7 @@ final class LspRefusalTest extends TestCase
                 continue;
             }
             $allowed = self::SILENT_BY_DESIGN[$name] ?? [];
-            foreach ($this->bareReadyMethods((string) $file->getContents()) as $method) {
+            foreach ($this->bareReadyMethods($file->getContents()) as $method) {
                 if (\in_array($method, $allowed, strict: true)) {
                     continue;
                 }

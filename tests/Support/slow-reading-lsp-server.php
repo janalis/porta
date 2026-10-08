@@ -42,7 +42,7 @@ while (!feof($in) && time() < $deadline) {
         }
         $body = substr($buffer, $bodyStart, $length);
         $buffer = substr($buffer, $bodyStart + $length);
-        $message = json_decode($body, true);
+        $message = json_decode($body, associative: true, flags: \JSON_THROW_ON_ERROR);
         if (!is_array($message)) {
             continue;
         }

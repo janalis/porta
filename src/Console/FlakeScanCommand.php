@@ -383,6 +383,7 @@ final class FlakeScanCommand extends Command
         // dynamic properties, which the analyzer can only call ambiguous, and
         // one expression reads both element names PHPUnit uses anyway.
         $nodes = $case->xpath('failure|error');
+        // @noinspection ProperNullCoalescingOperatorUsageInspection -- the element or nothing, both cast to the text
         $body = \trim((string) (\is_array($nodes) ? $nodes[0] ?? '' : ''));
         foreach (\explode("\n", $body) as $line) {
             $line = \trim($line);

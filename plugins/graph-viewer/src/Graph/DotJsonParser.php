@@ -77,7 +77,7 @@ final class DotJsonParser
     private static function cluster(array $object, float $llx, float $ury): ?GraphCluster
     {
         $name = (string) ($object['name'] ?? '');
-        if (!\str_starts_with($name, 'cluster') || !\array_key_exists('bb', $object)) {
+        if (!\array_key_exists('bb', $object) || !\str_starts_with($name, 'cluster')) {
             return null;
         }
         [$x0, $y0, $x1, $y1] = self::floats($object['bb'], count: 4, what: 'cluster bb');

@@ -53,7 +53,7 @@ final readonly class RemoteSpec
     {
         $parts = \parse_url($url);
         $host = false === $parts ? '' : $parts['host'] ?? '';
-        if (!\in_array($scheme, self::SCHEMES, strict: true) || false === $parts || '' === $host) {
+        if ('' === $host || false === $parts || !\in_array($scheme, self::SCHEMES, strict: true)) {
             return null;
         }
         $user = \rawurldecode($parts['user'] ?? '');

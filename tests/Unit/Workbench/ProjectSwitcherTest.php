@@ -245,7 +245,7 @@ final class ProjectSwitcherTest extends TestCase
 
         $this->assertCount(1, $this->requested);
         $this->assertSame('ssh://deploy@example.org/srv/app', ProjectLocation::forRoot($this->requested[0])->remote?->url());
-        $this->assertStringStartsWith((string) \realpath($this->home->dir).'/.porta/remote/', $this->requested[0]);
+        $this->assertStringStartsWith(\realpath($this->home->dir).'/.porta/remote/', $this->requested[0]);
 
         $switcher->open();
         $this->type('ftp://example.org/pub');

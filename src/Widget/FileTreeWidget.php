@@ -899,6 +899,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     {
         $text = $this->rowTips[$row] ?? null;
 
+        // @noinspection ProperNullCoalescingOperatorUsageInspection -- the row's path names the tip, or the row number when it has no node
         return null === $text ? null : new Tooltip('tree:'.($this->nodeAtRow($row)->path ?? $row), $text, $row, 0, $this->drawnWidth);
     }
 

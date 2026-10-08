@@ -86,7 +86,7 @@ final class LayoutState
         $text = $this->source->text;
         $lineEnd = $lineStart + \strcspn($text, characters: "\r\n", offset: $lineStart);
         $start = $lineEnd - \strlen($raw);
-        if ('' === $raw || $start < $lineStart || \substr($text, $start, \strlen($raw)) !== $raw || \str_contains($raw, "\t")) {
+        if ($start < $lineStart || '' === $raw || \str_contains($raw, "\t") || \substr($text, $start, \strlen($raw)) !== $raw) {
             return [];
         }
 

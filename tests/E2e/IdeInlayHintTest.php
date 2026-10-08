@@ -127,7 +127,7 @@ final class IdeInlayHintTest extends TestCase
 
                     $tui->handleInput("\r"); // the first item
                     $this->awaitPainted($tui, $terminal, 'f(42, $y);');
-                    $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+                    $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame('none', $written['settings']['inlayParameterHints'] ?? null, 'and the project remembers');
                 },
             ],

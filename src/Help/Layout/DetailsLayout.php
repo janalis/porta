@@ -59,7 +59,7 @@ final readonly class DetailsLayout
         if (false === $end) {
             return [$block];
         }
-        $end += 1;
+        ++$end;
         $next = $end + \strspn($literal, characters: " \t\r\n", offset: $end);
         if ($next >= \strlen($literal)) {
             return [$block];

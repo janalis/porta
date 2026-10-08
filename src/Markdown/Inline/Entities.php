@@ -11,7 +11,7 @@ namespace Porta\Markdown\Inline;
 final class Entities
 {
     public const string ESCAPABLE = '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~';
-    public const string ENTITY = '/^&(?:#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/';
+    public const string ENTITY = '/^&(?:#[xX][0-9a-fA-F]{1,6}|#\d{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/';
 
     /**
      * The character an entity reference at the start of $text stands for, and its length.
@@ -33,7 +33,7 @@ final class Entities
     public static function unescape(string $text): string
     {
         $result = \preg_replace_callback(
-            '/\\\\([!-\/:-@\[-`{-~])|&(?:#[xX][0-9a-fA-F]{1,6}|#[0-9]{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/',
+            '/\\\\([!-\/:-@\[-`{-~])|&(?:#[xX][0-9a-fA-F]{1,6}|#\d{1,7}|[A-Za-z][A-Za-z0-9]{1,31});/',
             static function (array $m): string {
                 if ('' !== ($m[1] ?? '')) {
                     return $m[1];

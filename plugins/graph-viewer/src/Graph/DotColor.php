@@ -56,7 +56,7 @@ final class DotColor
             return self::hex(\substr($color, offset: 1));
         }
         $hsv = [];
-        if (1 === \preg_match('/^([0-9]*+\.?[0-9]+)[,\s]+([0-9]*+\.?[0-9]+)[,\s]+([0-9]*+\.?[0-9]+)$/', $color, $hsv) && \is_numeric($hsv[1]) && \is_numeric($hsv[2]) && \is_numeric($hsv[3])) {
+        if (1 === \preg_match('/^(\d*+\.?\d+)[,\s]+(\d*+\.?\d+)[,\s]+(\d*+\.?\d+)$/', $color, $hsv) && \is_numeric($hsv[1]) && \is_numeric($hsv[2]) && \is_numeric($hsv[3])) {
             return self::fromHsv((float) $hsv[1], (float) $hsv[2], (float) $hsv[3]);
         }
 

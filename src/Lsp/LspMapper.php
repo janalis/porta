@@ -415,6 +415,7 @@ final class LspMapper
      * caret is never "in" one in the sense the trail means, and listing them
      * would make every line of a class body its own crumb.
      */
+    // @noinspection PackedHashtableOptimizationInspection -- grouped by the kind each maps to, which is what a reader checks
     private const array SCOPE_KINDS = [
         2 => CodeScopeKind::Namespace, // module
         3 => CodeScopeKind::Namespace,

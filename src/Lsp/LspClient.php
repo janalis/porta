@@ -172,6 +172,7 @@ final class LspClient implements LspClientInterface
             'initialize',
             function (mixed $result, ?array $error) use ($onReady): void {
                 if (null !== $error) {
+                    // @noinspection JsonEncodingApiUsageInspection -- a log line: what cannot be encoded is no reason to throw
                     $this->log('initialize failed: '.(string) \json_encode($error));
                     $onReady(Outcome::Failed);
 
@@ -490,6 +491,7 @@ final class LspClient implements LspClientInterface
             // An answer is dropped; an error is the server saying something
             // went wrong, and it reaches the LSP log rather than nowhere.
             if (null !== ($message['error'] ?? null)) {
+                // @noinspection JsonEncodingApiUsageInspection -- a log line: what cannot be encoded is no reason to throw
                 $this->log('server error'.(null === ($message['id'] ?? null) ? '' : ' for request '.(string) \json_encode($message['id'])).': '.(string) \json_encode($message['error']));
             }
 
@@ -554,6 +556,7 @@ final class LspClient implements LspClientInterface
                 $kind = $watcher['kind'] ?? null;
                 $watchers[] = ['glob' => $glob, 'kind' => \is_int($kind) ? $kind : 7];
             }
+            // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
             $this->watcherRegistrations[(string) \json_encode($registration['id'] ?? null)] = $watchers;
         }
 
@@ -563,6 +566,7 @@ final class LspClient implements LspClientInterface
     private function unregister(mixed $unregistrations): null
     {
         foreach (self::objects($unregistrations) as $unregistration) {
+            // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
             unset($this->watcherRegistrations[(string) \json_encode($unregistration['id'] ?? null)]);
         }
 

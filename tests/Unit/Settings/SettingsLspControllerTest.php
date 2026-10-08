@@ -168,7 +168,7 @@ final class SettingsLspControllerTest extends TestCase
 
         $controller->changeLspServer('php', '   ');
 
-        $this->assertArrayNotHasKey('lsp', \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true), 'empty map pruned');
+        $this->assertArrayNotHasKey('lsp', \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR), 'empty map pruned');
         $this->assertSame('', $controller->rows('php')[0]->value);
         $this->assertStringContainsString('PHP LSP: auto-detect', $this->flashText($status));
     }

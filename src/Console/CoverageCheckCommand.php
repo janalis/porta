@@ -474,7 +474,7 @@ final class CoverageCheckCommand extends Command
                 $mine = \array_keys($record['lines']);
                 \sort($mine);
                 $theirs = \implode(',', $mine);
-                if (\count($mine) !== $record['statements'] || (null !== $signature && $signature !== $theirs)) {
+                if ((null !== $signature && $signature !== $theirs) || \count($mine) !== $record['statements']) {
                     $lossy[] = $path;
                     break;
                 }

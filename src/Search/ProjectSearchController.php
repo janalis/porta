@@ -389,7 +389,7 @@ final class ProjectSearchController
             $keptLinesByPath[$result['path']][] = $result['line'];
         }
 
-        if ('' === \trim($this->lastSearchQuery) || [] === $keptLinesByPath) {
+        if ([] === $keptLinesByPath || '' === \trim($this->lastSearchQuery)) {
             $this->notifier->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 

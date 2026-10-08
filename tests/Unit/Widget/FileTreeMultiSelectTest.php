@@ -149,10 +149,7 @@ final class FileTreeMultiSelectTest extends TestCase
         $tree->clickRow(1);
         $tree->clickRow(3, ClickIntent::Add);
 
-        $lines = $tree->render(new RenderContext(30, 10));
-        $cursorRow = $lines[1];
-        $selectedRow = $lines[3];
-        $plainRow = $lines[2];
+        [1 => $cursorRow, 2 => $plainRow, 3 => $selectedRow] = $tree->render(new RenderContext(30, 10));
 
         $this->assertNotSame(self::style($plainRow), self::style($selectedRow), 'the second file of the pair is styled');
         $this->assertNotSame(self::style($cursorRow), self::style($selectedRow), 'and not styled as the cursor row, which is somewhere else');

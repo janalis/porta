@@ -85,7 +85,7 @@ final class PortaJsonWriterTest extends TestCase
             \file_get_contents($project->path('.porta.json.invalid')),
             'and the unreadable file is set aside byte-for-byte',
         );
-        $fresh = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $fresh = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertFalse($fresh['settings']['autoPairs'], 'the new file holds the change');
     }
 
@@ -132,7 +132,7 @@ final class PortaJsonWriterTest extends TestCase
         $this->assertSame('', $printed, 'and nothing was printed at the terminal');
         $this->assertNull(\error_get_last(), 'the failed rename raised nothing');
         $this->assertFileExists($project->path('.porta.json.invalid/occupied.txt'), 'the rename could not happen');
-        $fresh = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true);
+        $fresh = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertFalse($fresh['settings']['autoPairs'], 'and the change landed anyway');
     }
 

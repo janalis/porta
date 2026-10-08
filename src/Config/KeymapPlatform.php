@@ -32,11 +32,8 @@ enum KeymapPlatform: string
     public static function detect(string $os, array $env): self
     {
         $named = self::tryFrom($env['PORTA_KEYMAP_PLATFORM'] ?? '');
-        if (null !== $named) {
-            return $named;
-        }
 
-        return match (true) {
+        return $named ?? match (true) {
             'Darwin' === $os => self::MacOs,
             // Windows Terminal marks every session it hosts, WSL every shell it starts.
             'Windows' === $os, \array_key_exists('WT_SESSION', $env), \array_key_exists('WSL_DISTRO_NAME', $env) => self::Windows,

@@ -263,7 +263,7 @@ final class StructuralSelection
 
                 continue;
             }
-            if (\in_array($ch, self::OPENERS, strict: true) && [] !== $stack) {
+            if ([] !== $stack && \in_array($ch, self::OPENERS, strict: true)) {
                 [$openCh, $openPos] = $stack[\count($stack) - 1];
                 if (self::OPENERS[$openCh] === $ch) {
                     \array_pop($stack);

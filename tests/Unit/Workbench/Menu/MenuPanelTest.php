@@ -246,7 +246,7 @@ final class MenuPanelTest extends TestCase
             $columns[] = \mb_strpos($mirrored, needle: 'Ctrl+Q', encoding: 'UTF-8');
         }
 
-        $this->assertCount(1, \array_unique($columns), 'every shortcut is in the same column: '.\json_encode($columns));
+        $this->assertCount(1, \array_unique($columns), 'every shortcut is in the same column: '.\json_encode($columns, \JSON_THROW_ON_ERROR));
     }
 
     /** A shortcut ending in punctuation keeps it: `Ctrl+,` read `,+Ctrl` in the mirrored File menu. */

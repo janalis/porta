@@ -36,7 +36,7 @@ Nine; `verify:quick` is the first seven, run as format, lint, analyze, rector, a
 - `composer arch` — fails on drift in EITHER direction. A new edge is added to the
   allowlist in the same commit; a vanished edge is removed from it.
 - `composer duplication` — **zero clones** tree-wide, no allowlist: share it, or say in the code why the copy
-  is honest. `composer custos` — **no error or warning**: fix, or `// @noinspection <Rule>Inspection -- why`.
+  is honest. `composer custos` — **zero findings**, info too: fix, or `// @noinspection <Rule>Inspection -- why`.
 - `composer coverage:src` and `coverage:plugins`, run at once (= `coverage:check`) — **100% line coverage**
   over `src/` AND every plugin's own `src/`, by its OWN tests. `composer test` is not a gate.
 

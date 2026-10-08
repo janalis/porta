@@ -70,7 +70,7 @@ final class WelcomeStepsTest extends TestCase
     /** Make the project a Symfony application, adding the symfony-lsp card. */
     private function withSymfony(): void
     {
-        $this->project->write('composer.json', (string) \json_encode(['require' => ['symfony/framework-bundle' => '^7.0']]));
+        $this->project->write('composer.json', (string) \json_encode(['require' => ['symfony/framework-bundle' => '^7.0']], \JSON_THROW_ON_ERROR));
     }
 
     /** Ship an executable mago in the project, flipping both tool steps' target. */

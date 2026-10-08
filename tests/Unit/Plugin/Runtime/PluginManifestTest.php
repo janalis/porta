@@ -274,7 +274,7 @@ final class PluginManifestTest extends TestCase
         $manifest = $this->composerPlugin($project, 'vendoring', '{}', 'vendor/composer');
         \file_put_contents(
             $project->path('plugins/vendoring/vendor/composer/installed.json'),
-            data: \json_encode(['packages' => [['name' => 'symfony/filesystem'], ['name' => 'acme/unknown'], ['not' => 'a package']]]),
+            data: \json_encode(['packages' => [['name' => 'symfony/filesystem'], ['name' => 'acme/unknown'], ['not' => 'a package']]], \JSON_THROW_ON_ERROR),
         );
 
         $this->assertSame(['symfony/filesystem'], $manifest->shadowedPackages(), 'only the host-shipped one, and a malformed entry is skipped rather than crashing');

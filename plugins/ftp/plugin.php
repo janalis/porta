@@ -51,7 +51,7 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
     public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
     {
         $home = PortaHome::base();
-        if (!\in_array($spec->scheme, ['ftp', 'ftps'], strict: true) || null === $home) {
+        if (null === $home || !\in_array($spec->scheme, ['ftp', 'ftps'], strict: true)) {
             return null;
         }
         $binary = \trim((string) $this->api?->setting('binary'));
