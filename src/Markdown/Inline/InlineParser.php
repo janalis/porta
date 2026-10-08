@@ -92,11 +92,10 @@ final class InlineParser
 
     private function text(): void
     {
-        $m = [];
         $start = $this->pos;
-        // A run of spaces, or of characters that open nothing; one character when neither.
-        $found = 1 === \preg_match('/\G(?:[ \t(]+|[^\n`\[\]\\\\!<&*_~: \t(]+)/', $this->subject, $m, flags: 0, offset: $start);
-        $this->pos += $found ? \strlen($m[0]) : 1;
+        // A run of characters that open nothing, or one character that opened nothing after all.
+        $run = \strcspn($this->subject, characters: "\n`[]\\!<&*_~:", offset: $start);
+        $this->pos += \max(1, $run);
         $this->add(ItemKind::Text, \substr($this->subject, $start, $this->pos - $start), $start, $this->pos);
     }
 

@@ -15,6 +15,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final readonly class Wrapper
 {
+    /** The bytes one column wide each: printable ASCII. */
+    private const string PRINTABLE = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
+
     public function __construct(
         private StylePen $pen,
     ) {}
@@ -78,8 +81,18 @@ final readonly class Wrapper
             $pieces = self::spaced($fragment->text);
             $glued = !$spaceBefore && !\str_starts_with($fragment->text, ' ');
             $spaceBefore = [] === $pieces ? $spaceBefore || '' !== $fragment->text : \str_ends_with($fragment->text, ' ');
+            // Printable ASCII is as wide as it is long: most prose skips the
+            // grapheme measure word by word.
+            $ascii = \strlen($fragment->text) === \strspn($fragment->text, self::PRINTABLE);
+            $source = null === $fragment->source ? -1 : $fragment->source->start;
             foreach ($pieces as [$text, $offset]) {
-                \array_push($words, ...self::cut($fragment, $text, $offset, $room, $glued));
+                $fits = $ascii && \strlen($text) <= $room;
+                \array_push(
+                    $words,
+                    ...$fits
+                        ? [new Word($text, \strlen($text), $fragment, $glued, $source < 0 || !$fragment->verbatim ? $source : $source + $offset)]
+                        : self::cut($fragment, $text, $offset, $room, $glued),
+                );
                 $glued = false;
             }
         }

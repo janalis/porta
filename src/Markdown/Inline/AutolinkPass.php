@@ -72,11 +72,17 @@ final readonly class AutolinkPass
     /** @return list<InlineItem> the text from $start to $end, links and the text between them */
     private function pieces(int $start, int $end): array
     {
+        $text = \substr($this->subject, offset: 0, length: $end);
+        // Every bare link has an `@`, a `www.` or a `://`: a run without one
+        // is text, read once rather than tried at every word.
+        if (1 !== \preg_match('/@|www\.|:\/\//i', $text, offset: $start)) {
+            return [$this->text($start, $end)];
+        }
         $pieces = [];
         $textStart = $start;
         for ($at = $start; $at < $end; ++$at) {
             $before = 0 === $at ? "\n" : $this->subject[$at - 1];
-            $link = \str_contains(ExtendedAutolinks::BOUNDARY, $before) ? ExtendedAutolinks::at(\substr($this->subject, offset: 0, length: $end), $at) : null;
+            $link = \str_contains(ExtendedAutolinks::BOUNDARY, $before) ? ExtendedAutolinks::at($text, $at) : null;
             if (null === $link) {
                 continue;
             }
