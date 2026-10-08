@@ -28,7 +28,7 @@ final class ContainerLayout
         private readonly StylePen $pen,
         private readonly LayoutState $state,
         private readonly BlockLayout $blocks,
-        private readonly AlertTitles $alertTitles,
+        private readonly PageWords $words,
     ) {}
 
     /** @return list<PageLine> */
@@ -93,11 +93,11 @@ final class ContainerLayout
 
             return $this->barred([] === $body ? [PageLine::blank($origin)] : $body, $bar);
         }
-        $role = $this->alertTitles->role($quote->alert);
+        $role = $this->words->role($quote->alert);
         $bar = new PageLine($this->pen->role(Glyphs::MD_ALERT_BAR, $role).' ', 2);
         $title = new PageLine(
-            $this->pen->paint($this->alertTitles->title($quote->alert), new InlineStyle(InlineStyle::BOLD, $role)),
-            AnsiUtils::visibleWidth($this->alertTitles->title($quote->alert)),
+            $this->pen->paint($this->words->title($quote->alert), new InlineStyle(InlineStyle::BOLD, $role)),
+            AnsiUtils::visibleWidth($this->words->title($quote->alert)),
             $origin,
         );
 

@@ -6,7 +6,7 @@ namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\Help\Layout\AlertTitles;
+use Porta\Help\Layout\PageWords;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Highlight\CodeHighlighter;
@@ -182,9 +182,9 @@ final class MarkdownRendererTest extends TestCase
 
     public function testAnAlertHasItsTitleAndColour(): void
     {
-        $doc = new MarkdownRenderer($this->styles, null, new AlertTitles(static fn (string $key): string => \strtoupper($key)))->render("> [!WARNING]\n> Mind it.\n", 40);
+        $doc = new MarkdownRenderer($this->styles, null, new PageWords(static fn (string $key): string => \strtoupper($key)))->render("> [!WARNING]\n> Mind it.\n", 40);
         $bar = Glyphs::MD_ALERT_BAR;
-        $this->assertSame([$bar.' MARKDOWN.ALERT.WARNING', $bar.' Mind it.'], self::plain($doc));
+        $this->assertSame([$bar.' WARNING', $bar.' Mind it.'], self::plain($doc));
         $warning = $this->styles->of(Role::StatusWarning)->getAnsiRestore();
         $this->assertStringStartsWith($warning.$bar.Sgr::RESET.' '.$warning.Sgr::BOLD, $doc->lines[0]);
         $this->assertSame(

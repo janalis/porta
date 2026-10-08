@@ -3398,6 +3398,30 @@
         <source>Show the Problem at the Caret</source>
         <target>Problem an der Einfügemarke anzeigen</target>
       </trans-unit>
+      <trans-unit id="1171">
+        <source>Note</source>
+        <target>Hinweis</target>
+      </trans-unit>
+      <trans-unit id="1172">
+        <source>Tip</source>
+        <target>Tipp</target>
+      </trans-unit>
+      <trans-unit id="1173">
+        <source>Important</source>
+        <target>Wichtig</target>
+      </trans-unit>
+      <trans-unit id="1174">
+        <source>Warning</source>
+        <target>Warnung</target>
+      </trans-unit>
+      <trans-unit id="1175">
+        <source>Caution</source>
+        <target>Achtung</target>
+      </trans-unit>
+      <trans-unit id="1176">
+        <source>Details</source>
+        <target>Details</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

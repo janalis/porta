@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Editor\Document;
-use Porta\Help\Layout\AlertTitles;
+use Porta\Help\Layout\PageWords;
 use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
@@ -82,15 +82,38 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     private array $openDetails = [];
     private readonly MarkdownRenderer $renderer;
 
-    public function __construct(?Styles $styles = null, ?CodeHighlighterFactory $highlighters = null, ?Translator $translator = null, ?TerminalGraphics $graphics = null)
-    {
+    public function __construct(
+        ?Styles $styles = null,
+        ?CodeHighlighterFactory $highlighters = null,
+        private readonly ?Translator $translator = null,
+        ?TerminalGraphics $graphics = null,
+    ) {
         $this->initStyles($styles);
-        $alertTitles = null === $translator ? null : new AlertTitles($translator->trans(...));
-        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $alertTitles, $graphics);
+        $words = null === $translator ? null : new PageWords($this->pageWord(...));
+        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $words, $graphics);
         $this->headerZones = new ClickZones();
         // The terminal's answer arrives after the first frame: images that
         // were text until then are pixels now.
         $graphics?->onChange($this->relayout(...));
+    }
+
+    /**
+     * A word the page draws itself — an alert's title (`> [!NOTE]` is
+     * "Note"), a summary-less `<details>` — asked at each layout so a
+     * language switch reaches it.
+     */
+    private function pageWord(string $name): string
+    {
+        return (
+            match ($name) {
+                'TIP' => $this->translator?->trans('Tip'),
+                'IMPORTANT' => $this->translator?->trans('Important'),
+                'WARNING' => $this->translator?->trans('Warning'),
+                'CAUTION' => $this->translator?->trans('Caution'),
+                'DETAILS' => $this->translator?->trans('Details'),
+                default => $this->translator?->trans('Note'),
+            } ?? \ucfirst(\strtolower($name))
+        );
     }
 
     /** Lay the page out again at the next render, the text unchanged. */

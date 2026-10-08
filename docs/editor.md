@@ -830,7 +830,7 @@ it. An edit keeps your place in a long preview.
   in `.porta/layout.json`, one for every previewed file.
 - **Click to find the source.** A click on the preview puts the editor's caret
   on what wrote the thing you clicked, scrolled into view, and gives the text
-  the keys: the word in a Markdown page, the tag of the shape under the pointer
+  the keys: the very character in a Markdown page, the tag of the shape under the pointer
   in an SVG (the topmost one there, found by its box), the place a graph's DOT
   first names the node. With the preview shown alone the caret moves all the
   same, ready for when the text comes back. A PlantUML picture has no geometry
@@ -843,6 +843,22 @@ it. An edit keeps your place in a long preview.
   preview's navigation bar, or a drag on a picture, which pans it; a graph or
   an image then zooms and pans as described below. `Ctrl+T` or a click on the
   text goes back.
+- **Markdown is drawn as GitHub draws it** — CommonMark with GitHub's
+  extensions: nested lists, tables with their column alignment, task lists,
+  ~~strikethrough~~, bare links, footnotes gathered at the end of the page,
+  `> [!NOTE]` alerts in their colour, `:emoji:` shortcodes, and code blocks
+  coloured by their language. The HTML a README uses is drawn too: a centred
+  `<p align="center">` header, `<h1>`, `<kbd>`, `<br>`, and a `<details>`
+  section, which opens and closes in place with a click or `Enter` on its
+  summary. A link to `#a-heading` (or to `other.md#a-heading`) goes to that
+  heading, a footnote's number to its note and its `↩` back.
+- **Tick a task in the preview.** A click (or `Enter`) on a task's `[ ]` box
+  writes `[x]` into the text — one edit, undone with `Ctrl+Z` like any other —
+  and on `[✓]` unticks it.
+- **Images.** In a terminal that speaks the kitty graphics protocol (kitty,
+  Ghostty) a local PNG standing alone in its paragraph is drawn in pixels, at
+  its own size or its `<img width>`. Elsewhere, and for a remote image or
+  another format, the page shows its alt text, a link that opens the file.
 - **Markdown reads like the documentation** (`F1`): a navigation bar over the
   page — `‹` `›` through the pages you followed, then the page's place in the
   project — and links you cycle with `Tab` and follow with `Enter` or a click.

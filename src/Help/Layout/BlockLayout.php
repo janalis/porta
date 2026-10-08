@@ -39,12 +39,12 @@ final readonly class BlockLayout
         private TableLayout $tables,
         private HtmlBlockLayout $html,
         private ImageLayout $images,
-        AlertTitles $alertTitles,
+        PageWords $words,
     ) {
         $this->inlines = new InlineFragments($state);
         $this->wrapper = new Wrapper($pen);
-        $this->containers = new ContainerLayout($pen, $state, $this, $alertTitles);
-        $this->details = new DetailsLayout($pen, $state, $this, $html);
+        $this->containers = new ContainerLayout($pen, $state, $this, $words);
+        $this->details = new DetailsLayout($pen, $state, $this, $html, $words);
     }
 
     /**

@@ -381,10 +381,32 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   every installed plugin's own `docs/`, via `setMoreRoots()` — and the project)
   and in what a link to another page does, which is the handler's:
   `Help/HelpViewerActions` renders it in place, `Help/MarkdownPreviewActions`
-  opens that file's tab. A click on the page's text, away from a link, is
-  reported with the source line its block starts on (`RenderedDoc::$origins`,
-  kept by the renderer per block) and the word under the pointer; the preview
-  searches that block of the text for the word.
+  opens that file's tab.
+- **Parse, then lay out.** `Markdown/MarkdownParser` is a CommonMark 0.31.2
+  parser with GitHub's extensions (tables, task items, strikethrough, bare
+  links, footnotes, alerts, emoji), held to every spec example by
+  `tests/Unit/Markdown/SpecTest`. Every node carries the `SourceRange` of
+  bytes it was written in; a paragraph's text is a `MappedText`, so an inline
+  node's range survives quote markers, indentation and partly consumed tabs.
+  `Help/MarkdownRenderer` parses once per text and lays the tree out per width
+  (`Help/Layout/`): `BlockLayout` and `ContainerLayout` for blocks,
+  `InlineFragments` and `Wrapper` for runs, `CodeLayout` (fence colours,
+  memoised across widths), `TableLayout`, `HtmlBlockLayout` with
+  `DetailsLayout` (a `<details>` regathered from the sibling blocks CommonMark
+  cuts it into), and `ImageLayout` (a local PNG to kitty, sized from its
+  header). The result, `RenderedDoc`, holds the lines, the link spans, each
+  line's `origins`, each cell's source bytes (`cells`) and the anchors.
+- **Click-to-source is exact.** A click away from a link asks
+  `RenderedDoc::sourcePointAt()` for the (line, byte column) drawn under the
+  pointer — the very byte inside text drawn as written, the block's first line
+  elsewhere. This per-cell map is the seam a WYSIWYG mode will edit through.
+- **Page actions are link targets.** `#anchor` scrolls to a heading or a
+  footnote; `page.md#anchor` opens the page and scrolls once it is laid out;
+  `details:<offset>` opens or closes a section (the reader's view, never the
+  text); `task:<start>-<end>` asks the page to tick a task — the preview
+  dispatches `SourceEditRequested`, which `Editor/SourceEdits` applies as one
+  undoable edit only while the bytes still read what the page drew; the help
+  browser's pages are read-only and ignore it.
 - **Click-to-source, for every preview**, goes through the pane's tab handler:
   `ViewerTabHandler::revealSource($line, $byteCol)`, answered by
   `Editor/SourceReveal` (the caret there, the text given the keys when it is

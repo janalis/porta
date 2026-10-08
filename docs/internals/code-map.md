@@ -107,6 +107,12 @@ instances on the same files, plugins through `Plugin/Api/PluginParticipants`.
 instances leave their `Beacon`s; `Identity` is the name they see. It depends on
 `Filesystem/` for the remote board's transport, never the other way.
 
+**`Markdown/`** — markdown text to a document tree: the CommonMark + GFM
+parser (`Block/` for the line phase, `Inline/` for the inline phase), the
+immutable nodes (`Node/`) and the source positions every node carries
+(`SourceRange`, `SourceText`, `MappedText`). It imports nothing feature-owned
+and draws nothing; drawing a tree is `Help/Layout/`'s.
+
 **`Install/`** — Porta outside the IDE: the `porta` link on `PATH`
 (`CommandLink`), git's difftool/mergetool config (`GitToolSetup`) and the
 running binary (`PortaBinary`). Shared by `Console/` (`--git-setup`) and the

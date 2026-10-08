@@ -382,6 +382,36 @@ under an open view's window no head reaches at all. In Split
 the divider beside the preview's header keeps its `│` on the header's shade
 (`RuleHalves::dividerOnShade`).
 
+## A markdown page: GitHub's shapes in cells
+
+The preview and the help viewer draw markdown as GitHub does, with what a
+terminal has instead of fonts (`Help/Layout/`):
+
+- **Headings** are a hierarchy of weight and colour: H1 bold in `Emphasis`
+  over a `═` rule, H2 bold and `Bright` over a `─` rule — both rules the
+  page's full width, as GitHub's — H3–H4 bold, H5 bold and muted, H6 muted.
+  Two blank rows above a heading, one below.
+- **Code** is a `Toolbar`-shaded box the page's width: a row above carrying
+  the language's name at its right, the code inset two columns, a row below.
+  Code never wraps; a line wider than the box is cut. An inline code span is
+  the same shade, padded with a no-break space each side.
+- **Bars** carry the containers: a muted `│` per quote level on every row,
+  blank ones too; an alert's heavier `┃` and its bold title in its colour
+  (Note and Tip `TabAccent`, Important `Emphasis`, Warning `StatusWarning`,
+  Caution `StatusError`).
+- **Lists** hang from their markers: `•`, `◦`, `▪` by depth, numbers
+  right-aligned so the text lines up, a task's `[ ]`/`[✓]` (accent when done)
+  after the bullet.
+- **Tables** are ruled — ` │ ` between columns, `─┼─` under the header — with
+  the header bold and each column aligned as its delimiter cell says.
+- Every inline style is a self-contained SGR region ending in a reset: the
+  page splices its link and find highlights over a run by column, so no run
+  may lean on another's codes.
+
+Glyphs added for the page were checked for width first: `◦ ▪ ▸ ▾ ✓ ↩` are
+East Asian Neutral and never emoji-presented. `☑`, `⚠` and `🖼` were
+considered and refused, the way the window's `ⓧ` was.
+
 ## Sizing one: measure every row you draw
 
 A floating box computes its width from its content, and the recurring defect is

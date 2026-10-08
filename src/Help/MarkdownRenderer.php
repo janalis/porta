@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\Help;
 
-use Porta\Help\Layout\AlertTitles;
 use Porta\Help\Layout\BlockLayout;
 use Porta\Help\Layout\CodeLayout;
 use Porta\Help\Layout\HtmlBlockLayout;
 use Porta\Help\Layout\ImageLayout;
 use Porta\Help\Layout\LayoutState;
 use Porta\Help\Layout\PageLine;
+use Porta\Help\Layout\PageWords;
 use Porta\Help\Layout\StylePen;
 use Porta\Help\Layout\TableLayout;
 use Porta\Highlight\CodeHighlighter;
@@ -40,7 +40,7 @@ final class MarkdownRenderer
     private readonly MarkdownParser $parser;
     private readonly StylePen $pen;
     private readonly CodeLayout $code;
-    private readonly AlertTitles $alertTitles;
+    private readonly PageWords $words;
     private readonly ImageLayout $images;
     private readonly HtmlBlockLayout $html;
     private ?Document $document = null;
@@ -49,13 +49,13 @@ final class MarkdownRenderer
     public function __construct(
         Styles $styles,
         ?CodeHighlighter $highlighter = null,
-        ?AlertTitles $alertTitles = null,
+        ?PageWords $words = null,
         ?TerminalGraphics $graphics = null,
     ) {
         $this->parser = new MarkdownParser();
         $this->pen = new StylePen($styles);
         $this->code = new CodeLayout($this->pen, $highlighter);
-        $this->alertTitles = $alertTitles ?? AlertTitles::english();
+        $this->words = $words ?? PageWords::english();
         $this->images = new ImageLayout($graphics);
         $this->html = new HtmlBlockLayout($this->pen, $this->images);
     }
@@ -88,7 +88,7 @@ final class MarkdownRenderer
         $footnotes = [];
         self::collectFootnotes($document, $footnotes);
         $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails, $baseDir);
-        $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), $this->html, $this->images, $this->alertTitles);
+        $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), $this->html, $this->images, $this->words);
         $lines = [...$layout->blocks($document->blocks, $width), ...$layout->footnotes($width)];
         $this->images->sweep();
 

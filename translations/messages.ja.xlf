@@ -3398,6 +3398,30 @@
         <source>Show the Problem at the Caret</source>
         <target>キャレット位置の問題を表示</target>
       </trans-unit>
+      <trans-unit id="1171">
+        <source>Note</source>
+        <target>注記</target>
+      </trans-unit>
+      <trans-unit id="1172">
+        <source>Tip</source>
+        <target>ヒント</target>
+      </trans-unit>
+      <trans-unit id="1173">
+        <source>Important</source>
+        <target>重要</target>
+      </trans-unit>
+      <trans-unit id="1174">
+        <source>Warning</source>
+        <target>警告</target>
+      </trans-unit>
+      <trans-unit id="1175">
+        <source>Caution</source>
+        <target>注意</target>
+      </trans-unit>
+      <trans-unit id="1176">
+        <source>Details</source>
+        <target>詳細</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

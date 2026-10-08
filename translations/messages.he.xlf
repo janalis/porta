@@ -3398,6 +3398,30 @@
         <source>Show the Problem at the Caret</source>
         <target>הצגת הבעיה במיקום הסמן</target>
       </trans-unit>
+      <trans-unit id="1171">
+        <source>Note</source>
+        <target>הערה</target>
+      </trans-unit>
+      <trans-unit id="1172">
+        <source>Tip</source>
+        <target>טיפ</target>
+      </trans-unit>
+      <trans-unit id="1173">
+        <source>Important</source>
+        <target>חשוב</target>
+      </trans-unit>
+      <trans-unit id="1174">
+        <source>Warning</source>
+        <target>אזהרה</target>
+      </trans-unit>
+      <trans-unit id="1175">
+        <source>Caution</source>
+        <target>זהירות</target>
+      </trans-unit>
+      <trans-unit id="1176">
+        <source>Details</source>
+        <target>פרטים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

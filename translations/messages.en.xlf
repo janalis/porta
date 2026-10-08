@@ -3398,6 +3398,30 @@
         <source>Show the Problem at the Caret</source>
         <target>Show the Problem at the Caret</target>
       </trans-unit>
+      <trans-unit id="1171">
+        <source>Note</source>
+        <target>Note</target>
+      </trans-unit>
+      <trans-unit id="1172">
+        <source>Tip</source>
+        <target>Tip</target>
+      </trans-unit>
+      <trans-unit id="1173">
+        <source>Important</source>
+        <target>Important</target>
+      </trans-unit>
+      <trans-unit id="1174">
+        <source>Warning</source>
+        <target>Warning</target>
+      </trans-unit>
+      <trans-unit id="1175">
+        <source>Caution</source>
+        <target>Caution</target>
+      </trans-unit>
+      <trans-unit id="1176">
+        <source>Details</source>
+        <target>Details</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

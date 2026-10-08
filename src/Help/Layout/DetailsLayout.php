@@ -27,6 +27,7 @@ final readonly class DetailsLayout
         private LayoutState $state,
         private BlockLayout $blocks,
         private HtmlBlockLayout $html,
+        private PageWords $words,
     ) {}
 
     /**
@@ -75,7 +76,7 @@ final readonly class DetailsLayout
         $open = \array_key_exists($start, $this->state->openDetails);
         $m = [];
         $summary = 1 === \preg_match('/<summary\b[^>]*>(.*?)<\/summary>/is', $opening->literal, $m) ? \trim(\strip_tags($m[1])) : '';
-        $summary = '' === $summary ? 'Details' : \html_entity_decode($summary, \ENT_QUOTES | \ENT_HTML5, encoding: 'UTF-8');
+        $summary = '' === $summary ? $this->words->details() : \html_entity_decode($summary, \ENT_QUOTES | \ENT_HTML5, encoding: 'UTF-8');
         $marker = $open ? Glyphs::MD_DETAILS_OPEN : Glyphs::MD_DETAILS_CLOSED;
         $text = $this->pen->role($marker, Role::TabAccent).' '.$this->pen->paint($summary, new InlineStyle(InlineStyle::BOLD));
         $width2 = 2 + AnsiUtils::visibleWidth($summary);
