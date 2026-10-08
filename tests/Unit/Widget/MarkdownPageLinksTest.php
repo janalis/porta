@@ -152,6 +152,16 @@ final class MarkdownPageLinksTest extends TestCase
         $this->assertSame(['missing:task:0-3', 'missing:details:0', 'missing:task:0-3'], $this->handler->events);
     }
 
+    public function testEnterBeforeAnyLinkIsTakenDoesNothing(): void
+    {
+        $pane = $this->preview();
+        $pane->show($this->project->path('docs/page.md'), "- [ ] todo [link](other.md)\n");
+        $this->drawn($pane);
+        $pane->handleInput("\r");
+        $this->assertSame([], $this->handler->events);
+        $this->assertSame([], $this->events->take(SourceEditRequested::class));
+    }
+
     public function testTheHelpBrowsersTasksAreReadOnly(): void
     {
         $viewer = new HelpViewerWidget();

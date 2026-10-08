@@ -568,8 +568,9 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     }
 
     /**
-     * A group taken: one of the page's own actions (a task's box, a
-     * `<details>`) is run, anything else followed as the link its author wrote.
+     * A group taken: one of the page's own actions — a task's box, else a
+     * `<details>` — is run, anything else followed as the link its author
+     * wrote. No group taken (Enter before any Tab) does nothing.
      */
     private function activate(RenderedDoc $doc, int $group): void
     {
@@ -581,8 +582,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         match (true) {
             !$doc->isAction($group) => $this->follow($target),
             1 === \preg_match('/^task:(\d+)-(\d+)$/', $target, $m) => $this->toggleTask((int) $m[1], (int) $m[2]),
-            1 === \preg_match('/^details:(\d+)$/', $target, $m) => $this->toggleDetails((int) $m[1]),
-            default => null,
+            default => $this->toggleDetails((int) \substr($target, offset: \strlen('details:'))),
         };
     }
 

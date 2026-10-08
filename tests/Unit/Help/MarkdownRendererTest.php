@@ -107,6 +107,7 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame(['See the guide. Or this!'], self::plain($this->render('See [the guide](g.md). Or *this*!', 60)));
         // …and across a wrap: the comma does not start a line, its word moves down with it.
         $this->assertSame(['xxxxxxxxxxxxxxxxx', 'both, yy'], self::plain($this->render('xxxxxxxxxxxxxxxxx **both**, yy', 22)));
+        $this->assertSame(['xxxxxxxxxxxxxxxxx', 'ab.'], self::plain($this->render('xxxxxxxxxxxxxxxxx [a](x.md)[b](y.md).', 20)), 'a run of several glued words moves whole');
         // A glued run longer than a line breaks where it must, losing nothing.
         $this->assertSame(['aaaa link', 'bbbbbbbbbbbbbbbbbbbb', 'bbbbbbbb'], self::plain($this->render('aaaa [link](x.md)'.\str_repeat('b', times: 28), 20)));
     }
