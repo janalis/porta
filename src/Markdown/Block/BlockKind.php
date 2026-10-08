@@ -37,12 +37,4 @@ enum BlockKind
             default => false,
         };
     }
-
-    public function isContainer(): bool
-    {
-        return match ($this) {
-            self::Document, self::BlockQuote, self::List, self::Item, self::FootnoteDefinition => true,
-            default => false,
-        };
-    }
 }

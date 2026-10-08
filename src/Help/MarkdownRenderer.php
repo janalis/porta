@@ -91,9 +91,6 @@ final class MarkdownRenderer
         $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), $this->html, $this->images, $this->alertTitles);
         $lines = [...$layout->blocks($document->blocks, $width), ...$layout->footnotes($width)];
         $this->images->sweep();
-        while ([] !== $lines && '' === $lines[\count($lines) - 1]->text) {
-            \array_pop($lines);
-        }
 
         return self::assemble($lines, $state->source);
     }

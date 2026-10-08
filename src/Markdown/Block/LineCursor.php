@@ -104,10 +104,4 @@ final class LineCursor
     {
         return $this->lineStart + $offset;
     }
-
-    /** The source offset just past the line's last byte. */
-    public function end(): int
-    {
-        return $this->lineStart + \strlen($this->line);
-    }
 }

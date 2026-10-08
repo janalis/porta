@@ -62,6 +62,8 @@ final class HtmlParagraphs
     {
         $tag = HtmlInlineTags::parse($markup);
         if (null === $tag) {
+            $this->text($markup); // a `<` that opens no tag is text
+
             return;
         }
         [$name, $closing, $attributes] = $tag;

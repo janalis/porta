@@ -128,4 +128,23 @@ final class LanguageMapTest extends TestCase
         $this->assertNotContains('plaintext', $ids);
         $this->assertContains('php', $ids);
     }
+
+    /** @return iterable<string, array{string, ?string}> */
+    public static function fences(): iterable
+    {
+        yield 'a grammar by its name' => ['php', 'php'];
+        yield 'GitHub\'s alias' => ['shell', 'bash'];
+        yield 'an alias, any case, padded' => [' Console ', 'bash'];
+        yield 'a file extension' => ['yml', 'yaml'];
+        yield 'an extension that is a grammar of its own' => ['jsonc', 'jsonc'];
+        yield 'unknown' => ['klingon', null];
+        yield 'none' => ['', null];
+    }
+
+    /** A fenced block's language, as a README writes it, to the grammar that colours it. */
+    #[DataProvider('fences')]
+    public function testAFenceLanguageFindsItsGrammar(string $language, ?string $grammar): void
+    {
+        $this->assertSame($grammar, LanguageMap::highlightForFence($language));
+    }
 }

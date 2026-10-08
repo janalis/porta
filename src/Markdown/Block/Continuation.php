@@ -47,10 +47,8 @@ final class Continuation
 
     private function item(LineCursor $cursor, OpenBlock $block): int
     {
-        $marker = $block->marker;
-        if (null === $marker) {
-            return self::FAILED;
-        }
+        // Every item opens with its marker read.
+        $indent = ($block->marker->markerOffset ?? 0) + ($block->marker->padding ?? 0);
         if ($cursor->blank) {
             if ([] === $block->children) {
                 return self::FAILED; // a blank line after an empty item ends it
@@ -59,8 +57,8 @@ final class Continuation
 
             return self::MATCHED;
         }
-        if ($cursor->indent >= ($marker->markerOffset + $marker->padding)) {
-            $cursor->advanceColumns($marker->markerOffset + $marker->padding);
+        if ($cursor->indent >= $indent) {
+            $cursor->advanceColumns($indent);
 
             return self::MATCHED;
         }

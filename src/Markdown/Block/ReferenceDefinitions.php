@@ -34,11 +34,8 @@ final class ReferenceDefinitions
         if (null === $end) {
             return 0;
         }
-        $key = LinkSyntax::normalize($label[0]);
-        if ('' === $key) {
-            return 0;
-        }
-        $references[$key] ??= new LinkReference($destination[0], $end[1]);
+        // The label scanner refuses a blank label, so no key normalises to ''.
+        $references[LinkSyntax::normalize($label[0])] ??= new LinkReference($destination[0], $end[1]);
 
         return $end[0];
     }

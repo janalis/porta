@@ -82,9 +82,6 @@ final readonly class Wrapper
                 \array_push($words, ...self::cut($fragment, $text, $offset, $room, $glued));
                 $glued = false;
             }
-            if ([] === $pieces && null !== $fragment->anchor) {
-                $words[] = new Word('', 0, $fragment, glued: true); // an anchor with no text still marks its line
-            }
         }
 
         return $words;
@@ -133,11 +130,7 @@ final readonly class Wrapper
 
     private static function sourceOf(Fragment $fragment, int $offset): int
     {
-        if (null === $fragment->source) {
-            return -1;
-        }
-
-        return $fragment->source->start + ($fragment->verbatim ? $offset : 0);
+        return null === $fragment->source ? -1 : $fragment->source->start + ($fragment->verbatim ? $offset : 0);
     }
 
     /**

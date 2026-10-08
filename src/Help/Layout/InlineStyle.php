@@ -39,9 +39,4 @@ final readonly class InlineStyle
     {
         return 0 === $this->flags && null === $this->role;
     }
-
-    public function equals(self $other): bool
-    {
-        return $this->flags === $other->flags && $this->role === $other->role;
-    }
 }

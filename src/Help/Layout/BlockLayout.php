@@ -90,8 +90,7 @@ final readonly class BlockLayout
             $block instanceof Table => $this->tables->lines($block, $width, $this->state),
             $block instanceof HtmlBlock => $this->html->lines($block, $width, $this->state),
             $block instanceof ListBlock => $this->containers->list($block, $width),
-            $block instanceof BlockQuote => $this->containers->quote($block, $width),
-            default => [],
+            default => $block instanceof BlockQuote ? $this->containers->quote($block, $width) : [], // the blocks a container holds: a quote, or a footnote kept for the end
         };
         $keep = $block instanceof CodeBlock || $block instanceof ListBlock || $block instanceof BlockQuote || $block instanceof HtmlBlock || $block instanceof Table;
 
