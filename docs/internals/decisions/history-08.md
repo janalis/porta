@@ -363,3 +363,38 @@ is now its severity's own colour (`DiagError`/`DiagWarn`/`DiagInfo` — dark
 203 / 208 / 220) with dark text, a hint line the inlay pill's shade, and the
 gutter's own shade back on the fixed palette (234). `ThemeLockTest` checks the
 tints against those roles in every colour theme, so they cannot drift apart.
+
+## Markdown is parsed by Porta's own CommonMark + GFM parser (2026-10-08)
+
+The preview and the F1 browser rendered markdown with a line-at-a-time regex
+renderer: no nested lists or quotes, no setext headings, no `_` emphasis, no
+reference links, escapes or entities, no task lists, alerts, footnotes or
+table alignment, and an anchor-only link rendered as italic and went nowhere.
+The ask was GitHub's rendering, with a WYSIWYG mode expected later.
+
+**Own parser, not `league/commonmark`.** The library is spec-compliant, but
+its nodes carry only the lines a block starts and ends on; inline nodes carry
+no position at all. A WYSIWYG edit has to map a cell of the rendered page to
+a byte of the source, inline text included, so the library would have needed
+a second position-tracking pass of its own — the hard half of a parser. It
+would also have been the first runtime dependency since `tempest/highlight`.
+
+What was built (`src/Markdown/`): the reference implementation's two-phase
+algorithm (commonmark.js), every node a `SourceRange` of source bytes, and a
+paragraph's text a `MappedText` so an inline node's range survives container
+prefixes, partial tabs and table-cell unescaping. Measured against the specs:
+**all 652 CommonMark 0.31.2 examples and all 24 GFM extension examples pass**
+through a test-side HTML oracle. Three CommonMark examples are pinned to
+GitHub's output instead of the spec's, because GFM links a bare URL or address
+that plain CommonMark leaves as text (`SpecTest::GITHUB_DIFFERS`). A second
+test walks every example's tree: each range inside its parent's, siblings in
+order, and verbatim text equal to its source slice.
+
+GitHub's extensions beyond the GFM spec — task items, alerts (`> [!NOTE]`),
+footnotes, `:shortcode:` emoji — have their own tests. The emoji table is
+gemoji's, cut to single code points of East Asian Width W: a text-default
+symbol may draw one column wide or two depending on the terminal, and the
+page's columns cannot be wrong.
+
+*Re-opens on:* a spec version whose examples the parser fails and cannot
+cheaply follow, or a parse cost the preview's 0.15 s feed cannot absorb.

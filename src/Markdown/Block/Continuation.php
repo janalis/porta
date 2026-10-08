@@ -1,0 +1,125 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\Markdown\Block;
+
+/**
+ * Whether an open block continues on the current line, each kind consuming
+ * its own prefix: a quote's `>`, an item's indentation, a code block's four
+ * columns. A closing code fence consumes the whole line.
+ */
+final class Continuation
+{
+    public const int MATCHED = 0;
+    public const int FAILED = 1;
+    public const int CONSUMED = 2;
+
+    private const int CODE_INDENT = 4;
+
+    public function continues(LineCursor $cursor, OpenBlock $block): int
+    {
+        return match ($block->kind) {
+            BlockKind::BlockQuote => $this->quote($cursor),
+            BlockKind::Item => $this->item($cursor, $block),
+            BlockKind::FootnoteDefinition => $this->footnote($cursor),
+            BlockKind::CodeBlock => $block->fenced ? $this->fence($cursor, $block) : $this->indentedCode($cursor),
+            BlockKind::HtmlBlock => $cursor->blank && $block->htmlType >= 6 ? self::FAILED : self::MATCHED,
+            BlockKind::Paragraph, BlockKind::Table => $cursor->blank ? self::FAILED : self::MATCHED,
+            BlockKind::Heading, BlockKind::ThematicBreak => self::FAILED,
+            default => self::MATCHED,
+        };
+    }
+
+    private function quote(LineCursor $cursor): int
+    {
+        if ($cursor->indented() || '>' !== $cursor->peekNonspace()) {
+            return self::FAILED;
+        }
+        $cursor->advanceNextNonspace();
+        $cursor->advance(1);
+        if (self::spaceOrTab($cursor->line[$cursor->offset] ?? '')) {
+            $cursor->advanceColumns(1);
+        }
+
+        return self::MATCHED;
+    }
+
+    private function item(LineCursor $cursor, OpenBlock $block): int
+    {
+        $marker = $block->marker;
+        if (null === $marker) {
+            return self::FAILED;
+        }
+        if ($cursor->blank) {
+            if ([] === $block->children) {
+                return self::FAILED; // a blank line after an empty item ends it
+            }
+            $cursor->advanceNextNonspace();
+
+            return self::MATCHED;
+        }
+        if ($cursor->indent >= ($marker->markerOffset + $marker->padding)) {
+            $cursor->advanceColumns($marker->markerOffset + $marker->padding);
+
+            return self::MATCHED;
+        }
+
+        return self::FAILED;
+    }
+
+    private function footnote(LineCursor $cursor): int
+    {
+        if ($cursor->blank) {
+            $cursor->advanceNextNonspace();
+
+            return self::MATCHED;
+        }
+        if ($cursor->indent >= self::CODE_INDENT) {
+            $cursor->advanceColumns(self::CODE_INDENT);
+
+            return self::MATCHED;
+        }
+
+        return self::FAILED;
+    }
+
+    private function fence(LineCursor $cursor, OpenBlock $block): int
+    {
+        $m = [];
+        if (
+            $cursor->indent <= 3
+            && $block->fenceChar === $cursor->peekNonspace()
+            && 1 === \preg_match('/^(?:`{3,}|~{3,})(?=[ \t]*$)/', $cursor->restFromNonspace(), $m)
+            && \strlen($m[0]) >= $block->fenceLength
+        ) {
+            return self::CONSUMED;
+        }
+        for ($i = $block->fenceOffset; $i > 0 && self::spaceOrTab($cursor->line[$cursor->offset] ?? ''); --$i) {
+            $cursor->advanceColumns(1);
+        }
+
+        return self::MATCHED;
+    }
+
+    private function indentedCode(LineCursor $cursor): int
+    {
+        if ($cursor->indent >= self::CODE_INDENT) {
+            $cursor->advanceColumns(self::CODE_INDENT);
+
+            return self::MATCHED;
+        }
+        if ($cursor->blank) {
+            $cursor->advanceNextNonspace();
+
+            return self::MATCHED;
+        }
+
+        return self::FAILED;
+    }
+
+    public static function spaceOrTab(string $c): bool
+    {
+        return ' ' === $c || "\t" === $c;
+    }
+}

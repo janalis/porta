@@ -18,7 +18,7 @@ its one-line row in [Settled questions](../decisions.md).
 | [Part 5](history-05.md) | 2026-09-11 → 2026-09-12 | 31 |
 | [Part 6](history-06.md) | 2026-09-12 → 2026-09-28 | 28 |
 | [Part 7](history-07.md) | 2026-09-23 → 2026-09-30 | 46 |
-| [Part 8](history-08.md) | 2026-10-01 → | 1 |
+| [Part 8](history-08.md) | 2026-10-01 → | 10 |
 
 ## [Part 1](history-01.md)
 
@@ -289,3 +289,8 @@ its one-line row in [Settled questions](../decisions.md).
 - The two coverage passes run at once (2026-10-02)
 - Opening a project no longer runs it (2026-10-02)
 - Problems and inlay hints the PhpStorm way (2026-10-07)
+- The gutter stops repeating problems; a problem read elsewhere opens in Problems (2026-10-07)
+- The gutter says a problem by colour again, on a shade of its own (2026-10-07)
+- The gutter's tint spans the whole gutter, in the terminal's own colours (2026-10-07)
+- The gutter's tint is the severity's own colour (2026-10-07)
+- Markdown is parsed by Porta's own CommonMark + GFM parser (2026-10-08)

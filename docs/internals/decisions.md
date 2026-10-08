@@ -288,6 +288,15 @@ the old measure. The git diff view paints its text with tabs expanded to the
 editor's stops and maps every column on that text (`DiffViewRenderer::shown()`,
 `columns()`); the model keeps the raw tab for copies and patches.
 
+**Markdown is parsed by Porta's own parser, not `league/commonmark` — decided.**
+The library's nodes carry no inline positions, and a later WYSIWYG mode needs
+every rendered cell traced to a source byte. `src/Markdown/` passes all 652
+CommonMark 0.31.2 and 24 GFM extension examples, three pinned to GitHub's output
+(dated history).
+
+*Re-opens on:* a spec version it cannot cheaply follow, or a parse cost the
+preview's feed cannot absorb.
+
 ## Plugin API
 
 **A project's plugins and runnable config wait for trust — kept.** Project
