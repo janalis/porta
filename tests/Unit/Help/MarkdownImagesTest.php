@@ -62,6 +62,7 @@ final class MarkdownImagesTest extends TestCase
         $this->assertCount(5, $doc->spansOfGroup(0), 'every row of it');
         $sent = $this->terminal->getOutput();
         $this->assertStringContainsString('a=t,f=100', $sent, 'the PNG sent as it is');
+        $this->assertStringContainsString(\base64_encode(self::png(160, 80)), $sent, 'the whole file, not only the header read to size it');
         $this->assertStringContainsString(',c=20,r=5,', $sent);
     }
 

@@ -119,6 +119,10 @@ final class MarkdownPageLinksTest extends TestCase
         $pane->handleInput("\t");
         $pane->handleInput("\r");
         $this->assertContains('Hidden.', $this->drawn($pane), 'Tab focuses it, Enter opens it');
+
+        // Typing above the section moves where it starts, not which one it is: it stays open.
+        $pane->show($this->project->path('docs/page.md'), "Typed.\n\n<details>\n<summary>More</summary>\n\nHidden.\n</details>\n");
+        $this->assertContains('Hidden.', $this->drawn($pane));
     }
 
     public function testATasksBoxAsksForItsTextToBeTicked(): void
@@ -135,6 +139,17 @@ final class MarkdownPageLinksTest extends TestCase
             ],
             $edits,
         );
+    }
+
+    public function testALinkWrittenToLookLikeAPageActionIsOnlyALink(): void
+    {
+        $pane = $this->preview();
+        $pane->show($this->project->path('docs/page.md'), "abc [tick](task:0-3) [open](details:0) <a href=\"task:0-3\">html</a>\n");
+        $this->click($pane, 'tick');
+        $this->click($pane, 'open');
+        $this->click($pane, 'html');
+        $this->assertSame([], $this->events->take(SourceEditRequested::class), 'the text is never edited');
+        $this->assertSame(['missing:task:0-3', 'missing:details:0', 'missing:task:0-3'], $this->handler->events);
     }
 
     public function testTheHelpBrowsersTasksAreReadOnly(): void

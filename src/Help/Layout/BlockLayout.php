@@ -120,7 +120,7 @@ final readonly class BlockLayout
             return [];
         }
 
-        return $this->wrapper->wrap($fragments, $width, new PageLine(), new PageLine());
+        return $this->wrapper->wrap($fragments, $width);
     }
 
     /**

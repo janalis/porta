@@ -78,7 +78,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     private ?array $tree = null;
     /** An anchor to bring to the top once the page it is on is laid out: a link to `page.md#section`. */
     private ?string $pendingAnchor = null;
-    /** @var array<int, true> the `<details>` the reader opened, by where each starts in the source */
+    /** @var array<int, true> the `<details>` the reader opened, by their number in source order — typing above one keeps it open */
     private array $openDetails = [];
     private readonly MarkdownRenderer $renderer;
 
@@ -259,7 +259,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             }
 
             $this->currentLink = $span->group;
-            $this->follow($span->target);
+            $this->activate($doc, $span->group);
 
             return true;
         }
@@ -562,30 +562,37 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
 
     private function followCurrent(): void
     {
-        $target = $this->doc?->target($this->currentLink);
-        if (null !== $target) {
-            $this->follow($target);
+        if (null !== $this->doc) {
+            $this->activate($this->doc, $this->currentLink);
         }
     }
 
     /**
-     * Route a link target: a place on this page (`#anchor`), a page action (a
-     * task's box, a `<details>`), a browser URL, another doc page — at its
-     * anchor, when the link names one — or a plain file.
+     * A group taken: one of the page's own actions (a task's box, a
+     * `<details>`) is run, anything else followed as the link its author wrote.
+     */
+    private function activate(RenderedDoc $doc, int $group): void
+    {
+        $target = $doc->target($group);
+        if (null === $target) {
+            return;
+        }
+        $m = [];
+        match (true) {
+            !$doc->isAction($group) => $this->follow($target),
+            1 === \preg_match('/^task:(\d+)-(\d+)$/', $target, $m) => $this->toggleTask((int) $m[1], (int) $m[2]),
+            1 === \preg_match('/^details:(\d+)$/', $target, $m) => $this->toggleDetails((int) $m[1]),
+            default => null,
+        };
+    }
+
+    /**
+     * Route a link target: a place on this page (`#anchor`), a browser URL,
+     * another doc page — at its anchor, when the link names one — or a plain
+     * file.
      */
     private function follow(string $target): void
     {
-        $m = [];
-        if (1 === \preg_match('/^task:(\d+)-(\d+)$/', $target, $m)) {
-            $this->toggleTask((int) $m[1], (int) $m[2]);
-
-            return;
-        }
-        if (1 === \preg_match('/^details:(\d+)$/', $target, $m)) {
-            $this->toggleDetails((int) $m[1]);
-
-            return;
-        }
         if (1 === \preg_match('#^(?:https?|mailto|ftp):#i', $target)) {
             $this->docs()?->openUrl($target);
 
@@ -613,12 +620,12 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         $this->invalidate();
     }
 
-    private function toggleDetails(int $start): void
+    private function toggleDetails(int $number): void
     {
-        $open = !\array_key_exists($start, $this->openDetails);
-        unset($this->openDetails[$start]);
+        $open = !\array_key_exists($number, $this->openDetails);
+        unset($this->openDetails[$number]);
         if ($open) {
-            $this->openDetails[$start] = true;
+            $this->openDetails[$number] = true;
         }
         $this->doc = null;
         $this->invalidate();

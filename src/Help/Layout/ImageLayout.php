@@ -46,8 +46,8 @@ final class ImageLayout
         if (null === $graphics || !$graphics->available() || null === $file) {
             return null;
         }
-        $png = (string) \file_get_contents($file);
-        $size = self::size($png);
+        // The header is all a layout reads: the whole file only goes to the terminal once.
+        $size = self::size((string) \file_get_contents($file, length: 24));
         if (null === $size) {
             return null;
         }
@@ -57,7 +57,7 @@ final class ImageLayout
         if (null === $id) {
             $id = $graphics->allocateId();
             $this->ids[$key] = $id;
-            $graphics->transmit($id, $png);
+            $graphics->transmit($id, (string) \file_get_contents($file));
         }
         $graphics->place($id, $columns, $rows);
         $this->used[$id] = true;
@@ -128,13 +128,13 @@ final class ImageLayout
         return self::PNG === $head ? $file : null;
     }
 
-    /** @return array{int, int}|null a PNG's width and height, read from its IHDR chunk */
-    private static function size(string $png): ?array
+    /** @return array{int, int}|null a PNG's width and height, read from the IHDR chunk its first 24 bytes hold */
+    private static function size(string $head): ?array
     {
-        if (\strlen($png) < 24 || 'IHDR' !== \substr($png, offset: 12, length: 4)) {
+        if (\strlen($head) < 24 || 'IHDR' !== \substr($head, offset: 12, length: 4)) {
             return null;
         }
-        $dimensions = \unpack('Nwidth/Nheight', \substr($png, offset: 16, length: 8));
+        $dimensions = \unpack('Nwidth/Nheight', \substr($head, offset: 16, length: 8));
         if (false === $dimensions || $dimensions['width'] < 1 || $dimensions['height'] < 1) {
             return null;
         }

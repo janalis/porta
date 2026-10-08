@@ -78,7 +78,7 @@ final readonly class HtmlBlockLayout
      */
     private function wrap(array $fragments, int $width): array
     {
-        return [] === $fragments ? [] : new Wrapper($this->pen)->wrap($fragments, $width, new PageLine(), new PageLine());
+        return [] === $fragments ? [] : new Wrapper($this->pen)->wrap($fragments, $width);
     }
 
     /** @return list<PageLine> */

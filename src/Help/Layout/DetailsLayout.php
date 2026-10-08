@@ -73,14 +73,15 @@ final readonly class DetailsLayout
         $opening = $section[0];
         \assert($opening instanceof HtmlBlock, description: 'a section opens with the HTML block that opens it');
         $start = $opening->range->start;
-        $open = \array_key_exists($start, $this->state->openDetails);
+        $number = $this->state->detailsNumber($start);
+        $open = \array_key_exists($number, $this->state->openDetails);
         $m = [];
         $summary = 1 === \preg_match('/<summary\b[^>]*>(.*?)<\/summary>/is', $opening->literal, $m) ? \trim(\strip_tags($m[1])) : '';
         $summary = '' === $summary ? $this->words->details() : \html_entity_decode($summary, \ENT_QUOTES | \ENT_HTML5, encoding: 'UTF-8');
         $marker = $open ? Glyphs::MD_DETAILS_OPEN : Glyphs::MD_DETAILS_CLOSED;
         $text = $this->pen->role($marker, Role::TabAccent).' '.$this->pen->paint($summary, new InlineStyle(InlineStyle::BOLD));
         $width2 = 2 + AnsiUtils::visibleWidth($summary);
-        $line = new PageLine($text, $width2, $this->state->lineOf($start), [[0, $width2, 'details:'.$start, $this->state->group()]]);
+        $line = new PageLine($text, $width2, $this->state->lineOf($start), [[0, $width2, 'details:'.$number, $this->state->action()]]);
         if (!$open) {
             return [$line];
         }

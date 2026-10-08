@@ -81,7 +81,7 @@ final class MarkdownRendererTest extends TestCase
         foreach ($doc->lines as $line) {
             $this->assertStringNotContainsString("\x1b", $line);
         }
-        $this->assertContains(\str_repeat(' ', times: 26).'php', $doc->lines, 'the code box keeps its shape');
+        $this->assertContains(\str_repeat(' ', times: 26).'php ', $doc->lines, 'the code box keeps its shape, its label row as wide as the page');
     }
 
     public function testAParagraphJoinsItsLinesAndWrapsToTheWidth(): void
@@ -97,7 +97,7 @@ final class MarkdownRendererTest extends TestCase
 
     public function testAWordWiderThanTheLineIsCutAndAWrappedCjkRunLosesNothing(): void
     {
-        $this->assertSame(['abcdefghijklmnopqr', 'stuvwxyz'], self::plain($this->render(\implode('', \range('a', end: 'z')), 20)), 'cut at the width less the two columns a hang may need');
+        $this->assertSame(['abcdefghijklmnopqrst', 'uvwxyz'], self::plain($this->render(\implode('', \range('a', end: 'z')), 20)), 'cut at the width');
         $cjk = \str_repeat('漢字', times: 15);
         $this->assertSame($cjk, \implode('', self::plain($this->render($cjk, 20))));
     }
@@ -108,7 +108,7 @@ final class MarkdownRendererTest extends TestCase
         // …and across a wrap: the comma does not start a line, its word moves down with it.
         $this->assertSame(['xxxxxxxxxxxxxxxxx', 'both, yy'], self::plain($this->render('xxxxxxxxxxxxxxxxx **both**, yy', 22)));
         // A glued run longer than a line breaks where it must, losing nothing.
-        $this->assertSame(['aaaa link', 'bbbbbbbbbbbbbbbbbb', 'bbbbbbbbbb'], self::plain($this->render('aaaa [link](x.md)'.\str_repeat('b', times: 28), 20)));
+        $this->assertSame(['aaaa link', 'bbbbbbbbbbbbbbbbbbbb', 'bbbbbbbb'], self::plain($this->render('aaaa [link](x.md)'.\str_repeat('b', times: 28), 20)));
     }
 
     public function testALinkSpanCoversExactlyTheCellsItDrawsAcrossAWrap(): void
@@ -240,6 +240,13 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame(3, $doc->anchor('fn-b'));
         $this->assertSame(0, $doc->anchor('fnref-b'));
         $this->assertSame('#fnref-b', $doc->target(2));
+
+        // A reference finds its definition case aside, as a link label does — both ways.
+        $doc = $this->render("See[^Note].\n\n[^NOTE]: N.\n", 40);
+        $this->assertSame('#fn-note', $doc->target(0));
+        $this->assertSame(3, $doc->anchor('fn-note'));
+        $this->assertSame('#fnref-note', $doc->target(1));
+        $this->assertSame(0, $doc->anchor('fnref-note'));
     }
 
     public function testInlineHtmlIsDrawnNotShown(): void
@@ -344,5 +351,13 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render($markdown);
         $this->assertSame('x *y', self::plain($doc)[0]);
         $this->assertSame(2, $doc->sourceAt(0, 2), 'the escape\'s start');
+    }
+
+    public function testACodeLineMapsToItsTextNotToAMarkerThatSpellsTheSame(): void
+    {
+        $doc = $this->render("> ```\n> >\n> ```\n");
+        $row = \array_search('│   >', self::plain($doc), strict: true);
+        $this->assertIsInt($row, 'the code row: the quote bar, the inset, the code');
+        $this->assertSame(8, $doc->cells[$row][0][2], 'the code, not the quote marker at 6');
     }
 }

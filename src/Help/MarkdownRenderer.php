@@ -78,7 +78,7 @@ final class MarkdownRenderer
     }
 
     /**
-     * @param array<int, true> $openDetails the source offsets of the `<details>` the reader has opened
+     * @param array<int, true> $openDetails the `<details>` the reader has opened, by their number in source order
      * @param string|null      $baseDir     where the page's relative image paths start
      */
     public function render(string $markdown, int $width, array $openDetails = [], ?string $baseDir = null): RenderedDoc
@@ -92,7 +92,7 @@ final class MarkdownRenderer
         $lines = [...$layout->blocks($document->blocks, $width), ...$layout->footnotes($width)];
         $this->images->sweep();
 
-        return self::assemble($lines, $state->source);
+        return self::assemble($lines, $state);
     }
 
     /** @param array<string, FootnoteDefinition> $footnotes */
@@ -107,7 +107,7 @@ final class MarkdownRenderer
     }
 
     /** @param list<PageLine> $lines */
-    private static function assemble(array $lines, SourceText $source): RenderedDoc
+    private static function assemble(array $lines, LayoutState $state): RenderedDoc
     {
         $links = [];
         $anchors = [];
@@ -127,7 +127,8 @@ final class MarkdownRenderer
             \array_map(static fn (PageLine $line): int => $line->origin, $lines),
             \array_map(static fn (PageLine $line): array => $line->cells, $lines),
             $anchors,
-            $source,
+            $state->source,
+            $state->actions,
         );
     }
 }

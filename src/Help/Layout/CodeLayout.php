@@ -63,7 +63,7 @@ final class CodeLayout
         $labelWidth = AnsiUtils::visibleWidth($label);
         $pad = \str_repeat(' ', \max(0, $width - $labelWidth - ('' === $label ? 0 : 1)));
         if (!$this->pen->styles->hasColor()) {
-            return new PageLine($pad.$label, $width, $origin);
+            return new PageLine($pad.$label.('' === $label ? '' : ' '), $width, $origin);
         }
         $label = '' === $label ? '' : $this->pen->styles->of(Role::Muted)->getAnsiRestore().$label.Sgr::DEFAULT_FG.' ';
 
@@ -82,20 +82,21 @@ final class CodeLayout
     }
 
     /**
-     * Where the code line sits in its source line — after whatever quote
-     * markers or list indentation contain the block.
+     * Where the code line sits in its source line: at its end, after whatever
+     * quote markers or list indentation contain the block — never at a marker
+     * that happens to spell the same text.
      *
      * @return list<array{int, int, int, int, string}>
      */
     private function cells(string $raw, int $origin, LayoutState $state): array
     {
         $lineStart = $state->source->offsetOf($origin, 0);
-        $sourceLine = \explode("\n", \substr($state->source->text, $lineStart), limit: 2)[0];
-        $at = '' === $raw ? false : \strpos($sourceLine, $raw);
-        if (false === $at || \str_contains($raw, "\t")) {
+        $text = $state->source->text;
+        $lineEnd = $lineStart + \strcspn($text, characters: "\r\n", offset: $lineStart);
+        $start = $lineEnd - \strlen($raw);
+        if ('' === $raw || $start < $lineStart || \substr($text, $start, \strlen($raw)) !== $raw || \str_contains($raw, "\t")) {
             return [];
         }
-        $start = $lineStart + $at;
 
         return [[self::INSET, self::INSET + AnsiUtils::visibleWidth($raw), $start, $start + \strlen($raw), $raw]];
     }

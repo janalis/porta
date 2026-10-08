@@ -21,10 +21,12 @@ final class LayoutState
     public array $footnoteNumbers = [];
     /** @var array<string, int> slug => how many headings took it */
     public array $slugs = [];
+    /** @var array<int, true> the groups that are the page's own actions, never a link its author wrote */
+    public array $actions = [];
 
     /**
      * @param array<string, FootnoteDefinition> $footnotes normalised label => definition
-     * @param array<int, true>                  $openDetails the source offsets of the `<details>` shown open
+     * @param array<int, true>                  $openDetails the `<details>` shown open, by {@see detailsNumber()}
      */
     public function __construct(
         public readonly SourceText $source,
@@ -38,9 +40,32 @@ final class LayoutState
         return $this->nextGroup++;
     }
 
+    /**
+     * A group for one of the page's own actions — a task's box, a `<details>`
+     * summary — kept apart from links, so a link written to look like one
+     * (`[x](task:0-3)`) stays a link and never edits the text.
+     */
+    public function action(): int
+    {
+        $group = $this->group();
+        $this->actions[$group] = true;
+
+        return $group;
+    }
+
     public function lineOf(int $offset): int
     {
         return $this->source->lineOf($offset);
+    }
+
+    /**
+     * Which `<details>` of the page opens at $offset, counted from 0 in
+     * source order: what the reader's open sections are kept by, since an
+     * edit above a section moves its offset but not its number.
+     */
+    public function detailsNumber(int $offset): int
+    {
+        return (int) \preg_match_all('/<details\b/i', \substr($this->source->text, offset: 0, length: $offset));
     }
 
     /** A footnote's number, given on its first reference. */

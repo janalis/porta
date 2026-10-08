@@ -63,7 +63,7 @@ final readonly class TableLayout
         $widths = [];
         foreach ($rows as $cells) {
             foreach ($cells as $column => $fragments) {
-                $natural = $wrapper->line(Wrapper::packWords(Wrapper::toWords($fragments, \PHP_INT_MAX), \PHP_INT_MAX, 0, 0)[0])->width;
+                $natural = $wrapper->line(Wrapper::packWords(Wrapper::toWords($fragments, \PHP_INT_MAX), \PHP_INT_MAX)[0])->width;
                 $widths[$column] = \max($widths[$column] ?? 1, $natural);
             }
         }
@@ -98,7 +98,7 @@ final readonly class TableLayout
         $height = 1;
         foreach ($widths as $column => $columnWidth) {
             $fragments = $cells[$column] ?? [];
-            $wrapped[$column] = [] === $fragments ? [new PageLine()] : $wrapper->wrap($fragments, $columnWidth, new PageLine(), new PageLine());
+            $wrapped[$column] = [] === $fragments ? [new PageLine()] : $wrapper->wrap($fragments, $columnWidth);
             $height = \max($height, \count($wrapped[$column]));
         }
         $lines = [];

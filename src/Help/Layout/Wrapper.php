@@ -27,15 +27,12 @@ final readonly class Wrapper
      *
      * @return list<PageLine>
      */
-    public function wrap(array $fragments, int $width, PageLine $first, PageLine $rest): array
+    public function wrap(array $fragments, int $width): array
     {
         $lines = [];
-        $prefix = $first;
         foreach ($this->breakLines($fragments) as $part) {
-            $words = self::toWords($part, $width - \max($rest->width, 2));
-            foreach (self::packWords($words, $width, $prefix->width, $rest->width) as $lineWords) {
-                $lines[] = $this->line($lineWords)->after($prefix);
-                $prefix = $rest;
+            foreach (self::packWords(self::toWords($part, $width), $width) as $lineWords) {
+                $lines[] = $this->line($lineWords);
             }
         }
 
@@ -147,8 +144,8 @@ final readonly class Wrapper
     }
 
     /**
-     * Greedily pack words into lines of $width, the first starting at
-     * $firstCol and the rest at $hang. Tables pack each cell the same way.
+     * Greedily pack words into lines of $width. Tables pack each cell the
+     * same way.
      * A word glued to the one before (`**both**,`) never starts a line on its
      * own: the run it ends moves down with it, when that run fits a line.
      *
@@ -156,16 +153,16 @@ final readonly class Wrapper
      *
      * @return list<list<Word>>
      */
-    public static function packWords(array $words, int $width, int $firstCol, int $hang): array
+    public static function packWords(array $words, int $width): array
     {
         $lines = [];
         $lineWords = [];
-        $col = $firstCol;
+        $col = 0;
         foreach ($words as $word) {
             $needed = ([] === $lineWords || $word->glued ? 0 : 1) + $word->width;
             if ([] !== $lineWords && ($col + $needed) > $width) {
-                $from = $word->glued ? self::carriedFrom($lineWords, $width - $hang - $word->width) : \count($lineWords);
-                [$kept, $lineWords, $col] = self::breakAt($lineWords, $from, $hang);
+                $from = $word->glued ? self::carriedFrom($lineWords, $width - $word->width) : \count($lineWords);
+                [$kept, $lineWords, $col] = self::breakAt($lineWords, $from);
                 $lines[] = $kept;
                 $needed = $word->width;
             }
@@ -179,17 +176,17 @@ final readonly class Wrapper
 
     /**
      * $line ended before word $from, and the words from there carried to
-     * the next line, with the column they reach on it from $hang.
+     * the next line, with the column they reach on it.
      *
      * @param list<Word> $line
      *
      * @return array{list<Word>, list<Word>, int}
      */
-    private static function breakAt(array $line, int $from, int $hang): array
+    private static function breakAt(array $line, int $from): array
     {
         $kept = [];
         $carried = [];
-        $col = $hang;
+        $col = 0;
         foreach ($line as $index => $word) {
             if ($index < $from) {
                 $kept[] = $word;

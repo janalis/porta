@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Help\Layout;
 
+use Porta\Markdown\Inline\LinkSyntax;
 use Porta\Markdown\Node\CodeSpan;
 use Porta\Markdown\Node\Emoji;
 use Porta\Markdown\Node\Emphasis;
@@ -160,9 +161,11 @@ final class InlineFragments
     private function footnote(FootnoteReference $reference): Fragment
     {
         $number = $this->state->footnote($reference->label);
-        $anchor = 'fnref-'.$reference->label;
+        // A label matches its definition as a link label does, case aside.
+        $label = LinkSyntax::normalize($reference->label);
+        $anchor = 'fnref-'.$label;
 
-        return new Fragment('['.$number.']', $this->style->with(InlineStyle::LINK), '#fn-'.$reference->label, $this->state->group(), $reference->range, anchor: $anchor);
+        return new Fragment('['.$number.']', $this->style->with(InlineStyle::LINK), '#fn-'.$label, $this->state->group(), $reference->range, anchor: $anchor);
     }
 
     /** @return list<Fragment> */

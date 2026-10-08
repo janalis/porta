@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Help\Layout;
 
+use Porta\Markdown\Inline\LinkSyntax;
 use Porta\Markdown\Node\BlockQuote;
 use Porta\Markdown\Node\FootnoteDefinition;
 use Porta\Markdown\Node\ListBlock;
@@ -59,7 +60,7 @@ final class ContainerLayout
             $box = '['.($item->checked ? Glyphs::MD_CHECK : ' ').']';
             $target = 'task:'.$item->checkbox->start.'-'.$item->checkbox->end;
             $painted = $this->pen->role($box, $item->checked ? Role::TabAccent : Role::Muted);
-            $prefix = new PageLine($painted.' ', 4, 0, [[0, 3, $target, $this->state->group()]])->after($prefix);
+            $prefix = new PageLine($painted.' ', 4, 0, [[0, 3, $target, $this->state->action()]])->after($prefix);
         }
         $origin = $this->state->lineOf($item->range->start);
         $body = $this->blocks->blocks($item->blocks, \max(1, $width - $prefix->width), $gap);
@@ -122,13 +123,14 @@ final class ContainerLayout
         $marker = $number.'.';
         $prefix = new PageLine($this->pen->role($marker, Role::Muted).' ', \strlen($marker) + 1);
         $origin = $this->state->lineOf($definition->range->start);
+        $key = LinkSyntax::normalize($definition->label); // as its references spell it
         $body = $this->blocks->blocks($definition->blocks, \max(1, $width - $prefix->width));
         $body = [] === $body ? [new PageLine('', 0, $origin)] : $body;
-        $back = new PageLine(' '.$this->pen->paint(Glyphs::MD_BACKREF, new InlineStyle(InlineStyle::LINK)), 2, 0, [[1, 2, '#fnref-'.$definition->label, $this->state->group()]]);
+        $back = new PageLine(' '.$this->pen->paint(Glyphs::MD_BACKREF, new InlineStyle(InlineStyle::LINK)), 2, 0, [[1, 2, '#fnref-'.$key, $this->state->group()]]);
         $last = \count($body) - 1;
         $body[$last] = $body[$last]->then($back);
         $lines = $this->hang($body, $prefix, PageLine::spaces($prefix->width));
-        $lines[0] = $lines[0]->withAnchor('fn-'.$definition->label);
+        $lines[0] = $lines[0]->withAnchor('fn-'.$key);
 
         return $lines;
     }

@@ -21,6 +21,7 @@ final readonly class RenderedDoc
      * @param list<int>                                     $origins for each rendered line, the 0-based source line its block starts on
      * @param list<list<array{int, int, int, int, string}>> $cells   for each rendered line, its runs: col, end col, source start, source end, the source text when drawn verbatim
      * @param array<string, int>                            $anchors anchor => the rendered line it leads to
+     * @param array<int, true>                              $actions the groups that are the page's own actions (a task's box, a `<details>`)
      */
     public function __construct(
         public array $lines,
@@ -29,7 +30,14 @@ final readonly class RenderedDoc
         public array $cells = [],
         public array $anchors = [],
         public ?SourceText $source = null,
+        public array $actions = [],
     ) {}
+
+    /** Whether a group is one of the page's own actions rather than a link. */
+    public function isAction(int $group): bool
+    {
+        return \array_key_exists($group, $this->actions);
+    }
 
     /** The number of distinct links (Tab cycles these groups). */
     public function groupCount(): int
