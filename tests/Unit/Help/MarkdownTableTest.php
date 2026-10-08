@@ -140,4 +140,16 @@ final class MarkdownTableTest extends TestCase
         $doc = $this->render("text\n| a |\n|---|\n| b |\n| c |\n");
         $this->assertSame([0, 0, 1, 1, 3, 4], $doc->origins);
     }
+
+    public function testATableExactlyAsWideAsThePaneIsNotNarrowed(): void
+    {
+        $bar = Glyphs::MD_TABLE_BAR;
+        $this->assertSame(' '.\str_repeat('a', times: 12)." {$bar} bbbb", self::plain($this->render('| '.\str_repeat('a', times: 12)." | bbbb |\n|---|---|\n", 20))[0]);
+        $this->assertSame(' '.\str_repeat('a', times: 19), self::plain($this->render('| '.\str_repeat('a', times: 19)." |\n|---|\n", 20))[0]);
+    }
+
+    public function testAFootnoteInACellKeepsItsBackrefAnchor(): void
+    {
+        $this->assertSame(0, $this->render("| a[^n] | b |\n|---|---|\n\n[^n]: Note.\n")->anchor('fnref-n'));
+    }
 }

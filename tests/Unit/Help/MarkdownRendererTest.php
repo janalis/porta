@@ -81,6 +81,7 @@ final class MarkdownRendererTest extends TestCase
         foreach ($doc->lines as $line) {
             $this->assertStringNotContainsString("\x1b", $line);
         }
+        $this->assertContains('  code'.\str_repeat(' ', times: 24), $doc->lines, 'the code line padded to the width');
         $this->assertContains(\str_repeat(' ', times: 26).'php ', $doc->lines, 'the code box keeps its shape, its label row as wide as the page');
     }
 
@@ -100,6 +101,8 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame(['abcdefghijklmnopqrst', 'uvwxyz'], self::plain($this->render(\implode('', \range('a', end: 'z')), 20)), 'cut at the width');
         $cjk = \str_repeat('漢字', times: 15);
         $this->assertSame($cjk, \implode('', self::plain($this->render($cjk, 20))));
+        $this->assertSame(\array_fill(0, count: 3, value: \str_repeat('漢字', times: 5)), self::plain($this->render($cjk, 20)), 'twenty columns a line, no glyph split');
+        $this->assertSame(["\u{00E9}".\str_repeat('a', times: 19), 'aaaaa'], self::plain($this->render("\u{00E9}".\str_repeat('a', times: 24), 20)), 'measured by columns, not bytes');
     }
 
     public function testPunctuationTouchingALinkOrEmphasisStaysTouchingIt(): void
@@ -108,6 +111,9 @@ final class MarkdownRendererTest extends TestCase
         // …and across a wrap: the comma does not start a line, its word moves down with it.
         $this->assertSame(['xxxxxxxxxxxxxxxxx', 'both, yy'], self::plain($this->render('xxxxxxxxxxxxxxxxx **both**, yy', 22)));
         $this->assertSame(['xxxxxxxxxxxxxxxxx', 'ab.'], self::plain($this->render('xxxxxxxxxxxxxxxxx [a](x.md)[b](y.md).', 20)), 'a run of several glued words moves whole');
+        $this->assertSame(['xxxxxxxxxxxxxxxxx', 'aabb.', \str_repeat('c', times: 17)], self::plain($this->render('xxxxxxxxxxxxxxxxx [aa](x.md)[bb](y.md). '.\str_repeat('c', times: 17), 22)));
+        $this->assertSame(['x', 'aaaaabbbbbcccccccccc'], self::plain($this->render('x [aaaaa](a.md)bbbbb**cccccccccc**', 20)), 'a run exactly filling the next line moves');
+        $this->assertSame(['x aaaaaabbbbb', 'cccccccccc'], self::plain($this->render('x [aaaaaa](a.md)bbbbb**cccccccccc**', 20)), 'one column more and it stays');
         // A glued run longer than a line breaks where it must, losing nothing.
         $this->assertSame(['aaaa link', 'bbbbbbbbbbbbbbbbbbbb', 'bbbbbbbb'], self::plain($this->render('aaaa [link](x.md)'.\str_repeat('b', times: 28), 20)));
     }
@@ -215,6 +221,7 @@ final class MarkdownRendererTest extends TestCase
             $this->assertStringStartsWith($this->styles->of(Role::Toolbar)->getAnsiRestore(), $line);
             $this->assertStringEndsWith(Sgr::RESET, $line);
         }
+        $this->assertStringContainsString($this->styles->of(Role::Muted)->getAnsiRestore().'php'.Sgr::DEFAULT_FG.' '.Sgr::RESET, $doc->lines[0], 'the language muted, its row closed');
     }
 
     public function testACodeBlocksLanguageColoursItAndAResizeDoesNotColourItAgain(): void
@@ -265,6 +272,8 @@ final class MarkdownRendererTest extends TestCase
         $doc = $this->render("<!-- a note -->\n\n<ul>\n<li>raw</li>\n</ul>\n");
         $this->assertSame(['<ul>', '<li>raw</li>', '</ul>'], self::plain($doc));
         $this->assertStringStartsWith($this->styles->of(Role::Muted)->getAnsiRestore(), $doc->lines[0]);
+        $this->assertSame([2, 3, 4], $doc->origins, 'each row its own source line');
+        $this->assertSame([3, 1], $doc->sourcePointAt(1, 1));
     }
 
     public function testAReadmeHeaderInHtmlIsDrawnCentredAsItsAuthorMeantIt(): void
@@ -274,6 +283,7 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame([\str_repeat(' ', times: 12).'[Logo]', '', \str_repeat(' ', times: 12).'Porta', '', 'left', 'text & bold'], self::plain($doc));
         $this->assertSame('https://x.org', $doc->target(0), 'the image leads where its link does');
         $this->assertStringContainsString($this->styles->of(Role::Emphasis)->getAnsiRestore().Sgr::BOLD.'Porta', $doc->lines[2]);
+        $this->assertStringStartsWith('left', $doc->lines[4], 'an uncentred block is not centred');
     }
 
     public function testADetailsSectionIsCollapsedUntilTheReaderOpensIt(): void
@@ -283,6 +293,8 @@ final class MarkdownRendererTest extends TestCase
         $closed = $renderer->render($markdown, 30);
         $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' More about it', '', 'After.'], self::plain($closed));
         $this->assertSame('details:0', $closed->target(0));
+        $span = $closed->spansOfGroup(0)[0];
+        $this->assertSame([0, 15], [$span->col, $span->endCol], 'the marker and the summary');
         $open = $renderer->render($markdown, 30, [0 => true]);
         $this->assertSame([Glyphs::MD_DETAILS_OPEN.' More about it', '  Hidden text.', '', '  '.Glyphs::MD_BULLET.' item', '', 'After.'], self::plain($open));
     }
@@ -318,6 +330,10 @@ final class MarkdownRendererTest extends TestCase
         yield 'containers' => ["> quoted *text*\n> - item **one**\n\n1. first\n   - [ ] task text\n"];
         yield 'escapes and entities' => ["A \\*star\\* &amp; caf&eacute; :rocket: done\n"];
         yield 'table' => ["| a | b |\n|---|:-:|\n| one | *two* |\n"];
+        yield 'not ascii' => ["naïve café au lait\n"];
+        yield 'ascii from byte 0' => ["plain words *here*\n"];
+        yield 'cut three times' => [\str_repeat('abcdefghijklmnopqrstuvwxyz', times: 3)."\n"];
+        yield 'markup shown as written' => ["<ul>\n<li>raw</li>\n</ul>\n"];
     }
 
     /**
@@ -415,5 +431,74 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame(0, $this->render("# Été\n")->anchor('été'));
         $this->assertSame('a[1] b[1]', self::plain($this->render("a[^x] b[^x]\n\n[^x]: X.\n"))[0]);
         $this->assertSame(['[a b '."\u{1F680}".']'], self::plain($this->render("![a\\\nb :rocket:](x.png)\n")));
+    }
+
+    public function testABlockAfterAFootnoteDefinitionIsStillDrawn(): void
+    {
+        $this->assertSame(['A[1].', '', 'After.', '', \str_repeat(Glyphs::MD_RULE, times: 40), '1. Note. '.Glyphs::MD_BACKREF], self::plain($this->render("A[^a].\n\n[^a]: Note.\n\nAfter.\n")));
+    }
+
+    public function testAParagraphOfTagsAloneDrawsNothingAndTakesNoGap(): void
+    {
+        $this->assertSame(['a', '', 'b'], self::plain($this->render("a\n\n<b></b>\n\nb")));
+    }
+
+    public function testFootnotesFirstDefinitionWinsNestedOnesCountAndTheBackrefIsTheFirst(): void
+    {
+        $this->assertStringStartsWith('1. First.', self::plain($this->render("R[^a].\n\n[^a]: First.\n\n[^a]: Second.\n"))[3]);
+        $this->assertNotNull($this->render("R[^q].\n\n> [^q]: Quoted.\n")->anchor('fn-q'), 'a definition inside a quote');
+        $this->assertSame(0, $this->render("A[^a]\n\nB[^a]\n\n[^a]: N.\n")->anchor('fnref-a'), 'back to the first reference');
+        $this->assertSame(0, $this->render("# Title[^n]\n\n[^n]: N.\n")->anchor('fnref-n'), 'a heading\'s slug does not replace it');
+    }
+
+    public function testAnAnchorMatchesAccentedCapitals(): void
+    {
+        $this->assertSame(0, $this->render("# Été\n")->anchor('Été'));
+    }
+
+    public function testKbdKeepsItsBoldAndALinkItsColour(): void
+    {
+        $this->assertSame(Sgr::BOLD.Sgr::REVERSE.'K'.Sgr::RESET, $this->render('**<kbd>K</kbd>**')->lines[0]);
+        $this->assertSame($this->styles->of(Role::TabAccent)->getAnsiRestore().Sgr::UNDERLINE.'x'.Sgr::RESET, $this->render('[x](y)')->lines[0]);
+    }
+
+    public function testACellNotDrawnAsWrittenMapsToTheStartOfItsRun(): void
+    {
+        $this->assertSame(0, $this->render("a\tb c")->sourceAt(0, 2));
+        $this->assertSame(0, $this->render("a\tb \u{00E9}")->sourceAt(0, 2), 'the grapheme-measured path too');
+    }
+
+    public function testACodeLineMapsByteForByteAndItsBlockEndsOnItsLastLine(): void
+    {
+        $doc = $this->render("```\nab\n```\n");
+        $this->assertSame(5, $doc->sourceAt(1, 3));
+        $this->assertSame([0, 1, 1], $doc->origins);
+    }
+
+    public function testACodeLabelTooLongIsCutInsideTheRow(): void
+    {
+        $top = AnsiUtils::stripAnsiCodes($this->render("```abcdefghijklmnopqrstuvwxyz\nx\n```\n", 20)->lines[0]);
+        $this->assertSame(20, AnsiUtils::visibleWidth($top));
+        $this->assertStringStartsWith(' a', $top);
+    }
+
+    public function testACodeLineStaysShadedAfterItsColouringResets(): void
+    {
+        $provider = new ClosureHighlightProvider(static fn (string $code, string $language): string => "\x1b[31m".$code);
+        $line = $this->render("```php\nx\n```\n", 20, new CodeHighlighter($provider))->lines[1];
+        $this->assertStringContainsString(Sgr::RESET.$this->styles->of(Role::Toolbar)->getAnsiRestore().' ', $line);
+    }
+
+    public function testEveryBlockKeepsItsOwnColouringAndColoursOffMeansNone(): void
+    {
+        $provider = new ClosureHighlightProvider(static fn (string $code, string $language): string => "\x1b[31m{$code}\x1b[39m");
+        $renderer = new MarkdownRenderer($this->styles, new CodeHighlighter($provider));
+        $markdown = "```php\nx\n```\n\n```sh\nx\n```\n";
+        $renderer->render($markdown, 30);
+        $this->assertSame(2, $provider->calls, 'one text, two languages');
+        $renderer->render($markdown, 50);
+        $this->assertSame(2, $provider->calls);
+        $mono = new MarkdownRenderer(new Styles(MonochromeTheme::definition()), new CodeHighlighter($provider))->render("```php\ny\n```\n", 30);
+        $this->assertStringNotContainsString("\x1b", $mono->lines[1]);
     }
 }

@@ -35,6 +35,11 @@ final class MarkdownImagesTest extends TestCase
             'docs/fake.png' => 'GIF89a not a png',
             'docs/cut.png' => "\x89PNG\r\n\x1a\n",
             'docs/empty.png' => self::png(0, 10),
+            'docs/copy.png' => self::png(160, 80),
+            'docs/needle.png' => self::png(8, 2000),
+            'docs/column.png' => self::png(100, 2000),
+            'docs/dot.png' => self::png(1, 1),
+            'docs/odd.png' => "\x89PNG\r\n\x1a\n".\pack('N', 13).'tEXt'.\pack('NN', 16, 16),
         ]);
         [$this->graphics, $this->terminal] = PixelGraphics::answered(cellWidth: 8, cellHeight: 16);
     }
@@ -60,6 +65,8 @@ final class MarkdownImagesTest extends TestCase
         $this->assertStringContainsString("\u{100000}", $doc->lines[0], 'placement row 0, column 0');
         $this->assertSame('wide.png', $doc->target(0), 'the picture leads to its file');
         $this->assertCount(5, $doc->spansOfGroup(0), 'every row of it');
+        $this->assertSame([0, 20], [$doc->spansOfGroup(0)[0]->col, $doc->spansOfGroup(0)[0]->endCol]);
+        $this->assertStringStartsWith("\u{100000}", AnsiUtils::stripAnsiCodes($doc->lines[0]));
         $sent = $this->terminal->getOutput();
         $this->assertStringContainsString('a=t,f=100', $sent, 'the PNG sent as it is');
         $this->assertStringContainsString(\base64_encode(self::png(160, 80)), $sent, 'the whole file, not only the header read to size it');
@@ -76,13 +83,25 @@ final class MarkdownImagesTest extends TestCase
     {
         $doc = $this->render('![](tall.png)');
         $this->assertCount(24, $doc->lines);
+        $this->assertSame(1, AnsiUtils::visibleWidth($doc->lines[0]), '5 columns × 24/125 rows, rounded');
+        $this->assertSame(1, AnsiUtils::visibleWidth($this->render('![](needle.png)')->lines[0]));
+        $this->assertSame(2, AnsiUtils::visibleWidth($this->render('![](column.png)')->lines[0]), '13 × 24/130 = 2.4');
     }
 
     public function testAnImageThePageCannotDrawKeepsItsAltText(): void
     {
-        foreach (['![Remote](https://x.org/a.png)', '![Fake](fake.png)', '![Gone](gone.png)', '![Cut](cut.png)', '![Empty](empty.png)', 'Text ![Inline](wide.png) beside'] as $markdown) {
+        foreach ([
+            '![Remote](https://x.org/a.png)',
+            '![Fake](fake.png)',
+            '![Gone](gone.png)',
+            '![Cut](cut.png)',
+            '![Empty](empty.png)',
+            '![Odd](odd.png)',
+            'Text ![Inline](wide.png) beside',
+        ] as $markdown) {
             $this->assertStringContainsString('[', AnsiUtils::stripAnsiCodes($this->render($markdown)->lines[0]), $markdown);
         }
+        $this->assertStringNotContainsString('[', AnsiUtils::stripAnsiCodes($this->render('![Dot](dot.png)')->lines[0]), 'a 1×1 PNG still draws');
         [$silent] = PixelGraphics::unanswered();
         $this->assertSame('[Wide]', \trim(AnsiUtils::stripAnsiCodes($this->render('![Wide](wide.png)', $silent)->lines[0])), 'a terminal without the protocol');
         $this->assertSame(
@@ -105,5 +124,42 @@ final class MarkdownImagesTest extends TestCase
     public function testAnInlineImgInsideALinkKeepsItsWidth(): void
     {
         $this->assertSame(10, AnsiUtils::visibleWidth($this->render('[<img src="wide.png" width="80">](x.md)')->lines[0]));
+    }
+
+    public function testAskedWidthsRoundToCellsAndKeepTheShape(): void
+    {
+        foreach (['2' => [1, 1], '85' => [11, 3], '73' => [9, 2]] as $asked => $shape) {
+            $doc = $this->render('<img src="wide.png" width="'.$asked.'">');
+            $this->assertSame($shape, [AnsiUtils::visibleWidth($doc->lines[0]), \count($doc->lines)], "width {$asked}");
+        }
+    }
+
+    public function testOnARetinaScreenAskedWidthsAreLogicalPixels(): void
+    {
+        $this->graphics->setPixelRatio(2.0);
+        $this->assertSame(20, AnsiUtils::visibleWidth($this->render('![W](wide.png)')->lines[0]), 'its own pixels: as at 1x');
+        $this->assertSame(20, AnsiUtils::visibleWidth($this->render('<img src="wide.png" width="80">')->lines[0]));
+        $this->assertSame(10, AnsiUtils::visibleWidth($this->render('<img src="wide.png" width="25%">')->lines[0]));
+    }
+
+    public function testWhitespaceBesideAnImageLeavesItAlone(): void
+    {
+        $this->assertCount(5, $this->render('<span></span> ![Wide](wide.png) <!-- caption -->')->lines);
+    }
+
+    public function testEachFileIsItsOwnImageAnEditIsSentAgainAndEveryUnusedOneFreed(): void
+    {
+        $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics);
+        $docs = $this->project->path('docs');
+        $renderer->render("![a](wide.png)\n\n![b](copy.png)", 40, [], $docs);
+        $this->assertSame(2, \substr_count($this->terminal->getOutput(), needle: 'a=t,'));
+        $this->terminal->clearOutput();
+        \touch($this->project->path('docs/wide.png'), \time() + 60);
+        \clearstatcache();
+        $renderer->render("![a](wide.png)\n\n![b](copy.png)", 40, [], $docs);
+        $this->assertSame(1, \substr_count($this->terminal->getOutput(), needle: 'a=t,'), 'only the file that changed');
+        $this->terminal->clearOutput();
+        $renderer->render('![a](wide.png)', 40, [], $docs);
+        $this->assertStringContainsString('a=d,d=I,', $this->terminal->getOutput(), 'copy.png freed though wide.png, before it, is kept');
     }
 }

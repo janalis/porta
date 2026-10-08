@@ -8,6 +8,9 @@ use PHPUnit\Framework\TestCase;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Highlight\CodeHighlighter;
+use Porta\Highlight\HighlightRequest;
+use Porta\Highlight\HighlightSink;
+use Porta\Highlight\ThemeAwareHighlightProvider;
 use Porta\Tests\Support\ClosureHighlightProvider;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -50,6 +53,7 @@ final class MarkdownPageCornersTest extends TestCase
         $this->assertSame($muted.'Six'.Sgr::RESET, $doc->lines[3]);
         $this->assertSame(['Five', '', '', 'Six', '', '', '', \str_repeat(Glyphs::MD_HEADING_RULE, times: 40)], self::plain($doc));
         $this->assertSame(6, $doc->anchor(''), 'even an empty heading is somewhere to go');
+        $this->assertSame(Sgr::BOLD.'Four'.Sgr::RESET, $this->render("#### Four\n")->lines[0], 'the fourth level bold alone');
     }
 
     public function testACodeLineWithATabIsDrawnExpandedButMapsNowhereFiner(): void
@@ -58,6 +62,7 @@ final class MarkdownPageCornersTest extends TestCase
         $this->assertSame('  a   b', self::plain($doc)[1]);
         $this->assertSame([], $doc->cells[1]);
         $this->assertSame([1, 0], $doc->sourcePointAt(1, 3), 'the line, not the byte');
+        $this->assertSame(['  abcde   b', "  \u{00E9}   c"], \array_slice(self::plain($this->render("```\nabcde\tb\n\u{00E9}\tc\n```\n")), offset: 1, length: 2), 'stops every four columns');
     }
 
     public function testTheCodeColourMemoIsBoundedAndColoursAgainAfterItEmpties(): void
@@ -85,6 +90,8 @@ final class MarkdownPageCornersTest extends TestCase
         $doc = $this->render('<b><i>both</b> plain</i> <?php echo 1; ?> <span>kept</span> <x-tag>shown</x-tag>', 70);
         $this->assertSame(['both plain <?php echo 1; ?> kept <x-tag>shown</x-tag>'], self::plain($doc));
         $this->assertStringContainsString(Sgr::BOLD.Sgr::ITALIC.'both'.Sgr::RESET.' plain', $doc->lines[0], 'closing <b> closes the <i> opened inside it');
+        $line = $this->render('<b><i>x</i> y</b> z <b>a <b>b</b> c</b> d', 60)->lines[0];
+        $this->assertStringEndsWith(Sgr::BOLD.'y'.Sgr::RESET.' z '.Sgr::BOLD.'a'.Sgr::RESET.' '.Sgr::BOLD.'b'.Sgr::RESET.' '.Sgr::BOLD.'c'.Sgr::RESET.' d', $line, 'a nested <b> closes only itself');
     }
 
     public function testAnHtmlBlockOfPictureSourcesDrawsItsImageAndSkipsLeadingSpace(): void
@@ -154,5 +161,73 @@ final class MarkdownPageCornersTest extends TestCase
     public function testATabInCodeStopsByColumnsAfterAWideGlyph(): void
     {
         $this->assertSame('  漢  b', self::plain($this->render("```\n漢\tb\n```\n"))[1]);
+    }
+
+    public function testHtmlTagsAndAttributesAreReadWhateverTheirCaseOrQuoting(): void
+    {
+        $doc = $this->render("<P ALIGN=\"center\">Hi <B>there</B></P>\n", 30);
+        $this->assertSame([\str_repeat(' ', times: 11).'Hi there'], self::plain($doc));
+        $this->assertStringContainsString(Sgr::BOLD.'there', $doc->lines[0]);
+        $doc = $this->render("<p>It&apos;s &quot;so&quot; <img src='a.png' alt='Single'> <img src=b.png alt=Bare> <img src=\"c.png\" alt=\" It&apos;s \"></p>\n", 60);
+        $this->assertSame(['It\'s "so" [Single] [Bare] [It\'s]'], self::plain($doc));
+        $this->assertSame(['a.png', 'b.png', 'c.png'], [$doc->target(0), $doc->target(1), $doc->target(2)]);
+    }
+
+    public function testHtmlBlocksStandApartAndHeadingsStepDown(): void
+    {
+        $bright = $this->styles->of(Role::Bright)->getAnsiRestore();
+        $this->assertSame([$bright.Sgr::BOLD.'Two'.Sgr::RESET, '', Sgr::BOLD.'Three'.Sgr::RESET, '', 'plain'], $this->render("<h2>Two</h2>\n<h3>Three</h3>\n<p>plain</p>\n")->lines);
+        $this->assertSame(['left', '', \str_repeat(' ', times: 13).'mid'], self::plain($this->render("<div>left<p align=\"center\">mid</p></div>\n", 30)));
+        $this->assertSame(['a b'], self::plain($this->render("<p><b>a</b> <i>b</i></p>\n")));
+    }
+
+    public function testAVerbatimBlockExpandsTabs(): void
+    {
+        $this->assertSame('    <li>x</li>', self::plain($this->render("<ul>\n\t<li>x</li>\n</ul>\n"))[1]);
+    }
+
+    public function testDetailsTagsAnyCaseAMultiLineSummaryAndWhatFollows(): void
+    {
+        $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' Up', '', 'After.'], self::plain($this->render("<DETAILS>\n<SUMMARY>Up</SUMMARY>\n\nHidden.\n\n</DETAILS>\n\nAfter.\n")));
+        $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' It\'s'], self::plain($this->render("<details>\n<summary>\n  <b>It&apos;s</b>\n</summary>\n\nx\n</details>\n")));
+        $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' Why', '', 'After.'], self::plain($this->render("<details><summary>Why</summary>Because.</details>\n\nAfter.\n")));
+    }
+
+    public function testAnOpenSectionWrapsInsideItsIndentAndKeepsAnUnclosedTail(): void
+    {
+        $renderer = new MarkdownRenderer($this->styles);
+        $this->assertSame(
+            [Glyphs::MD_DETAILS_OPEN.' S', '  aaaa bbbb cccc', '  dddd eeee'],
+            self::plain($renderer->render("<details><summary>S</summary>\n\naaaa bbbb cccc dddd eeee\n</details>\n", 20, [0 => true])),
+        );
+        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' S', '  last', '', '  tail'], self::plain($renderer->render("<details>\n<summary>S</summary>\n\nlast\n\n<div>tail</div>\n", 30, [0 => true])));
+    }
+
+    public function testAThemeSwitchRebuildsABackendThatBakesColours(): void
+    {
+        $provider = new class implements ThemeAwareHighlightProvider {
+            public string $id = 'themed';
+            public int $refreshed = 0;
+
+            #[\Override]
+            public function supports(string $language): bool
+            {
+                return true;
+            }
+
+            #[\Override]
+            public function highlight(HighlightRequest $request, HighlightSink $sink): void
+            {
+                $sink->deliver($request->documentId, $request->version, $request->text);
+            }
+
+            #[\Override]
+            public function refreshTheme(): void
+            {
+                ++$this->refreshed;
+            }
+        };
+        new MarkdownRenderer($this->styles, new CodeHighlighter($provider))->refreshTheme();
+        $this->assertSame(1, $provider->refreshed);
     }
 }
