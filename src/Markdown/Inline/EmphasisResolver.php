@@ -23,7 +23,7 @@ final class EmphasisResolver
         $this->top = $delimiter;
     }
 
-    public function remove(Delimiter $delimiter): void
+    private function remove(Delimiter $delimiter): void
     {
         if (null !== $delimiter->previous) {
             $delimiter->previous->next = $delimiter->next;

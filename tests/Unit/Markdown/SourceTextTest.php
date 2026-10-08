@@ -18,6 +18,7 @@ final class SourceTextTest extends TestCase
         $this->assertSame([0, 0, 1, 1, 2, 3], \array_map($source->lineOf(...), [0, 2, 3, 6, 7, 8]));
         $this->assertSame(2, $source->columnOf(5));
         $this->assertSame(5, $source->offsetOf(1, 2));
+        $this->assertSame(8, $source->offsetOf(3, 0), 'the last line is not clamped away');
         $this->assertSame(9, $source->offsetOf(9, 9), 'clamped to the end');
         $this->assertSame(0, $source->offsetOf(-1, -1), 'clamped to the start');
         $this->assertSame('cde', $source->slice(new SourceRange(3, 6)));

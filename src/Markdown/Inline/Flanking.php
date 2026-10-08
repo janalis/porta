@@ -60,12 +60,12 @@ final class Flanking
         return \substr($text, $at, $length);
     }
 
-    public static function isWhitespace(string $char): bool
+    private static function isWhitespace(string $char): bool
     {
         return 1 === \preg_match('/^[\t\n\f\r\p{Zs}]$/u', $char);
     }
 
-    public static function isPunctuation(string $char): bool
+    private static function isPunctuation(string $char): bool
     {
         return 1 === \preg_match('/^[\p{P}\p{S}]$/u', $char);
     }
