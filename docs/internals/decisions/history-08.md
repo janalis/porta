@@ -396,5 +396,14 @@ gemoji's, cut to single code points of East Asian Width W: a text-default
 symbol may draw one column wide or two depending on the terminal, and the
 page's columns cannot be wrong.
 
+**Its cost**, measured on `docs/internals/subsystems.md` (70 KB) with the box at
+load ~30 from other sessions: a parse ≈17 ms and a layout ≈20 ms, so an edit
+the preview redraws costs ≈37 ms, within the 0.15 s feed; a cold render, its
+code blocks coloured for the first time, ≈60 ms. The regex renderer it
+replaced drew the same page in ≈17 ms, drawing far less of it. A resize lays
+out again from the cached parse. Two cuts paid for themselves: the inline
+scanner reads a plain-text run whole (`strcspn`) instead of a byte at a time,
+and an ASCII word skips the grapheme measure.
+
 *Re-opens on:* a spec version whose examples the parser fails and cannot
 cheaply follow, or a parse cost the preview's 0.15 s feed cannot absorb.
