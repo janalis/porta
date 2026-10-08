@@ -400,10 +400,13 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   `RenderedDoc::sourcePointAt()` for the (line, byte column) drawn under the
   pointer — the very byte inside text drawn as written, the block's first line
   elsewhere. This per-cell map is the seam a WYSIWYG mode will edit through.
-- **Page actions are link targets.** `#anchor` scrolls to a heading or a
-  footnote; `page.md#anchor` opens the page and scrolls once it is laid out;
-  `details:<offset>` opens or closes a section (the reader's view, never the
-  text); `task:<start>-<end>` asks the page to tick a task — the preview
+- **Links route by target; page actions by group.** `#anchor` scrolls to a
+  heading or a footnote; `page.md#anchor` opens the page and scrolls once it is
+  laid out. A task's box and a `<details>` summary are action groups
+  (`RenderedDoc::isAction()`), so a link an author writes to look like one is
+  only ever a link: `details:<n>` opens or closes the n-th section in source
+  order (the reader's view, never the text, kept across edits above it);
+  `task:<start>-<end>` asks the page to tick a task — the preview
   dispatches `SourceEditRequested`, which `Editor/SourceEdits` applies as one
   undoable edit only while the bytes still read what the page drew; the help
   browser's pages are read-only and ignore it.
