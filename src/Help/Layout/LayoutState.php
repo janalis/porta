@@ -12,7 +12,7 @@ use Porta\Markdown\SourceText;
  * What laying out one page shares across its blocks: the next link group, the
  * footnotes in the order they are first referenced, the heading anchors given
  * out so far, the `<details>` the reader has opened, and the source, for
- * the line each block starts on.
+ * the line each block starts on — and the directory its images are under.
  */
 final class LayoutState
 {
@@ -30,6 +30,7 @@ final class LayoutState
         public readonly SourceText $source,
         public readonly array $footnotes = [],
         public readonly array $openDetails = [],
+        public readonly ?string $baseDir = null,
     ) {}
 
     public function group(): int

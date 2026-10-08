@@ -17,6 +17,7 @@ use Porta\Support\Files;
 use Porta\Support\IntMath;
 use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
@@ -81,12 +82,22 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     private array $openDetails = [];
     private readonly MarkdownRenderer $renderer;
 
-    public function __construct(?Styles $styles = null, ?CodeHighlighterFactory $highlighters = null, ?Translator $translator = null)
+    public function __construct(?Styles $styles = null, ?CodeHighlighterFactory $highlighters = null, ?Translator $translator = null, ?TerminalGraphics $graphics = null)
     {
         $this->initStyles($styles);
         $alertTitles = null === $translator ? null : new AlertTitles($translator->trans(...));
-        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $alertTitles);
+        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $alertTitles, $graphics);
         $this->headerZones = new ClickZones();
+        // The terminal's answer arrives after the first frame: images that
+        // were text until then are pixels now.
+        $graphics?->onChange($this->relayout(...));
+    }
+
+    /** Lay the page out again at the next render, the text unchanged. */
+    private function relayout(): void
+    {
+        $this->doc = null;
+        $this->invalidate();
     }
 
     public function setDocsRoot(string $dir): void
@@ -274,7 +285,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             // other text: keep the source line at the top instead. A new text
             // (no page to measure against) keeps the offset as it was.
             $anchor = $this->doc?->origins[$this->scrollTop] ?? null;
-            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails);
+            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails, null === $this->path ? null : \dirname($this->path));
             $this->doc = $doc;
             $this->renderedWidth = $width;
             if (null !== $anchor) {

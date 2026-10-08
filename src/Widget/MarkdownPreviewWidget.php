@@ -6,6 +6,12 @@ namespace Porta\Widget;
 
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
+use Porta\Event\SourceEditRequested;
+use Porta\Highlight\CodeHighlighterFactory;
+use Porta\I18n\Translator;
+use Porta\Ui\Graphics\TerminalGraphics;
+use Porta\Ui\Theme\Styles;
+use Psr\EventDispatcher\EventDispatcherInterface;
 
 /**
  * A markdown file as it reads, beside (or instead of) its text: the live
@@ -20,7 +26,8 @@ use Porta\Container\AsWidget;
  * help browser reads Porta's.
  *
  * And the page points back at its text: a click on it, away from a link,
- * puts the editor's caret on the word clicked and scrolls it into view.
+ * puts the editor's caret on the character clicked and scrolls it into view,
+ * and a task's box ticks — or unticks — the task in the text.
  *
  * It follows the TEXT, not the file: {@see \Porta\Editor\PreviewFeeder} hands
  * it the document on every pause in typing, so what it shows is what the
@@ -34,11 +41,34 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
     /** The routing id, matching the claim registered in {@see \Porta\Bootstrap\CorePanes}. */
     public const string PANE_ID = 'markdown';
 
+    /** The path as the buffer knows it — the page keeps it canonical, an edit must name the buffer. */
+    private ?string $bufferPath = null;
+
+    public function __construct(
+        ?Styles $styles = null,
+        ?CodeHighlighterFactory $highlighters = null,
+        ?Translator $translator = null,
+        ?TerminalGraphics $graphics = null,
+        private readonly ?EventDispatcherInterface $events = null,
+    ) {
+        parent::__construct($styles, $highlighters, $translator, $graphics);
+    }
+
     /** A click on the page puts the editor's caret on what was clicked. */
     #[\Override]
     protected function pointAtSource(int $sourceLine, int $byteCol): void
     {
         $this->handler?->revealSource($sourceLine, $byteCol);
+    }
+
+    /** A task's box: `[ ]` becomes `[x]` in the text, and `[x]` (or `[X]`) `[ ]`. */
+    #[\Override]
+    protected function toggleTask(int $start, int $end): void
+    {
+        $box = \substr($this->markdown, $start, $end - $start);
+        if (null !== $this->bufferPath && 3 === \strlen($box)) {
+            $this->events?->dispatch(new SourceEditRequested($this->bufferPath, $start, $end, $box, ' ' === $box[1] ? '[x]' : '[ ]'));
+        }
     }
 
     /** The caret reached another line of the text: keep its block in view. */
@@ -59,6 +89,7 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
     public function show(string $path, mixed $payload): void
     {
         $markdown = (string) $payload;
+        $this->bufferPath = $path;
         $same = $path === $this->path || \realpath($path) === $this->path;
         if ($same && $markdown === $this->markdown) {
             return; // the same text for the same file: nothing to draw again

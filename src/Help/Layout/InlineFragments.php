@@ -137,22 +137,23 @@ final class InlineFragments
 
     private function image(Image $image): Fragment
     {
-        return $this->picture(self::plainText($image->inlines), $image->destination, $image);
+        return $this->picture(self::plainText($image->inlines), new ImageRef($image->destination), $image);
     }
 
     /** An image the page cannot draw: its alt text, leading to the file (or to the link around it). */
-    private function picture(string $alt, string $source, Node $node): Fragment
+    private function picture(string $alt, ImageRef $image, Node $node): Fragment
     {
         $alt = \trim($alt);
-        $label = '' === $alt ? \basename(\explode('?', $source)[0]) : $alt;
+        $label = '' === $alt ? \basename(\explode('?', $image->source)[0]) : $alt;
         $inLink = null !== $this->target;
 
         return new Fragment(
             '['.$label.']',
             $this->style->with(InlineStyle::LINK)->with(InlineStyle::MUTED),
-            $inLink ? $this->target : $source,
+            $inLink ? $this->target : $image->source,
             $inLink ? $this->group : $this->state->group(),
             $node->range,
+            image: $image,
         );
     }
 
@@ -169,7 +170,7 @@ final class InlineFragments
     {
         $parsed = HtmlInlineTags::parse($tag->literal);
         if (null !== $parsed && 'img' === $parsed[0]) {
-            return [$this->picture($parsed[2]['alt'] ?? '', $parsed[2]['src'] ?? '', $tag)];
+            return [$this->picture($parsed[2]['alt'] ?? '', new ImageRef($parsed[2]['src'] ?? '', $parsed[2]['width'] ?? ''), $tag)];
         }
         $effect = $this->html->apply($tag->literal, $this->style, $this->target);
         if (null === $effect) {

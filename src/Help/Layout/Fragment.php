@@ -10,7 +10,8 @@ use Porta\Markdown\SourceRange;
  * One styled run of a block's inline content, before wrapping: its text, how
  * it is drawn, the link it belongs to (a target and a group shared by every
  * piece of one link), where it was written, and an anchor a line holding it
- * answers to. A break fragment ends the line.
+ * answers to. A break fragment ends the line; an image's fragment is its
+ * text stand-in, and carries the image for a page that can draw it.
  */
 final readonly class Fragment
 {
@@ -23,6 +24,7 @@ final readonly class Fragment
         public bool $verbatim = false,
         public ?string $anchor = null,
         public bool $isBreak = false,
+        public ?ImageRef $image = null,
     ) {}
 
     public static function lineBreak(): self

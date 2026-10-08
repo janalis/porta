@@ -246,11 +246,38 @@ final class MarkdownRendererTest extends TestCase
         $this->assertSame('x.md', $doc->target(0));
     }
 
-    public function testAnHtmlCommentBlockDrawsNothingAndOtherHtmlIsShownMuted(): void
+    public function testAnHtmlCommentBlockDrawsNothingAndStructureThePageCannotDrawIsShownMuted(): void
     {
-        $doc = $this->render("<!-- a note -->\n\n<div>\nraw\n</div>\n");
-        $this->assertSame(['<div>', 'raw', '</div>'], self::plain($doc));
+        $doc = $this->render("<!-- a note -->\n\n<ul>\n<li>raw</li>\n</ul>\n");
+        $this->assertSame(['<ul>', '<li>raw</li>', '</ul>'], self::plain($doc));
         $this->assertStringStartsWith($this->styles->of(Role::Muted)->getAnsiRestore(), $doc->lines[0]);
+    }
+
+    public function testAReadmeHeaderInHtmlIsDrawnCentredAsItsAuthorMeantIt(): void
+    {
+        $markdown = "<p align=\"center\">\n  <a href=\"https://x.org\"><img src=\"logo.svg\" alt=\"Logo\"></a>\n</p>\n<h1 align=\"center\">Porta</h1>\n<div>left<br>text &amp; <b>bold</b></div>\n";
+        $doc = $this->render($markdown, 30);
+        $this->assertSame([\str_repeat(' ', times: 12).'[Logo]', '', \str_repeat(' ', times: 12).'Porta', '', 'left', 'text & bold'], self::plain($doc));
+        $this->assertSame('https://x.org', $doc->target(0), 'the image leads where its link does');
+        $this->assertStringContainsString($this->styles->of(Role::Emphasis)->getAnsiRestore().Sgr::BOLD.'Porta', $doc->lines[2]);
+    }
+
+    public function testADetailsSectionIsCollapsedUntilTheReaderOpensIt(): void
+    {
+        $markdown = "<details>\n<summary>More <b>about</b> it</summary>\n\nHidden *text*.\n\n- item\n</details>\n\nAfter.\n";
+        $renderer = new MarkdownRenderer($this->styles);
+        $closed = $renderer->render($markdown, 30);
+        $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' More about it', '', 'After.'], self::plain($closed));
+        $this->assertSame('details:0', $closed->target(0));
+        $open = $renderer->render($markdown, 30, [0 => true]);
+        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' More about it', '  Hidden text.', '', '  '.Glyphs::MD_BULLET.' item', '', 'After.'], self::plain($open));
+    }
+
+    public function testADetailsSectionWrittenAsOneBlockOpensToItsText(): void
+    {
+        $markdown = "<details><summary>Why</summary>Because <i>so</i>.</details>\n";
+        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' Why', '  Because so.'], self::plain(new MarkdownRenderer($this->styles)->render($markdown, 30, [0 => true])));
+        $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' Details'], self::plain($this->render("<details>\n\nno summary\n")));
     }
 
     public function testEmptyInputRendersNothingAndBlankLinesNeverTrail(): void

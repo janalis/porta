@@ -30,6 +30,7 @@ final readonly class BlockLayout
     private InlineFragments $inlines;
     private Wrapper $wrapper;
     private ContainerLayout $containers;
+    private DetailsLayout $details;
 
     public function __construct(
         private StylePen $pen,
@@ -37,11 +38,13 @@ final readonly class BlockLayout
         private CodeLayout $code,
         private TableLayout $tables,
         private HtmlBlockLayout $html,
+        private ImageLayout $images,
         AlertTitles $alertTitles,
     ) {
         $this->inlines = new InlineFragments($state);
         $this->wrapper = new Wrapper($pen);
         $this->containers = new ContainerLayout($pen, $state, $this, $alertTitles);
+        $this->details = new DetailsLayout($pen, $state, $this, $html);
     }
 
     /**
@@ -53,11 +56,14 @@ final readonly class BlockLayout
     public function blocks(array $blocks, int $width, int $gap = 1): array
     {
         $lines = [];
-        foreach ($blocks as $block) {
+        for ($index = 0, $count = \count($blocks); $index < $count; ++$index) {
+            $block = $blocks[$index];
             if ($block instanceof FootnoteDefinition) {
                 continue; // gathered at the end of the page
             }
-            $drawn = $this->block($block, $width);
+            $section = $this->details->section($blocks, $index);
+            $drawn = null === $section ? $this->block($block, $width) : $this->details->lines($section, $width);
+            $index += null === $section ? 0 : \count($section) - 1;
             if ([] === $drawn) {
                 continue;
             }
@@ -77,7 +83,7 @@ final readonly class BlockLayout
     {
         $origin = $this->state->lineOf($block->range->start);
         $lines = match (true) {
-            $block instanceof Paragraph => $this->wrap($this->inlines->of($block->inlines), $width),
+            $block instanceof Paragraph => $this->paragraph($this->inlines->of($block->inlines), $width),
             $block instanceof Heading => $this->heading($block, $width),
             $block instanceof ThematicBreak => [new PageLine($this->pen->role(\str_repeat(Glyphs::MD_RULE, \max(0, $width)), Role::Muted), $width)],
             $block instanceof CodeBlock => $this->code->lines($block, $width, $this->state),
@@ -90,6 +96,18 @@ final readonly class BlockLayout
         $keep = $block instanceof CodeBlock || $block instanceof ListBlock || $block instanceof BlockQuote || $block instanceof HtmlBlock || $block instanceof Table;
 
         return $keep ? $lines : \array_map(static fn (PageLine $line): PageLine => $line->withOrigin($origin), $lines);
+    }
+
+    /**
+     * A paragraph: its text wrapped, or the image it is nothing but.
+     *
+     * @param list<Fragment> $fragments
+     *
+     * @return list<PageLine>
+     */
+    private function paragraph(array $fragments, int $width): array
+    {
+        return $this->images->of($fragments, $width, $this->state) ?? $this->wrap($fragments, $width);
     }
 
     /**

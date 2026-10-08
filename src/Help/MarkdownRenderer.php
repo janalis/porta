@@ -8,6 +8,7 @@ use Porta\Help\Layout\AlertTitles;
 use Porta\Help\Layout\BlockLayout;
 use Porta\Help\Layout\CodeLayout;
 use Porta\Help\Layout\HtmlBlockLayout;
+use Porta\Help\Layout\ImageLayout;
 use Porta\Help\Layout\LayoutState;
 use Porta\Help\Layout\PageLine;
 use Porta\Help\Layout\StylePen;
@@ -19,6 +20,7 @@ use Porta\Markdown\Node\Document;
 use Porta\Markdown\Node\FootnoteDefinition;
 use Porta\Markdown\Node\Node;
 use Porta\Markdown\SourceText;
+use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\Styles;
 
 /**
@@ -39,6 +41,8 @@ final class MarkdownRenderer
     private readonly StylePen $pen;
     private readonly CodeLayout $code;
     private readonly AlertTitles $alertTitles;
+    private readonly ImageLayout $images;
+    private readonly HtmlBlockLayout $html;
     private ?Document $document = null;
     private string $parsed = '';
 
@@ -46,11 +50,14 @@ final class MarkdownRenderer
         Styles $styles,
         ?CodeHighlighter $highlighter = null,
         ?AlertTitles $alertTitles = null,
+        ?TerminalGraphics $graphics = null,
     ) {
         $this->parser = new MarkdownParser();
         $this->pen = new StylePen($styles);
         $this->code = new CodeLayout($this->pen, $highlighter);
         $this->alertTitles = $alertTitles ?? AlertTitles::english();
+        $this->images = new ImageLayout($graphics);
+        $this->html = new HtmlBlockLayout($this->pen, $this->images);
     }
 
     /** The document tree for $markdown, parsed once however many widths it is laid out at. */
@@ -70,16 +77,20 @@ final class MarkdownRenderer
         $this->code->refreshTheme();
     }
 
-    /** @param array<int, true> $openDetails the source offsets of the `<details>` the reader has opened */
-    public function render(string $markdown, int $width, array $openDetails = []): RenderedDoc
+    /**
+     * @param array<int, true> $openDetails the source offsets of the `<details>` the reader has opened
+     * @param string|null      $baseDir     where the page's relative image paths start
+     */
+    public function render(string $markdown, int $width, array $openDetails = [], ?string $baseDir = null): RenderedDoc
     {
         $width = \max(self::MIN_WIDTH, $width);
         $document = $this->document($markdown);
         $footnotes = [];
         self::collectFootnotes($document, $footnotes);
-        $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails);
-        $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), new HtmlBlockLayout($this->pen), $this->alertTitles);
+        $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails, $baseDir);
+        $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), $this->html, $this->images, $this->alertTitles);
         $lines = [...$layout->blocks($document->blocks, $width), ...$layout->footnotes($width)];
+        $this->images->sweep();
         while ([] !== $lines && '' === $lines[\count($lines) - 1]->text) {
             \array_pop($lines);
         }

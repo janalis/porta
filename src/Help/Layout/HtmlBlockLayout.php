@@ -10,26 +10,90 @@ use Porta\Ui\Role;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * A raw HTML block. A comment draws nothing; anything else is shown as
- * written, muted, so the reader sees there is markup the page does not draw.
+ * A raw HTML block, drawn the way the README that wrote it meant: centred
+ * `<p align="center">` headers, `<h1>`–`<h6>`, images and links, line breaks,
+ * and the text between — the shapes GitHub's own pages are built from. A
+ * comment draws nothing. A block holding structure this page cannot draw
+ * (a `<table>`, a `<ul>`) is shown as written, muted, so the reader sees
+ * there is markup and what it says.
  */
 final readonly class HtmlBlockLayout
 {
+    /** The tags a block may hold and still be drawn rather than shown. */
+    private const string DRAWN = '/^(?:p|div|center|h[1-6]|br|img|a|picture|source|b|strong|i|em|s|del|strike|code|tt|kbd|sub|sup|span|ins|u|small|big|mark|abbr|samp|var|font|details|summary|hr)$/';
+
     public function __construct(
         private StylePen $pen,
+        private ImageLayout $images = new ImageLayout(),
     ) {}
 
     /** @return list<PageLine> */
     public function lines(HtmlBlock $html, int $width, LayoutState $state): array
     {
-        if (1 === \preg_match('/^\s*<!--.*-->\s*$/s', $html->literal)) {
+        return $this->literal($html->literal, $html, $width, $state);
+    }
+
+    /**
+     * $literal — all of $html's text, or what is left of it once a
+     * `<details>` took its summary — drawn.
+     *
+     * @return list<PageLine>
+     */
+    public function literal(string $literal, HtmlBlock $html, int $width, LayoutState $state): array
+    {
+        $literal = \preg_replace('/<!--.*?-->/s', replacement: '', subject: $literal) ?? $literal;
+        if ('' === \trim($literal)) {
             return [];
         }
-        $first = $state->lineOf($html->range->start);
+        $origin = $state->lineOf($html->range->start);
+        if (!self::drawable($literal)) {
+            return $this->verbatim($html, $width, $origin);
+        }
+        $lines = [];
+        foreach (new HtmlParagraphs($state, $html->range)->of($literal) as $index => [$fragments, $center]) {
+            if ($index > 0) {
+                $lines[] = PageLine::blank($origin); // block elements stand apart, as a browser spaces them
+            }
+            foreach ($this->images->of($fragments, $width, $state) ?? $this->wrap($fragments, $width) as $line) {
+                $lines[] = ($center ? $line->after(PageLine::spaces(\intdiv(\max(0, $width - $line->width), num2: 2))) : $line)->withOrigin($origin);
+            }
+        }
+
+        return $lines;
+    }
+
+    /** Whether every tag in $literal is one this page knows how to draw. */
+    public static function drawable(string $literal): bool
+    {
+        $m = [];
+        \preg_match_all('/<\/?([A-Za-z][A-Za-z0-9-]*)/', $literal, $m);
+
+        return \array_all($m[1], static fn (string $name): bool => 1 === \preg_match(self::DRAWN, \strtolower($name)));
+    }
+
+    /**
+     * @param list<Fragment> $fragments
+     *
+     * @return list<PageLine>
+     */
+    private function wrap(array $fragments, int $width): array
+    {
+        return [] === $fragments ? [] : new Wrapper($this->pen)->wrap($fragments, $width, new PageLine(), new PageLine());
+    }
+
+    /** @return list<PageLine> */
+    private function verbatim(HtmlBlock $html, int $width, int $origin): array
+    {
         $lines = [];
         foreach (\explode("\n", $html->literal) as $index => $line) {
             $text = AnsiText::truncate(\str_replace("\t", replace: '    ', subject: $line), $width);
-            $lines[] = new PageLine($this->pen->role($text, Role::Muted), AnsiUtils::visibleWidth($text), $first + $index);
+            $lines[] = new PageLine(
+                $this->pen->role($text, Role::Muted),
+                AnsiUtils::visibleWidth($text),
+                $origin + $index,
+                [],
+                [[0, AnsiUtils::visibleWidth($text), $html->range->start, $html->range->end, '']],
+            );
         }
 
         return $lines;
