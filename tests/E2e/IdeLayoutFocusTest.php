@@ -86,7 +86,7 @@ final class IdeLayoutFocusTest extends TestCase
                     // it did not, and this read came back null.
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tp);
+                    $rect = Widgets::rect($renderer, $tp);
                     $top = $rect->row + 1; // 1-based screen row of the panel's top edge
                     // Arm past the tab strip's tabs (the tail of the top row is
                     // the resize grab; a tab hit would select instead).
@@ -126,7 +126,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->requestRender(force: true);
                     $tui->processRender(); // force a frame so the pane gets a positioned rect
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($results);
+                    $rect = Widgets::rect($renderer, $results);
                     $expected = $rect->rows + 4;
                     $top = $rect->row; // 1-based screen row of the dock strip — the resize grab
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dM", $top)); // arm on the strip's empty tail
@@ -163,7 +163,7 @@ final class IdeLayoutFocusTest extends TestCase
                     $tui->requestRender(force: true);
                     $tui->processRender();
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('results'));
+                    $rect = Widgets::rect($renderer, $tui->getById('results'));
                     $expected = $rect->rows + 4;
                     $top = $rect->row; // the dock strip row doubles as the resize grab
                     $tui->handleInput(\sprintf("\x1b[<0;60;%dM", $top)); // arm on the strip's empty tail

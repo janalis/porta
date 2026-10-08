@@ -57,7 +57,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
 
     private int $sequence = 0;
 
-    private int $running = 0;
+    private int $inFlight = 0;
 
     /**
      * The tool's arguments for one document — the language and the lexer
@@ -153,7 +153,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         if (null === $binary) {
             return;
         }
-        if ($this->running >= self::MAX_CONCURRENT) {
+        if ($this->inFlight >= self::MAX_CONCURRENT) {
             // Turned away, not thrown away. These two guards meet here, and
             // dropping the dispatch is what that meeting used to mean: latest-
             // wins has already recorded THIS sequence as the newest, so the
@@ -171,10 +171,10 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
             return;
         }
 
-        ++$this->running;
+        ++$this->inFlight;
         $started = new AsyncProcess([$binary, ...$this->lexerArgs($language)], $api->projectRoot(), stdin: $text, timeout: AsyncProcess::INTERACTIVE_TOOL_TIMEOUT)
             ->start(function (int $code, string $stdout) use ($theme, $language, $deliver, $sequence): void {
-                --$this->running;
+                --$this->inFlight;
                 // Before any early return: a slot has come free and something
                 // may be waiting for it, whatever this answer turns out to be.
                 $this->dispatchPending();
@@ -194,7 +194,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
             // nowhere on purpose — a paint is best-effort and the next keystroke
             // retries, where a flash per debounce on a fork-starved machine
             // would be its own denial of service.
-            --$this->running;
+            --$this->inFlight;
             $this->dispatchPending();
         }
     }

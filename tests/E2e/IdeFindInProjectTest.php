@@ -168,7 +168,7 @@ final class IdeFindInProjectTest extends TestCase
             $tui->requestRender(force: true); // force a frame so the tree rect is live under load
             $tui->processRender();
             $renderer = Services::resolve($ide, Renderer::class);
-            $rect = $renderer->getWidgetRect($tui->getById('tree'));
+            $rect = Widgets::rect($renderer, $tui->getById('tree'));
             // `lib` sorts first among the directories → the first tree entry (row 1).
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
         };

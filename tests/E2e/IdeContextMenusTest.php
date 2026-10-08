@@ -71,7 +71,7 @@ final class IdeContextMenusTest extends TestCase
             $tui->requestRender(force: true);
             $tui->processRender();
             $renderer = Services::resolve($ide, Renderer::class);
-            $rect = $renderer->getWidgetRect($tui->getById('tree'));
+            $rect = Widgets::rect($renderer, $tui->getById('tree'));
             // Header is relative row 0; the first entry (the folder) is row 1.
             $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 2));
         };
@@ -103,7 +103,7 @@ final class IdeContextMenusTest extends TestCase
 
                     $renderer = Services::resolve($ide, Renderer::class);
                     $editor = Widgets::editor($tui);
-                    $rect = $renderer->getWidgetRect($editor);
+                    $rect = Widgets::rect($renderer, $editor);
                     $rows = Paint::lines($editor, new RenderContext($rect->columns, $rect->rows));
                     // A menu item row (offset a couple rows below the anchor).
                     $menuRow = $rows[3] ?? '';

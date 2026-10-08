@@ -100,7 +100,7 @@ final class IdeTerminalRunTest extends TestCase
                     // Force a full frame so the terminal pane has a live WidgetRect.
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($panel);
+                    $rect = Widgets::rect($renderer, $panel);
                     $row = $rect->row + \intdiv($rect->rows, num2: 2);
                     $col = $rect->col + \intdiv($rect->columns, num2: 2);
                     // Wheel up (SGR code 64) over the terminal pane → scroll into history.

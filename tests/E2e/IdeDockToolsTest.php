@@ -116,7 +116,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b6"); // alt+6 → Show Problems
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $strip = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $strip = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $col = $strip->col + $strip->columns - 20; // the grab: the strip's empty tail
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 1, $strip->row + 1));
@@ -124,7 +124,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 1, 1));
                     $this->frame($tui);
 
-                    $editor = $renderer->getWidgetRect($tui->getById('editor'));
+                    $editor = Widgets::rect($renderer, $tui->getById('editor'));
                     $this->assertGreaterThanOrEqual(4, $editor->rows, 'the drag stopped where the editor keeps its rows');
                 },
             ],
@@ -152,7 +152,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->frame($tui);
                     $strip = Widgets::byId($tui, 'dock-tabs', DockTabsWidget::class);
                     $this->assertSame(3, $strip->stripRows(), 'forty rows: folder tabs');
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($strip);
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $strip);
                     $this->assertSame(3, $rect->rows);
                     $col = $rect->col + $rect->columns - 20; // the tail, clear of the tab
 
@@ -208,7 +208,7 @@ final class IdeDockToolsTest extends TestCase
                     // on this compact screen) and the file's group header, so
                     // the results begin at +3 and the second one is +4.
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('results'));
+                    $rect = Widgets::rect($renderer, $tui->getById('results'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 5, $rect->row + 4));
                 },
                 300 => function ($tui, $terminal, Ide $ide): void {
@@ -219,7 +219,7 @@ final class IdeDockToolsTest extends TestCase
 
                     // Move into the editor: the panel's tint must not survive it.
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $editorRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 1));
                 },
                 400 => function ($tui): void {
@@ -591,7 +591,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->assertSame(['Problems', 'Notifications'], $labels());
 
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $problems = (int) \mb_strpos($strip, needle: 'Problems');
                     $second = (int) \mb_strpos($strip, needle: 'Notifications');
@@ -628,7 +628,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b6"); // alt+6 → Problems
                     $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $problems = (int) \mb_strpos($strip, needle: 'Problems');
 
@@ -648,7 +648,7 @@ final class IdeDockToolsTest extends TestCase
                     $tui->handleInput("\x1b6");
                     $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $tui->tick();
                     $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the empty tail offers no menu');
@@ -675,7 +675,7 @@ final class IdeDockToolsTest extends TestCase
                     $renderer = Services::resolve($ide, Renderer::class);
 
                     // Editor tab strip: hover the inactive b.php tab.
-                    $tabsRect = $renderer->getWidgetRect($tui->getById('tabs'));
+                    $tabsRect = Widgets::rect($renderer, $tui->getById('tabs'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $tabsRect->col + 3, $tabsRect->row + 1));
                     $tui->tick();
                     $this->assertStringContainsString(
@@ -685,7 +685,7 @@ final class IdeDockToolsTest extends TestCase
                     );
 
                     // Dock strip: hover the Problems tab.
-                    $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $stripRect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $stripRect->col + 3, $stripRect->row + 1));
                     $tui->tick();
                     $this->assertStringNotContainsString(
@@ -695,7 +695,7 @@ final class IdeDockToolsTest extends TestCase
                     );
 
                     // The Problems tab is ACTIVE (no tint); moving onto the editor body clears everything.
-                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $editorRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 10, $editorRect->row + 2));
                     $tui->tick();
                     $this->addToAssertionCount(1); // the motion path itself is the coverage target
@@ -728,7 +728,7 @@ final class IdeDockToolsTest extends TestCase
                     }
                     $this->frame($tui);
                     $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen());
-                    $gotoRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $gotoRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 3);
                     $tui->tick();
                     $tui->handleInput("\r"); // picks the wheel-selected row
@@ -744,7 +744,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->frame($tui);
 
                     // Context menu: right-click the editor, wheel inside the dropdown.
-                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $editorRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $editorRect->col + 10, $editorRect->row + 2));
                     $tui->tick();
                     $wheel($tui, col: $editorRect->col + 12, row: $editorRect->row + 4);
@@ -755,13 +755,13 @@ final class IdeDockToolsTest extends TestCase
                     // Settings: nav and form both scroll under the wheel.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $this->frame($tui); // a capped bare tick paints nothing — rects need a real frame
-                    $navRect = $renderer->getWidgetRect($tui->getById('settings-nav'));
+                    $navRect = Widgets::rect($renderer, $tui->getById('settings-nav'));
                     $wheel($tui, $navRect->col + 2, $navRect->row + 2);
                     $this->frame($tui);
                     // Whichever pane the nav's wheel landed on: the section list
                     // swaps the form for the keybindings list, and the point here
                     // is that the *content* pane scrolls, not which one it is.
-                    $contentRect = $renderer->getWidgetRect($tui->getById('settings-content'));
+                    $contentRect = Widgets::rect($renderer, $tui->getById('settings-content'));
                     $wheel($tui, $contentRect->col + 4, $contentRect->row + 2);
                     $tui->tick();
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings'); // back out
@@ -773,7 +773,7 @@ final class IdeDockToolsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications'); // a second tab joins
                     $this->frame($tui); // the strip's rect below needs a real frame
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $stripRect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $this->assertSame('Notifications', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->getTitle());
                     $wheel($tui, $stripRect->col + 3, $stripRect->row + 1, code: 64); // wheel-up cycles back
                     $tui->tick();

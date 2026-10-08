@@ -353,6 +353,9 @@ well-known version of this; a bare tick used to paint a TRANSIENT state that the
 next line destroys is the same bug and looks nothing like it.** A mechanical
 sweep cannot find these — 69 bare ticks are followed by an input and nearly all
 are benign — so it takes reading what the assertion needs to have been on screen.
+Read a rect with `Widgets::rect($renderer, $widget)`: `getWidgetRect()` answers
+`?WidgetRect`, and a widget never laid out then fails by name instead of on
+`->col` of null.
 
 The file is 0/14 under 24 burners at load 155-160 with all three fixed.
 

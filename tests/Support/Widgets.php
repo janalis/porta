@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\Support;
 
 use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -44,5 +46,11 @@ final class Widgets
         }
 
         return $widget;
+    }
+
+    /** Where $widget was last drawn — failing by name, not on a null, when it never was. */
+    public static function rect(Renderer $renderer, AbstractWidget $widget): WidgetRect
+    {
+        return $renderer->getWidgetRect($widget) ?? throw new \LogicException(\sprintf('%s was never laid out.', $widget::class));
     }
 }

@@ -58,7 +58,7 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $rect = Widgets::rect($renderer, $tui->getById('editor'));
 
                     // Control: a click INSIDE the editor (row for line 2) routes
                     // through handleEditorClick and moves the caret.
@@ -94,7 +94,7 @@ final class IdeMousePrimitivesTest extends TestCase
             [
                 200 => static function ($tui, $terminal, Ide $ide): void {
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('tree'));
+                    $rect = Widgets::rect($renderer, $tui->getById('tree'));
                     // Header is relative row 0, a.php (selected) is row 1; hover b.php at row 2.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },
@@ -104,7 +104,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertStringContainsString("\x1b[48;5;236m", $line, 'hovered tree row is highlighted');
                     // Move off the tree into the editor → the hover clears.
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $editorRect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $editorRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 5, $editorRect->row + 3));
                 },
                 360 => function (Tui $tui): void {
@@ -245,7 +245,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $overlay = Services::resolve($ide, MenuOverlayController::class);
 
                     // The context menu, opened over the editor.
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $editor);
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 12, $rect->row + 3));
                     $this->frame($tui);
                     $menu = Widgets::byId($tui, 'context-menu', ContextMenu::class);
@@ -664,7 +664,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->processRender(); // paint the popup so its box geometry is recorded
                     $editor = Widgets::editor($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($editor);
+                    $rect = Widgets::rect($renderer, $editor);
                     // Hover then click the suggestion itself (through the
                     // router's editor-relative completion branch): the box is
                     // the INNER item box, one row below the frame's top border.
@@ -688,7 +688,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     ]);
                     $this->assertTrue($editor->isCompletionOpen());
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($editor);
+                    $rect = Widgets::rect($renderer, $editor);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 6, $rect->row + $rect->rows));
                 },
                 560 => function (Tui $tui): void {
@@ -712,7 +712,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => static function ($tui, $terminal, Ide $ide): void {
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tree'));
                     // Button 0 + 16 is Ctrl held, per the SGR modifier bits;
                     // +4 lands on c.php, two rows below the opened a.php.
                     $tui->handleInput(\sprintf("\x1b[<16;%d;%dM", $rect->col + 3, $rect->row + 4));
@@ -727,7 +727,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath(), 'and did not open it — the editor is what you compare against');
                 },
                 400 => static function ($tui, $terminal, Ide $ide): void {
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('tree'));
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tree'));
                     // Button 0 + 4 is Shift: the range from the last click.
                     $tui->handleInput(\sprintf("\x1b[<4;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },

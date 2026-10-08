@@ -93,6 +93,7 @@ final class RowBleed
      */
     private static function shade(?Style $row): Color|Style|null
     {
+        // @noinspection NullPointerExceptionInspection -- each arm's own `?->` test has ruled the null row out
         return match (true) {
             null !== $row?->getBackground() => $row->getBackground(),
             true === $row?->getReverse() => new Style(dim: $row->getDim()),

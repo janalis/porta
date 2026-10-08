@@ -61,7 +61,7 @@ final class IdeEditingTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     $editor = Widgets::editor($tui);
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $editor);
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($editor, new RenderContext(120, 20))));
 
                     $this->assertStringContainsString(Glyphs::EXPANDED, $screen(), 'the brace line starts an open region');
@@ -100,7 +100,7 @@ final class IdeEditingTest extends TestCase
                 280 => function (Tui $tui, $terminal, Ide $ide): void {
                     $editor = Widgets::editor($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($editor);
+                    $rect = Widgets::rect($renderer, $editor);
                     $rendered = Paint::lines($editor, new RenderContext($rect->columns, $rect->rows));
                     $this->assertStringContainsString('class Service', AnsiUtils::stripAnsiCodes($rendered[0]), 'class header pinned at the top');
                     // Click the pinned class header's TEXT (editor row 0, first
@@ -149,14 +149,14 @@ final class IdeEditingTest extends TestCase
                     $tui->requestRender(force: true);
                     $tui->processRender();
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('breadcrumbs'));
                     // Click 'Service' → jump to the class declaration (0-based line 4).
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $column($tui, label: 'Service') + 1, $rect->row + 1));
                 },
                 420 => function (Tui $tui, $terminal, Ide $ide) use ($column, $project): void {
                     $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'clicking the Service crumb jumped to the class declaration');
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('breadcrumbs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('breadcrumbs'));
                     // The bar's empty tail is no crumb: the press falls through.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $rect->columns - 2, $rect->row + 1));
                     $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'past the trail, nothing moves');

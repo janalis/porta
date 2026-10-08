@@ -30,6 +30,7 @@ use Porta\Widget\FileTreeWidget;
 use Porta\Widget\TabBarWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -66,8 +67,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $rect = Services::resolve($ide, Renderer::class)
-                        ->getWidgetRect($tabs);
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tabs);
                     $anchor = $tabs->tabAnchor(1); // the Target.php tab
                     $this->assertNotNull($anchor);
                     $col = $rect->col + $anchor['col'] + 2;
@@ -383,8 +383,8 @@ final class IdeTabsBuffersTest extends TestCase
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $tabs = $renderer->getWidgetRect($tui->getById('tabs'));
-                    $editor = $renderer->getWidgetRect($tui->getById('editor'));
+                    $tabs = Widgets::rect($renderer, $tui->getById('tabs'));
+                    $editor = Widgets::rect($renderer, $tui->getById('editor'));
                     $this->assertSame(1, $tabs->rows, 'an unknown persisted value boots the top strip');
                     $this->assertLessThan($editor->row, $tabs->row);
                 },
@@ -405,8 +405,7 @@ final class IdeTabsBuffersTest extends TestCase
             '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']], \JSON_THROW_ON_ERROR),
         ]);
 
-        $tabsRect = static fn ($tui, Ide $ide) => Services::resolve($ide, Renderer::class)
-            ->getWidgetRect($tui->getById('tabs'));
+        $tabsRect = static fn (Tui $tui, Ide $ide): WidgetRect => Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tabs'));
 
         $this->runIde(
             $project,
@@ -780,7 +779,7 @@ final class IdeTabsBuffersTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tabs);
                     $this->assertSame(2, $rect->rows, 'forty rows: pills, the labels over their baseline');
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(0, $zone['labelRow'], 'its label row is the first');
@@ -830,7 +829,7 @@ final class IdeTabsBuffersTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tabs);
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tabs);
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(
                         ['row' => 0, 'rows' => 1, 'labelRow' => 0],

@@ -100,7 +100,7 @@ final class IdeTerminalTest extends TestCase
 
                     // The dock strip shows both sessions as first-class tabs.
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $stripRect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $stripRect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($stripRect->columns, 1))[0]);
                     $this->assertSame(2, \substr_count($strip, needle: 'sh'), 'both shell tabs render on the dock strip');
                 },
@@ -113,7 +113,7 @@ final class IdeTerminalTest extends TestCase
 
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     // The second "sh" occurrence is shell 2's tab.
                     $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: (int) \mb_strpos($strip, needle: 'sh') + 1);
@@ -146,7 +146,7 @@ final class IdeTerminalTest extends TestCase
 
                     // Click the ✖ of the first (inactive) session tab on the dock strip.
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $closeCol = (int) \mb_strpos($strip, needle: '✖');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $closeCol + 1, $rect->row + 1));
@@ -188,7 +188,7 @@ final class IdeTerminalTest extends TestCase
                     $this->assertSame(['shell:1', 'shell:2'], $ids());
 
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                     $firstTab = (int) \mb_strpos($strip, needle: 'sh');
                     $secondTab = (int) \mb_strpos($strip, needle: 'sh', offset: $firstTab + 1);
@@ -223,7 +223,7 @@ final class IdeTerminalTest extends TestCase
                 600 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                    $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                     $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
 
                     $terminal->clearOutput();

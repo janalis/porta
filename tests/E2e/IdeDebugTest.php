@@ -87,7 +87,7 @@ final class IdeDebugTest extends TestCase
                     // A plain click in the gutter toggles a breakpoint on that line.
                     $this->frame($tui);
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('editor'));
+                    $rect = Widgets::rect($renderer, $tui->getById('editor'));
                     $editorScreen = static fn (): string => \implode("\n", Paint::lines($tui->getById('editor'), new RenderContext(120, 20)));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 2)); // gutter, row 1
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 2));
@@ -239,7 +239,7 @@ final class IdeDebugTest extends TestCase
                     $this->assertSame('debug', $tui->getFocus()?->getId(), 'the click focused the panel');
                     // Hover + wheel route to the panel; Escape closes it and restores focus.
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('debug'));
+                    $rect = Widgets::rect($renderer, $tui->getById('debug'));
                     $tui->handleInput(\sprintf("\x1b[<35;8;%dM", $rect->row + 3)); // hover a row
                     $tui->handleInput(\sprintf("\x1b[<64;8;%dM", $rect->row + 3)); // wheel scrolls the list
                     // Strip clicks switch tools through the real mouse path:
@@ -252,7 +252,7 @@ final class IdeDebugTest extends TestCase
                     $this->frame($tui);
                     $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isVisible(), 'clicking the session tab revealed the debug session output');
                     $debugCol = static function () use ($tui, $renderer): int {
-                        $rect = $renderer->getWidgetRect($tui->getById('dock-tabs'));
+                        $rect = Widgets::rect($renderer, $tui->getById('dock-tabs'));
                         $strip = AnsiUtils::stripAnsiCodes(Paint::lines($tui->getById('dock-tabs'), new RenderContext($rect->columns, 1))[0]);
                         // The 2nd 'Debug' occurrence is the debug panel's tab.
                         $second = (int) \mb_strpos($strip, needle: 'Debug', offset: (int) \mb_strpos($strip, needle: 'Debug') + 1);

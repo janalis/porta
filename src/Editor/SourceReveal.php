@@ -30,7 +30,7 @@ final readonly class SourceReveal
     public function reveal(int $line, int $byteCol): void
     {
         $active = $this->buffers->active();
-        if (null === $active?->previewArrangement()) {
+        if (null === $active || null === $active->previewArrangement()) {
             return;
         }
         $document = $active->document;

@@ -328,7 +328,7 @@ final class IdeFindUiTest extends TestCase
                     // field, its gutter and [.*] (zone 37-40 of the bar; the
                     // report is 1-based).
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($tui->getById('find-bar'));
+                    $rect = Widgets::rect($renderer, $tui->getById('find-bar'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 38 + 1, $rect->row + 1));
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
@@ -568,7 +568,7 @@ final class IdeFindUiTest extends TestCase
                     ]);
                     $this->frame($tui); // a bare tick() is not a frame: the panel's rect needs a real one
                     $renderer = Services::resolve($ide, Renderer::class);
-                    $rect = $renderer->getWidgetRect($results);
+                    $rect = Widgets::rect($renderer, $results);
                     // A list tool has no header row; the second result is at relative row 1.
                     $x = $rect->col + 6;
                     $y = $rect->row + 2; // 1-based screen row of relative row 1

@@ -1,10 +1,33 @@
 {
   "php": "8.5",
-  "paths": ["src", "plugins", "tests", "bin", "config"],
+  "paths": [
+    "src",
+    "plugins",
+    "tests",
+    "bin",
+    "config"
+  ],
   "rules": {
-    "ElvisOperatorCanBeUsed": { "enabled": false },
-    "ClassConstantCanBeUsed": { "enabled": false },
-    "UnnecessaryCasting": { "enabled": false },
-    "ClassMethodNameMatchesFieldName": { "enabled": false }
+    "ElvisOperatorCanBeUsed": {
+      "enabled": false
+    },
+    "ClassConstantCanBeUsed": {
+      "enabled": false
+    },
+    "UnnecessaryCasting": {
+      "enabled": false
+    },
+    "ClassMethodNameMatchesFieldName": {
+      "enabled": false
+    },
+    "NullPointerException": {
+      "enabled": true
+    },
+    "DisconnectedForeachInstruction": {
+      "enabled": true
+    },
+    "ClassOverridesFieldOfSuperClass": {
+      "enabled": true
+    }
   }
 }

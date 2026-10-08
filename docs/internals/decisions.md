@@ -458,6 +458,25 @@ The first run's 773 findings had four real defects behind them:
 The race-guard re-checks (`&& !is_dir()` after a failed `mkdir`) cannot be
 killed by a test; they are the shape custos asks for, not a claim of coverage.
 
+Of the rules custos leaves off by default, three are switched ON:
+`NullPointerException`, `DisconnectedForeachInstruction` and
+`ClassOverridesFieldOfSuperClass`. Their first run found:
+- 208 test dereferences of a nullable, nearly all a `?WidgetRect` read with no
+  check (now `Widgets::rect()`).
+- A highlighter's private `int $running` shadowing its parent's private
+  `bool $running`; the counter is now `$inFlight`.
+- A `stream_set_blocking()` repeated on every message.
+
+`NullPointerException` misses narrowing through `?->` and loop conditions; its
+few src hits are suppressed by name, and the false positives went upstream as
+a pull request. Left off, by choice:
+- `UsingInclusionReturnValue`: it flags the plugin contract itself, as a
+  `plugin.php` returns its instance.
+- `BadExceptionsProcessing`: its only hits are "too many statements in a try",
+  a style call; the swallowed-exception half found nothing.
+- `ComparisonOperandsOrder`, `MultipleReturnStatements`,
+  `EfferentObjectCoupling` and the other style opt-ins.
+
 ## Leave it alone
 
 **`PaneSegmenter` per-frame memoization — measured and rejected.** With RTL

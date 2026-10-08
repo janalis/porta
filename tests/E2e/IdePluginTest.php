@@ -374,7 +374,7 @@ final class IdePluginTest extends TestCase
             [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($tui->getById('editor'));
+                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1)); // right-click
                     $this->frame($tui);
 
@@ -438,7 +438,7 @@ final class IdePluginTest extends TestCase
 
                     // The tree row for other.php — a file we are NOT editing.
                     $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
-                    $treeRect = $renderer->getWidgetRect($tree);
+                    $treeRect = Widgets::rect($renderer, $tree);
                     $row = null;
                     foreach (Paint::lines($tree, new RenderContext($treeRect->columns, $treeRect->rows)) as $i => $line) {
                         if (!\str_contains(AnsiUtils::stripAnsiCodes($line), 'other.php')) {
