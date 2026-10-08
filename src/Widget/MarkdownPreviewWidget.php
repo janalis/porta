@@ -66,7 +66,7 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
     protected function toggleTask(int $start, int $end): void
     {
         $box = \substr($this->markdown, $start, $end - $start);
-        if (null !== $this->bufferPath && 3 === \strlen($box)) {
+        if (null !== $this->bufferPath) { // only a task's own box, three bytes, comes here (RenderedDoc::isAction)
             $this->events?->dispatch(new SourceEditRequested($this->bufferPath, $start, $end, $box, ' ' === $box[1] ? '[x]' : '[ ]'));
         }
     }

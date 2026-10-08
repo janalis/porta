@@ -132,7 +132,7 @@ final class LanguageMapTest extends TestCase
     /** @return iterable<string, array{string, ?string}> */
     public static function fences(): iterable
     {
-        yield 'a grammar by its name' => ['php', 'php'];
+        yield 'a grammar by its name' => ['python', 'python']; // no extension spells it
         yield 'GitHub\'s alias' => ['shell', 'bash'];
         yield 'an alias, any case, padded' => [' Console ', 'bash'];
         yield 'a file extension' => ['yml', 'yaml'];

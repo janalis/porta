@@ -122,4 +122,9 @@ final class MarkdownPageCornersTest extends TestCase
         $this->assertSame([0, 1], $doc->sourcePointAt(0, 0), 'inside the link, the byte after its [');
         $this->assertSame([3, 0], new RenderedDoc(['x'], [], [3])->sourcePointAt(0, 0), 'a page without its source maps to its lines');
     }
+
+    public function testAnUnclosedTagEndsWithItsParagraph(): void
+    {
+        $this->assertSame(1, $this->render("<a href=\"a.md\"><b>x\n\ny</b> z\n")->groupCount());
+    }
 }

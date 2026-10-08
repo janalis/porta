@@ -101,4 +101,9 @@ final class MarkdownImagesTest extends TestCase
         $renderer->render('no image', 40, [], $this->project->path('docs'));
         $this->assertStringContainsString('a=d,d=I,', $this->terminal->getOutput());
     }
+
+    public function testAnInlineImgInsideALinkKeepsItsWidth(): void
+    {
+        $this->assertSame(10, AnsiUtils::visibleWidth($this->render('[<img src="wide.png" width="80">](x.md)')->lines[0]));
+    }
 }

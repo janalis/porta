@@ -173,6 +173,8 @@ final class MarkdownRendererTest extends TestCase
         $box = $doc->spansOfGroup(0)[0];
         $this->assertSame([0, 2, 5], [$box->line, $box->col, $box->endCol]);
         $this->assertSame('task:2-5', $box->target);
+        $this->assertStringContainsString($this->styles->of(Role::TabAccent)->getAnsiRestore().'['.Glyphs::MD_CHECK.']'.Sgr::RESET, $doc->lines[0], 'a done box in the accent');
+        $this->assertStringContainsString($this->styles->of(Role::Muted)->getAnsiRestore().'[ ]'.Sgr::RESET, $doc->lines[1], 'an open one muted');
         $this->assertSame('[x]', \substr($markdown, offset: 2, length: 3));
         $this->assertSame('task:13-16', $doc->target(1));
     }
@@ -360,5 +362,58 @@ final class MarkdownRendererTest extends TestCase
         $row = \array_search('│   >', self::plain($doc), strict: true);
         $this->assertIsInt($row, 'the code row: the quote bar, the inset, the code');
         $this->assertSame(8, $doc->cells[$row][0][2], 'the code, not the quote marker at 6');
+    }
+
+    public function testListDepthCountsOnlyBulletsAndUnwindsAfterEachList(): void
+    {
+        $lines = \array_values(\array_filter(self::plain($this->render("- a\n\n1. b\n   - c\n\n- d\n")), static fn (string $line): bool => '' !== $line));
+        $this->assertSame([Glyphs::MD_BULLET.' a', '1. b', '   '.Glyphs::MD_BULLET.' c', Glyphs::MD_BULLET.' d'], $lines);
+        $this->assertSame('      '.Glyphs::MD_BULLET_3.' four', self::plain($this->render("- one\n  - two\n    - three\n      - four\n"))[3], 'the fourth level keeps the third mark');
+        $this->assertSame(['8. eight', '9. nine'], self::plain($this->render("8. eight\n9. nine\n")));
+        $this->assertSame([Glyphs::MD_BULLET.' aaaa bbbb cccc', '  dddd'], self::plain($this->render("- aaaa bbbb cccc dddd\n", 20)));
+        $this->assertSame([Glyphs::MD_BULLET.' a', '', '  a2'], self::plain($this->render("- a\n\n  a2\n")));
+        $this->assertSame([Glyphs::MD_BULLET.' a', Glyphs::MD_BULLET, Glyphs::MD_BULLET.' b'], self::plain($this->render("- a\n-\n- b\n")));
+    }
+
+    public function testQuotesAndAlertsKeepTheirWidthBodyAndEmptyBar(): void
+    {
+        $bar = Glyphs::MD_QUOTE_BAR;
+        $this->assertSame([$bar.' aaaa bbbb cccc ddd', '', $bar.' aaaa bbbb cccc', $bar.' dddd'], self::plain($this->render("> aaaa bbbb cccc ddd\n\n> aaaa bbbb cccc dddd\n", 20)));
+        $this->assertSame([$bar], self::plain($this->render(">\n")));
+        $alert = Glyphs::MD_ALERT_BAR;
+        $doc = $this->render("> [!NOTE]\n> one\n>\n> [x](y.md)\n");
+        $this->assertSame([$alert.' Note', $alert.' one', $alert, $alert.' x'], self::plain($doc));
+        $span = $doc->spansOfGroup(0)[0];
+        $this->assertSame([3, 2, 3], [$span->line, $span->col, $span->endCol]);
+    }
+
+    public function testAFootnoteWrapsUnderItsNumberAndAnEmptyOneStillLinksBack(): void
+    {
+        $doc = $this->render("x[^a]\n\n[^a]: aaaa bbbb cccc dddd\n", 20);
+        $this->assertSame(['x[1]', '', \str_repeat(Glyphs::MD_RULE, times: 20), '1. aaaa bbbb cccc', '   dddd '.Glyphs::MD_BACKREF], self::plain($doc));
+        $back = $doc->spansOfGroup(1)[0];
+        $this->assertSame([4, 8, 9], [$back->line, $back->col, $back->endCol]);
+        $empty = $this->render("x[^a]\n\n[^a]:\n", 20);
+        $this->assertSame('1.  '.Glyphs::MD_BACKREF, self::plain($empty)[3]);
+        $back = $empty->spansOfGroup(1)[0];
+        $this->assertSame([3, 4, 5], [$back->line, $back->col, $back->endCol]);
+    }
+
+    public function testInlineRunsKeepEveryChildEmojiAndNoTab(): void
+    {
+        $this->assertSame(['Ship it '."\u{1F680}"], self::plain($this->render('Ship it :rocket:')));
+        $this->assertSame(['see x y now'], self::plain($this->render('*see [x **y**](y.md) now*', 60)));
+        foreach ($this->render("a\tb `c\td`")->lines as $line) {
+            $this->assertStringNotContainsString("\t", $line);
+        }
+        $this->assertSame(['[a.png] [Logo]'], self::plain($this->render('![ ](a.png) ![ Logo ](b.png)', 60)));
+    }
+
+    public function testAHeadingsAnchorReadsCodeEmphasisAndAccents(): void
+    {
+        $this->assertSame(0, $this->render("## The `verify` *gate*\n")->anchor('the-verify-gate'));
+        $this->assertSame(0, $this->render("# Été\n")->anchor('été'));
+        $this->assertSame('a[1] b[1]', self::plain($this->render("a[^x] b[^x]\n\n[^x]: X.\n"))[0]);
+        $this->assertSame(['[a b '."\u{1F680}".']'], self::plain($this->render("![a\\\nb :rocket:](x.png)\n")));
     }
 }

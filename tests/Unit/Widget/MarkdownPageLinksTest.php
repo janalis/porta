@@ -6,12 +6,16 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Event\SourceEditRequested;
+use Porta\Highlight\CodeHighlighterFactory;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\PixelGraphics;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingEvents;
 use Porta\Tests\Support\RecordingHelpViewerHandler;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Theme\DarkTheme;
+use Porta\Ui\Theme\Styles;
 use Porta\Widget\HelpViewerWidget;
 use Porta\Widget\MarkdownPageWidget;
 use Porta\Widget\MarkdownPreviewWidget;
@@ -81,7 +85,9 @@ final class MarkdownPageLinksTest extends TestCase
         $pane = $this->preview();
         $pane->show($this->project->path('docs/page.md'), self::tall("## Far below\n"));
         $this->drawn($pane);
+        $revision = $pane->getRenderRevision();
         $this->click($pane, 'down');
+        $this->assertGreaterThan($revision, $pane->getRenderRevision(), 'the scroll asks to be redrawn');
         $this->assertSame('Far below', $this->drawn($pane)[2]);
         $this->click($pane, 'Far below'); // not a link: the text is revealed instead
     }
@@ -178,8 +184,10 @@ final class MarkdownPageLinksTest extends TestCase
         $pane = $this->preview(new MarkdownPreviewWidget(graphics: $graphics, events: $this->events));
         $pane->show($this->project->path('docs/page.md'), "![Logo](logo.png)\n");
         $this->assertSame('[Logo]', $this->drawn($pane)[2]);
+        $revision = $pane->getRenderRevision();
         PixelGraphics::answer($graphics, "\x1b_Gi=31;OK\x1b\\", "\x1b[?62;22c");
         $this->assertStringContainsString("\u{100000}", $this->rows($pane->render(new RenderContext(40, 8)))[2] ?? '', 'the placeholder now');
+        $this->assertGreaterThan($revision, $pane->getRenderRevision(), 'the answer asks for the page to be laid out again');
     }
 
     public function testTheWordsThePageDrawsItselfSpeakTheIdesLanguage(): void
@@ -193,5 +201,37 @@ final class MarkdownPageLinksTest extends TestCase
         foreach (['Remarque', 'Astuce', 'Important', 'Avertissement', 'Attention', 'Détails'] as $word) {
             $this->assertStringContainsString($word, $drawn);
         }
+    }
+
+    public function testEachDetailsSectionOpensItselfAndAsksToBeRedrawn(): void
+    {
+        $pane = $this->preview();
+        $pane->show($this->project->path('docs/page.md'), "<details><summary>One</summary>first</details>\n\n<details><summary>Two</summary>second</details>\n");
+        $this->drawn($pane);
+        $revision = $pane->getRenderRevision();
+        $this->click($pane, 'Two');
+        $this->assertGreaterThan($revision, $pane->getRenderRevision());
+        $drawn = $this->drawn($pane);
+        $this->assertContains('second', $drawn);
+        $this->assertNotContains('first', $drawn);
+    }
+
+    public function testAFootnoteWhoseLabelHoldsAHashIsFound(): void
+    {
+        $pane = $this->preview();
+        $pane->show($this->project->path('docs/page.md'), "See[^a#1].\n\n[^a#1]: Note.\n");
+        $this->click($pane, '[1]');
+        $this->assertSame([], $this->handler->events, 'no missing target: the # is part of the label');
+    }
+
+    public function testAThemeSwitchForgetsThePagesCodeColours(): void
+    {
+        $pane = $this->preview(new MarkdownPreviewWidget(new Styles(DarkTheme::definition()), new CodeHighlighterFactory(), events: $this->events));
+        $pane->show($this->project->path('docs/page.md'), "```php\n\$a = 1;\n```\n");
+        $pane->render(new RenderContext(40, 8));
+        $code = Probe::get(Probe::get($pane, 'renderer'), 'code');
+        $this->assertNotSame([], Probe::get($code, 'memo'), 'the coloured line is remembered');
+        $pane->refreshTheme();
+        $this->assertSame([], Probe::get($code, 'memo'), 'and forgotten with the old palette');
     }
 }

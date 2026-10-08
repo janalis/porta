@@ -220,4 +220,15 @@ final class MarkdownPreviewWidgetTest extends TestCase
 
         $this->assertContains('Start word word word word word word', \array_map(\trim(...), $this->drawn($pane, 40, 8)), 'from where the block begins, not merely some row of it');
     }
+
+    public function testAPaneWiredToNothingIgnoresWhatItCannotPassOn(): void
+    {
+        $pane = new MarkdownPreviewWidget();
+        $pane->show('/p/a.md', "- [ ] task [gone](#nowhere) words\n");
+        $rows = $this->drawn($pane, 60, 6);
+        foreach (['[ ]', 'gone', 'words'] as $text) {
+            $pane->press(2, (int) \mb_strpos($rows[2], $text));
+        }
+        $this->assertStringContainsString('[ ] task', $this->drawn($pane, 60, 6)[2], 'no handler, no dispatcher: nothing to tell, nothing breaks');
+    }
 }
