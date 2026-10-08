@@ -25,7 +25,7 @@ final class Bookmarks
     /** Toggle the line; returns whether it is bookmarked now. */
     public function toggle(string $path, int $line): bool
     {
-        if (($this->marks[$path][$line] ?? null) !== null) {
+        if (null !== ($this->marks[$path][$line] ?? null)) {
             unset($this->marks[$path][$line]);
             if ([] === $this->marks[$path]) {
                 unset($this->marks[$path]);

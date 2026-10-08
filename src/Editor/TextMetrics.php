@@ -28,7 +28,7 @@ final class TextMetrics
     {
         ++$col;
         $len = \strlen($line);
-        while ($col < $len && (\ord($line[$col]) & 0xC0) === 0x80) {
+        while ($col < $len && 0x80 === (\ord($line[$col]) & 0xC0)) {
             ++$col;
         }
 
@@ -39,7 +39,7 @@ final class TextMetrics
     public static function prevCharBoundary(string $line, int $col): int
     {
         --$col;
-        while ($col > 0 && (\ord($line[$col]) & 0xC0) === 0x80) {
+        while ($col > 0 && 0x80 === (\ord($line[$col]) & 0xC0)) {
             --$col;
         }
 
@@ -97,7 +97,7 @@ final class TextMetrics
     public static function charBoundaryAtOrBefore(string $line, int $col): int
     {
         $col = \max(0, \min($col, \strlen($line)));
-        while ($col > 0 && $col < \strlen($line) && (\ord($line[$col]) & 0xC0) === 0x80) {
+        while ($col > 0 && $col < \strlen($line) && 0x80 === (\ord($line[$col]) & 0xC0)) {
             --$col;
         }
 

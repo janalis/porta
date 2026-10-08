@@ -183,6 +183,7 @@ final readonly class WorkspaceTrust
     {
         $file = $this->file();
         $data = null === $file ? null : JsonFile::read($file);
+        // @noinspection UnqualifiedReferenceInspection -- mago narrows the filtered list to strings through the unqualified callable, not the qualified one
         $list = static fn (mixed $roots): array => \is_array($roots) ? \array_values(\array_filter($roots, is_string(...))) : [];
 
         return ['trusted' => $list($data['trusted'] ?? null), 'restricted' => $list($data['restricted'] ?? null)];

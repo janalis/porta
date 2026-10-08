@@ -433,7 +433,7 @@ final class InlineValuesTest extends TestCase
 
         $values->addVariables([
             ['name' => '$count', 'value' => '41', 'variablesReference' => 0],
-            ['name' => "\$name", 'value' => "'x'", 'variablesReference' => 0],
+            ['name' => '$name', 'value' => "'x'", 'variablesReference' => 0],
         ]);
 
         $this->assertSame([1 => '$count = 41'], $this->painted(), 'only what the server named');

@@ -22,7 +22,7 @@ final class WatchStore
 
     public function remove(int $index): void
     {
-        if (($this->expressions[$index] ?? null) !== null) {
+        if (null !== ($this->expressions[$index] ?? null)) {
             \array_splice($this->expressions, $index, length: 1);
         }
     }

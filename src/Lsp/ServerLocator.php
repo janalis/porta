@@ -86,7 +86,7 @@ final class ServerLocator
                     continue;
                 }
                 if (\is_array($command) && [] !== $command) {
-                    $servers[(string) $language] = [self::server(\array_values(\array_map(strval(...), $command)))];
+                    $servers[(string) $language] = [self::server(\array_values(\array_map(\strval(...), $command)))];
                 }
             }
 
@@ -156,7 +156,7 @@ final class ServerLocator
             return self::server(self::split($lsp));
         }
         if (\is_array($lsp) && [] !== $lsp && \array_is_list($lsp)) {
-            return self::server(\array_values(\array_map(strval(...), $lsp)));
+            return self::server(\array_values(\array_map(\strval(...), $lsp)));
         }
 
         return null;

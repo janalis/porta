@@ -1,5 +1,6 @@
 {
   "php": "8.5",
+  "comparisonStyle": "yoda",
   "paths": [
     "src",
     "plugins",
@@ -27,6 +28,15 @@
       "enabled": true
     },
     "ClassOverridesFieldOfSuperClass": {
+      "enabled": true
+    },
+    "ComparisonOperandsOrder": {
+      "enabled": true
+    },
+    "UnqualifiedReference": {
+      "enabled": true
+    },
+    "UnNecessaryDoubleQuotes": {
       "enabled": true
     }
   }

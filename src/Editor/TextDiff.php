@@ -31,7 +31,7 @@ final class TextDiff
             ++$prefix;
         }
         // Don't split a multi-byte UTF-8 sequence: back up onto a lead byte.
-        while ($prefix > 0 && $prefix < $newLen && (\ord($new[$prefix]) & 0xC0) === 0x80) {
+        while ($prefix > 0 && $prefix < $newLen && 0x80 === (\ord($new[$prefix]) & 0xC0)) {
             --$prefix;
         }
 
@@ -42,7 +42,7 @@ final class TextDiff
             ++$suffix;
         }
         // Keep the suffix boundary on a UTF-8 lead byte.
-        while ($suffix > 0 && (\ord($old[$oldLen - $suffix]) & 0xC0) === 0x80) {
+        while ($suffix > 0 && 0x80 === (\ord($old[$oldLen - $suffix]) & 0xC0)) {
             --$suffix;
         }
 

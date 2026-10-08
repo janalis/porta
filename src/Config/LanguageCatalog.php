@@ -65,7 +65,7 @@ final class LanguageCatalog
 
     public static function isKnown(string $id): bool
     {
-        return (self::LANGUAGES[$id] ?? null) !== null;
+        return null !== (self::LANGUAGES[$id] ?? null);
     }
 
     /** Human display name for a language id; the id itself for an unknown one. */

@@ -395,7 +395,7 @@ final class SettingsController
      */
     public function toggle(string $key): void
     {
-        if (($this->descriptors[$key] ?? null) === null) {
+        if (null === ($this->descriptors[$key] ?? null)) {
             $this->notifier->flash($this->translator->trans('Unknown setting "%key%"', ['%key%' => $key]));
 
             return;

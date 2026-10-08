@@ -382,7 +382,7 @@ final class ProjectSearchController
         /** @var array<string, list<int>> $keptLinesByPath */
         $keptLinesByPath = [];
         foreach ($this->lastSearchResults as $index => $result) {
-            if (($excludedSet[$index] ?? null) !== null) {
+            if (null !== ($excludedSet[$index] ?? null)) {
                 continue;
             }
 
@@ -560,7 +560,7 @@ final class ProjectSearchController
     {
         $lines = \explode("\n", $content);
         foreach ($lineIndices as $index) {
-            if (($lines[$index] ?? null) === null) {
+            if (null === ($lines[$index] ?? null)) {
                 continue;
             }
             if (null !== $approved) {

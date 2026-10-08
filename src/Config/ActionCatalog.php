@@ -371,7 +371,7 @@ final class ActionCatalog
     {
         $defaults = [];
         foreach (self::ACTIONS as $id => $spec) {
-            if (($spec['keys'] ?? null) === null) {
+            if (null === ($spec['keys'] ?? null)) {
                 continue;
             }
 

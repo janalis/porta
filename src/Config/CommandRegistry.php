@@ -65,7 +65,7 @@ final class CommandRegistry
     public function remove(array $ids): void
     {
         $drop = \array_fill_keys($ids, value: true);
-        $this->commands = \array_values(\array_filter($this->commands, static fn (array $c): bool => ($drop[$c['id']] ?? null) === null));
+        $this->commands = \array_values(\array_filter($this->commands, static fn (array $c): bool => null === ($drop[$c['id']] ?? null)));
         foreach ($ids as $id) {
             unset($this->byId[$id]);
         }
@@ -77,7 +77,7 @@ final class CommandRegistry
     /** Whether $id's key dispatch is currently enabled (unknown ids are not). */
     public function isEnabled(string $id): bool
     {
-        if (($this->byId[$id] ?? null) === null) {
+        if (null === ($this->byId[$id] ?? null)) {
             return false;
         }
         $when = $this->byId[$id]['when'];
@@ -115,7 +115,7 @@ final class CommandRegistry
     /** Run the handler registered under $id (no-op when unknown). */
     public function run(string $id): void
     {
-        if (($this->byId[$id] ?? null) !== null) {
+        if (null !== ($this->byId[$id] ?? null)) {
             $this->byId[$id]['handler']();
         }
     }

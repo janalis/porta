@@ -621,7 +621,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
                 : \array_slice($paths, offset: 0, length: $at),
         );
 
-        $this->closeTabs(static fn (Buffer $buffer): bool => ($doomed[$buffer->path] ?? null) !== null, $path);
+        $this->closeTabs(static fn (Buffer $buffer): bool => null !== ($doomed[$buffer->path] ?? null), $path);
     }
 
     /**

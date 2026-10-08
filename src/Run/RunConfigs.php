@@ -90,7 +90,7 @@ final readonly class RunConfigs
         }
 
         return \array_values(\array_filter(
-            \array_map(strval(...), \array_keys($json['scripts'])),
+            \array_map(\strval(...), \array_keys($json['scripts'])),
             static fn (string $name): bool => '' !== $name,
         ));
     }

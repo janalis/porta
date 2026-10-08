@@ -577,14 +577,14 @@ final readonly class IdeConfig
      */
     public static function stringList(mixed $value): array
     {
-        return \is_array($value) ? \array_values(\array_map(strval(...), \array_filter($value, is_scalar(...)))) : [];
+        return \is_array($value) ? \array_values(\array_map(\strval(...), \array_filter($value, \is_scalar(...)))) : [];
     }
 
     /** A raw `lsp` value (string or argv list) as a single command string. */
     public static function commandString(mixed $command): string
     {
         if (\is_array($command)) {
-            return \implode(' ', \array_map(strval(...), $command));
+            return \implode(' ', \array_map(\strval(...), $command));
         }
 
         return \is_string($command) ? $command : '';

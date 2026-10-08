@@ -59,7 +59,7 @@ final class FoldModel
     private function startsRegion(int $line): bool
     {
         if (null !== $this->regions && $this->regionsVersion === $this->document->version) {
-            return ($this->regionStarts()[$line] ?? null) !== null;
+            return null !== ($this->regionStarts()[$line] ?? null);
         }
 
         return self::leavesABraceOpen($this->document->getLine($line));

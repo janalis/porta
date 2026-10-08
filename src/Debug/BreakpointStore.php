@@ -23,7 +23,7 @@ final class BreakpointStore
     /** Toggle a breakpoint; returns whether one is now set on the line. A re-toggle clears its details too. */
     public function toggle(string $path, int $line): bool
     {
-        if (($this->breakpoints[$path][$line] ?? null) !== null) {
+        if (null !== ($this->breakpoints[$path][$line] ?? null)) {
             unset($this->breakpoints[$path][$line]);
             if ([] === $this->breakpoints[$path]) {
                 unset($this->breakpoints[$path]);

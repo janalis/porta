@@ -42,7 +42,7 @@ final readonly class ResolvedEditorConfig
      */
     public static function fromProps(array $props): self
     {
-        $rawIndentSize = ($props['indent_size'] ?? null) !== null ? \strtolower(\trim($props['indent_size'])) : null;
+        $rawIndentSize = null !== ($props['indent_size'] ?? null) ? \strtolower(\trim($props['indent_size'])) : null;
         $rawTabWidth = $props['tab_width'] ?? null;
 
         $tabWidth = self::toPositiveInt($rawTabWidth);

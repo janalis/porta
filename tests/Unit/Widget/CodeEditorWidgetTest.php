@@ -1018,9 +1018,9 @@ final class CodeEditorWidgetTest extends TestCase
         // The regression that matters: every diagnostic anyone has ever seen
         // carries no tags, and a close for an attribute that was never opened
         // bleeds it across the rest of the line.
-        $editor = $this->editor("<?php
-\$a = f();
-", 'plain.php');
+        $editor = $this->editor('<?php
+$a = f();
+', 'plain.php');
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 2]]]);
 
         $rendered = $editor->render(new RenderContext(80, 10));

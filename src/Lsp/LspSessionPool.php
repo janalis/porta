@@ -617,7 +617,7 @@ final class LspSessionPool
             if (\array_key_exists($signature, $sessions)) {
                 continue;
             }
-            if (($this->sessions[$signature] ?? null) === null) {
+            if (null === ($this->sessions[$signature] ?? null)) {
                 if (StartMode::Reuse === $start) {
                     continue;
                 }
@@ -639,21 +639,21 @@ final class LspSessionPool
     private function serverKeyFor(string $path): ?string
     {
         $language = ProjectPaths::languageId($path);
-        if (($this->servers[$language] ?? null) !== null) {
+        if (null !== ($this->servers[$language] ?? null)) {
             return $language;
         }
 
-        return ($this->servers['*'] ?? null) !== null ? '*' : null;
+        return null !== ($this->servers['*'] ?? null) ? '*' : null;
     }
 
     /** The status-bar server when no file is open: the catch-all, else PHP. */
     private function fallbackKey(): ?string
     {
-        if (($this->servers['*'] ?? null) !== null) {
+        if (null !== ($this->servers['*'] ?? null)) {
             return '*';
         }
 
-        return ($this->servers['php'] ?? null) !== null ? 'php' : null;
+        return null !== ($this->servers['php'] ?? null) ? 'php' : null;
     }
 
     /** @param array{command: list<string>, name: string, initializationOptions?: array<string, mixed>} $server */

@@ -224,7 +224,7 @@ final class ProjectSearch
         $seen = [];
         foreach ($paths as $scope) {
             foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
-                if (($seen[$rel] ?? null) !== null) {
+                if (null !== ($seen[$rel] ?? null)) {
                     continue; // overlapping scopes (e.g. open files under a dir) match once
                 }
                 $seen[$rel] = true;
@@ -265,7 +265,7 @@ final class ProjectSearch
         $seen = [];
         foreach ($paths as $scope) {
             foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
-                if (($seen[$rel] ?? null) !== null) {
+                if (null !== ($seen[$rel] ?? null)) {
                     continue;
                 }
                 $seen[$rel] = true;

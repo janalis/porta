@@ -446,9 +446,9 @@ final readonly class EditorRowAssembler
         // colour.
         $marker = match (true) {
             $lineIndex === $this->store->debugLine => $this->styles->of(Role::Breakpoint)->apply(Glyphs::STOPPED_LINE),
-            ($this->logpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::LOGPOINT),
-            ($this->conditionalBreakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
-            ($this->breakpointSet[$lineIndex] ?? null) !== null => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
+            null !== ($this->logpointSet[$lineIndex] ?? null) => $this->styles->of(Role::Breakpoint)->apply(Glyphs::LOGPOINT),
+            null !== ($this->conditionalBreakpointSet[$lineIndex] ?? null) => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT_CONDITIONAL),
+            null !== ($this->breakpointSet[$lineIndex] ?? null) => $this->styles->of(Role::Breakpoint)->apply(Glyphs::BREAKPOINT),
             $this->store->isBookmarked($lineIndex) => $this->styles->of(Role::TabAccent)->apply(Glyphs::BOOKMARK),
             \array_key_exists($lineIndex, $this->store->commentMarks) => $this->styles->of(Role::Hunk)->apply(Glyphs::COMMENT),
             // Without colour the free column points at the caret line.
@@ -581,7 +581,7 @@ final readonly class EditorRowAssembler
      */
     private function separatorFrom(int $lineIndex, int $rowSegment, int $contentWidth): ?int
     {
-        if (($this->separators[$lineIndex] ?? null) === null) {
+        if (null === ($this->separators[$lineIndex] ?? null)) {
             return null;
         }
         if (null === $this->wrap) {

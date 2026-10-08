@@ -107,7 +107,7 @@ final class ServerProgress
     {
         // Already tracking as much as we will: drop the NEW task rather than
         // evict a running one, whose end would then never clear anything.
-        if (($this->work[$key] ?? null) === null && \count($this->work) >= self::MAX_TOKENS) {
+        if (null === ($this->work[$key] ?? null) && \count($this->work) >= self::MAX_TOKENS) {
             return;
         }
 

@@ -468,7 +468,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
 
     public function isBookmarked(int $line): bool
     {
-        return ($this->bookmarkLines[$line] ?? null) !== null;
+        return null !== ($this->bookmarkLines[$line] ?? null);
     }
 
     /** Highlight (or clear) the debugger's stopped line. */

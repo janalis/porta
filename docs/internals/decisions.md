@@ -458,9 +458,15 @@ The first run's 773 findings had four real defects behind them:
 The race-guard re-checks (`&& !is_dir()` after a failed `mkdir`) cannot be
 killed by a test; they are the shape custos asks for, not a claim of coverage.
 
-Of the rules custos leaves off by default, three are switched ON:
-`NullPointerException`, `DisconnectedForeachInstruction` and
-`ClassOverridesFieldOfSuperClass`. Their first run found:
+Of the rules custos leaves off by default, six are switched ON:
+`NullPointerException`, `DisconnectedForeachInstruction`,
+`ClassOverridesFieldOfSuperClass`, `UnqualifiedReference` (a first-class
+callable like `strval(...)` gets its `\` like any call), `UnNecessaryDoubleQuotes`
+and `ComparisonOperandsOrder`. The last runs with `comparisonStyle: yoda` and
+catches what mago's `yoda-conditions` lets through: a parenthesised left side,
+`($x ?? null) !== null` (48 of them). One `is_string(...)` stays unqualified,
+because mago narrows a filter to strings through it and not through
+`\is_string(...)`. The first run of the first three found:
 - 208 test dereferences of a nullable, nearly all a `?WidgetRect` read with no
   check (now `Widgets::rect()`).
 - A highlighter's private `int $running` shadowing its parent's private
@@ -475,8 +481,9 @@ in 0.1.1, the version required; the suppressions they needed are gone. Left off,
   `plugin.php` returns its instance.
 - `BadExceptionsProcessing`: its only hits are "too many statements in a try",
   a style call; the swallowed-exception half found nothing.
-- `ComparisonOperandsOrder`, `MultipleReturnStatements`,
-  `EfferentObjectCoupling` and the other style opt-ins.
+- `MultipleReturnStatements`, `EfferentObjectCoupling`, `CompactCanBeUsed`,
+  `ParameterDefaultValueIsNotNull`, and `EmptyClass` (a command event with no
+  payload is a class with no members, on purpose).
 
 ## Leave it alone
 

@@ -230,7 +230,7 @@ final class SearchEverywhereController
         // "recent" means. Gone from disk means gone from the tray.
         $openPaths = \array_fill_keys($paths, value: true);
         foreach ($this->recentFiles->paths as $path) {
-            if (($openPaths[$path] ?? null) !== null || !\is_file($path)) {
+            if (null !== ($openPaths[$path] ?? null) || !\is_file($path)) {
                 continue;
             }
 

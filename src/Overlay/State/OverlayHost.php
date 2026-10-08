@@ -739,7 +739,7 @@ final class OverlayHost
      */
     private function firstHitAtOrAfter(array $rows, int $from): int
     {
-        if (($rows[$from] ?? null) !== null && $rows[$from]->isSelectable()) {
+        if (null !== ($rows[$from] ?? null) && $rows[$from]->isSelectable()) {
             return $from;
         }
         foreach ($rows as $i => $row) {

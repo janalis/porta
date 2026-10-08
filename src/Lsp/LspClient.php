@@ -479,7 +479,7 @@ final class LspClient implements LspClientInterface
     {
         // Response to one of our requests — or an error the server could not
         // pin to one: a message it could not read gets `id: null`.
-        if (($message['method'] ?? null) === null) {
+        if (null === ($message['method'] ?? null)) {
             $callback = null === ($message['id'] ?? null) ? null : $this->pending->take((int) $message['id']);
             if (null !== $callback) {
                 $callback($message['result'] ?? null, $message['error'] ?? null);
@@ -500,7 +500,7 @@ final class LspClient implements LspClientInterface
 
         // Request from the server: answer with a sane default so it does not hang
         // (an id-bearing message without a method already returned above).
-        if (($message['id'] ?? null) !== null) {
+        if (null !== ($message['id'] ?? null)) {
             // Answered whatever happens: a server waiting on applyEdit waits
             // for THIS reply, and an edit that threw was not applied.
             try {

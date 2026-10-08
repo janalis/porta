@@ -133,7 +133,7 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
         // rather than an entry that opens an empty buffer.
         $openPaths = \array_fill_keys(\array_map(static fn (Buffer $b): string => $b->path, $open), value: true);
         foreach ($this->recentFiles->paths as $path) {
-            if (($openPaths[$path] ?? null) !== null || !\is_file($path)) {
+            if (null !== ($openPaths[$path] ?? null) || !\is_file($path)) {
                 continue;
             }
 

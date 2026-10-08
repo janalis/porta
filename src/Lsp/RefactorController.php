@@ -462,7 +462,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function applyOrResolve(array $action): void
     {
-        if (($action['edit'] ?? null) !== null || ($action['command'] ?? null) !== null || !$this->supportsResolve($action)) {
+        if (null !== ($action['edit'] ?? null) || null !== ($action['command'] ?? null) || !$this->supportsResolve($action)) {
             $this->applyCodeAction($action);
 
             return;
@@ -519,7 +519,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
     private function applyCodeAction(array $action): void
     {
         $applied = false;
-        if (($action['edit'] ?? null) !== null) {
+        if (null !== ($action['edit'] ?? null)) {
             /** @var array<string, mixed> $edit */
             $edit = $action['edit'];
             $outcome = $this->workspaceEditor->applyWorkspaceEdit($edit);
@@ -537,7 +537,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         if (\is_string($command)) {
             $command = ['command' => $command, 'arguments' => $action['arguments'] ?? []];
         }
-        if (\is_array($command) && ($command['command'] ?? null) !== null) {
+        if (\is_array($command) && null !== ($command['command'] ?? null)) {
             $title = (string) ($action['title'] ?? $command['title'] ?? 'command');
             /** @var array<string, mixed> $owned */
             $owned = $action;

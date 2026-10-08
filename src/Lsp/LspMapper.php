@@ -230,7 +230,7 @@ final class LspMapper
     {
         $byLine = [];
         foreach ($hints as $hint) {
-            if (($hint['position']['line'] ?? null) === null || ($hint['position']['character'] ?? null) === null) {
+            if (null === ($hint['position']['line'] ?? null) || null === ($hint['position']['character'] ?? null)) {
                 continue;
             }
             $label = InlayHintLabel::of($hint);

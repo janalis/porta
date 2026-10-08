@@ -115,7 +115,7 @@ final class TerminalReplay
     {
         $found = [];
         \preg_match_all('/\d+/', $params, $found);
-        $nums = \array_values(\array_map(intval(...), $found[0]));
+        $nums = \array_values(\array_map(\intval(...), $found[0]));
         $n = $nums[0] ?? 1;
 
         match ($final) {
