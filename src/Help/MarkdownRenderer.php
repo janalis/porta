@@ -80,14 +80,15 @@ final class MarkdownRenderer
     /**
      * @param array<int, true> $openDetails the `<details>` the reader has opened, by their number in source order
      * @param string|null      $baseDir     where the page's relative image paths start
+     * @param string|null      $root        the tree the page sits in (a project, the docs): where an image path's `/` starts, as GitHub reads it from the repository's root, and no image is read from outside it — nor, without one, from outside $baseDir
      */
-    public function render(string $markdown, int $width, array $openDetails = [], ?string $baseDir = null): RenderedDoc
+    public function render(string $markdown, int $width, array $openDetails = [], ?string $baseDir = null, ?string $root = null): RenderedDoc
     {
         $width = \max(self::MIN_WIDTH, $width);
         $document = $this->document($markdown);
         $footnotes = [];
         self::collectFootnotes($document, $footnotes);
-        $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails, $baseDir);
+        $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails, $baseDir, $root);
         $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), $this->html, $this->images, $this->words);
         $lines = [...$layout->blocks($document->blocks, $width), ...$layout->footnotes($width)];
         $this->images->sweep();

@@ -31,6 +31,7 @@ final class MarkdownImagesTest extends TestCase
     {
         $this->project = new TempProject([
             'docs/wide.png' => self::png(160, 80),
+            'outside.png' => self::png(160, 80),
             'docs/tall.png' => self::png(40, 2000),
             'docs/fake.png' => 'GIF89a not a png',
             'docs/cut.png' => "\x89PNG\r\n\x1a\n",
@@ -161,5 +162,18 @@ final class MarkdownImagesTest extends TestCase
         $this->terminal->clearOutput();
         $renderer->render('![a](wide.png)', 40, [], $docs);
         $this->assertStringContainsString('a=d,d=I,', $this->terminal->getOutput(), 'copy.png freed though wide.png, before it, is kept');
+    }
+
+    public function testASlashStartsAtThePagesTreeAndNoImageIsReadOutsideIt(): void
+    {
+        $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics);
+        $drawn = fn (string $markdown, ?string $root): bool => \str_contains($renderer->render($markdown, 40, [], $this->project->path('docs'), $root)->lines[0], "\u{100000}");
+        $this->assertTrue($drawn('![](/docs/wide.png)', $this->project->dir), '/ is the tree\'s root, as GitHub reads the repository\'s');
+        $this->assertFalse($drawn('![](/wide.png)', $this->project->dir), 'not the page\'s folder');
+        $this->assertTrue($drawn('![](../outside.png)', $this->project->dir), 'up and still inside the tree');
+        $this->assertFalse($drawn('![](../outside.png)', $this->project->path('docs')), 'up and out of it');
+        $this->assertFalse($drawn('![]('.$this->project->path('outside.png').')', $this->project->path('docs')), 'an absolute path is the tree\'s, never the disk\'s');
+        $this->assertFalse($drawn('![](../outside.png)', root: null), 'with no tree, the page\'s folder is the fence');
+        $this->assertTrue($drawn('![](wide.png)', root: null));
     }
 }

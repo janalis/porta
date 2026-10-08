@@ -39,9 +39,9 @@ final class ImageLayout
      *
      * @return list<PageLine>|null
      */
-    private function lines(ImageRef $image, int $width, ?string $baseDir, ?string $target, int $group): ?array
+    private function lines(ImageRef $image, int $width, LayoutState $state, ?string $target, int $group): ?array
     {
-        $file = $this->file($image->source, $baseDir);
+        $file = self::file($image->source, $state->baseDir, $state->root);
         $graphics = $this->graphics;
         if (null === $graphics || !$graphics->available() || null === $file) {
             return null;
@@ -99,7 +99,7 @@ final class ImageLayout
             return null;
         }
 
-        return $this->lines($fragment->image, $width, $state->baseDir, $fragment->target, $fragment->group);
+        return $this->lines($fragment->image, $width, $state, $fragment->target, $fragment->group);
     }
 
     /** Free the terminal images the last layout no longer drew; call once a page is laid out. */
@@ -115,17 +115,24 @@ final class ImageLayout
         $this->used = [];
     }
 
-    /** The local PNG $source names, or null for a remote, missing or other file. */
-    private function file(string $source, ?string $baseDir): ?string
+    /**
+     * The local PNG $source names, or null for a remote, missing or other
+     * file — or one outside the page's tree: a README's `../../..` or
+     * absolute path never reads the reader's own files.
+     */
+    private static function file(string $source, ?string $baseDir, ?string $root): ?string
     {
         $path = \rawurldecode(\explode('?', \explode('#', $source)[0])[0]);
         if ('' === $path || 1 === \preg_match('#^[a-z][a-z0-9+.-]*:#i', $path) || null === $baseDir) {
             return null;
         }
-        $file = \str_starts_with($path, '/') ? $path : $baseDir.'/'.$path;
-        $head = \is_file($file) ? (string) \file_get_contents($file, length: 8) : '';
+        $file = \realpath(\str_starts_with($path, '/') ? ($root ?? $baseDir).$path : $baseDir.'/'.$path);
+        $fence = \realpath($root ?? $baseDir);
+        if (false === $file || false === $fence || !\str_starts_with($file, \rtrim($fence, characters: '/').'/') || !\is_file($file)) {
+            return null;
+        }
 
-        return self::PNG === $head ? $file : null;
+        return self::PNG === \file_get_contents($file, length: 8) ? $file : null;
     }
 
     /** @return array{int, int}|null a PNG's width and height, read from the IHDR chunk its first 24 bytes hold */

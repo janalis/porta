@@ -857,8 +857,10 @@ it. An edit keeps your place in a long preview.
   and on `[✓]` unticks it.
 - **Images.** In a terminal that speaks the kitty graphics protocol (kitty,
   Ghostty) a local PNG standing alone in its paragraph is drawn in pixels, at
-  its own size or its `<img width>`. Elsewhere, and for a remote image or
-  another format, the page shows its alt text, a link that opens the file.
+  its own size or its `<img width>`. A path starting with `/` is read from the
+  project's root, as GitHub reads it from the repository's, and no image is
+  read from outside the project. Elsewhere, and for a remote image or another
+  format, the page shows its alt text, a link that opens the file.
 - **Markdown reads like the documentation** (`F1`): a navigation bar over the
   page — `‹` `›` through the pages you followed, then the page's place in the
   project — and links you cycle with `Tab` and follow with `Enter` or a click.

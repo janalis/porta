@@ -28,12 +28,15 @@ final class LayoutState
     /**
      * @param array<string, FootnoteDefinition> $footnotes normalised label => definition
      * @param array<int, true>                  $openDetails the `<details>` shown open, by {@see detailsNumber()}
+     * @param string|null                       $baseDir     where the page's relative image paths start
+     * @param string|null                       $root        the tree the page sits in: where `/` starts, and no image is read outside
      */
     public function __construct(
         public readonly SourceText $source,
         public readonly array $footnotes = [],
         public readonly array $openDetails = [],
         public readonly ?string $baseDir = null,
+        public readonly ?string $root = null,
     ) {}
 
     public function group(): int

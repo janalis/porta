@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Help\Layout;
 
 use Porta\Markdown\Inline\LinkSyntax;
+use Porta\Markdown\Node\Block;
 use Porta\Markdown\Node\BlockQuote;
 use Porta\Markdown\Node\FootnoteDefinition;
 use Porta\Markdown\Node\ListBlock;
@@ -87,6 +88,9 @@ final class ContainerLayout
     /** @return list<PageLine> */
     public function quote(BlockQuote $quote, int $width): array
     {
+        if ([] !== $quote->blocks && \array_all($quote->blocks, static fn (Block $block): bool => $block instanceof FootnoteDefinition)) {
+            return []; // all it held is gathered at the end of the page: no bar left behind
+        }
         $body = $this->blocks->blocks($quote->blocks, \max(1, $width - 2));
         $origin = $this->state->lineOf($quote->range->start);
         if (null === $quote->alert) {

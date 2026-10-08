@@ -234,4 +234,11 @@ final class MarkdownPageLinksTest extends TestCase
         $pane->refreshTheme();
         $this->assertSame([], Probe::get($code, 'memo'), 'and forgotten with the old palette');
     }
+
+    public function testThePreviewReadsASlashFromItsProjectsRoot(): void
+    {
+        $pane = $this->preview(new MarkdownPreviewWidget(graphics: PixelGraphics::answered()[0], events: $this->events));
+        $pane->show($this->project->path('docs/page.md'), "![Logo](/docs/logo.png)\n");
+        $this->assertStringContainsString("\u{100000}", $this->rows($pane->render(new RenderContext(40, 8)))[2] ?? '', 'the project is the tree, its root where / starts');
+    }
 }

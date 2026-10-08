@@ -306,7 +306,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             // other text: keep the source line at the top instead. A new text
             // (no page to measure against) keeps the offset as it was.
             $anchor = $this->doc?->origins[$this->scrollTop] ?? null;
-            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails, null === $this->path ? null : \dirname($this->path));
+            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails, null === $this->path ? null : \dirname($this->path), $this->tree[0] ?? null);
             $this->doc = $doc;
             $this->renderedWidth = $width;
             if (null !== $anchor) {

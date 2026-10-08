@@ -447,6 +447,11 @@ final class MarkdownRendererTest extends TestCase
     {
         $this->assertStringStartsWith('1. First.', self::plain($this->render("R[^a].\n\n[^a]: First.\n\n[^a]: Second.\n"))[3]);
         $this->assertNotNull($this->render("R[^q].\n\n> [^q]: Quoted.\n")->anchor('fn-q'), 'a definition inside a quote');
+        $this->assertSame(
+            ['R[1].', '', \str_repeat(Glyphs::MD_RULE, times: 40), '1. Quoted. '.Glyphs::MD_BACKREF],
+            self::plain($this->render("R[^q].\n\n> [^q]: Quoted.\n")),
+            'and the quote it leaves empty draws no bar',
+        );
         $this->assertSame(0, $this->render("A[^a]\n\nB[^a]\n\n[^a]: N.\n")->anchor('fnref-a'), 'back to the first reference');
         $this->assertSame(0, $this->render("# Title[^n]\n\n[^n]: N.\n")->anchor('fnref-n'), 'a heading\'s slug does not replace it');
     }
