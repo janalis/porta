@@ -36,7 +36,6 @@ final class EmphasisResolver
         $delimiter->next->previous = $delimiter->previous;
     }
 
-    /** @noinspection NullPointerExceptionInspection -- custos misses the narrowing by the loop condition */
     public function process(?Delimiter $bottom): void
     {
         /** @var array<string, Delimiter|null> $openersBottom */

@@ -358,14 +358,12 @@ from `janalis/custos` (a Php Inspections EA port; the Composer package is a
 wrapper that downloads its prebuilt binary on first run). `custos.json` sets the
 paths — `src`, `plugins`, `tests`, `bin`, `config` — and PHP 8.5. A false
 positive is suppressed where it stands, with `// @noinspection <Rule>Inspection
--- why` on the line above the STATEMENT it reports (inside an argument list it
-is not seen), or in a class docblock for a whole trait. A rule that contradicts
+-- why` on the line above the statement it reports (since 0.1.1, also above a
+single call argument or array item), or in a class docblock for a whole trait. A rule that contradicts
 mago or rector is switched off in `custos.json` instead, with the reason in
 `decisions.md`, since JSON takes no comments. Its precedence check asks for
 `a || (b && c)`, which is why mago's formatter keeps redundant logical
-parentheses (`mago.toml`). Its quick-fixes write `json_decode($x, true, 512,
-JSON_THROW_ON_ERROR)`; the house form is `associative: true, flags:
-\JSON_THROW_ON_ERROR`.
+parentheses (`mago.toml`).
 
 **`composer format:check`** — clean.
 

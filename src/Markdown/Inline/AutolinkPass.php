@@ -17,7 +17,6 @@ final readonly class AutolinkPass
         private string $subject,
     ) {}
 
-    /** @noinspection NullPointerExceptionInspection -- custos misses the narrowing by the loop condition */
     public function apply(InlineItem $parent): void
     {
         $run = [];

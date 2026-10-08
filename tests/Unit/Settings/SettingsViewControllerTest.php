@@ -913,7 +913,6 @@ final class SettingsViewControllerTest extends TestCase
         $this->controller();
 
         $sidebar = $this->regions->find('settings')?->sidebar();
-        // @noinspection UnnecessaryAssertionInspection -- `?->` makes it nullable; rector asks for this form over assertNotNull()
         $this->assertInstanceOf(ContainerWidget::class, $sidebar);
         $this->assertSame([$this->nav], $sidebar->all(), 'the nav widget is actually added to the sidebar container');
         $this->assertSame($this->nav, $this->regions->find('settings')?->sidebarPanes(), 'the nav is registered as the resizable sidebar unit');

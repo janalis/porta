@@ -43,7 +43,7 @@
         "brianium/paratest": "^7.23",
         "carthage-software/mago": "1.47.*",
         "infection/infection": "^0.35.4",
-        "janalis/custos": "^0.1",
+        "janalis/custos": "^0.1.1",
         "phpunit/php-invoker": "^7.0",
         "phpunit/phpunit": "^13.2",
         "rector/rector": "^2.6",

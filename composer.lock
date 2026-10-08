@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "00a6d379611a07d073ccaa1f1a674690",
+    "content-hash": "3fc08c067dc7182f6b7ec27e4995df88",
     "packages": [
         {
             "name": "composer/semver",
@@ -3010,16 +3010,16 @@
         },
         {
             "name": "janalis/custos",
-            "version": "v0.1.0",
+            "version": "v0.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/janalis/custos.git",
-                "reference": "a8de3532c7d76d10f86e4f73de309565c978cec4"
+                "reference": "cce45e31ad42b2748df403d50b0320d165ded5b0"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/janalis/custos/zipball/a8de3532c7d76d10f86e4f73de309565c978cec4",
-                "reference": "a8de3532c7d76d10f86e4f73de309565c978cec4",
+                "url": "https://api.github.com/repos/janalis/custos/zipball/cce45e31ad42b2748df403d50b0320d165ded5b0",
+                "reference": "cce45e31ad42b2748df403d50b0320d165ded5b0",
                 "shasum": ""
             },
             "require": {
@@ -3048,7 +3048,7 @@
                 "issues": "https://github.com/janalis/custos/issues",
                 "source": "https://github.com/janalis/custos"
             },
-            "time": "2026-10-08T16:52:17+00:00"
+            "time": "2026-10-08T19:17:04+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",

@@ -128,7 +128,6 @@ final class ImageLayout
         }
         $file = \realpath(\str_starts_with($path, '/') ? ($root ?? $baseDir).$path : $baseDir.'/'.$path);
         $fence = \realpath($root ?? $baseDir);
-        // @noinspection NotOptimalIfConditionsInspection -- is_file() touches the disk and takes no false: it goes last
         if (false === $file || false === $fence || !\str_starts_with($file, \rtrim($fence, characters: '/').'/') || !\is_file($file)) {
             return null;
         }

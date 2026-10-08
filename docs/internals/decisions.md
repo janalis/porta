@@ -467,9 +467,10 @@ Of the rules custos leaves off by default, three are switched ON:
   `bool $running`; the counter is now `$inFlight`.
 - A `stream_set_blocking()` repeated on every message.
 
-`NullPointerException` misses narrowing through `?->` and loop conditions; its
-few src hits are suppressed by name, and the false positives went upstream as
-a pull request. Left off, by choice:
+The false positives this round met went upstream (janalis/custos#2: `?->` and
+loop-condition narrowing, named arguments, escaped backslashes in patterns,
+string destructuring, filesystem calls costed as cheap, and more) and shipped
+in 0.1.1, the version required; the suppressions they needed are gone. Left off, by choice:
 - `UsingInclusionReturnValue`: it flags the plugin contract itself, as a
   `plugin.php` returns its instance.
 - `BadExceptionsProcessing`: its only hits are "too many statements in a try",
