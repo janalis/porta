@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "49264c3ae3e17fdd8768a3cb334030fe",
+    "content-hash": "00a6d379611a07d073ccaa1f1a674690",
     "packages": [
         {
             "name": "composer/semver",
@@ -3007,6 +3007,48 @@
                 }
             ],
             "time": "2025-04-29T08:19:52+00:00"
+        },
+        {
+            "name": "janalis/custos",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/janalis/custos.git",
+                "reference": "a8de3532c7d76d10f86e4f73de309565c978cec4"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/janalis/custos/zipball/a8de3532c7d76d10f86e4f73de309565c978cec4",
+                "reference": "a8de3532c7d76d10f86e4f73de309565c978cec4",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
+            },
+            "bin": [
+                "composer/custos"
+            ],
+            "type": "library",
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Fast PHP inspector and fixer (178 inspections with quick-fixes), shipped as a prebuilt binary.",
+            "homepage": "https://janalis.github.io/custos/",
+            "keywords": [
+                "LSP",
+                "code quality",
+                "dev",
+                "fixer",
+                "inspections",
+                "linter",
+                "static analysis"
+            ],
+            "support": {
+                "issues": "https://github.com/janalis/custos/issues",
+                "source": "https://github.com/janalis/custos"
+            },
+            "time": "2026-10-08T16:52:17+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",

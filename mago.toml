@@ -84,6 +84,9 @@ preserve-breaking-parameter-list = true
 preserve-breaking-conditional-expression = true
 preserve-breaking-attribute-list = true
 preserve-breaking-member-access-chain = true
+# custos (SuspiciousBinaryOperation) asks for `a || (b && c)`: keep those parentheses,
+# or the formatter strips what that gate requires.
+preserve-redundant-logical-binary-expression-parentheses = true
 
 # Symfony-specific overrides of Mago's defaults:
 space-around-concatenation-binary-operator = false      # $a.$b, not $a . $b

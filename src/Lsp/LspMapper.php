@@ -332,7 +332,7 @@ final class LspMapper
         $endLine = (int) ($end['line'] ?? 0);
         $endCol = (int) ($end['character'] ?? 0);
 
-        return ($line > $startLine || $line === $startLine && $utf16Col >= $startCol) && ($line < $endLine || $line === $endLine && $utf16Col <= $endCol);
+        return ($line > $startLine || ($line === $startLine && $utf16Col >= $startCol)) && ($line < $endLine || ($line === $endLine && $utf16Col <= $endCol));
     }
 
     /**

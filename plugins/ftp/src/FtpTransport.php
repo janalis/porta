@@ -438,7 +438,7 @@ final class FtpTransport extends CommandTransport
                 $facts[\strtolower($pair[0])] = $pair[1] ?? '';
             }
             $type = \strtolower($facts['type'] ?? '');
-            if ('file' !== $type && 'dir' !== $type || \str_starts_with($parts[1], self::PARTIAL)) {
+            if (('file' !== $type && 'dir' !== $type) || \str_starts_with($parts[1], self::PARTIAL)) {
                 continue;
             }
             $entries[] = new RemoteEntry($parts[1], 'dir' === $type, new RemoteStamp((int) ($facts['size'] ?? 0), self::time($facts['modify'] ?? '')));

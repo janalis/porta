@@ -318,7 +318,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     {
         $preview = $this->previewFor($path);
         $viewer = null !== $preview ? null : $this->viewers->viewerFor($path);
-        if ($this->buffers->has($path) || !\is_file($path) || !\is_readable($path) || null !== $viewer && null !== $this->panes->paneFor($viewer) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
+        if ($this->buffers->has($path) || !\is_file($path) || !\is_readable($path) || (null !== $viewer && null !== $this->panes->paneFor($viewer)) || (int) \filesize($path) > Files::MAX_TEXT_BYTES) {
             return;
         }
         $content = (string) \file_get_contents($path);

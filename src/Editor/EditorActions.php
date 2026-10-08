@@ -307,7 +307,7 @@ final readonly class EditorActions
     {
         $doc = $this->document;
         $width = $this->host->wrapWidth();
-        if (null === $width || 'cursor_up' !== $action && 'cursor_down' !== $action) {
+        if (null === $width || ('cursor_up' !== $action && 'cursor_down' !== $action)) {
             // @mago-expect analysis:string-member-selector -- $method comes from
             // MultiCaret::MOVE_METHODS, a const map of real Document methods.
             $doc->{$method}();
@@ -764,7 +764,7 @@ final readonly class EditorActions
             // Accept "line" or "line:column" (both 1-based); jump 0-based, column 0 by default.
             $parts = \explode(':', \trim($value));
             $count = \count($parts);
-            if ($count > 2 || !\ctype_digit($parts[0]) || 2 === $count && !\ctype_digit($parts[1])) {
+            if ($count > 2 || !\ctype_digit($parts[0]) || (2 === $count && !\ctype_digit($parts[1]))) {
                 return;
             }
             $column = 2 === $count ? \max(0, (int) $parts[1] - 1) : 0;

@@ -138,7 +138,7 @@ final class PasteDrop
 
         return match (true) {
             !$typing && $focus instanceof TerminalPanelWidget => null,
-            $typing || $focus !== $this->tree && $focus !== $this->editor => DropZone::Text,
+            $typing || ($focus !== $this->tree && $focus !== $this->editor) => DropZone::Text,
             $focus === $this->tree => DropZone::Tree,
             null === $this->buffers->active() => DropZone::Empty,
             default => DropZone::Editor,

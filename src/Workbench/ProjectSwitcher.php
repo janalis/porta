@@ -181,7 +181,7 @@ final readonly class ProjectSwitcher
         if (null !== $remote && null !== $home) {
             $root = ProjectLocation::prepare($remote, $home);
         }
-        if (null === $remote && $url || !\is_dir($root)) {
+        if ((null === $remote && $url) || !\is_dir($root)) {
             $this->notifier->flash($this->translator->trans('Not a directory: %path%', ['%path%' => $path]));
 
             return;

@@ -32,7 +32,6 @@ final class FormatOnSave
 
     public function __construct(
         private readonly LspSessionPool $lsp,
-        private readonly WorkspaceEditor $workspaceEditor,
         private readonly EditorInvalidator $editor,
         private readonly Notifier $notifier,
         private readonly Translator $translator,
@@ -100,7 +99,7 @@ final class FormatOnSave
                     // the user wrote it and the save below still happens — which
                     // is the whole contract of format-on-save: the save is the
                     // point, the formatting is the courtesy.
-                    if ($this->workspaceEditor->applyTextEdits($buffer->document, $result)) {
+                    if (WorkspaceEditor::applyTextEdits($buffer->document, $result)) {
                         $this->lsp->notifyFullChange($buffer->path, $buffer->document);
                         $this->editor->invalidate();
                         $this->tui->requestRender();

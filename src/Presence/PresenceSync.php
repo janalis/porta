@@ -170,7 +170,7 @@ final class PresenceSync
     /** One look: say where this side is, then read where the others are. Never two at once. */
     public function tick(): void
     {
-        if ($this->busy || $this->lost && $this->now() < $this->retryAt) {
+        if ($this->busy || ($this->lost && $this->now() < $this->retryAt)) {
             return;
         }
         $this->busy = true;

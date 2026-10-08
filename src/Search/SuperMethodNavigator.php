@@ -243,7 +243,7 @@ final readonly class SuperMethodNavigator
             }
             if ($expectName) {
                 $expectName = \T_WHITESPACE === $id;
-                $inside = $inside || \T_STRING === $id && $text === $type;
+                $inside = $inside || (\T_STRING === $id && $text === $type);
                 continue;
             }
             // A `use` at depth 1 of the body is a trait, not an import: the

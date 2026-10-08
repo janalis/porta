@@ -137,7 +137,7 @@ final readonly class HalfRows
         }
         $halves = $this->halves->barRows();
         foreach ($heads as $rect) {
-            if ($col < $rect->col || $col >= ($rect->col + $rect->columns) || $mouse->row !== ($rect->row - $step) || 1 === $step && !\in_array($mouse->row, $halves, strict: true)) {
+            if ($col < $rect->col || $col >= ($rect->col + $rect->columns) || $mouse->row !== ($rect->row - $step) || (1 === $step && !\in_array($mouse->row, $halves, strict: true))) {
                 continue;
             }
             if (RuleHalves::sameSurface(RuleHalves::surfaces($floating, $mouse->row, $mouse->col), RuleHalves::surfaces($floating, $rect->row, $mouse->col), $floating, $rect)) {

@@ -47,7 +47,7 @@ final readonly class InlineFreezer
                 continue;
             }
             \array_push($nodes, ...$this->node($item));
-            $joinable = $verbatim && '' !== $item->literal || $joinable && '' === $item->literal;
+            $joinable = ($verbatim && '' !== $item->literal) || ($joinable && '' === $item->literal);
         }
 
         return $nodes;

@@ -424,6 +424,22 @@ off the callback drops the answer anyway, so deleting the check only costs a
 subprocess per buffer switch. Neither is observable through any seam a test can
 hold. Do not write a test that cannot fail.
 
+**custos (2026-10-08): two rules off, the rest at the default bar.** The gate
+fails on errors and warnings only; info is advice. `custos.json` switches off
+`ElvisOperatorCanBeUsed`, because mago's `no-shorthand-ternary` forbids `?:` (rector
+skips `TernaryToElvisRector` for the same reason), and `ClassConstantCanBeUsed`,
+because the class-name strings are strings on purpose (the
+`StringClassNameToClassConstantRector` skip lists them). Seeded fuzz tests
+moved from `mt_rand` to `Randomizer(new Mt19937($seed))` rather than
+suppressing `RandomApiMigration`: `random_int()` cannot be seeded. The first
+run's 773 findings had four real defects behind them: `ssh`'s control
+folder, when it could not be made, still went to ssh as `ControlPath`, and
+OpenSSH exits on a missing one. A `Code` parameter in `JoinCommand` was reused
+for an exit status. A test discarded the `Sources` it built. And six `mkdir()`
+results were never read. The race-guard re-checks
+(`&& !is_dir()` after a failed `mkdir`) cannot be killed by a test; they are
+the shape custos asks for, not a claim of coverage.
+
 ## Leave it alone
 
 **`PaneSegmenter` per-frame memoization — measured and rejected.** With RTL

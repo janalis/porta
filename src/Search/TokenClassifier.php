@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Highlight\TempestBackend;
-use Tempest\Highlight\Highlighter;
 
 /**
  * Classifies which byte ranges of a source file are comments or string literals,
@@ -21,7 +20,6 @@ use Tempest\Highlight\Highlighter;
  */
 final readonly class TokenClassifier
 {
-    private Highlighter $highlighter;
     /** @var \Closure(string, string): string */
     private \Closure $parser;
 
@@ -34,8 +32,7 @@ final readonly class TokenClassifier
         ?\Closure $parser = null,
         private ?TokenSpanProvider $plugins = null,
     ) {
-        $this->highlighter = TempestBackend::newHighlighter(new CommentStringTheme());
-        $this->parser = $parser ?? $this->highlighter->parse(...);
+        $this->parser = $parser ?? TempestBackend::newHighlighter(new CommentStringTheme())->parse(...);
     }
 
     /**

@@ -20,7 +20,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final readonly class HtmlBlockLayout
 {
     /** The tags a block may hold and still be drawn rather than shown. */
-    private const string DRAWN = '/^(?:p|div|center|h[1-6]|br|img|a|picture|source|b|strong|i|em|s|del|strike|code|tt|kbd|sub|sup|span|ins|u|small|big|mark|abbr|samp|var|font|details|summary|hr)$/';
+    private const string DRAWN = '/^(?:p|div|center|h[1-6]|br|img|a|picture|source|b|strong|i|em|s|del|strike|code|tt|kbd|sub|sup|span|ins|u|small|big|mark|abbr|samp|var|font|details|summary|hr)$/i';
 
     public function __construct(
         private StylePen $pen,
@@ -68,7 +68,7 @@ final readonly class HtmlBlockLayout
         $m = [];
         \preg_match_all('/<\/?([A-Za-z][A-Za-z0-9-]*)/', $literal, $m);
 
-        return \array_all($m[1], static fn (string $name): bool => 1 === \preg_match(self::DRAWN, \strtolower($name)));
+        return \array_all($m[1], static fn (string $name): bool => 1 === \preg_match(self::DRAWN, $name));
     }
 
     /**

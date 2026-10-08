@@ -111,6 +111,6 @@ final class ResponsiveLayout
     {
         $paneWidget = $this->editorArea->widget();
 
-        return $this->tree->isFocused() || $paneWidget instanceof FocusableInterface && $paneWidget->isFocused();
+        return $this->tree->isFocused() || ($paneWidget instanceof FocusableInterface && $paneWidget->isFocused());
     }
 }

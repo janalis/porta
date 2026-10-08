@@ -285,7 +285,7 @@ final readonly class RuleHalves
                 if (
                     Glyphs::PANE_DIVIDER !== $glyph($row, $side)
                     || \in_array($glyph($row, $end), $halves, strict: true)
-                    || null === $state['bg'] && !$state['reverse']
+                    || (null === $state['bg'] && !$state['reverse'])
                     || [] !== RuleHalves::surfaces($floating, $row, $side)
                 ) {
                     continue;

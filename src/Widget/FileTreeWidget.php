@@ -778,7 +778,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     // @mago-expect lint:no-boolean-flag-parameter -- ruled IS the one fact that decides which lines are entries
     private static function indexOfLine(int $line, int $scroll, bool $ruled): ?int
     {
-        if ($line < 1 || $ruled && 0 !== ($line % 2)) {
+        if ($line < 1 || ($ruled && 0 !== ($line % 2))) {
             return null;
         }
 

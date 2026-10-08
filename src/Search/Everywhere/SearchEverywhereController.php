@@ -129,7 +129,8 @@ final class SearchEverywhereController
             $source->query($text, $this->guard($generation, $source->category()));
         }
         foreach ($this->asyncSources as $source) {
-            $this->pending[$source->category()->order()] = $source->category();
+            $category = $source->category();
+            $this->pending[$category->order()] = $category;
         }
 
         $this->cancelDebounce();

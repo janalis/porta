@@ -55,12 +55,12 @@ final class TerminalSessions
      */
     public function move(int $from, int $to): void
     {
-        $to = IndexMove::target($from, $to, \count($this->sessions));
-        if (null === $to) {
+        $target = IndexMove::target($from, $to, \count($this->sessions));
+        if (null === $target) {
             return;
         }
-        $this->activeIndex = IndexMove::reindexActive($this->activeIndex, $from, $to);
-        $this->sessions = IndexMove::apply($this->sessions, $from, $to);
+        $this->activeIndex = IndexMove::reindexActive($this->activeIndex, $from, $target);
+        $this->sessions = IndexMove::apply($this->sessions, $from, $target);
     }
 
     public function isEmpty(): bool

@@ -18,9 +18,10 @@ composer fix            # rector, then format — the two fixers in the order th
 composer rector:check   # rector dry run — fails on any change it would still make
 composer arch           # the architecture ratchet
 composer duplication    # phpcpd — zero copy-paste clones, tree-wide
-composer verify         # all eight: the six static gates stopping at the first failure, then both coverage passes at once
-composer verify:quick   # the six fast ones, stopping at the first failure
-composer check          # the same six run to the end, then one line naming every red gate — the mid-work check
+composer custos         # custos — no inspection error or warning (custos.json; info is advice)
+composer verify         # all nine: the seven static gates stopping at the first failure, then both coverage passes at once
+composer verify:quick   # the seven fast ones, stopping at the first failure
+composer check          # the same seven run to the end, then one line naming every red gate — the mid-work check
 composer flake:scan     # run the suite N times and name what failed at least once
 composer lsp            # the language servers on Porta itself: phpantom over src/tests/plugins, then lsp:probe (below)
 composer mutate         # Infection over the uncommitted src/ diff, judged by Unit (testing.md)
@@ -199,7 +200,7 @@ composer analyze > /tmp/x.log 2>&1; echo "exit=$?"
 
 ## Definition of done
 
-`composer verify` runs all eight, cheapest first, and the six static gates stop
+`composer verify` runs all nine, cheapest first, and the seven static gates stop
 at the first failure — `coverage:check` last, because it runs the whole suite and so subsumes
 `composer test`. Running `composer test` *and* `coverage:check` ran that suite
 twice; over one session that repetition was 31% of 233 minutes of test
@@ -352,6 +353,17 @@ token streams, so the theme tables, the per-grammar `match` tables and the
 four analyzer plugin files — the structures people expect it to flag — are
 invisible to it, because their literals differ. It finds copied CODE.
 
+**`composer custos`** — **no error or warning**, from `janalis/custos` (a Php
+Inspections EA port; the Composer package is a wrapper that downloads its
+prebuilt binary on first run). `custos.json` sets the paths — `src`, `plugins`,
+`tests`, `bin`, `config` — and PHP 8.5. Info findings are printed but never
+fail; they are advice. A false positive is suppressed where it stands, with
+`// @noinspection <Rule>Inspection -- why` (or in a class docblock for a whole
+trait); a rule that contradicts mago or rector is switched off in `custos.json`
+instead, with the reason in `decisions.md`, since JSON takes no comments.
+Its precedence check asks for `a || (b && c)`, which is why mago's formatter
+keeps redundant logical parentheses (`mago.toml`).
+
 **`composer format:check`** — clean.
 
 The gates are ordinary `src/` code: analysed by mago and 100%-covered like
@@ -370,7 +382,7 @@ ratios are trustworthy even where the absolutes are not:
 
 | | seconds |
 | --- | --- |
-| the six static gates together | **4.1** |
+| the six static gates together (custos, the seventh, adds <1) | **4.1** |
 | `composer test` | 170 |
 | `composer coverage` (the same suite, under pcov) | 241 |
 | `composer coverage:plugins` (serial — retired, see the shard note) | 146 |
@@ -389,7 +401,7 @@ each pass grades now (`src`, or `plugins`), worth ~10s and ~8s, and
 
 Three things follow, and they are why `composer verify` is shaped the way it is.
 
-**The static gates are free.** All six cost 4s — 1% of `coverage:check`.
+**The static gates are free.** All seven cost 5s — 1% of `coverage:check`.
 Running them first costs nothing and stops a six-minute run that a missing
 newline would have failed anyway. Parallelising them would buy nothing and lose
 deterministic output.

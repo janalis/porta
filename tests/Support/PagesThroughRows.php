@@ -35,7 +35,7 @@ trait PagesThroughRows
         $seen = [];
         // One press per entry is far more than reaching the end can take; the
         // loop leaves as soon as every label has been accounted for.
-        for ($press = 0; $press <= \count($labels); ++$press) {
+        for ($press = 0, $pages = \count($labels); $press <= $pages; ++$press) {
             $text = $screen();
             foreach ($labels as $label) {
                 if (!\str_contains($text, $label)) {

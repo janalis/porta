@@ -80,7 +80,7 @@ final class PluginObservableContractTest extends TestCase
             foreach ($reflection->getConstructor()?->getParameters() ?? [] as $parameter) {
                 $type = $parameter->getType();
                 $name = $type instanceof \ReflectionNamedType ? $type->getName() : (string) $type;
-                $ok = \in_array($name, ['string', 'int', 'float', 'bool'], strict: true) || \enum_exists($name) && null !== new \ReflectionEnum($name)->getBackingType();
+                $ok = \in_array($name, ['string', 'int', 'float', 'bool'], strict: true) || (\enum_exists($name) && null !== new \ReflectionEnum($name)->getBackingType());
                 $this->assertTrue($ok, \sprintf('%s::$%s is a %s — an observable event carries scalars and backed enums, never core objects', $class, $parameter->getName(), $name));
             }
         }

@@ -782,7 +782,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             $this->layingOut => Glyphs::WORKING.' '.$this->translator->trans('layout…'),
             default => '',
         };
-        $style = 'missing-binary' === $this->error || null !== $this->error && !$this->layingOut ? Role::DiagError : Role::Dim;
+        $style = 'missing-binary' === $this->error || (null !== $this->error && !$this->layingOut) ? Role::DiagError : Role::Dim;
 
         return $this->messagePane($message, $style, $cols, $rows);
     }

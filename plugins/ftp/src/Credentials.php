@@ -37,7 +37,7 @@ final class Credentials
         try {
             $dir = \dirname($file);
             // @mago-expect lint:no-error-control-operator -- a directory that cannot be made warns; the null return is what is reported
-            if (!\is_dir($dir) && !@\mkdir($dir, permissions: 0o700, recursive: true)) {
+            if (!\is_dir($dir) && !@\mkdir($dir, permissions: 0o700, recursive: true) && !\is_dir($dir)) {
                 return null;
             }
             $line = \sprintf("machine %s login %s password %s\n", self::token($spec->host), self::token((string) $spec->user), self::token($password));

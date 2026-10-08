@@ -195,7 +195,7 @@ final class CaretPopupRenderer
         $wanted = \min(\count($body), PopupMetrics::COMPLETION_ROWS);
         $roomBelow = $rows - $cursorScreenRow - 1 - PopupFrame::CHROME_ROWS;
         $roomAbove = $cursorScreenRow - PopupFrame::CHROME_ROWS;
-        $below = $roomBelow >= $wanted || $roomAbove < $wanted && $roomBelow >= $roomAbove;
+        $below = $roomBelow >= $wanted || ($roomAbove < $wanted && $roomBelow >= $roomAbove);
         $shown = \min($wanted, $below ? $roomBelow : $roomAbove);
         if ($shown < 1) {
             return null;

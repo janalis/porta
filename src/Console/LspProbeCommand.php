@@ -221,7 +221,8 @@ final class LspProbeCommand extends Command
             ->sortByName();
         $byLanguage = [];
         foreach ($finder as $file) {
-            $byLanguage[LanguageMap::lspForPath($file->getPathname())][] = $file->getPathname();
+            $path = $file->getPathname();
+            $byLanguage[LanguageMap::lspForPath($path)][] = $path;
         }
         if ($perLanguage <= 0) {
             return $byLanguage;

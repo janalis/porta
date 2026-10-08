@@ -1,0 +1,8 @@
+{
+  "php": "8.5",
+  "paths": ["src", "plugins", "tests", "bin", "config"],
+  "rules": {
+    "ElvisOperatorCanBeUsed": { "enabled": false },
+    "ClassConstantCanBeUsed": { "enabled": false }
+  }
+}

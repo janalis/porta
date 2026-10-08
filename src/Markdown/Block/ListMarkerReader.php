@@ -43,7 +43,7 @@ final class ListMarkerReader
         if (1 === \preg_match('/^[*+-]/', $rest, $m)) {
             return [false, $m[0], 0, 1];
         }
-        if (1 !== \preg_match('/^(\d{1,9})([.)])/', $rest, $m) || BlockKind::Paragraph === $container->kind && 1 !== (int) $m[1]) {
+        if (1 !== \preg_match('/^(\d{1,9})([.)])/', $rest, $m) || (BlockKind::Paragraph === $container->kind && 1 !== (int) $m[1])) {
             return null;
         }
 

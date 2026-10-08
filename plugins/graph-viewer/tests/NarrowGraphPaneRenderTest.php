@@ -67,6 +67,6 @@ final class NarrowGraphPaneRenderTest extends TestCase
     #[DataProvider('graphPanes')]
     public function testTheGraphPaneFitsEveryWidthDownToOne(AbstractWidget $widget): void
     {
-        $this->assertFitsEveryWidth($widget);
+        self::assertFitsEveryWidth($widget);
     }
 }

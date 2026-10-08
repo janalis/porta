@@ -450,7 +450,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         // spaces its inputs. A query that cannot match — a bad pattern, one
         // the engine gave up on, or no hit at all — draws the Find box double,
         // the danger border: the state reads by shape, not only by its words.
-        $failing = $this->patternInvalid || $this->patternTooComplex || 0 === $count && '' !== $this->query->value();
+        $failing = $this->patternInvalid || $this->patternTooComplex || (0 === $count && '' !== $this->query->value());
         // Boxed on a roomy screen, the toggles and buttons boxed beside the
         // fields — or, in a pane too narrow for both, as one-row tags on the
         // fields' value row. On a compact screen every field keeps its place
@@ -630,7 +630,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             $cursorLine = $this->target->findCaretLine;
             $cursorCol = $this->target->findCaretCol;
             foreach ($this->matches as $i => $match) {
-                if (!($match['line'] > $cursorLine || $match['line'] === $cursorLine && $match['start'] >= $cursorCol)) {
+                if (!($match['line'] > $cursorLine || ($match['line'] === $cursorLine && $match['start'] >= $cursorCol))) {
                     continue;
                 }
 

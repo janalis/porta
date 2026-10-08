@@ -98,12 +98,12 @@ final class DockToolTabs
      */
     public function move(int $from, int $to): void
     {
-        $to = IndexMove::target($from, $to, \count($this->tabs));
-        if (null === $to) {
+        $target = IndexMove::target($from, $to, \count($this->tabs));
+        if (null === $target) {
             return;
         }
-        $this->active = IndexMove::reindexActive($this->active, $from, $to);
-        $this->tabs = IndexMove::apply($this->tabs, $from, $to);
+        $this->active = IndexMove::reindexActive($this->active, $from, $target);
+        $this->tabs = IndexMove::apply($this->tabs, $from, $target);
     }
 
     public function active(): ?DockToolTab

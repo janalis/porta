@@ -93,7 +93,7 @@ final class TreeDragRouter
     public function continueDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $editorRect): bool
     {
         $drag = $this->drag;
-        if (null === $drag || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        if (null === $drag || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
         if (!$drag->moved && $mouse->isLeftDrag()) {

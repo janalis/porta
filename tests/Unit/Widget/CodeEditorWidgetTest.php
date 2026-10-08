@@ -100,7 +100,7 @@ final class CodeEditorWidgetTest extends TestCase
         $rendered = $editor->render(new RenderContext(80, 20));
 
         $this->assertCount(20, $rendered);
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
         $this->assertStringContainsString('1', AnsiUtils::stripAnsiCodes($rendered[0]), 'gutter shows line number');
         $this->assertStringContainsString("\x1b_pi:c;", $rendered[0], 'cursor marker present when focused');
     }
@@ -118,7 +118,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->getDocument()->setCursor(24, 8); // deep inside handle(), headers scrolled off
         $rendered = $editor->render(new RenderContext(60, 12));
 
-        $this->assertExactWidth($rendered, 60);
+        self::assertExactWidth($rendered, 60);
         $top = AnsiUtils::stripAnsiCodes($rendered[0]);
         $second = AnsiUtils::stripAnsiCodes($rendered[1]);
         $this->assertStringContainsString('class Service', $top, 'class header pinned at row 0');
@@ -176,7 +176,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->display->setLineNumbers(LineNumberMode::Off);
         $rendered = $editor->render(new RenderContext(60, 12));
 
-        $this->assertExactWidth($rendered, 60);
+        self::assertExactWidth($rendered, 60);
         $body = AnsiUtils::stripAnsiCodes($rendered[2]);
         $this->assertDoesNotMatchRegularExpression('/^\s*\d/', $body, 'no digit in the body gutter');
         $sticky = AnsiUtils::stripAnsiCodes($rendered[1]);
@@ -220,7 +220,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString(Glyphs::INDENT_GUIDE.'···$spaces = 2;', $spaced, 'four spaces are four dots');
 
         // The rule this decoration lives or dies by.
-        $this->assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, 80);
     }
 
     public function testShowWhitespaceMarksTRAILINGSpaceButNotInnerOnes(): void
@@ -257,7 +257,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringNotContainsString(Sgr::UNDERLINE, $on[7], 'the blank line between members is untouched');
         $this->assertStringNotContainsString(Sgr::UNDERLINE, $on[2], 'and so is the class declaration');
 
-        $this->assertExactWidth($on, 80);
+        self::assertExactWidth($on, 80);
     }
 
     /**
@@ -278,7 +278,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         foreach (\range(start: 1, end: 20) as $columns) {
             $rows = $editor->render(new RenderContext($columns, 6));
-            $this->assertExactWidth($rows, $columns, "at {$columns} columns");
+            self::assertExactWidth($rows, $columns, "at {$columns} columns");
         }
     }
 
@@ -292,7 +292,7 @@ final class CodeEditorWidgetTest extends TestCase
             $editor->display->setLineNumbers($mode);
             foreach ([1, 2, 3, 6, 9, 11] as $columns) {
                 $rows = $editor->render(new RenderContext($columns, 4));
-                $this->assertExactWidth($rows, $columns, "{$mode->name} at {$columns} columns");
+                self::assertExactWidth($rows, $columns, "{$mode->name} at {$columns} columns");
             }
         }
     }
@@ -315,7 +315,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rows = $editor->render(new RenderContext(46, 14));
 
-        $this->assertExactWidth($rows, 46);
+        self::assertExactWidth($rows, 46);
         foreach ($rows as $index => $row) {
             $this->assertTrue(
                 \mb_check_encoding(AnsiUtils::stripAnsiCodes($row), encoding: 'UTF-8'),
@@ -349,7 +349,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $this->assertCount(1, $ruled, 'one rule, however many rows the member takes');
         $this->assertStringContainsString('"; }', AnsiUtils::stripAnsiCodes($rows[$ruled[0]]), 'and it is the row the member ENDS on');
-        $this->assertExactWidth($rows, 50);
+        self::assertExactWidth($rows, 50);
     }
 
     public function testAPinnedHeadersGutterHasTheSameCOLUMNSAsAnOrdinaryRow(): void
@@ -400,7 +400,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 20));
         $this->assertCount(20, $rendered);
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
 
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rendered));
         $this->assertStringContainsString('No file open', $plain, 'placeholder hint is shown');
@@ -440,7 +440,7 @@ final class CodeEditorWidgetTest extends TestCase
         $rendered = $this->painted($editor, new RenderContext(80, 20));
 
         $this->assertCount(20, $rendered);
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
         $plain = AnsiUtils::stripAnsiCodes(\implode("\n", $rendered));
         $this->assertStringContainsString('Paste', $plain, 'dropdown item floats over the editor');
         $this->assertStringContainsString('Find', $plain);
@@ -487,7 +487,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 20));
         $this->assertStringContainsString('echoFirst', \implode("\n", $rendered));
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
 
         $editor->handleInput("\x1b[B"); // select second
         $editor->handleInput("\r"); // accept
@@ -959,7 +959,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString("\x1b[48;5;236m", $rendered[2]);
         $bracketRows = $rendered[2]."\n".$rendered[4];
         $this->assertSame(2, \substr_count($bracketRows, LineDecorator::BRACKET_SGR), 'both brackets highlighted');
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
     }
 
     public function testDiagnosticRangeUnderline(): void
@@ -970,7 +970,7 @@ final class CodeEditorWidgetTest extends TestCase
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[4:3m", $rendered[1], 'curly underline');
         $this->assertStringContainsString("\x1b[58;5;203m", $rendered[1], 'red underline color for the error');
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
     }
 
     public function testAnUNUSEDSymbolIsDrawnFaintAndADEPRECATEDOneStruckThrough(): void
@@ -993,7 +993,7 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringContainsString(Sgr::STRIKETHROUGH, $rendered[2], 'the deprecated call is struck through');
         $this->assertStringContainsString(Sgr::NO_STRIKETHROUGH, $rendered[2]);
         $this->assertStringContainsString("\x1b[4:5m", $rendered[1], 'and both keep the severity underline they always had');
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
     }
 
     public function testASymbolThatIsBOTHUnusedAndDeprecatedGetsBothAttributes(): void
@@ -1070,7 +1070,7 @@ final class CodeEditorWidgetTest extends TestCase
             ]);
 
         $rendered = $editor->render(new RenderContext(80, 10));
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
 
         // Each diagnostic underlined in its own severity color.
         $this->assertStringContainsString("\x1b[58;5;203m", $rendered[1], 'error underline color');
@@ -1101,7 +1101,7 @@ final class CodeEditorWidgetTest extends TestCase
             ]);
 
         $rendered = $editor->render(new RenderContext(80, 20));
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
 
         // The stripe (last column) marks both problems even though line 55 is off-screen.
         $all = \implode('', $rendered);
@@ -1127,7 +1127,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString("\x1b[48;5;130m", $rendered[1], 'current match background');
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
     }
 
     public function testGotoLineViaKeystroke(): void
@@ -1148,7 +1148,7 @@ final class CodeEditorWidgetTest extends TestCase
 
         $rendered = $editor->render(new RenderContext(80, 10));
         $this->assertStringContainsString('greet(string $name): string', AnsiUtils::stripAnsiCodes(\implode("\n", $rendered)));
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
 
         $editor->handleInput("\x1b"); // escape clears the hint
         $rendered = $editor->render(new RenderContext(80, 10));
@@ -1335,7 +1335,7 @@ final class CodeEditorWidgetTest extends TestCase
         $editor->getDocument()->setCursor(1, 150);
 
         $rendered = $editor->render(new RenderContext(40, 5));
-        $this->assertExactWidth($rendered, 40);
+        self::assertExactWidth($rendered, 40);
         $this->assertStringContainsString("\x1b_pi:c;", \implode('', $rendered), 'cursor marker still rendered');
     }
 

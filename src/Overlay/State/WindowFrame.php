@@ -115,7 +115,7 @@ final class WindowFrame
     {
         $zone = $box->zoneAt($row, $col);
         $start = $this->placed;
-        if (null === $start || WindowZone::Title !== $zone && !$zone->isResize()) {
+        if (null === $start || (WindowZone::Title !== $zone && !$zone->isResize())) {
             return $zone;
         }
         $this->dragZone = $zone;

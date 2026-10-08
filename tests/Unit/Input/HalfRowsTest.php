@@ -63,7 +63,7 @@ final class HalfRowsTest extends TestCase
         $this->columns = 100;
         $this->rows = 40;
         $ide = $this->bootQuietIde(['composer.json' => '{}', 'a.php' => "<?php\n", 'b.php' => "<?php\n", 'c.php' => "<?php\n"]);
-        $tui = Probe::object($ide, 'bidiTui');
+        $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
         $this->tui = $tui;
     }

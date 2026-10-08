@@ -132,8 +132,7 @@ final class GraphRendererTest extends TestCase
         );
         $view = new ZoomPanModel(200, 100);
         $view->actualSize(100, 60);
-        $grid = new GraphCellGrid(100, 30, $view, null);
-        [$x0, $y0, $x1, $y1] = $grid->nodeBox($layout->nodes[5]);
+        [$x0, $y0, $x1, $y1] = new GraphCellGrid(100, 30, $view, null)->nodeBox($layout->nodes[5]);
 
         $this->assertSame(5, GraphRenderer::nodeAt($layout, $view, 100, 30, \intdiv($y0 + $y1, num2: 2), \intdiv($x0 + $x1, num2: 2)));
         $this->assertNull(GraphRenderer::nodeAt($layout, $view, 100, 30, 0, 0));

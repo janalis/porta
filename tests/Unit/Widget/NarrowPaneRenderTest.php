@@ -249,7 +249,7 @@ final class NarrowPaneRenderTest extends TestCase
     #[DataProvider('paneWidgets')]
     public function testAPaneWidgetFitsEveryWidthDownToOne(AbstractWidget $widget): void
     {
-        $this->assertFitsEveryWidth($widget);
+        self::assertFitsEveryWidth($widget);
     }
 
     public function testTheEDITORFitsEveryWidthWithAFileOpenAndTheGutterFull(): void
@@ -264,7 +264,7 @@ final class NarrowPaneRenderTest extends TestCase
         $editor->setFocused(true);
         $editor->display->setVcsGutter(true);
 
-        $this->assertFitsEveryWidth($editor);
+        self::assertFitsEveryWidth($editor);
     }
 
     public function testTheEDITORFitsEveryWidthWithSTICKYHeadersPinned(): void
@@ -280,14 +280,14 @@ final class NarrowPaneRenderTest extends TestCase
         $editor->setFocused(true);
         $editor->getDocument()->setCursor(25, 4); // deep inside one(), headers scrolled off
 
-        $this->assertFitsEveryWidth($editor);
+        self::assertFitsEveryWidth($editor);
     }
 
     public function testTheEDITORFitsEveryWidthWithNoFileOpen(): void
     {
         // The empty-state path renders a centered hint rather than rows, and
         // centering a hint wider than the pane is its own way to overflow.
-        $this->assertFitsEveryWidth(new CodeEditorWidget());
+        self::assertFitsEveryWidth(new CodeEditorWidget());
     }
 
     public function testTheEDITORFitsEveryWidthWhileSHOWINGADocument(): void
@@ -297,7 +297,7 @@ final class NarrowPaneRenderTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/preview.md', new Document("# heading\n\ntext\n"));
 
-        $this->assertFitsEveryWidth($editor);
+        self::assertFitsEveryWidth($editor);
     }
 
     /**

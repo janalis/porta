@@ -59,7 +59,7 @@ final class MenuBarWidgetTest extends TestCase
         $rows = $this->bar()->render(new RenderContext(60, 24));
 
         $this->assertCount(1, $rows, 'only the title row when closed');
-        $this->assertExactWidth($rows, 60);
+        self::assertExactWidth($rows, 60);
         $plain = $this->plain($rows);
         $this->assertStringContainsString('File', $plain);
         $this->assertStringContainsString('Edit', $plain);
@@ -82,7 +82,7 @@ final class MenuBarWidgetTest extends TestCase
         $rows = $bar->render(new RenderContext(9, 24));
         $narrow = $this->plain($rows);
 
-        $this->assertExactWidth($rows, 9, 'the mark is inside the row, not beyond it');
+        self::assertExactWidth($rows, 9, 'the mark is inside the row, not beyond it');
         $this->assertStringContainsString('File', $narrow);
         $this->assertStringNotContainsString('Edit', $narrow);
         $this->assertStringEndsWith(Glyphs::ELLIPSIS, \rtrim($narrow));
@@ -109,7 +109,7 @@ final class MenuBarWidgetTest extends TestCase
         $rows = $bar->render(new RenderContext(12, 24));
         $plain = $this->plain($rows);
 
-        $this->assertExactWidth($rows, 12, 'the mark is inside the row, never beyond it');
+        self::assertExactWidth($rows, 12, 'the mark is inside the row, never beyond it');
         $this->assertStringContainsString('File', $plain);
         $this->assertStringNotContainsString('Edit', $plain, 'the second title paid for the mark');
         $this->assertStringEndsWith(Glyphs::ELLIPSIS, \rtrim($plain));
@@ -230,7 +230,7 @@ final class MenuBarWidgetTest extends TestCase
         // the layout reflows and content shifts down.
         $this->assertTrue($bar->isOpen());
         $this->assertCount(1, $rows, 'title row only, even when open');
-        $this->assertExactWidth($rows, 60);
+        self::assertExactWidth($rows, 60);
     }
 
     public function testDropdownSegmentsCarryLabelsShortcutsAndSeparators(): void
@@ -558,7 +558,7 @@ final class MenuBarWidgetTest extends TestCase
         // 8 columns fit File but not Edit, so Edit is dropped from the strip.
         $rows = $bar->render(new RenderContext(8, 1));
 
-        $this->assertExactWidth($rows, 8);
+        self::assertExactWidth($rows, 8);
         $plain = $this->plain($rows);
         $this->assertStringContainsString('File', $plain);
         $this->assertStringNotContainsString('Edit', $plain, 'the overflowing title is dropped');
@@ -578,7 +578,7 @@ final class MenuBarWidgetTest extends TestCase
         $bar = new MenuBarWidget();
         $bar->open(0);
         $this->assertFalse($bar->isOpen());
-        $this->assertExactWidth($bar->render(new RenderContext(30, 5)), 30);
+        self::assertExactWidth($bar->render(new RenderContext(30, 5)), 30);
     }
 
     public function testWheelMovesTheDropdownSelectionSkippingSeparators(): void

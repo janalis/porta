@@ -165,6 +165,7 @@ final readonly class BlockLayout
     public function footnotes(int $width): array
     {
         $lines = [];
+        // @noinspection SlowArrayOperationsInLoopInspection -- a definition can cite a footnote not numbered yet: the list grows as it is walked
         for ($index = 0; $index < \count($this->state->footnoteNumbers); ++$index) {
             $label = \array_keys($this->state->footnoteNumbers)[$index];
             $definition = $this->state->footnotes[$label] ?? null;

@@ -224,7 +224,7 @@ final class PreviewSplit
         foreach ($this->mirrored ? \array_reverse($sides) : $sides as $side) {
             $this->area->add($side);
         }
-        if (null === $focus || $focus !== $this->editor && $focus !== $this->preview) {
+        if (null === $focus || ($focus !== $this->editor && $focus !== $this->preview)) {
             return;
         }
         $this->tui?->setFocus(null !== $focus->getContext() ? $focus : $this->editor);

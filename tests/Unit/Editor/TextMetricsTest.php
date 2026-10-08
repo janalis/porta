@@ -107,7 +107,7 @@ final class TextMetricsTest extends TestCase
         $doc = new Document("abc\n\ndéf\nghi");
         $text = $doc->getText();
 
-        for ($offset = 0; $offset <= \strlen($text); ++$offset) {
+        for ($offset = 0, $length = \strlen($text); $offset <= $length; ++$offset) {
             $pos = $doc->positionAt($offset);
             $back = $doc->offsetAt($pos['line'], $pos['col']);
             // Offsets that land mid-multibyte-char clamp to a boundary, but every

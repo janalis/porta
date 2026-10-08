@@ -107,7 +107,7 @@ final class TabStripRenderer
         $pills = $rows >= self::ROWS;
         // The labels sit under a rule of their own (the dock's), or under the
         // frame's at a top edge, over it at a bottom one.
-        $labelRow = $rows >= self::EDGED_ROWS || $pills && StripEdge::Bottom === $edge ? 1 : 0;
+        $labelRow = $rows >= self::EDGED_ROWS || ($pills && StripEdge::Bottom === $edge) ? 1 : 0;
         // A compact cell ends with its divider; pills stand side by side.
         $divider = $pills ? 0 : 1;
         /** @var list<array{tab: array{label: string, active: bool, family?: string, marker?: string, closable?: bool}, text: string, width: int, closeOffset: int|null, labelWidth: int}> $parts */

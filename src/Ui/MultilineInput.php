@@ -85,7 +85,7 @@ final class MultilineInput
             $bindings->matches($keys, 'down') => $this->moveDown(),
             $bindings->matches($keys, 'left') => $this->moveLeft(),
             $bindings->matches($keys, 'right') => $this->moveRight(),
-            default => $this->insertPaste($keys) || TextInput::isPrintable($keys) && $this->insertPrintable($keys),
+            default => $this->insertPaste($keys) || (TextInput::isPrintable($keys) && $this->insertPrintable($keys)),
         };
     }
 

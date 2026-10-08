@@ -225,7 +225,7 @@ final class GraphCellGrid
 
     private function paint(string $key, string $text): string
     {
-        if ('' === $key || '' === \trim($text) && !\str_starts_with($key, 'role:SelectedRow')) {
+        if ('' === $key || ('' === \trim($text) && !\str_starts_with($key, 'role:SelectedRow'))) {
             return $text; // plain cells and blank runs need no escapes (except a selected node's inverse interior)
         }
         $painter = $this->painters[$key] ?? null;

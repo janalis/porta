@@ -94,7 +94,6 @@ final class Ide
     public const string VERSION = '0.1.0';
 
     private readonly Tui $tui;
-    private readonly BidiTui $bidiTui;
 
     /** @var list<string> the last frame composed, written to .porta/frame.txt at shutdown */
     private array $lastFrame = [];
@@ -109,8 +108,6 @@ final class Ide
     private readonly RunController $run;
     private readonly DebugController $debug;
 
-    private readonly PluginLifecycle $pluginLifecycle;
-    private readonly string $docsDir;
     private readonly ContainerInterface $container;
 
     /** @var ServiceLocator<object> The one public boundary; every service() resolution goes through it. */
@@ -125,11 +122,6 @@ final class Ide
     private readonly DebugStatePersistence $debugState;
     private readonly BookmarkPersistence $bookmarkState;
 
-    private readonly Renderer $renderer;
-    private readonly MenuRebuilder $menuRebuilder;
-
-    private readonly SettingsController $settings;
-    private readonly SettingsLanguageController $settingsLanguages;
     private readonly BufferService $bufferService;
 
     /** {@see exitCode()} */
@@ -155,7 +147,7 @@ final class Ide
         // wiring below never branches.
         $boot = $bootTrace ?? new BootTrace();
         // The shipped user guides (F1), package-relative like the translations.
-        $this->docsDir = $docsDir ?? \dirname(__DIR__).'/docs';
+        $docsDir ??= \dirname(__DIR__).'/docs';
         $config = IdeConfig::load($this->rootDir);
         $this->container = new IdeContainerFactory()->build(
             $this->rootDir,
@@ -165,7 +157,7 @@ final class Ide
             // A remote project's cache holds what was opened, not the project:
             // a language server over it would report every class missing.
             $this->lspDisabled || ProjectLocation::forRoot($this->rootDir)->isRemote() ? LspMode::Disabled : LspMode::Enabled,
-            $this->docsDir,
+            $docsDir,
         );
         $locator = $this->container->get('porta.ide');
         \assert($locator instanceof ServiceLocator, description: 'The porta.ide service is the ServiceLocator boundary');
@@ -187,26 +179,26 @@ final class Ide
         // Own the Renderer so mouse hit-testing can query widget rects. The
         // sheet is a TailwindStylesheet so rules and utility classes both
         // resolve (the Renderer clones it, preserving the subclass).
-        $this->renderer = $renderer ?? new Renderer(new TailwindStylesheet());
-        $this->bidiTui = new BidiTui(
+        $renderer ??= new Renderer(new TailwindStylesheet());
+        $bidiTui = new BidiTui(
             // The real terminal is decorated so frame writes can never block
             // the event loop when the outer terminal stops draining (the
             // freeze.log-proven cause); injected terminals (tests) bypass it.
             terminal: $terminal ?? new NonBlockingTerminal(new Terminal()),
             keybindings: $keybindings,
-            renderer: $this->renderer,
+            renderer: $renderer,
         );
         // The frame-rate cap: an input flood coalesces to 60fps instead of one
         // full frame per wheel event. Wired by setter — BidiTui is built before
         // the container exists; unit rigs that skip this call stay uncapped.
-        $this->bidiTui->setFramePacing(new NativeClock(), new RevoltScheduler());
-        $this->tui = $this->bidiTui;
+        $bidiTui->setFramePacing(new NativeClock(), new RevoltScheduler());
+        $this->tui = $bidiTui;
         // Hand the manually-built infrastructure to the container as synthetic
         // services (declared synthetic in config/services.php) right after each
         // is created, so container-built controllers can resolve them by type.
-        $this->container->set(Renderer::class, $this->renderer);
+        $this->container->set(Renderer::class, $renderer);
         $this->container->set(Tui::class, $this->tui);
-        $this->container->set(BidiTui::class, $this->bidiTui);
+        $this->container->set(BidiTui::class, $bidiTui);
         $this->terminalRefresher = $this->service(TerminalStateRefresher::class);
 
         // The workbench primitives every later build step delegates to.
@@ -230,7 +222,7 @@ final class Ide
         // The menu rebuilder is held for the ctor-tail bake; commands register
         // and menus bake at the end of the constructor, once every provider
         // dependency exists.
-        $this->menuRebuilder = $this->service(MenuRebuilder::class);
+        $menuRebuilder = $this->service(MenuRebuilder::class);
         $this->bufferService = $this->service(BufferService::class);
         $this->run = $this->service(RunController::class);
         $this->lspBootstrapper = $this->service(LspBootstrapper::class);
@@ -243,11 +235,11 @@ final class Ide
         $this->debug = $this->service(DebugController::class);
 
         // Apply persisted settings.
-        $this->settings = $this->service(SettingsController::class);
-        $this->settings->applyAll();
-        $this->settingsLanguages = $this->service(SettingsLanguageController::class);
-        $this->settingsLanguages->applyToEditor();
-        $this->pluginLifecycle = $this->service(PluginLifecycle::class);
+        $settings = $this->service(SettingsController::class);
+        $settings->applyAll();
+        $settingsLanguages = $this->service(SettingsLanguageController::class);
+        $settingsLanguages->applyToEditor();
+        $pluginLifecycle = $this->service(PluginLifecycle::class);
         // Construct every #[AsEager] service for its self-registering ctor
         // side effect (core's view controllers register themselves; the
         // presenters hook onBeforeFrame), in the tag's priority order — which
@@ -255,7 +247,7 @@ final class Ide
         // hand-over clears before it repaints.
         $this->service(EagerServices::class)->boot();
         $boot->mark('eager');
-        $this->pluginLifecycle->refreshNav();
+        $pluginLifecycle->refreshNav();
 
         $this->service(SearchUiWiring::class)->wire();
         // Panes before commands: a pane's registration is what makes its
@@ -280,13 +272,13 @@ final class Ide
         $this->service(CoreDockPanels::class)->register();
         $this->service(CommandRegistryPopulator::class)->populate();
         $this->service(WidgetHooks::class)->wire();
-        $this->menuRebuilder->rebuild();
+        $menuRebuilder->rebuild();
         $this->tui->addListener($this->service(InputDispatcher::class)->dispatch(...));
         // The perf collector counts BEFORE the dispatcher: the dispatcher stops
         // propagation on most paths, so at default priority the counter would
         // miss nearly every event.
         $this->perf = $this->service(PerfCollector::class);
-        $this->bidiTui->setPerfSink($this->perf);
+        $bidiTui->setPerfSink($this->perf);
         $terminal = $this->tui->getTerminal();
         if ($terminal instanceof NonBlockingTerminal) {
             // The backlog probe on the beat and slow-paint lines separates a
@@ -297,7 +289,7 @@ final class Ide
             // inside a half-flushed frame. Repaint from scratch once it has:
             // the frame writer never repositions absolutely on its own, so a
             // desync there would otherwise last the whole session.
-            $terminal->onKittyActivated($this->bidiTui->resyncScreen(...));
+            $terminal->onKittyActivated($bidiTui->resyncScreen(...));
         }
         // A support hatch: PORTA_FRAME_DUMP=<path> writes the frame Porta
         // COMPOSED next to whatever the terminal actually drew, so a screen
@@ -306,7 +298,7 @@ final class Ide
         // Porta has already ordered. {@see TerminalBidi} says which, and why
         // the test is by name rather than by probe.
         if (TerminalBidi::isApplied(\getenv())) {
-            $this->bidiTui->setTerminalBidi(true);
+            $bidiTui->setTerminalBidi(true);
         }
         // Always REMEMBER the last frame; write it out at shutdown. A screen
         // nobody can explain then leaves its own evidence in .porta/frame.txt
@@ -315,7 +307,7 @@ final class Ide
         // PORTA_FRAME_DUMP additionally writes every frame to a chosen path.
         $dump = \getenv('PORTA_FRAME_DUMP');
         $target = \is_string($dump) && '' !== $dump ? $dump : null;
-        $this->bidiTui->setFrameSink(function (array $lines) use ($target): void {
+        $bidiTui->setFrameSink(function (array $lines) use ($target): void {
             $this->lastFrame = \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
             if (null !== $target) {
                 \file_put_contents($target, \implode("\n", $this->lastFrame));
@@ -330,7 +322,7 @@ final class Ide
         // the graphics probe swallows, and swallows its own mode report.
         $pointer = $this->service(PixelPointer::class);
         $this->tui->addListener($pointer->onInput(...), priority: 2100);
-        $this->bidiTui->onBeforeFrame($pointer->beforeFrame(...));
+        $bidiTui->onBeforeFrame($pointer->beforeFrame(...));
         // kitty's drag-and-drop exchange arrives as input too, an OSC apiece.
         $this->tui->addListener($this->service(DragDropProtocol::class)->onInput(...), priority: 2000);
         // Last: hand the plugin handlers their live runtime seam and flash the

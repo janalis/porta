@@ -91,7 +91,7 @@ final class TerminalGraphics
     public function probe(array $env): void
     {
         $override = $env['PORTA_GRAPHICS'] ?? false;
-        if ('off' === $override || 'kitty' !== $override && self::incapable($env)) {
+        if ('off' === $override || ('kitty' !== $override && self::incapable($env))) {
             $this->resolve(false);
 
             return;

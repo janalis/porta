@@ -461,7 +461,7 @@ final class EditorCompletion
             $id = \spl_object_id($item);
             // A row with BOTH already needs nothing; one with only a type still
             // wants its docblock, which is the half servers defer most.
-            if ('' !== $item->detail && '' !== $item->documentation || null !== ($this->detailAsked[$id] ?? null) || [] === $item->raw) {
+            if (('' !== $item->detail && '' !== $item->documentation) || null !== ($this->detailAsked[$id] ?? null) || [] === $item->raw) {
                 continue;
             }
             $this->detailAsked[$id] = $item->label;

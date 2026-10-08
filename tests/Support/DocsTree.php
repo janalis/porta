@@ -29,7 +29,8 @@ final class DocsTree
         $plugins = [];
         $entries = \glob(self::repo().'/plugins/*/plugin.php');
         foreach (false === $entries ? [] : $entries as $entry) {
-            $plugins[\basename(\dirname($entry))] = \dirname($entry).'/docs';
+            $dir = \dirname($entry);
+            $plugins[\basename($dir)] = $dir.'/docs';
         }
 
         return $plugins;

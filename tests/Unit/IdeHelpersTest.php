@@ -89,7 +89,7 @@ final class IdeHelpersTest extends TestCase
 
     public function testANonBlockingTerminalGetsThePendingBytesProbe(): void
     {
-        $stream = \fopen('php://memory', mode: 'w+');
+        $stream = \fopen('php://memory', mode: 'wb+');
         \assert(false !== $stream, description: 'php://memory always opens');
         $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);
@@ -112,7 +112,7 @@ final class IdeHelpersTest extends TestCase
         // frames are positioned relatively and nothing ever repositions
         // absolutely, every row below stayed one off for the whole session.
         // Ide must hook that moment so the screen is repainted from scratch.
-        $stream = \fopen('php://memory', mode: 'w+');
+        $stream = \fopen('php://memory', mode: 'wb+');
         \assert(false !== $stream, description: 'php://memory always opens');
         $terminal = new NonBlockingTerminal(new VirtualTerminal(columns: 80, rows: 24), $stream);
         $ide = new Ide($this->project->dir, null, $terminal);

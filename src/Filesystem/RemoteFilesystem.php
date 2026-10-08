@@ -530,7 +530,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         }
         $changed = null !== $known && !$stamp->equals($known);
         // An empty file is all there is to fetch of one.
-        $this->index->file($relative, $stamp, null !== $known && !$changed || 0 === $stamp->size && 0 === \filesize($path));
+        $this->index->file($relative, $stamp, (null !== $known && !$changed) || (0 === $stamp->size && 0 === \filesize($path)));
         if ($changed) {
             $this->fetch($relative, static function (): void {});
         }

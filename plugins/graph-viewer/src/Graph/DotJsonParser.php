@@ -189,7 +189,7 @@ final class DotJsonParser
         }
         $first = $points[0];
         $poly = [$first];
-        for ($i = 0; ($i + 3) < \count($points); $i += 3) {
+        for ($i = 0, $length = \count($points); ($i + 3) < $length; $i += 3) {
             $p0 = $points[$i];
             $p1 = $points[$i + 1];
             $p2 = $points[$i + 2];

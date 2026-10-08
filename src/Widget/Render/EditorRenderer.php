@@ -434,7 +434,7 @@ final class EditorRenderer
         $roomBelow = $rows - $cursorScreenRow - 1 - PopupFrame::CHROME_ROWS;
         $roomAbove = $cursorScreenRow - PopupFrame::CHROME_ROWS;
         $wanted = \min(\count($items), self::POPUP_MAX_ITEMS);
-        $below = $roomBelow >= $wanted || $roomAbove < $wanted && $roomBelow >= $roomAbove;
+        $below = $roomBelow >= $wanted || ($roomAbove < $wanted && $roomBelow >= $roomAbove);
         $shown = \max(1, \min($wanted, $below ? $roomBelow : $roomAbove));
 
         $windowOffset = \max(0, $selected - $shown + 1);

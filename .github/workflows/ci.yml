@@ -77,6 +77,8 @@ jobs:
         run: composer arch
       - name: Duplication gate
         run: composer duplication
+      - name: Inspection gate
+        run: composer custos
 
   tests:
     if: github.event_name != 'schedule'

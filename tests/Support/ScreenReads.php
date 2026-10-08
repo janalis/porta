@@ -152,7 +152,7 @@ trait ScreenReads
         }
 
         $card = [];
-        for ($row = $top; $row < \count($grid); ++$row) {
+        for ($row = $top, $height = \count($grid); $row < $height; ++$row) {
             $card[] = $grid[$row];
             if (\str_contains($grid[$row], Glyphs::MODAL_BOTTOM_LEFT)) {
                 return \implode("\n", $card);

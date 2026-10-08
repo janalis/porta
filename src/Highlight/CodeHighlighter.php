@@ -63,8 +63,6 @@ final class CodeHighlighter implements HighlightSink
      */
     private const string SPLIT_ESCAPE = '/\x1b\[\x1b\[[0-9;]*m([0-9;]*m)/';
 
-    private readonly TerminalTheme $syntaxTheme;
-
     /** @var string[] */
     private array $cache = [];
     private int $cacheVersion = -1;
@@ -132,8 +130,7 @@ final class CodeHighlighter implements HighlightSink
         private readonly ?Scheduler $scheduler = null,
         ?\Closure $onParse = null,
     ) {
-        $this->syntaxTheme = $syntaxTheme ?? new DarkTerminalTheme();
-        $this->provider = $provider ?? new TempestHighlightProvider($this->syntaxTheme);
+        $this->provider = $provider ?? new TempestHighlightProvider($syntaxTheme ?? new DarkTerminalTheme());
         $this->onRepaint = $onRepaint ?? static function (): void {};
         $this->onParse = $onParse ?? static function (): void {};
     }

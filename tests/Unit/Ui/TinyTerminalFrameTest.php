@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\Services;
 use Porta\Ui\BidiTui;
 
 /**
@@ -44,7 +45,7 @@ final class TinyTerminalFrameTest extends TestCase
         $this->columns = $columns;
         $this->rows = $rows;
         $ide = $this->bootIde(['composer.json' => '{}', 'a.php' => "<?php\n\nfinal class A {}\n"]);
-        $tui = Probe::object($ide, 'bidiTui');
+        $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
 
         $tui->requestRender(true);
@@ -65,7 +66,7 @@ final class TinyTerminalFrameTest extends TestCase
         $this->columns = $columns;
         $this->rows = $rows;
         $ide = $this->bootIde(['composer.json' => '{}', 'a.php' => "<?php\n\nfinal class A {}\n"]);
-        $tui = Probe::object($ide, 'bidiTui');
+        $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
 
         $tui->requestRender(true);

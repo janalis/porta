@@ -390,7 +390,7 @@ final class TreeOperations
     private function saveDirtyUnder(string $root): void
     {
         foreach ($this->buffers->all() as $buffer) {
-            if (!$buffer->isDirty() || $buffer->path !== $root && !ProjectPaths::isUnder($buffer->path, $root)) {
+            if (!$buffer->isDirty() || ($buffer->path !== $root && !ProjectPaths::isUnder($buffer->path, $root))) {
                 continue;
             }
 

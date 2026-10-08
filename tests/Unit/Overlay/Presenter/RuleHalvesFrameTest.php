@@ -58,7 +58,7 @@ final class RuleHalvesFrameTest extends TestCase
             $files[\sprintf('f%02d.txt', $n)] = "x\n";
         }
         $ide = $this->bootQuietIde($files);
-        $tui = Probe::object($ide, 'bidiTui');
+        $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
         $this->tui = $tui;
         $join = Probe::get($tui, 'frameJoin');
@@ -124,7 +124,7 @@ final class RuleHalvesFrameTest extends TestCase
         $this->columns = 100;
         $this->rows = 40;
         $ide = $this->bootQuietIde(['composer.json' => '{}', 'a.php' => "<?php\n"]);
-        $tui = Probe::object($ide, 'bidiTui');
+        $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
         Services::resolve($ide, WorkspaceLayout::class)->setTabBarPosition(TabBarPosition::Right);
         Services::resolve($ide, BufferService::class)->openFile($this->project->path('a.php'), OpenFocus::Editor);
@@ -151,7 +151,7 @@ final class RuleHalvesFrameTest extends TestCase
         $this->columns = 100;
         $this->rows = 40;
         $ide = $this->bootQuietIde(['composer.json' => '{}', 'a.php' => "<?php\n"]);
-        $tui = Probe::object($ide, 'bidiTui');
+        $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
         Services::resolve($ide, BufferService::class)->openFile($this->project->path('a.php'), OpenFocus::Editor);
 

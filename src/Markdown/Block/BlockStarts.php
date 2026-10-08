@@ -121,7 +121,7 @@ final readonly class BlockStarts
         }
         $lazyParagraph = !$parser->allClosed && !$cursor->blank && BlockKind::Paragraph === $parser->tip->kind;
         $type = HtmlSyntax::blockStart($cursor->restFromNonspace());
-        if (0 === $type || 7 === $type && (BlockKind::Paragraph === $container->kind || $lazyParagraph)) {
+        if (0 === $type || (7 === $type && (BlockKind::Paragraph === $container->kind || $lazyParagraph))) {
             return self::NONE;
         }
         $parser->closeUnmatched();

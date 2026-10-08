@@ -61,7 +61,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         $this->assertStringContainsString('$count = 41', $row);
         $this->assertStringNotContainsString('Boom', $row, 'the diagnostic keeps every surface but this one');
         $this->assertStringNotContainsString('3 days ago', $row);
-        $this->assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, 80);
     }
 
     public function testWithoutADebugValueTheCellFallsBackToWhatItAlwaysShowed(): void
@@ -78,7 +78,7 @@ final class CodeEditorTrailingCellTest extends TestCase
 
         $this->assertStringContainsString('Boom', AnsiUtils::stripAnsiCodes($rows[1]));
         $this->assertStringContainsString('3 days ago', AnsiUtils::stripAnsiCodes($rows[2]));
-        $this->assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, 80);
     }
 
     public function testAnAgentAtWorkOnALineTakesTheCellSecondAndPaintsItsCaret(): void
@@ -100,7 +100,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // The agent's background (Agent2's, dark: 130) opens on the second
         // character; the highlighter's own foreground may re-assert inside it.
         $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*c/', $rows[1], 'the caret cell, on the second character, in the agent\'s colour');
-        $this->assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, 80);
     }
 
     public function testOnlyInlineDiagnosticMessagesTakeTheCell(): void

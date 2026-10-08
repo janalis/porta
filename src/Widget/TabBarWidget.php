@@ -450,7 +450,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     {
         $blank = $this->sideRow($width);
         foreach ($lines as $i => $line) {
-            if ($line !== $blank || !\in_array($i - 1, $opened, strict: true) && !\in_array($i + 1, $opened, strict: true)) {
+            if ($line !== $blank || (!\in_array($i - 1, $opened, strict: true) && !\in_array($i + 1, $opened, strict: true))) {
                 continue;
             }
             $lines[$i] = RowBleed::gap($width, $shades[$i - 1] ?? null, $shades[$i + 1] ?? null);

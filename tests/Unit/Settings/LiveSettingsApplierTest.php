@@ -7,7 +7,6 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeymapPlatform;
 use Porta\Config\LiveKeybindings;
-use Porta\Editor\BufferManager;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
 use Porta\Event\KeymapChanged;
@@ -18,8 +17,6 @@ use Porta\I18n\Translator;
 use Porta\Layout\ViewRegions;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
-use Porta\Lsp\RefactoringUndo;
-use Porta\Lsp\WorkspaceEditor;
 use Porta\Settings\LiveSettingsApplier;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -86,7 +83,6 @@ final class LiveSettingsApplierTest extends TestCase
 
         return new FormatOnSave(
             $pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $pool, new EventDispatcher(), new RefactoringUndo(new BufferManager(), new EventDispatcher())),
             $editor,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),

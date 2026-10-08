@@ -415,7 +415,7 @@ final class CodeEditorGeometryTest extends TestCase
         $this->assertSame(0, $editor->gutterWidth(), 'no room for a gutter');
         $contentWidth = Probe::get($editor, 'lastStripeCol') - $editor->gutterWidth();
         $this->assertSame(0, $contentWidth, 'nor for text; the stripe is the whole row');
-        $this->assertExactWidth($rendered, 1);
+        self::assertExactWidth($rendered, 1);
     }
 
     public function testTheFirstWidthThatSEATSAGutterAlsoSeatsText(): void
@@ -451,7 +451,7 @@ final class CodeEditorGeometryTest extends TestCase
         // assert that the row carries the FILE rather than a particular window
         // into it.
         $this->assertStringContainsString('php', AnsiUtils::stripAnsiCodes($rendered[0]));
-        $this->assertExactWidth($rendered, $seatsAGutter - 1);
+        self::assertExactWidth($rendered, $seatsAGutter - 1);
     }
 
     public function testTheGutterCOMESBACKAsSoonAsThePaneCanSeatIt(): void
@@ -466,7 +466,7 @@ final class CodeEditorGeometryTest extends TestCase
         $rendered = $editor->render(new RenderContext(80, 5));
 
         $this->assertGreaterThan(0, $editor->gutterWidth(), 'the gutter returns with the room');
-        $this->assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, 80);
     }
 
     // --- followCaret inlay shift direction --------------------------------------

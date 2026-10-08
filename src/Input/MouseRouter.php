@@ -287,7 +287,7 @@ final class MouseRouter
     private function continuePaneDrag(MouseEvent $mouse): bool
     {
         $pane = $this->panes->navigablePane();
-        if (null === $this->paneDrag || null === $pane || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        if (null === $this->paneDrag || null === $pane || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
         $dCols = $mouse->col - $this->paneDrag['col'];
@@ -313,7 +313,7 @@ final class MouseRouter
 
     private function continueTextDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
     {
-        if (!$this->mouseSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        if (!$this->mouseSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
         if (null !== $editorRect) {
@@ -334,7 +334,7 @@ final class MouseRouter
      */
     private function continueColumnDrag(MouseEvent $mouse, ?WidgetRect $editorRect): bool
     {
-        if (!$this->columnSelecting || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        if (!$this->columnSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
         if (null !== $editorRect) {
@@ -352,7 +352,7 @@ final class MouseRouter
     /** Tab reordering: a left-drag started on a tab moves it under the pointer. */
     private function continueTabDrag(MouseEvent $mouse, ?WidgetRect $tabsRect): bool
     {
-        if (!$this->tabDragging || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        if (!$this->tabDragging || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
         if (null !== $tabsRect && null !== $this->tabDragPath) {
@@ -601,7 +601,7 @@ final class MouseRouter
      */
     private function continueDockTabDrag(MouseEvent $mouse): bool
     {
-        if (null === $this->dockTabDrag || !$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
+        if (null === $this->dockTabDrag || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
         $rect = $this->dock->stripVisible() ? $this->hit->rect($this->dockTabs) : null;

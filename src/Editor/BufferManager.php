@@ -221,11 +221,11 @@ final class BufferManager
     public function reorder(int $from, int $to): void
     {
         $paths = \array_keys($this->buffers);
-        $to = IndexMove::target($from, $to, \count($paths));
-        if (null === $to) {
+        $target = IndexMove::target($from, $to, \count($paths));
+        if (null === $target) {
             return;
         }
-        $paths = IndexMove::apply($paths, $from, $to);
+        $paths = IndexMove::apply($paths, $from, $target);
 
         $reordered = [];
         foreach ($paths as $path) {

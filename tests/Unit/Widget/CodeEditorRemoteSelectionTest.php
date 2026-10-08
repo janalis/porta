@@ -54,6 +54,6 @@ final class CodeEditorRemoteSelectionTest extends TestCase
         $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*ghijkl/', $rows[1], 'the whole line between');
         $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*mn/', $rows[2], 'up to the caret on its last line');
         $this->assertStringContainsString('peer', AnsiUtils::stripAnsiCodes($rows[2]));
-        $this->assertExactWidth($rows, 60);
+        self::assertExactWidth($rows, 60);
     }
 }

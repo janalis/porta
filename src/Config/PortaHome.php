@@ -32,7 +32,7 @@ final class PortaHome
     {
         $home = self::base();
         // `~` and `~/…` only: `~bob` is bob's home, which this is not.
-        if (null === $home || '~' !== $path && !\str_starts_with($path, '~/')) {
+        if (null === $home || ('~' !== $path && !\str_starts_with($path, '~/'))) {
             return $path;
         }
 

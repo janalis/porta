@@ -11,8 +11,6 @@ use Porta\Editor\EditorInvalidator;
 use Porta\I18n\Translator;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
-use Porta\Lsp\RefactoringUndo;
-use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -21,7 +19,6 @@ use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
@@ -43,7 +40,6 @@ final class FormatOnSaveTest extends TestCase
         $this->scheduler = new FakeScheduler();
         $this->saves = 0;
         $this->editor = new CodeEditorWidget();
-        $editor = $this->editor;
         $this->pool = new LspSessionPool(
             '/tmp/proj',
             new FixedActiveFile('/tmp/proj/a.php'),
@@ -70,7 +66,6 @@ final class FormatOnSaveTest extends TestCase
         };
         $formatOnSave = new FormatOnSave(
             $this->pool,
-            new WorkspaceEditor(new BufferManager(), $editor, $this->pool, new EventDispatcher(), new RefactoringUndo(new BufferManager(), new EventDispatcher())),
             $counting,
             new Notifier(
                 $this->status = new StatusBarWidget(),

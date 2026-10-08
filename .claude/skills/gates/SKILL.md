@@ -54,6 +54,7 @@ killing it, then kill that runner and re-run.
 | lint / analyze | fix, or `// @mago-expect lint:<rule> -- why` |
 | arch | add the new edge / remove the vanished one in `src/Console/ArchitectureCheckCommand.php`, same commit |
 | duplication | share the code, or say in the code why the copy is honest |
+| custos | fix, or `// @noinspection <Rule>Inspection -- why`; a rule that fights mago or rector is switched off in `custos.json` (`decisions.md`) |
 | rector:check | `composer fix` (rector then format), then lint again |
 
 `composer check` is `verify:quick` without the stop at the first red; `verify` itself

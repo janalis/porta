@@ -196,7 +196,7 @@ final class MenuModel
                 );
             }
             foreach ($contributions as $contribution) {
-                if ($title !== $contribution->after || null !== $contribution->visible && !($contribution->visible)()) {
+                if ($title !== $contribution->after || (null !== $contribution->visible && !($contribution->visible)())) {
                     continue;
                 }
                 $menus[] = new Menu(

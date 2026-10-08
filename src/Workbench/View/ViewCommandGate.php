@@ -58,7 +58,7 @@ final readonly class ViewCommandGate
     public function before(string $scope, string $id): void
     {
         $active = $this->views->activeId();
-        if (null === $active || 'i' === $scope && $this->keepsOpen($active, $id)) {
+        if (null === $active || ('i' === $scope && $this->keepsOpen($active, $id))) {
             return;
         }
         $this->views->close($active);

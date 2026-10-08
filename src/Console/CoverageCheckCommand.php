@@ -336,7 +336,7 @@ final class CoverageCheckCommand extends Command
             $mentioned[$path] = true;
             $metrics = self::element($file, 'metrics');
             $statements = self::number($metrics, 'statements');
-            if (0 === $statements || \str_contains($path, needle: '/vendor/') || null !== $only && !\str_contains($path, needle: $only)) {
+            if (0 === $statements || \str_contains($path, needle: '/vendor/') || (null !== $only && !\str_contains($path, needle: $only))) {
                 continue;
             }
             $contributions[$path][] = [
@@ -474,7 +474,7 @@ final class CoverageCheckCommand extends Command
                 $mine = \array_keys($record['lines']);
                 \sort($mine);
                 $theirs = \implode(',', $mine);
-                if (\count($mine) !== $record['statements'] || null !== $signature && $signature !== $theirs) {
+                if (\count($mine) !== $record['statements'] || (null !== $signature && $signature !== $theirs)) {
                     $lossy[] = $path;
                     break;
                 }

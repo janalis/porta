@@ -127,7 +127,7 @@ final class ErrorStripe
         $offer = static function (StripeMark $kind, int $line, ?DiagnosticSeverity $severity = null, ?ChangeMarkKind $change = null) use (&$byRow, $rows, $lineCount): void {
             $r = self::rowOf($line, $rows, $lineCount);
             $held = $byRow[$r][$kind->name] ?? null;
-            $better = null === $held || null !== $severity && null !== $held['severity'] && $severity->outranks($held['severity']) || $severity === $held['severity'] && $line < $held['line'];
+            $better = null === $held || (null !== $severity && null !== $held['severity'] && $severity->outranks($held['severity'])) || ($severity === $held['severity'] && $line < $held['line']);
             if ($better) {
                 $byRow[$r][$kind->name] = ['kind' => $kind, 'line' => $line, 'severity' => $severity, 'change' => $change];
             }

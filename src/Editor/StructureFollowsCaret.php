@@ -58,7 +58,7 @@ final class StructureFollowsCaret
     {
         $path = $this->editor->getFilePath();
         $line = $this->editor->getDocument()->cursorLine;
-        if (null === $path || $path === $this->lastPath && $line === $this->lastLine) {
+        if (null === $path || ($path === $this->lastPath && $line === $this->lastLine)) {
             return;
         }
         $this->lastPath = $path;

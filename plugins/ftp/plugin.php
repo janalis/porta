@@ -64,7 +64,7 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
     {
         $api = $this->api;
         $now = \hrtime(true) / 1e9;
-        if (null !== $this->asked && ($now - $this->asked) < self::ASK_AGAIN || null === $spec->user || null === $api) {
+        if ((null !== $this->asked && ($now - $this->asked) < self::ASK_AGAIN) || null === $spec->user || null === $api) {
             return; // asked just now, or an anonymous login there is nothing to ask for
         }
         $this->asked = $now;

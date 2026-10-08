@@ -150,7 +150,7 @@ final class DroppedPaths
         foreach ($tokens as $token) {
             $path = self::fromUrl($token);
             // A dangling symlink is a name in a folder too, and is dropped as one.
-            if (!\str_starts_with($path, '/') || !\file_exists($path) && !\is_link($path)) {
+            if (!\str_starts_with($path, '/') || (!\file_exists($path) && !\is_link($path))) {
                 return null;
             }
             $paths[] = $path;

@@ -76,7 +76,7 @@ final readonly class CommandLink
         $target = $this->target();
         $dir = \dirname($target);
         // @mago-expect lint:no-error-control-operator -- a directory it may not create is reported by the return value below, not as a warning.
-        if (!\is_dir($dir) && !@\mkdir($dir, permissions: 0o755, recursive: true)) {
+        if (!\is_dir($dir) && !@\mkdir($dir, permissions: 0o755, recursive: true) && !\is_dir($dir)) {
             return 'could not create '.$dir;
         }
         $staged = $dir.'/.'.self::NAME.'.'.\bin2hex(\random_bytes(4));

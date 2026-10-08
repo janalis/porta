@@ -832,13 +832,13 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     {
         $block = null;
         foreach ($origins as $line => $origin) {
-            if ($origin > $sourceLine || null !== $block && $origin <= $origins[$block]) {
+            if ($origin > $sourceLine || (null !== $block && $origin <= $origins[$block])) {
                 continue;
             }
             $block = $line;
         }
         $body = $this->bodyRows();
-        if (null === $block || $block >= $this->scrollTop && $block < ($this->scrollTop + $body)) {
+        if (null === $block || ($block >= $this->scrollTop && $block < ($this->scrollTop + $body))) {
             return $this->scrollTop;
         }
 

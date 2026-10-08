@@ -362,7 +362,7 @@ Add these to your project's `.gitignore`:
 ```bash
 composer install
 composer verify            # every gate, cheapest first, stopping at the first failure
-composer verify:quick      # the six static gates only — the mid-work check
+composer verify:quick      # the seven static gates only — the mid-work check
 composer test              # PHPUnit: Unit + Integration + E2e + Plugins suites
 composer test:unit         # one suite — also test:integration, test:e2e, test:plugins
 composer coverage          # coverage report (needs the pcov extension)

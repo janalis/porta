@@ -258,7 +258,7 @@ final class Bidi
         // codepoint (always present — \X matches at least one).
         $cp = \mb_ord(\mb_substr($grapheme, start: 0, length: 1, encoding: 'UTF-8'), encoding: 'UTF-8');
         // Hebrew, Arabic and their presentation forms → right-to-left.
-        if ($cp >= 0x0590 && $cp <= 0x05FF || $cp >= 0x0600 && $cp <= 0x06FF || $cp >= 0x0700 && $cp <= 0x08FF || $cp >= 0xFB1D && $cp <= 0xFDFF || $cp >= 0xFE70 && $cp <= 0xFEFF) {
+        if (($cp >= 0x0590 && $cp <= 0x05FF) || ($cp >= 0x0600 && $cp <= 0x06FF) || ($cp >= 0x0700 && $cp <= 0x08FF) || ($cp >= 0xFB1D && $cp <= 0xFDFF) || ($cp >= 0xFE70 && $cp <= 0xFEFF)) {
             return 'R';
         }
         if ($cp >= 0x0030 && $cp <= 0x0039) {
@@ -315,19 +315,19 @@ final class Bidi
             || 0xBB === $cp // « » — in MIRROR, so they must be able to reach L4
             || 0xB7 === $cp // · MIDDLE DOT (the hint severity, and a shown space)
             || 0xD7 === $cp // × MULTIPLICATION SIGN (a size, `80 × 24`)
-            || $cp >= 0x21 && $cp <= 0x2F
-            || $cp >= 0x3A && $cp <= 0x40
-            || $cp >= 0x5B && $cp <= 0x60
-            || $cp >= 0x7B && $cp <= 0x7E;
+            || ($cp >= 0x21 && $cp <= 0x2F)
+            || ($cp >= 0x3A && $cp <= 0x40)
+            || ($cp >= 0x5B && $cp <= 0x60)
+            || ($cp >= 0x7B && $cp <= 0x7E);
         $symbolNeutral =
-            $cp >= 0x2000 && $cp <= 0x206F
-            || $cp >= 0x2190 && $cp <= 0x21FF // arrows
-            || $cp >= 0x2200 && $cp <= 0x22FF // mathematical operators (the find bar's ∀)
-            || $cp >= 0x2300 && $cp <= 0x23FF // misc technical (⏸)
-            || $cp >= 0x2500 && $cp <= 0x257F // box drawing (frame borders)
-            || $cp >= 0x2580 && $cp <= 0x259F // block elements (the error stripe)
-            || $cp >= 0x25A0 && $cp <= 0x25FF // geometric shapes (▸ ▾ ● ◆)
-            || $cp >= 0x2600 && $cp <= 0x27BF; // misc symbols and dingbats (✓ ✗ ✖)
+            ($cp >= 0x2000 && $cp <= 0x206F)
+            || ($cp >= 0x2190 && $cp <= 0x21FF) // arrows
+            || ($cp >= 0x2200 && $cp <= 0x22FF) // mathematical operators (the find bar's ∀)
+            || ($cp >= 0x2300 && $cp <= 0x23FF) // misc technical (⏸)
+            || ($cp >= 0x2500 && $cp <= 0x257F) // box drawing (frame borders)
+            || ($cp >= 0x2580 && $cp <= 0x259F) // block elements (the error stripe)
+            || ($cp >= 0x25A0 && $cp <= 0x25FF) // geometric shapes (▸ ▾ ● ◆)
+            || ($cp >= 0x2600 && $cp <= 0x27BF); // misc symbols and dingbats (✓ ✗ ✖)
         if ($asciiNeutral || $symbolNeutral) {
             return 'N';
         }
@@ -449,7 +449,7 @@ final class Bidi
             while ($i < $count && 'ET' === $classes[$i]) {
                 ++$i;
             }
-            $touches = $start > 0 && 'EN' === $classes[$start - 1] || $i < $count && 'EN' === $classes[$i];
+            $touches = ($start > 0 && 'EN' === $classes[$start - 1]) || ($i < $count && 'EN' === $classes[$i]);
             for ($j = $start; $j < $i; ++$j) {
                 $classes[$j] = $touches ? 'EN' : 'N';
             }

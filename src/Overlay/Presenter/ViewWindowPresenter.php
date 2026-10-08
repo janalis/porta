@@ -167,7 +167,7 @@ final class ViewWindowPresenter
             return false;
         }
         $zone = $this->frame->press($box, $row, $col);
-        if (WindowZone::Content === $zone || WindowZone::Outside === $zone && !$this->inWorkspace($row, $col)) {
+        if (WindowZone::Content === $zone || (WindowZone::Outside === $zone && !$this->inWorkspace($row, $col))) {
             return false; // the view's, or the chrome's: the menu and status bars stay live
         }
         if (WindowZone::Close === $zone || WindowZone::Outside === $zone) {
