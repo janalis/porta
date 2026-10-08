@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Event\SourceEditRequested;
+use Porta\I18n\Translator;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\RecordingEvents;
 use Porta\Tests\Support\RecordingHelpViewerHandler;
@@ -154,5 +155,18 @@ final class MarkdownPageLinksTest extends TestCase
         $this->assertSame('[Logo]', $this->drawn($pane)[2]);
         PixelGraphics::answer($graphics, "\x1b_Gi=31;OK\x1b\\", "\x1b[?62;22c");
         $this->assertStringContainsString("\u{100000}", $this->rows($pane->render(new RenderContext(40, 8)))[2] ?? '', 'the placeholder now');
+    }
+
+    public function testTheWordsThePageDrawsItselfSpeakTheIdesLanguage(): void
+    {
+        $pane = $this->preview(new MarkdownPreviewWidget(translator: new Translator('fr'), events: $this->events));
+        $kinds = ['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'];
+        $text = \implode("\n", \array_map(static fn (string $kind): string => "> [!{$kind}]\n> x\n", $kinds))."\n<details>\n\nhidden\n\n</details>\n";
+        $pane->show($this->project->path('docs/page.md'), $text);
+
+        $drawn = \implode("\n", $this->drawn($pane, rows: 24));
+        foreach (['Remarque', 'Astuce', 'Important', 'Avertissement', 'Attention', 'Détails'] as $word) {
+            $this->assertStringContainsString($word, $drawn);
+        }
     }
 }

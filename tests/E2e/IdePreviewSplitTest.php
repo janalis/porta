@@ -573,15 +573,16 @@ final class IdePreviewSplitTest extends TestCase
                         self::fail('nothing drawn as '.$needle);
                     };
 
-                    // Beside the text: the caret goes to the word, and the text takes the keys.
+                    // Beside the text: the caret goes to the very byte clicked — the
+                    // click lands on the word's second letter — and the text takes the keys.
                     $click('target');
-                    $this->assertSame([3, 14], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "target", in the paragraph\'s second source line');
+                    $this->assertSame([3, 15], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "target", in the paragraph\'s second source line');
                     $this->assertSame($editor, $tui->getFocus());
 
-                    // A word drawn with its punctuation is found without it: the
-                    // source spells "bold." as "**bold**.".
+                    // Markup the page does not draw is skipped: the source spells
+                    // "bold." as "**bold**.", and the click lands on its "o".
                     $click('bold.');
-                    $this->assertSame([3, 29], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "bold", inside its markup');
+                    $this->assertSame([3, 30], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "bold", inside its markup');
 
                     // Far down the page, the editor scrolls to it.
                     $tui->setFocus($preview);

@@ -74,7 +74,7 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringNotContainsString('# Guides', $screen, 'without markdown syntax');
                     $this->assertStringNotContainsString('](', $screen);
                     $this->assertStringNotContainsString('**', $screen);
-                    $this->assertStringContainsString('Key  Guide', $screen, 'the table renders aligned');
+                    $this->assertStringContainsString('Key  │ Guide', $screen, 'the table renders aligned, its columns ruled');
                     $this->assertStringContainsString('Documentation', $screen, 'the window is titled Documentation');
 
                     // Typing does not edit anything — there is no document behind the page.
@@ -178,14 +178,14 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringContainsString('Guides', $screen, 'the docs replaced the Settings window');
 
                     // Click the [Editor] link inside the table: the row reads
-                    // ' F1   Editor' at doc line 7 (the H1 rule is line 1), two
+                    // '  F1  │ Editor' at doc line 7 (the H1 rule is line 1), two
                     // header rows above the body (the bar and its rule), link
-                    // text from column 6 — derive the screen position from
+                    // text from column 9 — derive the screen position from
                     // the pane's rect.
                     $rect = Services::resolve($ide, Renderer::class)
                         ->getWidgetRect($tui->getById('help-viewer'));
                     $this->assertInstanceOf(WidgetRect::class, $rect, 'the help viewer pane is laid out');
-                    [$linkCol, $linkRow] = [$rect->col + 6 + 1, $rect->row + 2 + 7 + 1]; // 0-based rect → 1-based SGR
+                    [$linkCol, $linkRow] = [$rect->col + 9 + 1, $rect->row + 2 + 7 + 1]; // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $linkCol, $linkRow));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $linkCol, $linkRow));
                     $this->frame($tui);

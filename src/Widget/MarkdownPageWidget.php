@@ -85,11 +85,11 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     public function __construct(
         ?Styles $styles = null,
         ?CodeHighlighterFactory $highlighters = null,
-        private readonly ?Translator $translator = null,
+        ?Translator $translator = null,
         ?TerminalGraphics $graphics = null,
     ) {
         $this->initStyles($styles);
-        $words = null === $translator ? null : new PageWords($this->pageWord(...));
+        $words = null === $translator ? null : new PageWords(static fn (string $name): string => self::pageWord($translator, $name));
         $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $words, $graphics);
         $this->headerZones = new ClickZones();
         // The terminal's answer arrives after the first frame: images that
@@ -102,18 +102,16 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
      * "Note"), a summary-less `<details>` — asked at each layout so a
      * language switch reaches it.
      */
-    private function pageWord(string $name): string
+    private static function pageWord(Translator $translator, string $name): string
     {
-        return (
-            match ($name) {
-                'TIP' => $this->translator?->trans('Tip'),
-                'IMPORTANT' => $this->translator?->trans('Important'),
-                'WARNING' => $this->translator?->trans('Warning'),
-                'CAUTION' => $this->translator?->trans('Caution'),
-                'DETAILS' => $this->translator?->trans('Details'),
-                default => $this->translator?->trans('Note'),
-            } ?? \ucfirst(\strtolower($name))
-        );
+        return match ($name) {
+            'TIP' => $translator->trans('Tip'),
+            'IMPORTANT' => $translator->trans('Important'),
+            'WARNING' => $translator->trans('Warning'),
+            'CAUTION' => $translator->trans('Caution'),
+            'DETAILS' => $translator->trans('Details'),
+            default => $translator->trans('Note'),
+        };
     }
 
     /** Lay the page out again at the next render, the text unchanged. */
