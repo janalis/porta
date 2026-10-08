@@ -7,6 +7,7 @@ namespace Porta\Help\Layout;
 use Porta\Markdown\Inline\LinkSyntax;
 use Porta\Markdown\Node\FootnoteDefinition;
 use Porta\Markdown\SourceText;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * What laying out one page shares across its blocks: the next link group, the
@@ -66,6 +67,27 @@ final class LayoutState
     public function detailsNumber(int $offset): int
     {
         return (int) \preg_match_all('/<details\b/i', \substr($this->source->text, offset: 0, length: $offset));
+    }
+
+    /**
+     * The cell of $raw drawn verbatim from column $col, where it ends source
+     * line $line: after whatever quote markers or list indentation contain
+     * it — never at a marker that happens to spell the same text. None when
+     * the line does not end with it (a tab drawn as spaces, a line cut short).
+     *
+     * @return list<array{int, int, int, int, string}>
+     */
+    public function lineEndCells(int $line, string $raw, int $col): array
+    {
+        $lineStart = $this->source->offsetOf($line, 0);
+        $text = $this->source->text;
+        $lineEnd = $lineStart + \strcspn($text, characters: "\r\n", offset: $lineStart);
+        $start = $lineEnd - \strlen($raw);
+        if ('' === $raw || $start < $lineStart || \substr($text, $start, \strlen($raw)) !== $raw || \str_contains($raw, "\t")) {
+            return [];
+        }
+
+        return [[$col, $col + AnsiUtils::visibleWidth($raw), $start, $start + \strlen($raw), $raw]];
     }
 
     /** A footnote's number, given on its first reference. */

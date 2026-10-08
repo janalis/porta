@@ -61,7 +61,7 @@ final class MarkdownRenderer
     }
 
     /** The document tree for $markdown, parsed once however many widths it is laid out at. */
-    public function document(string $markdown): Document
+    private function document(string $markdown): Document
     {
         if (null === $this->document || $markdown !== $this->parsed) {
             $this->document = $this->parser->parse($markdown);

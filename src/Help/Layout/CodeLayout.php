@@ -78,27 +78,7 @@ final class CodeLayout
         $inset = \str_repeat(' ', self::INSET);
         $drawn = $this->pen->styles->hasColor() ? $this->background().$inset.$text.$this->background().$pad.Sgr::RESET : $inset.$text.$pad;
 
-        return new PageLine($drawn, $width, $origin, [], $this->cells($raw, $origin, $state));
-    }
-
-    /**
-     * Where the code line sits in its source line: at its end, after whatever
-     * quote markers or list indentation contain the block — never at a marker
-     * that happens to spell the same text.
-     *
-     * @return list<array{int, int, int, int, string}>
-     */
-    private function cells(string $raw, int $origin, LayoutState $state): array
-    {
-        $lineStart = $state->source->offsetOf($origin, 0);
-        $text = $state->source->text;
-        $lineEnd = $lineStart + \strcspn($text, characters: "\r\n", offset: $lineStart);
-        $start = $lineEnd - \strlen($raw);
-        if ('' === $raw || $start < $lineStart || \substr($text, $start, \strlen($raw)) !== $raw || \str_contains($raw, "\t")) {
-            return [];
-        }
-
-        return [[self::INSET, self::INSET + AnsiUtils::visibleWidth($raw), $start, $start + \strlen($raw), $raw]];
+        return new PageLine($drawn, $width, $origin, [], $state->lineEndCells($origin, $raw, self::INSET));
     }
 
     /**
@@ -133,7 +113,7 @@ final class CodeLayout
     {
         $expanded = '';
         foreach (\explode("\t", $line) as $index => $piece) {
-            $expanded .= (0 === $index ? '' : \str_repeat(' ', 4 - (\mb_strlen($expanded) % 4))).$piece;
+            $expanded .= (0 === $index ? '' : \str_repeat(' ', \max(0, 4 - (AnsiUtils::visibleWidth($expanded) % 4)))).$piece;
         }
 
         return $expanded;

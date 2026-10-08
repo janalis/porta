@@ -6,6 +6,7 @@ namespace Porta\Help\Layout;
 
 use Porta\Markdown\Node\Block;
 use Porta\Markdown\Node\HtmlBlock;
+use Porta\Markdown\SourceRange;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -29,6 +30,49 @@ final readonly class DetailsLayout
         private HtmlBlockLayout $html,
         private PageWords $words,
     ) {}
+
+    /**
+     * $blocks with each HTML block cut after every `</details>` that more
+     * follows: CommonMark keeps `</details>` and a `<details>` on the next
+     * line as one block, where a README means two sections.
+     *
+     * @param list<Block> $blocks
+     *
+     * @return list<Block>
+     */
+    public function separated(array $blocks): array
+    {
+        $separated = [];
+        foreach ($blocks as $block) {
+            \array_push($separated, ...$block instanceof HtmlBlock ? $this->cut($block) : [$block]);
+        }
+
+        return $separated;
+    }
+
+    /** @return non-empty-list<HtmlBlock> */
+    private function cut(HtmlBlock $block): array
+    {
+        $literal = $block->literal;
+        $close = \stripos($literal, needle: '</details');
+        $end = false === $close ? false : \strpos($literal, needle: '>', offset: $close);
+        if (false === $end) {
+            return [$block];
+        }
+        $end += 1;
+        $next = $end + \strspn($literal, characters: " \t\r\n", offset: $end);
+        if ($next >= \strlen($literal)) {
+            return [$block];
+        }
+        // Each piece keeps its own bytes when the block is written as it reads
+        // (not inside a quote or a list, whose markers the literal has lost).
+        $range = $block->range;
+        $exact = \str_starts_with($literal, \rtrim($this->state->source->slice($range)));
+        $head = new HtmlBlock(\substr($literal, offset: 0, length: $end), $exact ? new SourceRange($range->start, $range->start + $end) : $range);
+        $tail = new HtmlBlock(\substr($literal, $next), $exact ? new SourceRange($range->start + $next, $range->end) : $range);
+
+        return [$head, ...$this->cut($tail)];
+    }
 
     /**
      * The blocks of the section opening at $blocks[$index], through the one
@@ -76,7 +120,7 @@ final readonly class DetailsLayout
         $number = $this->state->detailsNumber($start);
         $open = \array_key_exists($number, $this->state->openDetails);
         $m = [];
-        $summary = 1 === \preg_match('/<summary\b[^>]*>(.*?)<\/summary>/is', $opening->literal, $m) ? \trim(\strip_tags($m[1])) : '';
+        $summary = 1 === \preg_match('/<summary\b[^>]*>(.*?)<\/summary>/is', $opening->literal, $m) ? \trim(\preg_replace('/\s+/', replacement: ' ', subject: \strip_tags($m[1])) ?? '') : '';
         $summary = '' === $summary ? $this->words->details() : \html_entity_decode($summary, \ENT_QUOTES | \ENT_HTML5, encoding: 'UTF-8');
         $marker = $open ? Glyphs::MD_DETAILS_OPEN : Glyphs::MD_DETAILS_CLOSED;
         $text = $this->pen->role($marker, Role::TabAccent).' '.$this->pen->paint($summary, new InlineStyle(InlineStyle::BOLD));
@@ -86,7 +130,7 @@ final readonly class DetailsLayout
             return [$line];
         }
 
-        return [$line, ...$this->body($section, $width - self::INDENT)];
+        return [$line, ...$this->body($section, \max(1, $width - self::INDENT))];
     }
 
     /**

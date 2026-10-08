@@ -47,7 +47,7 @@ final readonly class HtmlBlockLayout
         }
         $origin = $state->lineOf($html->range->start);
         if (!self::drawable($literal)) {
-            return $this->verbatim($html, $width, $origin);
+            return $this->verbatim($html, $width, $origin, $state);
         }
         $lines = [];
         foreach (new HtmlParagraphs($state, $html->range)->of($literal) as $index => [$fragments, $center]) {
@@ -63,7 +63,7 @@ final readonly class HtmlBlockLayout
     }
 
     /** Whether every tag in $literal is one this page knows how to draw. */
-    public static function drawable(string $literal): bool
+    private static function drawable(string $literal): bool
     {
         $m = [];
         \preg_match_all('/<\/?([A-Za-z][A-Za-z0-9-]*)/', $literal, $m);
@@ -82,17 +82,20 @@ final readonly class HtmlBlockLayout
     }
 
     /** @return list<PageLine> */
-    private function verbatim(HtmlBlock $html, int $width, int $origin): array
+    private function verbatim(HtmlBlock $html, int $width, int $origin, LayoutState $state): array
     {
         $lines = [];
         foreach (\explode("\n", $html->literal) as $index => $line) {
             $text = AnsiText::truncate(\str_replace("\t", replace: '    ', subject: $line), $width);
+            // Each row is its own source line: drawn as written, byte for byte; else its start.
+            $exact = $text === $line ? $state->lineEndCells($origin + $index, $line, 0) : [];
+            $start = $state->source->offsetOf($origin + $index, 0);
             $lines[] = new PageLine(
                 $this->pen->role($text, Role::Muted),
                 AnsiUtils::visibleWidth($text),
                 $origin + $index,
                 [],
-                [[0, AnsiUtils::visibleWidth($text), $html->range->start, $html->range->end, '']],
+                [] === $exact ? [[0, AnsiUtils::visibleWidth($text), $start, $start, '']] : $exact,
             );
         }
 

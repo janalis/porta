@@ -127,4 +127,32 @@ final class MarkdownPageCornersTest extends TestCase
     {
         $this->assertSame(1, $this->render("<a href=\"a.md\"><b>x\n\ny</b> z\n")->groupCount());
     }
+
+    public function testDetailsWrittenBackToBackAreSectionsOfTheirOwn(): void
+    {
+        $closed = Glyphs::MD_DETAILS_CLOSED;
+        $faq = "<details>\n<summary>A</summary>\n\nBody A.\n\n</details>\n<details>\n<summary>B</summary>\n\nBody B.\n\n</details>\n\nAfter.\n";
+        $this->assertSame([$closed.' A', '', $closed.' B', '', 'After.'], self::plain($this->render($faq)));
+        $this->assertSame([$closed.' A', '', $closed.' B'], self::plain($this->render("<details><summary>A</summary>a</details>\n<details><summary>B</summary>b</details>\n")));
+        $open = new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($faq, 40, [1 => true]);
+        $this->assertSame([$closed.' A', '', Glyphs::MD_DETAILS_OPEN.' B', '  Body B.', '', 'After.'], self::plain($open), 'the second opens by its own number');
+        $this->assertSame(6, $open->sourcePointAt(2, 0)[0] ?? null, 'B starts on its own line');
+    }
+
+    public function testEachRowOfMarkupShownAsWrittenLeadsToItsOwnLine(): void
+    {
+        $doc = $this->render("<ul>\n<li>x</li>\n</ul>\n");
+        $this->assertSame([1, 2], $doc->sourcePointAt(1, 2), 'the row clicked, the byte under the pointer');
+        $this->assertSame(\strlen("<ul>\n<l"), $doc->sourceAt(1, 2));
+    }
+
+    public function testASummaryWrittenOverSeveralLinesIsOneLine(): void
+    {
+        $this->assertSame([Glyphs::MD_DETAILS_CLOSED.' Why it is'], self::plain($this->render("<details><summary>\n  Why\n  it is\n</summary>\n\nx\n</details>\n")));
+    }
+
+    public function testATabInCodeStopsByColumnsAfterAWideGlyph(): void
+    {
+        $this->assertSame('  漢  b', self::plain($this->render("```\n漢\tb\n```\n"))[1]);
+    }
 }

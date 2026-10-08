@@ -56,6 +56,7 @@ final readonly class BlockLayout
     public function blocks(array $blocks, int $width, int $gap = 1): array
     {
         $lines = [];
+        $blocks = $this->details->separated($blocks);
         for ($index = 0, $count = \count($blocks); $index < $count; ++$index) {
             $block = $blocks[$index];
             if ($block instanceof FootnoteDefinition) {
@@ -114,7 +115,7 @@ final readonly class BlockLayout
      *
      * @return list<PageLine>
      */
-    public function wrap(array $fragments, int $width): array
+    private function wrap(array $fragments, int $width): array
     {
         if ([] === $fragments) {
             return [];

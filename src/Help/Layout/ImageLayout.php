@@ -39,7 +39,7 @@ final class ImageLayout
      *
      * @return list<PageLine>|null
      */
-    public function lines(ImageRef $image, int $width, ?string $baseDir, ?string $target, int $group): ?array
+    private function lines(ImageRef $image, int $width, ?string $baseDir, ?string $target, int $group): ?array
     {
         $file = $this->file($image->source, $baseDir);
         $graphics = $this->graphics;
@@ -77,7 +77,7 @@ final class ImageLayout
      *
      * @param list<Fragment> $fragments
      */
-    public static function alone(array $fragments): ?Fragment
+    private static function alone(array $fragments): ?Fragment
     {
         $images = \array_values(\array_filter($fragments, static fn (Fragment $fragment): bool => null !== $fragment->image));
         $rest = \array_filter($fragments, static fn (Fragment $fragment): bool => null === $fragment->image && ($fragment->isBreak || '' !== \trim($fragment->text)));
