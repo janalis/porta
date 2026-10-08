@@ -32,6 +32,7 @@ final class MarkdownImagesTest extends TestCase
         $this->project = new TempProject([
             'docs/wide.png' => self::png(160, 80),
             'outside.png' => self::png(160, 80),
+            'docs2/twin.png' => self::png(160, 80),
             'docs/tall.png' => self::png(40, 2000),
             'docs/fake.png' => 'GIF89a not a png',
             'docs/cut.png' => "\x89PNG\r\n\x1a\n",
@@ -172,6 +173,7 @@ final class MarkdownImagesTest extends TestCase
         $this->assertFalse($drawn('![](/wide.png)', $this->project->dir), 'not the page\'s folder');
         $this->assertTrue($drawn('![](../outside.png)', $this->project->dir), 'up and still inside the tree');
         $this->assertFalse($drawn('![](../outside.png)', $this->project->path('docs')), 'up and out of it');
+        $this->assertFalse($drawn('![](../docs2/twin.png)', $this->project->path('docs')), 'a sibling whose name starts the same is still outside');
         $this->assertFalse($drawn('![]('.$this->project->path('outside.png').')', $this->project->path('docs')), 'an absolute path is the tree\'s, never the disk\'s');
         $this->assertFalse($drawn('![](../outside.png)', root: null), 'with no tree, the page\'s folder is the fence');
         $this->assertTrue($drawn('![](wide.png)', root: null));

@@ -230,4 +230,21 @@ final class MarkdownPageCornersTest extends TestCase
         new MarkdownRenderer($this->styles, new CodeHighlighter($provider))->refreshTheme();
         $this->assertSame(1, $provider->refreshed);
     }
+
+    public function testThreeSectionsInOneBlockOrOnOneLineAreThreeAndEachOpensAlone(): void
+    {
+        $closed = Glyphs::MD_DETAILS_CLOSED;
+        $one = "<details><summary>A</summary>a</details><details><summary>B</summary>b</details><details><summary>C</summary>c</details>\n";
+        $this->assertSame([$closed.' A', '', $closed.' B', '', $closed.' C'], self::plain($this->render($one)), 'no whitespace between them either');
+        $faq = "<details><summary>A</summary>a</details>\n<details><summary>B</summary>b</details>\n<details><summary>C</summary>c</details>\n";
+        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' A', '  a', '', $closed.' B', '', $closed.' C'], self::plain(new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($faq, 40, [
+            0 => true,
+        ])), 'A opens to its own text only');
+    }
+
+    public function testARowOfMarkupDrawnWithATabLeadsToItsLinesStart(): void
+    {
+        $doc = $this->render("<ul>\n\t<li>x</li>\n</ul>\n");
+        $this->assertSame([[0, 14, 5, 5, '']], $doc->cells[1], 'the whole row, to the start of its own line');
+    }
 }
