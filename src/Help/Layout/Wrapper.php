@@ -149,6 +149,8 @@ final readonly class Wrapper
     /**
      * Greedily pack words into lines of $width, the first starting at
      * $firstCol and the rest at $hang. Tables pack each cell the same way.
+     * A word glued to the one before (`**both**,`) never starts a line on its
+     * own: the run it ends moves down with it, when that run fits a line.
      *
      * @param list<Word> $words
      *
@@ -162,9 +164,9 @@ final readonly class Wrapper
         foreach ($words as $word) {
             $needed = ([] === $lineWords || $word->glued ? 0 : 1) + $word->width;
             if ([] !== $lineWords && ($col + $needed) > $width) {
-                $lines[] = $lineWords;
-                $lineWords = [];
-                $col = $hang;
+                $from = $word->glued ? self::carriedFrom($lineWords, $width - $hang - $word->width) : \count($lineWords);
+                [$kept, $lineWords, $col] = self::breakAt($lineWords, $from, $hang);
+                $lines[] = $kept;
                 $needed = $word->width;
             }
             $lineWords[] = $word;
@@ -173,6 +175,51 @@ final readonly class Wrapper
         $lines[] = $lineWords;
 
         return $lines;
+    }
+
+    /**
+     * $line ended before word $from, and the words from there carried to
+     * the next line, with the column they reach on it from $hang.
+     *
+     * @param list<Word> $line
+     *
+     * @return array{list<Word>, list<Word>, int}
+     */
+    private static function breakAt(array $line, int $from, int $hang): array
+    {
+        $kept = [];
+        $carried = [];
+        $col = $hang;
+        foreach ($line as $index => $word) {
+            if ($index < $from) {
+                $kept[] = $word;
+
+                continue;
+            }
+            $carried[] = $word;
+            $col += $word->width;
+        }
+
+        return [$kept, $carried, $col];
+    }
+
+    /**
+     * Where the words that end $line glued together start: at the last one
+     * a space precedes. None move — the line's length — when they would not
+     * fit in $room, as a run that is the whole line never does.
+     *
+     * @param list<Word> $line
+     */
+    private static function carriedFrom(array $line, int $room): int
+    {
+        $start = \count($line) - 1;
+        $width = $line[$start]->width;
+        while ($start > 0 && $line[$start]->glued) {
+            --$start;
+            $width += $line[$start]->width;
+        }
+
+        return $width <= $room ? $start : \count($line);
     }
 
     /**
