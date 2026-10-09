@@ -114,16 +114,9 @@ final class BufferManager
             return null;
         }
         $id = self::fileId($path);
-        if (null === $id) {
-            return null; // no file behind it yet: a new file is its own buffer
-        }
-        foreach (\array_keys($this->buffers) as $open) {
-            if ($id === self::fileId($open)) {
-                return $open;
-            }
-        }
 
-        return null;
+        // No file behind it yet: a new file is its own buffer.
+        return null === $id ? null : \array_find(\array_keys($this->buffers), static fn (string $open): bool => $id === self::fileId($open));
     }
 
     /**
@@ -188,12 +181,10 @@ final class BufferManager
      */
     public function close(string $path): ?Buffer
     {
-        if (!\array_key_exists($path, $this->buffers)) {
-            return $this->active();
-        }
+        $closesActive = $this->activePath === $path && \array_key_exists($path, $this->buffers);
         unset($this->buffers[$path]);
 
-        if ($this->activePath !== $path) {
+        if (!$closesActive) {
             return $this->active();
         }
 
@@ -246,12 +237,12 @@ final class BufferManager
         $paths = \array_keys($this->buffers);
         $from = (int) \array_search($this->activePath, $paths, strict: true);
         $to = $from + $offset;
-        if ($to < 0 || $to >= \count($paths)) {
-            return false;
+        $moves = $to >= 0 && $to < \count($paths);
+        if ($moves) {
+            $this->reorder($from, $to);
         }
-        $this->reorder($from, $to);
 
-        return true;
+        return $moves;
     }
 
     /** @return list<Buffer> in open order */

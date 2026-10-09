@@ -140,17 +140,11 @@ final readonly class LanguageFilter
      */
     private function lineKept(array $offsets, int $lineStart, array $spans, TokenScope $scope): bool
     {
-        foreach ($offsets as $offset) {
+        return \array_any($offsets, function (int $offset) use ($lineStart, $spans, $scope): bool {
             $inside = $this->inAnySpan($lineStart + $offset, $spans);
-            if (TokenScope::InCommentsStrings === $scope && $inside) {
-                return true;
-            }
-            if (TokenScope::ExceptCommentsStrings === $scope && !$inside) {
-                return true;
-            }
-        }
 
-        return false;
+            return $inside ? TokenScope::InCommentsStrings === $scope : TokenScope::ExceptCommentsStrings === $scope;
+        });
     }
 
     /** @param list<array{start: int, end: int}> $spans */

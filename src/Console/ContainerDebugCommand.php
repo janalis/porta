@@ -107,17 +107,11 @@ final class ContainerDebugCommand extends Command
         $view = $loadedView || $aliasView ? 'loaded (pre-compile)' : 'compiled (runtime)';
         $io = new SymfonyStyle($input, $output);
 
-        if (null !== $tagView) {
-            $this->printTagged($output, $io, $container, $tagView, $view);
-
-            return Command::SUCCESS;
-        }
-        if ($aliasView) {
-            $this->printAliases($output, $io, $container, $view);
-
-            return Command::SUCCESS;
-        }
-        $this->printServices($output, $io, $container, $view);
+        match (true) {
+            null !== $tagView => $this->printTagged($output, $io, $container, $tagView, $view),
+            $aliasView => $this->printAliases($output, $io, $container, $view),
+            default => $this->printServices($output, $io, $container, $view),
+        };
 
         return Command::SUCCESS;
     }

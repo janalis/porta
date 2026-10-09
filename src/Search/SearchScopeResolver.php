@@ -24,31 +24,44 @@ final readonly class SearchScopeResolver
     /** @return list<string> */
     public function resolve(ScopeKind $kind): array
     {
-        if (ScopeKind::Project === $kind) {
-            return ['.'];
-        }
-        if (ScopeKind::OpenFiles === $kind) {
-            $paths = [];
-            foreach ($this->buffers->all() as $buffer) {
-                $relative = $this->paths->relative($buffer->path);
-                if ('' !== $relative && !\str_starts_with($relative, '/')) {
-                    $paths[] = $relative;
-                }
+        return match ($kind) {
+            ScopeKind::Project => ['.'],
+            ScopeKind::OpenFiles => $this->openFiles(), // empty (no open files) → matches nothing
+            default => $this->editorScope($kind),
+        };
+    }
+
+    /** @return list<string> every open buffer's project-relative path */
+    private function openFiles(): array
+    {
+        $paths = [];
+        foreach ($this->buffers->all() as $buffer) {
+            $relative = $this->paths->relative($buffer->path);
+            if ('' !== $relative && !\str_starts_with($relative, '/')) {
+                $paths[] = $relative;
             }
-
-            return $paths; // empty (no open files) → matches nothing
         }
+
+        return $paths;
+    }
+
+    /**
+     * A scope relative to the editor's file: the file itself, its directory,
+     * or its module.
+     *
+     * @return list<string>
+     */
+    private function editorScope(ScopeKind $kind): array
+    {
         $file = $this->editor->getFilePath();
-        if (null === $file) {
-            return ['.']; // no file open → fall back to the whole project
-        }
-        if (ScopeKind::Module === $kind) {
-            return $this->moduleScope($file);
-        }
-        $target = ScopeKind::CurrentFile === $kind ? $file : \dirname($file);
-        $relative = $this->paths->relative($target);
+        $relative = null === $file || ScopeKind::Module === $kind ? '' : $this->paths->relative(ScopeKind::CurrentFile === $kind ? $file : \dirname($file));
 
-        return '' === $relative || \str_starts_with($relative, '/') ? ['.'] : [$relative];
+        return match (true) {
+            null === $file => ['.'], // no file open → fall back to the whole project
+            ScopeKind::Module === $kind => $this->moduleScope($file),
+            '' === $relative || \str_starts_with($relative, '/') => ['.'],
+            default => [$relative],
+        };
     }
 
     /**

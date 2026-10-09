@@ -239,14 +239,15 @@ final class CommandLineSection implements SettingsSection
     private function selfUpdate(): void
     {
         $phar = $this->phar ?? PortaBinary::phar();
-        if ('' === $phar) {
-            return; // the row is inert then
-        }
-        if (null !== $this->update) {
-            $this->notifier->warn($this->translator->trans('An update is already running'));
+        match (true) {
+            '' === $phar => null, // the row is inert then
+            null !== $this->update => $this->notifier->warn($this->translator->trans('An update is already running')),
+            default => $this->startSelfUpdate($phar),
+        };
+    }
 
-            return;
-        }
+    private function startSelfUpdate(string $phar): void
+    {
         $before = \hash_file('xxh128', $phar);
         $this->update = new AsyncProcess([\PHP_BINARY, $phar, '--self-update', '--no-ansi'], \dirname($phar), captureStderr: true, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         $started = $this->update->start(function (int $code, string $out) use ($phar, $before): void {

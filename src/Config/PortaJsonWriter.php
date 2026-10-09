@@ -361,16 +361,21 @@ final readonly class PortaJsonWriter
      */
     private static function lspMap(mixed $lsp): array
     {
-        if (\is_array($lsp) && [] !== $lsp && \array_is_list($lsp)) {
-            return ['*' => IdeConfig::commandString($lsp)];
-        }
-        if (\is_string($lsp) && '' !== $lsp) {
-            return ['*' => $lsp];
-        }
-        if (!\is_array($lsp)) {
-            return [];
-        }
+        return match (true) {
+            \is_array($lsp) && [] !== $lsp && \array_is_list($lsp) => ['*' => IdeConfig::commandString($lsp)],
+            \is_string($lsp) && '' !== $lsp => ['*' => $lsp],
+            \is_array($lsp) => self::lspLanguageMap($lsp),
+            default => [],
+        };
+    }
 
+    /**
+     * @param array<array-key, mixed> $lsp
+     *
+     * @return array<string, string>
+     */
+    private static function lspLanguageMap(array $lsp): array
+    {
         $map = [];
         foreach (\array_keys($lsp) as $language) {
             $map[(string) $language] = IdeConfig::commandString($lsp[$language]);
@@ -439,17 +444,14 @@ final readonly class PortaJsonWriter
         }
         $config ??= [];
         $mutate($config);
+
         // An edit that leaves nothing behind should not CONJURE a config file
         // to hold it. Resetting the only key a fresh project ever set, or
         // enabling a plugin that some other layer disables, both end here with
         // an empty array — and writing `[]` litters the repository with a file
         // the user never asked for and would then commit. Nothing to persist
         // is not a failure, so this reports success.
-        if ([] === $config && !\is_file($file)) {
-            return true;
-        }
-
-        return $this->write($file, $config);
+        return ([] === $config && !\is_file($file)) || $this->write($file, $config);
     }
 
     /**

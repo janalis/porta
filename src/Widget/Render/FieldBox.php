@@ -328,22 +328,26 @@ final class FieldBox
             throw new \LogicException('An idle field cannot carry the caret: a frame holds one marker, and it belongs to the field taking keys.');
         }
         $width = \max(0, $width);
-        if ('' === $field->value() && '' !== $spec->placeholder) {
+
+        return match (true) {
             // After the caret, like a browser's: still there while focused,
             // gone at the first keystroke.
-            return AnsiText::padRight($field->render($caret).$styles->of(Role::FieldPlaceholder)->apply(AnsiText::truncate($spec->placeholder, $width)), $width);
-        }
-        if ($shown) {
-            return AnsiText::padRight($field->render($caret, $width), $width);
-        }
-        $value = $field->render($caret);
-        if ($state->takesKeys()) {
+            '' === $field->value() && '' !== $spec->placeholder => AnsiText::padRight(
+                $field->render($caret).$styles->of(Role::FieldPlaceholder)->apply(AnsiText::truncate($spec->placeholder, $width)),
+                $width,
+            ),
+            $shown => AnsiText::padRight($field->render($caret, $width), $width),
             // Taking keys with the caret drawn elsewhere (the list filter):
             // keep the end in view, where the typing lands.
-            return AnsiText::padRight(AnsiText::caretWindow($value, AnsiUtils::visibleWidth($value), $width, marker: ''), $width);
-        }
+            $state->takesKeys() => self::endInView($field->render($caret), $width),
+            default => AnsiText::truncate($field->render($caret), $width, pad: true),
+        };
+    }
 
-        return AnsiText::truncate($value, $width, pad: true);
+    /** $value exactly $width columns, cut from the left so its end stays in view. */
+    private static function endInView(string $value, int $width): string
+    {
+        return AnsiText::padRight(AnsiText::caretWindow($value, AnsiUtils::visibleWidth($value), $width, marker: ''), $width);
     }
 
     /**

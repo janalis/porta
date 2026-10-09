@@ -38,6 +38,9 @@
     },
     "UnNecessaryDoubleQuotes": {
       "enabled": true
+    },
+    "MultipleReturnStatements": {
+      "enabled": true
     }
   }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Help\Layout;
 
 use Porta\Markdown\Inline\LinkSyntax;
+use Porta\Markdown\Node\AlertKind;
 use Porta\Markdown\Node\Block;
 use Porta\Markdown\Node\BlockQuote;
 use Porta\Markdown\Node\FootnoteDefinition;
@@ -93,16 +94,26 @@ final class ContainerLayout
         }
         $body = $this->blocks->blocks($quote->blocks, \max(1, $width - 2));
         $origin = $this->state->lineOf($quote->range->start);
-        if (null === $quote->alert) {
-            $bar = new PageLine($this->pen->role(Glyphs::MD_QUOTE_BAR, Role::Muted).' ', 2);
 
-            return $this->barred([] === $body ? [PageLine::blank($origin)] : $body, $bar);
-        }
-        $role = $this->words->role($quote->alert);
+        return null === $quote->alert
+            ? $this->barred([] === $body ? [PageLine::blank($origin)] : $body, new PageLine($this->pen->role(Glyphs::MD_QUOTE_BAR, Role::Muted).' ', 2))
+            : $this->alert($quote->alert, $body, $origin);
+    }
+
+    /**
+     * An alert: its title above the body, both behind a bar in its colour.
+     *
+     * @param list<PageLine> $body
+     *
+     * @return list<PageLine>
+     */
+    private function alert(AlertKind $alert, array $body, int $origin): array
+    {
+        $role = $this->words->role($alert);
         $bar = new PageLine($this->pen->role(Glyphs::MD_ALERT_BAR, $role).' ', 2);
         $title = new PageLine(
-            $this->pen->paint($this->words->title($quote->alert), new InlineStyle(InlineStyle::BOLD, $role)),
-            AnsiUtils::visibleWidth($this->words->title($quote->alert)),
+            $this->pen->paint($this->words->title($alert), new InlineStyle(InlineStyle::BOLD, $role)),
+            AnsiUtils::visibleWidth($this->words->title($alert)),
             $origin,
         );
 

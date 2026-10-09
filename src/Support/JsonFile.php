@@ -32,15 +32,13 @@ final class JsonFile
         try {
             /** @var array<array-key, mixed>|scalar|null $data */
             $data = \json_decode((string) \file_get_contents($path), associative: true, depth: 512, flags: \JSON_THROW_ON_ERROR);
+            if (!\is_array($data)) {
+                $error = 'the file is not a JSON object';
+                $data = null;
+            }
         } catch (\JsonException $e) {
             $error = $e->getMessage();
-
-            return null;
-        }
-        if (!\is_array($data)) {
-            $error = 'the file is not a JSON object';
-
-            return null;
+            $data = null;
         }
 
         return $data;

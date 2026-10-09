@@ -71,11 +71,10 @@ final class SelfUpdateTest extends TestCase
     private function curl(array $command): array
     {
         $url = (string) \end($command);
-        if (\str_ends_with($url, '/releases/latest')) {
-            return [0, (string) \json_encode(['tag_name' => 'v1.3.0'], \JSON_THROW_ON_ERROR)];
-        }
-        if (\str_contains($url, '/releases/tags/')) {
-            return [
+
+        return match (true) {
+            \str_ends_with($url, '/releases/latest') => [0, (string) \json_encode(['tag_name' => 'v1.3.0'], \JSON_THROW_ON_ERROR)],
+            \str_contains($url, '/releases/tags/') => [
                 0,
                 (string) \json_encode(
                     [
@@ -89,8 +88,18 @@ final class SelfUpdateTest extends TestCase
                     ],
                     \JSON_THROW_ON_ERROR,
                 ),
-            ];
-        }
+            ],
+            default => $this->download($command),
+        };
+    }
+
+    /**
+     * @param list<string> $command
+     *
+     * @return array{int, string}
+     */
+    private function download(array $command): array
+    {
         $out = $command[\array_search('-o', $command, strict: true) + 1];
         \file_put_contents($out, \str_ends_with($out, '.sha256') ? \hash('sha256', $this->pharBytes)."  porta.phar\n" : $this->pharBytes);
 

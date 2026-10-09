@@ -122,15 +122,13 @@ final class TerminalBuffer
                 if (null === $seq && self::unfinished($data, $i)) {
                     // An escape split across chunks; stash and wait.
                     $this->pending = \substr($data, $i);
-
-                    return;
+                    break;
                 }
                 if (null === $seq && self::isStringSequence($data, $i)) {
                     // Past the cap but still unterminated (an inline image, a
                     // long clipboard write): swallowed to its end, never printed.
                     $this->discarding = true;
-
-                    return;
+                    break;
                 }
                 if (null === $seq) {
                     // Malformed for good (or past the cap): stashing it would
@@ -175,16 +173,12 @@ final class TerminalBuffer
     private static function unfinished(string $data, int $at): bool
     {
         $len = \strlen($data) - $at;
-        if (1 === $len) {
-            return true;
-        }
-        if ($len > self::MAX_PENDING) {
-            return false;
-        }
 
         return match (true) {
+            $len > self::MAX_PENDING => false,
+            // A lone ESC, or a string sequence with no terminator yet.
+            1 === $len || self::isStringSequence($data, $at) => true,
             '[' === $data[$at + 1] => (2 + \strspn($data, self::CSI_BODY, offset: $at + 2)) === $len,
-            self::isStringSequence($data, $at) => true, // no terminator yet
             // nF: intermediates only so far. Any other byte after ESC is a
             // two-byte form the parser would have taken, or garbage.
             default => (1 + \strspn($data, self::NF_BODY, offset: $at + 1)) === $len,
@@ -213,41 +207,36 @@ final class TerminalBuffer
 
     private function handleEscape(string $code): void
     {
-        // SGR (colour) — defer and prepend to the next text so it styles what
-        // follows even across a carriage-return overwrite. A full reset
-        // collapses the accumulated state to keep it bounded.
-        if (\str_ends_with($code, 'm') && \str_starts_with($code, "\x1b[")) {
-            // Colour with no text after it still accumulates; past the cap the
-            // newest code stands alone rather than growing without bound.
-            $reset = Sgr::RESET === $code || "\x1b[m" === $code || \strlen($this->pendingSgr) > self::MAX_PENDING_SGR;
-            $this->pendingSgr = $reset ? $code : $this->pendingSgr.$code;
+        match (true) {
+            // SGR (colour) — defer and prepend to the next text so it styles what
+            // follows even across a carriage-return overwrite.
+            \str_ends_with($code, 'm') && \str_starts_with($code, "\x1b[") => $this->deferSgr($code),
+            // Erase in line: ESC[K / ESC[0K truncates from the cursor to EOL.
+            //
+            // Erase from the cursor to the end of the display (ESC[J / ESC[0J)
+            // does the same. This buffer is line oriented and the cursor is
+            // always on the last line, so it only trims that line's tail — it
+            // must NOT wipe the scrollback. Shells emit ESC[J when redrawing the
+            // prompt after a command; treating it as a full clear is what made
+            // command output vanish.
+            1 === \preg_match('/^\x1b\[[0-2]?K$/', $code) || "\x1b[J" === $code || "\x1b[0J" === $code => $this->eraseToLineEnd(),
+            // Erase entire display / scrollback — reset the buffer (e.g. `clear`).
+            "\x1b[2J" === $code || "\x1b[3J" === $code => $this->clear(),
+            // Everything else (cursor moves incl. home, erase-above, mode sets, OSC) is dropped.
+            default => null,
+        };
+    }
 
-            return;
-        }
-        // Erase in line: ESC[K / ESC[0K truncates from the cursor to EOL.
-        if (\preg_match('/^\x1b\[[0-2]?K$/', $code)) {
-            $this->eraseToLineEnd();
-
-            return;
-        }
-        // Erase entire display / scrollback — reset the buffer (e.g. `clear`).
-        if ("\x1b[2J" === $code || "\x1b[3J" === $code) {
-            $this->clear();
-
-            return;
-        }
-        // Erase from the cursor to the end of the display. This buffer is line
-        // oriented and the cursor is always on the last line, so it only trims
-        // that line's tail — it must NOT wipe the scrollback. Shells emit ESC[J
-        // when redrawing the prompt after a command; treating it as a full clear
-        // is what made command output vanish.
-        if ("\x1b[J" === $code || "\x1b[0J" === $code) {
-            $this->eraseToLineEnd();
-
-            return;
-        }
-
-        // Everything else (cursor moves incl. home, erase-above, mode sets, OSC) is dropped.
+    /**
+     * Hold an SGR code for the next text. A full reset collapses the
+     * accumulated state to keep it bounded.
+     */
+    private function deferSgr(string $code): void
+    {
+        // Colour with no text after it still accumulates; past the cap the
+        // newest code stands alone rather than growing without bound.
+        $reset = Sgr::RESET === $code || "\x1b[m" === $code || \strlen($this->pendingSgr) > self::MAX_PENDING_SGR;
+        $this->pendingSgr = $reset ? $code : $this->pendingSgr.$code;
     }
 
     private function writeText(string $text): void

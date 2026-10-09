@@ -123,6 +123,7 @@ final class ViewRegistrar
         if (\array_key_exists($entry['id'], $this->built) || null !== $this->registry->find($entry['id'])) {
             return false;
         }
+        $registered = false;
         try {
             /** @var mixed $view */
             $view = $entry['factory'](new ViewServices(
@@ -142,16 +143,15 @@ final class ViewRegistrar
                 throw new PluginException(\sprintf('registerView("%s") must return a ContributedView', $entry['id']));
             }
             $this->registry->register($view);
+            $this->built[$entry['id']] = $entry['plugin'];
+            $registered = true;
         } catch (\Throwable $error) {
             // The mint above must not outlive the failure: an empty region
             // left mounted renders as a blank workspace with no error anywhere.
             $this->regions->forget($entry['id']);
             $this->source->reportViewFailure($entry['plugin'], $error);
-
-            return false;
         }
-        $this->built[$entry['id']] = $entry['plugin'];
 
-        return true;
+        return $registered;
     }
 }

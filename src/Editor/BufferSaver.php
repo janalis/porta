@@ -34,18 +34,19 @@ final readonly class BufferSaver
     public function save(string $path): ?string
     {
         $buffer = $this->buffers->get($path);
-        if (null === $buffer) {
-            return 'it is not open in the editor';
-        }
-        if ($buffer->isViewer()) {
-            return 'it is not a text file';
-        }
-        if ($buffer->diskChangedUnderEdit) {
-            return 'it changed on disk since it was opened, and saving would overwrite that — the user has to decide';
-        }
-        if (!$buffer->isDirty()) {
-            return null;
-        }
+
+        return match (true) {
+            null === $buffer => 'it is not open in the editor',
+            $buffer->isViewer() => 'it is not a text file',
+            $buffer->diskChangedUnderEdit => 'it changed on disk since it was opened, and saving would overwrite that — the user has to decide',
+            !$buffer->isDirty() => null,
+            default => $this->write($buffer, $path),
+        };
+    }
+
+    /** Null once the user's own save wrote the dirty $buffer, else why it did not. */
+    private function write(Buffer $buffer, string $path): ?string
+    {
         $this->events->dispatch(new BufferSaveRequested($path));
 
         return $buffer->isDirty() ? 'it could not be written' : null;

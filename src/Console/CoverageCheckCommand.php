@@ -105,21 +105,58 @@ final class CoverageCheckCommand extends Command
         $errors = self::errorOutput($output);
 
         $reports = self::reports($cloverPath);
-        if ([] === $reports) {
-            $errors->writeln(
-                \is_dir($cloverPath)
-                    ? "coverage-check: {$cloverPath} holds no *.xml report — run `composer coverage` first."
-                    : "coverage-check: {$cloverPath} not found — run `composer coverage` first.",
-            );
-
-            return Command::INVALID;
-        }
-
         /** @var array<string, list<array{statements: int, covered: int, lines: array<int, int>}>> $contributions */
         $contributions = [];
         /** @var array<string, true> $mentioned every file name any report carries, scope or no scope */
         $mentioned = [];
         $sole = null;
+
+        // Each step reports its own failure and yields its exit code; null
+        // means it passed and the next one runs.
+        $status = [] === $reports ? self::noReport($errors, $cloverPath) : null;
+        $status ??= self::collectAll($reports, $only, $errors, $contributions, $mentioned, $sole);
+        $status ??= self::lossyFailure($errors, $contributions);
+        $status ??= self::grade($input, $output, $errors, $contributions, $sole, $only, $threshold);
+        $status ??= $this->staleFailure($errors, $require);
+        $status ??= null === $require ? null : $this->absentFailure($errors, $mentioned, $require);
+        if (null === $status) {
+            $output->writeln('');
+            $output->writeln('coverage-check: OK');
+            $status = Command::SUCCESS;
+        }
+
+        return $status;
+    }
+
+    /** No report to grade: the path is missing, or a directory with no `*.xml`. */
+    private static function noReport(OutputInterface $errors, string $cloverPath): int
+    {
+        $errors->writeln(
+            \is_dir($cloverPath)
+                ? "coverage-check: {$cloverPath} holds no *.xml report — run `composer coverage` first."
+                : "coverage-check: {$cloverPath} not found — run `composer coverage` first.",
+        );
+
+        return Command::INVALID;
+    }
+
+    /**
+     * Reads every report into $contributions and $mentioned; INVALID at the
+     * first one that is not Clover XML.
+     *
+     * @param list<string>                                                                      $reports
+     * @param array<string, list<array{statements: int, covered: int, lines: array<int, int>}>> $contributions
+     * @param array<string, true>                                                               $mentioned
+     */
+    private static function collectAll(
+        array $reports,
+        ?string $only,
+        OutputInterface $errors,
+        array &$contributions,
+        array &$mentioned,
+        ?\SimpleXMLElement &$sole,
+    ): ?int {
+        $status = null;
         foreach ($reports as $report) {
             // Parse errors belong to us, not to PHP's global error log — and the
             // previous setting is restored so a caller's choice survives.
@@ -129,8 +166,8 @@ final class CoverageCheckCommand extends Command
             \libxml_use_internal_errors($previous);
             if (false === $xml) {
                 $errors->writeln("coverage-check: {$report} is not valid Clover XML.");
-
-                return Command::INVALID;
+                $status = Command::INVALID;
+                break;
             }
             // One report keeps its own document: the unscoped total is read
             // from `/coverage/project/metrics` below, which has no meaning
@@ -139,17 +176,40 @@ final class CoverageCheckCommand extends Command
             self::collect($xml, $only, $contributions, $mentioned);
         }
 
-        $lossy = self::lossy($contributions);
-        if ([] !== $lossy) {
-            $errors->writeln('');
-            $errors->writeln('coverage-check: FAILED — these files are split across reports and Clover cannot merge them losslessly; grade them in one report:');
-            foreach ($lossy as $path) {
-                $errors->writeln('  '.$path);
-            }
+        return $status;
+    }
 
-            return Command::INVALID;
+    /** @param array<string, list<array{statements: int, covered: int, lines: array<int, int>}>> $contributions */
+    private static function lossyFailure(OutputInterface $errors, array $contributions): ?int
+    {
+        $lossy = self::lossy($contributions);
+        if ([] === $lossy) {
+            return null;
+        }
+        $errors->writeln('');
+        $errors->writeln('coverage-check: FAILED — these files are split across reports and Clover cannot merge them losslessly; grade them in one report:');
+        foreach ($lossy as $path) {
+            $errors->writeln('  '.$path);
         }
 
+        return Command::INVALID;
+    }
+
+    /**
+     * Prints the per-file table and the total; FAILURE when the total is below
+     * the threshold.
+     *
+     * @param array<string, list<array{statements: int, covered: int, lines: array<int, int>}>> $contributions
+     */
+    private static function grade(
+        InputInterface $input,
+        OutputInterface $output,
+        OutputInterface $errors,
+        array $contributions,
+        ?\SimpleXMLElement $sole,
+        ?string $only,
+        float $threshold,
+    ): ?int {
         $rows = self::rows($contributions);
         $io = new SymfonyStyle($input, $output);
         $io->table(['File', 'Coverage'], \array_map(static fn (array $row): array => [
@@ -179,50 +239,57 @@ final class CoverageCheckCommand extends Command
             $threshold,
         ));
 
-        if (($percentage + 1e-9) < $threshold) {
-            $errors->writeln('');
-            $errors->writeln("coverage-check: FAILED — below the {$threshold}% line-coverage gate.");
-            // The lines, not only the percentages: a CI log is often all there
-            // is of a failed run (its report artifact may never upload), and a
-            // file at 98.59% says nothing about where to look.
-            foreach (self::misses($contributions) as $name => $lines) {
-                $errors->writeln(\sprintf('  %s: %s', $name, \implode(', ', $lines)));
-            }
-
-            return Command::FAILURE;
+        if (($percentage + 1e-9) >= $threshold) {
+            return null;
+        }
+        $errors->writeln('');
+        $errors->writeln("coverage-check: FAILED — below the {$threshold}% line-coverage gate.");
+        // The lines, not only the percentages: a CI log is often all there
+        // is of a failed run (its report artifact may never upload), and a
+        // file at 98.59% says nothing about where to look.
+        foreach (self::misses($contributions) as $name => $lines) {
+            $errors->writeln(\sprintf('  %s: %s', $name, \implode(', ', $lines)));
         }
 
-        // The arch gate's doctrine applies to this allowlist too: an excuse
-        // whose file is gone from the tree entirely is dead config, and a
-        // stale allowlist is not a gate. (An entry merely PRESENT in this
-        // run's report stays legitimate — a machine without the wrapped
-        // binary still needs it.)
+        return Command::FAILURE;
+    }
+
+    /**
+     * The arch gate's doctrine applies to this allowlist too: an excuse
+     * whose file is gone from the tree entirely is dead config, and a
+     * stale allowlist is not a gate. (An entry merely PRESENT in this
+     * run's report stays legitimate — a machine without the wrapped
+     * binary still needs it.)
+     */
+    private function staleFailure(OutputInterface $errors, ?string $require): ?int
+    {
         $stale = null === $require ? [] : \array_values(\array_filter($this->mayBeAbsent, static fn (string $path): bool => !\is_file($path)));
-        if ([] !== $stale) {
-            $errors->writeln('');
-            $errors->writeln('coverage-check: FAILED — MAY_BE_ABSENT excuses files that no longer exist; remove the entries:');
-            foreach ($stale as $path) {
-                $errors->writeln('  '.$path);
-            }
-
-            return Command::FAILURE;
+        if ([] === $stale) {
+            return null;
+        }
+        $errors->writeln('');
+        $errors->writeln('coverage-check: FAILED — MAY_BE_ABSENT excuses files that no longer exist; remove the entries:');
+        foreach ($stale as $path) {
+            $errors->writeln('  '.$path);
         }
 
-        $absent = null === $require ? [] : $this->absentFrom($mentioned, $require);
-        if ([] !== $absent) {
-            $errors->writeln('');
-            $errors->writeln('coverage-check: FAILED — these files are absent from the report entirely, so nothing loaded them:');
-            foreach ($absent as $path) {
-                $errors->writeln('  '.$path);
-            }
+        return Command::FAILURE;
+    }
 
-            return Command::FAILURE;
+    /** @param array<string, true> $mentioned */
+    private function absentFailure(OutputInterface $errors, array $mentioned, string $require): ?int
+    {
+        $absent = $this->absentFrom($mentioned, $require);
+        if ([] === $absent) {
+            return null;
+        }
+        $errors->writeln('');
+        $errors->writeln('coverage-check: FAILED — these files are absent from the report entirely, so nothing loaded them:');
+        foreach ($absent as $path) {
+            $errors->writeln('  '.$path);
         }
 
-        $output->writeln('');
-        $output->writeln('coverage-check: OK');
-
-        return Command::SUCCESS;
+        return Command::FAILURE;
     }
 
     /**

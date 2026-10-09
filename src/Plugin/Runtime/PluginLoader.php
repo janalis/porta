@@ -237,6 +237,7 @@ final readonly class PluginLoader
         if (null !== $unmet) {
             return $unmet;
         }
+        $failure = null;
         try {
             PluginAutoloader::register($manifest);
             /** @var mixed $plugin */
@@ -259,9 +260,9 @@ final readonly class PluginLoader
                 $this->translator?->addCatalogDirectory($manifest->directory.'/translations');
             }
         } catch (\Throwable $error) {
-            return new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => \basename(\dirname($file)), '%message%' => $error->getMessage()]);
+            $failure = new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => \basename(\dirname($file)), '%message%' => $error->getMessage()]);
         }
 
-        return null;
+        return $failure;
     }
 }

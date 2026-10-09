@@ -208,47 +208,84 @@ final class CodeHighlighter implements HighlightSink
 
         $this->cacheVersion = $version;
 
-        if (null === $this->language) {
-            return $this->cache = $lines;
+        return $this->cache = $this->rehighlight($lines, $version);
+    }
+
+    /**
+     * @param string[] $lines
+     *
+     * @return string[] the lines to cache for $version
+     */
+    private function rehighlight(array $lines, int $version): array
+    {
+        $language = $this->language;
+        if (null === $language) {
+            return $lines;
         }
 
-        if (null !== ($incremental = $this->tryIncrementalUpdate($lines))) {
+        $incremental = $this->tryIncrementalUpdate($lines);
+        if (null !== $incremental) {
             $this->lastRawLines = $lines;
-
-            return $this->cache = $incremental;
         }
 
+        return $incremental ?? $this->highlightFully($language, $lines, $version);
+    }
+
+    /**
+     * Hand the whole document to the backend.
+     *
+     * @param string[] $lines
+     *
+     * @return string[] the lines to cache for $version
+     */
+    private function highlightFully(string $language, array $lines, int $version): array
+    {
         $text = \implode("\n", $lines);
         if (\strlen($text) > self::MAX_HIGHLIGHT_BYTES) {
             // The cap is applied here, so no backend is ever handed a huge file.
             $this->lastRawLines = null;
 
-            return $this->cache = $lines;
+            return $lines;
         }
 
-        /** @var string $language */
-        $language = $this->language;
         $this->inFlightVersion = $version;
         $this->inFlightLines = $lines;
+
+        return match (true) {
+            !$this->request(new HighlightRequest($this->documentId, $language, $text, $version)) => $lines,
+            $this->resolvedVersion === $version => $this->cache, // a synchronous backend already delivered
+            default => $this->awaitAnswer($lines, $version),
+        };
+    }
+
+    /** Dispatch $request to the backend; false when it threw. */
+    private function request(HighlightRequest $request): bool
+    {
         $this->dispatching = true;
 
         try {
-            $this->provider->highlight(new HighlightRequest($this->documentId, $language, $text, $version), $this);
+            $this->provider->highlight($request, $this);
         } catch (\Throwable) {
             $this->dispatching = false;
             $this->recordFailure();
             $this->inFlightVersion = -1;
             $this->lastRawLines = null;
 
-            return $this->cache = $lines;
+            return false;
         } finally {
             $this->dispatching = false;
         }
 
-        if ($this->resolvedVersion === $version) {
-            return $this->cache; // a synchronous backend already delivered
-        }
+        return true;
+    }
 
+    /**
+     * @param string[] $lines
+     *
+     * @return string[] the provisional lines to paint until the answer lands
+     */
+    private function awaitAnswer(array $lines, int $version): array
+    {
         $this->asyncBackend = true;
         $this->armAnswerDeadline($version);
 
@@ -256,7 +293,7 @@ final class CodeHighlighter implements HighlightSink
         // previous colors forward only works when the shape still matches.
         $this->lastRawLines = null;
 
-        return $this->cache = \count($this->cache) === \count($lines) ? $this->cache : $lines;
+        return \count($this->cache) === \count($lines) ? $this->cache : $lines;
     }
 
     /**
@@ -479,11 +516,7 @@ final class CodeHighlighter implements HighlightSink
         // An asynchronous backend cannot colour a single line inside the frame,
         // so splicing would quietly leave edited lines uncoloured. Those buffers
         // repaint whole-document instead, which paint-then-refine already covers.
-        if ($this->asyncBackend) {
-            return null;
-        }
-
-        if ($this->staleEdits >= self::REPAIR_EVERY || null === $old || $newCount < self::INCREMENTAL_MIN_LINES || \abs($newCount - \count($old)) > self::MAX_LOCAL_CHANGE) {
+        if ($this->asyncBackend || $this->staleEdits >= self::REPAIR_EVERY || null === $old || $newCount < self::INCREMENTAL_MIN_LINES || \abs($newCount - \count($old)) > self::MAX_LOCAL_CHANGE) {
             return null;
         }
 
@@ -501,10 +534,20 @@ final class CodeHighlighter implements HighlightSink
 
         $middleNew = $newCount - $prefix - $suffix;
         $middleOld = $oldCount - $prefix - $suffix;
-        if ($middleNew > self::MAX_LOCAL_CHANGE || $middleOld > self::MAX_LOCAL_CHANGE) {
-            return null;
-        }
 
+        return $middleNew > self::MAX_LOCAL_CHANGE || $middleOld > self::MAX_LOCAL_CHANGE ? null : $this->splice($lines, $prefix, $middleNew, $suffix);
+    }
+
+    /**
+     * The cached result with the $middleNew lines after $prefix re-highlighted
+     * one by one, and the $suffix lines after them kept.
+     *
+     * @param string[] $lines
+     *
+     * @return string[]
+     */
+    private function splice(array $lines, int $prefix, int $middleNew, int $suffix): array
+    {
         $middle = [];
         for ($i = $prefix; $i < ($prefix + $middleNew); ++$i) {
             $middle[] = $this->highlightSingleLine($lines[$i]);
@@ -523,23 +566,22 @@ final class CodeHighlighter implements HighlightSink
 
     private function highlightSingleLine(string $line): string
     {
-        if ('' === $line) {
-            return '';
-        }
-
-        $capture = new CapturingHighlightSink();
-
-        try {
-            /** @var string $language */
-            $language = $this->language;
-            $this->provider->highlight(new HighlightRequest($this->documentId, $language, $line, $this->cacheVersion), $capture);
-        } catch (\Throwable) {
-            return $line;
-        }
-
         // Null means the backend answers asynchronously, which this path cannot
-        // use — it has to splice a colored line into the cache right now.
-        $highlighted = $capture->markup;
+        // use — it has to splice a colored line into the cache right now. An
+        // empty line, or a backend that throws, keeps the line as it is.
+        $highlighted = null;
+        if ('' !== $line) {
+            $capture = new CapturingHighlightSink();
+
+            try {
+                /** @var string $language */
+                $language = $this->language;
+                $this->provider->highlight(new HighlightRequest($this->documentId, $language, $line, $this->cacheVersion), $capture);
+                $highlighted = $capture->markup;
+            } catch (\Throwable) {
+                $highlighted = null;
+            }
+        }
 
         return null === $highlighted || \str_contains($highlighted, "\n") ? $line : $highlighted;
     }

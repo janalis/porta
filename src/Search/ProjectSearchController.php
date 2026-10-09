@@ -214,15 +214,14 @@ final class ProjectSearchController
         $label = $this->translator->trans($kind->label());
         // Project and Current File name themselves exactly; anything more
         // would be repeating the label back at the user.
-        if (ScopeKind::Project === $kind || ScopeKind::CurrentFile === $kind) {
-            return $label;
-        }
-        $paths = $this->scopes->resolve($kind);
-        if (ScopeKind::OpenFiles === $kind) {
-            return $label.' ('.\count($paths).')';
-        }
+        $named = ScopeKind::Project === $kind || ScopeKind::CurrentFile === $kind;
+        $paths = $named ? [] : $this->scopes->resolve($kind);
 
-        return $label.' ('.(['.'] === $paths ? $this->translator->trans('Whole Project') : \implode(', ', $paths)).')';
+        return match (true) {
+            $named => $label,
+            ScopeKind::OpenFiles === $kind => $label.' ('.\count($paths).')',
+            default => $label.' ('.(['.'] === $paths ? $this->translator->trans('Whole Project') : \implode(', ', $paths)).')',
+        };
     }
 
     /**
@@ -372,12 +371,17 @@ final class ProjectSearchController
         // A multiline query's matches span lines, so the per-kept-line rewrite
         // can't apply — replace over each matched file's whole text instead
         // (no per-occurrence exclude for multiline queries).
-        if (\str_contains($this->lastSearchQuery, "\n")) {
-            $this->replaceAllMultiline($replacement);
+        \str_contains($this->lastSearchQuery, "\n") ? $this->replaceAllMultiline($replacement) : $this->replaceKeptLines($replacement, $excluded);
+    }
 
-            return;
-        }
-
+    /**
+     * {@see replaceAll()} for a single-line query: only the kept matches' own
+     * lines are rewritten.
+     *
+     * @param list<int> $excluded match indices to skip
+     */
+    private function replaceKeptLines(string $replacement, array $excluded): void
+    {
         $excludedSet = \array_fill_keys($excluded, value: true);
         /** @var array<string, list<int>> $keptLinesByPath */
         $keptLinesByPath = [];
@@ -479,20 +483,18 @@ final class ProjectSearchController
             }
         };
         $missing = \count(\array_filter($paths, fn (string $path): bool => !$this->fs->available($path, $again)));
-        if ($generation !== $this->replaceGeneration) {
-            return false; // a fetch that answered at once has run the replace, and said so
+        // Superseded: a fetch that answered at once has run the replace, and said so.
+        $current = $generation === $this->replaceGeneration;
+        if ($current && 0 !== $missing) {
+            $this->notifier->flash(
+                $this->translator->trans('Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here', [
+                    '%count%' => $missing,
+                ]),
+                4.0,
+            );
         }
-        if (0 === $missing) {
-            return true;
-        }
-        $this->notifier->flash(
-            $this->translator->trans('Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here', [
-                '%count%' => $missing,
-            ]),
-            4.0,
-        );
 
-        return false;
+        return $current && 0 === $missing;
     }
 
     /** Replace every match of a multiline query across matched files' whole text. */

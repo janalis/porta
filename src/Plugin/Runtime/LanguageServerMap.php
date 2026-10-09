@@ -102,6 +102,7 @@ final readonly class LanguageServerMap
      */
     private function launch(array $declaration): ?array
     {
+        $options = [];
         try {
             $command = $declaration['resolve']();
             $options = null === $declaration['initOptions'] ? [] : $declaration['initOptions']();
@@ -113,11 +114,10 @@ final readonly class LanguageServerMap
             \json_encode($options, \JSON_THROW_ON_ERROR);
         } catch (\Throwable $error) {
             ($this->reportFailure)($declaration['plugin'], $error);
-
-            return null;
+            $command = null;
         }
         if (null === $command || [] === $command || $command instanceof ServerNotFound) {
-            return null; // not this server's to serve here, or its binary is not there
+            return null; // its resolver threw, not this server's to serve here, or its binary is not there
         }
         $entry = ['command' => \array_values($command), 'name' => $declaration['name']];
         if ([] !== $options) {

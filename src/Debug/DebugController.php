@@ -328,11 +328,14 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             return;
         }
         $path = $this->editor->getFilePath();
-        if (null === $path) {
-            $this->notifier->flash($this->translator->trans('Nothing to debug — open a file first'));
+        null === $path
+            ? $this->notifier->flash($this->translator->trans('Nothing to debug — open a file first'))
+            : $this->startFor($path);
+    }
 
-            return;
-        }
+    /** Launch $path under its language's debug adapter, or say there is none. */
+    private function startFor(string $path): void
+    {
         $languageId = ProjectPaths::languageId($path);
         $config = $this->adapters->adapterFor($languageId);
         if (null === $config) {

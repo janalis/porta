@@ -343,19 +343,34 @@ integrations = ["symfony", "phpunit"]
 #                                Rector's (string)-cast assertion rule is
 #                                skipped: it tipped that one.
 #
+# The custos MultipleReturnStatements round (435 methods funnelled to at most
+# two returns, 2026-10-08) re-bisected all nine and moved FOUR:
+#   cyclomatic-complexity   145 -> 143. MouseRouter fell to 141 (its press,
+#                                wheel and drag arms became helpers), so the pin
+#                                is Editor/Document, at its pre-round 143: its
+#                                backspace and delete joins share one
+#                                removeBetween(), so that it did not grow by two.
+#   halstead effort/difficulty/volume  19275/30/3236 -> 18673/26/3163. Their pins had
+#                                drifted before the round (bisected on the old
+#                                tree, too, all three were already lower), and
+#                                the round took MouseRouter off the effort list.
+#                                Now set by Editor/BreadcrumbScanner,
+#                                Markdown/Inline/InlineItem and IdeTest.
+#   kan-defect stays 8, with eight classes on it (BufferService joined them).
+#
 # Re-bisect and lower again after the next structural change — AND after a mago
 # upgrade, which can change how a metric is counted without a line of code
 # moving (1.45 did exactly that to too-many-methods). A threshold far above the
 # real maximum is not a gate. Verified failing: injecting 60 dummy
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
-cyclomatic-complexity = { threshold = 145 }
+cyclomatic-complexity = { threshold = 143 }
 too-many-methods = { threshold = 88 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 76 }
 excessive-parameter-list = { threshold = 26 }
 kan-defect = { threshold = 8 }
-halstead = { effort-threshold = 19275, difficulty-threshold = 30, volume-threshold = 3236 }
+halstead = { effort-threshold = 18673, difficulty-threshold = 26, volume-threshold = 3163 }
 
 # Symfony coding standard, linter half (see the header). These four are off or
 # at `help` by default, and `help` never fails `--minimum-fail-level=note` —

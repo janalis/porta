@@ -300,24 +300,22 @@ final class FlakeScanCommand extends Command
      */
     private function failedTests(string $log): array
     {
-        if (!\is_file($log)) {
-            return [];
-        }
-        // Internal errors, not `@`: a malformed log is an expected input here
-        // (a crashed run writes a truncated one), and it must degrade to
-        // "named nobody" rather than emit a warning that PHPUnit turns into a
-        // risky-test failure.
-        $previous = \libxml_use_internal_errors(use_errors: true);
-        $xml = \simplexml_load_file($log);
-        \libxml_clear_errors();
-        \libxml_use_internal_errors($previous);
-        if (false === $xml) {
-            return [];
+        $xml = false;
+        if (\is_file($log)) {
+            // Internal errors, not `@`: a malformed log is an expected input here
+            // (a crashed run writes a truncated one), and it must degrade to
+            // "named nobody" rather than emit a warning that PHPUnit turns into a
+            // risky-test failure.
+            $previous = \libxml_use_internal_errors(use_errors: true);
+            $xml = \simplexml_load_file($log);
+            \libxml_clear_errors();
+            \libxml_use_internal_errors($previous);
         }
         $failed = [];
         // xpath() answers false on a bad expression and null on some libxml
-        // failures; both mean "no cases", and neither may reach foreach.
-        $cases = $xml->xpath('//testcase[failure or error]');
+        // failures; both mean "no cases", and neither may reach foreach. A
+        // missing or unreadable log has no cases either.
+        $cases = false === $xml ? [] : $xml->xpath('//testcase[failure or error]');
         foreach (\is_array($cases) ? $cases : [] as $case) {
             $class = (string) ($case['class'] ?? '');
             $name = (string) ($case['name'] ?? '');

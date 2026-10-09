@@ -49,37 +49,22 @@ final class Continuation
     {
         // Every item opens with its marker read.
         $indent = ($block->marker->markerOffset ?? 0) + ($block->marker->padding ?? 0);
-        if ($cursor->blank) {
-            if ([] === $block->children) {
-                return self::FAILED; // a blank line after an empty item ends it
-            }
-            $cursor->advanceNextNonspace();
 
-            return self::MATCHED;
-        }
-        if ($cursor->indent >= $indent) {
-            $cursor->advanceColumns($indent);
-
-            return self::MATCHED;
-        }
-
-        return self::FAILED;
+        return match (true) {
+            $cursor->blank && [] === $block->children => self::FAILED, // a blank line after an empty item ends it
+            $cursor->blank => self::matchBlank($cursor),
+            $cursor->indent >= $indent => self::matchIndent($cursor, $indent),
+            default => self::FAILED,
+        };
     }
 
     private function footnote(LineCursor $cursor): int
     {
-        if ($cursor->blank) {
-            $cursor->advanceNextNonspace();
-
-            return self::MATCHED;
-        }
-        if ($cursor->indent >= self::CODE_INDENT) {
-            $cursor->advanceColumns(self::CODE_INDENT);
-
-            return self::MATCHED;
-        }
-
-        return self::FAILED;
+        return match (true) {
+            $cursor->blank => self::matchBlank($cursor),
+            $cursor->indent >= self::CODE_INDENT => self::matchIndent($cursor, self::CODE_INDENT),
+            default => self::FAILED,
+        };
     }
 
     private function fence(LineCursor $cursor, OpenBlock $block): int
@@ -102,18 +87,27 @@ final class Continuation
 
     private function indentedCode(LineCursor $cursor): int
     {
-        if ($cursor->indent >= self::CODE_INDENT) {
-            $cursor->advanceColumns(self::CODE_INDENT);
+        return match (true) {
+            $cursor->indent >= self::CODE_INDENT => self::matchIndent($cursor, self::CODE_INDENT),
+            $cursor->blank => self::matchBlank($cursor),
+            default => self::FAILED,
+        };
+    }
 
-            return self::MATCHED;
-        }
-        if ($cursor->blank) {
-            $cursor->advanceNextNonspace();
+    /** A blank line continues the block: skip to its end. */
+    private static function matchBlank(LineCursor $cursor): int
+    {
+        $cursor->advanceNextNonspace();
 
-            return self::MATCHED;
-        }
+        return self::MATCHED;
+    }
 
-        return self::FAILED;
+    /** An indented line continues the block: consume the block's own indentation. */
+    private static function matchIndent(LineCursor $cursor, int $columns): int
+    {
+        $cursor->advanceColumns($columns);
+
+        return self::MATCHED;
     }
 
     public static function spaceOrTab(string $c): bool

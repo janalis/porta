@@ -196,15 +196,16 @@ final readonly class WorkspaceEditor
         if (null === $path) {
             return 'a file to create has no usable path';
         }
-        if ($this->outside($path)) {
-            return \sprintf('%s is outside the project', $path);
+        $refusal = match (true) {
+            $this->outside($path) => \sprintf('%s is outside the project', $path),
+            $this->present($path, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null) => \sprintf('%s already exists', \basename($path)),
+            default => null,
+        };
+        if (null === $refusal) {
+            $exists[$path] = true;
         }
-        if ($this->present($path, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
-            return \sprintf('%s already exists', \basename($path));
-        }
-        $exists[$path] = true;
 
-        return null;
+        return $refusal;
     }
 
     /**
@@ -219,21 +220,19 @@ final readonly class WorkspaceEditor
         if (null === $from || null === $to) {
             return 'a file to rename has no usable path';
         }
-        foreach ([$from, $to] as $path) {
-            if ($this->outside($path)) {
-                return \sprintf('%s is outside the project', $path);
-            }
+        $outside = \array_find([$from, $to], $this->outside(...));
+        $refusal = match (true) {
+            null !== $outside => \sprintf('%s is outside the project', $outside),
+            !$this->present($from, $exists) => \sprintf('%s is not there to rename', \basename($from)),
+            $this->present($to, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null) => \sprintf('%s already exists', \basename($to)),
+            default => null,
+        };
+        if (null === $refusal) {
+            $exists[$from] = false;
+            $exists[$to] = true;
         }
-        if (!$this->present($from, $exists)) {
-            return \sprintf('%s is not there to rename', \basename($from));
-        }
-        if ($this->present($to, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null)) {
-            return \sprintf('%s already exists', \basename($to));
-        }
-        $exists[$from] = false;
-        $exists[$to] = true;
 
-        return null;
+        return $refusal;
     }
 
     /**
@@ -247,15 +246,16 @@ final readonly class WorkspaceEditor
         if (null === $path) {
             return 'a file to delete has no usable path';
         }
-        if ($this->outside($path)) {
-            return \sprintf('%s is outside the project', $path);
+        $refusal = match (true) {
+            $this->outside($path) => \sprintf('%s is outside the project', $path),
+            !$this->present($path, $exists) && true !== ($options['ignoreIfNotExists'] ?? null) => \sprintf('%s is not there to delete', \basename($path)),
+            default => null,
+        };
+        if (null === $refusal) {
+            $exists[$path] = false;
         }
-        if (!$this->present($path, $exists) && true !== ($options['ignoreIfNotExists'] ?? null)) {
-            return \sprintf('%s is not there to delete', \basename($path));
-        }
-        $exists[$path] = false;
 
-        return null;
+        return $refusal;
     }
 
     /**
@@ -280,12 +280,8 @@ final readonly class WorkspaceEditor
         }
         $real = \realpath($existing);
 
-        if (false === $root || false === $real) {
-            return true;
-        }
-
         // The root itself is no server's to delete or rename either.
-        return $real === $root ? $existing === $path : !\str_starts_with($real, $root.'/');
+        return false === $root || false === $real || ($real === $root ? $existing === $path : !\str_starts_with($real, $root.'/'));
     }
 
     /** @param array<string, bool> $exists */
@@ -400,29 +396,42 @@ final readonly class WorkspaceEditor
 
         $buffer = $this->bufferAt($target);
         if (null !== $buffer) {
-            if (!self::applyTextEdits($buffer->document, $edits)) {
-                $skipped[] = $target;
-
-                return;
-            }
-            $this->undo->recordBuffer($buffer->path, $buffer->document->version);
-            if ($buffer === $this->buffers->active()) {
-                $this->editor->invalidate();
-            }
-            $this->lsp->notifyFullChange($buffer->path, $buffer->document);
-            ++$touched;
+            $this->editBuffer($buffer, $target, $edits, $touched, $skipped);
 
             return;
         }
-        // An open buffer is the user's, wherever it lives; a file written
-        // unseen on disk is the server's doing, and stays inside the project
-        // like its creates and deletes.
-        if ($this->outside($target)) {
+        $this->editFile($target, $edits, $touched, $skipped);
+    }
+
+    /**
+     * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits
+     * @param list<string>                                                                                                                  $skipped
+     */
+    private function editBuffer(Buffer $buffer, string $target, array $edits, int &$touched, array &$skipped): void
+    {
+        if (!self::applyTextEdits($buffer->document, $edits)) {
             $skipped[] = $target;
 
             return;
         }
-        $contents = Files::readWritable($target);
+        $this->undo->recordBuffer($buffer->path, $buffer->document->version);
+        if ($buffer === $this->buffers->active()) {
+            $this->editor->invalidate();
+        }
+        $this->lsp->notifyFullChange($buffer->path, $buffer->document);
+        ++$touched;
+    }
+
+    /**
+     * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits
+     * @param list<string>                                                                                                                  $skipped
+     */
+    private function editFile(string $target, array $edits, int &$touched, array &$skipped): void
+    {
+        // An open buffer is the user's, wherever it lives; a file written
+        // unseen on disk is the server's doing, and stays inside the project
+        // like its creates and deletes.
+        $contents = $this->outside($target) ? null : Files::readWritable($target);
         if (null === $contents) {
             $skipped[] = $target;
 

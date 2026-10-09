@@ -15,27 +15,15 @@ final class ListNavigation
 {
     public static function handleKey(string $keys, Keybindings $kb, ListSelection $list, int $count, int $page = 0): bool
     {
-        if ($kb->matches($keys, 'move_up')) {
-            $list->moveUp();
+        $moved = true;
+        match (true) {
+            $kb->matches($keys, 'move_up') => $list->moveUp(),
+            $kb->matches($keys, 'move_down') => $list->moveDown($count),
+            $page > 0 && $kb->matches($keys, 'page_up') => $list->moveUp($page),
+            $page > 0 && $kb->matches($keys, 'page_down') => $list->moveDown($count, $page),
+            default => $moved = false,
+        };
 
-            return true;
-        }
-        if ($kb->matches($keys, 'move_down')) {
-            $list->moveDown($count);
-
-            return true;
-        }
-        if ($page > 0 && $kb->matches($keys, 'page_up')) {
-            $list->moveUp($page);
-
-            return true;
-        }
-        if ($page > 0 && $kb->matches($keys, 'page_down')) {
-            $list->moveDown($count, $page);
-
-            return true;
-        }
-
-        return false;
+        return $moved;
     }
 }

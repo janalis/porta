@@ -88,9 +88,21 @@ final class FuzzyMatcher
             return [];
         }
         $run = \mb_strpos(\implode('', $hay), \implode('', $needle));
-        if (false !== $run) {
-            return \range($run, $run + \count($needle) - 1);
-        }
+
+        return false !== $run ? \range($run, $run + \count($needle) - 1) : self::subsequence($hay, $needle);
+    }
+
+    /**
+     * Where each of $needle's characters falls in $hay, in order, each the
+     * first after the last; [] when one runs out of haystack.
+     *
+     * @param list<string> $hay
+     * @param list<string> $needle
+     *
+     * @return list<int>
+     */
+    private static function subsequence(array $hay, array $needle): array
+    {
         $positions = [];
         $at = 0;
         foreach ($needle as $char) {
@@ -98,7 +110,8 @@ final class FuzzyMatcher
                 ++$at;
             }
             if (\count($hay) === $at) {
-                return [];
+                $positions = [];
+                break;
             }
             $positions[] = $at++;
         }

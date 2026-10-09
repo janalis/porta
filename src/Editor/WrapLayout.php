@@ -52,13 +52,9 @@ final class WrapLayout
             return 1;
         }
         $this->refresh($width);
-        if (\array_key_exists($line, $this->rows)) {
-            return $this->rows[$line];
-        }
 
-        $displayWidth = $this->document->lineDisplayWidth($line);
-
-        return $this->rows[$line] = $displayWidth <= $width ? 1 : (int) \ceil($displayWidth / $width);
+        // A line no wider than $width (an empty one too) is one row.
+        return $this->rows[$line] ??= \max(1, (int) \ceil($this->document->lineDisplayWidth($line) / $width));
     }
 
     /**

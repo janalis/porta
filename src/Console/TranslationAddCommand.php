@@ -69,34 +69,12 @@ final class TranslationAddCommand extends Command
         $errors = self::errorOutput($output);
         $dir = null === $plugin ? $this->rootDir.'/translations' : $this->rootDir.'/plugins/'.$plugin.'/translations';
         $catalogs = self::catalogs($dir);
-        if (!\array_key_exists('en', $catalogs)) {
-            $errors->writeln('i18n:add: no messages.en.xlf in '.$dir);
-
-            return Command::FAILURE;
-        }
-
         $targets = ['en' => $source];
-        foreach ($target as $pair) {
-            $colon = \strpos($pair, needle: ':');
-            $locale = false === $colon ? $pair : \substr($pair, offset: 0, length: $colon);
-            $text = false === $colon ? '' : \substr($pair, $colon + 1);
-            if (!\array_key_exists($locale, $catalogs) || 'en' === $locale || '' === $text) {
-                $errors->writeln(\sprintf('i18n:add: "%s" is not <locale>:<text> for one of %s', $pair, \implode(', ', \array_keys($catalogs))));
-
-                return Command::FAILURE;
-            }
-            $targets[$locale] = $text;
-        }
-        $missing = \array_diff(\array_keys($catalogs), \array_keys($targets));
-        if ([] !== $missing) {
-            $errors->writeln('i18n:add: no --target for '.\implode(', ', $missing).' — every locale needs its translation');
-
-            return Command::FAILURE;
-        }
-
-        $existing = self::idOf($catalogs['en'], $source);
-        if (null !== $existing) {
-            $errors->writeln(\sprintf('i18n:add: the English catalog already has "%s" as id %d', $source, $existing));
+        $problem = \array_key_exists('en', $catalogs)
+            ? self::targetProblem($target, $catalogs, $targets) ?? self::duplicateProblem($catalogs['en'], $source)
+            : 'i18n:add: no messages.en.xlf in '.$dir;
+        if (null !== $problem) {
+            $errors->writeln($problem);
 
             return Command::FAILURE;
         }
@@ -122,6 +100,40 @@ final class TranslationAddCommand extends Command
         $output->writeln(\sprintf('Added id %d to %d catalogs in %s', $id, \count($catalogs), \substr($dir, \strlen($this->rootDir) + 1)));
 
         return Command::SUCCESS;
+    }
+
+    /**
+     * Reads each <locale>:<text> pair into $targets; why they cannot be
+     * added — a malformed pair, or a locale left without one — or null.
+     *
+     * @param list<string>          $pairs
+     * @param array<string, string> $catalogs
+     * @param array<string, string> $targets
+     */
+    private static function targetProblem(array $pairs, array $catalogs, array &$targets): ?string
+    {
+        $problem = null;
+        foreach ($pairs as $pair) {
+            $colon = \strpos($pair, needle: ':');
+            $locale = false === $colon ? $pair : \substr($pair, offset: 0, length: $colon);
+            $text = false === $colon ? '' : \substr($pair, $colon + 1);
+            if (!\array_key_exists($locale, $catalogs) || 'en' === $locale || '' === $text) {
+                $problem = \sprintf('i18n:add: "%s" is not <locale>:<text> for one of %s', $pair, \implode(', ', \array_keys($catalogs)));
+                break;
+            }
+            $targets[$locale] = $text;
+        }
+        $missing = null === $problem ? \array_diff(\array_keys($catalogs), \array_keys($targets)) : [];
+
+        return [] === $missing ? $problem : 'i18n:add: no --target for '.\implode(', ', $missing).' — every locale needs its translation';
+    }
+
+    /** Why $source cannot be added because the English catalog already has it, or null. */
+    private static function duplicateProblem(string $english, string $source): ?string
+    {
+        $existing = self::idOf($english, $source);
+
+        return null === $existing ? null : \sprintf('i18n:add: the English catalog already has "%s" as id %d', $source, $existing);
     }
 
     /** @return array<string, string> locale => file contents, for every catalog with a body to append to */

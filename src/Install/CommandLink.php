@@ -76,17 +76,22 @@ final readonly class CommandLink
         $target = $this->target();
         $dir = \dirname($target);
         // @mago-expect lint:no-error-control-operator -- a directory it may not create is reported by the return value below, not as a warning.
-        if (!\is_dir($dir) && !@\mkdir($dir, permissions: 0o755, recursive: true) && !\is_dir($dir)) {
-            return 'could not create '.$dir;
-        }
+        $ready = \is_dir($dir) || @\mkdir($dir, permissions: 0o755, recursive: true) || \is_dir($dir);
+
+        return $ready ? $this->relink($dir, $target) : 'could not create '.$dir;
+    }
+
+    /** A new link in $dir, renamed over $target. Null on success, else why not. */
+    private function relink(string $dir, string $target): ?string
+    {
         $staged = $dir.'/.'.self::NAME.'.'.\bin2hex(\random_bytes(4));
         // @mago-expect lint:no-error-control-operator -- likewise a directory it may not write to.
-        if (!@\symlink($this->binary, $staged)) {
-            return 'could not write to '.$dir;
+        $linked = @\symlink($this->binary, $staged);
+        if ($linked) {
+            \rename($staged, $target);
         }
-        \rename($staged, $target);
 
-        return null;
+        return $linked ? null : 'could not write to '.$dir;
     }
 
     /** Remove the link — only ever a link. Null on success, else why not. */

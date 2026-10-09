@@ -88,10 +88,14 @@ final readonly class IdeContainerFactory
         }
 
         $cacheDir = $this->cacheDir();
-        if (null === $cacheDir || 'off' === \getenv('PORTA_CONTAINER_CACHE')) {
-            return $this->compileFresh(CompileTarget::Direct);
-        }
+        $cached = null === $cacheDir || 'off' === \getenv('PORTA_CONTAINER_CACHE') ? null : $this->cachedContainer($cacheDir);
 
+        return $cached ?? $this->compileFresh(CompileTarget::Direct);
+    }
+
+    /** The dumped container for this install, or null when this boot must be served a direct build. */
+    private function cachedContainer(string $cacheDir): ?ContainerInterface
+    {
         // The cache dir is folded into the hash so distinct cache dirs yield
         // distinct class names (each dump loads at most once per process), and
         // the installed package set so a dependency upgrade cannot be served a
@@ -108,25 +112,8 @@ final readonly class IdeContainerFactory
 
         $trackSources = $this->trackSources ?? 'debug' === \getenv('PORTA_CONTAINER_CACHE') || \is_dir(\dirname(__DIR__, levels: 2).'/.git');
         $cache = new ConfigCache($file, $trackSources);
-        if (!$cache->isFresh()) {
-            // Compiled for the dump: env placeholders stay unresolved so the
-            // file is project-independent. A builder served directly instead
-            // must be recompiled with build-time env resolution (rare paths).
-            $builder = $this->compileFresh(CompileTarget::Dump);
-            try {
-                $dump = new PhpDumper($builder)->dump(['class' => $class]);
-                \assert(\is_string($dump), description: 'PhpDumper::dump returns a string unless as_files is requested');
-                $cache->write($dump, $trackSources ? $builder->getResources() : null);
-                self::pruneStaleGenerations($cacheDir, $installKey, $hash);
-            } catch (IOException) {
-                return $this->compileFresh(CompileTarget::Direct); // unwritable cache dir: serve this boot uncached
-            }
-            if (\class_exists($class, false)) {
-                // The stale dump is already loaded in this process and PHP
-                // cannot redeclare it. Serve a direct-use build now — the
-                // rewritten file benefits the next process.
-                return $this->compileFresh(CompileTarget::Direct);
-            }
+        if (!$cache->isFresh() && !$this->redump($cache, $class, $trackSources, $cacheDir, $installKey, $hash)) {
+            return null;
         }
 
         if (!\class_exists($class, false)) {
@@ -137,6 +124,34 @@ final readonly class IdeContainerFactory
         // parameterless constructor. Irreducible here: Symfony's Container is not final, so the
         // warning is about a base class we do not own. Re-checked 2026-09-02.
         return new $class();
+    }
+
+    /**
+     * Rewrite the stale dump; false when this boot must be served a direct
+     * build instead.
+     *
+     * @param class-string<Container> $class
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- trackSources is the ConfigCache's own flag, threaded through
+    private function redump(ConfigCache $cache, string $class, bool $trackSources, string $cacheDir, string $installKey, string $hash): bool
+    {
+        // Compiled for the dump: env placeholders stay unresolved so the
+        // file is project-independent. A builder served directly instead
+        // must be recompiled with build-time env resolution (rare paths).
+        $builder = $this->compileFresh(CompileTarget::Dump);
+        try {
+            $dump = new PhpDumper($builder)->dump(['class' => $class]);
+            \assert(\is_string($dump), description: 'PhpDumper::dump returns a string unless as_files is requested');
+            $cache->write($dump, $trackSources ? $builder->getResources() : null);
+            self::pruneStaleGenerations($cacheDir, $installKey, $hash);
+        } catch (IOException) {
+            return false; // unwritable cache dir: serve this boot uncached
+        }
+
+        // The stale dump is already loaded in this process and PHP
+        // cannot redeclare it. Serve a direct-use build now — the
+        // rewritten file benefits the next process.
+        return !\class_exists($class, false);
     }
 
     /**
@@ -212,19 +227,19 @@ final readonly class IdeContainerFactory
     /** The porta cache dir: $PORTA_CACHE_DIR as-is, else XDG/HOME + /porta, else null (no caching). */
     private function cacheDir(): ?string
     {
-        $explicit = \getenv('PORTA_CACHE_DIR');
-        if (\is_string($explicit) && '' !== $explicit) {
-            return $explicit;
-        }
-        $xdg = \getenv('XDG_CACHE_HOME');
-        if (\is_string($xdg) && '' !== $xdg) {
-            return $xdg.'/porta';
-        }
-        $home = \getenv('HOME');
-        if (\is_string($home) && '' !== $home) {
-            return $home.'/.cache/porta';
-        }
+        return match (true) {
+            '' !== ($explicit = self::env('PORTA_CACHE_DIR')) => $explicit,
+            '' !== ($xdg = self::env('XDG_CACHE_HOME')) => $xdg.'/porta',
+            '' !== ($home = self::env('HOME')) => $home.'/.cache/porta',
+            default => null,
+        };
+    }
 
-        return null;
+    /** An environment variable's value, '' when unset. */
+    private static function env(string $name): string
+    {
+        $value = \getenv($name);
+
+        return \is_string($value) ? $value : '';
     }
 }

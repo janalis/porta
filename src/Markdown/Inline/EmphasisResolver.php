@@ -73,14 +73,10 @@ final class EmphasisResolver
             if ($opener->char !== $closer->char || !$opener->canOpen) {
                 continue;
             }
-            if ('~' === $closer->char) {
-                if ($opener->count === $closer->count) {
-                    return $opener;
-                }
-                continue;
-            }
-            $oddMatch = ($closer->canOpen || $opener->canClose) && 0 !== ($closer->original % 3) && 0 === (($opener->original + $closer->original) % 3);
-            if (!$oddMatch) {
+            $matches = '~' === $closer->char
+                ? $opener->count === $closer->count
+                : !(($closer->canOpen || $opener->canClose) && 0 !== ($closer->original % 3) && 0 === (($opener->original + $closer->original) % 3));
+            if ($matches) {
                 return $opener;
             }
         }

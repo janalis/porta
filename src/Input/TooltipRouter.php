@@ -25,6 +25,7 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\Support\GutterPointer;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
@@ -115,45 +116,49 @@ final class TooltipRouter
 
     private function lookup(MouseEvent $mouse, ?string $view): ?Tooltip
     {
-        if ($this->contextMenu->isOpen() || $this->menuBar->isDropdownShown()) {
-            return null;
-        }
-        if ($this->toasts->covers($mouse->row, $mouse->col)) {
-            return $this->toasts->tooltipAt($mouse->row, $mouse->col, $this->translator);
-        }
-        if ($this->panes->editor->isFindModalOpen()) {
-            return $this->panes->editor->findModal->tooltipAt($mouse->row, $mouse->col);
-        }
-        if ($this->panes->editor->isAnyPickerOpen() || $this->windows->isModalOpen()) {
-            return null;
-        }
+        return match (true) {
+            $this->contextMenu->isOpen() || $this->menuBar->isDropdownShown() => null,
+            $this->toasts->covers($mouse->row, $mouse->col) => $this->toasts->tooltipAt($mouse->row, $mouse->col, $this->translator),
+            $this->panes->editor->isFindModalOpen() => $this->panes->editor->findModal->tooltipAt($mouse->row, $mouse->col),
+            default => $this->panes->editor->isAnyPickerOpen() || $this->windows->isModalOpen() ? null : $this->workspaceAt($mouse, $view),
+        };
+    }
 
-        // The status bar rides along under every view; an open view owns the
-        // rest outright, as it does the hover.
+    /**
+     * The status bar rides along under every view; an open view owns the
+     * rest outright, as it does the hover.
+     */
+    private function workspaceAt(MouseEvent $mouse, ?string $view): ?Tooltip
+    {
         $status = $this->hit->tooltip($this->statusBar, $mouse->row, $mouse->col);
         $region = null !== $view && $this->views->isAnyOpen() ? $this->regions->find($view) : null;
-        if (null !== $status || null !== $region) {
-            return $status ?? $this->firstAnswer($mouse, $this->providersIn($region?->panes() ?? []));
-        }
 
-        return $this->mainAt($mouse);
+        return match (true) {
+            null !== $status => $status,
+            null !== $region => $this->firstAnswer($mouse, $this->providersIn($region->panes())),
+            default => $this->mainAt($mouse),
+        };
     }
 
     /** The editor layout: its strips and panes, then the gutter's marks. */
     private function mainAt(MouseEvent $mouse): ?Tooltip
     {
         $tip = $this->firstAnswer($mouse, $this->mainProviders());
-        if (null !== $tip) {
-            return $tip;
-        }
-        $rect = $this->hit->rect($this->panes->editor);
-        if (null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
-            return null;
-        }
+        $rect = null === $tip ? $this->hit->rect($this->panes->editor) : null;
         $editor = $this->panes->editor;
-        if ($editor->isCompletionOpen()) {
-            return $editor->completion->tooltipAt($mouse->row - $rect->row, $mouse->col - $rect->col, $this->translator)?->moved($rect->row, $rect->col);
-        }
+
+        return match (true) {
+            null !== $tip => $tip,
+            null === $rect || !$rect->contains($mouse->row, $mouse->col) => null,
+            $editor->isCompletionOpen() => $editor->completion->tooltipAt($mouse->row - $rect->row, $mouse->col - $rect->col, $this->translator)?->moved($rect->row, $rect->col),
+            default => $this->codeAt($mouse, $rect),
+        };
+    }
+
+    /** Inside the editor, no completion open: the gutter's marks, then the code's problems and hints. */
+    private function codeAt(MouseEvent $mouse, WidgetRect $rect): ?Tooltip
+    {
+        $editor = $this->panes->editor;
         $pointer = new GutterPointer($editor->viewport(), $editor->decorations, $editor->display->vcsGutter, $editor->getDocument()->getLineCount(), $editor->documentLineAt(...));
         $clickShowsChange = $this->commands->has(GutterClickRouter::SHOW_CHANGE);
         $relRow = $mouse->row - $rect->row;

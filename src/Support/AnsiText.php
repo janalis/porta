@@ -51,19 +51,17 @@ final class AnsiText
     {
         $visible = AnsiUtils::visibleWidth($text);
         $mark = AnsiUtils::visibleWidth($ellipsis);
-        if ($visible <= $width) {
-            return $text;
-        }
-        if ($width <= $mark) {
-            // No room for two ends and a mark between them; the ordinary
-            // tail cut is the only thing that fits, and it says the same.
-            return self::truncate($text, $width, ellipsis: $ellipsis);
-        }
         // The tail gets the larger half: it carries the filename.
         $room = $width - $mark;
         $head = \intdiv($room, num2: 2);
 
-        return AnsiUtils::sliceByColumn($text, startCol: 0, length: $head).$ellipsis.AnsiUtils::sliceByColumn($text, startCol: $visible - ($room - $head), length: $room - $head);
+        return match (true) {
+            $visible <= $width => $text,
+            // No room for two ends and a mark between them; the ordinary
+            // tail cut is the only thing that fits, and it says the same.
+            $width <= $mark => self::truncate($text, $width, ellipsis: $ellipsis),
+            default => AnsiUtils::sliceByColumn($text, startCol: 0, length: $head).$ellipsis.AnsiUtils::sliceByColumn($text, startCol: $visible - ($room - $head), length: $room - $head),
+        };
     }
 
     /**
@@ -176,10 +174,9 @@ final class AnsiText
     public static function columnsFrom(string $line, int $startCol, int $length): string
     {
         $slice = AnsiUtils::sliceByColumn($line, $startCol, $length, strict: true);
-        if ($startCol <= 0 || $length <= 0) {
-            return $slice;
-        }
-        $before = AnsiUtils::visibleWidth(AnsiUtils::sliceByColumn($line, 0, $startCol));
+        // Nothing asked from inside the line reads as a prefix that already
+        // reaches $startCol: the slice stands as it is.
+        $before = $startCol > 0 && $length > 0 ? AnsiUtils::visibleWidth(AnsiUtils::sliceByColumn($line, 0, $startCol)) : $startCol;
         if ($before >= $startCol || AnsiUtils::visibleWidth($line) <= $startCol) {
             return $slice; // nothing straddles the start, or the line ends before it
         }

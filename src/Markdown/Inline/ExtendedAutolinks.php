@@ -24,17 +24,17 @@ final class ExtendedAutolinks
     public static function at(string $text, int $at): ?array
     {
         $m = [];
-        if (1 === \preg_match('/\G(?:((?:https?|ftp):\/\/)|(www\.))('.self::DOMAIN.')[^\s<]*/i', $text, $m, flags: 0, offset: $at)) {
-            $link = self::trimTrailing($m[0]);
-            $domain = self::trimTrailing($m[3]);
-            if (!self::validDomain('' !== $m[2] ? 'www.'.$domain : $domain)) {
-                return null;
-            }
-
-            return [$link, '' !== $m[1] ? $link : 'http://'.$link, \strlen($link)];
+        if (1 !== \preg_match('/\G(?:((?:https?|ftp):\/\/)|(www\.))('.self::DOMAIN.')[^\s<]*/i', $text, $m, flags: 0, offset: $at)) {
+            return self::email($text, $at);
         }
+        $link = self::trimTrailing($m[0]);
+        $domain = self::trimTrailing($m[3]);
 
-        return self::email($text, $at);
+        return (
+            self::validDomain('' !== $m[2] ? 'www.'.$domain : $domain)
+                ? [$link, '' !== $m[1] ? $link : 'http://'.$link, \strlen($link)]
+                : null
+        );
     }
 
     /** @return array{string, string, int}|null */
@@ -46,11 +46,12 @@ final class ExtendedAutolinks
         }
         $address = \rtrim($m[0], characters: '.');
         $last = $address[\strlen($address) - 1];
-        if ('-' === $last || '_' === $last || !\str_contains(\substr($address, (int) \strpos($address, needle: '@')), needle: '.')) {
-            return null;
-        }
 
-        return [$address, 'mailto:'.$address, \strlen($address)];
+        return (
+            '-' === $last || '_' === $last || !\str_contains(\substr($address, (int) \strpos($address, needle: '@')), needle: '.')
+                ? null
+                : [$address, 'mailto:'.$address, \strlen($address)]
+        );
     }
 
     /** At least one period, and no underscore in the last two segments. */

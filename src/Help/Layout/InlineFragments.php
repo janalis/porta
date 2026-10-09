@@ -175,6 +175,18 @@ final class InlineFragments
         if (null !== $parsed && 'img' === $parsed[0]) {
             return [$this->picture($parsed[2]['alt'] ?? '', new ImageRef($parsed[2]['src'] ?? '', $parsed[2]['width'] ?? ''), $tag)];
         }
+
+        return $this->applied($tag);
+    }
+
+    /**
+     * A tag other than an image: what it does to the run's style and link,
+     * and what it draws; one this page does not understand stays as text.
+     *
+     * @return list<Fragment>
+     */
+    private function applied(HtmlInline $tag): array
+    {
         $effect = $this->html->apply($tag->literal, $this->style, $this->target);
         if (null === $effect) {
             return [new Fragment($tag->literal, $this->style->with(InlineStyle::MUTED), $this->target, $this->group, $tag->range)];

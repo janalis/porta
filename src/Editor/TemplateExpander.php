@@ -55,11 +55,9 @@ final class TemplateExpander
             return null;
         }
         $preceding = \substr($before, offset: 0, length: \strlen($before) - \strlen($abbreviation));
-        if ('' !== $preceding && 1 === \preg_match('/[\w$]$/', $preceding)) {
-            return null;
-        }
+        $glued = '' !== $preceding && 1 === \preg_match('/[\w$]$/', $preceding);
 
-        return ['consume' => \strlen($abbreviation), 'snippet' => $body];
+        return $glued ? null : ['consume' => \strlen($abbreviation), 'snippet' => $body];
     }
 
     /**
@@ -77,15 +75,16 @@ final class TemplateExpander
         }
         $expression = \substr($before, offset: 0, length: \strlen($before) - \strlen($abbreviation));
         $matches = [];
-        if (1 !== \preg_match('/(\$?[\w\\\\]+(?:(?:->|::|\.)\w+|\([^()]*\)|\[[^\[\]]*\])*)$/', $expression, $matches)) {
-            return null;
-        }
-        $receiver = $matches[1];
+        $receiver = 1 === \preg_match('/(\$?[\w\\\\]+(?:(?:->|::|\.)\w+|\([^()]*\)|\[[^\[\]]*\])*)$/', $expression, $matches) ? $matches[1] : null;
 
-        return [
-            'consume' => \strlen($receiver) + \strlen($abbreviation),
-            'snippet' => \str_replace(TemplateCatalog::EXPRESSION, $receiver, $body),
-        ];
+        return (
+            null === $receiver
+                ? null
+                : [
+                    'consume' => \strlen($receiver) + \strlen($abbreviation),
+                    'snippet' => \str_replace(TemplateCatalog::EXPRESSION, $receiver, $body),
+                ]
+        );
     }
 
     /**

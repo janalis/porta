@@ -85,10 +85,34 @@ final readonly class Beacon
         // @mago-expect analysis:mixed-assignment -- another machine's file: every field is narrowed below
         // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
         $data = \json_decode($json, associative: true);
-        if (!\is_array($data)) {
+        $data = \is_array($data) ? $data : null;
+        $strings = null === $data ? [] : \array_map(static fn (mixed $value): ?string => \is_string($value) ? $value : null, \array_intersect_key($data, [
+                'id' => 0,
+                'name' => 0,
+                'via' => 0,
+                'path' => 0,
+            ]));
+        $ints = null === $data ? null : self::ints($data);
+        $id = $strings['id'] ?? '';
+        $name = self::clean($strings['name'] ?? '');
+        $via = $strings['via'] ?? '';
+        $path = $strings['path'] ?? null;
+        if (null === $ints || !self::isId($id) || '' === $name || !\in_array($via, self::VIAS, strict: true)) {
             return null;
         }
-        $strings = \array_map(static fn (mixed $value): ?string => \is_string($value) ? $value : null, \array_intersect_key($data, ['id' => 0, 'name' => 0, 'via' => 0, 'path' => 0]));
+
+        return new self($id, $name, $via, null === $path ? null : self::relative($path), $ints['line'], $ints['col'], $ints['anchorLine'], $ints['anchorCol'], $ints['beat']);
+    }
+
+    /**
+     * The integer fields of $data, or null when one is missing or not an int.
+     *
+     * @param array<mixed> $data
+     *
+     * @return array<string, int>|null
+     */
+    private static function ints(array $data): ?array
+    {
         $ints = [];
         foreach (['line', 'col', 'anchorLine', 'anchorCol', 'beat'] as $key) {
             // @mago-expect analysis:mixed-assignment -- narrowed on the next line
@@ -98,15 +122,8 @@ final readonly class Beacon
             }
             $ints[$key] = $value;
         }
-        $id = $strings['id'] ?? '';
-        $name = self::clean($strings['name'] ?? '');
-        $via = $strings['via'] ?? '';
-        $path = $strings['path'] ?? null;
-        if (!self::isId($id) || '' === $name || !\in_array($via, self::VIAS, strict: true)) {
-            return null;
-        }
 
-        return new self($id, $name, $via, null === $path ? null : self::relative($path), $ints['line'], $ints['col'], $ints['anchorLine'], $ints['anchorCol'], $ints['beat']);
+        return $ints;
     }
 
     /** $path when it names a file inside a project — relative, every segment a name — else null. */

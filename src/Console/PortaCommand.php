@@ -117,21 +117,16 @@ final class PortaCommand extends Command
         #[Option('Language server command (overrides .porta.json and $PORTA_LSP)')]
         ?string $lsp = null,
         #[Option('Start with no language server')]
-        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $noLsp = false,
         #[Option('Open the file scrolled to this line', shortcut: 'l')]
         ?string $line = null,
         #[Option('Compare two files, as git difftool runs it: --diff LOCAL REMOTE')]
-        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $diff = false,
         #[Option('Resolve a merge, as git mergetool runs it: --merge LOCAL REMOTE BASE MERGED')]
-        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $merge = false,
         #[Option('Make porta git\'s difftool and mergetool, in the global git config')]
-        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $gitSetup = false,
         #[Option('Replace this porta.phar with the latest release')]
-        // @mago-expect lint:no-boolean-flag-parameter -- Symfony Console's #[Option] shape: a bool option IS a flag.
         bool $selfUpdate = false,
         #[Option('With --git-setup: print the git config commands; with --self-update: only say what is available')]
         bool $dryRun = false,
@@ -142,31 +137,42 @@ final class PortaCommand extends Command
         $errors = self::errorOutput($output);
         $io = new SymfonyStyle($input, $errors);
 
-        if (null !== $lsp && $noLsp) {
-            $io->error('porta: --lsp and --no-lsp contradict each other; pass one.');
-
-            return Command::INVALID;
-        }
-
-        if (null !== $line && !\ctype_digit($line)) {
-            $io->error(\sprintf('porta: --line expects a line number, got "%s".', $line));
-
-            return Command::INVALID;
-        }
-
-        $problem = self::argumentProblem(\count($path), $diff, $merge, $gitSetup || $selfUpdate, $dryRun, null !== $line, $gitSetup && $selfUpdate);
+        $problem = match (true) {
+            null !== $lsp && $noLsp => '--lsp and --no-lsp contradict each other; pass one.',
+            null !== $line && !\ctype_digit($line) => \sprintf('--line expects a line number, got "%s".', $line),
+            default => self::argumentProblem(\count($path), $diff, $merge, $gitSetup || $selfUpdate, $dryRun, null !== $line, $gitSetup && $selfUpdate),
+        };
         if (null !== $problem) {
             $io->error('porta: '.$problem);
 
             return Command::INVALID;
         }
-        if ($gitSetup) {
-            return $this->setUpGit($output, $io, $dryRun);
-        }
-        if ($selfUpdate) {
-            return $this->updateSelf($output, $io, $dryRun);
-        }
 
+        return match (true) {
+            $gitSetup => $this->setUpGit($output, $io, $dryRun),
+            $selfUpdate => $this->updateSelf($output, $io, $dryRun),
+            default => $this->open($output, $errors, $io, $path, $line, $diff, $merge, $lsp, $noLsp),
+        };
+    }
+
+    /**
+     * An ordinary or a git tool launch: the workspace the arguments name,
+     * opened in the IDE.
+     *
+     * @param list<string> $path
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- the command's own flags, passed through from __invoke().
+    private function open(
+        OutputInterface $output,
+        OutputInterface $errors,
+        SymfonyStyle $io,
+        array $path,
+        ?string $line,
+        bool $diff,
+        bool $merge,
+        ?string $lsp,
+        bool $noLsp,
+    ): int {
         $cwd = (string) \getcwd();
         try {
             $workspace = $diff || $merge ? self::toolWorkspace($cwd, $path, $merge) : self::editWorkspace($cwd, $path[0] ?? $cwd, $line);
@@ -176,6 +182,13 @@ final class PortaCommand extends Command
             return Command::FAILURE;
         }
 
+        return $this->launchInto($output, $errors, $io, $workspace, $lsp, $noLsp);
+    }
+
+    /** Boots the IDE on $workspace, once the terminal is known to be interactive. */
+    // @mago-expect lint:no-boolean-flag-parameter -- --no-lsp, passed through from __invoke().
+    private function launchInto(OutputInterface $output, OutputInterface $errors, SymfonyStyle $io, Workspace $workspace, ?string $lsp, bool $noLsp): int
+    {
         if (!($this->isInteractive)()) {
             $io->error('porta: an interactive terminal is required.');
 
@@ -200,24 +213,28 @@ final class PortaCommand extends Command
                 throw $e; // -v: let the console runner render the full trace
             }
             $io->error(\sprintf('porta: fatal: %s', $e->getMessage()));
-            if (!$booted) {
-                // The likeliest BOOT failure is a container that no longer
-                // compiles against a stale dump; say the remedy instead of
-                // dumping a stack trace at someone who just typed `porta .`.
-                $errors->writeln('A stale container cache can break startup — delete ~/.cache/porta (or $PORTA_CACHE_DIR) and retry. Run with -v for the full trace.');
-
-                return Command::FAILURE;
-            }
-            // A crash mid-session has nothing to do with the cache. Keep the
-            // evidence where the in-session error handler keeps its own — the
-            // crash took the trace with it, and a -v rerun reproduces nothing.
-            DiagnosticLog::forRoot($workspace->rootDir, 'error')->append(\sprintf("%s: %s\n%s", $e::class, $e->getMessage(), $e->getTraceAsString()));
-            $errors->writeln('porta crashed — the trace was appended to .porta/error.log. Run with -v to see it here.');
-
-            return Command::FAILURE;
+            // The likeliest BOOT failure is a container that no longer
+            // compiles against a stale dump; say the remedy instead of
+            // dumping a stack trace at someone who just typed `porta .`.
+            match ($booted) {
+                false => $errors->writeln('A stale container cache can break startup — delete ~/.cache/porta (or $PORTA_CACHE_DIR) and retry. Run with -v for the full trace.'),
+                true => self::logCrash($errors, $workspace, $e),
+            };
+            $exitCode = Command::FAILURE;
         }
 
         return $exitCode;
+    }
+
+    /**
+     * A crash mid-session has nothing to do with the cache. Keep the
+     * evidence where the in-session error handler keeps its own — the
+     * crash took the trace with it, and a -v rerun reproduces nothing.
+     */
+    private static function logCrash(OutputInterface $errors, Workspace $workspace, \Throwable $e): void
+    {
+        DiagnosticLog::forRoot($workspace->rootDir, 'error')->append(\sprintf("%s: %s\n%s", $e::class, $e->getMessage(), $e->getTraceAsString()));
+        $errors->writeln('porta crashed — the trace was appended to .porta/error.log. Run with -v to see it here.');
     }
 
     /**
@@ -288,22 +305,19 @@ final class PortaCommand extends Command
             return Command::SUCCESS;
         }
         $failed = $setup->apply();
-        if (null !== $failed) {
-            $io->error(\sprintf('porta: could not write %s to the global git config — is git installed?', $failed));
+        match ($failed) {
+            null => $output->writeln([
+                'porta is now git\'s difftool and mergetool:',
+                '  git difftool          compare the working tree with the index, a file at a time',
+                '  git mergetool         resolve each conflicted file; save, then Ctrl+Q',
+            ]),
+            default => $io->error(\sprintf('porta: could not write %s to the global git config — is git installed?', $failed)),
+        };
 
-            return Command::FAILURE;
-        }
-        $output->writeln([
-            'porta is now git\'s difftool and mergetool:',
-            '  git difftool          compare the working tree with the index, a file at a time',
-            '  git mergetool         resolve each conflicted file; save, then Ctrl+Q',
-        ]);
-
-        return Command::SUCCESS;
+        return null === $failed ? Command::SUCCESS : Command::FAILURE;
     }
 
     /** --self-update: fetch the latest release and swap it over the running phar (or, dry, say what is there). */
-    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
     private function updateSelf(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
     {
         if ('' === $this->phar) {
@@ -314,26 +328,31 @@ final class PortaCommand extends Command
 
             return Command::FAILURE;
         }
+
+        return $this->updatePhar($output, $io, $dryRun);
+    }
+
+    /** --self-update from a phar: fetch the latest release and, unless dry or already current, install it. */
+    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
+    private function updatePhar(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
+    {
         $update = new SelfUpdate($this->process, $this->env);
         try {
             $latest = $update->latest();
-            if (!SelfUpdate::isNewer($latest, $this->version)) {
-                $output->writeln(\sprintf('porta %s is up to date (latest release: %s).', $this->version, $latest));
-
-                return Command::SUCCESS;
+            $newer = SelfUpdate::isNewer($latest, $this->version);
+            if ($newer && !$dryRun) {
+                $update->install($latest, $this->phar, \PHP_BINARY);
             }
-            if ($dryRun) {
-                $output->writeln(\sprintf('porta %s can be updated to %s.', $this->version, $latest));
-
-                return Command::SUCCESS;
-            }
-            $update->install($latest, $this->phar, \PHP_BINARY);
         } catch (\RuntimeException $e) {
             $io->error('porta: self-update: '.$e->getMessage());
 
             return Command::FAILURE;
         }
-        $output->writeln(\sprintf('porta updated: %s → %s.', $this->version, $latest));
+        $output->writeln(match (true) {
+            !$newer => \sprintf('porta %s is up to date (latest release: %s).', $this->version, $latest),
+            $dryRun => \sprintf('porta %s can be updated to %s.', $this->version, $latest),
+            default => \sprintf('porta updated: %s → %s.', $this->version, $latest),
+        });
 
         return Command::SUCCESS;
     }

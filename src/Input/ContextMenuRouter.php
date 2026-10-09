@@ -85,22 +85,39 @@ final readonly class ContextMenuRouter
      *
      * A surface that claims the pointer answers for it even with nothing to
      * offer (the tab strip's empty tail, the tree below its last node): each
-     * returns, rather than setting a "handled" flag every later surface had to
-     * test and an `$items` each could overwrite.
+     * arm answers, rather than setting a "handled" flag every later surface had
+     * to test and an `$items` each could overwrite.
      *
      * @return list<MenuItem>|null
      */
     private function itemsAt(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): ?array
     {
-        if (null !== $editorRect && $editorRect->contains($mouse->row, $mouse->col)) {
-            return $this->editorItems($editorRect->toRelative($mouse->row, $mouse->col));
-        }
-        if (null !== $tabsRect && $tabsRect->contains($mouse->row, $mouse->col)) {
-            return $this->tabItems($tabsRect->toRelative($mouse->row, $mouse->col));
-        }
-        if (null !== $treeRect && $treeRect->contains($mouse->row, $mouse->col)) {
-            return $this->treeItems($treeRect->toRelative($mouse->row, $mouse->col)['row']);
-        }
+        $editorRel = self::relativeIn($editorRect, $mouse);
+        $tabsRel = self::relativeIn($tabsRect, $mouse);
+        $treeRel = self::relativeIn($treeRect, $mouse);
+
+        return match (true) {
+            null !== $editorRel => $this->editorItems($editorRel),
+            null !== $tabsRel => $this->tabItems($tabsRel),
+            null !== $treeRel => $this->treeItems($treeRel['row']),
+            default => $this->dockItemsAt($mouse),
+        };
+    }
+
+    /** @return array{row: int, col: int}|null the pointer relative to the rect, or null outside it */
+    private static function relativeIn(?WidgetRect $rect, MouseEvent $mouse): ?array
+    {
+        return null !== $rect && $rect->contains($mouse->row, $mouse->col) ? $rect->toRelative($mouse->row, $mouse->col) : null;
+    }
+
+    /**
+     * Below the panes: a dock tab, a results or debugger row, a view's own
+     * panes, then the status bar.
+     *
+     * @return list<MenuItem>|null
+     */
+    private function dockItemsAt(MouseEvent $mouse): ?array
+    {
         $stripCol = $this->hover->dockStripRelCol($mouse);
         if (null !== $stripCol) {
             $hit = $this->dockTabs->tabAt($stripCol);
@@ -129,15 +146,12 @@ final readonly class ContextMenuRouter
     {
         $this->tui->setFocus($this->panes->editor);
         $hint = $this->panes->editor->mouse->inlayHintAt($rel['row'], $rel['col'], $this->panes->editor->viewport());
-        if (null !== $hint) {
-            return $this->contextItems->inlayHintItems($hint);
-        }
-        if (!$this->panes->editor->getDocument()->hasSelection()) {
+        if (null === $hint && !$this->panes->editor->getDocument()->hasSelection()) {
             $this->panes->editor->clearExtraCarets();
             $this->panes->editor->clickAt($rel['row'], $rel['col']);
         }
 
-        return $this->contextItems->editorItems();
+        return null === $hint ? $this->contextItems->editorItems() : $this->contextItems->inlayHintItems($hint);
     }
 
     /**
@@ -171,15 +185,12 @@ final readonly class ContextMenuRouter
             return $this->projects->siblingItems();
         }
         $node = $this->panes->tree->nodeAt($row);
-        if (null === $node) {
-            return null;
-        }
 
-        return (
-            $node->isDir
-                ? $this->treeOps->contextItems($node)
-                : [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)]
-        );
+        return match (true) {
+            null === $node => null,
+            $node->isDir => $this->treeOps->contextItems($node),
+            default => [...$this->treeOps->contextItems($node), ...$this->contextItems->fileItems($node->path)],
+        };
     }
 
     /**
@@ -227,21 +238,22 @@ final readonly class ContextMenuRouter
      */
     private function dockRowItems(MouseEvent $mouse): ?array
     {
+        $items = null;
         foreach ([$this->resultsPanel, $this->debugPanel] as $panel) {
-            $rect = $this->hit->rect($panel);
-            if (null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
+            $rel = self::relativeIn($this->hit->rect($panel), $mouse);
+            if (null === $rel) {
                 continue;
             }
-            $path = $panel->pathAt($rect->toRelative($mouse->row, $mouse->col)['row']);
-            if (null === $path) {
-                return null;
+            $path = $panel->pathAt($rel['row']);
+            if (null !== $path) {
+                $absolute = $this->paths->absolute($path);
+                $items = [...$this->treeOps->copyPathItems($absolute), ...$this->contextItems->fileItems($absolute)];
             }
-            $absolute = $this->paths->absolute($path);
 
-            return [...$this->treeOps->copyPathItems($absolute), ...$this->contextItems->fileItems($absolute)];
+            break;
         }
 
-        return null;
+        return $items;
     }
 
     /** The status-bar column under the pointer, or null off the row. */

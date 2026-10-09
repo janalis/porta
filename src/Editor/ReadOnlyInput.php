@@ -34,20 +34,20 @@ final class ReadOnlyInput
         $caret = [$document->cursorLine, $document->cursorCol];
         $selection = $document->getSelectionRange();
         $input();
-        if ($version === $document->version) {
-            return false;
-        }
-        $document->replaceAll($text);
-        // The way back is the user's no more than the way there was: the
-        // history a read-only document keeps is the one it was handed.
-        $document->readOnly = true;
-        $document->setCursor($caret[0], $caret[1]);
-        if (null !== $selection) {
-            $start = [$selection['startLine'], $selection['startCol']];
-            $anchor = $start === $caret ? [$selection['endLine'], $selection['endCol']] : $start;
-            $document->setSelectionRange($anchor[0], $anchor[1], $caret[0], $caret[1]);
+        $refused = $version !== $document->version;
+        if ($refused) {
+            $document->replaceAll($text);
+            // The way back is the user's no more than the way there was: the
+            // history a read-only document keeps is the one it was handed.
+            $document->readOnly = true;
+            $document->setCursor($caret[0], $caret[1]);
+            if (null !== $selection) {
+                $start = [$selection['startLine'], $selection['startCol']];
+                $anchor = $start === $caret ? [$selection['endLine'], $selection['endCol']] : $start;
+                $document->setSelectionRange($anchor[0], $anchor[1], $caret[0], $caret[1]);
+            }
         }
 
-        return true;
+        return $refused;
     }
 }

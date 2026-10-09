@@ -238,11 +238,10 @@ final readonly class TextField
         // append-only.
         $before = $this->shown(\substr($this->line->getText(), offset: 0, length: $this->line->getCursor()));
         $caret = AnsiUtils::visibleWidth($before);
-        if (null !== $width) {
-            return AnsiText::caretWindow($display, $caret, $width, $this->style->marker());
-        }
 
-        return $before.$this->style->marker().\substr($display, \strlen($before));
+        return null !== $width
+            ? AnsiText::caretWindow($display, $caret, $width, $this->style->marker())
+            : $before.$this->style->marker().\substr($display, \strlen($before));
     }
 
     /**

@@ -149,23 +149,23 @@ final class NonBlockingWriter
             \fflush($this->stream);
         }
         $this->buffer = \substr($this->buffer, $n);
+        // Read once: $onDrain may queue more, and that write flushes itself.
+        $drained = '' === $this->buffer;
 
-        if ('' === $this->buffer) {
-            if (null !== $this->watcher) {
-                EventLoop::cancel($this->watcher);
-                $this->watcher = null;
-                // A backlog (not an immediately-accepted write) just drained.
-                if (null !== $this->onDrain) {
-                    ($this->onDrain)();
-                }
+        if ($drained && null !== $this->watcher) {
+            EventLoop::cancel($this->watcher);
+            $this->watcher = null;
+            // A backlog (not an immediately-accepted write) just drained.
+            if (null !== $this->onDrain) {
+                ($this->onDrain)();
             }
-
-            return;
         }
         // Remainder queued: drain when the peer accepts more. A peer that dies
         // while bytes are queued reports writable-with-error, and the next
         // fwrite returns false → the error path above.
-        $this->watcher ??= EventLoop::onWritable($this->stream, $this->flush(...));
+        if (!$drained) {
+            $this->watcher ??= EventLoop::onWritable($this->stream, $this->flush(...));
+        }
     }
 
     private function fail(string $reason): void

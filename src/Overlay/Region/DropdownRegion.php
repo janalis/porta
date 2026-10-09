@@ -123,15 +123,10 @@ final readonly class DropdownRegion
      */
     public function itemAt(int $row, int $col): ?int
     {
-        if (!$this->contains($row, $col)) {
-            return null;
-        }
-        if (!$this->framed) {
-            return $this->first + $row - $this->top;
-        }
         $onBorderRow = $row === $this->top || $row === ($this->top + $this->count - 1);
         $onBorderCol = $col === $this->col || $col === ($this->col + $this->width - 1);
+        $onBorder = $this->framed && ($onBorderRow || $onBorderCol);
 
-        return $onBorderRow || $onBorderCol ? null : $this->first + $row - $this->top - 1;
+        return !$this->contains($row, $col) || $onBorder ? null : $this->first + $row - $this->top - ($this->framed ? 1 : 0);
     }
 }

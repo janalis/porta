@@ -396,81 +396,63 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     #[\Override]
     public function handleInput(string $data): void
     {
-        if ($this->inputHookHandled($data)) {
-            return;
-        }
-        if (!$this->open) {
+        if ($this->inputHookHandled($data) || !$this->open) {
             return;
         }
 
         $kb = $this->getKeybindings();
 
-        if ($kb->matches($data, 'close')) {
-            // A typed filter goes first, as in every filtered list: a typo
-            // must not also cost you the results.
-            $field = $this->activeTextField();
-            if (null !== $field && '' !== $field->value()) {
-                $field->clear();
-                $this->afterFieldEdit();
-                $this->invalidate();
+        match (true) {
+            $kb->matches($data, 'close') => $this->closeKey(),
+            // A page is the rows the panel shows, so the row landed on was drawn.
+            ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows), page: $this->visibleRows) => $this->invalidate(),
+            $kb->matches($data, 'jump') => $this->activateRow($this->list->selected()),
+            $this->grouped && $kb->matches($data, 'toggle_all') => $this->toggleAllGroups(),
+            $this->grouped && $kb->matches($data, 'toggle_group') => $this->cycleGrouping(),
+            $this->grouped && $kb->matches($data, 'export') => $this->events?->dispatch(new ResultsExportRequested()),
+            $this->grouped && $kb->matches($data, 'toggle_context') => $this->toggleContext($this->list->selected()),
+            $kb->matches($data, 'rerun') => $this->events?->dispatch(new ResultsRerunRequested()),
+            $kb->matches($data, 'delete_char_backward') => $this->editFilter(static fn (TextField $field): bool => $field->backspace()),
+            default => $this->editFilter(static fn (TextField $field): bool => $field->editKey($data, $kb) || $field->insert($data)),
+        };
+    }
 
-                return;
-            }
-            $this->dismiss();
-
-            return;
-        }
-        // A page is the rows the panel shows, so the row landed on was drawn.
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->displayRows), page: $this->visibleRows)) {
-            $this->invalidate();
-
-            return;
-        }
-        if ($kb->matches($data, 'jump')) {
-            $this->activateRow($this->list->selected());
-
-            return;
-        }
-        if ($this->grouped && $kb->matches($data, 'toggle_all')) {
-            $this->toggleAllGroups();
-
-            return;
-        }
-        if ($this->grouped && $kb->matches($data, 'toggle_group')) {
-            $this->grouping = $this->grouping->next();
-            $this->collapsed = [];
-            $this->rebuildView();
-            $this->invalidate();
-
-            return;
-        }
-        if ($this->grouped && $kb->matches($data, 'export')) {
-            $this->events?->dispatch(new ResultsExportRequested());
-
-            return;
-        }
-        if ($this->grouped && $kb->matches($data, 'toggle_context')) {
-            $this->toggleContext($this->list->selected());
-
-            return;
-        }
-        if ($kb->matches($data, 'rerun')) {
-            $this->events?->dispatch(new ResultsRerunRequested());
-
-            return;
-        }
-        if ($kb->matches($data, 'delete_char_backward')) {
-            $field = $this->activeTextField();
-            if (null !== $field && $field->backspace()) {
-                $this->afterFieldEdit();
-                $this->invalidate();
-            }
-
-            return;
-        }
-
+    /**
+     * Esc: a typed filter goes first, as in every filtered list — a typo
+     * must not also cost you the results. With none, the panel closes.
+     */
+    private function closeKey(): void
+    {
         $field = $this->activeTextField();
-        if (null !== $field && ($field->editKey($data, $kb) || $field->insert($data))) {
+        if (null !== $field && '' !== $field->value()) {
+            $field->clear();
+            $this->afterFieldEdit();
+            $this->invalidate();
+
+            return;
+        }
+        $this->dismiss();
+    }
+
+    /** Group by the next grouping, every group open again. */
+    private function cycleGrouping(): void
+    {
+        $this->grouping = $this->grouping->next();
+        $this->collapsed = [];
+        $this->rebuildView();
+        $this->invalidate();
+    }
+
+    /**
+     * Apply $edit to the filter field, when the panel shows one, and re-narrow
+     * the view when it changed something.
+     *
+     * @param \Closure(TextField): bool $edit
+     */
+    private function editFilter(\Closure $edit): void
+    {
+        $field = $this->activeTextField();
+        if (null !== $field && $edit($field)) {
             $this->afterFieldEdit();
             $this->invalidate();
         }
@@ -514,11 +496,10 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
 
             return;
         }
-        if (null !== $row->contextText) {
-            return; // context rows are inert
+        if (null === $row->contextText) { // context rows are inert
+            $result = $this->results[$row->matchIndex];
+            $this->events?->dispatch(new ResultRowActivated($result['path'], $result['line']));
         }
-        $result = $this->results[$row->matchIndex];
-        $this->events?->dispatch(new ResultRowActivated($result['path'], $result['line']));
     }
 
     /** Alt+M on a match row toggles the neighbouring source lines shown beneath it. */
@@ -708,17 +689,13 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private function matchLine(array $result, string $bg, int $columns): string
     {
         $prefixWidth = $this->prefixWidth($result);
-        if ($this->grouped) {
-            $text = $this->matchIndent().$this->styles->of(Role::TabAccent)->apply($this->groupedLabel($result)).'  '.$this->body($result, $prefixWidth, $columns);
-
-            return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
-        }
-        if ('' === $result['path']) {
-            // Location-less rows (the log tools): plain text, no path accent.
-            return $this->highlightMatch(' '.$this->body($result, 1, $columns), 1, $result, $bg, $columns);
-        }
-        $location = $result['path'].':'.($result['line'] + 1);
-        $text = ' '.$this->styles->of(Role::TabAccent)->apply($location).'  '.$this->body($result, $prefixWidth, $columns);
+        $text = match (true) {
+            $this->grouped => $this->matchIndent().$this->styles->of(Role::TabAccent)->apply($this->groupedLabel($result)).'  '.$this->body($result, $prefixWidth, $columns),
+            // Location-less rows (the log tools): plain text, no path accent —
+            // and a prefix of the lead space alone.
+            '' === $result['path'] => ' '.$this->body($result, $prefixWidth, $columns),
+            default => ' '.$this->styles->of(Role::TabAccent)->apply($result['path'].':'.($result['line'] + 1)).'  '.$this->body($result, $prefixWidth, $columns),
+        };
 
         return $this->highlightMatch($text, $prefixWidth, $result, $bg, $columns);
     }
@@ -750,17 +727,17 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
         $index = $this->isVisible() ? $this->rowIndexAt($row) : null;
         $match = null === $index ? -1 : $this->displayRows[$index]->matchIndex;
         $result = $this->results[$match] ?? null;
-        if (null === $result) {
-            return null;
+        $tooltip = null;
+        if (null !== $result) {
+            $tail = $result['tail'] ?? '';
+            $text = $result['text'].('' === $tail ? '' : '  '.$tail);
+            if (($this->prefixWidth($result) + AnsiUtils::visibleWidth($text)) > $this->drawnColumns) {
+                $location = '' === $result['path'] ? '' : $result['path'].':'.($result['line'] + 1)."\n";
+                $tooltip = new Tooltip('results:'.$match, $location.$text, $row, 0, $this->drawnColumns);
+            }
         }
-        $tail = $result['tail'] ?? '';
-        $text = $result['text'].('' === $tail ? '' : '  '.$tail);
-        if (($this->prefixWidth($result) + AnsiUtils::visibleWidth($text)) <= $this->drawnColumns) {
-            return null;
-        }
-        $location = '' === $result['path'] ? '' : $result['path'].':'.($result['line'] + 1)."\n";
 
-        return new Tooltip('results:'.$match, $location.$text, $row, 0, $this->drawnColumns);
+        return $tooltip;
     }
 
     /**
@@ -781,19 +758,17 @@ final class ResultsPanelWidget extends DockPanelWidget implements FocusableInter
     private function body(array $result, int $prefixWidth, int $columns): string
     {
         $tail = $result['tail'] ?? '';
-        if ('' === $tail) {
-            return $result['text'];
-        }
         // Two columns for the gap the rule already sat behind.
         $room = $columns - $prefixWidth - AnsiUtils::visibleWidth($tail) - 2;
-        // Too narrow to hold both: the sentence wins, and the ordinary
-        // whole-row cut takes the tail as it always did. A rule name alone,
-        // with no message beside it, names nothing you could act on.
-        if ($room < self::MESSAGE_FLOOR) {
-            return $result['text'].'  '.$tail;
-        }
 
-        return AnsiText::truncate($result['text'], $room).'  '.$tail;
+        return match (true) {
+            '' === $tail => $result['text'],
+            // Too narrow to hold both: the sentence wins, and the ordinary
+            // whole-row cut takes the tail as it always did. A rule name alone,
+            // with no message beside it, names nothing you could act on.
+            $room < self::MESSAGE_FLOOR => $result['text'].'  '.$tail,
+            default => AnsiText::truncate($result['text'], $room).'  '.$tail,
+        };
     }
 
     /**

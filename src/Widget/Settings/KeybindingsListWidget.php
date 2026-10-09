@@ -183,61 +183,49 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         }
         $kb = $this->getKeybindings();
 
-        // Capture mode consumes exactly the next key: Esc cancels, anything
-        // else is handed raw to the controller to parse/validate/persist.
-        if (null !== $this->capturingIndex) {
-            $row = $this->shown[$this->capturingIndex] ?? null;
-            $this->capturingIndex = null;
-            if (!$kb->matches($data, 'exit_view') && null !== $row && null !== $this->onRebind) {
-                ($this->onRebind)($row->action, $data);
-            }
-            $this->invalidate();
+        match (true) {
+            null !== $this->capturingIndex => $this->captureKey($this->capturingIndex, $data, $kb),
+            $this->filtering && $this->editFilter($data, $kb) => null, // the filter field took the key
+            $kb->matches($data, 'filter') => $this->startFilter(),
+            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, 'show_settings') => $this->events?->dispatch(new SettingsSectionRequested('general')),
+            $kb->matches($data, 'rebind') => $this->armCapture(),
+            $kb->matches($data, 'reset_binding') => $this->resetSelected(),
+            // The title row — and the filter row while it is showing — are not
+            // list rows, so a page is what render() hands follow(), not the pane
+            // height. With the filter open the difference was two entries.
+            ListNavigation::handleKey($data, $kb, $this->list, \count($this->shown), page: $this->lastRows - $this->headerRows()) => $this->invalidate(),
+            default => null,
+        };
+    }
 
-            return;
+    /**
+     * Capture mode consumes exactly the next key: Esc cancels, anything
+     * else is handed raw to the controller to parse/validate/persist.
+     */
+    private function captureKey(int $index, string $data, Keybindings $kb): void
+    {
+        $row = $this->shown[$index] ?? null;
+        $this->capturingIndex = null;
+        if (!$kb->matches($data, 'exit_view') && null !== $row && null !== $this->onRebind) {
+            ($this->onRebind)($row->action, $data);
         }
+        $this->invalidate();
+    }
 
-        if ($this->filtering && $this->editFilter($data, $kb)) {
-            return;
-        }
-        if ($kb->matches($data, 'filter')) {
-            $this->filtering = true;
-            $this->invalidate();
+    private function startFilter(): void
+    {
+        $this->filtering = true;
+        $this->invalidate();
+    }
 
-            return;
-        }
-        if ($kb->matches($data, 'exit_view')) {
-            $this->fire($this->onExit);
-
-            return;
-        }
-        if ($kb->matches($data, 'focus_next_pane')) {
-            $this->fire($this->onFocusNext);
-
-            return;
-        }
-        if ($kb->matches($data, 'show_settings')) {
-            $this->events?->dispatch(new SettingsSectionRequested('general'));
-
-            return;
-        }
-        if ($kb->matches($data, 'rebind')) {
-            $this->armCapture();
-
-            return;
-        }
-        if ($kb->matches($data, 'reset_binding')) {
-            $row = $this->shown[$this->list->selected()] ?? null;
-            if (null !== $row && null !== $this->onReset) {
-                ($this->onReset)($row->action);
-            }
-
-            return;
-        }
-        // The title row — and the filter row while it is showing — are not
-        // list rows, so a page is what render() hands follow(), not the pane
-        // height. With the filter open the difference was two entries.
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->shown), page: $this->lastRows - $this->headerRows())) {
-            $this->invalidate();
+    /** Put the selected action back on its default keys. */
+    private function resetSelected(): void
+    {
+        $row = $this->shown[$this->list->selected()] ?? null;
+        if (null !== $row && null !== $this->onReset) {
+            ($this->onReset)($row->action);
         }
     }
 
@@ -280,30 +268,21 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
      */
     private function editFilter(string $data, Keybindings $kb): bool
     {
-        if ($kb->matches($data, 'exit_view')) {
+        $leave = $kb->matches($data, 'exit_view');
+        $backspace = !$leave && $kb->matches($data, 'delete_char_backward');
+        if ($leave) {
             $this->filtering = false;
             $this->filter->clear();
+        }
+        // Leaving always re-filters (the query is gone); Backspace and typing
+        // only when they changed it.
+        $changed = $leave || ($backspace ? $this->filter->backspace() : $this->filter->editKey($data, $kb) || $this->filter->insert($data));
+        if ($changed) {
             $this->applyFilter();
             $this->invalidate();
-
-            return true;
-        }
-        if ($kb->matches($data, 'delete_char_backward')) {
-            if ($this->filter->backspace()) {
-                $this->applyFilter();
-                $this->invalidate();
-            }
-
-            return true;
-        }
-        if ($this->filter->editKey($data, $kb) || $this->filter->insert($data)) {
-            $this->applyFilter();
-            $this->invalidate();
-
-            return true;
         }
 
-        return false;
+        return $leave || $backspace || $changed;
     }
 
     /** The title and the rule under it, plus the boxed filter field while it is showing. */

@@ -112,6 +112,9 @@ final class MouseRouter
         $tabsRect = $this->hit->rect($this->panes->tabBar);
         $editorRect = $this->hit->rect($this->panes->editor);
         $sepRect = $this->hit->rect($this->separator);
+        $activeView = null;
+        $viewSepRect = null;
+        $viewLeftRect = null;
 
         // While a view window is open the tree, tabs and editor stay mounted
         // behind it, dimmed — and out of reach: the window is modal, so a press
@@ -122,40 +125,43 @@ final class MouseRouter
             $tabsRect = null;
             $editorRect = null;
             $sepRect = null;
-        }
-        // The open view's drag column and left edge. Core hit-tests its OWN
-        // widgets — it minted these regions — so the two verbs the views used
-        // to expose for this are gone rather than shared, and one pair of rects
-        // replaces a pair per view core happened to know about.
-        $activeView = $this->views->isAnyOpen() ? $this->views->activeId() : null;
-        $viewRegion = null === $activeView ? null : $this->regions->find($activeView);
-        $viewSepRect = null === $viewRegion ? null : $this->hit->rect($viewRegion->separator());
-        $viewLeftRect = null === $viewRegion ? null : $this->hit->rect($viewRegion->sidebar());
-
-        if ($mouse->wheel) {
-            // The Welcome modal is app-modal: every wheel is its while open.
-            if ($this->windows->isModalOpen()) {
-                $this->windows->wheel(new WheelGesture($mouse, WheelAxis::Vertical, WheelStep::rows($mouse)));
-                $this->tui->requestRender();
-
-                return;
+            // The open view's drag column and left edge. Core hit-tests its OWN
+            // widgets — it minted these regions — so the two verbs the views used
+            // to expose for this are gone rather than shared, and one pair of rects
+            // replaces a pair per view core happened to know about.
+            $activeView = $this->views->activeId();
+            $viewRegion = null === $activeView ? null : $this->regions->find($activeView);
+            if (null !== $viewRegion) {
+                $viewSepRect = $this->hit->rect($viewRegion->separator());
+                $viewLeftRect = $this->hit->rect($viewRegion->sidebar());
             }
-            $this->wheel->route($mouse, $treeRect, $tabsRect, $editorRect);
-
-            return;
         }
 
-        // Bare hover-move (mouse mode 1003): track the row under the pointer in
-        // whichever list popup/panel is open, like PhpStorm's menu hovering.
-        if ($mouse->isMove()) {
-            $this->hover->handle($mouse, $editorRect, $this->views->activeId());
+        match (true) {
+            // The Welcome modal is app-modal: every wheel is its while open.
+            $mouse->wheel && $this->windows->isModalOpen() => $this->wheelModal($mouse),
+            $mouse->wheel => $this->wheel->route($mouse, $treeRect, $tabsRect, $editorRect),
+            // Bare hover-move (mouse mode 1003): track the row under the pointer in
+            // whichever list popup/panel is open, like PhpStorm's menu hovering.
+            $mouse->isMove() => $this->hover->handle($mouse, $editorRect, $this->views->activeId()),
+            $this->continueDrag($mouse, $treeRect, $tabsRect, $editorRect, $viewLeftRect) => null,
+            default => $this->press($mouse, $treeRect, $tabsRect, $editorRect, $sepRect, $activeView, $viewSepRect),
+        };
+    }
 
-            return;
-        }
+    private function wheelModal(MouseEvent $mouse): void
+    {
+        $this->windows->wheel(new WheelGesture($mouse, WheelAxis::Vertical, WheelStep::rows($mouse)));
+        $this->tui->requestRender();
+    }
 
-        // Drags in progress (text/column selection, tab reorder, pane resize)
-        // consume the event wherever the pointer now is.
-        if (
+    /**
+     * Drags in progress (text/column selection, tab reorder, pane resize)
+     * consume the event wherever the pointer now is.
+     */
+    private function continueDrag(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect, ?WidgetRect $viewLeftRect): bool
+    {
+        return (
             $this->continueTextDrag($mouse, $editorRect)
             || $this->continueColumnDrag($mouse, $editorRect)
             || $this->continueTabDrag($mouse, $tabsRect)
@@ -166,10 +172,19 @@ final class MouseRouter
             || $this->windows->continueDrag($mouse)
             || $this->continueWindowDrag($mouse)
             || $this->layout->continueResizeDrag($mouse, $treeRect, $viewLeftRect)
-        ) {
-            return;
-        }
+        );
+    }
 
+    /** A press, once no drag took the event: the right button's menu, or the left's click. */
+    private function press(
+        MouseEvent $mouse,
+        ?WidgetRect $treeRect,
+        ?WidgetRect $tabsRect,
+        ?WidgetRect $editorRect,
+        ?WidgetRect $sepRect,
+        ?string $activeView,
+        ?WidgetRect $viewSepRect,
+    ): void {
         // Right-click opens a context menu for whichever pane is under the pointer
         // — swallowed while the Welcome modal is open (no context menus over it).
         if ($mouse->isRightPress()) {
@@ -179,7 +194,6 @@ final class MouseRouter
 
             return;
         }
-
         if (!$mouse->isLeftPress()) {
             return;
         }
@@ -195,51 +209,31 @@ final class MouseRouter
         $this->panes->editor->cancelWindowDrags();
         $this->layout->cancelDrags();
 
-        // The toast stack floats above every modal: its ✖ dismisses, a card
-        // body swallows the click, anywhere else falls straight through.
-        if ($this->toasts->clickAt($mouse->row, $mouse->col)) {
-            $this->tui->requestRender();
-
-            return;
+        $taken =
+            // The toast stack floats above every modal: its ✖ dismisses, a card
+            // body swallows the click, anywhere else falls straight through.
+            ($this->toasts->clickAt($mouse->row, $mouse->col) && $this->rendered())
+            || $this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)
+            // The status bar's own cells: problem counts, caret position, LSP
+            // status, a cell's menu (the branch), and the file part, whose
+            // double-click reveals the file in the tree. Below the modals — an open
+            // dropdown may cover the row — and above the pane hit-tests, which do
+            // not reach the chrome anyway.
+            || $this->statusClick->route($mouse, $this->rightClick->openStatusMenu(...), $this->clicks)
+            // Separator drags: a press on the tree↔editor separator column, or on the top edge
+            // of the terminal/results panel, arms a resize (must beat the pane hit-tests below).
+            || $this->layout->armSidebarResize($sepRect, $mouse)
+            // The editor↔preview divider, while a previewed file shows in Split.
+            || $this->layout->armPreviewResize($mouse)
+            || (null !== $activeView && $this->layout->armViewSidebarResize($activeView, $viewSepRect, $mouse))
+            // The dock strip is both the tool tabs and the resize grab: a click
+            // on a tab wins, a click on its empty tail falls through to resize
+            // (which sits on the strip's top row — the dock's top edge).
+            || $this->tryDockTabClick($mouse)
+            || (null !== ($panel = $this->dock->visiblePanel()) && $this->layout->armPanelResize($panel, $mouse, $this->dock->stripVisible() ? -$this->dockTabs->stripRows() : 0));
+        if (!$taken) {
+            $this->handlePaneClick($mouse, $treeRect, $tabsRect, $editorRect);
         }
-
-        if ($this->handleModalPopupClick($mouse, $editorRect, $this->views->isAnyOpen() ? FullView::Open : FullView::Closed)) {
-            return;
-        }
-
-        // The status bar's own cells: problem counts, caret position, LSP
-        // status, a cell's menu (the branch), and the file part, whose
-        // double-click reveals the file in the tree. Below the modals — an open
-        // dropdown may cover the row — and above the pane hit-tests, which do
-        // not reach the chrome anyway.
-        if ($this->statusClick->route($mouse, $this->rightClick->openStatusMenu(...), $this->clicks)) {
-            return;
-        }
-
-        // Separator drags: a press on the tree↔editor separator column, or on the top edge
-        // of the terminal/results panel, arms a resize (must beat the pane hit-tests below).
-        if ($this->layout->armSidebarResize($sepRect, $mouse)) {
-            return;
-        }
-        // The editor↔preview divider, while a previewed file shows in Split.
-        if ($this->layout->armPreviewResize($mouse)) {
-            return;
-        }
-        if (null !== $activeView && $this->layout->armViewSidebarResize($activeView, $viewSepRect, $mouse)) {
-            return;
-        }
-        // The dock strip is both the tool tabs and the resize grab: a click
-        // on a tab wins, a click on its empty tail falls through to resize
-        // (which sits on the strip's top row — the dock's top edge).
-        if ($this->tryDockTabClick($mouse)) {
-            return;
-        }
-        $panel = $this->dock->visiblePanel();
-        if (null !== $panel && $this->layout->armPanelResize($panel, $mouse, $this->dock->stripVisible() ? -$this->dockTabs->stripRows() : 0)) {
-            return;
-        }
-
-        $this->handlePaneClick($mouse, $treeRect, $tabsRect, $editorRect);
     }
 
     /**
@@ -250,15 +244,7 @@ final class MouseRouter
      */
     private function continueWindowDrag(MouseEvent $mouse): bool
     {
-        if (!$mouse->isLeftDrag() && !$mouse->isLeftRelease()) {
-            return false;
-        }
-        if (!$this->panes->editor->continueWindowDrag($mouse->row, $mouse->col, $mouse->isLeftRelease())) {
-            return false;
-        }
-        $this->tui->requestRender();
-
-        return true;
+        return ($mouse->isLeftDrag() || $mouse->isLeftRelease()) && $this->panes->editor->continueWindowDrag($mouse->row, $mouse->col, $mouse->isLeftRelease()) && $this->rendered();
     }
 
     /**
@@ -433,18 +419,13 @@ final class MouseRouter
     /** An open context menu, a menu-bar title, an open dropdown: what a click on a menu does. */
     private function clickedMenu(MouseEvent $mouse): bool
     {
-        if ($this->contextMenu->isOpen()) {
-            return $this->clickContextMenu($mouse);
-        }
-        // Menu bar: click a title to open (or switch) its dropdown.
-        if (null !== ($rel = $this->hit->hit($this->menuBar, $mouse->row, $mouse->col))) {
-            return $this->clickMenuTitle($rel['col']);
-        }
-        if ($this->menuBar->isOpen()) {
-            return $this->clickMenuDropdown($mouse);
-        }
-
-        return false;
+        return match (true) {
+            $this->contextMenu->isOpen() => $this->clickContextMenu($mouse),
+            // Menu bar: click a title to open (or switch) its dropdown.
+            null !== ($rel = $this->hit->hit($this->menuBar, $mouse->row, $mouse->col)) => $this->clickMenuTitle($rel['col']),
+            $this->menuBar->isOpen() => $this->clickMenuDropdown($mouse),
+            default => false,
+        };
     }
 
     /**
@@ -509,24 +490,19 @@ final class MouseRouter
         // prompt): item/✖/outside-dismiss in screen coordinates. No
         // attachment guard — the pickers are painted above every pane, so a
         // click on a visible box belongs to it wherever the editor is.
-        if ($this->panes->editor->isAnyPickerOpen()) {
-            $this->panes->editor->handlePickerClick($mouse->row, $mouse->col);
-
-            return $this->rendered();
+        $picker = $this->panes->editor->isAnyPickerOpen();
+        if (!$picker && !$this->panes->editor->isFindModalOpen()) {
+            // The Welcome modal, then the view window's frame (the menu bar stays
+            // reachable over both): the ✖, a drag or a click outside. A press on
+            // the view window's content falls through to the view's own pointer.
+            return $this->windows->press($mouse);
         }
         // The floating Find-in-Files modal: ✖, drags and zone clicks land in
         // screen coordinates; an outside click closes it (its own semantics —
         // unlike the Welcome modal it is dismissable).
-        if ($this->panes->editor->isFindModalOpen()) {
-            $this->panes->editor->findModal->clickAt($mouse->row, $mouse->col);
+        $picker ? $this->panes->editor->handlePickerClick($mouse->row, $mouse->col) : $this->panes->editor->findModal->clickAt($mouse->row, $mouse->col);
 
-            return $this->rendered();
-        }
-
-        // The Welcome modal, then the view window's frame (the menu bar stays
-        // reachable over both): the ✖, a drag or a click outside. A press on
-        // the view window's content falls through to the view's own pointer.
-        return $this->windows->press($mouse);
+        return $this->rendered();
     }
 
     /** A click that changed what is painted asks for a frame: true, for the caller that asks whether it was taken. */
@@ -540,31 +516,35 @@ final class MouseRouter
     /** A left press on the panes, tried front-to-back; the editor is the final target. */
     private function handlePaneClick(MouseEvent $mouse, ?WidgetRect $treeRect, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): void
     {
-        if ($this->pointers->of($this->views->activeId())->press($mouse)) {
-            return;
+        if (
+            !$this->pointers->of($this->views->activeId())->press($mouse)
+            && !$this->tryOverlayPanelClick($mouse)
+            && !$this->tryChromeClick($mouse, $tabsRect, $treeRect)
+            && !$this->pressPane($mouse)
+        ) {
+            $this->handleEditorClick($mouse, $editorRect);
         }
-        if ($this->tryOverlayPanelClick($mouse)) {
-            return;
-        }
-        if ($this->tryChromeClick($mouse, $tabsRect, $treeRect)) {
-            return;
-        }
-        // A pane holds the editor slot on its tabs: a press focuses it, and what
-        // else the press MEANS is the pane's answer — the help pane follows a
-        // link, the graph pane arms a drag-pan, the image pane wants only focus.
+    }
+
+    /**
+     * A pane holds the editor slot on its tabs: a press focuses it, and what
+     * else the press MEANS is the pane's answer — the help pane follows a
+     * link, the graph pane arms a drag-pan, the image pane wants only focus.
+     */
+    private function pressPane(MouseEvent $mouse): bool
+    {
         $pane = $this->panes->pane();
         $paneRect = null === $pane ? null : $this->hit->rect($pane);
-        if (null !== $pane && null !== $paneRect && $paneRect->contains($mouse->row, $mouse->col)) {
-            $this->tui->setFocus($pane);
-            $rel = $paneRect->toRelative($mouse->row, $mouse->col);
-            if ($pane->press($rel['row'], $rel['col'])) {
-                $this->paneDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
-            }
-            $this->tui->requestRender();
-
-            return;
+        if (null === $pane || null === $paneRect || !$paneRect->contains($mouse->row, $mouse->col)) {
+            return false;
         }
-        $this->handleEditorClick($mouse, $editorRect);
+        $this->tui->setFocus($pane);
+        $rel = $paneRect->toRelative($mouse->row, $mouse->col);
+        if ($pane->press($rel['row'], $rel['col'])) {
+            $this->paneDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
+        }
+
+        return $this->rendered();
     }
 
     /** A press on the dock strip: select/close a tool tab, or false to fall through to resize. */
@@ -577,21 +557,27 @@ final class MouseRouter
         $col = $mouse->col - $rect->col;
         // A click on an overflow ‹/› pages the strip, before any tab hit —
         // mirroring the editor tab bar.
-        if (null !== ($step = $this->dockTabs->scrollIndicatorAt($mouse->row - $rect->row, $col))) {
+        $step = $this->dockTabs->scrollIndicatorAt($mouse->row - $rect->row, $col);
+        if (null !== $step) {
             $this->dockTabs->scrollBy($step);
             $this->tui->requestRender();
-
-            return true;
         }
+
+        return null !== $step || $this->clickDockTab($col);
+    }
+
+    /** A tab or its ✖: true when the click hit one. */
+    private function clickDockTab(int $col): bool
+    {
         // Resolve the drag source BEFORE the click runs — a close click mutates
         // the strip. dragSourceAt is null on a close ✖, so only a select arms.
         $source = $this->dockTabs->dragSourceAt($col);
-        if (!$this->dockTabs->handleTabClick($col)) {
-            return false;
+        $taken = $this->dockTabs->handleTabClick($col);
+        if ($taken) {
+            $this->dockTabDrag = $source;
         }
-        $this->dockTabDrag = $source;
 
-        return true;
+        return $taken;
     }
 
     /**
@@ -667,19 +653,16 @@ final class MouseRouter
         }
         $rel = $tabsRect->toRelative($mouse->row, $mouse->col);
         $buffers = $this->buffers->all();
-        if (null !== ($step = $this->panes->tabBar->scrollIndicatorAt($rel['row'], $rel['col']))) {
+        $step = $this->panes->tabBar->scrollIndicatorAt($rel['row'], $rel['col']);
+        $closeIndex = null === $step ? $this->panes->tabBar->closeIndexAt($rel['row'], $rel['col']) : null;
+        $index = null === $step && null === $closeIndex ? $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']) : null;
+        if (null !== $step) {
             $this->panes->tabBar->scrollBy($step);
-
-            return $this->rendered();
+            $this->tui->requestRender();
         }
-        if (null !== ($closeIndex = $this->panes->tabBar->closeIndexAt($rel['row'], $rel['col']))) {
-            if (\array_key_exists($closeIndex, $buffers)) {
-                $this->bufferService->closeTab($buffers[$closeIndex]->path);
-            }
-
-            return true;
+        if (null !== $closeIndex && \array_key_exists($closeIndex, $buffers)) {
+            $this->bufferService->closeTab($buffers[$closeIndex]->path);
         }
-        $index = $this->panes->tabBar->tabIndexAt($rel['row'], $rel['col']);
         if (null !== $index && \array_key_exists($index, $buffers)) {
             $this->switchToTab($buffers[$index], $mouse);
         }
@@ -762,22 +745,12 @@ final class MouseRouter
     private function dispatchEditorPress(MouseEvent $mouse, array $rel): void
     {
         $editor = $this->panes->editor;
-        if ($mouse->ctrl && !$mouse->alt && !$mouse->shift) {
-            $this->ctrlClickAt($rel['row'], $rel['col']);
-
-            return;
-        }
-        if ($mouse->alt) {
-            $this->altClickAt($rel['row'], $rel['col'], $mouse->shift);
-
-            return;
-        }
-        if ($rel['col'] < $editor->gutterWidth() && null !== ($docLine = $editor->documentLineAt($rel['row']))) {
-            $this->gutter->click($rel['col'], $docLine);
-
-            return;
-        }
-        $this->pressTextAt($mouse, $rel['row'], $rel['col']);
+        match (true) {
+            $mouse->ctrl && !$mouse->alt && !$mouse->shift => $this->ctrlClickAt($rel['row'], $rel['col']),
+            $mouse->alt => $this->altClickAt($rel['row'], $rel['col'], $mouse->shift),
+            $rel['col'] < $editor->gutterWidth() && null !== ($docLine = $editor->documentLineAt($rel['row'])) => $this->gutter->click($rel['col'], $docLine),
+            default => $this->pressTextAt($mouse, $rel['row'], $rel['col']),
+        };
     }
 
     /**

@@ -164,13 +164,10 @@ final class NativeDocs
      */
     private static function phpUrl(string $word): ?string
     {
-        if (\function_exists($word) && new \ReflectionFunction($word)->isInternal()) {
-            return 'https://www.php.net/manual/en/function.'.\str_replace('_', replace: '-', subject: \strtolower($word)).'.php';
-        }
-        if (\class_exists($word, false) && new \ReflectionClass($word)->isInternal()) {
-            return 'https://www.php.net/manual/en/class.'.\strtolower($word).'.php';
-        }
-
-        return null;
+        return match (true) {
+            \function_exists($word) && new \ReflectionFunction($word)->isInternal() => 'https://www.php.net/manual/en/function.'.\str_replace('_', replace: '-', subject: \strtolower($word)).'.php',
+            \class_exists($word, false) && new \ReflectionClass($word)->isInternal() => 'https://www.php.net/manual/en/class.'.\strtolower($word).'.php',
+            default => null,
+        };
     }
 }

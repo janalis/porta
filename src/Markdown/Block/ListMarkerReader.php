@@ -21,14 +21,11 @@ final class ListMarkerReader
         }
         [$ordered, $char, $start, $length] = $marker;
         $next = $rest[$length] ?? '';
-        if (!('' === $next || Continuation::spaceOrTab($next))) {
-            return null;
-        }
-        if ($inParagraph && '' === \trim(\substr($rest, $length), characters: " \t")) {
-            return null; // an empty item cannot interrupt a paragraph
-        }
 
-        return $this->consume($cursor, $ordered, $char, $start, $length);
+        // An empty item cannot interrupt a paragraph.
+        $opens = ('' === $next || Continuation::spaceOrTab($next)) && (!$inParagraph || '' !== \trim(\substr($rest, $length), characters: " \t"));
+
+        return $opens ? $this->consume($cursor, $ordered, $char, $start, $length) : null;
     }
 
     /**
@@ -43,11 +40,10 @@ final class ListMarkerReader
         if (1 === \preg_match('/^[*+-]/', $rest, $m)) {
             return [false, $m[0], 0, 1];
         }
-        if (1 !== \preg_match('/^(\d{1,9})([.)])/', $rest, $m) || (BlockKind::Paragraph === $container->kind && 1 !== (int) $m[1])) {
-            return null;
-        }
 
-        return [true, $m[2], (int) $m[1], \strlen($m[0])];
+        $ordered = 1 === \preg_match('/^(\d{1,9})([.)])/', $rest, $m) && (BlockKind::Paragraph !== $container->kind || 1 === (int) $m[1]);
+
+        return $ordered ? [true, $m[2], (int) $m[1], \strlen($m[0])] : null;
     }
 
     private function consume(LineCursor $cursor, bool $ordered, string $char, int $start, int $length): ListMarker

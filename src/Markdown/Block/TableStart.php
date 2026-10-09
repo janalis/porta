@@ -17,11 +17,17 @@ final class TableStart
 
     public function open(BlockParser $parser, OpenBlock $container): int
     {
-        $cursor = $parser->cursor;
         $content = $container->content;
-        if (BlockKind::Paragraph !== $container->kind || null === $content || 1 !== \preg_match(self::DELIMITER_ROW, $cursor->restFromNonspace())) {
-            return BlockStarts::NONE;
-        }
+
+        return BlockKind::Paragraph === $container->kind && null !== $content && 1 === \preg_match(self::DELIMITER_ROW, $parser->cursor->restFromNonspace())
+            ? $this->openUnder($parser, $container, $content)
+            : BlockStarts::NONE;
+    }
+
+    /** The delimiter row under a paragraph: a table when its last line has as many cells. */
+    private function openUnder(BlockParser $parser, OpenBlock $container, MappedText $content): int
+    {
+        $cursor = $parser->cursor;
         $alignments = \array_map(static fn (MappedText $cell): string => $cell->text, TableRows::cells(MappedText::verbatim($cursor->restFromNonspace(), 0)));
         $split = \strrpos($content->text, needle: "\n");
         $header = false === $split ? $content : $content->from($split + 1);
@@ -33,24 +39,28 @@ final class TableStart
         $table->alignments = $alignments;
         $table->rows[] = [$header, $header->source(0), $header->source(\strlen($header->text) - 1) + 1];
         $cursor->advance(\strlen($cursor->line) - $cursor->offset);
-        if (false === $split) {
-            $parser->replace($container, $table);
-
-            return BlockStarts::LEAF;
-        }
-        $this->keepParagraph($parser, $container, $content->head($split));
-        $parser->tip->append($table);
-        $parser->tip = $table;
+        $this->place($parser, $container, $content, $split, $table);
 
         return BlockStarts::LEAF;
     }
 
-    /** The lines above the header stay a paragraph, which ends on the line before it. */
-    private function keepParagraph(BlockParser $parser, OpenBlock $paragraph, MappedText $kept): void
+    /**
+     * A paragraph that was only the header becomes the table. Otherwise the
+     * lines above the header stay a paragraph, which ends on the line before it.
+     */
+    private function place(BlockParser $parser, OpenBlock $paragraph, MappedText $content, int|false $split, OpenBlock $table): void
     {
+        if (false === $split) {
+            $parser->replace($paragraph, $table);
+
+            return;
+        }
+        $kept = $content->head($split);
         $paragraph->content = $kept;
         $paragraph->end = $kept->source(\strlen($kept->text) - 1) + 1;
         $paragraph->endLine = $parser->lineNumber - 2;
         $parser->finalize($paragraph);
+        $parser->tip->append($table);
+        $parser->tip = $table;
     }
 }

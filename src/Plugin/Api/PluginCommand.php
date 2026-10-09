@@ -38,13 +38,13 @@ abstract class PluginCommand extends Command
             return $this->root;
         }
         $cwd = (string) \getcwd();
-        for ($dir = $cwd; \dirname($dir) !== $dir; $dir = \dirname($dir)) {
-            if (\file_exists($dir.'/.porta') || \file_exists($dir.'/.git')) {
-                return $dir;
-            }
+        $dir = $cwd;
+        while (\dirname($dir) !== $dir && !\file_exists($dir.'/.porta') && !\file_exists($dir.'/.git')) {
+            $dir = \dirname($dir);
         }
 
-        return $cwd;
+        // Walked up to the filesystem root without a marker: the working directory itself.
+        return \dirname($dir) === $dir ? $cwd : $dir;
     }
 
     /** Where a failure is said: stderr when there is one, so a piped stdout stays clean. */

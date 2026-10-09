@@ -236,69 +236,26 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             return;
         }
         $kb = $this->getKeybindings();
+        $kind = ($this->rows[$this->list->selected()] ?? null)?->kind;
 
-        if (null !== $this->editing && null !== $this->editField) {
-            $this->handleTextInput($data, $kb, $this->editing, $this->editField);
-
-            return;
-        }
-
-        if ($kb->matches($data, 'exit_view')) {
-            $this->fire($this->onExit);
-
-            return;
-        }
-        if ($kb->matches($data, 'focus_next_pane')) {
-            $this->fire($this->onFocusNext);
-
-            return;
-        }
-        if ($kb->matches($data, 'find_setting')) {
-            $this->events?->dispatch(new SettingsSearchRequested());
-
-            return;
-        }
-        if ($kb->matches($data, 'show_keybindings')) {
-            $this->events?->dispatch(new SettingsSectionRequested('keybindings'));
-
-            return;
-        }
-        if ($kb->matches($data, 'reset_row')) {
-            $this->resetSelected();
-
-            return;
-        }
-        if (SettingsRowKind::Choice === ($this->rows[$this->list->selected()] ?? null)?->kind && $kb->matches($data, 'open_list')) {
-            $this->openChoice();
-
-            return;
-        }
-        // A checkbox takes Space and Enter, as in a browser — the arrows and
-        // brackets step a select or a number, and on a checkbox they used to
-        // flip it, which no browser does.
-        if (SettingsRowKind::Bool === ($this->rows[$this->list->selected()] ?? null)?->kind) {
-            if ($kb->matches($data, 'toggle')) {
-                $this->actuate(1);
-
-                return;
-            }
-            if ($kb->matches($data, 'increment') || $kb->matches($data, 'decrement')) {
-                return;
-            }
-        }
-        if ($kb->matches($data, 'increment')) {
-            $this->actuate(1);
-
-            return;
-        }
-        if ($kb->matches($data, 'decrement')) {
-            $this->actuate(-1);
-
-            return;
-        }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastPage)) {
-            $this->invalidate();
-        }
+        match (true) {
+            null !== $this->editing && null !== $this->editField => $this->handleTextInput($data, $kb, $this->editing, $this->editField),
+            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, 'find_setting') => $this->events?->dispatch(new SettingsSearchRequested()),
+            $kb->matches($data, 'show_keybindings') => $this->events?->dispatch(new SettingsSectionRequested('keybindings')),
+            $kb->matches($data, 'reset_row') => $this->resetSelected(),
+            SettingsRowKind::Choice === $kind && $kb->matches($data, 'open_list') => $this->openChoice(),
+            // A checkbox takes Space and Enter, as in a browser — the arrows and
+            // brackets step a select or a number, and on a checkbox they used to
+            // flip it, which no browser does.
+            SettingsRowKind::Bool === $kind && $kb->matches($data, 'toggle') => $this->actuate(1),
+            SettingsRowKind::Bool === $kind && ($kb->matches($data, 'increment') || $kb->matches($data, 'decrement')) => null,
+            $kb->matches($data, 'increment') => $this->actuate(1),
+            $kb->matches($data, 'decrement') => $this->actuate(-1),
+            ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->lastPage) => $this->invalidate(),
+            default => null,
+        };
     }
 
     /** Tint the settings item under the pointer (visual only, like the nav/keys lists). */
@@ -361,17 +318,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $selected = $index === $this->list->selected();
         $this->list->select($index);
         $this->invalidate();
-        if ($onControl && SettingsRowKind::Choice === $kind) {
-            $this->openChoice();
-
-            return;
-        }
-        if (!$selected && SettingsRowKind::Bool !== $kind) {
-            return;
-        }
         // @mago-expect lint:literal-named-argument -- intdiv's parameter is called `num2`; halving the control needs no name
         $half = null === $control ? 0 : $control['col'] + \intdiv($control['width'], 2);
-        $this->actuate($onControl && SettingsRowKind::Int === $kind && $relCol < $half ? -1 : 1);
+        match (true) {
+            $onControl && SettingsRowKind::Choice === $kind => $this->openChoice(),
+            $selected || SettingsRowKind::Bool === $kind => $this->actuate($onControl && SettingsRowKind::Int === $kind && $relCol < $half ? -1 : 1),
+            default => null,
+        };
     }
 
     /** Hand the selected choice row's control geometry to the host so it can hang the list under it. */
@@ -395,35 +348,29 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if (null === $row || $row->disabled) {
             return; // shown, not actionable — the dashed border already says so
         }
-        if (SettingsRowKind::Text === $row->kind) {
+        $onChange = $this->onChange;
+        match (true) {
             // Forward only, symmetric with the Action arm below: ← used to open
             // the editor as readily as → did, which is not what a step-back key
             // means anywhere else on this screen.
-            if ($delta > 0) {
-                $this->editField = new TextField((string) $row->value, $this->cursorStyle);
-                $this->editing = $this->list->selected();
-                $this->invalidate();
-            }
-
-            return;
-        }
-        if (null === $this->onChange) {
-            return;
-        }
-        if (SettingsRowKind::Action === $row->kind) {
-            if ($delta > 0) {
-                ($this->onChange)($row->key, (string) $row->value);
-            }
-
-            return; // a button has no value to step back
-        }
-
-        $new = match ($row->kind) {
-            SettingsRowKind::Bool => !(bool) $row->value,
-            SettingsRowKind::Choice => $this->cycleChoice($row, $delta),
-            default => $this->stepInt($row, $delta),
+            SettingsRowKind::Text === $row->kind => $delta > 0 ? $this->openEditor($row) : null,
+            null === $onChange => null,
+            // A button has no value to step back.
+            SettingsRowKind::Action === $row->kind => $delta > 0 ? $onChange($row->key, (string) $row->value) : null,
+            default => $onChange($row->key, match ($row->kind) {
+                SettingsRowKind::Bool => !(bool) $row->value,
+                SettingsRowKind::Choice => $this->cycleChoice($row, $delta),
+                default => $this->stepInt($row, $delta),
+            }),
         };
-        ($this->onChange)($row->key, $new);
+    }
+
+    /** Open the inline text editor on $row, seeded with its value. */
+    private function openEditor(SettingsRow $row): void
+    {
+        $this->editField = new TextField((string) $row->value, $this->cursorStyle);
+        $this->editing = $this->list->selected();
+        $this->invalidate();
     }
 
     /** Route a keystroke into the inline text editor: Esc cancels, Enter commits. */
@@ -438,38 +385,22 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         if ($kb->matches($data, 'confirm')) {
             $key = ($this->rows[$index] ?? null)?->key;
             $this->invalidate();
-            if (null === $key || null === $this->onChange) {
-                $this->editing = null;
-
-                return;
-            }
             // A REFUSED value keeps the editor open with the text as typed. It
             // used to close regardless, and setRows() then snapped the row back
             // to the persisted value — so an invalid JSON launch config was
             // reported and destroyed in the same breath, with nothing to
             // correct.
-            if (($this->onChange)($key, $field->value())) {
+            if (null === $key || null === $this->onChange || ($this->onChange)($key, $field->value())) {
                 $this->editing = null;
             }
 
             return;
         }
-        if ($kb->matches($data, 'delete_char_backward')) {
-            if ($field->backspace()) {
-                $this->invalidate();
-            }
-
-            return;
-        }
-        // Caret movement, so a typo at the START of a value is fixable without
-        // retyping the rest — a JSON debug launch config being the case that
-        // made append-only editing untenable.
-        if ($field->editKey($data, $kb)) {
-            $this->invalidate();
-
-            return;
-        }
-        if ($field->insert($data)) {
+        // Backspace, else caret movement — so a typo at the START of a value is
+        // fixable without retyping the rest, a JSON debug launch config being
+        // the case that made append-only editing untenable — else typing.
+        $changed = $kb->matches($data, 'delete_char_backward') ? $field->backspace() : $field->editKey($data, $kb) || $field->insert($data);
+        if ($changed) {
             $this->invalidate();
         }
     }

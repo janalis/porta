@@ -43,11 +43,12 @@ final readonly class TokenClassifier
      */
     public function commentStringSpans(string $content, string $language): array
     {
-        $plugin = $this->pluginSpans($content, $language);
-        if (null !== $plugin) {
-            return $plugin;
-        }
+        return $this->pluginSpans($content, $language) ?? $this->highlighterSpans($content, $language);
+    }
 
+    /** @return list<array{start: int, end: int}> */
+    private function highlighterSpans(string $content, string $language): array
+    {
         try {
             $marked = ($this->parser)($content, $language);
         } catch (\Throwable) {
@@ -94,14 +95,12 @@ final readonly class TokenClassifier
      */
     private function pluginSpans(string $content, string $language): ?array
     {
-        if (null === $this->plugins) {
-            return null;
+        try {
+            $spans = $this->plugins?->commentStringSpans($content, $language);
+        } catch (\Throwable) {
+            $spans = null;
         }
 
-        try {
-            return $this->plugins->commentStringSpans($content, $language);
-        } catch (\Throwable) {
-            return null;
-        }
+        return $spans;
     }
 }

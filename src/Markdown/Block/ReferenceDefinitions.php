@@ -27,17 +27,13 @@ final class ReferenceDefinitions
             return 0;
         }
         $destination = LinkSyntax::destination($text, LinkSyntax::skipSpace($text, $label[1] + 1));
-        if (null === $destination) {
-            return 0;
+        $end = null === $destination ? null : self::titleAndLineEnd($text, $destination[1]);
+        if (null !== $destination && null !== $end) {
+            // The label scanner refuses a blank label, so no key normalises to ''.
+            $references[LinkSyntax::normalize($label[0])] ??= new LinkReference($destination[0], $end[1]);
         }
-        $end = self::titleAndLineEnd($text, $destination[1]);
-        if (null === $end) {
-            return 0;
-        }
-        // The label scanner refuses a blank label, so no key normalises to ''.
-        $references[LinkSyntax::normalize($label[0])] ??= new LinkReference($destination[0], $end[1]);
 
-        return $end[0];
+        return $end[0] ?? 0;
     }
 
     /**

@@ -307,16 +307,13 @@ final class PluginLifecycle implements PluginLifecycleOps
     {
         if (0 !== $code) {
             $this->notifier->error($this->translator->trans('Plugin "%name%" enabled, but composer install failed (exit code %code%)', ['%name%' => $target, '%code%' => $code]), seconds: 5.0);
-
-            return $progress->withFailure();
-        }
-        if ($this->isDisabled($target)) {
-            // Turned back off while composer ran. The disable already said so,
-            // so this is a failure with nothing left to report.
-            return $progress->withFailure();
         }
 
-        return $progress->withActivation($this->activateInstalledCopy($target));
+        // Turned back off while composer ran: the disable already said so,
+        // so this is a failure with nothing left to report.
+        return 0 !== $code || $this->isDisabled($target)
+            ? $progress->withFailure()
+            : $progress->withActivation($this->activateInstalledCopy($target));
     }
 
     /**
@@ -477,13 +474,11 @@ final class PluginLifecycle implements PluginLifecycleOps
     private function activateInstalledCopy(string $name): bool
     {
         $dir = $this->installedDir($name);
-        if (null === $dir) {
-            return false;
-        }
-        $error = $this->loader->loadFile($dir.'/plugin.php', $this->plugins);
+        $error = null === $dir ? null : $this->loader->loadFile($dir.'/plugin.php', $this->plugins);
         if (null !== $error) {
             $this->notifier->error($this->translator->trans($error->key, $error->params));
-
+        }
+        if (null === $dir || null !== $error) {
             return false;
         }
         $this->plugins->registerCommands($this->commands);

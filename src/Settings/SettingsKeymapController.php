@@ -114,7 +114,12 @@ final readonly class SettingsKeymapController
             return;
         }
 
-        $token = $parsed['key'];
+        $this->bind($action, $parsed['key']);
+    }
+
+    /** Persist $chord as $action's binding, unless it restates what already fires. */
+    private function bind(string $action, string $chord): void
+    {
         $scope = $this->scope->current();
         // An override is not only a binding: it PINS the action against every
         // future change to the default, silently and for good. So one that
@@ -126,16 +131,15 @@ final readonly class SettingsKeymapController
         // Only when this file does not bind the action yet: once an override is
         // there, rewriting it is an ordinary rebind, and Del ({@see
         // resetBinding()}) is the way to take one back.
-        // @mago-expect lint:no-insecure-comparison -- `$token` is a key chord ("f12", "ctrl+d"), not a secret; the rule matches the NAME, and there is nothing here to time an attack against.
-        if (!\array_key_exists($action, self::fileKeymap($this->files->path($scope))) && $token === $this->effectiveBinding($action)) {
+        if (!\array_key_exists($action, self::fileKeymap($this->files->path($scope))) && $chord === $this->effectiveBinding($action)) {
             $this->notifier->flash($this->translator->trans('%action% already uses %key%', [
                 '%action%' => $this->translator->trans($this->actions->label($action)),
-                '%key%' => ShortcutFormatter::format($token),
+                '%key%' => ShortcutFormatter::format($chord),
             ]));
 
             return;
         }
-        $persisted = $this->writer->persistKeymap($scope, $action, [$token]);
+        $persisted = $this->writer->persistKeymap($scope, $action, [$chord]);
         if ($persisted) {
             // The file is the keymap's truth: re-merge it into the live map,
             // then rebake the menus' shortcut labels from the fresh map.
@@ -158,7 +162,7 @@ final readonly class SettingsKeymapController
             || \array_key_exists($action, EditorKeymap::defaults())
             || \array_any($this->panes->all(), static fn (EditorPaneWidget $pane): bool => $pane->bindsAction($action));
         $note = $persisted && !$live ? ' · '.$this->translator->trans('applies on restart') : '';
-        $overruled = $persisted ? $this->layerOverruling($action, $token) : null;
+        $overruled = $persisted ? $this->layerOverruling($action, $chord) : null;
         if (null !== $overruled) {
             // Notifier::notify() already requests a render.
             $this->notifier->warn($this->translator->trans('%action% keeps its binding — %file% sets it', [
@@ -172,7 +176,7 @@ final readonly class SettingsKeymapController
             $this->translator
                 ->markup('Rebound %action% to <info>%key%</>', [
                     '%action%' => $this->translator->trans($this->actions->label($action)),
-                    '%key%' => ShortcutFormatter::format($token),
+                    '%key%' => ShortcutFormatter::format($chord),
                 ])
                 ->append($saved.$note),
         );

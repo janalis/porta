@@ -62,11 +62,9 @@ final class PaneBounds
         while (null !== ($parent = $root->getParent())) {
             $root = $parent;
         }
-        if ($root === $pane) {
-            return null; // detached: it is its own root
-        }
-        $rect = $renderer->getWidgetRect($pane);
-        $screen = $renderer->getWidgetRect($root);
+        $detached = $root === $pane; // it is its own root
+        $rect = $detached ? null : $renderer->getWidgetRect($pane);
+        $screen = $detached ? null : $renderer->getWidgetRect($root);
         if (null === $rect || null === $screen) {
             return null;
         }

@@ -195,24 +195,35 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return;
         }
 
+        $this->openInFront($path, $focus, $as);
+    }
+
+    /** {@see openFile()} once the file is here and is to be the active tab. */
+    private function openInFront(string $path, OpenFocus $focus, OpenAs $as): void
+    {
         // "Open as Text" on a tab that is already a viewer: drop it first, so
         // the path key is free for a text buffer. A viewer tab holds an empty
         // document, so there is nothing to lose and nothing to confirm.
         if (OpenAs::Text === $as && true === $this->buffers->get($path)?->isViewer()) {
             $this->buffers->close($path);
         }
-        if ($this->buffers->has($path)) {
-            /** @var Buffer $active */
-            $active = $this->buffers->setActive($path);
-            $this->refreshStaleViewerPayload($active);
-            $this->showBuffer($active);
-            if (OpenFocus::Editor === $focus) {
-                $this->focusEditorArea();
-            }
+        if (!$this->buffers->has($path)) {
+            $this->openFromDisk($path, $focus, $as);
 
             return;
         }
+        /** @var Buffer $active */
+        $active = $this->buffers->setActive($path);
+        $this->refreshStaleViewerPayload($active);
+        $this->showBuffer($active);
+        if (OpenFocus::Editor === $focus) {
+            $this->focusEditorArea();
+        }
+    }
 
+    /** {@see openFile()} for a $path no tab holds yet: a pane, or a new text buffer. */
+    private function openFromDisk(string $path, OpenFocus $focus, OpenAs $as): void
+    {
         if (!\is_file($path) || !\is_readable($path)) {
             $this->notifier->error($this->translator->trans('Cannot read %file%', ['%file%' => $this->paths->relative($path)]));
 
@@ -229,23 +240,25 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         // disabling one routes its files here to the text path instead; an id
         // no built-in pane answers to falls through the same way).
         $viewer = OpenAs::Text === $as || null !== $preview ? null : $this->viewers->viewerFor($path);
-        if (null !== $viewer && null !== $this->panes->paneFor($viewer)) {
-            $this->openInPane($path, $viewer, $focus);
+        $pane = null !== $viewer && null !== $this->panes->paneFor($viewer) ? $viewer : null;
+        // Not a refusal any more. This used to flash "File too large" and
+        // stop, so a grown composer.lock, a log or a bundled asset was
+        // simply unopenable and you left the IDE to look at it. It opens
+        // read-only instead — the pane holds a bounded prefix and says so.
+        // Ahead of the OpenAs::Text bypass on purpose: "open as text" on a
+        // file this size has nowhere else to go.
+        $pane ??= (int) \filesize($path) > Files::MAX_TEXT_BYTES ? TextPreviewWidget::PANE_ID : null;
+        if (null !== $pane) {
+            $this->openInPane($path, $pane, $focus);
 
             return;
         }
-        if ((int) \filesize($path) > Files::MAX_TEXT_BYTES) {
-            // Not a refusal any more. This used to flash "File too large" and
-            // stop, so a grown composer.lock, a log or a bundled asset was
-            // simply unopenable and you left the IDE to look at it. It opens
-            // read-only instead — the pane holds a bounded prefix and says so.
-            // Ahead of the OpenAs::Text bypass on purpose: "open as text" on a
-            // file this size has nowhere else to go.
-            $this->openInPane($path, TextPreviewWidget::PANE_ID, $focus);
+        $this->openAsText($path, $preview, $focus);
+    }
 
-            return;
-        }
-
+    /** {@see openFromDisk()} for a readable file small enough to edit, unless it is not UTF-8. */
+    private function openAsText(string $path, ?string $preview, OpenFocus $focus): void
+    {
         $content = (string) \file_get_contents($path);
         if ('' !== $content && !\mb_check_encoding($content, encoding: 'UTF-8')) {
             $this->notifier->warn($this->translator->trans('Not a UTF-8 text file'));
@@ -363,10 +376,8 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      */
     private function refreshStaleViewerPayload(Buffer $buffer): void
     {
-        if (!$buffer->isViewer() || $buffer->diskStamp === $buffer->diskStampNow()) {
-            return;
-        }
-        $load = $this->panes->loaderFor((string) $buffer->paneId);
+        $stale = $buffer->isViewer() && $buffer->diskStamp !== $buffer->diskStampNow();
+        $load = $stale ? $this->panes->loaderFor((string) $buffer->paneId) : null;
         if (null === $load) {
             return;
         }
@@ -722,11 +733,11 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         $this->panes->paneFor((string) $active->paneId)?->forget($active->path);
         if (null !== $next) {
             $this->showBuffer($next);
-
-            return;
         }
-        $this->showEmptyEditor();
-        $this->tui->requestRender();
+        if (null === $next) {
+            $this->showEmptyEditor();
+            $this->tui->requestRender();
+        }
     }
 
     public function saveCurrentFile(): void
@@ -800,19 +811,19 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
             return true;
         }
         $now = Clocks::seconds($this->clock);
-        if (($now - ($this->lastOverwritePress[$buffer->path] ?? 0.0)) <= 3.0) {
-            return true;
+        $confirmed = ($now - ($this->lastOverwritePress[$buffer->path] ?? 0.0)) <= 3.0;
+        if (!$confirmed) {
+            $this->lastOverwritePress[$buffer->path] = $now;
+            $this->notifier->flash(
+                $this->translator->trans(
+                    '%file% changed on disk — Ctrl+S again to overwrite',
+                    ['%file%' => $this->paths->relative($buffer->path)],
+                ),
+                3.0,
+            );
         }
-        $this->lastOverwritePress[$buffer->path] = $now;
-        $this->notifier->flash(
-            $this->translator->trans(
-                '%file% changed on disk — Ctrl+S again to overwrite',
-                ['%file%' => $this->paths->relative($buffer->path)],
-            ),
-            3.0,
-        );
 
-        return false;
+        return $confirmed;
     }
 
     /** Another part of the IDE asks for a save — {@see BufferSaver}. */
@@ -840,9 +851,21 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
         if ($buffer->document->hasByteOrderMark) {
             $bytes = Document::BOM.$bytes;
         }
-        if (!$this->overwriteConfirmed($buffer)) {
-            return false;
+        $saved = $this->overwriteConfirmed($buffer) && $this->dumped($buffer, $bytes);
+        if ($saved) {
+            $buffer->document->markSaved();
+            $buffer->stampFromDisk(); // our own save must not look external
+            $buffer->diskChangedUnderEdit = false;
+            unset($this->lastOverwritePress[$buffer->path]);
+            $this->dispatcher->dispatch(new BufferSaved($buffer));
         }
+
+        return $saved;
+    }
+
+    /** Write $bytes to $buffer's file; false, and said, when that failed. */
+    private function dumped(Buffer $buffer, string $bytes): bool
+    {
         try {
             $this->fs->dumpFile($buffer->path, $bytes);
         } catch (IOExceptionInterface) {
@@ -850,11 +873,6 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return false;
         }
-        $buffer->document->markSaved();
-        $buffer->stampFromDisk(); // our own save must not look external
-        $buffer->diskChangedUnderEdit = false;
-        unset($this->lastOverwritePress[$buffer->path]);
-        $this->dispatcher->dispatch(new BufferSaved($buffer));
 
         return true;
     }
@@ -914,12 +932,12 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
 
             return true;
         }
-        if (null !== $this->activateAdjacentTextBuffer()) {
-            return true;
+        $hopped = null !== $this->activateAdjacentTextBuffer();
+        if (!$hopped) {
+            $this->notifier->flash($this->translator->trans('Not available in this view'));
         }
-        $this->notifier->flash($this->translator->trans('Not available in this view'));
 
-        return false;
+        return $hopped;
     }
 
     /** Re-send didOpen for every open file, so a live LSP reconfigure relaunches its servers. */

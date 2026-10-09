@@ -220,37 +220,34 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
             return;
         }
         $kb = $this->getKeybindings();
-        if ($kb->matches($data, 'close')) {
-            $this->dismiss();
+        match (true) {
+            $kb->matches($data, 'close') => $this->dismiss(),
+            // A page is the rows the panel shows, so the row landed on was drawn.
+            ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->visibleRows) => $this->invalidate(),
+            $kb->matches($data, 'jump') => $this->activateRow($this->list->selected()),
+            $kb->matches($data, 'edit_variable') => $this->editSelectedVariable(),
+            $kb->matches($data, 'remove_watch') => $this->removeSelectedWatch(),
+            default => null,
+        };
+    }
 
-            return;
+    /** Ask to edit the selected variable, its current value handed back for prefill. */
+    private function editSelectedVariable(): void
+    {
+        $row = $this->rows[$this->list->selected()] ?? null;
+        if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0) {
+            // The label is "name = value"; hand the current value back for prefill.
+            $value = \explode(' = ', $row->label, limit: 2)[1] ?? '';
+            $this->events?->dispatch(new DebugVariableEditRequested($row->parentRef, $row->name, $value));
         }
-        // A page is the rows the panel shows, so the row landed on was drawn.
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->rows), page: $this->visibleRows)) {
-            $this->invalidate();
+    }
 
-            return;
-        }
-        if ($kb->matches($data, 'jump')) {
-            $this->activateRow($this->list->selected());
-
-            return;
-        }
-        if ($kb->matches($data, 'edit_variable')) {
-            $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && DebugRowKind::Variable === $row->kind && $row->parentRef > 0) {
-                // The label is "name = value"; hand the current value back for prefill.
-                $value = \explode(' = ', $row->label, limit: 2)[1] ?? '';
-                $this->events?->dispatch(new DebugVariableEditRequested($row->parentRef, $row->name, $value));
-            }
-
-            return;
-        }
-        if ($kb->matches($data, 'remove_watch')) {
-            $row = $this->rows[$this->list->selected()] ?? null;
-            if (null !== $row && DebugRowKind::Watch === $row->kind) {
-                $this->events?->dispatch(new DebugWatchRemovalRequested($row->watchIndex));
-            }
+    /** Ask to remove the selected watch expression. */
+    private function removeSelectedWatch(): void
+    {
+        $row = $this->rows[$this->list->selected()] ?? null;
+        if (null !== $row && DebugRowKind::Watch === $row->kind) {
+            $this->events?->dispatch(new DebugWatchRemovalRequested($row->watchIndex));
         }
     }
 

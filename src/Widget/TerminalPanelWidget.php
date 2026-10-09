@@ -138,50 +138,23 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
     #[\Override]
     public function handleInput(string $data): void
     {
-        if ($this->inputHookHandled($data)) {
-            return;
-        }
-        if (!$this->open) {
+        if ($this->inputHookHandled($data) || !$this->open) {
             return;
         }
 
         $kb = $this->getKeybindings();
 
-        if ($kb->matches($data, 'hide_terminal')) {
-            $this->dismiss();
-
-            return;
-        }
-        if ($kb->matches($data, 'scroll_up')) {
-            $this->scroll(3);
-
-            return;
-        }
-        if ($kb->matches($data, 'scroll_down')) {
-            $this->scroll(-3);
-
-            return;
-        }
-        if ($kb->matches($data, 'terminal_next_session')) {
-            $this->cycle(1);
-
-            return;
-        }
-        if ($kb->matches($data, 'terminal_prev_session')) {
-            $this->cycle(-1);
-
-            return;
-        }
-        if ($kb->matches($data, 'terminal_close_session')) {
-            $this->events?->dispatch(new TerminalSessionCloseRequested(-1)); // -1 = the active session
-
-            return;
-        }
-
-        // Everything else is forwarded verbatim to the process.
-        if (null !== $this->onInputForward) {
-            ($this->onInputForward)($data);
-        }
+        match (true) {
+            $kb->matches($data, 'hide_terminal') => $this->dismiss(),
+            $kb->matches($data, 'scroll_up') => $this->scroll(3),
+            $kb->matches($data, 'scroll_down') => $this->scroll(-3),
+            $kb->matches($data, 'terminal_next_session') => $this->cycle(1),
+            $kb->matches($data, 'terminal_prev_session') => $this->cycle(-1),
+            $kb->matches($data, 'terminal_close_session') => $this->events?->dispatch(new TerminalSessionCloseRequested(-1)), // -1 = the active session
+            // Everything else is forwarded verbatim to the process.
+            null !== $this->onInputForward => ($this->onInputForward)($data),
+            default => null,
+        };
     }
 
     #[\Override]

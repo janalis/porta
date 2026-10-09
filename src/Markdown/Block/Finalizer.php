@@ -90,19 +90,22 @@ final class Finalizer
     private static function tight(OpenBlock $list): bool
     {
         $items = $list->children;
-        foreach ($items as $index => $item) {
-            $next = $items[$index + 1] ?? null;
-            if (null !== $next && $item->blankBefore($next)) {
-                return false;
-            }
-            foreach ($item->children as $childIndex => $child) {
-                $after = $item->children[$childIndex + 1] ?? null;
-                if (null !== $after && $child->blankBefore($after)) {
-                    return false;
-                }
-            }
-        }
 
-        return true;
+        return !\array_any(
+            $items,
+            static fn (OpenBlock $item, int $index): bool => (
+                self::separated($item, $items[$index + 1] ?? null)
+                || \array_any(
+                    $item->children,
+                    static fn (OpenBlock $child, int $childIndex): bool => self::separated($child, $item->children[$childIndex + 1] ?? null),
+                )
+            ),
+        );
+    }
+
+    /** Whether a blank line separates $block from the one after it. */
+    private static function separated(OpenBlock $block, ?OpenBlock $next): bool
+    {
+        return null !== $next && $block->blankBefore($next);
     }
 }

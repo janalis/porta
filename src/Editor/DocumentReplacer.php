@@ -143,17 +143,12 @@ final readonly class DocumentReplacer
      */
     private static function shifted(array $at, array $start, array $end, array $after): array
     {
-        if ($at <= $start) {
-            return $at;
-        }
-        if ($at < $end) {
-            return $after;
-        }
-        if ($at[0] === $end[0]) {
-            return [$after[0], $after[1] + $at[1] - $end[1]];
-        }
-
-        return [$at[0] + $after[0] - $end[0], $at[1]];
+        return match (true) {
+            $at <= $start => $at,
+            $at < $end => $after,
+            $at[0] === $end[0] => [$after[0], $after[1] + $at[1] - $end[1]],
+            default => [$at[0] + $after[0] - $end[0], $at[1]],
+        };
     }
 
     /**

@@ -42,22 +42,22 @@ final readonly class HelpMouseRouter implements ViewPointer
     #[\Override]
     public function press(MouseEvent $mouse): bool
     {
-        if (null !== ($rel = $this->hit->hit($this->find, $mouse->row, $mouse->col))) {
+        $onFind = $this->hit->hit($this->find, $mouse->row, $mouse->col);
+        $onPage = null === $onFind ? $this->hit->hit($this->page, $mouse->row, $mouse->col) : null;
+        if (null !== $onFind) {
             $this->tui->setFocus($this->find);
-            $this->find->handleClick($rel['row'], $rel['col']);
-            $this->tui->requestRender();
-
-            return true;
+            $this->find->handleClick($onFind['row'], $onFind['col']);
         }
-        if (null !== ($rel = $this->hit->hit($this->page, $mouse->row, $mouse->col))) {
+        if (null !== $onPage) {
             $this->tui->setFocus($this->page);
-            $this->page->press($rel['row'], $rel['col']);
+            $this->page->press($onPage['row'], $onPage['col']);
+        }
+        $pressed = null !== $onFind || null !== $onPage;
+        if ($pressed) {
             $this->tui->requestRender();
-
-            return true;
         }
 
-        return false;
+        return $pressed;
     }
 
     /** Nothing in the window arms a drag. */

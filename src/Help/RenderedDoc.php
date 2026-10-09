@@ -96,15 +96,13 @@ final readonly class RenderedDoc
     public function sourcePointAt(int $line, int $col): ?array
     {
         $origin = $this->origins[$line] ?? null;
-        if (null === $origin) {
-            return null;
-        }
-        $byte = $this->sourceAt($line, $col);
-        if (null === $byte || null === $this->source) {
-            return [$origin, 0];
-        }
+        $byte = null === $origin ? null : $this->sourceAt($line, $col);
 
-        return [$this->source->lineOf($byte), $this->source->columnOf($byte)];
+        return match (true) {
+            null === $origin => null,
+            null === $byte || null === $this->source => [$origin, 0],
+            default => [$this->source->lineOf($byte), $this->source->columnOf($byte)],
+        };
     }
 
     /** The rendered line an anchor (`#heading`, a footnote) leads to, matched as GitHub does. */

@@ -67,17 +67,11 @@ final class HtmlParagraphs
             return;
         }
         [$name, $closing, $attributes] = $tag;
-        if (1 === \preg_match(self::BLOCK, $name)) {
-            $closing ? $this->closeBlock() : $this->openBlock($name, $attributes);
-
-            return;
-        }
-        if ('img' === $name) {
-            $this->image($attributes);
-
-            return;
-        }
-        $this->inline($markup);
+        match (true) {
+            1 === \preg_match(self::BLOCK, $name) => $closing ? $this->closeBlock() : $this->openBlock($name, $attributes),
+            'img' === $name => $this->image($attributes),
+            default => $this->inline($markup),
+        };
     }
 
     private function closeBlock(): void

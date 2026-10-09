@@ -181,18 +181,18 @@ final readonly class ProjectSwitcher
         if (null !== $remote && null !== $home) {
             $root = ProjectLocation::prepare($remote, $home);
         }
-        if ((null === $remote && $url) || !\is_dir($root)) {
-            $this->notifier->flash($this->translator->trans('Not a directory: %path%', ['%path%' => $path]));
-
-            return;
-        }
-        // Both sides canonicalised before comparing. A launch resolves its root
-        // through realpath (WorkspaceResolver), but nothing GUARANTEES the one
-        // this service was handed is canonical — and on macOS a temp path is
-        // `/var/...` while its realpath is `/private/var/...`, so a raw
-        // comparison would call the project you are in a different one.
-        if ($root === (($mine = \realpath($this->rootDir)) ? $mine : $this->rootDir)) {
-            $this->notifier->flash($this->translator->trans('Already open'));
+        $refusal = match (true) {
+            (null === $remote && $url) || !\is_dir($root) => $this->translator->trans('Not a directory: %path%', ['%path%' => $path]),
+            // Both sides canonicalised before comparing. A launch resolves its root
+            // through realpath (WorkspaceResolver), but nothing GUARANTEES the one
+            // this service was handed is canonical — and on macOS a temp path is
+            // `/var/...` while its realpath is `/private/var/...`, so a raw
+            // comparison would call the project you are in a different one.
+            $root === (($mine = \realpath($this->rootDir)) ? $mine : $this->rootDir) => $this->translator->trans('Already open'),
+            default => null,
+        };
+        if (null !== $refusal) {
+            $this->notifier->flash($refusal);
 
             return;
         }
@@ -201,11 +201,9 @@ final readonly class ProjectSwitcher
         // contents. So it needs the same confirm quitting has — and it belongs
         // HERE rather than beside the `stop()`, so nothing has begun tearing
         // down at the moment the user is told.
-        if (!$this->guard->confirmed('switch-project', $repeat ?? $this->translator->trans('Ctrl+Shift+O again to switch project, Ctrl+S to save'))) {
-            return;
+        if ($this->guard->confirmed('switch-project', $repeat ?? $this->translator->trans('Ctrl+Shift+O again to switch project, Ctrl+S to save'))) {
+            $this->askTrustThenOpen($root);
         }
-
-        $this->askTrustThenOpen($root);
     }
 
     /**

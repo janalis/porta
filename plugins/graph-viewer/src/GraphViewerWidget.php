@@ -180,33 +180,39 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // the cell rendering covers the gap until the new bitmap lands.
         $this->bitmap = null;
         $this->selected = null;
-        if (!$this->kind->hasLayout()) {
-            // Nothing to lay out: the picture is the whole tab, and its first
-            // render at 1:1 is what establishes the extent.
-            $this->layout = null;
-            $this->view = null;
-            $this->selectionOrder = [];
-            $this->error = null === $this->plantUml?->binary() ? 'missing-plantuml' : null;
-            $this->pending->reset();
-            $this->invalidate();
-            $this->scheduleRefine();
+        match (true) {
+            !$this->kind->hasLayout() => $this->showPicture(),
+            null !== ($cached = $this->layoutCache[$hash] ?? null) => $this->adopt($cached),
+            null === $this->engine->binary() => $this->showMissingBinary(),
+            default => $this->startLayout($path, $dot, $hash),
+        };
+    }
 
-            return;
-        }
-        $cached = $this->layoutCache[$hash] ?? null;
-        if (null !== $cached) {
-            $this->adopt($cached);
+    /**
+     * Nothing to lay out: the picture is the whole tab, and its first
+     * render at 1:1 is what establishes the extent.
+     */
+    private function showPicture(): void
+    {
+        $this->layout = null;
+        $this->view = null;
+        $this->selectionOrder = [];
+        $this->error = null === $this->plantUml?->binary() ? 'missing-plantuml' : null;
+        $this->pending->reset();
+        $this->invalidate();
+        $this->scheduleRefine();
+    }
 
-            return;
-        }
-        if (null === $this->engine->binary()) {
-            $this->layout = null;
-            $this->view = null;
-            $this->error = 'missing-binary';
-            $this->invalidate();
+    private function showMissingBinary(): void
+    {
+        $this->layout = null;
+        $this->view = null;
+        $this->error = 'missing-binary';
+        $this->invalidate();
+    }
 
-            return;
-        }
+    private function startLayout(string $path, string $dot, string $hash): void
+    {
         $this->layingOut = true;
         $this->invalidate();
         $this->engine->layout(
@@ -750,31 +756,46 @@ final class GraphViewerWidget extends NavigablePaneWidget
     {
         $view = $this->view;
         $bitmap = $this->bitmap;
-        if ($this->showsBitmap() && null !== $bitmap && null !== $view) {
-            // The raster's own density: dpi over whatever this tool calls 1:1.
-            $ratio = $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI);
-            // Drawn by the terminal, the selection is stroked into the picture
-            // itself, to the pixel; a frame of glyphs would blank the cells it
-            // sits on.
-            $drawn = $this->pixels?->render($bitmap, $ratio, $view, $cols, $rows, $this->selectionOutline());
-            if (null !== $drawn) {
-                return $drawn;
-            }
-            $lines = HalfBlockRasterizer::render(
-                $this->scaled->forScale($bitmap, $view->effectiveScale($cols, 2 * $rows), $ratio),
-                $view,
-                $cols,
-                $rows,
-            );
 
-            // Only a tab WITH geometry has a selection to frame.
-            return null === $this->layout
-                ? $lines
-                : GraphSelectionOverlay::apply($lines, $this->layout, $view, $this->selected, $cols, $rows, $this->styles);
+        return match (true) {
+            $this->showsBitmap() && null !== $bitmap && null !== $view => $this->bitmapLines($bitmap, $view, $cols, $rows),
+            null !== $this->layout && null !== $this->view => GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles),
+            default => $this->statusLines($cols, $rows),
+        };
+    }
+
+    /** @return list<string> */
+    private function bitmapLines(ImageData $bitmap, ZoomPanModel $view, int $cols, int $rows): array
+    {
+        // The raster's own density: dpi over whatever this tool calls 1:1.
+        $ratio = $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI);
+        // Drawn by the terminal, the selection is stroked into the picture
+        // itself, to the pixel; a frame of glyphs would blank the cells it
+        // sits on.
+        $drawn = $this->pixels?->render($bitmap, $ratio, $view, $cols, $rows, $this->selectionOutline());
+        if (null !== $drawn) {
+            return $drawn;
         }
-        if (null !== $this->layout && null !== $this->view) {
-            return GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles);
-        }
+        $lines = HalfBlockRasterizer::render(
+            $this->scaled->forScale($bitmap, $view->effectiveScale($cols, 2 * $rows), $ratio),
+            $view,
+            $cols,
+            $rows,
+        );
+
+        // Only a tab WITH geometry has a selection to frame.
+        return null === $this->layout
+            ? $lines
+            : GraphSelectionOverlay::apply($lines, $this->layout, $view, $this->selected, $cols, $rows, $this->styles);
+    }
+
+    /**
+     * Neither a picture nor geometry yet: what is missing, what failed, or that a layout is under way.
+     *
+     * @return list<string>
+     */
+    private function statusLines(int $cols, int $rows): array
+    {
         $message = match (true) {
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
             'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantumlPath" setting'),

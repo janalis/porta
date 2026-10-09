@@ -109,6 +109,17 @@ final class DebugPanelWidgetTest extends TestCase
         $this->assertSame(2, Probe::get($panel, 'list')->selected());
     }
 
+    /** A key the panel has no binding for moves nothing and runs nothing. */
+    public function testAnUnboundKeyLeavesTheSelectionAlone(): void
+    {
+        $panel = $this->panel();
+        $panel->handleInput("\x1b[B");
+
+        $panel->handleInput('x');
+
+        $this->assertSame(1, Probe::get($panel, 'list')->selected());
+    }
+
     /** A frame row names the file it stopped in, for its right-click; a scope, a variable or a heading names none. */
     public function testOnlyAFrameRowNamesAFile(): void
     {

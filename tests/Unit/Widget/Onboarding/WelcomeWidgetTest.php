@@ -87,6 +87,17 @@ final class WelcomeWidgetTest extends TestCase
         }
     }
 
+    /** A key the list has no binding for leaves the selection on its step. */
+    public function testAnUnboundKeyLeavesTheSelectionAlone(): void
+    {
+        $widget = $this->widget($this->step('alpha'), $this->step('bravo'));
+        $widget->handleInput("\x1b[B");
+
+        $widget->handleInput('x');
+
+        $this->assertStringContainsString('bravo', $this->selectedStep($widget));
+    }
+
     /**
      * The SECOND page has to be measured from where the list now sits, not from
      * the top — the count runs over the cards from the current scroll.

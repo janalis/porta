@@ -165,17 +165,13 @@ final class LanguageMap
     public static function highlightForFence(string $language): ?string
     {
         $language = \strtolower(\trim($language));
-        if ('' === $language) {
-            return null;
-        }
-        if (\array_key_exists($language, self::FENCE_ALIASES)) {
-            return self::FENCE_ALIASES[$language];
-        }
-        if (\in_array($language, self::grammars(), strict: true)) {
-            return $language;
-        }
 
-        return self::EXTENSIONS[$language][0] ?? null;
+        return match (true) {
+            '' === $language => null,
+            \array_key_exists($language, self::FENCE_ALIASES) => self::FENCE_ALIASES[$language],
+            \in_array($language, self::grammars(), strict: true) => $language,
+            default => self::EXTENSIONS[$language][0] ?? null,
+        };
     }
 
     /** The LSP languageId for a path; `plaintext` when no server speaks it. */
@@ -183,19 +179,13 @@ final class LanguageMap
     {
         $path = self::withoutDistSuffix($path);
         $mapped = self::EXTENSIONS[ProjectPaths::extension($path)][1] ?? null;
-        if (null !== $mapped) {
-            return $mapped;
-        }
+
         // `.env.local` / `.env.dev` resolve their EXTENSION as `local`/`dev`,
         // so without this basename fallback only a bare `.env` would ever
         // reach the dotenv server. It runs AFTER the extension lookup: a
         // `composer dump-env` product like `.env.local.php` is real PHP and
         // must keep routing to the PHP server, not be announced as dotenv.
-        if (\str_starts_with(\strtolower(\basename($path)), '.env')) {
-            return 'dotenv';
-        }
-
-        return 'plaintext';
+        return $mapped ?? (\str_starts_with(\strtolower(\basename($path)), '.env') ? 'dotenv' : 'plaintext');
     }
 
     /**

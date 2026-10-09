@@ -252,60 +252,36 @@ final class OverlayHost
         if (null === $search) {
             return;
         }
-        if ($kb->matches($keys, 'select_cancel')) {
-            ($search->onClose)();
-
-            return;
-        }
-        if ($kb->matches($keys, 'accept_completion')) { // Enter
-            $hit = $search->rows[$search->selected]->hit ?? null;
-            if (null !== $hit) {
-                ($search->onPick)($hit);
-            }
-
-            return;
-        }
-        if ($kb->matches($keys, 'cursor_up')) {
-            $search->selected = $this->stepHit($search, -1);
-            ($this->invalidate)();
-
-            return;
-        }
-        if ($kb->matches($keys, 'cursor_down')) {
-            $search->selected = $this->stepHit($search, 1);
-            ($this->invalidate)();
-
-            return;
-        }
-        $jumped = $this->jumpHit($search, $keys, $kb);
-        if (null !== $jumped) {
-            $search->selected = $jumped;
-            ($this->invalidate)();
-
-            return;
-        }
-        if ($kb->matches($keys, 'delete_char_backward')) {
-            if ($search->query->backspace()) {
-                ($search->onQuery)($search->query->value());
-            }
-
-            return;
-        }
         $before = $search->query->value();
-        if ($search->query->editKey($keys, $kb)) {
+        match (true) {
+            $kb->matches($keys, 'select_cancel') => ($search->onClose)(),
+            $kb->matches($keys, 'accept_completion') => $this->pickHit($search, $search->rows[$search->selected]->hit ?? null), // Enter
+            null !== ($jumped = $this->jumpHit($search, $keys, $kb)) => $this->selectHit($search, $jumped),
+            $kb->matches($keys, 'delete_char_backward') => $search->query->backspace() ? $this->queried($search) : null,
             // A caret move repaints; a Delete or Ctrl+W is a new query.
-            if ($before === $search->query->value()) {
-                ($this->invalidate)();
+            $search->query->editKey($keys, $kb) => $before === $search->query->value() ? ($this->invalidate)() : $this->queried($search),
+            $search->query->insert($keys) => $this->queried($search),
+            default => null,
+        };
+    }
 
-                return;
-            }
-            ($search->onQuery)($search->query->value());
+    private function pickHit(SearchModalState $search, ?SearchHit $hit): void
+    {
+        if (null !== $hit) {
+            ($search->onPick)($hit);
+        }
+    }
 
-            return;
-        }
-        if ($search->query->insert($keys)) {
-            ($search->onQuery)($search->query->value());
-        }
+    private function selectHit(SearchModalState $search, int $row): void
+    {
+        $search->selected = $row;
+        ($this->invalidate)();
+    }
+
+    /** The query was edited: its new value goes to the search. */
+    private function queried(SearchModalState $search): void
+    {
+        ($search->onQuery)($search->query->value());
     }
 
     /**
@@ -321,28 +297,18 @@ final class OverlayHost
         if (null === $search) {
             return false;
         }
-        if (null !== $this->searchBox && $this->searchBox->closeHit($relRow, $relCol)) {
-            ($search->onClose)();
-
-            return true;
-        }
-        $index = $this->searchBox?->itemAt($relRow, $relCol);
+        $box = $this->searchBox;
+        $index = $box?->itemAt($relRow, $relCol);
         $hit = null === $index ? null : $search->rows[$index]->hit ?? null;
-        if (null !== $hit) {
-            ($search->onPick)($hit);
-
-            return true;
-        }
-        $cue = null === $this->searchBox ? 0 : self::edgeCue($this->searchBox, $relRow, \count($search->rows));
-        if (0 !== $cue) {
-            $search->selected = $this->pageHit($search, $cue);
-            ($this->invalidate)();
-
-            return true;
-        }
-        if (null === $this->searchBox || !$this->searchBox->contains($relRow, $relCol)) {
-            ($search->onClose)();
-        }
+        $cue = null === $box ? 0 : self::edgeCue($box, $relRow, \count($search->rows));
+        // The ✖, or outside the box where nothing else took the click.
+        $closes = (null !== $box && $box->closeHit($relRow, $relCol)) || (null === $hit && 0 === $cue && (null === $box || !$box->contains($relRow, $relCol)));
+        match (true) {
+            $closes => ($search->onClose)(),
+            null !== $hit => ($search->onPick)($hit),
+            0 !== $cue => $this->selectHit($search, $this->pageHit($search, $cue)),
+            default => null,
+        };
 
         return true;
     }
@@ -357,13 +323,13 @@ final class OverlayHost
         $closeChanged = $this->hoverClose(PickerSurface::Search, $this->searchBox, $relRow, $relCol);
         $index = $this->searchBox?->itemAt($relRow, $relCol);
         $hovered = null !== $index && $search->rows[$index]->isHit() ? $index : null;
-        if ($hovered === $search->hovered) {
-            return $closeChanged;
+        $changed = $hovered !== $search->hovered;
+        if ($changed) {
+            $search->hovered = $hovered;
+            ($this->invalidate)();
         }
-        $search->hovered = $hovered;
-        ($this->invalidate)();
 
-        return true;
+        return $changed || $closeChanged;
     }
 
     /**
@@ -373,132 +339,121 @@ final class OverlayHost
      */
     public function handleInput(string $keys, Keybindings $kb): bool
     {
-        if (null !== $this->prompt) {
-            $this->handlePromptInput($keys, $kb, $this->prompt);
+        $prompt = $this->prompt;
+        $overlay = $this->overlay;
+        match (true) {
+            null !== $prompt => $this->handlePromptInput($keys, $kb, $prompt),
+            null !== $overlay => $this->handleOverlayInput($keys, $kb, $overlay),
+            default => null,
+        };
 
-            return true;
-        }
-        if (null !== $this->overlay) {
-            $this->handleOverlayInput($keys, $kb, $this->overlay);
-
-            return true;
-        }
-
-        return false;
+        return null !== $prompt || null !== $overlay;
     }
 
     /** @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt the open prompt (non-null, narrowed by the caller) */
     private function handlePromptInput(string $keys, Keybindings $kb, array $prompt): void
     {
-        if ($kb->matches($keys, 'select_cancel')) {
-            $this->prompt = null;
-            ($this->invalidate)();
+        match (true) {
+            $kb->matches($keys, 'select_cancel') => $this->closePrompt(),
+            $kb->matches($keys, 'accept_completion') => $this->submitPrompt($prompt), // Enter
+            $kb->matches($keys, 'delete_char_backward') => $prompt['value']->backspace() ? ($this->invalidate)() : null,
+            // The caret moves, so a rename's typo mid-word is fixed where it is.
+            $prompt['value']->editKey($keys, $kb) || $prompt['value']->insert($keys) => ($this->invalidate)(),
+            default => null,
+        };
+    }
 
-            return;
-        }
+    private function closePrompt(): void
+    {
+        $this->prompt = null;
+        ($this->invalidate)();
+    }
 
-        if ($kb->matches($keys, 'accept_completion')) { // Enter
-            $this->prompt = null;
-            ($this->invalidate)();
-            $prompt['onSubmit']($prompt['value']->value());
-
-            return;
-        }
-
-        if ($kb->matches($keys, 'delete_char_backward')) {
-            if ($prompt['value']->backspace()) {
-                ($this->invalidate)();
-            }
-
-            return;
-        }
-
-        // The caret moves, so a rename's typo mid-word is fixed where it is.
-        if ($prompt['value']->editKey($keys, $kb) || $prompt['value']->insert($keys)) {
-            ($this->invalidate)();
-        }
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt */
+    private function submitPrompt(array $prompt): void
+    {
+        $this->closePrompt();
+        $prompt['onSubmit']($prompt['value']->value());
     }
 
     /** @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay the open list overlay (non-null) */
     private function handleOverlayInput(string $keys, Keybindings $kb, array $overlay): void
     {
         $count = \count($this->matching($overlay));
+        $before = $overlay['filter']->value();
 
-        if ($kb->matches($keys, 'select_cancel')) {
+        match (true) {
             // Esc clears the filter before it closes the list. Typing is how
             // you get around a long list, so a typo in the filter must not
             // also cost you the list you were reading.
-            if ('' !== $overlay['filter']->value()) {
-                $overlay['filter']->clear();
-                $this->refiltered($overlay);
-
-                return;
-            }
-            $this->overlay = null;
-            ($this->invalidate)();
-
-            return;
-        }
-        if ($kb->matches($keys, 'delete_char_backward')) {
-            if ($overlay['filter']->backspace()) {
-                $this->refiltered($overlay);
-            }
-
-            return;
-        }
-        $before = $overlay['filter']->value();
-        if ($overlay['filter']->editKey($keys, $kb)) {
+            $kb->matches($keys, 'select_cancel') => '' !== $before ? $this->clearFilter($overlay) : $this->closeOverlay(),
+            $kb->matches($keys, 'delete_char_backward') => $overlay['filter']->backspace() ? $this->refiltered($overlay) : null,
             // A caret move repaints; a Delete or Ctrl+W narrows afresh.
-            $before === $overlay['filter']->value() ? ($this->invalidate)() : $this->refiltered($overlay);
+            $overlay['filter']->editKey($keys, $kb) => $before === $overlay['filter']->value() ? ($this->invalidate)() : $this->refiltered($overlay),
+            // None of the list's own keys can run against an empty list: every
+            // one of them steps the selection modulo $count, and a filter that
+            // matches nothing makes that a division by zero. The surface stays
+            // open showing why.
+            0 !== $count => $this->handleListKey($keys, $kb, $overlay, $count),
+            default => $this->typeIntoFilter($overlay, $keys),
+        };
+    }
 
-            return;
-        }
-        // Nothing below can run against an empty list: every one of them steps
-        // the selection modulo $count, and a filter that matches nothing makes
-        // that a division by zero. The surface stays open showing why.
-        if (0 === $count) {
-            $this->typeIntoFilter($overlay, $keys);
-
-            return;
-        }
-        if ($kb->matches($keys, 'cursor_up')) {
-            $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count, -1);
-
-            return;
-        }
-        if ($kb->matches($keys, 'cursor_down')) {
-            $this->reselect($overlay, ($overlay['selected'] + 1) % $count);
-
-            return;
-        }
-        // A page is the rows the box shows; paging stops at the ends rather
-        // than wrapping, as a list box's does.
-        if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
-            $page = \max(1, $this->overlayBox->count ?? 1) * ($kb->matches($keys, 'page_up') ? -1 : 1);
-            $this->reselect($overlay, LiveRows::within($this->matching($overlay), \max(0, \min($count - 1, $overlay['selected'] + $page)), $page <=> 0));
-
-            return;
-        }
-        if ($kb->matches($keys, 'accept_completion')) {
-            $this->pick($overlay, $this->matching($overlay)[$overlay['selected']]);
-
-            return;
-        }
-        if ($kb->matches($keys, 'recent_files')) {
+    /**
+     * A key over a list with rows in it: it moves, pages, picks or checks —
+     * or, none of those, types into the filter.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     */
+    private function handleListKey(string $keys, Keybindings $kb, array $overlay, int $count): void
+    {
+        match (true) {
+            $kb->matches($keys, 'cursor_up') => $this->reselect($overlay, ($overlay['selected'] - 1 + $count) % $count, -1),
+            $kb->matches($keys, 'cursor_down') => $this->reselect($overlay, ($overlay['selected'] + 1) % $count, 1),
+            $kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down') => $this->pageList($overlay, $count, $kb->matches($keys, 'page_up') ? -1 : 1),
+            $kb->matches($keys, 'accept_completion') => $this->pickSelected($overlay),
             // Ctrl+E again cycles like PhpStorm
-            $this->reselect($overlay, ($overlay['selected'] + 1) % $count);
+            $kb->matches($keys, 'recent_files') => $this->reselect($overlay, ($overlay['selected'] + 1) % $count),
+            // A checklist takes Space as its checkbox's key — a browser's — so
+            // Space toggles the row rather than typing into the filter, where it
+            // matched every label with a space in it.
+            ' ' === $keys && \array_any($overlay['items'], static fn (array $item): bool => \array_key_exists('checked', $item)) => $this->pick(
+                $overlay,
+                $this->matching($overlay)[$overlay['selected']],
+            ),
+            default => $this->typeIntoFilter($overlay, $keys),
+        };
+    }
 
-            return;
-        }
-        // A checklist takes Space as its checkbox's key — a browser's — so
-        // Space toggles the row rather than typing into the filter, where it
-        // matched every label with a space in it.
-        if (' ' === $keys && \array_any($overlay['items'], static fn (array $item): bool => \array_key_exists('checked', $item))) {
-            $this->pick($overlay, $this->matching($overlay)[$overlay['selected']]);
+    /**
+     * A page is the rows the box shows; paging stops at the ends rather
+     * than wrapping, as a list box's does.
+     *
+     * @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay
+     */
+    private function pageList(array $overlay, int $count, int $direction): void
+    {
+        $page = \max(1, $this->overlayBox->count ?? 1) * $direction;
+        $this->reselect($overlay, LiveRows::within($this->matching($overlay), \max(0, \min($count - 1, $overlay['selected'] + $page)), $page <=> 0));
+    }
 
-            return;
-        }
-        $this->typeIntoFilter($overlay, $keys);
+    /** @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay */
+    private function pickSelected(array $overlay): void
+    {
+        $this->pick($overlay, $this->matching($overlay)[$overlay['selected']]);
+    }
+
+    /** @param array{title: string, items: list<array{label: string, hint: string, value: string, checked?: bool, disabled?: bool, note?: bool, open?: \Closure(): void}>, selected: int, hovered: int|null, filter: TextField, onPick: callable(string): void} $overlay */
+    private function clearFilter(array $overlay): void
+    {
+        $overlay['filter']->clear();
+        $this->refiltered($overlay);
+    }
+
+    private function closeOverlay(): void
+    {
+        $this->overlay = null;
+        ($this->invalidate)();
     }
 
     /**
@@ -604,38 +559,28 @@ final class OverlayHost
      */
     public function clickAt(int $relRow, int $relCol): bool
     {
-        if (null === $this->overlay) {
+        $overlay = $this->overlay;
+        if (null === $overlay) {
             return false;
         }
 
-        $overlay = $this->overlay;
-        if (null !== $this->overlayBox && $this->overlayBox->closeHit($relRow, $relCol)) {
-            $this->overlay = null;
-            ($this->invalidate)();
-
-            return true;
-        }
-        $index = $this->overlayBox?->itemAt($relRow, $relCol);
+        $box = $this->overlayBox;
+        $closeHit = null !== $box && $box->closeHit($relRow, $relCol);
         // Against the FILTERED list, like every other index here — the row the
         // pointer is over is the row the box drew.
-        $item = null === $index ? null : $this->matching($overlay)[$index] ?? null;
-        if (null !== $item) {
-            $this->pick($overlay, $item);
-
-            return true;
-        }
-        $count = \count($this->matching($overlay));
-        $box = $this->overlayBox;
+        $matching = $closeHit ? [] : $this->matching($overlay);
+        $index = $box?->itemAt($relRow, $relCol);
+        $item = null === $index ? null : $matching[$index] ?? null;
+        $count = \count($matching);
         $cue = null === $box ? 0 : self::edgeCue($box, $relRow, $count);
-        if (null !== $box && 0 !== $cue) {
-            $this->reselect($overlay, LiveRows::within($this->matching($overlay), \max(0, \min($count - 1, $overlay['selected'] + ($cue * $box->count))), $cue));
-
-            return true;
-        }
-        if (null === $this->overlayBox || !$this->overlayBox->contains($relRow, $relCol)) {
-            $this->overlay = null;
-            ($this->invalidate)();
-        }
+        // The ✖, or outside the box where nothing else took the click.
+        $closes = $closeHit || (null === $item && (null === $box || (0 === $cue && !$box->contains($relRow, $relCol))));
+        match (true) {
+            $closes => $this->closeOverlay(),
+            null !== $item => $this->pick($overlay, $item),
+            null !== $box && 0 !== $cue => $this->reselect($overlay, LiveRows::within($matching, \max(0, \min($count - 1, $overlay['selected'] + ($cue * $box->count))), $cue)),
+            default => null,
+        };
 
         return true;
     }
@@ -657,14 +602,14 @@ final class OverlayHost
         $overlay = $this->overlay;
         $closeChanged = $this->hoverClose(PickerSurface::ListOverlay, $this->overlayBox, $relRow, $relCol);
         $index = $this->overlayBox?->itemAt($relRow, $relCol);
-        if ($index === ($overlay['hovered'] ?? null)) {
-            return $closeChanged;
+        $changed = $index !== ($overlay['hovered'] ?? null);
+        if ($changed) {
+            $overlay['hovered'] = $index;
+            $this->overlay = $overlay;
+            ($this->invalidate)();
         }
-        $overlay['hovered'] = $index;
-        $this->overlay = $overlay;
-        ($this->invalidate)();
 
-        return true;
+        return $changed || $closeChanged;
     }
 
     /** Hover for the mini prompt: only its ✖ restyles; returns whether it changed. */
@@ -742,13 +687,8 @@ final class OverlayHost
         if (null !== ($rows[$from] ?? null) && $rows[$from]->isSelectable()) {
             return $from;
         }
-        foreach ($rows as $i => $row) {
-            if ($row->isSelectable()) {
-                return $i;
-            }
-        }
 
-        return $from;
+        return \array_find_key($rows, static fn (SearchRow $row): bool => $row->isSelectable()) ?? $from;
     }
 
     /** Wheel over the list overlay: move the selection, wrapping like the arrow keys. */
@@ -792,32 +732,29 @@ final class OverlayHost
     }
 
     /**
-     * The row a paging or category key selects, or null when $keys is neither.
-     * PgUp/PgDn move a box's worth of hits and stop at the ends; Tab and
-     * Shift+Tab land on the first hit of the next or previous category,
-     * wrapping — the way a grouped list's sections are walked.
+     * The row a cursor, paging or category key selects, or null when $keys is
+     * none of them. Up/Down step over hit rows, wrapping; PgUp/PgDn move a
+     * box's worth of hits and stop at the ends; Tab and Shift+Tab land on the
+     * first hit of the next or previous category, wrapping — the way a
+     * grouped list's sections are walked.
      */
     private function jumpHit(SearchModalState $search, string $keys, Keybindings $kb): ?int
     {
-        if ([] === $search->rows) {
-            return null;
-        }
-        $dir = match (true) {
-            $kb->matches($keys, 'page_up') => -1,
-            $kb->matches($keys, 'page_down') => 1,
-            default => 0,
+        return match (true) {
+            $kb->matches($keys, 'cursor_up') => $this->stepHit($search, -1),
+            $kb->matches($keys, 'cursor_down') => $this->stepHit($search, 1),
+            [] === $search->rows => null,
+            $kb->matches($keys, 'page_up') => $this->pageHit($search, -1),
+            $kb->matches($keys, 'page_down') => $this->pageHit($search, 1),
+            "\t" === $keys => $this->categoryHit($search, 1),
+            "\x1b[Z" === $keys => $this->categoryHit($search, -1),
+            default => null,
         };
-        if (0 !== $dir) {
-            return $this->pageHit($search, $dir);
-        }
-        $step = match ($keys) {
-            "\t" => 1,
-            "\x1b[Z" => -1,
-            default => 0,
-        };
-        if (0 === $step) {
-            return null;
-        }
+    }
+
+    /** The first hit of the category $step away from the selection's, wrapping; null without categories. */
+    private function categoryHit(SearchModalState $search, int $step): ?int
+    {
         // Each category's first hit, in order; the one the selection is in is
         // the last whose first hit it has reached.
         $firsts = [];
@@ -945,18 +882,15 @@ final class OverlayHost
      */
     public function moveSelection(int $delta): bool
     {
-        if (null !== $this->search) {
-            $this->moveSearchSelection($delta);
+        $search = $this->search;
+        $overlay = $this->overlay;
+        match (true) {
+            null !== $search => $this->moveSearchSelection($delta),
+            null !== $overlay => $this->moveListSelection($delta),
+            default => null,
+        };
 
-            return true;
-        }
-        if (null !== $this->overlay) {
-            $this->moveListSelection($delta);
-
-            return true;
-        }
-
-        return false;
+        return null !== $search || null !== $overlay;
     }
 
     /**

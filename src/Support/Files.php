@@ -62,18 +62,23 @@ final class Files
     public static function resolve(string $path): ?string
     {
         $real = \realpath($path);
-        if (false !== $real) {
-            return $real;
-        }
-        // Absolute behind the wrapper, as every phar path Porta builds from
-        // __DIR__ is: a relative one's leading `..` has nothing to cancel.
         $wrapped = [];
-        if (1 !== \preg_match('~^([a-z][a-z0-9+.-]*://)(/.*)$~i', $path, $wrapped)) {
-            return null;
-        }
+
+        return match (true) {
+            false !== $real => $real,
+            // Absolute behind the wrapper, as every phar path Porta builds from
+            // __DIR__ is: a relative one's leading `..` has nothing to cancel.
+            1 !== \preg_match('~^([a-z][a-z0-9+.-]*://)(/.*)$~i', $path, $wrapped) => null,
+            default => self::resolveWrapped($wrapped[1], $wrapped[2]),
+        };
+    }
+
+    /** $path behind the $wrapper prefix, resolved by its segments; null when nothing is there. */
+    private static function resolveWrapped(string $wrapper, string $path): ?string
+    {
         /** @var list<string> $segments */
         $segments = [];
-        foreach (\explode('/', $wrapped[2]) as $segment) {
+        foreach (\explode('/', $path) as $segment) {
             if ('..' === $segment) {
                 \array_pop($segments);
             }
@@ -82,7 +87,7 @@ final class Files
             }
             $segments[] = $segment;
         }
-        $resolved = $wrapped[1].'/'.\implode('/', $segments);
+        $resolved = $wrapper.'/'.\implode('/', $segments);
 
         return \file_exists($resolved) ? $resolved : null;
     }

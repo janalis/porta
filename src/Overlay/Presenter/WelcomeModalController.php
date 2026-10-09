@@ -258,8 +258,6 @@ final class WelcomeModalController implements ContributedView
         $zone = $this->frame->press($box, $row, $col);
         if (WindowZone::Close === $zone || WindowZone::Outside === $zone) {
             $this->close();
-
-            return true;
         }
         if (WindowZone::Content === $zone) {
             $this->tui->setFocus($this->welcome);

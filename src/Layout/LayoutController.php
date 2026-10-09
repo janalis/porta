@@ -188,19 +188,20 @@ final class LayoutController
         // Sidebar resize: dragging a pane's separator sets that pane's width. Only
         // one sidebar is ever armed at a time (see cancelDrags), so the first
         // match wins and the rest fall through untouched.
-        if ($this->continueSidebarResize($mouse, $treeRect, $this->treeResize)) {
-            return true;
-        }
-        foreach ($this->viewResizes as $id => $state) {
-            if ($this->continueSidebarResize($mouse, $viewLeftRect, $state, $this->viewBasis[$id] ?? null)) {
-                return true;
-            }
-        }
-        if ($this->continuePreviewResize($mouse)) {
-            return true;
-        }
+        return $this->continueSidebarResize($mouse, $treeRect, $this->treeResize) || \array_any($this->viewResizes, fn (SidebarResizeState $state, string $id): bool => $this->continueSidebarResize(
+            $mouse,
+            $viewLeftRect,
+            $state,
+            $this->viewBasis[$id] ?? null,
+        )) || $this->continuePreviewResize($mouse) || $this->continuePanelResize($mouse);
+    }
 
-        // Bottom-panel resize: dragging a panel's top edge sets the bottom-panel height.
+    /**
+     * Bottom-panel resize: dragging a panel's top edge sets the bottom-panel
+     * height. Returns true when it consumed the event.
+     */
+    private function continuePanelResize(MouseEvent $mouse): bool
+    {
         if ($this->panelResizing && ($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             $rows = $this->tui->getTerminal()->getRows();
             // The chrome measured at the press: mid-drag the panel's content
@@ -335,10 +336,7 @@ final class LayoutController
      */
     public function armPanelResize(DockPanelWidget $panel, MouseEvent $mouse, int $grabRowOffset = 0): bool
     {
-        if (!$panel->isVisible()) {
-            return false;
-        }
-        $rect = $this->renderer->getWidgetRect($panel);
+        $rect = $panel->isVisible() ? $this->renderer->getWidgetRect($panel) : null;
         if (null === $rect || $mouse->row !== ($rect->row + $grabRowOffset) || $mouse->col < $rect->col || $mouse->col >= ($rect->col + $rect->columns)) {
             return false;
         }

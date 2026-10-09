@@ -313,18 +313,18 @@ final class BidiTui extends Tui implements FrameHooks
      */
     public function floatingColumn(int $row, int $col, int $span, int $width): int
     {
-        if (null === $this->reorder) {
-            return $col;
-        }
-        $columns = $this->getTerminal()->getColumns();
+        // An unmirrored frame scans nothing, and keeps $col.
+        $columns = null === $this->reorder ? 0 : $this->getTerminal()->getColumns();
+        $floating = $col;
         for ($visual = 0; $visual < $columns; ++$visual) {
             $logical = $this->logicalColumn($row, $visual);
             if ($logical >= $col && $logical < ($col + \max(1, $span))) {
-                return $columns - $visual - $width;
+                $floating = $columns - $visual - $width;
+                break;
             }
         }
 
-        return $col;
+        return $floating;
     }
 
     /**
@@ -430,16 +430,14 @@ final class BidiTui extends Tui implements FrameHooks
         // final resting frame always lands. An idle→event frame paints
         // immediately (lastFrameAt is old), and force (resize, test frames)
         // bypasses the cap entirely.
-        if ($requested && !$this->forceRequested && null !== $this->clock && null !== $this->lastFrameAt) {
-            $elapsed = Clocks::seconds($this->clock) - $this->lastFrameAt;
-            if ($elapsed < self::MIN_FRAME_INTERVAL) {
-                $this->perf?->countCapSkip();
-                if (null === $this->capTimer && null !== $this->scheduler) {
-                    $this->capTimer = $this->scheduler->delay(self::MIN_FRAME_INTERVAL - $elapsed, $this->capWakeup(...));
-                }
-
-                return; // renderRequested stays set — the wakeup (or ticker) retries
+        $elapsed = $requested && !$this->forceRequested && null !== $this->clock && null !== $this->lastFrameAt ? Clocks::seconds($this->clock) - $this->lastFrameAt : null;
+        if (null !== $elapsed && $elapsed < self::MIN_FRAME_INTERVAL) {
+            $this->perf?->countCapSkip();
+            if (null === $this->capTimer && null !== $this->scheduler) {
+                $this->capTimer = $this->scheduler->delay(self::MIN_FRAME_INTERVAL - $elapsed, $this->capWakeup(...));
             }
+
+            return; // renderRequested stays set — the wakeup (or ticker) retries
         }
 
         $columns = $this->getTerminal()->getColumns();
@@ -453,9 +451,18 @@ final class BidiTui extends Tui implements FrameHooks
             $hook();
         }
 
-        if (!$requested) {
-            return;
+        if ($requested) {
+            $this->paint($privates, $columns);
         }
+    }
+
+    /**
+     * One requested frame, rendered, arranged and written.
+     *
+     * @param array{requested: \ReflectionProperty, root: \ReflectionProperty, renderer: \ReflectionProperty, screenWriter: \ReflectionProperty} $privates
+     */
+    private function paint(array $privates, int $columns): void
+    {
         // The manual path runs for LTR too — the vendor's processRender does
         // exactly this (clear the flag, renderFrame, writeFrame; verified, nothing
         // else) and delegating to it hides where a slow frame spends its time.

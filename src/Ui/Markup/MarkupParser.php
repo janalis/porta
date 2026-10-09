@@ -81,27 +81,31 @@ final class MarkupParser
 
             return null !== $spec;
         }
-        $tag = $match[3][0] ?? '';
-        if ('' !== $tag && null === StyleSpec::fromTag($tag)) {
-            return false;
-        }
 
-        // `</>` closes the innermost span, `</tag>` the innermost `<tag>` and
-        // every span inside it. A bare `</>` with nothing open is Console's
-        // no-op; a named close that matches nothing Console would throw on,
-        // and here it prints.
-        $depth = \count($open);
+        return self::closeTag($open, $root, $match[3][0] ?? '');
+    }
+
+    /**
+     * A closing tag: `</>` closes the innermost span, `</tag>` the innermost
+     * `<tag>` and every span inside it. A bare `</>` with nothing open is
+     * Console's no-op; a named close that matches nothing Console would throw
+     * on, and here it prints — as does one naming no style at all, which
+     * looks for no span.
+     *
+     * @param list<array{tag: string, spec: StyleSpec, children: list<string|MarkupNode>}> $open
+     * @param list<string|MarkupNode>                                                     $root
+     */
+    private static function closeTag(array &$open, array &$root, string $tag): bool
+    {
+        $depth = '' === $tag || null !== StyleSpec::fromTag($tag) ? \count($open) : 0;
         while ($depth > 0 && '' !== $tag && $open[$depth - 1]['tag'] !== $tag) {
             --$depth;
         }
-        if (0 === $depth) {
-            return '' === $tag;
-        }
-        while (\count($open) >= $depth) {
+        while ($depth > 0 && \count($open) >= $depth) {
             self::close($open, $root);
         }
 
-        return true;
+        return $depth > 0 || '' === $tag;
     }
 
     /**

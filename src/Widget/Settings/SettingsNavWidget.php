@@ -361,44 +361,17 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         }
         $kb = $this->getKeybindings();
 
-        if ($kb->matches($data, 'exit_view')) {
-            $this->fire($this->onExit);
-
-            return;
-        }
-        if ($kb->matches($data, 'focus_next_pane')) {
-            $this->fire($this->onFocusNext);
-
-            return;
-        }
-        if ($kb->matches($data, 'find_setting')) {
-            $this->events?->dispatch(new SettingsSearchRequested());
-
-            return;
-        }
-        if ($kb->matches($data, 'move_up')) {
-            $this->moveTo(\max(0, $this->list->selected() - 1));
-
-            return;
-        }
-        if ($kb->matches($data, 'move_down')) {
-            $this->moveTo(\min(\count($this->visible) - 1, $this->list->selected() + 1));
-
-            return;
-        }
-        if ($kb->matches($data, 'collapse')) {
-            $this->collapse();
-
-            return;
-        }
-        if ($kb->matches($data, 'expand')) {
-            $this->setFolderOpen(true);
-
-            return;
-        }
-        if ($kb->matches($data, 'toggle')) {
-            $this->setFolderOpen(!$this->isOpenFolder($this->selectedEntry()));
-        }
+        match (true) {
+            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, 'find_setting') => $this->events?->dispatch(new SettingsSearchRequested()),
+            $kb->matches($data, 'move_up') => $this->moveTo(\max(0, $this->list->selected() - 1)),
+            $kb->matches($data, 'move_down') => $this->moveTo(\min(\count($this->visible) - 1, $this->list->selected() + 1)),
+            $kb->matches($data, 'collapse') => $this->collapse(),
+            $kb->matches($data, 'expand') => $this->setFolderOpen(true),
+            $kb->matches($data, 'toggle') => $this->setFolderOpen(!$this->isOpenFolder($this->selectedEntry())),
+            default => null,
+        };
     }
 
     /**

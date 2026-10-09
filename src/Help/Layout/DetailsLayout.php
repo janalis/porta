@@ -54,16 +54,11 @@ final readonly class DetailsLayout
     private function cut(HtmlBlock $block): array
     {
         $literal = $block->literal;
-        $close = \stripos($literal, needle: '</details');
-        $end = false === $close ? false : \strpos($literal, needle: '>', offset: $close);
-        if (false === $end) {
+        $at = self::splitAt($literal);
+        if (null === $at) {
             return [$block];
         }
-        ++$end;
-        $next = $end + \strspn($literal, characters: " \t\r\n", offset: $end);
-        if ($next >= \strlen($literal)) {
-            return [$block];
-        }
+        [$end, $next] = $at;
         // Each piece keeps its own bytes when the block is written as it reads
         // (not inside a quote or a list, whose markers the literal has lost).
         $range = $block->range;
@@ -72,6 +67,22 @@ final readonly class DetailsLayout
         $tail = new HtmlBlock(\substr($literal, $next), $exact ? new SourceRange($range->start + $next, $range->end) : $range);
 
         return [$head, ...$this->cut($tail)];
+    }
+
+    /**
+     * Where $literal splits after its first `</details>`: the end of that
+     * tag and the start of what follows it; null when no tag closes there or
+     * nothing but whitespace follows.
+     *
+     * @return array{int, int}|null
+     */
+    private static function splitAt(string $literal): ?array
+    {
+        $close = \stripos($literal, needle: '</details');
+        $end = false === $close ? false : \strpos($literal, needle: '>', offset: $close);
+        $next = false === $end ? null : $end + 1 + \strspn($literal, characters: " \t\r\n", offset: $end + 1);
+
+        return false === $end || null === $next || $next >= \strlen($literal) ? null : [$end + 1, $next];
     }
 
     /**
@@ -89,10 +100,8 @@ final readonly class DetailsLayout
             return null;
         }
         $section = [$first];
-        if (self::closes($first->literal)) {
-            return $section;
-        }
-        for ($next = $index + 1, $count = \count($blocks); $next < $count; ++$next) {
+        // A first block that closes the section too is all of it.
+        for ($next = $index + 1, $count = self::closes($first->literal) ? 0 : \count($blocks); $next < $count; ++$next) {
             $section[] = $blocks[$next];
             if ($blocks[$next] instanceof HtmlBlock && self::closes($blocks[$next]->literal)) {
                 break;

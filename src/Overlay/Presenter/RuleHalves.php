@@ -228,20 +228,38 @@ final readonly class RuleHalves
         if (null === $beside || !\array_key_exists($row, $lines) || $row < $divider->row || $row >= ($divider->row + $divider->rows)) {
             return [];
         }
-        $drawn = static fn (int $laid): ?int => \array_find(\range(start: 0, end: AnsiUtils::visibleWidth($lines[$row]) - 1), static fn (int $col): bool => $logical($row, $col) === $laid);
-        $at = $drawn($divider->col);
+
+        return self::dividerBeside($lines[$row], $row, $divider->col, $beside, $floating, $logical, $rule);
+    }
+
+    /**
+     * {@see dividerOnShade} on the header's row, once the divider is known to
+     * stand beside the header there: the divider's cell redrawn on the
+     * shade of the header's cell at $beside — or nothing, when either is not
+     * drawn, a floating surface covers it, or the cell is not the rule's `│`.
+     *
+     * @param list<DropdownRegion>    $floating
+     * @param \Closure(int, int): int $logical
+     *
+     * @return list<array{row: int, col: int, width: int, segment: string}>
+     */
+    private static function dividerBeside(string $text, int $row, int $dividerCol, int $beside, array $floating, \Closure $logical, Style $rule): array
+    {
+        $drawn = static fn (int $laid): ?int => \array_find(\range(start: 0, end: AnsiUtils::visibleWidth($text) - 1), static fn (int $col): bool => $logical($row, $col) === $laid);
+        $at = $drawn($dividerCol);
         $shade = $drawn($beside);
         if (null === $at || null === $shade || [] !== self::surfaces($floating, $row, $at)) {
             return [];
         }
-        $line = AnsiText::columnsFrom($lines[$row], $at, 1);
+        $line = AnsiText::columnsFrom($text, $at, 1);
         $tint = self::state(self::lead($line))['fg'];
-        $bg = self::state(self::lead(AnsiText::columnsFrom($lines[$row], $shade, 1)))['bg'];
-        if (Glyphs::PANE_DIVIDER !== AnsiUtils::stripAnsiCodes($line) || null === $tint || $tint !== self::state(self::lead($rule->apply(Glyphs::PANE_DIVIDER)))['fg'] || null === $bg) {
-            return [];
-        }
+        $bg = self::state(self::lead(AnsiText::columnsFrom($text, $shade, 1)))['bg'];
 
-        return [['row' => $row, 'col' => $at, 'width' => 1, 'segment' => "\x1b[{$tint};".self::asBackground($bg).'m'.Glyphs::PANE_DIVIDER."\x1b[0m"]];
+        return (
+            Glyphs::PANE_DIVIDER !== AnsiUtils::stripAnsiCodes($line) || null === $tint || $tint !== self::state(self::lead($rule->apply(Glyphs::PANE_DIVIDER)))['fg'] || null === $bg
+                ? []
+                : [['row' => $row, 'col' => $at, 'width' => 1, 'segment' => "\x1b[{$tint};".self::asBackground($bg).'m'.Glyphs::PANE_DIVIDER."\x1b[0m"]]
+        );
     }
 
     /**

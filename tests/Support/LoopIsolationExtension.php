@@ -131,9 +131,7 @@ final class LoopIsolationExtension implements Extension
         try {
             /** @var mixed $callbacks */
             $callbacks = new \ReflectionProperty(AbstractDriver::class, 'callbacks')->getValue(EventLoop::getDriver());
-            if (!\is_array($callbacks)) {
-                return '';
-            }
+            $callbacks = \is_array($callbacks) ? $callbacks : [];
             foreach ($leaked as $id) {
                 /** @var mixed $callback */
                 $callback = $callbacks[$id] ?? null;
@@ -147,7 +145,7 @@ final class LoopIsolationExtension implements Extension
                 $seen[\sprintf('%s %s:%d', $kind, \basename((string) $where->getFileName()), $where->getStartLine())] = true;
             }
         } catch (\Throwable) {
-            return '';
+            $seen = [];
         }
 
         return [] === $seen ? '' : ' ('.\implode('; ', \array_keys($seen)).')';

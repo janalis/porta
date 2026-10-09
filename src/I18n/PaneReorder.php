@@ -234,36 +234,39 @@ final class PaneReorder
         // the pane underneath it and hit nothing — the box moved with the
         // frame and the mouse did not follow it.
         $width = AnsiUtils::visibleWidth($line);
+        $column = self::surfaceColumn($regions, $visualCol, $width, $surfaces);
+        if (null !== $column) {
+            return $column;
+        }
+
+        $run = \array_find($runs, static fn (array $run): bool => $visualCol < ($run['start'] + $run['width']));
+
+        return null === $run || $run['ltr']
+            ? $visualCol
+            : $run['start'] + Bidi::visualToLogicalColumn(AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true), $visualCol - $run['start'], BaseDirection::Rtl);
+    }
+
+    /**
+     * The logical column under $visualCol in the last-drawn surface that covers
+     * it, or null when none does.
+     *
+     * @param list<array{start: int, width: int, ltr: bool, box?: array{int, int}}> $regions
+     */
+    private static function surfaceColumn(array $regions, int $visualCol, int $width, string $surfaces): ?int
+    {
+        $column = null;
         foreach (\array_reverse($regions) as $region) {
             [$start, $keep] = self::placed($region, $width);
-            if (0 === $keep) {
-                continue;
-            }
-            if ($visualCol < $start || $visualCol >= ($start + $keep)) {
+            if (0 === $keep || $visualCol < $start || $visualCol >= ($start + $keep)) {
                 continue;
             }
             $offset = $visualCol - $start;
-            if ($region['ltr']) {
-                return $region['start'] + $offset;
-            }
-            $slice = AnsiUtils::sliceByColumn($surfaces, $region['start'], $keep, strict: true);
-
-            return $region['start'] + Bidi::visualToLogicalColumn($slice, $offset, BaseDirection::Rtl);
+            $column = $region['ltr']
+                ? $region['start'] + $offset
+                : $region['start'] + Bidi::visualToLogicalColumn(AnsiUtils::sliceByColumn($surfaces, $region['start'], $keep, strict: true), $offset, BaseDirection::Rtl);
+            break;
         }
 
-        foreach ($runs as $run) {
-            if ($visualCol >= ($run['start'] + $run['width'])) {
-                continue;
-            }
-
-            if ($run['ltr']) {
-                return $visualCol;
-            }
-            $slice = AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true);
-
-            return $run['start'] + Bidi::visualToLogicalColumn($slice, $visualCol - $run['start'], BaseDirection::Rtl);
-        }
-
-        return $visualCol;
+        return $column;
     }
 }

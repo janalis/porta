@@ -75,6 +75,18 @@ final class JsonRpcTransport
 
             return false; // a malformed command setting must not crash proc_open
         }
+
+        return $this->spawn($onMessage, $onEof);
+    }
+
+    /**
+     * {@see start()} once the command is known to name a binary.
+     *
+     * @param callable(array<array-key, mixed>): void $onMessage
+     * @param (callable(): void)|null                 $onEof
+     */
+    private function spawn(callable $onMessage, ?callable $onEof): bool
+    {
         $descriptors = [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']];
         /** @var non-empty-string $cwd */
         $cwd = $this->rootDir;

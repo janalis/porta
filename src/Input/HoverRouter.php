@@ -68,51 +68,7 @@ final readonly class HoverRouter
 
         // The toast stack floats above every modal: over a card, only its ✖
         // tint reacts, and the hover never leaks to what is beneath.
-        if ($this->toasts->hoverAt($mouse->row, $mouse->col)) {
-            return;
-        }
-
-        // A right-click context menu floats over every view and is modal, so it
-        // gets first refusal: highlight the item under the pointer.
-        if ($this->contextMenu->isOpen()) {
-            if (null !== ($item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col)) && $this->contextMenu->hoverItem($item)) {
-                $this->tui->requestRender();
-            }
-
-            return;
-        }
-
-        // A floating picker owns hover while open (screen coordinates); the
-        // workspace beneath is dimmed, so its pane tints would be invisible
-        // anyway. The menu bar keeps first refusal, like the other modals.
-        if ($this->panes->editor->isAnyPickerOpen()) {
-            // A pointer the menu takes has left the picker: say so, or its
-            // close button stays lit under the dropdown.
-            $miss = $this->handleMenuHover($mouse);
-            if ($this->panes->editor->handlePickerHover($miss ? -1 : $mouse->row, $miss ? -1 : $mouse->col)) {
-                $this->tui->requestRender();
-            }
-
-            return;
-        }
-
-        // The floating Find-in-Files modal owns hover while open (screen
-        // coordinates); the workspace beneath is dimmed, so its pane tints
-        // would be invisible anyway. The menu bar keeps first refusal.
-        if ($this->panes->editor->isFindModalOpen()) {
-            $miss = $this->handleMenuHover($mouse);
-            if ($this->panes->editor->findModal->hoverAt($miss ? -1 : $mouse->row, $miss ? -1 : $mouse->col)) {
-                $this->tui->requestRender();
-            }
-
-            return;
-        }
-
-        // The Welcome modal floats over whatever is beneath it and is modal, so
-        // it owns hover next: the menu bar keeps first refusal, then the box.
-        if ($this->windows->isModalOpen()) {
-            $this->handleMenuHover($mouse) ? $this->windows->leave() : $this->windows->hover($mouse);
-
+        if ($this->toasts->hoverAt($mouse->row, $mouse->col) || $this->hoverModal($mouse)) {
             return;
         }
 
@@ -130,6 +86,55 @@ final readonly class HoverRouter
             return;
         }
         $this->handleMainHover($mouse, $editorRect);
+    }
+
+    /** Whether a modal surface is open, and so owned this hover-move whatever it made of it. */
+    private function hoverModal(MouseEvent $mouse): bool
+    {
+        $changed = match (true) {
+            // A right-click context menu floats over every view and is modal, so it
+            // gets first refusal: highlight the item under the pointer.
+            $this->contextMenu->isOpen() => null !== ($item = $this->hit->hitRegion($this->overlay->contextMenuDropdown(), $mouse->row, $mouse->col)) && $this->contextMenu->hoverItem($item),
+            // A floating picker owns hover while open (screen coordinates); the
+            // workspace beneath is dimmed, so its pane tints would be invisible
+            // anyway. The menu bar keeps first refusal, like the other modals.
+            $this->panes->editor->isAnyPickerOpen() => $this->panes->editor->handlePickerHover(...$this->pointerPastMenu($mouse)),
+            // The floating Find-in-Files modal owns hover while open (screen
+            // coordinates); the workspace beneath is dimmed, so its pane tints
+            // would be invisible anyway. The menu bar keeps first refusal.
+            $this->panes->editor->isFindModalOpen() => $this->panes->editor->findModal->hoverAt(...$this->pointerPastMenu($mouse)),
+            $this->windows->isModalOpen() => $this->hoverWelcome($mouse),
+            default => null,
+        };
+        if (true === $changed) {
+            $this->tui->requestRender();
+        }
+
+        return null !== $changed;
+    }
+
+    /**
+     * The pointer for a modal beneath the menu bar: off-screen when the menu
+     * took it — the pointer has left the modal, so say so, or its close button
+     * stays lit under the dropdown.
+     *
+     * @return array{int, int}
+     */
+    private function pointerPastMenu(MouseEvent $mouse): array
+    {
+        return $this->handleMenuHover($mouse) ? [-1, -1] : [$mouse->row, $mouse->col];
+    }
+
+    /**
+     * The Welcome modal floats over whatever is beneath it and is modal, so it
+     * owns hover next: the menu bar keeps first refusal, then the box. False:
+     * the window router repaints for itself.
+     */
+    private function hoverWelcome(MouseEvent $mouse): bool
+    {
+        $this->handleMenuHover($mouse) ? $this->windows->leave() : $this->windows->hover($mouse);
+
+        return false;
     }
 
     /** The open view window's hover: the menu's if it takes the pointer, else the frame's, the divider's and the view's. */
@@ -252,27 +257,7 @@ final readonly class HoverRouter
     private function handleMenuHover(MouseEvent $mouse): bool
     {
         if ($this->menuBar->isDropdownShown()) {
-            $region = $this->overlay->menuDropdown();
-            if (null !== ($item = $this->hit->hitRegion($region, $mouse->row, $mouse->col))) {
-                if ($this->menuBar->hoverItem($item)) {
-                    $this->tui->requestRender();
-                }
-
-                return true;
-            }
-            if (null !== ($rel = $this->hit->hit($this->menuBar, $mouse->row, $mouse->col))) {
-                $title = $this->menuBar->titleAtColumn($rel['col']);
-                if (null !== $title && $title !== $this->menuBar->openIndex()) {
-                    $this->menuBar->open($title);
-                    $this->tui->requestRender();
-                }
-
-                return true;
-            }
-
-            // The frame's border cells: consumed (no tint), so a hover on the
-            // box edge never leaks to the pane beneath.
-            return true === $region?->contains($mouse->row, $mouse->col);
+            return $this->hoverOpenMenu($mouse);
         }
 
         // Closed: highlight the title under the pointer, clearing when off the bar.
@@ -283,6 +268,29 @@ final readonly class HoverRouter
         }
 
         return null !== $rel;
+    }
+
+    /**
+     * An open menu: the dropdown item under the pointer highlights, a sibling
+     * title the pointer moves onto opens. Whether the menu took the pointer.
+     */
+    private function hoverOpenMenu(MouseEvent $mouse): bool
+    {
+        $region = $this->overlay->menuDropdown();
+        $item = $this->hit->hitRegion($region, $mouse->row, $mouse->col);
+        $rel = null === $item ? $this->hit->hit($this->menuBar, $mouse->row, $mouse->col) : null;
+        if (null !== $item && $this->menuBar->hoverItem($item)) {
+            $this->tui->requestRender();
+        }
+        $title = null === $rel ? null : $this->menuBar->titleAtColumn($rel['col']);
+        if (null !== $title && $title !== $this->menuBar->openIndex()) {
+            $this->menuBar->open($title);
+            $this->tui->requestRender();
+        }
+
+        // The frame's border cells: consumed (no tint), so a hover on the
+        // box edge never leaks to the pane beneath.
+        return null !== $item || null !== $rel || true === $region?->contains($mouse->row, $mouse->col);
     }
 
     /** Hover routing for the normal editor layout: tree, menu, editor popup, panels. */

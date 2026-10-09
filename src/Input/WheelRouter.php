@@ -94,10 +94,14 @@ final readonly class WheelRouter
         if ($editor->isAnyPickerOpen() || true === $findBox?->contains($mouse->row, $mouse->col)) {
             return false;
         }
-        if ($this->pointers->of($this->views->activeId())->wheel(new WheelGesture($mouse, WheelAxis::Horizontal, WheelStep::cols($mouse)))) {
-            return true;
-        }
-        if ($this->hit->contains($tabsRect, $mouse) && !$this->panes->tabBar->position()->isSide()) {
+
+        return $this->pointers->of($this->views->activeId())->wheel(new WheelGesture($mouse, WheelAxis::Horizontal, WheelStep::cols($mouse))) || $this->scrollSideways($mouse, $tabsRect, $editorRect);
+    }
+
+    /** The horizontal tab strip, the editor, or a navigable pane: the first under the pointer scrolls sideways. */
+    private function scrollSideways(MouseEvent $mouse, ?WidgetRect $tabsRect, ?WidgetRect $editorRect): bool
+    {
+        $scroll = match (true) {
             // MEASURED 2026-09-11, and the comment this replaces was
             // wrong: a strip of LATIN tab names is not mirrored under RTL,
             // only right-anchored — "‹ a.php │ b.php ›" keeps its order and
@@ -108,22 +112,18 @@ final readonly class WheelRouter
             // cannot be right for both. Left as it stands because
             // IdeTabScrollTest pins the current choice and changing it is a
             // behaviour decision, not a comment fix.
-            $this->panes->tabBar->scrollBy($this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta);
-
-            return true;
+            $this->hit->contains($tabsRect, $mouse) && !$this->panes->tabBar->position()->isSide() => fn () => $this->panes->tabBar->scrollBy(
+                $this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta,
+            ),
+            $this->hit->contains($editorRect, $mouse) => fn () => $this->panes->editor->scrollHBy(WheelStep::cols($mouse)),
+            null !== ($navigable = $this->panes->navigablePane()) && $this->hit->contains($this->hit->rect($navigable), $mouse) => static fn () => $navigable->scrollBy(WheelStep::cols($mouse), 0),
+            default => null,
+        };
+        if (null !== $scroll) {
+            $scroll();
         }
-        if ($this->hit->contains($editorRect, $mouse)) {
-            $this->panes->editor->scrollHBy(WheelStep::cols($mouse));
 
-            return true;
-        }
-        $navigable = $this->panes->navigablePane();
-        if (null === $navigable || !$this->hit->contains($this->hit->rect($navigable), $mouse)) {
-            return false;
-        }
-        $navigable->scrollBy(WheelStep::cols($mouse), 0);
-
-        return true;
+        return null !== $scroll;
     }
 
     /**
@@ -133,47 +133,37 @@ final readonly class WheelRouter
      */
     private function overSurfaces(MouseEvent $mouse, ?WidgetRect $tabsRect): bool
     {
-        // An open menu owns the wheel inside its dropdown region, at the shared
-        // WheelStep rate like every other list — separator-skipping, so a notch
-        // lands only on selectable items.
-        if ($this->contextMenu->isOpen() && true === $this->overlay->contextMenuDropdown()?->contains($mouse->row, $mouse->col)) {
-            $this->contextMenu->moveSelection(WheelStep::rows($mouse));
-
-            return true;
-        }
-        if ($this->menuBar->isOpen() && true === $this->overlay->menuDropdown()?->contains($mouse->row, $mouse->col)) {
-            $this->menuBar->moveSelection(WheelStep::rows($mouse));
-
-            return true;
-        }
-        // A floating picker owns the wheel wherever the pointer is — the
-        // workspace beneath is dimmed and must not scroll away under it.
-        // Only the menu dropdowns (which paint above it) win first.
-        if ($this->panes->editor->isAnyPickerOpen()) {
-            $this->panes->editor->movePopupSelection(WheelStep::rows($mouse));
-
-            return true;
-        }
-        // The tab strip: a wheel over it pages through overflowing tabs — one
-        // wide tab per notch on the horizontal strip, the panel-list three
-        // rows per notch on the vertical one — one folder tab, where they are.
-        if ($this->hit->contains($tabsRect, $mouse)) {
+        $step = WheelStep::rows($mouse);
+        $scroll = match (true) {
+            // An open menu owns the wheel inside its dropdown region, at the shared
+            // WheelStep rate like every other list — separator-skipping, so a notch
+            // lands only on selectable items.
+            $this->contextMenu->isOpen() && true === $this->overlay->contextMenuDropdown()?->contains($mouse->row, $mouse->col) => fn () => $this->contextMenu->moveSelection($step),
+            $this->menuBar->isOpen() && true === $this->overlay->menuDropdown()?->contains($mouse->row, $mouse->col) => fn () => $this->menuBar->moveSelection($step),
+            // A floating picker owns the wheel wherever the pointer is — the
+            // workspace beneath is dimmed and must not scroll away under it.
+            // Only the menu dropdowns (which paint above it) win first.
+            $this->panes->editor->isAnyPickerOpen() => fn (): bool => $this->panes->editor->movePopupSelection($step),
+            // The tab strip: a wheel over it pages through overflowing tabs — one
+            // wide tab per notch on the horizontal strip, the panel-list three
+            // rows per notch on the vertical one — one folder tab, where they are.
             // The side strip is a list of rows; the horizontal one moves one
             // whole TAB per notch — a different unit, not the same constant.
-            $tabBar = $this->panes->tabBar;
-            $tabBar->position()->isSide() ? $tabBar->scrollByRows(WheelStep::rows($mouse)) : $tabBar->scrollBy($mouse->wheelDelta);
-
-            return true;
+            $this->hit->contains($tabsRect, $mouse) => fn () => $this->panes->tabBar->position()->isSide()
+                ? $this->panes->tabBar->scrollByRows($step)
+                : $this->panes->tabBar->scrollBy($mouse->wheelDelta),
+            // The Find modal floats over the workspace and owns input while
+            // open — scroll its preview instead of the editor behind it.
+            $this->panes->editor->isFindModalOpen() && true === $this->panes->editor->findModal->lastBox()?->contains($mouse->row, $mouse->col) => fn () => $this->panes->editor->scrollFindModal(
+                $step,
+            ),
+            default => null,
+        };
+        if (null !== $scroll) {
+            $scroll();
         }
-        // The Find modal floats over the workspace and owns input while
-        // open — scroll its preview instead of the editor behind it.
-        $findBox = $this->panes->editor->isFindModalOpen() ? $this->panes->editor->findModal->lastBox() : null;
-        if (null === $findBox || !$findBox->contains($mouse->row, $mouse->col)) {
-            return false;
-        }
-        $this->panes->editor->scrollFindModal(WheelStep::rows($mouse));
 
-        return true;
+        return null !== $scroll;
     }
 
     /**
@@ -185,33 +175,29 @@ final readonly class WheelRouter
     {
         // Wheel over the dock strip cycles the tool tabs — an explicit panel
         // switch, so the focus follows like a strip click would.
-        if (null !== $this->hover->dockStripRelCol($mouse)) {
-            $this->dock->cycle($mouse->wheelDelta);
-
-            return true;
-        }
-        // The visible dock panel (results / debug / terminal) scrolls its
-        // list — the terminal scrolls its scrollback (wheel up → into history).
-        $panel = $this->dock->visiblePanel();
-        if (null !== $panel && $this->hit->contains($this->hit->rect($panel), $mouse)) {
-            $panel->wheelBy(WheelStep::rows($mouse));
-
-            return true;
-        }
         $step = WheelStep::rows($mouse);
-        if ($this->hit->contains($editorRect, $mouse)) {
+        $scroll = match (true) {
+            null !== $this->hover->dockStripRelCol($mouse) => fn () => $this->dock->cycle($mouse->wheelDelta),
+            // The visible dock panel (results / debug / terminal) scrolls its
+            // list — the terminal scrolls its scrollback (wheel up → into history).
+            null !== ($panel = $this->dock->visiblePanel()) && $this->hit->contains($this->hit->rect($panel), $mouse) => static fn () => $panel->wheelBy($step),
             // An open editor popup (completion, list overlay, search modal)
             // owns the wheel — its selection moves instead of the buffer
             // scrolling away underneath it.
-            if (!$this->panes->editor->movePopupSelection($step)) {
-                $this->panes->editor->scrollBy($step);
-            }
-
-            return true;
+            $this->hit->contains($editorRect, $mouse) => function () use ($step): void {
+                if (!$this->panes->editor->movePopupSelection($step)) {
+                    $this->panes->editor->scrollBy($step);
+                }
+            },
+            default => null,
+        };
+        if (null !== $scroll) {
+            $scroll();
         }
 
         return (
-            $this->overSlotPane($mouse, $step)
+            null !== $scroll
+            || $this->overSlotPane($mouse, $step)
             || $this->overTree($mouse, $treeRect, $step)
             // No view pane under the pointer: nothing moved.
             || $this->pointers->of($this->views->activeId())->wheel(new WheelGesture($mouse, WheelAxis::Vertical, $step))

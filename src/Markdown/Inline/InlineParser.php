@@ -128,13 +128,11 @@ final class InlineParser
 
             return true;
         }
-        if ('' !== $next && \str_contains(Entities::ESCAPABLE, $next)) {
+        $escaped = '' !== $next && \str_contains(Entities::ESCAPABLE, $next);
+        if ($escaped) {
             ++$this->pos;
-            $this->add(ItemKind::Text, $next, $start, $this->pos);
-
-            return true;
         }
-        $this->add(ItemKind::Text, '\\', $start, $this->pos);
+        $this->add(ItemKind::Text, $escaped ? $next : '\\', $start, $this->pos);
 
         return true;
     }
@@ -231,15 +229,9 @@ final class InlineParser
     {
         $opener = $this->brackets;
         $start = $this->pos++;
-        if (null === $opener || !$opener->active) {
-            $this->brackets = $opener?->previous;
-            $this->add(ItemKind::Text, ']', $start, $this->pos);
-
-            return true;
-        }
-        $link = $this->links->close($this->subject, $this->pos, $opener, $this->context);
-        $this->brackets = $opener->previous;
-        if (null === $link) {
+        $link = null === $opener || !$opener->active ? null : $this->links->close($this->subject, $this->pos, $opener, $this->context);
+        $this->brackets = $opener?->previous;
+        if (null === $opener || null === $link) {
             $this->add(ItemKind::Text, ']', $start, $this->pos);
 
             return true;
@@ -268,7 +260,7 @@ final class InlineParser
     {
         $m = [];
         $start = $this->pos;
-        if (
+        $autolink = match (true) {
             1 === \preg_match(
                 '/\G<([a-zA-Z0-9.!#$%&\'*+\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)>/',
                 $this->subject,
@@ -276,20 +268,20 @@ final class InlineParser
                 flags: 0,
                 offset: $start,
             )
-        ) {
-            return $this->addAngleAutolink($m[1], 'mailto:'.$m[1], \strlen($m[0]));
-        }
-        if (1 === \preg_match('/\G<([A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*)>/', $this->subject, $m, flags: 0, offset: $start)) {
-            return $this->addAngleAutolink($m[1], $m[1], \strlen($m[0]));
+                => [$m[1], 'mailto:'.$m[1], \strlen($m[0])],
+            1 === \preg_match('/\G<([A-Za-z][A-Za-z0-9.+-]{1,31}:[^<>\x00-\x20]*)>/', $this->subject, $m, flags: 0, offset: $start) => [$m[1], $m[1], \strlen($m[0])],
+            default => null,
+        };
+        if (null !== $autolink) {
+            return $this->addAngleAutolink($autolink[0], $autolink[1], $autolink[2]);
         }
         $length = HtmlSyntax::inlineAt(\substr($this->subject, $start));
-        if (0 === $length) {
-            return false;
+        if (0 !== $length) {
+            $this->pos += $length;
+            $this->add(ItemKind::Html, \substr($this->subject, $start, $length), $start, $this->pos);
         }
-        $this->pos += $length;
-        $this->add(ItemKind::Html, \substr($this->subject, $start, $length), $start, $this->pos);
 
-        return true;
+        return 0 !== $length;
     }
 
     private function addAngleAutolink(string $text, string $destination, int $length): bool

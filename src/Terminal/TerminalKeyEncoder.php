@@ -35,12 +35,16 @@ final readonly class TerminalKeyEncoder
     /** Legacy bytes to forward to the PTY for $data, or '' to drop it. */
     public function encode(string $data): string
     {
-        if (!$this->tui->getTerminal()->isKittyProtocolActive()) {
-            return $data; // legacy terminal already sends legacy bytes
-        }
-        if ($this->parser->isKeyRelease($data)) {
-            return ''; // a shell has no use for key-release events
-        }
+        return match (true) {
+            !$this->tui->getTerminal()->isKittyProtocolActive() => $data, // legacy terminal already sends legacy bytes
+            $this->parser->isKeyRelease($data) => '', // a shell has no use for key-release events
+            default => $this->translate($data),
+        };
+    }
+
+    /** Legacy bytes for a kitty-protocol key press. */
+    private function translate(string $data): string
+    {
         $parsed = $this->parser->parse($data);
         if (null === $parsed) {
             // Drop unrecognised CSI-u (media/function keys); forward plain text and
@@ -60,24 +64,6 @@ final readonly class TerminalKeyEncoder
         $ctrl = \in_array('ctrl', $parts, strict: true);
         $modifier = 1 + ($shift ? 1 : 0) + ($alt ? 2 : 0) + ($ctrl ? 4 : 0);
 
-        if (\array_key_exists($base, self::CSI_LETTER)) {
-            $final = self::CSI_LETTER[$base];
-
-            return $modifier > 1 ? "\x1b[1;{$modifier}{$final}" : "\x1b[{$final}";
-        }
-        if (\array_key_exists($base, self::CSI_TILDE)) {
-            $number = self::CSI_TILDE[$base];
-
-            return $modifier > 1 ? "\x1b[{$number};{$modifier}~" : "\x1b[{$number}~";
-        }
-        if ('tab' === $base) {
-            if ($shift) {
-                return "\x1b[Z";
-            }
-
-            return $alt ? "\x1b\t" : "\t";
-        }
-
         $simple = match ($base) {
             'enter' => "\r",
             'space' => $ctrl ? "\x00" : ' ',
@@ -85,20 +71,32 @@ final readonly class TerminalKeyEncoder
             'backspace' => "\x7f",
             default => null,
         };
-        if (null !== $simple) {
-            return $alt ? "\x1b".$simple : $simple;
-        }
 
-        // A printable character key.
-        $char = $shift && \ctype_alpha($base) ? \strtoupper($base) : $base;
+        return match (true) {
+            \array_key_exists($base, self::CSI_LETTER) => $modifier > 1 ? "\x1b[1;{$modifier}".self::CSI_LETTER[$base] : "\x1b[".self::CSI_LETTER[$base],
+            \array_key_exists($base, self::CSI_TILDE) => $modifier > 1 ? "\x1b[".self::CSI_TILDE[$base].";{$modifier}~" : "\x1b[".self::CSI_TILDE[$base].'~',
+            'tab' === $base && $shift => "\x1b[Z",
+            'tab' === $base => $alt ? "\x1b\t" : "\t",
+            null !== $simple => $alt ? "\x1b".$simple : $simple,
+            default => $this->printable($base, $parts),
+        };
+    }
+
+    /**
+     * A printable character key, under its modifiers.
+     *
+     * @param list<string> $modifiers
+     */
+    private function printable(string $base, array $modifiers): string
+    {
+        $char = \in_array('shift', $modifiers, strict: true) && \ctype_alpha($base) ? \strtoupper($base) : $base;
+        $ctrl = \in_array('ctrl', $modifiers, strict: true);
         if ($ctrl) {
             $char = $this->control($char);
-            if ('' === $char) {
-                return ''; // ctrl+<key> with no control-byte equivalent
-            }
         }
 
-        return $alt ? "\x1b".$char : $char;
+        // ctrl+<key> with no control-byte equivalent is dropped: '' either way.
+        return ($ctrl && '' === $char) || !\in_array('alt', $modifiers, strict: true) ? $char : "\x1b".$char;
     }
 
     /** The control byte for Ctrl+$char, or '' when there is none. */

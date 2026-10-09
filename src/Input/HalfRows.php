@@ -64,6 +64,7 @@ final readonly class HalfRows
         }
         $col = $this->bidi->logicalColumn($mouse->row, $mouse->col);
         $step = $mouse->lowerHalf ? 1 : -1;
+        $owned = null;
         foreach ($this->lists() as [$widget, $shows]) {
             $rect = $this->renderer->getWidgetRect($widget);
             if (null === $rect || !$rect->contains($mouse->row, $col)) {
@@ -72,10 +73,12 @@ final readonly class HalfRows
             $row = $mouse->row - $rect->row;
 
             // A gap: the half belongs to the entry on its side of the gap.
-            return !$shows($row, $col - $rect->col) && $shows($row + $step, $col - $rect->col) ? $mouse->withRow($mouse->row + $step) : $mouse;
+            $owned = !$shows($row, $col - $rect->col) && $shows($row + $step, $col - $rect->col) ? $mouse->withRow($mouse->row + $step) : $mouse;
+
+            break;
         }
 
-        return $this->intoEdge($mouse, $col, $step);
+        return $owned ?? $this->intoEdge($mouse, $col, $step);
     }
 
     /**

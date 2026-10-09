@@ -224,10 +224,18 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
     {
         $this->indicatorZones = [];
         $this->drawnFocus = $this->paneFocused();
-        if ($this->position->isSide()) {
-            return $this->renderVertical($context);
-        }
 
+        return $this->position->isSide() ? $this->renderVertical($context) : $this->renderHorizontal($context);
+    }
+
+    /**
+     * The strip along the top or bottom edge: the shared strip renderer's
+     * cells, or an empty strip of the same height when no tab is open.
+     *
+     * @return list<string>
+     */
+    private function renderHorizontal(RenderContext $context): array
+    {
         $columns = $context->getColumns();
         $tabs = null !== $this->provider ? ($this->provider)() : [];
         $this->lastTabs = $tabs;
@@ -311,14 +319,28 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         $this->lastTabs = $tabs;
 
         $this->lastLayout = [];
+        // Too narrow for a tab; blank rows of the right width beat a
+        // truncated one, and beat an exception by more.
+        $this->memoLines = $width < self::VERTICAL_MIN
+            ? \array_fill(start_index: 0, count: $rows, value: AnsiText::blank($width))
+            : $this->verticalLines($tabs, $rows, $width);
+
+        return $this->memoLines;
+    }
+
+    /**
+     * The side list's rows for a pane wide enough to seat a tab, recording
+     * each tab's hit zone and the ▲/▼ zones the memo restores.
+     *
+     * @param list<array{name: string, dirty: bool, active: bool, closable?: bool, tooltip?: string, agents?: list<int>}> $tabs
+     *
+     * @return list<string>
+     */
+    private function verticalLines(array $tabs, int $rows, int $width): array
+    {
         $lines = [];
         $shades = []; // each roomy tab's style by row, for the gaps beside it
         $opened = []; // the rows of the shaded tabs, which no rule runs beside
-        if ($width < self::VERTICAL_MIN) {
-            // Too narrow for a tab; blank rows of the right width beat a
-            // truncated one, and beat an exception by more.
-            return $this->memoLines = \array_fill(start_index: 0, count: $rows, value: AnsiText::blank($width));
-        }
         if ([] !== $tabs) {
             // An overflowing list reserves its first and last rows for the
             // ▲/▼ scroll indicators (blank when that side is not clipped).
@@ -389,7 +411,7 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
 
         $this->memoZones = $this->indicatorZones;
 
-        return $this->memoLines = $lines;
+        return $lines;
     }
 
     /**
@@ -614,8 +636,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
         $pill = $this->stripRows > 1;
         [$top, $rows] = $pill ? [$entry['labelRow'] - 1, 3] : [$entry['row'], $entry['rows']];
         $side = $pill ? $this->tooltipSide() : null;
-        if (null !== $close) {
-            return new Tooltip(
+        $text = $this->lastTabs[$entry['index']]['tooltip'] ?? '';
+
+        return match (true) {
+            null !== $close => new Tooltip(
                 'tab:close:'.$close,
                 $this->translator->trans('Close Tab'),
                 $pill ? $top : $entry['labelRow'],
@@ -623,11 +647,10 @@ final class TabBarWidget extends AbstractWidget implements MenuOverlayHost, Tool
                 $entry['closeStart'] + $entry['closeWidth'],
                 $pill ? $rows : 1,
                 $side,
-            );
-        }
-        $text = $this->lastTabs[$entry['index']]['tooltip'] ?? '';
-
-        return '' === $text ? null : new Tooltip('tab:'.$entry['index'], $text, $top, $entry['start'], $entry['start'] + $entry['width'], $rows, $side);
+            ),
+            '' === $text => null,
+            default => new Tooltip('tab:'.$entry['index'], $text, $top, $entry['start'], $entry['start'] + $entry['width'], $rows, $side),
+        };
     }
 
     /** The side of a tab its card goes on: away from the screen edge the strip sits on. */

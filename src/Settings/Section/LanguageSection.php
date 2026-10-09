@@ -80,15 +80,12 @@ final readonly class LanguageSection implements SettingsSection
             return true;
         }
         $language = $this->language($section);
-        if ('lspServer' === $key) {
-            return $this->lsp->changeLspServer($language, (string) $value);
-        }
-        if ('debugAdapter' === $key || 'debugLaunch' === $key) {
-            return $this->debug->change($language, $key, (string) $value);
-        }
-        $this->languages->changeLanguageSetting($language, $key, $value);
 
-        return true;
+        return match ($key) {
+            'lspServer' => $this->lsp->changeLspServer($language, (string) $value),
+            'debugAdapter', 'debugLaunch' => $this->debug->change($language, $key, (string) $value),
+            default => $this->changeLanguageSetting($language, $key, $value),
+        };
     }
 
     /**
@@ -106,6 +103,13 @@ final readonly class LanguageSection implements SettingsSection
 
     /** The two rows whose default is spelled `auto` rather than blank. */
     private const array AUTO_KEYS = ['indentStyle', 'indentSize'];
+
+    private function changeLanguageSetting(string $language, string $key, bool|int|string $value): bool
+    {
+        $this->languages->changeLanguageSetting($language, $key, $value);
+
+        return true;
+    }
 
     private function language(string $section): string
     {

@@ -100,6 +100,18 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertStringContainsString('Theme', $this->selectedSettingRow($widget));
     }
 
+    /** A key the form has no binding for changes no value and moves no row. */
+    public function testAnUnboundKeyChangesNothing(): void
+    {
+        $widget = $this->widget($changes);
+        $widget->selectKey('theme');
+
+        $widget->handleInput('x');
+
+        $this->assertSame([], $changes);
+        $this->assertStringContainsString('Theme', $this->selectedSettingRow($widget));
+    }
+
     public function testRendersCheckboxesSteppersAndRestartNote(): void
     {
         $screen = $this->plain($this->widget()->render(new RenderContext(60, 20)));

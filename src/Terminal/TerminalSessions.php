@@ -117,14 +117,9 @@ final class TerminalSessions
         }
         $this->sessions[$index]->stop();
         \array_splice($this->sessions, $index, length: 1);
-        if ([] === $this->sessions) {
-            $this->activeIndex = 0;
+        $this->activeIndex = [] === $this->sessions ? 0 : \min($this->activeIndex, \count($this->sessions) - 1);
 
-            return null;
-        }
-        $this->activeIndex = \min($this->activeIndex, \count($this->sessions) - 1);
-
-        return $this->sessions[$this->activeIndex];
+        return $this->sessions[$this->activeIndex] ?? null;
     }
 
     public function stopAll(): void

@@ -66,27 +66,25 @@ final class ProjectSearch
             return;
         }
         $pattern = $this->pattern($query, $options);
-        // A malformed regex yields no results rather than a crash.
-        if ($options->regex && !SearchPattern::compiles($pattern)) {
-            $onDone([]);
+        match (true) {
+            // A malformed regex yields no results rather than a crash.
+            $options->regex && !SearchPattern::compiles($pattern) => $onDone([]),
+            // A query spanning lines can't go through line-based grep: scan whole files.
+            \str_contains($query, "\n") => $onDone($this->searchMultiline($pattern, $paths, $mask)),
+            null === ($grep = $this->findGrep()) => $onDone($this->searchWithPhp($query, $options, $paths, $mask)),
+            default => $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask),
+        };
+    }
 
-            return;
-        }
-
-        // A query spanning lines can't go through line-based grep: scan whole files.
-        if (\str_contains($query, "\n")) {
-            $onDone($this->searchMultiline($pattern, $paths, $mask));
-
-            return;
-        }
-
-        $grep = $this->findGrep();
-        if (null === $grep) {
-            $onDone($this->searchWithPhp($query, $options, $paths, $mask));
-
-            return;
-        }
-
+    /**
+     * The search, run by $grep in the background; the built-in engine takes
+     * over when that grep cannot answer.
+     *
+     * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone
+     * @param list<string>                                                                                                      $paths
+     */
+    private function grep(string $grep, string $query, string $pattern, callable $onDone, SearchOptions $options, array $paths, string $mask): void
+    {
         // -H: GNU grep drops the `path:` prefix when it is handed a single file
         // (a file scope), and the parser reads `path:line:text`; BSD grep and
         // ugrep print it anyway, which is why only Linux lost those matches.
@@ -187,6 +185,21 @@ final class ProjectSearch
      */
     private function rangesFor(string $text, string $pattern): array
     {
+        return \array_map(
+            static fn (array $hit): array => ['start' => AnsiUtils::visibleWidth(\substr($text, offset: 0, length: $hit[1])), 'length' => AnsiUtils::visibleWidth($hit[0])],
+            $this->hits($text, $pattern),
+        );
+    }
+
+    /**
+     * Every match of $pattern in $text with its byte offset, zero-width ones
+     * left out (they highlight and replace nothing); none when the pattern
+     * fails on it, which gives the search up.
+     *
+     * @return list<array{string, int}>
+     */
+    private function hits(string $text, string $pattern): array
+    {
         $matches = [];
         if ('' === $text) {
             return [];
@@ -196,19 +209,16 @@ final class ProjectSearch
         \restore_error_handler();
         if (false === $count) {
             $this->gaveUp = true;
-
-            return [];
         }
-        $ranges = [];
-        foreach ($matches[0] as $hit) {
-            $match = $hit[0];
-            if ('' === $match) {
-                continue; // a zero-width match highlights nothing
+        $hits = [];
+        foreach (false === $count ? [] : $matches[0] as $hit) {
+            if ('' === $hit[0]) {
+                continue;
             }
-            $ranges[] = ['start' => AnsiUtils::visibleWidth(\substr($text, offset: 0, length: (int) $hit[1])), 'length' => AnsiUtils::visibleWidth($match)];
+            $hits[] = [$hit[0], (int) $hit[1]];
         }
 
-        return $ranges;
+        return $hits;
     }
 
     /**
@@ -469,18 +479,18 @@ final class ProjectSearch
         }
         $lower = \mb_strtolower($match);
         $upper = \mb_strtoupper($match);
-        if ($match === $upper && $match !== $lower) {
-            return \mb_strtoupper($replacement); // ALL CAPS (and has letters)
-        }
-        if ($match === $lower) {
-            return \mb_strtolower($replacement); // all lowercase
-        }
-        $title = \mb_strtoupper(\mb_substr($match, start: 0, length: 1)).\mb_strtolower(\mb_substr($match, start: 1));
-        if ($match === $title) {
-            return \mb_strtoupper(\mb_substr($replacement, start: 0, length: 1)).\mb_strtolower(\mb_substr($replacement, start: 1)); // Titlecase
-        }
 
-        return $replacement; // mixed / unknown → leave the replacement as typed
+        return match (true) {
+            $match === $upper && $match !== $lower => \mb_strtoupper($replacement), // ALL CAPS (and has letters)
+            $match === $lower => \mb_strtolower($replacement), // all lowercase
+            $match === self::titleCase($match) => self::titleCase($replacement), // Titlecase
+            default => $replacement, // mixed / unknown → leave the replacement as typed
+        };
+    }
+
+    private static function titleCase(string $text): string
+    {
+        return \mb_strtoupper(\mb_substr($text, start: 0, length: 1)).\mb_strtolower(\mb_substr($text, start: 1));
     }
 
     /**
@@ -506,28 +516,10 @@ final class ProjectSearch
      */
     public function matchSpans(string $line, string $query, SearchOptions $options): array
     {
-        $matches = [];
-        if ('' === $line) {
-            return [];
-        }
-        \set_error_handler(static fn (): bool => true);
-        $count = \preg_match_all($this->pattern($query, $options), $line, $matches, \PREG_OFFSET_CAPTURE);
-        \restore_error_handler();
-        if (false === $count) {
-            $this->gaveUp = true;
-
-            return [];
-        }
-        $spans = [];
-        foreach ($matches[0] as $hit) {
-            if ('' === $hit[0]) {
-                continue;
-            }
-
-            $spans[] = ['start' => (int) $hit[1], 'length' => \strlen($hit[0])];
-        }
-
-        return $spans;
+        return \array_map(
+            static fn (array $hit): array => ['start' => $hit[1], 'length' => \strlen($hit[0])],
+            '' === $line ? [] : $this->hits($line, $this->pattern($query, $options)),
+        );
     }
 
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */

@@ -133,19 +133,22 @@ final readonly class OpenBuffers
         $document = $buffer->document;
         $inside = static fn (int $l, int $c): bool => $l >= 0 && $l < $document->getLineCount() && $c >= 0 && $c <= \strlen($document->getLine($l));
         $previous = [0, 0];
+        $refusal = null;
         foreach ($edits as $e) {
             $start = [$e['line'], $e['column']];
             $end = [$e['endLine'], $e['endColumn']];
             if (!$inside(...$start) || !$inside(...$end) || $end < $start || $start < $previous) {
-                return \sprintf('%d:%d–%d:%d is not a range of %s after the one before it', $e['line'], $e['column'], $e['endLine'], $e['endColumn'], $path);
+                $refusal = \sprintf('%d:%d–%d:%d is not a range of %s after the one before it', $e['line'], $e['column'], $e['endLine'], $e['endColumn'], $path);
+
+                break;
             }
             $previous = $end;
         }
-        if ([] !== $edits) {
+        if (null === $refusal && [] !== $edits) {
             $this->replacer->replaceRanges($buffer, $edits);
         }
 
-        return null;
+        return $refusal;
     }
 
     /**
@@ -266,13 +269,10 @@ final readonly class OpenBuffers
      */
     public function delete(string $path): ?string
     {
-        if (\is_dir($path)) {
-            return \sprintf('%s is a folder — only files are deleted this way', $path);
-        }
-        if (true === $this->buffers->get($path)?->isDirty()) {
-            return \sprintf('%s has unsaved changes in the editor — they are the user\'s to keep or drop', $path);
-        }
-
-        return $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]])->refused;
+        return match (true) {
+            \is_dir($path) => \sprintf('%s is a folder — only files are deleted this way', $path),
+            true === $this->buffers->get($path)?->isDirty() => \sprintf('%s has unsaved changes in the editor — they are the user\'s to keep or drop', $path),
+            default => $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]])->refused,
+        };
     }
 }

@@ -52,15 +52,17 @@ final class DotColor
         // A color list ("c1;0.5:c2") means gradient — take the first entry, weight stripped.
         $first = \explode(';', \explode(':', \trim($value))[0])[0];
         $color = \strtolower(\trim($first));
-        if (\str_starts_with($color, '#')) {
-            return self::hex(\substr($color, offset: 1));
-        }
         $hsv = [];
-        if (1 === \preg_match('/^(\d*+\.?\d+)[,\s]+(\d*+\.?\d+)[,\s]+(\d*+\.?\d+)$/', $color, $hsv) && \is_numeric($hsv[1]) && \is_numeric($hsv[2]) && \is_numeric($hsv[3])) {
-            return self::fromHsv((float) $hsv[1], (float) $hsv[2], (float) $hsv[3]);
-        }
 
-        return self::NAMES[$color] ?? null;
+        return match (true) {
+            \str_starts_with($color, '#') => self::hex(\substr($color, offset: 1)),
+            1 === \preg_match('/^(\d*+\.?\d+)[,\s]+(\d*+\.?\d+)[,\s]+(\d*+\.?\d+)$/', $color, $hsv) && \is_numeric($hsv[1]) && \is_numeric($hsv[2]) && \is_numeric($hsv[3]) => self::fromHsv(
+                (float) $hsv[1],
+                (float) $hsv[2],
+                (float) $hsv[3],
+            ),
+            default => self::NAMES[$color] ?? null,
+        };
     }
 
     private static function hex(string $digits): ?string

@@ -99,13 +99,12 @@ final class ResultIdentity
      */
     public static function ofSelection(?DisplayRow $row, array $results): array
     {
-        if (null !== $row && $row->matchIndex >= 0 && null !== ($result = $results[$row->matchIndex] ?? null) && '' !== $result['path']) {
-            return [$result['path'], $result['line'], null];
-        }
-        if (null !== $row && null !== $row->filePath) {
-            return [null, null, $row->filePath];
-        }
+        $result = null !== $row && $row->matchIndex >= 0 ? $results[$row->matchIndex] ?? null : null;
 
-        return [null, null, null];
+        return match (true) {
+            null !== $result && '' !== $result['path'] => [$result['path'], $result['line'], null],
+            null !== $row && null !== $row->filePath => [null, null, $row->filePath],
+            default => [null, null, null],
+        };
     }
 }

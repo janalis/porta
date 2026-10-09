@@ -36,11 +36,10 @@ final class HeaderRenderer
 
     public static function render(string $text, int $width, Style $style, string $suffix = ''): string
     {
-        if ('' === $suffix) {
-            return $style->apply(AnsiText::scrollLineToCaret($text, $width));
-        }
         $room = \max(0, $width - AnsiUtils::visibleWidth($suffix) - 1);
-        if (0 === $room) {
+
+        return match (true) {
+            '' === $suffix => $style->apply(AnsiText::scrollLineToCaret($text, $width)),
             // The pane cannot seat the suffix and its gap, so the SUFFIX is
             // what has to shrink — there is no text left to take it out of.
             // `max(0, …)` above bounds the room and not the output, which is a
@@ -49,9 +48,8 @@ final class HeaderRenderer
             // the pane was. A row wider than its pane does not garble a line,
             // it throws RenderException out of the render loop and takes the
             // session with it.
-            return $style->apply(AnsiText::truncate($suffix.' ', $width));
-        }
-
-        return $style->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($text, $room), $room).Sgr::NORMAL_INTENSITY.Sgr::FAINT.$suffix.' ');
+            0 === $room => $style->apply(AnsiText::truncate($suffix.' ', $width)),
+            default => $style->apply(AnsiText::padRight(AnsiText::scrollLineToCaret($text, $room), $room).Sgr::NORMAL_INTENSITY.Sgr::FAINT.$suffix.' '),
+        };
     }
 }

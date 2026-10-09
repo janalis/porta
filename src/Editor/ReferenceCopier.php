@@ -108,21 +108,18 @@ final readonly class ReferenceCopier
             $member = $scope['label'];
         }
 
-        if (null === $member) {
+        return match (true) {
             // On the class itself: its FQCN. Inside nothing but a namespace,
             // null — `App\Http` names the file's neighbourhood, not a place in
             // it, and the caller has a better answer than that.
-            return $hasType ? $qualifier : null;
-        }
-        if ('' === $qualifier) {
-            return $member;
-        }
-
-        // In PHP `::` binds a member to a TYPE, while a free function in a
-        // namespace is a name IN that namespace and joins the way the
-        // namespace's own parts do — `App\helper`, which is what you would
-        // type to call it. Languages that write `.` make no such distinction.
-        return $qualifier.($hasType ? $memberJoin : $qualifierJoin).$member;
+            null === $member => $hasType ? $qualifier : null,
+            '' === $qualifier => $member,
+            // In PHP `::` binds a member to a TYPE, while a free function in a
+            // namespace is a name IN that namespace and joins the way the
+            // namespace's own parts do — `App\helper`, which is what you would
+            // type to call it. Languages that write `.` make no such distinction.
+            default => $qualifier.($hasType ? $memberJoin : $qualifierJoin).$member,
+        };
     }
 
     private function put(string $text): void

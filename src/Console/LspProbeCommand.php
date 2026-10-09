@@ -127,14 +127,14 @@ final class LspProbeCommand extends Command
     ): int {
         $io = new SymfonyStyle($input, $output);
         $resolved = \realpath('' === $root ? (string) \getcwd() : $root);
-        if (false === $resolved || !\is_dir($resolved)) {
-            self::errorOutput($output)->writeln(\sprintf('lsp:probe: no such directory: %s', $root));
-
-            return Command::INVALID;
-        }
-        $servers = self::byServer(($this->servers)($resolved), $only);
-        if ([] === $servers) {
-            self::errorOutput($output)->writeln(null === $only ? 'lsp:probe: no language server is configured for this project.' : \sprintf('lsp:probe: no server named %s.', $only));
+        $servers = false === $resolved || !\is_dir($resolved) ? null : self::byServer(($this->servers)($resolved), $only);
+        if (false === $resolved || null === $servers || [] === $servers) {
+            self::errorOutput($output)
+                ->writeln(match (true) {
+                    null === $servers => \sprintf('lsp:probe: no such directory: %s', $root),
+                    null === $only => 'lsp:probe: no language server is configured for this project.',
+                    default => \sprintf('lsp:probe: no server named %s.', $only),
+                });
 
             return Command::INVALID;
         }

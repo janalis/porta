@@ -262,28 +262,28 @@ final class LspSessionPool
     /** The status-bar label for the server responsible for $path. */
     public function statusFor(?string $path): string
     {
-        if ($this->disabled) {
-            return $this->translator->trans('disabled');
-        }
-        if (!$this->configured) {
-            return $this->translator->trans('no server');
+        if ($this->disabled || !$this->configured) {
+            return $this->disabled ? $this->translator->trans('disabled') : $this->translator->trans('no server');
         }
         $key = null === $path ? $this->fallbackKey() : $this->serverKeyFor($path);
-        if (null === $key) {
-            // PHP is the first-class language here, but bundled servers start
-            // disabled — point at Settings rather than naming one plugin.
-            $language = null === $path ? 'php' : ProjectPaths::languageId($path);
-            $absent = $this->missing[$language][0] ?? null;
 
-            return match (true) {
-                // Enabled, and its binary not there: say that, not "enable one".
-                null !== $absent => $this->translator->trans('%name% not found', ['%name%' => $absent]),
-                null !== $path && 'php' === $language => $this->translator->trans('none (enable a PHP server in Settings)'),
-                default => $this->translator->trans('no server'),
-            };
-        }
+        return null === $key ? $this->unservedStatus($path) : self::describe($this->servers[$key], $this->statuses);
+    }
 
-        return self::describe($this->servers[$key], $this->statuses);
+    /** The status-bar label when no configured server answers for $path. */
+    private function unservedStatus(?string $path): string
+    {
+        // PHP is the first-class language here, but bundled servers start
+        // disabled — point at Settings rather than naming one plugin.
+        $language = null === $path ? 'php' : ProjectPaths::languageId($path);
+        $absent = $this->missing[$language][0] ?? null;
+
+        return match (true) {
+            // Enabled, and its binary not there: say that, not "enable one".
+            null !== $absent => $this->translator->trans('%name% not found', ['%name%' => $absent]),
+            null !== $path && 'php' === $language => $this->translator->trans('none (enable a PHP server in Settings)'),
+            default => $this->translator->trans('no server'),
+        };
     }
 
     /**
@@ -598,10 +598,7 @@ final class LspSessionPool
      */
     private function sessionsFor(?string $path, StartMode $start = StartMode::Reuse): array
     {
-        if (null === $path || $this->disabled) {
-            return [];
-        }
-        $key = $this->serverKeyFor($path);
+        $key = null === $path || $this->disabled ? null : $this->serverKeyFor($path);
         if (null === $key) {
             return [];
         }

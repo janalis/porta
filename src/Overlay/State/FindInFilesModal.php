@@ -282,29 +282,16 @@ final class FindInFilesModal
     public function handleInput(string $data, Keybindings $editorKb): void
     {
         $kb = new Keybindings(self::KEYS, $editorKb->getParser());
+        $inQuery = FindModalField::Query === $this->activeField;
+        $handlers = self::keyHandlers();
 
-        if (FindModalField::Query === $this->activeField && $kb->matches($data, 'history_prev')) {
-            $this->recallHistory(1);
-
-            return;
-        }
-        if (FindModalField::Query === $this->activeField && $kb->matches($data, 'history_next')) {
-            $this->recallHistory(-1);
-
-            return;
-        }
-        foreach (self::keyHandlers() as $action => $handler) {
-            if (!$kb->matches($data, $action)) {
-                continue;
-            }
-
-            $handler($this);
-
-            return;
-        }
-        if ($this->activeTextField()->editKey($data, $kb) || $this->activeTextField()->insert($data)) {
-            $this->notifyField();
-        }
+        match (true) {
+            $inQuery && $kb->matches($data, 'history_prev') => $this->recallHistory(1),
+            $inQuery && $kb->matches($data, 'history_next') => $this->recallHistory(-1),
+            null !== ($action = \array_find(\array_keys($handlers), static fn (string $action): bool => $kb->matches($data, $action))) => $handlers[$action]($this),
+            $this->activeTextField()->editKey($data, $kb) || $this->activeTextField()->insert($data) => $this->notifyField(),
+            default => null,
+        };
     }
 
     /**
@@ -1019,43 +1006,44 @@ final class FindInFilesModal
         $zone = null === $box ? WindowZone::Outside : $this->frame->press($box, $relRow, $relCol);
         if (null === $box || WindowZone::Close === $zone || WindowZone::Outside === $zone) {
             $this->fireClose();
-
-            return true;
         }
-        if (WindowZone::Content !== $zone) {
-            return true; // the title bar or an edge: a move or a resize is armed
-        }
-        $innerCol = $box->innerCol($relCol);
-        $field = $this->fieldAt($box, $relRow - $box->optionsRow);
-        if (null !== $field) {
-            $this->clickBand($field, null !== $this->sideZones->at($innerCol));
-
-            return true;
-        }
-        if (self::onOptions($box, $relRow)) {
-            $zone = $this->optionZones->at($innerCol);
-            $option = null === $zone ? null : SearchOption::tryFrom($zone);
-            if (null !== $option) {
-                $this->fireToggle($option);
-            }
-
-            return true;
-        }
-        if ($relRow === $box->footerRow) {
-            return true; // a key legend: nothing on it to press
-        }
-        $index = $box->itemAt($relRow, $relCol);
-        if (null !== $index) {
-            $this->selected = $index;
-            if ($this->inPreview() && $innerCol >= 2 && $innerCol < 5) {
-                $this->toggleExcludeSelected();
-
-                return true;
-            }
-            $this->jumpSelected();
+        // The content is clicked; the title bar or an edge arms a move or a resize.
+        if (null !== $box && WindowZone::Content === $zone) {
+            $this->clickContent($box, $relRow, $relCol);
         }
 
         return true;
+    }
+
+    /** A click on the box's content: a field band, an option tag, or a preview row. */
+    private function clickContent(ModalBox $box, int $relRow, int $relCol): void
+    {
+        $innerCol = $box->innerCol($relCol);
+        $field = $this->fieldAt($box, $relRow - $box->optionsRow);
+        match (true) {
+            null !== $field => $this->clickBand($field, null !== $this->sideZones->at($innerCol)),
+            self::onOptions($box, $relRow) => $this->clickOption($innerCol),
+            // The footer is a key legend: nothing on it to press.
+            $relRow !== $box->footerRow && null !== ($index = $box->itemAt($relRow, $relCol)) => $this->clickRow($index, $innerCol),
+            default => null,
+        };
+    }
+
+    /** An option tag toggles its option. */
+    private function clickOption(int $innerCol): void
+    {
+        $zone = $this->optionZones->at($innerCol);
+        $option = null === $zone ? null : SearchOption::tryFrom($zone);
+        if (null !== $option) {
+            $this->fireToggle($option);
+        }
+    }
+
+    /** A preview row: its exclude box toggles, anywhere else on it jumps. */
+    private function clickRow(int $index, int $innerCol): void
+    {
+        $this->selected = $index;
+        $this->inPreview() && $innerCol >= 2 && $innerCol < 5 ? $this->toggleExcludeSelected() : $this->jumpSelected();
     }
 
     /**
@@ -1129,12 +1117,19 @@ final class FindInFilesModal
         if ($closeChanged) {
             ($this->invalidate)();
         }
-        if (null !== $box && self::onOptions($box, $relRow)) {
-            return $this->hoverZone($this->optionZones->at($box->innerCol($relCol))) || $closeChanged;
-        }
-        if (null !== $box && FindModalField::Query === $this->fieldAt($box, $relRow - $box->optionsRow) && null !== $this->sideZones->at($box->innerCol($relCol))) {
-            return $this->hoverZone('find_window') || $closeChanged; // the button under the pointer
-        }
+        $changed = match (true) {
+            null !== $box && self::onOptions($box, $relRow) => $this->hoverZone($this->optionZones->at($box->innerCol($relCol))),
+            // The button under the pointer.
+            null !== $box && FindModalField::Query === $this->fieldAt($box, $relRow - $box->optionsRow) && null !== $this->sideZones->at($box->innerCol($relCol)) => $this->hoverZone('find_window'),
+            default => $this->hoverPreview($box, $relRow, $relCol),
+        };
+
+        return $changed || $closeChanged;
+    }
+
+    /** The preview row under the pointer lights, and its exclude box: whether either changed. */
+    private function hoverPreview(?ModalBox $box, int $relRow, int $relCol): bool
+    {
         $index = $this->previewIndexAt($relRow);
         // File headers aren't pickable, so they don't light up.
         $row = null !== $index && null === $this->displayRows[$index]->filePath ? $index : null;
@@ -1143,14 +1138,13 @@ final class FindInFilesModal
         // on the hovered row. Anywhere else drops the tags' and button's.
         $onBox = null !== $row && null !== $box && $this->inPreview() && $box->innerCol($relCol) >= 2 && $box->innerCol($relCol) < 5;
         $cleared = $this->hoverZone($onBox ? self::BOX_ZONE : null);
-        if ($row !== $this->hoveredRow) {
+        $moved = $row !== $this->hoveredRow;
+        if ($moved) {
             $this->hoveredRow = $row;
             ($this->invalidate)();
-
-            return true;
         }
 
-        return $cleared || $closeChanged;
+        return $moved || $cleared;
     }
 
     /** Set the hovered zone; no-op returning false when unchanged, else re-renders. */
@@ -1180,14 +1174,8 @@ final class FindInFilesModal
     private function previewIndexAt(int $relRow): ?int
     {
         $box = $this->box;
-        if (null === $box) {
-            return null;
-        }
-        $i = $relRow - $box->windowTop();
-        if ($i < 0 || $i >= $box->count) {
-            return null;
-        }
+        $i = null === $box ? -1 : $relRow - $box->windowTop();
 
-        return $box->windowStart + $i;
+        return null === $box || $i < 0 || $i >= $box->count ? null : $box->windowStart + $i;
     }
 }

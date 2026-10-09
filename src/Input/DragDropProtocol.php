@@ -132,27 +132,26 @@ final class DragDropProtocol
             return;
         }
         $this->pending['data'] .= $chunk;
-        if ($more) {
-            return;
+        if (!$more) {
+            $pending = $this->pending;
+            $this->pending = null;
+            $this->deliver($pending);
         }
-        ['zone' => $zone, 'folder' => $folder, 'type' => $type, 'data' => $data] = $this->pending;
-        $this->pending = null;
+    }
+
+    /** @param array{zone: DropZone, folder: ?string, type: string, data: string} $pending */
+    private function deliver(array $pending): void
+    {
+        ['zone' => $zone, 'folder' => $folder, 'type' => $type, 'data' => $data] = $pending;
         $text = (string) \base64_decode($data, strict: true);
         $paths = 'text/uri-list' === $type ? DroppedPaths::fromUriList($text) : DroppedPaths::parse($text);
-        if (null === $paths && DropZone::Text === $zone) {
-            $this->write('t=r:o=1');
-            $this->drop->typeText(\trim($text));
-
-            return;
-        }
-        if (null === $paths) {
-            $this->write('t=r:o=0');
-            $this->notifier->flash($this->translator->trans('Only files and folders can be dropped here'));
-
-            return;
-        }
-        $this->write('t=r:o=1');
-        $this->drop->drop($paths, $zone, $folder);
+        $typed = null === $paths && DropZone::Text === $zone;
+        $this->write(null !== $paths || $typed ? 't=r:o=1' : 't=r:o=0');
+        match (true) {
+            null !== $paths => $this->drop->drop($paths, $zone, $folder),
+            $typed => $this->drop->typeText(\trim($text)),
+            default => $this->notifier->flash($this->translator->trans('Only files and folders can be dropped here')),
+        };
     }
 
     private function failed(string $reason): void

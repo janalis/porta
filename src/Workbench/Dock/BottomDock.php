@@ -186,42 +186,47 @@ final class BottomDock
     /** Bring a tab into the dock slot and focus it ($key: a tool tab's id / a session id, '' = the active one). */
     public function reveal(?DockTab $tab, string $key = ''): void
     {
-        if (DockTab::Terminal === $tab) {
-            // Activate the clicked session, then re-open through the
-            // controller so its buffer binds into the panel.
-            $session = $this->sessions->find($key);
-            if (null !== $session) {
-                $this->sessions->makeActive($session);
-            }
-            $this->events?->dispatch(new TerminalRevealRequested());
+        match ($tab) {
+            DockTab::Terminal => $this->revealSession($key),
+            DockTab::Results => $this->revealTool($key),
+            default => $this->revealPanel($tab, $key),
+        };
+    }
 
-            return;
+    private function revealSession(string $key): void
+    {
+        // Activate the clicked session, then re-open through the
+        // controller so its buffer binds into the panel.
+        $session = $this->sessions->find($key);
+        if (null !== $session) {
+            $this->sessions->makeActive($session);
         }
-        if (DockTab::Results === $tab) {
-            $tool = '' === $key ? $this->tools->active() : $this->tools->findById((int) $key);
-            if (null === $tool) {
-                return;
-            }
+        $this->events?->dispatch(new TerminalRevealRequested());
+    }
+
+    private function revealTool(string $key): void
+    {
+        $tool = '' === $key ? $this->tools->active() : $this->tools->findById((int) $key);
+        if (null !== $tool) {
             // Already the displayed tab: rebinding it would be a no-op, but the
             // focus is the other half of what a strip click is for — clicking
             // the tab you are looking at must still bring you to it.
             $this->activeTool() === $tool && $this->resultsPanel->isVisible()
                 ? $this->focusPanel($this->resultsPanel)
                 : $this->show($tool);
-
-            return;
         }
+    }
+
+    private function revealPanel(?DockTab $tab, string $key): void
+    {
         $panel = $this->panelRegistry->find($tab, $key);
         if (null === $panel || !$panel->isOpen()) {
             return;
         }
-        if ($panel->isVisible()) {
-            $this->focusPanel($panel);
-
-            return;
+        if (!$panel->isVisible()) {
+            $this->activate($panel);
+            $panel->reveal();
         }
-        $this->activate($panel);
-        $panel->reveal();
         $this->focusPanel($panel);
     }
 
@@ -274,23 +279,27 @@ final class BottomDock
     /** The strip's ✖: close the tab for real — a session tab stops its process too. */
     public function closeTab(?DockTab $tab, string $key = ''): void
     {
-        if (DockTab::Terminal === $tab) {
-            foreach ($this->sessions->sessions as $index => $session) {
-                if ($session->id !== $key) {
-                    continue;
-                }
+        match ($tab) {
+            DockTab::Terminal => $this->closeSession($key),
+            DockTab::Results => $this->closeTool($key),
+            default => $this->panelRegistry->find($tab, $key)?->close(),
+        };
+    }
 
-                $this->events?->dispatch(new TerminalSessionCloseRequested($index));
-                break;
+    private function closeSession(string $key): void
+    {
+        foreach ($this->sessions->sessions as $index => $session) {
+            if ($session->id !== $key) {
+                continue;
             }
 
-            return;
+            $this->events?->dispatch(new TerminalSessionCloseRequested($index));
+            break;
         }
-        if (DockTab::Results !== $tab) {
-            $this->panelRegistry->find($tab, $key)?->close();
+    }
 
-            return;
-        }
+    private function closeTool(string $key): void
+    {
         $tool = '' === $key ? $this->tools->active() : $this->tools->findById((int) $key);
         if (null === $tool) {
             return;
@@ -298,18 +307,17 @@ final class BottomDock
         $wasBound = $this->activeTool() === $tool;
         $neighbour = $this->tools->close($tool);
         $this->events?->dispatch(new DockToolClosed($tool));
-        if (!$wasBound) {
-            $this->tui->requestRender(); // the strip shrinks; the display is untouched
+        match (true) {
+            !$wasBound => $this->tui->requestRender(), // the strip shrinks; the display is untouched
+            null !== $neighbour => $this->bindAndRender($neighbour), // no focus steal on a mouse ✖
+            default => $this->resultsPanel->close(), // last tool gone: MRU restore + focus return
+        };
+    }
 
-            return;
-        }
-        if (null !== $neighbour) {
-            $this->bind($neighbour); // no focus steal on a mouse ✖
-            $this->tui->requestRender();
-
-            return;
-        }
-        $this->resultsPanel->close(); // last tool gone: MRU restore + focus return
+    private function bindAndRender(DockToolTab $tab): void
+    {
+        $this->bind($tab);
+        $this->tui->requestRender();
     }
 
     /** The panel currently owning the dock slot, or null while the dock is hidden. */

@@ -107,15 +107,14 @@ final class GhostClassReferenceTest extends TestCase
     /** @param array<string, string> $aliases */
     private static function resolve(string $name, array $aliases, string $namespace): string
     {
-        if (\str_starts_with($name, '\\')) {
-            return \ltrim($name, characters: '\\');
-        }
         $head = \explode('\\', $name)[0];
-        if (\array_key_exists($head, $aliases)) {
-            return $aliases[$head].\substr($name, offset: \strlen($head));
-        }
 
-        return '' === $namespace ? $name : $namespace.'\\'.$name;
+        return match (true) {
+            \str_starts_with($name, '\\') => \ltrim($name, characters: '\\'),
+            \array_key_exists($head, $aliases) => $aliases[$head].\substr($name, offset: \strlen($head)),
+            '' === $namespace => $name,
+            default => $namespace.'\\'.$name,
+        };
     }
 
     private static function exists(string $fqcn): bool

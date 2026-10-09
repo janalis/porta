@@ -37,31 +37,38 @@ final readonly class BreadcrumbsClickRouter
     public function route(MouseEvent $mouse): bool
     {
         $rel = $this->hit->hit($this->panes->breadcrumbs, $mouse->row, $mouse->col);
-        if (null === $rel || 0 !== $rel['row']) {
-            return false;
-        }
-        $bar = $this->panes->breadcrumbs;
-        $col = $rel['col'];
-        if ($bar->pressToggle($col)) {
+        $consumed = null !== $rel && 0 === $rel['row'] && $this->press($rel['col']);
+        if ($consumed) {
             $this->tui->requestRender();
-
-            return true;
         }
-        $path = $bar->pathAtColumn($col);
+
+        return $consumed;
+    }
+
+    /** The toggle first, then a path crumb, then a scope crumb — lazily, in that order. */
+    private function press(int $col): bool
+    {
+        $bar = $this->panes->breadcrumbs;
+
+        return $bar->pressToggle($col) || $this->reveal($bar->pathAtColumn($col)) || $this->jump($bar->lineAtColumn($col));
+    }
+
+    private function reveal(?string $path): bool
+    {
         if (null !== $path) {
             $this->panes->tree->revealPath($path);
-            $this->tui->requestRender();
-
-            return true;
         }
-        $line = $bar->lineAtColumn($col);
-        if (null === $line) {
-            return false;
-        }
-        $this->tui->setFocus($this->panes->editor);
-        $this->panes->editor->jumpTo($line, 0);
-        $this->tui->requestRender();
 
-        return true;
+        return null !== $path;
+    }
+
+    private function jump(?int $line): bool
+    {
+        if (null !== $line) {
+            $this->tui->setFocus($this->panes->editor);
+            $this->panes->editor->jumpTo($line, 0);
+        }
+
+        return null !== $line;
     }
 }

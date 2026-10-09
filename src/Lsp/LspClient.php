@@ -483,14 +483,12 @@ final class LspClient implements LspClientInterface
             $callback = null === ($message['id'] ?? null) ? null : $this->pending->take((int) $message['id']);
             if (null !== $callback) {
                 $callback($message['result'] ?? null, $message['error'] ?? null);
-
-                return;
             }
             // Nobody is waiting: a `shutdown` sent without waiting, a request
             // already timed out, or a message the server rejected outright.
             // An answer is dropped; an error is the server saying something
             // went wrong, and it reaches the LSP log rather than nowhere.
-            if (null !== ($message['error'] ?? null)) {
+            if (null === $callback && null !== ($message['error'] ?? null)) {
                 // @noinspection JsonEncodingApiUsageInspection -- a log line: what cannot be encoded is no reason to throw
                 $this->log('server error'.(null === ($message['id'] ?? null) ? '' : ' for request '.(string) \json_encode($message['id'])).': '.(string) \json_encode($message['error']));
             }

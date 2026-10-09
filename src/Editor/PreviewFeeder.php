@@ -88,10 +88,8 @@ final class PreviewFeeder
         }
         $this->follow($buffer, $pane);
         $version = $buffer->document->version;
-        if ($buffer->path === $this->fedPath && $version === $this->fedVersion) {
-            return;
-        }
-        if ($buffer->path === $this->pendingPath && $version === $this->pendingVersion) {
+        $settled = ($buffer->path === $this->fedPath && $version === $this->fedVersion) || ($buffer->path === $this->pendingPath && $version === $this->pendingVersion);
+        if ($settled) {
             return;
         }
         $this->cancel();

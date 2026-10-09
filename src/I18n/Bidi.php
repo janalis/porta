@@ -155,17 +155,10 @@ final class Bidi
      */
     public static function reorder(string $line, BaseDirection $direction): string
     {
-        $matches = [];
-        // Tokens: an SGR sequence, the zero-width APC cursor marker
-        // (\x1b_…\x07), or a single grapheme cluster.
-        if (!\preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
-            return $line;
-        }
-
         /** @var list<array{g: string, sgr: string}> $cells */
         $cells = [];
         $active = '';
-        foreach ($matches[0] as $seq) {
+        foreach (self::tokens($line) as $seq) {
             if (\str_starts_with($seq, "\x1b[")) { // SGR: updates the active style
                 $active = Sgr::RESET === $seq || "\x1b[m" === $seq ? '' : $active.$seq;
                 continue;
@@ -175,13 +168,11 @@ final class Bidi
             $cells[] = ['g' => $seq, 'sgr' => $active];
         }
 
-        if ([] === $cells) {
-            return $line; // pure escape sequence(s); nothing to reorder
-        }
-
         $classes = \array_map(static fn (array $c): string => self::classify($c['g']), $cells);
-        if (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true)) {
-            return $line; // LTR base with no RTL runs: already in visual order
+        // No cells is pure escape sequence(s), nothing to reorder; an LTR base
+        // with no RTL runs is already in visual order.
+        if ([] === $cells || (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true))) {
+            return $line;
         }
 
         $levels = self::levels($classes, \array_column($cells, column_key: 'g'), $direction);
@@ -198,14 +189,9 @@ final class Bidi
      */
     public static function visualToLogicalColumn(string $line, int $visualCol, BaseDirection $direction): int
     {
-        $matches = [];
-        if ($visualCol < 0 || !\preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches)) {
-            return \max(0, $visualCol);
-        }
-
         /** @var list<array{g: string, w: int}> $glyphs */
         $glyphs = [];
-        foreach ($matches[0] as $token) {
+        foreach ($visualCol < 0 ? [] : self::tokens($line) as $token) {
             if (\str_starts_with($token, "\x1b[")) {
                 continue; // SGR carries no column
             }
@@ -213,13 +199,9 @@ final class Bidi
             $width = \str_starts_with($token, "\x1b") ? 0 : AnsiUtils::visibleWidth($token);
             $glyphs[] = ['g' => $token, 'w' => $width];
         }
-        if ([] === $glyphs) {
-            return $visualCol;
-        }
-
         $classes = \array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
-        if (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true)) {
-            return $visualCol;
+        if ([] === $glyphs || (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true))) {
+            return \max(0, $visualCol);
         }
 
         $levels = self::levels($classes, \array_column($glyphs, column_key: 'g'), $direction);
@@ -232,6 +214,7 @@ final class Bidi
             $acc += $glyph['w'];
         }
 
+        $logical = $acc; // a click past the content maps to the logical line end
         $visual = 0;
         foreach ($order as $logicalIndex) {
             $width = $glyphs[$logicalIndex]['w'];
@@ -239,12 +222,26 @@ final class Bidi
                 continue; // the zero-width cursor marker occupies no column
             }
             if ($visualCol < ($visual + $width)) {
-                return $logicalStart[$logicalIndex] + ($visualCol - $visual);
+                $logical = $logicalStart[$logicalIndex] + ($visualCol - $visual);
+                break;
             }
             $visual += $width;
         }
 
-        return $acc; // a click past the content maps to the logical line end
+        return $logical;
+    }
+
+    /**
+     * Tokens: an SGR sequence, the zero-width APC cursor marker (\x1b_…\x07),
+     * or a single grapheme cluster. None when the line is empty or not UTF-8.
+     *
+     * @return array<array-key, string>
+     */
+    private static function tokens(string $line): array
+    {
+        $matches = [];
+
+        return \preg_match_all('/\x1b\[[0-9;]*m|\x1b_[^\x07]*\x07|\X/u', $line, $matches) ? $matches[0] : [];
     }
 
     /** Bidi class of a grapheme's base codepoint: R (rtl), EN (digit), ET, CS, L, or N (neutral). */
@@ -257,53 +254,6 @@ final class Bidi
         // A grapheme cluster may carry combining marks; classify by its base
         // codepoint (always present — \X matches at least one).
         $cp = \mb_ord(\mb_substr($grapheme, start: 0, length: 1, encoding: 'UTF-8'), encoding: 'UTF-8');
-        // Hebrew, Arabic and their presentation forms → right-to-left.
-        if (($cp >= 0x0590 && $cp <= 0x05FF) || ($cp >= 0x0600 && $cp <= 0x06FF) || ($cp >= 0x0700 && $cp <= 0x08FF) || ($cp >= 0xFB1D && $cp <= 0xFDFF) || ($cp >= 0xFE70 && $cp <= 0xFEFF)) {
-            return 'R';
-        }
-        if ($cp >= 0x0030 && $cp <= 0x0039) {
-            return 'EN';
-        }
-        // ASCII space/punctuation/symbols, the common Unicode spaces, and the
-        // symbol blocks the interface draws from — all Unicode class ON.
-        //
-        // The fallback below is `L`, so anything missing from this list is
-        // declared Latin TEXT: a marker classified that way glues itself into
-        // the adjacent Latin run rather than taking the direction of the text
-        // around it, and lands on the wrong side of the name it belongs to.
-        // Forty of Glyphs' seventy-six constants did exactly that — arrows,
-        // triangles, blocks, ticks and the close cross. The list is held honest by
-        // a test that derives its set from {@see \Porta\Ui\Glyphs} rather than
-        // repeating it, since a list of glyphs is wrong the first time someone
-        // adds one.
-        // The directional marks carry no glyph and no width; their whole job is
-        // to give the neutral text beside them a direction. Classified as
-        // neutral — which the U+2000-206F range below would do — they achieve
-        // exactly nothing, and the Hebrew catalog already ships nine strings
-        // using them. They are spent in serialize(); they take no column, so
-        // dropping them leaves the row the width every measurer gave it.
-        if (0x200E === $cp) {
-            return 'L';
-        }
-        // U+061C ARABIC LETTER MARK needs no branch here — it already falls in
-        // the Arabic block above and classifies R. It appears in SPENT below
-        // because it is zero-width like the other two.
-        if (0x200F === $cp) {
-            return 'R';
-        }
-
-        // UAX#9 ET: a terminator that sticks to the number beside it (W5
-        // below) — `42%`, `$5`, `#3`, `20°` — and is neutral anywhere else.
-        if (0x23 === $cp || 0x24 === $cp || 0x25 === $cp || 0xB0 === $cp || 0xB1 === $cp || 0x2030 === $cp) {
-            return 'ET';
-        }
-
-        // UAX#9 CS/ES: the separators that can JOIN two numbers (W4 below).
-        // Neutral everywhere else, which is what the W4 pass falls back to —
-        // they are listed here only so that pass can tell them from a bracket.
-        if (0x2B === $cp || 0x2C === $cp || 0x2D === $cp || 0x2E === $cp || 0x2F === $cp || 0x3A === $cp) {
-            return 'CS';
-        }
 
         // Split in two, and kept in locals rather than a helper call: the
         // analyzer stops applying type assertions to a condition this long, and
@@ -328,13 +278,54 @@ final class Bidi
             || ($cp >= 0x2580 && $cp <= 0x259F) // block elements (the error stripe)
             || ($cp >= 0x25A0 && $cp <= 0x25FF) // geometric shapes (▸ ▾ ● ◆)
             || ($cp >= 0x2600 && $cp <= 0x27BF); // misc symbols and dingbats (✓ ✗ ✖)
-        if ($asciiNeutral || $symbolNeutral) {
-            return 'N';
-        }
 
-        // Everything else — Latin, CJK, and the Private Use Area, which Unicode
-        // assigns to L and where the branch icon lives beside its Latin name.
-        return 'L';
+        return match (true) {
+            // Hebrew, Arabic and their presentation forms → right-to-left, and
+            // U+200F RIGHT-TO-LEFT MARK (see the directional marks below).
+            // U+061C ARABIC LETTER MARK needs no case of its own — it already
+            // falls in the Arabic block and classifies R. It appears in SPENT
+            // below because it is zero-width like the other two.
+            ($cp >= 0x0590 && $cp <= 0x05FF)
+                || ($cp >= 0x0600 && $cp <= 0x06FF)
+                || ($cp >= 0x0700 && $cp <= 0x08FF)
+                || ($cp >= 0xFB1D && $cp <= 0xFDFF)
+                || ($cp >= 0xFE70 && $cp <= 0xFEFF)
+                || 0x200F === $cp
+                => 'R',
+            $cp >= 0x0030 && $cp <= 0x0039 => 'EN',
+            // ASCII space/punctuation/symbols, the common Unicode spaces, and the
+            // symbol blocks the interface draws from — all Unicode class ON (the
+            // neutral arm below).
+            //
+            // The fallback is `L`, so anything missing from that list is
+            // declared Latin TEXT: a marker classified that way glues itself into
+            // the adjacent Latin run rather than taking the direction of the text
+            // around it, and lands on the wrong side of the name it belongs to.
+            // Forty of Glyphs' seventy-six constants did exactly that — arrows,
+            // triangles, blocks, ticks and the close cross. The list is held honest by
+            // a test that derives its set from {@see \Porta\Ui\Glyphs} rather than
+            // repeating it, since a list of glyphs is wrong the first time someone
+            // adds one.
+            // The directional marks carry no glyph and no width; their whole job is
+            // to give the neutral text beside them a direction. Classified as
+            // neutral — which the U+2000-206F range would do — they achieve
+            // exactly nothing, and the Hebrew catalog already ships nine strings
+            // using them. They are spent in serialize(); they take no column, so
+            // dropping them leaves the row the width every measurer gave it.
+            // U+200E LEFT-TO-RIGHT MARK here; its RTL twin is in the first arm.
+            0x200E === $cp => 'L',
+            // UAX#9 ET: a terminator that sticks to the number beside it (W5
+            // below) — `42%`, `$5`, `#3`, `20°` — and is neutral anywhere else.
+            0x23 === $cp || 0x24 === $cp || 0x25 === $cp || 0xB0 === $cp || 0xB1 === $cp || 0x2030 === $cp => 'ET',
+            // UAX#9 CS/ES: the separators that can JOIN two numbers (W4 below).
+            // Neutral everywhere else, which is what the W4 pass falls back to —
+            // they are listed here only so that pass can tell them from a bracket.
+            0x2B === $cp || 0x2C === $cp || 0x2D === $cp || 0x2E === $cp || 0x2F === $cp || 0x3A === $cp => 'CS',
+            $asciiNeutral || $symbolNeutral => 'N',
+            // Everything else — Latin, CJK, and the Private Use Area, which Unicode
+            // assigns to L and where the branch icon lives beside its Latin name.
+            default => 'L',
+        };
     }
 
     /**
@@ -546,17 +537,15 @@ final class Bidi
     private static function pairDirection(array $classes, int $open, int $close, string $embedding): ?string
     {
         $inside = self::strongIn($classes, $open + 1, $close);
-        if (\in_array($embedding, $inside, strict: true)) {
-            return $embedding;
-        }
-        if ([] === $inside) {
-            return null;
-        }
-
-        // Only the opposite direction inside: it wins when the text before agrees.
         $opposite = 'R' === $embedding ? 'L' : 'R';
 
-        return $opposite === self::strongBefore($classes, $open, $embedding) ? $opposite : $embedding;
+        return match (true) {
+            \in_array($embedding, $inside, strict: true) => $embedding,
+            [] === $inside => null,
+            // Only the opposite direction inside: it wins when the text before agrees.
+            $opposite === self::strongBefore($classes, $open, $embedding) => $opposite,
+            default => $embedding,
+        };
     }
 
     /**

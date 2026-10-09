@@ -123,14 +123,12 @@ final readonly class DockToolController
      */
     private static function ranges(mixed $ranges): array
     {
-        if (!\is_array($ranges)) {
-            return [];
-        }
         $clean = [];
         /** @var mixed $range */
-        foreach ($ranges as $range) {
+        foreach (\is_array($ranges) ? $ranges : [] as $range) {
             if (!\is_array($range) || !\is_int($range['start'] ?? null) || !\is_int($range['length'] ?? null)) {
-                return [];
+                $clean = [];
+                break;
             }
             $clean[] = ['start' => \max(0, $range['start']), 'length' => \max(0, $range['length'])];
         }

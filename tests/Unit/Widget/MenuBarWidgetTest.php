@@ -195,6 +195,19 @@ final class MenuBarWidgetTest extends TestCase
         $this->assertFalse($bar->isOpen(), 'and the menu closes, as a click would');
     }
 
+    /** In an open menu, a key that is no item's letter and no binding runs nothing and keeps it open. */
+    public function testAnUnboundKeyKeepsTheMenuOpen(): void
+    {
+        $bar = $this->bar();
+        $bar->open(0);
+
+        $bar->handleInput('x');
+
+        $this->assertSame([], $this->ran);
+        $this->assertTrue($bar->isDropdownShown());
+        $this->assertSame(0, $bar->openIndex());
+    }
+
     /** The letters are drawn: underlined in the titles, and in the items. */
     public function testTheAccessLettersAreUnderlined(): void
     {

@@ -86,11 +86,10 @@ final class NavigationController extends AbstractLspController implements Editor
         }
         $lineText = $doc->getLine($line);
         $word = \substr($lineText, $range['startCol'], $range['endCol'] - $range['startCol']);
-        if ($this->boundToProjectSymbol($lineText, $range['startCol'], $range['endCol'], $word)) {
-            return null;
-        }
 
-        return NativeDocs::urlFor($this->editor->getLanguage(), $word);
+        return $this->boundToProjectSymbol($lineText, $range['startCol'], $range['endCol'], $word)
+            ? null
+            : NativeDocs::urlFor($this->editor->getLanguage(), $word);
     }
 
     /**
@@ -106,28 +105,23 @@ final class NavigationController extends AbstractLspController implements Editor
     private function boundToProjectSymbol(string $lineText, int $startCol, int $endCol, string $word): bool
     {
         $before = \rtrim(\substr($lineText, offset: 0, length: $startCol));
-        if (\str_ends_with($before, '->') || \str_ends_with($before, '::')) {
-            return true;
-        }
-        // `.` is member access in these languages; in PHP it is concatenation,
-        // where `'a'.count($x)` really is the global function.
-        $language = $this->editor->getLanguage();
-        if (\in_array($language, ['python', 'javascript', 'typescript'], strict: true) && \str_ends_with($before, '.')) {
-            return true;
-        }
-        // A backslash flanked by identifier text is a namespace-qualified name.
-        if (1 === \preg_match('/\w\\\\$/', $before) || \str_starts_with(\substr($lineText, $endCol), '\\')) {
-            return true;
-        }
-        if (1 === \preg_match('/\b(?:function|class|interface|trait|enum|const|def)$/', $before)) {
-            return true;
-        }
 
-        // A qualified `use App\...\Word;` (or `... as Word;`) rebinds the bare
-        // name for the whole file, so the import's target must answer.
-        return 1 === \preg_match(
-            '/^[ \t]*use\s+(?:function\s+|const\s+)?(?:[\w\\\\]*\\\\'.\preg_quote($word, delimiter: '/').'|[^;\n]*\bas\s+'.\preg_quote($word, delimiter: '/').')\s*;/mi',
-            $this->editor->getDocument()->getText(),
+        return (
+            \str_ends_with($before, '->')
+            || \str_ends_with($before, '::')
+            // `.` is member access in these languages; in PHP it is concatenation,
+            // where `'a'.count($x)` really is the global function.
+            || (\in_array($this->editor->getLanguage(), ['python', 'javascript', 'typescript'], strict: true) && \str_ends_with($before, '.'))
+            // A backslash flanked by identifier text is a namespace-qualified name.
+            || 1 === \preg_match('/\w\\\\$/', $before)
+            || \str_starts_with(\substr($lineText, $endCol), '\\')
+            || 1 === \preg_match('/\b(?:function|class|interface|trait|enum|const|def)$/', $before)
+            // A qualified `use App\...\Word;` (or `... as Word;`) rebinds the bare
+            // name for the whole file, so the import's target must answer.
+            || 1 === \preg_match(
+                '/^[ \t]*use\s+(?:function\s+|const\s+)?(?:[\w\\\\]*\\\\'.\preg_quote($word, delimiter: '/').'|[^;\n]*\bas\s+'.\preg_quote($word, delimiter: '/').')\s*;/mi',
+                $this->editor->getDocument()->getText(),
+            )
         );
     }
 

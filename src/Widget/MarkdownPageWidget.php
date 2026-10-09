@@ -240,35 +240,37 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
                     'top' => $this->scrollBy(-\PHP_INT_MAX),
                     default => $this->follow(\substr($action, offset: 4)),
                 };
-
-                return true;
             }
 
-            return false;
+            return null !== $action;
         }
 
+        return $this->clickBody($relRow, $relCol);
+    }
+
+    /** A click below the header: a link under the cell, else the source point drawn there. */
+    private function clickBody(int $relRow, int $relCol): bool
+    {
         $doc = $this->doc;
         if (null === $doc) {
             return false;
         }
         $line = $this->scrollTop + $relRow - self::HEADER_ROWS;
         $relCol -= $this->marginCols;
-        foreach ($doc->links as $span) {
-            if (!($span->line === $line && $relCol >= $span->col && $relCol < $span->endCol)) {
-                continue;
-            }
-
+        $span = \array_find(
+            $doc->links,
+            static fn (LinkSpan $span): bool => $span->line === $line && $relCol >= $span->col && $relCol < $span->endCol,
+        );
+        if (null !== $span) {
             $this->currentLink = $span->group;
             $this->activate($doc, $span->group);
-
-            return true;
         }
-        $point = $doc->sourcePointAt($line, $relCol);
+        $point = null === $span ? $doc->sourcePointAt($line, $relCol) : null;
         if (null !== $point) {
             $this->pointAtSource(...$point);
         }
 
-        return false;
+        return null !== $span;
     }
 
     /**
@@ -476,14 +478,16 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         if (null !== $root && \str_starts_with($path, $root.'/')) {
             return [$root, null];
         }
+        $tree = null;
         foreach (null === $this->moreRoots ? [] : ($this->moreRoots)() as $dir => $name) {
             $dir = Files::canonical($dir);
             if (\str_starts_with($path, $dir.'/')) {
-                return [$dir, $name];
+                $tree = [$dir, $name];
+                break;
             }
         }
 
-        return null;
+        return $tree;
     }
 
     #[\Override]

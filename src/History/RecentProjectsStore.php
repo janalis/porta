@@ -42,10 +42,7 @@ final readonly class RecentProjectsStore
     public function all(): array
     {
         $file = self::file();
-        if (null === $file) {
-            return [];
-        }
-        $data = JsonFile::read($file);
+        $data = null === $file ? null : JsonFile::read($file);
         if (null === $data || !\is_array($data['roots'] ?? null)) {
             return [];
         }

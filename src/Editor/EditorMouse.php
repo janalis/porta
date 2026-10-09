@@ -255,15 +255,13 @@ final class EditorMouse
     private function cellAt(int $relRow, int $relCol, EditorViewport $vp): ?EditorPoint
     {
         $stickyCount = \count($vp->stickyLines);
-        if ($relCol < $vp->gutterWidth || $relCol >= $vp->stripeCol || $relRow < 0) {
-            return null;
-        }
-        $found = $relRow < $stickyCount ? [$vp->stickyLines[$relRow], 0] : $this->lineAtRow($relRow - $stickyCount, $vp);
-        if (null === $found || $found[1] < 0) {
-            return null;
-        }
+        $found = match (true) {
+            $relCol < $vp->gutterWidth || $relCol >= $vp->stripeCol || $relRow < 0 => null,
+            $relRow < $stickyCount => [$vp->stickyLines[$relRow], 0],
+            default => $this->lineAtRow($relRow - $stickyCount, $vp),
+        };
 
-        return $this->pointAt($relRow, $relCol, $vp);
+        return null === $found || $found[1] < 0 ? null : $this->pointAt($relRow, $relCol, $vp);
     }
 
     /**
@@ -295,6 +293,7 @@ final class EditorMouse
         // Bounded by the line count rather than by trusting nextVisibleLine()
         // to advance: a walk that cannot terminate structurally would need a
         // guard branch nothing can reach to test.
+        $found = null;
         for ($step = 0; $line <= $lastLine && $step <= $lastLine; ++$step) {
             $lensRows = \count($this->lenses->codeLensesAt($line));
             $segments = null === $vp->wrapWidth ? 1 : $layout->rowsFor($line, $vp->wrapWidth);
@@ -311,13 +310,15 @@ final class EditorMouse
                 // caller recovers the index without knowing how many there are.
                 // A BLOCK row under the line is its last segment: a click
                 // there puts the caret on the line the block is about.
-                return [$line, $inLine < $lensRows ? -($inLine + 1) : \min($inLine - $lensRows, $segments - 1)];
+                $found = [$line, $inLine < $lensRows ? -($inLine + 1) : \min($inLine - $lensRows, $segments - 1)];
+
+                break;
             }
             $row += $rows;
             $line = $this->foldModel->nextVisibleLine($line);
         }
 
-        return null;
+        return $found;
     }
 
     /** Jump the caret to the file position a click at screen row $relRow in the error stripe maps to. */

@@ -48,9 +48,20 @@ final class ImageLayout
         }
         // The header is all a layout reads: the whole file only goes to the terminal once.
         $size = self::size((string) \file_get_contents($file, length: 24));
-        if (null === $size) {
-            return null;
-        }
+
+        return null === $size ? null : $this->placed($graphics, $file, $size, $image, $width, $target, $group);
+    }
+
+    /**
+     * The image's rows, its file sent to the terminal unless it already holds
+     * this size of it.
+     *
+     * @param array{int, int} $size
+     *
+     * @return list<PageLine>
+     */
+    private function placed(TerminalGraphics $graphics, string $file, array $size, ImageRef $image, int $width, ?string $target, int $group): array
+    {
         [$columns, $rows] = $this->cells($size, $image->width, $width);
         $key = $file."\0".(int) \filemtime($file)."\0".$columns.'x'.$rows;
         $id = $this->ids[$key] ?? null;
@@ -128,25 +139,18 @@ final class ImageLayout
         }
         $file = \realpath(\str_starts_with($path, '/') ? ($root ?? $baseDir).$path : $baseDir.'/'.$path);
         $fence = \realpath($root ?? $baseDir);
-        if (false === $file || false === $fence || !\str_starts_with($file, \rtrim($fence, characters: '/').'/') || !\is_file($file)) {
-            return null;
-        }
+        $inside = false !== $file && false !== $fence && \str_starts_with($file, \rtrim($fence, characters: '/').'/') && \is_file($file);
 
-        return self::PNG === \file_get_contents($file, length: 8) ? $file : null;
+        return $inside && self::PNG === \file_get_contents($file, length: 8) ? $file : null;
     }
 
     /** @return array{int, int}|null a PNG's width and height, read from the IHDR chunk its first 24 bytes hold */
     private static function size(string $head): ?array
     {
-        if (\strlen($head) < 24 || 'IHDR' !== \substr($head, offset: 12, length: 4)) {
-            return null;
-        }
-        $dimensions = \unpack('Nwidth/Nheight', \substr($head, offset: 16, length: 8));
-        if (false === $dimensions || $dimensions['width'] < 1 || $dimensions['height'] < 1) {
-            return null;
-        }
+        $header = \strlen($head) >= 24 && 'IHDR' === \substr($head, offset: 12, length: 4);
+        $dimensions = $header ? \unpack('Nwidth/Nheight', \substr($head, offset: 16, length: 8)) : false;
 
-        return [(int) $dimensions['width'], (int) $dimensions['height']];
+        return false === $dimensions || $dimensions['width'] < 1 || $dimensions['height'] < 1 ? null : [(int) $dimensions['width'], (int) $dimensions['height']];
     }
 
     /**

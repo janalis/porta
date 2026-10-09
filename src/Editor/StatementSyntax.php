@@ -133,11 +133,8 @@ final class StatementSyntax
         }
 
         [$terminator, $block, $keywords] = self::SYNTAX[$grammar] ?? [null, null, []];
-        if (null === $terminator && null === $block) {
-            return null;
-        }
 
-        return new self($terminator, $block, $keywords);
+        return null === $terminator && null === $block ? null : new self($terminator, $block, $keywords);
     }
 
     /**

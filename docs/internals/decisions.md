@@ -458,7 +458,8 @@ The first run's 773 findings had four real defects behind them:
 The race-guard re-checks (`&& !is_dir()` after a failed `mkdir`) cannot be
 killed by a test; they are the shape custos asks for, not a claim of coverage.
 
-Of the rules custos leaves off by default, six are switched ON:
+Of the rules custos leaves off by default, seven are switched ON (the seventh,
+`MultipleReturnStatements`, below):
 `NullPointerException`, `DisconnectedForeachInstruction`,
 `ClassOverridesFieldOfSuperClass`, `UnqualifiedReference` (a first-class
 callable like `strval(...)` gets its `\` like any call), `UnNecessaryDoubleQuotes`
@@ -481,9 +482,18 @@ in 0.1.1, the version required; the suppressions they needed are gone. Left off,
   `plugin.php` returns its instance.
 - `BadExceptionsProcessing`: its only hits are "too many statements in a try",
   a style call; the swallowed-exception half found nothing.
-- `MultipleReturnStatements`, `EfferentObjectCoupling`, `CompactCanBeUsed`,
+- `EfferentObjectCoupling`, `CompactCanBeUsed`,
   `ParameterDefaultValueIsNotNull`, and `EmptyClass` (a command event with no
   payload is a class with no members, on purpose).
+
+`MultipleReturnStatements` was left off with them, then switched ON at its
+defaults (3 returns warn, 5 fail) by request: 435 methods across `src/`,
+plugins and tests, with no suppression. mago's `no-else-clause` rules out the
+`if/else` funnel, so the shapes are `match`, combined guards, `array_find` and
+`array_any`, a `break` out of a search loop, and private helpers. It moved two
+pins: `MouseRouter` dropped from 145 to 141 cyclomatic, and `BufferService` is
+now at the kan-defect limit. One frame-reading bug fell out of it: the mcp
+WebSocket reader took a 16-bit length of exactly 127 as the 64-bit marker.
 
 ## Leave it alone
 

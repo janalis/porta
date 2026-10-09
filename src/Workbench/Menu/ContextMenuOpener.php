@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\Workbench\Menu;
 
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\MenuOverlayController;
+use Porta\Terminal\TerminalSession;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tree\TreeOperations;
 use Porta\Ui\BidiTui;
@@ -134,65 +136,68 @@ final readonly class ContextMenuOpener
     public function openForFocus(): void
     {
         $focus = $this->tui->getFocus();
+        $active = null;
+        $session = null;
 
-        if ($focus === $this->editor) {
-            $rect = $this->renderer->getWidgetRect($this->editor);
-            if (null !== $rect) {
-                $cell = $this->editor->caretScreenCell();
-                // One row below the caret, so the caret line stays readable.
-                $this->openAt($this->items->editorItems(), $rect->row + $cell['row'] + 1, $rect->col + $cell['col']);
-            }
+        match (true) {
+            $focus === $this->editor => $this->openForEditor(),
+            $focus === $this->tree => $this->openForTree(),
+            // ANY focused pane, not two of the three: a right-click over a focused
+            // graph pane used to fall through and open nothing, because this list
+            // named the image and help viewers and was never revisited.
+            $focus instanceof EditorPaneWidget && null !== ($active = $this->buffers->active()) => $this->openForTab($active),
+            $focus === $this->terminalPanel && null !== ($session = $this->sessions->active()) => $this->openForSession($session),
+            // The open view answers for its own focused pane, anchor included.
+            // Two branches stood here comparing focus against a git widget by
+            // identity and doing that view's anchor arithmetic in core.
+            default => $this->openForView(),
+        };
+    }
 
-            return;
+    private function openForEditor(): void
+    {
+        $rect = $this->renderer->getWidgetRect($this->editor);
+        if (null !== $rect) {
+            $cell = $this->editor->caretScreenCell();
+            // One row below the caret, so the caret line stays readable.
+            $this->openAt($this->items->editorItems(), $rect->row + $cell['row'] + 1, $rect->col + $cell['col']);
         }
+    }
 
-        if ($focus === $this->tree) {
-            $node = $this->tree->selectedNode();
-            $rect = $this->renderer->getWidgetRect($this->tree);
-            if (null !== $node && null !== $rect) {
-                $this->openAt($this->treeOps->contextItems($node), $rect->row + $this->tree->selectedRow() + 1, $rect->col + 2);
-            }
-
-            return;
+    private function openForTree(): void
+    {
+        $node = $this->tree->selectedNode();
+        $rect = $this->renderer->getWidgetRect($this->tree);
+        if (null !== $node && null !== $rect) {
+            $this->openAt($this->treeOps->contextItems($node), $rect->row + $this->tree->selectedRow() + 1, $rect->col + 2);
         }
+    }
 
-        // ANY focused pane, not two of the three: a right-click over a focused
-        // graph pane used to fall through and open nothing, because this list
-        // named the image and help viewers and was never revisited.
-        if ($focus instanceof EditorPaneWidget && null !== ($active = $this->buffers->active())) {
-            $rect = $this->renderer->getWidgetRect($this->tabBar);
-            $index = \array_search($active, $this->buffers->all(), strict: true);
-            // A scrolled-out active tab falls back to the strip's origin cell.
-            $anchor = (false === $index ? null : $this->tabBar->tabAnchor($index)) ?? ['row' => 0, 'col' => 0, 'rows' => 1];
-            // One row below the tab; a bottom strip anchors on its own top row so
-            // the overlay's overflow flip opens the menu above it instead.
-            $row = TabBarPosition::Bottom === $this->tabBar->position() ? $anchor['row'] : $anchor['row'] + $anchor['rows'];
-            $this->openAt($this->items->tabItems($active->path), (null === $rect ? 0 : $rect->row) + $row, (null === $rect ? 0 : $rect->col) + $anchor['col']);
+    private function openForTab(Buffer $active): void
+    {
+        $rect = $this->renderer->getWidgetRect($this->tabBar);
+        $index = \array_search($active, $this->buffers->all(), strict: true);
+        // A scrolled-out active tab falls back to the strip's origin cell.
+        $anchor = (false === $index ? null : $this->tabBar->tabAnchor($index)) ?? ['row' => 0, 'col' => 0, 'rows' => 1];
+        // One row below the tab; a bottom strip anchors on its own top row so
+        // the overlay's overflow flip opens the menu above it instead.
+        $row = TabBarPosition::Bottom === $this->tabBar->position() ? $anchor['row'] : $anchor['row'] + $anchor['rows'];
+        $this->openAt($this->items->tabItems($active->path), (null === $rect ? 0 : $rect->row) + $row, (null === $rect ? 0 : $rect->col) + $anchor['col']);
+    }
 
-            return;
-        }
+    private function openForSession(TerminalSession $session): void
+    {
+        $rect = $this->renderer->getWidgetRect($this->dockTabs);
+        // Anchor on the strip row itself: the overlay's overflow flip
+        // opens the menu above the bottom strip.
+        $col = $this->dockTabs->anchorFor(DockTab::Terminal, $session->id) ?? 0;
+        $this->openAt($this->items->dockTabItems(DockTab::Terminal, $session->id), null === $rect ? 0 : $rect->row, (null === $rect ? 0 : $rect->col) + $col);
+    }
 
-        if ($focus === $this->terminalPanel && null !== ($session = $this->sessions->active())) {
-            $rect = $this->renderer->getWidgetRect($this->dockTabs);
-            // Anchor on the strip row itself: the overlay's overflow flip
-            // opens the menu above the bottom strip.
-            $col = $this->dockTabs->anchorFor(DockTab::Terminal, $session->id) ?? 0;
-            $this->openAt($this->items->dockTabItems(DockTab::Terminal, $session->id), null === $rect ? 0 : $rect->row, (null === $rect ? 0 : $rect->col) + $col);
-
-            return;
-        }
-
-        // The open view answers for its own focused pane, anchor included.
-        // Two branches stood here comparing focus against a git widget by
-        // identity and doing that view's anchor arithmetic in core.
+    private function openForView(): void
+    {
         $menu = $this->viewMenus->of($this->views->activeId())?->focusedContextMenu();
-        if (null !== $menu) {
-            $this->openAt($menu->items, $menu->row, $menu->col);
-
-            return;
-        }
-
-        $this->flashNoMenu();
+        null !== $menu ? $this->openAt($menu->items, $menu->row, $menu->col) : $this->flashNoMenu();
     }
 
     /**

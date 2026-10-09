@@ -78,6 +78,13 @@ final class OpenCommand extends OpenRemoteCommand
                 return \sprintf('Cannot keep the password in %s', \dirname(Credentials::file($home, $spec)));
             }
         }
+
+        return $this->tryLogin($spec, $home, $netrc);
+    }
+
+    /** Log in to $spec with $netrc: null when it works, else why — and the stored password is forgotten. */
+    private function tryLogin(RemoteSpec $spec, string $home, ?string $netrc): ?string
+    {
         $transport = new FtpTransport($spec, $netrc);
         [$code, $error] = ($this->curl ?? self::login(...))($transport->command(['--list-only', '--output', '/dev/null'], $transport->directoryUrl('')));
         if (0 === $code) {

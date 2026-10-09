@@ -104,11 +104,8 @@ final class TerminalReplay
         }
         // OSC/APC/DCS carry a payload and end with BEL or ST; they paint nothing.
         $m2 = [];
-        if (\preg_match('/\G\x1b[_\]P][^\x07\x1b]*(?:\x07|\x1b\\\\)/', $bytes, $m2, offset: $i)) {
-            return \strlen($m2[0]);
-        }
 
-        return 2;
+        return \preg_match('/\G\x1b[_\]P][^\x07\x1b]*(?:\x07|\x1b\\\\)/', $bytes, $m2, offset: $i) ? \strlen($m2[0]) : 2;
     }
 
     private function csi(string $params, string $final): void

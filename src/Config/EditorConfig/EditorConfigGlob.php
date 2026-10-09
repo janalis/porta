@@ -109,18 +109,14 @@ final class EditorConfigGlob
         $content = \substr($s, $i + 1, $close - $i - 1);
         $i = $close; // consume through the closing `}`
         $parts = self::splitTopLevel($content);
+        $m = [];
 
-        if (1 === \count($parts)) {
-            $m = [];
-            if (1 === \preg_match('/^(-?\d+)\.\.(-?\d+)$/', $content, $m)) {
-                return self::numericRange((int) $m[1], (int) $m[2]);
-            }
-
+        return match (true) {
+            1 !== \count($parts) => '(?:'.\implode('|', \array_map(self::compileSegment(...), $parts)).')',
+            1 === \preg_match('/^(-?\d+)\.\.(-?\d+)$/', $content, $m) => self::numericRange((int) $m[1], (int) $m[2]),
             // A single choice with no comma is a literal `{...}`.
-            return \preg_quote('{', delimiter: '#').self::compileSegment($content).\preg_quote('}', delimiter: '#');
-        }
-
-        return '(?:'.\implode('|', \array_map(self::compileSegment(...), $parts)).')';
+            default => \preg_quote('{', delimiter: '#').self::compileSegment($content).\preg_quote('}', delimiter: '#'),
+        };
     }
 
     private static function numericRange(int $from, int $to): string

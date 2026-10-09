@@ -120,32 +120,38 @@ final class DropTarget
     private function zoneAt(int $row, int $screenCol): ?DropZone
     {
         $this->folder = null;
-        if ($this->welcome->isOpen()) {
+        $zone = $this->welcome->isOpen() ? DropZone::Empty : $this->zoneUnder($row, $this->bidi->logicalColumn($row, $screenCol));
+        if (DropZone::Tree !== $zone) {
             $this->treeDrag->endExternal();
+        }
 
-            return DropZone::Empty;
-        }
-        $col = $this->bidi->logicalColumn($row, $screenCol);
-        if ($this->views->isAnyOpen() || $this->panes->editor->isAnyPickerOpen()) {
-            $this->treeDrag->endExternal();
+        return $zone;
+    }
 
-            return DropZone::Text;
-        }
-        $treeRect = $this->hit->rect($this->panes->tree);
-        if (null !== $treeRect && $treeRect->contains($row, $col)) {
-            $this->folder = $this->treeDrag->hoverExternal($row, $col, $treeRect);
-
-            return DropZone::Tree;
-        }
-        $this->treeDrag->endExternal();
-        if (null !== $this->hit->hit($this->panes->tabBar, $row, $col)) {
-            return DropZone::Empty;
-        }
+    /** The zone under a logical column, the welcome modal being shut. */
+    private function zoneUnder(int $row, int $col): ?DropZone
+    {
         $pane = $this->panes->pane();
-        if (null === $this->hit->hit($this->panes->editor, $row, $col) && (null === $pane || null === $this->hit->hit($pane, $row, $col))) {
-            return null;
-        }
 
-        return null === $pane && null !== $this->buffers->active() ? DropZone::Editor : DropZone::Empty;
+        return match (true) {
+            $this->views->isAnyOpen() || $this->panes->editor->isAnyPickerOpen() => DropZone::Text,
+            $this->hoverTree($row, $col) => DropZone::Tree,
+            null !== $this->hit->hit($this->panes->tabBar, $row, $col) => DropZone::Empty,
+            null === $this->hit->hit($this->panes->editor, $row, $col) && (null === $pane || null === $this->hit->hit($pane, $row, $col)) => null,
+            null === $pane && null !== $this->buffers->active() => DropZone::Editor,
+            default => DropZone::Empty,
+        };
+    }
+
+    /** True over the tree, the folder under the pointer then the drop's target. */
+    private function hoverTree(int $row, int $col): bool
+    {
+        $treeRect = $this->hit->rect($this->panes->tree);
+        if (null === $treeRect || !$treeRect->contains($row, $col)) {
+            return false;
+        }
+        $this->folder = $this->treeDrag->hoverExternal($row, $col, $treeRect);
+
+        return true;
     }
 }

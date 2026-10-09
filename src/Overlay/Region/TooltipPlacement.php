@@ -39,26 +39,16 @@ final readonly class TooltipPlacement
             TooltipSide::Left => $fitsBeside && ($anchor->colStart - $width) >= $boundLeft ? self::beside($anchor, $height, $anchor->colStart - $width, TooltipSide::Left, $bounds) : null,
             null => null,
         };
-        if (null !== $asked) {
-            return $asked;
-        }
-        if (($below + $height) <= $boundBottom) {
-            return self::vertical($anchor, $width, $below, TooltipSide::Below, $bounds);
-        }
-        if (($anchor->row - $height) >= $boundTop) {
-            return self::vertical($anchor, $width, $anchor->row - $height, TooltipSide::Above, $bounds);
-        }
-        if ($fitsBeside && ($anchor->colEnd + $width) <= $boundRight) {
-            return self::beside($anchor, $height, $anchor->colEnd, TooltipSide::Right, $bounds);
-        }
-        if ($fitsBeside && ($anchor->colStart - $width) >= $boundLeft) {
-            return self::beside($anchor, $height, $anchor->colStart - $width, TooltipSide::Left, $bounds);
-        }
-        if (($boundBottom - $below) >= ($anchor->row - $boundTop)) {
-            return self::vertical($anchor, $width, \max($boundTop, \min($below, $boundBottom - $height)), TooltipSide::Below, $bounds);
-        }
 
-        return self::vertical($anchor, $width, \max($boundTop, $anchor->row - $height), TooltipSide::Above, $bounds);
+        // Else the first side that fits, or the roomier of below and above, clamped.
+        return $asked ?? match (true) {
+            ($below + $height) <= $boundBottom => self::vertical($anchor, $width, $below, TooltipSide::Below, $bounds),
+            ($anchor->row - $height) >= $boundTop => self::vertical($anchor, $width, $anchor->row - $height, TooltipSide::Above, $bounds),
+            $fitsBeside && ($anchor->colEnd + $width) <= $boundRight => self::beside($anchor, $height, $anchor->colEnd, TooltipSide::Right, $bounds),
+            $fitsBeside && ($anchor->colStart - $width) >= $boundLeft => self::beside($anchor, $height, $anchor->colStart - $width, TooltipSide::Left, $bounds),
+            ($boundBottom - $below) >= ($anchor->row - $boundTop) => self::vertical($anchor, $width, \max($boundTop, \min($below, $boundBottom - $height)), TooltipSide::Below, $bounds),
+            default => self::vertical($anchor, $width, \max($boundTop, $anchor->row - $height), TooltipSide::Above, $bounds),
+        };
     }
 
     /** @param array{int, int, int, int} $bounds */

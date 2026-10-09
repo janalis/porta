@@ -155,12 +155,10 @@ final class EditorCompletion
      */
     public function expandTemplate(string $keys, Keybindings $kb, array $templates): bool
     {
-        if (!$kb->matches($keys, 'indent') || $this->open || $this->document->hasSelection()) {
-            return false;
-        }
         $doc = $this->document;
-        $line = $doc->cursorLine;
-        $found = TemplateExpander::at($doc->getLine($line), $doc->cursorCol, $templates);
+        $found = $kb->matches($keys, 'indent') && !$this->open && !$doc->hasSelection()
+            ? TemplateExpander::at($doc->getLine($doc->cursorLine), $doc->cursorCol, $templates)
+            : null;
         if (null === $found) {
             return false;
         }
@@ -192,76 +190,70 @@ final class EditorCompletion
             return false;
         }
 
-        if ($kb->matches($keys, 'select_cancel')) {
+        $consumed = $this->steer($keys, $kb, $filtered);
+        // Typing narrows the filter; deleting widens it, and normal handling
+        // performs the deletion. Identifier chars insert normally (the popup
+        // refilters on render); any other key closes the popup and is handled
+        // normally.
+        $closes =
+            !$consumed
+            && (
+                $kb->matches($keys, 'delete_char_backward')
+                    ? '' === $this->document->getWordBeforeCursor()
+                    : !($this->isInsertable)($keys) || !\preg_match('/^[\w$]+$/u', $keys)
+            );
+        if ($closes) {
             $this->close();
-            ($this->invalidate)();
-
-            return true;
         }
 
-        if ($kb->matches($keys, 'cursor_up')) {
-            $this->docScroll = 0;
-            $this->selected = ($this->selected - 1 + \count($filtered)) % \count($filtered);
-            $this->askForVisibleDetails();
-            ($this->invalidate)();
+        return $consumed;
+    }
 
-            return true;
-        }
-
-        if ($kb->matches($keys, 'cursor_down')) {
-            $this->docScroll = 0;
-            $this->selected = ($this->selected + 1) % \count($filtered);
-            $this->askForVisibleDetails();
-            ($this->invalidate)();
-
-            return true;
-        }
-
-        // A page is what the popup shows; paging stops at the ends.
-        if ($kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down')) {
-            $step = PopupMetrics::COMPLETION_ROWS * ($kb->matches($keys, 'page_up') ? -1 : 1);
-            $this->selected = \max(0, \min(\count($filtered) - 1, $this->selected + $step));
-            $this->docScroll = 0;
-            $this->askForVisibleDetails();
-            ($this->invalidate)();
-
-            return true;
-        }
-
-        // Ctrl+↓/↑ scroll the selected item's docblock, the rest of which is
-        // otherwise only a hover away.
-        if ("\x1b[1;5B" === $keys || "\x1b[1;5A" === $keys) {
-            $this->scrollDoc("\x1b[1;5B" === $keys ? 1 : -1);
-
-            return true;
-        }
-
-        if ($kb->matches($keys, 'accept_completion') || $kb->matches($keys, 'indent')) {
-            $item = $filtered[$this->selected] ?? null;
-            if (null !== $item) {
-                $this->acceptItem($item);
-            }
-
-            return true;
-        }
-
-        // Typing narrows the filter; deleting widens it
-        if ($kb->matches($keys, 'delete_char_backward')) {
-            if ('' === $this->document->getWordBeforeCursor()) {
+    /**
+     * The keys the open popup consumes: cancel, the selection moves, the
+     * docblock scroll and accept.
+     *
+     * @param non-empty-list<CompletionItem> $filtered
+     */
+    private function steer(string $keys, Keybindings $kb, array $filtered): bool
+    {
+        $count = \count($filtered);
+        $act = match (true) {
+            $kb->matches($keys, 'select_cancel') => function (): void {
                 $this->close();
-            }
-
-            return false; // let normal handling perform the deletion
+                ($this->invalidate)();
+            },
+            $kb->matches($keys, 'cursor_up') => fn () => $this->select(($this->selected - 1 + $count) % $count),
+            $kb->matches($keys, 'cursor_down') => fn () => $this->select(($this->selected + 1) % $count),
+            // A page is what the popup shows; paging stops at the ends.
+            $kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down') => fn () => $this->select(
+                \max(0, \min($count - 1, $this->selected + (PopupMetrics::COMPLETION_ROWS * ($kb->matches($keys, 'page_up') ? -1 : 1)))),
+            ),
+            // Ctrl+↓/↑ scroll the selected item's docblock, the rest of which is
+            // otherwise only a hover away.
+            "\x1b[1;5B" === $keys || "\x1b[1;5A" === $keys => fn () => $this->scrollDoc("\x1b[1;5B" === $keys ? 1 : -1),
+            $kb->matches($keys, 'accept_completion') || $kb->matches($keys, 'indent') => function () use ($filtered): void {
+                $item = $filtered[$this->selected] ?? null;
+                if (null !== $item) {
+                    $this->acceptItem($item);
+                }
+            },
+            default => null,
+        };
+        if (null !== $act) {
+            $act();
         }
 
-        if (($this->isInsertable)($keys) && \preg_match('/^[\w$]+$/u', $keys)) {
-            return false; // identifier chars: insert normally, popup refilters on render
-        }
+        return null !== $act;
+    }
 
-        // Any other key closes the popup and is handled normally
-        $this->close();
-
-        return false;
+    /** Select row $selected, its docblock scrolled back to the top. */
+    private function select(int $selected): void
+    {
+        $this->docScroll = 0;
+        $this->selected = $selected;
+        $this->askForVisibleDetails();
+        ($this->invalidate)();
     }
 
     /**
@@ -271,12 +263,9 @@ final class EditorCompletion
      */
     public function handleClick(int $relRow, int $relCol): bool
     {
-        if (!$this->open) {
-            return false;
-        }
-        $index = $this->completionItemAt($relRow, $relCol);
+        $index = $this->open ? $this->completionItemAt($relRow, $relCol) : null;
         if (null === $index) {
-            return $this->box?->covers($relRow, $relCol) ?? false;
+            return $this->open && ($this->box?->covers($relRow, $relCol) ?? false);
         }
         $item = $this->filtered()[$index] ?? null;
         if (null !== $item) {
@@ -341,10 +330,7 @@ final class EditorCompletion
      */
     public function popupState(): ?array
     {
-        if (!$this->open) {
-            return null;
-        }
-        $items = $this->filtered();
+        $items = $this->open ? $this->filtered() : [];
         if ([] === $items) {
             return null;
         }

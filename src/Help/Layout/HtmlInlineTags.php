@@ -56,22 +56,33 @@ final class HtmlInlineTags
      */
     public function apply(string $literal, InlineStyle $style, ?string $target): ?array
     {
-        if (\str_starts_with($literal, '<!--')) {
-            return [$style, $target, []];
-        }
-        $tag = self::parse($literal);
-        if (null === $tag) {
-            return null;
-        }
-        [$name, $closing, $attributes] = $tag;
-        if ('br' === $name) {
-            return [$style, $target, [Fragment::lineBreak()]];
-        }
-        if (!\array_key_exists($name, self::STYLES)) {
-            return null;
-        }
+        $comment = \str_starts_with($literal, '<!--');
+        $tag = $comment ? null : self::parse($literal);
 
-        return $closing ? $this->close($name, $style, $target) : $this->openTag($name, $attributes, $style, $target);
+        return match (true) {
+            $comment => [$style, $target, []],
+            null === $tag => null,
+            default => $this->applyTag($tag, $style, $target),
+        };
+    }
+
+    /**
+     * {@see apply()} for a parsed tag.
+     *
+     * @param array{string, bool, array<string, string>} $tag
+     *
+     * @return array{InlineStyle, ?string, list<Fragment>}|null
+     */
+    private function applyTag(array $tag, InlineStyle $style, ?string $target): ?array
+    {
+        [$name, $closing, $attributes] = $tag;
+
+        return match (true) {
+            'br' === $name => [$style, $target, [Fragment::lineBreak()]],
+            !\array_key_exists($name, self::STYLES) => null,
+            $closing => $this->close($name, $style, $target),
+            default => $this->openTag($name, $attributes, $style, $target),
+        };
     }
 
     /**

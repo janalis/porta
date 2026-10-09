@@ -264,71 +264,49 @@ final class MultiCaret
      */
     public function handleInput(string $keys, Keybindings $kb, string $clipboard, \Closure $isInsertable): bool
     {
-        $doc = $this->document;
-
-        if ($kb->matches($keys, 'select_cancel')) {
-            $this->clear();
-            $doc->clearSelection();
-
-            return true;
-        }
-
-        // Movement: move every caret, then dedupe.
-        foreach (self::MOVE_METHODS as $action => $method) {
-            if (!$kb->matches($keys, $action)) {
-                continue;
-            }
-
-            $this->moveAll($method);
-
-            return true;
-        }
-
-        // Shift+movement: extend every caret's selection.
-        foreach (self::SELECT_METHODS as $action => $method) {
-            if (!$kb->matches($keys, $action)) {
-                continue;
-            }
-
-            $this->extendAll($method);
-
-            return true;
-        }
-
-        // Editing operations applied at every caret: the bare Document verbs are
-        // table-driven; indent and paste carry an argument, so they stay explicit.
-        foreach (self::EDIT_METHODS as $action => $method) {
-            if (!$kb->matches($keys, $action)) {
-                continue;
-            }
-
-            $this->applyEdit(static fn (Document $d) => $d->{$method}());
-
-            return true;
-        }
-        if ($kb->matches($keys, 'indent')) {
-            $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit()));
-
-            return true;
-        }
-        if ($kb->matches($keys, 'paste') && '' !== $clipboard) {
-            $this->pasteBlock($clipboard);
-
-            return true;
-        }
-
-        // Plain text input at every caret.
-        if ($isInsertable($keys)) {
-            $this->applyEdit(static fn (Document $d) => $d->insert($keys));
-
-            return true;
+        $act = match (true) {
+            $kb->matches($keys, 'select_cancel') => function (): void {
+                $this->clear();
+                $this->document->clearSelection();
+            },
+            // Movement: move every caret, then dedupe.
+            null !== ($move = self::methodFor(self::MOVE_METHODS, $keys, $kb)) => fn () => $this->moveAll($move),
+            // Shift+movement: extend every caret's selection.
+            null !== ($extend = self::methodFor(self::SELECT_METHODS, $keys, $kb)) => fn () => $this->extendAll($extend),
+            // Editing operations applied at every caret: the bare Document verbs are
+            // table-driven; indent and paste carry an argument, so they stay explicit.
+            null !== ($edit = self::methodFor(self::EDIT_METHODS, $keys, $kb)) => fn () => $this->applyEdit(static fn (Document $d) => $d->{$edit}()),
+            $kb->matches($keys, 'indent') => fn () => $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit())),
+            $kb->matches($keys, 'paste') && '' !== $clipboard => fn () => $this->pasteBlock($clipboard),
+            // Plain text input at every caret.
+            $isInsertable($keys) => fn () => $this->applyEdit(static fn (Document $d) => $d->insert($keys)),
+            default => null,
+        };
+        if (null !== $act) {
+            $act();
         }
 
         // Any other input (stray terminal sequences, unowned keys) leaves the
         // carets intact and falls through to normal handling — the carets are
         // "sticky" so injected escape sequences can never silently wipe them.
         // Deliberate exits: Escape (above) and a plain mouse click (via the Ide).
-        return false;
+        return null !== $act;
+    }
+
+    /**
+     * The Document method of the first action in $table that $keys matches.
+     *
+     * @template T of string
+     *
+     * @param array<string, T> $table action => Document method
+     *
+     * @return T|null
+     */
+    private static function methodFor(array $table, string $keys, Keybindings $kb): ?string
+    {
+        $action = \array_find(\array_keys($table), static fn (string $action): bool => $kb->matches($keys, $action));
+
+        return null === $action ? null : $table[$action];
     }
 
     /**
@@ -564,32 +542,25 @@ final class MultiCaret
     {
         $doc = $this->document;
 
-        if ($line === $doc->cursorLine && $col === $doc->cursorCol) {
+        $onPrimary = $line === $doc->cursorLine && $col === $doc->cursorCol;
+        if ($onPrimary) {
             if ([] === $this->extraCarets) {
                 return; // never remove the only caret
             }
             $promoted = \array_shift($this->extraCarets);
             $doc->setCursor($promoted->line, $promoted->col);
-            ($this->onInvalidate)();
-
-            return;
         }
 
-        foreach ($this->extraCarets as $i => $caret) {
-            if ($caret->line !== $line || $caret->col !== $col) {
-                continue;
-            }
-
-            \array_splice($this->extraCarets, $i, length: 1);
-            ($this->onInvalidate)();
-
-            return;
+        $existing = $onPrimary ? null : \array_find_key($this->extraCarets, static fn (Caret $caret): bool => $caret->line === $line && $caret->col === $col);
+        if (null !== $existing) {
+            \array_splice($this->extraCarets, $existing, length: 1);
         }
-
-        // New caret: make the click the primary, push the old primary to extras.
-        $this->extraCarets[] = Caret::point($doc->cursorLine, $doc->cursorCol);
-        $doc->setCursor($line, $col);
-        $this->dedupeCarets();
+        if (!$onPrimary && null === $existing) {
+            // New caret: make the click the primary, push the old primary to extras.
+            $this->extraCarets[] = Caret::point($doc->cursorLine, $doc->cursorCol);
+            $doc->setCursor($line, $col);
+            $this->dedupeCarets();
+        }
         ($this->onInvalidate)();
     }
 

@@ -66,14 +66,12 @@ final class SettingsRowDetail
      */
     private static function origin(SettingsRow $row, Translator $translator): string
     {
-        if (null === $row->origin) {
-            return ''; // a default; nothing set it anywhere
-        }
-        if ($row->shadowed) {
-            return $translator->trans('overrides global');
-        }
-
-        return ConfigScope::Global === $row->origin ? $translator->trans('from global') : '';
+        return match (true) {
+            null === $row->origin => '', // a default; nothing set it anywhere
+            $row->shadowed => $translator->trans('overrides global'),
+            ConfigScope::Global === $row->origin => $translator->trans('from global'),
+            default => '',
+        };
     }
 
     /** What a bounded number may become: its range. */
@@ -93,13 +91,11 @@ final class SettingsRowDetail
      */
     private static function range(?int $min, ?int $max): string
     {
-        if (null !== $min && null !== $max) {
-            return $min.'-'.$max;
-        }
-        if (null !== $min) {
-            return '≥ '.$min;
-        }
-
-        return null === $max ? '' : '≤ '.$max;
+        return match (true) {
+            null !== $min && null !== $max => $min.'-'.$max,
+            null !== $min => '≥ '.$min,
+            null !== $max => '≤ '.$max,
+            default => '',
+        };
     }
 }

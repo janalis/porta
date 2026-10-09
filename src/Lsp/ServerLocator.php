@@ -63,44 +63,52 @@ final class ServerLocator
         // per-language maps of both files, the project's winning per language
         // — as the Settings view shows them — then the global single server.
         $single = self::single($project);
-        if (null !== $single) {
-            return ['*' => [$single]];
-        }
+
+        return null !== $single ? ['*' => [$single]] : self::perLanguage($global, $project, $pluginServers);
+    }
+
+    /**
+     * The servers when the project names no single one: the per-language maps
+     * of both files over the defaults, else the global single server.
+     *
+     * @param array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>> $pluginServers
+     *
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
+     */
+    private static function perLanguage(mixed $global, mixed $project, array $pluginServers): array
+    {
         $map = [...self::map($global), ...self::map($project)];
-        if ([] !== $map) {
-            // {languageId: command} map: each entry (a string or argv list) overrides
-            // that language, but the rest keep their default (plugin or auto-detected)
-            // — so configuring one language never silently unserves the others.
-            $servers = self::effectiveDefaults($pluginServers);
-            // The `(string)` casts below are for the ANALYZER, not the
-            // runtime: a JSON object key like "0" arrives from json_decode as
-            // an int, and PHP normalises a numeric string array key back to
-            // an int anyway — so dropping the cast changes nothing that runs,
-            // and changes the inferred key type from string to array-key.
-            // Mutating them therefore produces equivalent mutants; they are
-            // not a coverage gap.
-            /** @var mixed $command */
-            foreach ($map as $language => $command) {
-                if (\is_string($command) && '' !== $command) {
-                    $servers[(string) $language] = [self::server(self::split($command))];
-                    continue;
-                }
-                if (\is_array($command) && [] !== $command) {
-                    $servers[(string) $language] = [self::server(\array_values(\array_map(\strval(...), $command)))];
-                }
+        if ([] === $map) {
+            // The historical single-server sources keep their catch-all
+            // semantics: one server sees every file.
+            $single = self::single($global) ?? self::single(\getenv('PORTA_LSP'));
+
+            return null !== $single ? ['*' => [$single]] : self::effectiveDefaults($pluginServers);
+        }
+
+        // {languageId: command} map: each entry (a string or argv list) overrides
+        // that language, but the rest keep their default (plugin or auto-detected)
+        // — so configuring one language never silently unserves the others.
+        $servers = self::effectiveDefaults($pluginServers);
+        // The `(string)` casts below are for the ANALYZER, not the
+        // runtime: a JSON object key like "0" arrives from json_decode as
+        // an int, and PHP normalises a numeric string array key back to
+        // an int anyway — so dropping the cast changes nothing that runs,
+        // and changes the inferred key type from string to array-key.
+        // Mutating them therefore produces equivalent mutants; they are
+        // not a coverage gap.
+        /** @var mixed $command */
+        foreach ($map as $language => $command) {
+            if (\is_string($command) && '' !== $command) {
+                $servers[(string) $language] = [self::server(self::split($command))];
+                continue;
             }
-
-            return $servers;
+            if (\is_array($command) && [] !== $command) {
+                $servers[(string) $language] = [self::server(\array_values(\array_map(\strval(...), $command)))];
+            }
         }
 
-        // The historical single-server sources keep their catch-all
-        // semantics: one server sees every file.
-        $single = self::single($global) ?? self::single(\getenv('PORTA_LSP'));
-        if (null !== $single) {
-            return ['*' => [$single]];
-        }
-
-        return self::effectiveDefaults($pluginServers);
+        return $servers;
     }
 
     /** A config file's raw "lsp" value; null when the file, or the key, is absent. */
@@ -152,14 +160,11 @@ final class ServerLocator
      */
     private static function single(mixed $lsp): ?array
     {
-        if (\is_string($lsp) && '' !== $lsp) {
-            return self::server(self::split($lsp));
-        }
-        if (\is_array($lsp) && [] !== $lsp && \array_is_list($lsp)) {
-            return self::server(\array_values(\array_map(\strval(...), $lsp)));
-        }
-
-        return null;
+        return match (true) {
+            \is_string($lsp) && '' !== $lsp => self::server(self::split($lsp)),
+            \is_array($lsp) && [] !== $lsp && \array_is_list($lsp) => self::server(\array_values(\array_map(\strval(...), $lsp))),
+            default => null,
+        };
     }
 
     /**

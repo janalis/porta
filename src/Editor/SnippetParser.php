@@ -120,19 +120,13 @@ final class SnippetParser
     private static function parsePlaceholder(string $inner): array
     {
         $m = [];
-        if (\preg_match('/^(\d+):(.*)$/s', $inner, $m)) {
-            return [(int) $m[1], $m[2]];
-        }
-        if (\preg_match('/^(\d+)\|([^|]*)\|$/', $inner, $m)) {
-            $choices = \explode(',', $m[2]);
 
-            return [(int) $m[1], $choices[0]];
-        }
-        if (\preg_match('/^\d+$/', $inner)) {
-            return [(int) $inner, ''];
-        }
-
-        return [null, ''];
+        return match (true) {
+            1 === \preg_match('/^(\d+):(.*)$/s', $inner, $m) => [(int) $m[1], $m[2]],
+            1 === \preg_match('/^(\d+)\|([^|]*)\|$/', $inner, $m) => [(int) $m[1], \explode(',', $m[2])[0]],
+            1 === \preg_match('/^\d+$/', $inner) => [(int) $inner, ''],
+            default => [null, ''],
+        };
     }
 
     /**

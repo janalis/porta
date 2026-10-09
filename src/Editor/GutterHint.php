@@ -18,17 +18,14 @@ final class GutterHint
     public static function for(DecorationStore $store, int $line, GutterPart $part, bool $clickShowsChange, Translator $translator): ?string
     {
         if (GutterPart::Change === $part) {
-            $kind = $store->vcsMarks[$line] ?? null;
-            if (null === $kind) {
-                return null;
-            }
-            $label = match ($kind) {
+            $label = match ($store->vcsMarks[$line] ?? null) {
+                null => null,
                 ChangeMarkKind::Added => $translator->trans('Added'),
                 ChangeMarkKind::Modified => $translator->trans('Modified'),
                 ChangeMarkKind::Deleted => $translator->trans('Deleted'),
             };
 
-            return $clickShowsChange ? $translator->trans('%change% · click to see the change', ['%change%' => $label]) : $label;
+            return null !== $label && $clickShowsChange ? $translator->trans('%change% · click to see the change', ['%change%' => $label]) : $label;
         }
 
         // No problem here: the gutter does not mark one; its squiggle's card says it.

@@ -49,15 +49,10 @@ final readonly class ModalBox
      */
     public function itemAt(int $row, int $col): ?int
     {
-        if ($col <= $this->col || $col >= ($this->col + $this->width - 1)) {
-            return null;
-        }
+        $onRail = $col <= $this->col || $col >= ($this->col + $this->width - 1);
         $i = $row - ($this->startRow + $this->headerRows);
-        if ($i < 0 || $i >= $this->count) {
-            return null;
-        }
 
-        return $this->windowStart + $i;
+        return $onRail || $i < 0 || $i >= $this->count ? null : $this->windowStart + $i;
     }
 
     /** The column inside a framed box's content, past the left rail and padding column. */

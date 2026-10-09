@@ -49,9 +49,21 @@ final readonly class BreadcrumbTrailProvider
             return [];
         }
         $relative = $this->paths->relative($buffer->path);
-        if (\str_starts_with($relative, '/')) {
-            return [['label' => \basename($relative), 'line' => null, 'path' => $buffer->path]];
-        }
+
+        return (
+            \str_starts_with($relative, '/')
+                ? [['label' => \basename($relative), 'line' => null, 'path' => $buffer->path]]
+                : $this->folderCrumbs($relative)
+        );
+    }
+
+    /**
+     * One crumb per segment of the project-relative $relative.
+     *
+     * @return list<array{label: string, line: null, path: string}>
+     */
+    private function folderCrumbs(string $relative): array
+    {
         $crumbs = [];
         $walked = '';
         foreach (\explode('/', $relative) as $segment) {

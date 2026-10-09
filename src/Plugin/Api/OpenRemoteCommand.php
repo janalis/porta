@@ -57,22 +57,30 @@ abstract class OpenRemoteCommand extends PluginCommand
         if (null !== $spec && !\str_contains($location, '://')) {
             $spec = new RemoteSpec($this->schemes()[0], $spec->host, $spec->path, $spec->user, $spec->port);
         }
-        if (null === $spec || !\in_array($spec->scheme, $this->schemes(), strict: true)) {
-            $errors->writeln(\sprintf('<error>Not a %s location: %s</error>', \implode('/', $this->schemes()), OutputFormatter::escape($location)));
+        $known = null !== $spec && \in_array($spec->scheme, $this->schemes(), strict: true);
+        $home = $known ? $this->home ?? PortaHome::base() : null;
 
-            return self::FAILURE;
-        }
-        $home = $this->home ?? PortaHome::base();
-        if (null === $home) {
-            $errors->writeln('<error>No home directory to keep the project in (set HOME)</error>');
+        return match (true) {
+            null === $spec || !$known => self::fail($errors, \sprintf('Not a %s location: %s', \implode('/', $this->schemes()), OutputFormatter::escape($location))),
+            null === $home => self::fail($errors, 'No home directory to keep the project in (set HOME)'),
+            default => $this->connectAndOpen($spec, $home, $input, $output, $errors),
+        };
+    }
 
-            return self::FAILURE;
-        }
+    /** Say why on $errors, and fail. */
+    private static function fail(OutputInterface $errors, string $message): int
+    {
+        $errors->writeln('<error>'.$message.'</error>');
+
+        return self::FAILURE;
+    }
+
+    /** Get ready to reach $spec, make or find its cache under $home, and open Porta on it. */
+    private function connectAndOpen(RemoteSpec $spec, string $home, InputInterface $input, OutputInterface $output, OutputInterface $errors): int
+    {
         $failure = $this->connect($spec, $input, $output);
         if (null !== $failure) {
-            $errors->writeln('<error>'.OutputFormatter::escape($failure).'</error>');
-
-            return self::FAILURE;
+            return self::fail($errors, OutputFormatter::escape($failure));
         }
         $root = ProjectLocation::prepare($spec, $home);
         // The first-run card walks through setting a project up on this

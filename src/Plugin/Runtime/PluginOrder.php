@@ -56,30 +56,34 @@ final class PluginOrder
      */
     private static function visit(string $name, array $byName, array &$state, array &$order, array &$skipped): bool
     {
-        if ('done' === ($state[$name] ?? null)) {
-            return !\array_key_exists($name, $skipped);
-        }
+        // A cycle marks the node done AND skipped, so the check below answers false for it.
         if ('visiting' === ($state[$name] ?? null)) {
             $skipped[$name] = new ConfigWarning('Plugin "%name%" is part of a dependency cycle', ['%name%' => $name]);
             $state[$name] = 'done';
-
-            return false;
+        }
+        if ('done' === ($state[$name] ?? null)) {
+            return !\array_key_exists($name, $skipped);
         }
 
         $state[$name] = 'visiting';
         $manifest = $byName[$name];
+        $failure = null;
         foreach ($manifest->requires as $required) {
-            if (!\array_key_exists($required, $byName)) {
-                $skipped[$name] = new ConfigWarning('Plugin "%name%" needs "%required%", which is not installed or is disabled', ['%name%' => $name, '%required%' => $required]);
-                $state[$name] = 'done';
+            $failure = match (true) {
+                !\array_key_exists($required, $byName) => new ConfigWarning('Plugin "%name%" needs "%required%", which is not installed or is disabled', [
+                    '%name%' => $name,
+                    '%required%' => $required,
+                ]),
+                !self::visit($required, $byName, $state, $order, $skipped) => $skipped[$name] ?? new ConfigWarning('Plugin "%name%" needs "%required%", which could not load', [
+                    '%name%' => $name,
+                    '%required%' => $required,
+                ]),
+                default => null,
+            };
+            if (null !== $failure) {
+                $skipped[$name] = $failure;
 
-                return false;
-            }
-            if (!self::visit($required, $byName, $state, $order, $skipped)) {
-                $skipped[$name] ??= new ConfigWarning('Plugin "%name%" needs "%required%", which could not load', ['%name%' => $name, '%required%' => $required]);
-                $state[$name] = 'done';
-
-                return false;
+                break;
             }
         }
 
@@ -87,8 +91,10 @@ final class PluginOrder
         // branch marks a node that is mid-loop further up the stack, and that
         // loop bails on the false it gets back.
         $state[$name] = 'done';
-        $order[] = $manifest;
+        if (null === $failure) {
+            $order[] = $manifest;
+        }
 
-        return true;
+        return null === $failure;
     }
 }

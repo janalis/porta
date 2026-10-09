@@ -42,13 +42,22 @@ final readonly class HtmlBlockLayout
     public function literal(string $literal, HtmlBlock $html, int $width, LayoutState $state): array
     {
         $literal = \preg_replace('/<!--.*?-->/s', replacement: '', subject: $literal) ?? $literal;
-        if ('' === \trim($literal)) {
-            return [];
-        }
+
+        return match (true) {
+            '' === \trim($literal) => [],
+            !self::drawable($literal) => $this->verbatim($html, $width, $state->lineOf($html->range->start), $state),
+            default => $this->drawn($literal, $html, $width, $state),
+        };
+    }
+
+    /**
+     * $literal drawn, its tags all ones this page knows.
+     *
+     * @return list<PageLine>
+     */
+    private function drawn(string $literal, HtmlBlock $html, int $width, LayoutState $state): array
+    {
         $origin = $state->lineOf($html->range->start);
-        if (!self::drawable($literal)) {
-            return $this->verbatim($html, $width, $origin, $state);
-        }
         $lines = [];
         foreach (new HtmlParagraphs($state, $html->range)->of($literal) as $index => [$fragments, $center]) {
             if ($index > 0) {

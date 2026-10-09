@@ -259,26 +259,19 @@ final class LineOperations
     public static function statementTarget(array $lines, int $delta, int $first, int $last): ?int
     {
         $n = \count($lines);
-        if ($delta < 0) {
-            if (0 === $first) {
-                return null;
-            }
-            $step = 1;
-            if ('' === \trim($lines[$first - 1])) {
-                $g = $first - 1;
-                while ($g > 0 && '' === \trim($lines[$g - 1])) {
-                    --$g;
-                }
-                $step = $first - $g;
-            }
-
-            return \max(0, $first - $step);
-        }
-        if ($last === ($n - 1)) {
+        $up = $delta < 0;
+        if ($up ? 0 === $first : $last === ($n - 1)) {
             return null;
         }
         $step = 1;
-        if ('' === \trim($lines[$last + 1])) {
+        if ($up && '' === \trim($lines[$first - 1])) {
+            $g = $first - 1;
+            while ($g > 0 && '' === \trim($lines[$g - 1])) {
+                --$g;
+            }
+            $step = $first - $g;
+        }
+        if (!$up && '' === \trim($lines[$last + 1])) {
             $g = $last + 1;
             while ($g < ($n - 1) && '' === \trim($lines[$g + 1])) {
                 ++$g;
@@ -286,6 +279,6 @@ final class LineOperations
             $step = $g - $last;
         }
 
-        return \min($first + $step, $first + ($n - 1 - $last));
+        return $up ? \max(0, $first - $step) : \min($first + $step, $first + ($n - 1 - $last));
     }
 }

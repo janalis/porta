@@ -85,12 +85,10 @@ final readonly class SuperMethodNavigator
      */
     private function climb(array $parents, string $method, array $seen, int $depth): ?array
     {
-        if ($depth >= self::MAX_DEPTH || [] === $parents) {
-            return null;
-        }
-
+        $searchable = $depth < self::MAX_DEPTH && [] !== $parents;
+        $found = null;
         $next = [];
-        foreach ($parents as $parent) {
+        foreach ($searchable ? $parents : [] as $parent) {
             foreach ($this->candidates($parent) as $relative) {
                 if (\array_key_exists($relative, $seen)) {
                     continue;
@@ -102,13 +100,14 @@ final readonly class SuperMethodNavigator
                 }
                 $line = self::methodLine($source, $method);
                 if (null !== $line) {
-                    return ['path' => $relative, 'line' => $line, 'label' => $parent.'::'.$method];
+                    $found = ['path' => $relative, 'line' => $line, 'label' => $parent.'::'.$method];
+                    break 2;
                 }
                 $next = [...$next, ...self::parentsOf($source, $parent)];
             }
         }
 
-        return $this->climb($next, $method, $seen, $depth + 1);
+        return null !== $found || !$searchable ? $found : $this->climb($next, $method, $seen, $depth + 1);
     }
 
     /**

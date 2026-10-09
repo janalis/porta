@@ -161,41 +161,34 @@ final class ContextMenu extends OverlayWidget
             return;
         }
         $kb = $this->getKeybindings();
-        if ($kb->matches($data, 'menu_close')) {
-            $this->close();
+        match (true) {
+            $kb->matches($data, 'menu_close') => $this->close(),
+            $kb->matches($data, 'menu_up') => $this->stepSelection(-1),
+            $kb->matches($data, 'menu_down') => $this->stepSelection(1),
+            $kb->matches($data, 'menu_select') => $this->runSelected(),
+            // A select's list takes letters as type-ahead, as a browser's does; a
+            // menu runs the item a letter is the access letter of.
+            $this->listbox => $this->typeAhead($data),
+            default => $this->runAccessLetter($data),
+        };
 
-            return;
-        }
-        if ($kb->matches($data, 'menu_up')) {
-            $this->selected = MenuPanel::step($this->items, $this->selected, -1);
-            $this->afterNavigate();
+        // Any other key while open is swallowed (handled by the coordinator's modal routing).
+    }
 
-            return;
-        }
-        if ($kb->matches($data, 'menu_down')) {
-            $this->selected = MenuPanel::step($this->items, $this->selected, 1);
-            $this->afterNavigate();
+    /** Move the highlight one selectable item in $dir (-1 up, +1 down), wrapping. */
+    private function stepSelection(int $dir): void
+    {
+        $this->selected = MenuPanel::step($this->items, $this->selected, $dir);
+        $this->afterNavigate();
+    }
 
-            return;
-        }
-        if ($kb->matches($data, 'menu_select')) {
-            $this->runSelected();
-
-            return;
-        }
-        // A select's list takes letters as type-ahead, as a browser's does; a
-        // menu runs the item a letter is the access letter of.
-        if ($this->listbox) {
-            $this->typeAhead($data);
-
-            return;
-        }
+    /** Run the item $data is the access letter of, if any. */
+    private function runAccessLetter(string $data): void
+    {
         $letter = MenuPanel::itemForKey($this->items, $data);
         if (null !== $letter) {
             $this->runItem($letter);
         }
-
-        // Any other key while open is swallowed (handled by the coordinator's modal routing).
     }
 
     /** Run the item at $index (from a mouse click) and close. */

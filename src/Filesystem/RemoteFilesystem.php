@@ -153,21 +153,28 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     public function listed(string $dir): bool
     {
         $relative = $this->relative($dir);
-        if (null === $relative || \array_key_exists($relative, $this->listed)) {
-            return true;
+        if (null !== $relative && !\array_key_exists($relative, $this->listed)) {
+            $this->requestListing($relative);
+
+            return false;
         }
+
+        return true;
+    }
+
+    /** Ask the server for $relative's entries, or for later when there is no transport yet. */
+    private function requestListing(string $relative): void
+    {
         $transport = $this->transport();
         if (null === $transport) {
             // Plugins activate after the tree is first built: asked again by
             // the first poll, once there may be one.
             $this->wanted[$relative] = true;
 
-            return false;
+            return;
         }
         $this->listed[$relative] = true;
         $this->list($transport, $relative);
-
-        return false;
     }
 
     #[\Override]
@@ -947,17 +954,14 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         if (!$this->location->isRemote()) {
             return null;
         }
-        foreach ([$this->realRoot, $this->rootDir] as $root) {
-            if ($path === $root) {
-                return '';
-            }
-            $relative = \str_starts_with($path, $root.'/') ? \substr($path, \strlen($root) + 1) : null;
-            if (null !== $relative) {
-                return self::syncable($relative) ? $relative : null;
-            }
-        }
+        $root = \array_find([$this->realRoot, $this->rootDir], static fn (string $root): bool => $path === $root || \str_starts_with($path, $root.'/'));
 
-        return null;
+        return match (true) {
+            null === $root => null,
+            $path === $root => '',
+            self::syncable($relative = \substr($path, \strlen($root) + 1)) => $relative,
+            default => null,
+        };
     }
 
     private function absolute(string $relative): string

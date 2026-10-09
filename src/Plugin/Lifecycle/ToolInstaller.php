@@ -70,17 +70,19 @@ final class ToolInstaller
         if (null !== $this->running) {
             return InstallOutcome::Busy;
         }
+        $outcome = InstallOutcome::NoManager;
         foreach ($via as [$manager, $package]) {
             $binary = $this->managerBinaries[$manager] ?? null;
             if (null === $binary) {
                 continue;
             }
             $this->spawn($binary, $manager, $package, $onDone);
+            $outcome = InstallOutcome::Started;
 
-            return InstallOutcome::Started;
+            break;
         }
 
-        return InstallOutcome::NoManager;
+        return $outcome;
     }
 
     /** @param \Closure(bool): void $onDone */

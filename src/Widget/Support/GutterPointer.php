@@ -86,11 +86,17 @@ final readonly class GutterPointer
             return new Tooltip('gutter:'.$part->name.':'.$docLine, $hint, $relRow, $relCol, $relCol + 1);
         }
         $mark = $this->stripeMarkAt($relRow, $relCol);
-        if (null === $mark) {
-            return null;
-        }
-        $what = $translator->trans($mark['kind']->label());
 
-        return new Tooltip('stripe:'.$relRow, $translator->trans('%what% · line %line%', ['%what%' => $what, '%line%' => $mark['line'] + 1]), $relRow, $relCol, $relCol + 1);
+        return (
+            null === $mark
+                ? null
+                : new Tooltip(
+                    'stripe:'.$relRow,
+                    $translator->trans('%what% · line %line%', ['%what%' => $translator->trans($mark['kind']->label()), '%line%' => $mark['line'] + 1]),
+                    $relRow,
+                    $relCol,
+                    $relCol + 1,
+                )
+        );
     }
 }

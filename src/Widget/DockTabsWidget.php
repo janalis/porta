@@ -288,26 +288,24 @@ final class DockTabsWidget extends AbstractWidget implements LtrPane, MenuOverla
      */
     public function handleTabClick(int $col): bool
     {
-        foreach ($this->lastTabLayout as $entry) {
-            if ($col < $entry['closeStart'] || $col >= ($entry['closeStart'] + $entry['closeWidth'])) {
-                continue;
-            }
-
-            $this->events?->dispatch(new DockTabCloseRequested($entry['tab'], $entry['key']));
-
-            return true;
+        $close = \array_find(
+            $this->lastTabLayout,
+            static fn (array $entry): bool => $col >= $entry['closeStart'] && $col < ($entry['closeStart'] + $entry['closeWidth']),
+        );
+        $tab = null === $close
+            ? \array_find(
+                $this->lastTabLayout,
+                static fn (array $entry): bool => $col >= $entry['start'] && $col < ($entry['start'] + $entry['width']),
+            )
+            : null;
+        if (null !== $close) {
+            $this->events?->dispatch(new DockTabCloseRequested($close['tab'], $close['key']));
         }
-        foreach ($this->lastTabLayout as $entry) {
-            if ($col < $entry['start'] || $col >= ($entry['start'] + $entry['width'])) {
-                continue;
-            }
-
-            $this->events?->dispatch(new DockTabActivationRequested($entry['tab'], $entry['key']));
-
-            return true;
+        if (null !== $tab) {
+            $this->events?->dispatch(new DockTabActivationRequested($tab['tab'], $tab['key']));
         }
 
-        return false;
+        return null !== $close || null !== $tab;
     }
 
     /** @return list<string> */

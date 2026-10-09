@@ -90,14 +90,24 @@ final class TooltipCenter
 
             return;
         }
-        if ($tip->key === $this->shown?->key) {
-            if (!self::same($tip, $this->shown)) {
-                $this->shown = $tip;
-                $this->tui->requestRender();
-            }
+        $shown = $this->shown;
+        if (null === $shown || $tip->key !== $shown->key) {
+            $this->pointElsewhere($tip);
 
             return;
         }
+        if (!self::same($tip, $shown)) {
+            $this->shown = $tip;
+            $this->tui->requestRender();
+        }
+    }
+
+    /**
+     * Not the element whose card is up: the dwelling one takes the new words,
+     * another shows at once while warm, else after its own dwell.
+     */
+    private function pointElsewhere(Tooltip $tip): void
+    {
         if ($tip->key === $this->pending?->key) {
             $this->pending = $tip;
 

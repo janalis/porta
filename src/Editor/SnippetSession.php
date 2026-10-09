@@ -65,34 +65,34 @@ final class SnippetSession
      */
     public function handleInput(string $keys, Keybindings $kb, \Closure $isInsertable): bool
     {
-        if ($kb->matches($keys, 'indent')) {
-            $this->moveStop(1);
-
-            return true;
-        }
-        if ($kb->matches($keys, 'prev_tab_stop')) {
-            $this->moveStop(-1);
-
-            return true;
-        }
-        if ($kb->matches($keys, 'select_cancel')) {
-            // Collapse any placeholder selection and leave the caret in place.
-            $this->document->setCursor($this->document->cursorLine, $this->document->cursorCol);
-            $this->session = null;
-            ($this->onInvalidate)();
+        $act = match (true) {
+            $kb->matches($keys, 'indent') => fn () => $this->moveStop(1),
+            $kb->matches($keys, 'prev_tab_stop') => fn () => $this->moveStop(-1),
+            $kb->matches($keys, 'select_cancel') => function (): void {
+                // Collapse any placeholder selection and leave the caret in place.
+                $this->document->setCursor($this->document->cursorLine, $this->document->cursorCol);
+                $this->session = null;
+                ($this->onInvalidate)();
+            },
+            default => null,
+        };
+        if (null !== $act) {
+            $act();
 
             return true;
         }
 
         $printable = $isInsertable($keys);
         $isBackspace = $kb->matches($keys, 'delete_char_backward');
+        $edited = false;
         if (($printable || $isBackspace) && !\str_contains($keys, "\n")) {
             $line = $this->document->cursorLine;
             /** @var array{stops: list<array{line: int, start: int, end: int}>, index: int} $session */
             $session = $this->session;
             $index = $session['index'];
             $active = $session['stops'][$index];
-            if ($active['line'] === $line) {
+            $edited = $active['line'] === $line;
+            if ($edited) {
                 $before = \strlen($this->document->getLine($line));
                 if ($printable) {
                     $this->document->insert($keys);
@@ -102,15 +102,15 @@ final class SnippetSession
                 }
                 $this->adjustStops($index, $line, \strlen($this->document->getLine($line)) - $before);
                 ($this->onChange)();
-
-                return true;
             }
         }
 
-        // Arrow keys, Enter, etc. end the session and are handled normally.
-        $this->session = null;
+        if (!$edited) {
+            // Arrow keys, Enter, etc. end the session and are handled normally.
+            $this->session = null;
+        }
 
-        return false;
+        return $edited;
     }
 
     /** Delete the current selection, or the char before the caret when there is none. */

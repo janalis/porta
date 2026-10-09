@@ -219,19 +219,8 @@ final readonly class IdeConfig
     // @mago-expect lint:no-boolean-flag-parameter -- restricted IS the one fact the trust decision hands the reader
     private static function readLayer(?string $file, string $label, array &$warnings, bool $restricted): ?array
     {
-        if (null === $file || !\is_file($file)) {
-            return null;
-        }
-
-        $jsonError = null;
-        $config = JsonFile::read($file, $jsonError);
+        $config = null === $file || !\is_file($file) ? null : self::readLayerJson($file, $label, $warnings);
         if (null === $config) {
-            // Always with a reason. JsonFile::read omits one only for a missing
-            // file, and this one is not missing — the is_file above is what
-            // makes the reasonless variant unreachable, which is why it no
-            // longer exists.
-            $warnings[] = new ConfigWarning('%file% is not valid JSON (%error%)', ['%file%' => $label, '%error%' => (string) $jsonError]);
-
             return null;
         }
         if ($restricted) {
@@ -256,6 +245,28 @@ final readonly class IdeConfig
             'enabledPlugins' => \array_key_exists('enabledPlugins', $config) ? self::stringList($config['enabledPlugins']) : null,
             'highlight' => \array_key_exists('highlight', $config) ? self::parseHighlight($config['highlight'], $label, $warnings) : null,
         ];
+    }
+
+    /**
+     * The layer file decoded, or null with a warning when it is not valid JSON.
+     *
+     * @param list<ConfigWarning> $warnings
+     *
+     * @return array<mixed>|null
+     */
+    private static function readLayerJson(string $file, string $label, array &$warnings): ?array
+    {
+        $jsonError = null;
+        $config = JsonFile::read($file, $jsonError);
+        if (null === $config) {
+            // Always with a reason. JsonFile::read omits one only for a missing
+            // file, and this one is not missing — the is_file in readLayer is what
+            // makes the reasonless variant unreachable, which is why it no
+            // longer exists.
+            $warnings[] = new ConfigWarning('%file% is not valid JSON (%error%)', ['%file%' => $label, '%error%' => (string) $jsonError]);
+        }
+
+        return $config;
     }
 
     /**
@@ -720,13 +731,11 @@ final readonly class IdeConfig
 
     private static function indentSizeValue(mixed $value): int|string|null
     {
-        if ('auto' === $value) {
-            return 'auto';
-        }
-        if (\is_int($value) && $value >= 1) {
-            return $value;
-        }
-
-        return \is_string($value) && 1 === \preg_match('/^\d+$/', $value) ? \max(1, (int) $value) : null;
+        return match (true) {
+            'auto' === $value => 'auto',
+            \is_int($value) && $value >= 1 => $value,
+            \is_string($value) && 1 === \preg_match('/^\d+$/', $value) => \max(1, (int) $value),
+            default => null,
+        };
     }
 }

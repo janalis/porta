@@ -34,16 +34,6 @@ final class PreviewRoutes
 
     public function previewFor(string $path): ?string
     {
-        $plugin = $this->plugins->previewFor($path);
-        if (null !== $plugin) {
-            return $plugin;
-        }
-        foreach ($this->core as $paneId => $claims) {
-            if ($claims($path)) {
-                return $paneId;
-            }
-        }
-
-        return null;
+        return $this->plugins->previewFor($path) ?? \array_find_key($this->core, static fn (\Closure $claims): bool => true === $claims($path));
     }
 }

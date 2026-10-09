@@ -76,12 +76,9 @@ final class SelectionModel
         $a = [$this->anchor['line'], $this->anchor['col']];
         /** @var list<int> $b */
         $b = [$cursorLine, $cursorCol];
-        if ($a === $b) {
-            return null;
-        }
         [$start, $end] = $a < $b ? [$a, $b] : [$b, $a];
 
-        return ['startLine' => $start[0], 'startCol' => $start[1], 'endLine' => $end[0], 'endCol' => $end[1]];
+        return $a === $b ? null : ['startLine' => $start[0], 'startCol' => $start[1], 'endLine' => $end[0], 'endCol' => $end[1]];
     }
 
     /**

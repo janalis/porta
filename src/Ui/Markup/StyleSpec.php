@@ -46,31 +46,37 @@ final readonly class StyleSpec
     public static function fromTag(string $tag): ?self
     {
         $role = self::CONSOLE_STYLES[$tag] ?? Role::fromTag($tag);
-        if (null !== $role) {
-            return new self($role);
-        }
         $pairs = [];
-        if (0 === \preg_match_all('/([^=]+)=([^;]+)(;|$)/', $tag, $pairs, \PREG_SET_ORDER)) {
-            return null;
-        }
 
+        return match (true) {
+            null !== $role => new self($role),
+            0 === \preg_match_all('/([^=]+)=([^;]+)(;|$)/', $tag, $pairs, \PREG_SET_ORDER) => null,
+            default => self::fromPairs($pairs),
+        };
+    }
+
+    /**
+     * The spec `key=value` pairs name; null at the first key it does not
+     * know or value it cannot read.
+     *
+     * @param array<array-key, array<array-key, string>> $pairs
+     */
+    private static function fromPairs(array $pairs): ?self
+    {
         $foreground = null;
         $background = null;
         $options = [];
         $href = null;
+        $valid = true;
         foreach ($pairs as [, $key, $value]) {
             switch (\strtolower($key)) {
                 case 'fg':
                     $foreground = self::color($value);
-                    if (null === $foreground) {
-                        return null;
-                    }
+                    $valid = null !== $foreground;
                     break;
                 case 'bg':
                     $background = self::color($value);
-                    if (null === $background) {
-                        return null;
-                    }
+                    $valid = null !== $background;
                     break;
                 case 'href':
                     $href = \strtr($value, ['\\<' => '<', '\\>' => '>']);
@@ -78,19 +84,18 @@ final readonly class StyleSpec
                 case 'options':
                     $named = [];
                     \preg_match_all('/[^,;]+/', \strtolower($value), $named);
-                    foreach ($named[0] as $option) {
-                        if (!\in_array($option, self::OPTIONS, strict: true)) {
-                            return null;
-                        }
-                        $options[] = $option;
-                    }
+                    $valid = \array_all($named[0], static fn (string $option): bool => \in_array($option, self::OPTIONS, strict: true));
+                    $options = [...$options, ...$named[0]];
                     break;
                 default:
-                    return null;
+                    $valid = false;
+            }
+            if (!$valid) {
+                break;
             }
         }
 
-        return new self(null, $foreground, $background, $options, $href);
+        return $valid ? new self(null, $foreground, $background, $options, $href) : null;
     }
 
     /**
@@ -131,9 +136,11 @@ final readonly class StyleSpec
         }
 
         try {
-            return Color::from(\str_replace(search: '-', replace: '_', subject: $value));
+            $color = Color::from(\str_replace(search: '-', replace: '_', subject: $value));
         } catch (InvalidArgumentException) {
-            return null;
+            $color = null;
         }
+
+        return $color;
     }
 }

@@ -242,16 +242,14 @@ final class CoveragePluginsCommand extends Command
             // checkTimeout() explicitly: Symfony enforces the budget from
             // wait(), and a pool never waits — it polls.
             $process->checkTimeout();
-            if ($process->isRunning()) {
-                return null;
-            }
+            $running = $process->isRunning();
         } catch (ProcessTimedOutException) {
             $process->stop(timeout: 5);
 
             return self::WEDGED;
         }
 
-        return $process->getExitCode() ?? self::WEDGED;
+        return $running ? null : $process->getExitCode() ?? self::WEDGED;
     }
 
     /**

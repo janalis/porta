@@ -136,18 +136,12 @@ final class ToastCenter
      */
     public function clickAt(int $row, int $col): bool
     {
-        foreach ($this->boxes as $entry) {
-            if ($entry['box']->closeHit($row, $col)) {
-                $this->dismiss($entry['id']);
-
-                return true;
-            }
-            if ($entry['box']->contains($row, $col)) {
-                return true;
-            }
+        $hit = \array_find($this->boxes, static fn (array $entry): bool => $entry['box']->closeHit($row, $col) || $entry['box']->contains($row, $col));
+        if (null !== $hit && $hit['box']->closeHit($row, $col)) {
+            $this->dismiss($hit['id']);
         }
 
-        return false;
+        return null !== $hit;
     }
 
     /**

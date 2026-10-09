@@ -28,9 +28,17 @@ final class LinkCloser
             return null;
         }
         $at = LinkSyntax::skipSpace($subject, $after + 1);
-        if (')' === ($subject[$at] ?? '')) {
-            return ['', '', $at + 1];
-        }
+
+        return ')' === ($subject[$at] ?? '') ? ['', '', $at + 1] : $this->inlineDestination($subject, $at);
+    }
+
+    /**
+     * An inline link's destination at $at, then an optional title and the closing `)`.
+     *
+     * @return array{string, string, int}|null
+     */
+    private function inlineDestination(string $subject, int $at): ?array
+    {
         $destination = LinkSyntax::destination($subject, $at);
         if (null === $destination) {
             return null;
@@ -60,14 +68,8 @@ final class LinkCloser
         }
         // A collapsed (`[]`) or shortcut reference is labelled by the link's own text.
         $label ??= $opener->bracketAfter ? null : \substr($subject, $opener->index + 1, $after - $opener->index - 2);
-        if (null === $label) {
-            return null;
-        }
-        $reference = $context->references[LinkSyntax::normalize($label)] ?? null;
-        if (null === $reference) {
-            return null;
-        }
+        $reference = null === $label ? null : $context->references[LinkSyntax::normalize($label)] ?? null;
 
-        return [$reference->destination, $reference->title, $end];
+        return null === $reference ? null : [$reference->destination, $reference->title, $end];
     }
 }

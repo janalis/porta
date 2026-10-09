@@ -46,21 +46,11 @@ final readonly class HighlightRegistry
         $candidates = $this->plugins->highlightProviders();
 
         $preferred = $this->preferences->preferredFor($language);
-        if (null !== $preferred) {
-            foreach ($candidates as $candidate) {
-                if ($preferred === $this->idOf($candidate) && $this->claims($candidate, $language)) {
-                    return $candidate;
-                }
-            }
-        }
+        $chosen = null === $preferred
+            ? null
+            : \array_find($candidates, fn (SyntaxHighlightProvider $candidate): bool => $preferred === $this->idOf($candidate) && $this->claims($candidate, $language));
 
-        foreach ($candidates as $candidate) {
-            if ($this->claims($candidate, $language)) {
-                return $candidate;
-            }
-        }
-
-        return $this->plain;
+        return $chosen ?? \array_find($candidates, fn (SyntaxHighlightProvider $candidate): bool => $this->claims($candidate, $language)) ?? $this->plain;
     }
 
     /**

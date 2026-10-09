@@ -37,14 +37,13 @@ final readonly class PluginCommands
      */
     public function find(string $name): ?PluginCommand
     {
-        if ('' === $name) {
-            return null;
-        }
         $manifests = [];
-        foreach (Files::childFiles($this->pluginsDir, 'plugin.php') as $file) {
+        // An empty name is no command: nothing is even read.
+        foreach ('' === $name ? [] : Files::childFiles($this->pluginsDir, 'plugin.php') as $file) {
             $manifest = PluginManifest::beside($file);
             $manifests[$manifest->name] = $manifest;
         }
+        $command = null;
         foreach ($manifests as $manifest) {
             $class = $manifest->commands[$name] ?? null;
             if (null === $class) {
@@ -53,15 +52,14 @@ final readonly class PluginCommands
             $this->autoload($manifest, $manifests);
             // Only a PluginCommand: a manifest may point `porta` at code
             // written to be run that way, and at nothing else.
-            if (!\class_exists($class) || !\is_subclass_of($class, PluginCommand::class)) {
-                return null;
+            if (\class_exists($class) && \is_subclass_of($class, PluginCommand::class)) {
+                // @mago-expect analysis:unsafe-instantiation -- the contract (docs/plugins.md): a plugin command is built with no arguments, every constructor parameter defaulted.
+                $command = new $class();
             }
-
-            // @mago-expect analysis:unsafe-instantiation -- the contract (docs/plugins.md): a plugin command is built with no arguments, every constructor parameter defaulted.
-            return new $class();
+            break;
         }
 
-        return null;
+        return $command;
     }
 
     /** @param array<string, PluginManifest> $manifests */

@@ -153,6 +153,23 @@ final class FindInFilesModalTest extends TestCase
         $this->assertStringContainsString('no results', $this->screen($modal));
     }
 
+    /** A key that is no binding and types nothing (F5) leaves the query alone and asks for no search. */
+    public function testAKeyThatTypesNothingIsIgnored(): void
+    {
+        $modal = $this->modal();
+        $queries = [];
+        $modal->setCallbacks(new FindModalCallbacks(
+            onQuery: static function (string $q) use (&$queries): void {
+                $queries[] = $q;
+            },
+        ));
+        $modal->open('Find in Files');
+
+        $modal->handleInput("\x1b[15~", $this->kb);
+
+        $this->assertSame([], $queries);
+    }
+
     /**
      * A regex that does not compile finds nothing, and says why: "bad regex"
      * where "no results" would be, and the query boxed in the danger frame, as

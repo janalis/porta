@@ -60,14 +60,11 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             return $configured;
         }
         // A project's vendor/bin is the project's code: only once it is trusted.
-        if (BinarySearch::VendorBinThenPath === $this->search && $this->trusted($api)) {
-            $local = $api->projectRoot().'/vendor/bin/'.$this->binaryName;
-            if (\is_file($local) && \is_executable($local)) {
-                return $local;
-            }
-        }
+        $local = BinarySearch::VendorBinThenPath === $this->search && $this->trusted($api)
+            ? $api->projectRoot().'/vendor/bin/'.$this->binaryName
+            : null;
 
-        return new ExecutableFinder()->find($this->binaryName);
+        return null !== $local && \is_file($local) && \is_executable($local) ? $local : new ExecutableFinder()->find($this->binaryName);
     }
 
     /**
@@ -89,28 +86,22 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     protected function acquire(PluginApi $api): ?string
     {
         $remote = ProjectLocation::forRoot($api->projectRoot())->remote;
-        if (null !== $remote) {
-            $api->flash($api->trans('This project is on %host%: running it needs it on this machine', ['%host%' => $remote->host]), 4.0);
-
-            return null;
-        }
-        if ($this->runsProjectCode() && !$this->trusted($api)) {
-            $api->flash($api->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => $this->name()]), 4.0);
-
-            return null;
-        }
-        if ($this->running) {
+        $refusal = match (true) {
+            null !== $remote => $api->trans('This project is on %host%: running it needs it on this machine', ['%host%' => $remote->host]),
+            $this->runsProjectCode() && !$this->trusted($api) => $api->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => $this->name()]),
+            default => null,
+        };
+        if (null === $refusal && $this->running) {
             $api->flash($api->trans('%tool%: already running', ['%tool%' => $this->name()]));
 
             return null;
         }
-        $binary = $this->binary($api);
+        $binary = null === $refusal ? $this->binary($api) : null;
         if (null === $binary) {
-            $api->flash($this->missingBinaryMessage($api), 4.0);
-
-            return null;
+            $api->flash($refusal ?? $this->missingBinaryMessage($api), 4.0);
         }
-        $this->running = true;
+        // Only a resolved binary takes the slot; a refusal leaves it as it was.
+        $this->running = $this->running || null !== $binary;
 
         return $binary;
     }

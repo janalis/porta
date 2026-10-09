@@ -22,14 +22,9 @@ final class LinkSyntax
     public static function label(string $text, int $at): ?array
     {
         $m = [];
-        if (1 !== \preg_match('/\G\[((?:[^\\\\\[\]]|\\\\.){0,'.self::MAX_LABEL.'})\]/s', $text, $m, flags: 0, offset: $at)) {
-            return null;
-        }
-        if ('' === \trim($m[1], characters: " \t\n\r\f\v")) {
-            return null;
-        }
+        $found = 1 === \preg_match('/\G\[((?:[^\\\\\[\]]|\\\\.){0,'.self::MAX_LABEL.'})\]/s', $text, $m, flags: 0, offset: $at) && '' !== \trim($m[1], characters: " \t\n\r\f\v");
 
-        return [$m[1], $at + \strlen($m[0])];
+        return $found ? [$m[1], $at + \strlen($m[0])] : null;
     }
 
     /**
@@ -41,18 +36,15 @@ final class LinkSyntax
     {
         $m = [];
         if ('<' === ($text[$at] ?? '')) {
-            if (1 !== \preg_match('/\G<((?:[^<>\n\\\\\x00]|\\\\.)*)>/', $text, $m, flags: 0, offset: $at)) {
-                return null;
-            }
-
-            return [Entities::unescape($m[1]), $at + \strlen($m[0])];
+            return (
+                1 === \preg_match('/\G<((?:[^<>\n\\\\\x00]|\\\\.)*)>/', $text, $m, flags: 0, offset: $at)
+                    ? [Entities::unescape($m[1]), $at + \strlen($m[0])]
+                    : null
+            );
         }
         $end = self::bareDestinationEnd($text, $at);
-        if (null === $end || $end === $at) {
-            return null;
-        }
 
-        return [Entities::unescape(\substr($text, $at, $end - $at)), $end];
+        return null === $end || $end === $at ? null : [Entities::unescape(\substr($text, $at, $end - $at)), $end];
     }
 
     /** Where a destination without angle brackets ends: balanced parentheses, no spaces or controls. */

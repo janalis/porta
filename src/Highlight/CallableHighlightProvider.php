@@ -34,10 +34,7 @@ final readonly class CallableHighlightProvider implements SyntaxHighlightProvide
     #[\Override]
     public function supports(string $language): bool
     {
-        if ('' === $language) {
-            return false;
-        }
-        if (null !== $this->isAvailable && !($this->isAvailable)()) {
+        if ('' === $language || (null !== $this->isAvailable && !($this->isAvailable)())) {
             return false;
         }
 

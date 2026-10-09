@@ -98,18 +98,12 @@ final class PixelRatio
         // Only a terminal that draws pixels has a zoom it changes: asking
         // the system for any other would spawn a process for nothing.
         $this->waiting = !$this->graphics->available();
-        if ($this->waiting || false !== ($this->env['SSH_CONNECTION'] ?? false)) {
-            $this->graphics->setPixelRatio(1.0);
-
-            return;
-        }
-        if ('Darwin' === $this->os) {
-            $this->ask();
-
-            return;
-        }
         $scale = $this->env['GDK_SCALE'] ?? $this->env['QT_SCALE_FACTOR'] ?? false;
-        $this->graphics->setPixelRatio(\is_numeric($scale) ? (float) $scale : 1.0);
+        match (true) {
+            $this->waiting || false !== ($this->env['SSH_CONNECTION'] ?? false) => $this->graphics->setPixelRatio(1.0),
+            'Darwin' === $this->os => $this->ask(),
+            default => $this->graphics->setPixelRatio(\is_numeric($scale) ? (float) $scale : 1.0),
+        };
     }
 
     /** Ask macOS off the loop; a query that fails leaves the ratio at 1. */

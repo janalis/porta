@@ -519,26 +519,18 @@ final class TreeOperations
     {
         $keepBoth = DropConflict::KeepBoth === $conflict;
         $moving = $keepBoth ? $sources : \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
-        if ([] === $moving) {
-            return;
-        }
-        foreach ($moving as $path) {
-            if ($targetDir !== $path && !ProjectPaths::isUnder($targetDir, $path)) {
-                continue;
-            }
-
-            $this->notifier->error($this->translator->trans('Cannot move %name% into itself', ['%name%' => \basename($path)]));
+        $into = \array_find($moving, static fn (string $path): bool => $targetDir === $path || ProjectPaths::isUnder($targetDir, $path));
+        if (null !== $into) {
+            $this->notifier->error($this->translator->trans('Cannot move %name% into itself', ['%name%' => \basename($into)]));
 
             return;
         }
         $taken = $keepBoth ? [] : \array_values(\array_filter($moving, static fn (string $path): bool => \file_exists($targetDir.'/'.\basename($path))));
-        if ([] === $taken) {
-            $this->moveEach($moving, $targetDir, $copy, conflict: $conflict);
-
-            return;
-        }
-
-        $this->askThenMove($moving, $taken, $targetDir, $copy);
+        match (true) {
+            [] !== $taken => $this->askThenMove($moving, $taken, $targetDir, $copy),
+            [] !== $moving => $this->moveEach($moving, $targetDir, $copy, conflict: $conflict),
+            default => null,
+        };
     }
 
     /**

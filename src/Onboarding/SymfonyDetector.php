@@ -28,16 +28,12 @@ final readonly class SymfonyDetector
     {
         /** @var array{require?: array<string, mixed>, require-dev?: array<string, mixed>}|null $composer */
         $composer = JsonFile::read($this->rootDir.'/composer.json');
-        if (null === $composer) {
-            return false;
-        }
-        foreach (['require', 'require-dev'] as $section) {
-            $packages = $composer[$section] ?? null;
-            if (\is_array($packages) && \array_key_exists('symfony/framework-bundle', $packages)) {
-                return true;
-            }
-        }
 
-        return false;
+        return null !== $composer && (self::requiresFramework($composer['require'] ?? null) || self::requiresFramework($composer['require-dev'] ?? null));
+    }
+
+    private static function requiresFramework(mixed $packages): bool
+    {
+        return \is_array($packages) && \array_key_exists('symfony/framework-bundle', $packages);
     }
 }

@@ -29,42 +29,22 @@ final readonly class EditorActionRouter
     /** Dispatch a keypress to an editor-level action. Returns true when it consumed the key. */
     public function dispatchKey(string $keys, Keybindings $kb): bool
     {
-        foreach ($this->simpleHandlers() as $action => $handler) {
-            if (!$kb->matches($keys, $action)) {
-                continue;
-            }
-
-            $handler(($this->callbacks)());
-
-            return true;
-        }
-
-        foreach ($this->positionalHandlers() as $action => $handler) {
-            if (!$kb->matches($keys, $action)) {
-                continue;
-            }
-
-            [$line, $col] = ($this->caret)();
-            $handler(($this->callbacks)(), $line, $col);
-
-            return true;
-        }
-
+        // The two tables in order, the first bound action firing as {@see run} fires it.
+        $action = \array_find(
+            [...\array_keys($this->simpleHandlers()), ...\array_keys($this->positionalHandlers())],
+            static fn (string $action): bool => $kb->matches($keys, $action),
+        );
         // The remaining actions carry extra logic beyond firing a single hook.
-        if ($kb->matches($keys, 'next_buffer') || $kb->matches($keys, 'prev_buffer')) {
-            ($this->callbacks)()->buffer?->cycleBuffer($kb->matches($keys, 'next_buffer') ? 1 : -1);
+        $cycle = null === $action && ($kb->matches($keys, 'next_buffer') || $kb->matches($keys, 'prev_buffer'));
+        $find = null === $action && !$cycle && ($kb->matches($keys, 'find') || $kb->matches($keys, 'replace'));
+        match (true) {
+            null !== $action => $this->run($action),
+            $cycle => ($this->callbacks)()->buffer?->cycleBuffer($kb->matches($keys, 'next_buffer') ? 1 : -1),
+            $find => $this->openFind($kb->matches($keys, 'replace')),
+            default => null,
+        };
 
-            return true;
-        }
-
-        if ($kb->matches($keys, 'find') || $kb->matches($keys, 'replace')) {
-            $file = ($this->callbacks)()->file;
-            $kb->matches($keys, 'replace') ? $file?->openFindReplace() : $file?->openFind();
-
-            return true;
-        }
-
-        return false;
+        return null !== $action || $cycle || $find;
     }
 
     /**
@@ -73,22 +53,24 @@ final readonly class EditorActionRouter
      */
     public function run(string $action): bool
     {
-        $simple = $this->simpleHandlers();
-        if (\array_key_exists($action, $simple)) {
-            $simple[$action](($this->callbacks)());
-
-            return true;
+        $simple = $this->simpleHandlers()[$action] ?? null;
+        $positional = $this->positionalHandlers()[$action] ?? null;
+        if (null !== $simple) {
+            $simple(($this->callbacks)());
         }
-
-        $positional = $this->positionalHandlers();
-        if (\array_key_exists($action, $positional)) {
+        if (null === $simple && null !== $positional) {
             [$line, $col] = ($this->caret)();
-            $positional[$action](($this->callbacks)(), $line, $col);
-
-            return true;
+            $positional(($this->callbacks)(), $line, $col);
         }
 
-        return false;
+        return null !== $simple || null !== $positional;
+    }
+
+    // @mago-expect lint:no-boolean-flag-parameter -- which of the two bars opens is the one fact the key carries.
+    private function openFind(bool $replace): void
+    {
+        $file = ($this->callbacks)()->file;
+        $replace ? $file?->openFindReplace() : $file?->openFind();
     }
 
     /**

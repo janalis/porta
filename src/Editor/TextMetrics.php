@@ -148,14 +148,17 @@ final class TextMetrics
     /** Byte offset on $line for a given display column (terminal cell). */
     public static function byteColForDisplayCol(string $line, int $displayCol, int $tabSize): int
     {
-        if ($displayCol <= 0 || '' === $line) {
-            return 0;
-        }
-        // ASCII fast path
-        if (\preg_match('/^[\x20-\x7E]*$/', $line)) {
-            return \min($displayCol, \strlen($line));
-        }
+        return match (true) {
+            $displayCol <= 0 || '' === $line => 0,
+            // ASCII fast path
+            1 === \preg_match('/^[\x20-\x7E]*$/', $line) => \min($displayCol, \strlen($line)),
+            default => self::graphemeByteCol($line, $displayCol, $tabSize),
+        };
+    }
 
+    /** {@see byteColForDisplayCol()} off the ASCII fast path. */
+    private static function graphemeByteCol(string $line, int $displayCol, int $tabSize): int
+    {
         // Whole graphemes only, so a column never lands inside one, where
         // typing would split it.
         $col = 0;
@@ -182,14 +185,17 @@ final class TextMetrics
     /** Byte offset on $line for a UTF-16 code-unit column (LSP position). */
     public static function utf16ColToByteCol(string $line, int $utf16Col): int
     {
-        if ($utf16Col <= 0 || '' === $line) {
-            return 0;
-        }
-        // ASCII fast path
-        if (\preg_match('/^[\x20-\x7E]*$/', $line)) {
-            return \min($utf16Col, \strlen($line));
-        }
+        return match (true) {
+            $utf16Col <= 0 || '' === $line => 0,
+            // ASCII fast path
+            1 === \preg_match('/^[\x20-\x7E]*$/', $line) => \min($utf16Col, \strlen($line)),
+            default => self::utf16ByteCol($line, $utf16Col),
+        };
+    }
 
+    /** {@see utf16ColToByteCol()} off the ASCII fast path. */
+    private static function utf16ByteCol(string $line, int $utf16Col): int
+    {
         $units = 0;
         $bytes = 0;
         $len = \strlen($line);

@@ -183,6 +183,18 @@ final class TerminalPanelWidgetTest extends TestCase
         $this->assertSame('', $panel->statusText());
     }
 
+    /** With no process to forward to, a key the panel does not bind goes nowhere. */
+    public function testAnUnboundKeyWithNoForwarderIsDropped(): void
+    {
+        $panel = new TerminalPanelWidget();
+        $panel->open('sh', new TerminalBuffer());
+
+        $panel->handleInput('ls');
+
+        $this->assertTrue($panel->isOpen());
+        $this->assertSame('', $panel->statusText());
+    }
+
     public function testHideKeyClosesAndNotifies(): void
     {
         $panel = new TerminalPanelWidget();

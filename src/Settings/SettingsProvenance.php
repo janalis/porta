@@ -103,9 +103,12 @@ final class SettingsProvenance
     private function valueAt(ConfigScope $scope, array $path): mixed
     {
         $node = $this->file($scope);
+        /** @var mixed $value */
+        $value = $node;
         foreach ($path as $segment) {
             if (null === $node || !\array_key_exists($segment, $node)) {
-                return null;
+                $value = null;
+                break;
             }
             /** @var mixed $value */
             $value = $node[$segment];
@@ -113,12 +116,14 @@ final class SettingsProvenance
                 // A leaf. Only the last segment may reach one; a shorter path
                 // hitting a scalar means the file's shape is not what the
                 // caller assumed, and neither answer is "this key is set".
-                return $segment === $path[\count($path) - 1] ? $value : null;
+                /** @var mixed $value */
+                $value = $segment === $path[\count($path) - 1] ? $value : null;
+                break;
             }
             $node = $value;
         }
 
-        return $node;
+        return $value;
     }
 
     /** @return array<array-key, mixed>|null */

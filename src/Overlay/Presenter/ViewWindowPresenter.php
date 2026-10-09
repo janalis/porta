@@ -163,19 +163,18 @@ final class ViewWindowPresenter
     public function press(int $row, int $col): bool
     {
         $box = $this->box();
-        if (null === $box) {
-            return false;
+        $zone = null === $box ? null : $this->frame->press($box, $row, $col);
+        // Not the content, nor outside the workspace: those are the view's, or
+        // the chrome's — the menu and status bars stay live.
+        $framed = null !== $zone && WindowZone::Content !== $zone && (WindowZone::Outside !== $zone || $this->inWorkspace($row, $col));
+        if ($framed) {
+            if (WindowZone::Close === $zone || WindowZone::Outside === $zone) {
+                $this->closeView();
+            }
+            $this->tui->requestRender();
         }
-        $zone = $this->frame->press($box, $row, $col);
-        if (WindowZone::Content === $zone || (WindowZone::Outside === $zone && !$this->inWorkspace($row, $col))) {
-            return false; // the view's, or the chrome's: the menu and status bars stay live
-        }
-        if (WindowZone::Close === $zone || WindowZone::Outside === $zone) {
-            $this->closeView();
-        }
-        $this->tui->requestRender();
 
-        return true;
+        return $framed;
     }
 
     /** Follow an armed move or resize; false when none is armed. */
@@ -279,11 +278,10 @@ final class ViewWindowPresenter
         ];
         $this->box = new ModalBox($place->top, $place->col, $place->width, $place->rows, headerRows: ModalFrame::CHROME_ROWS_TOP, windowStart: 0, count: $innerHeight, closeButton: $this->closeButton);
         $this->shadowRegion = DropdownRegion::shadowClamped($place->top, $place->col, $place->width, $place->rows, $bounds, shown: $this->delivery->shown());
-        if ($box === $this->delivered) {
-            return;
+        if ($box !== $this->delivered) {
+            $this->delivered = $box;
+            $this->delivery->deliverWindow([$box]);
         }
-        $this->delivered = $box;
-        $this->delivery->deliverWindow([$box]);
     }
 
     /**

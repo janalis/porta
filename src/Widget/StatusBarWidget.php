@@ -232,16 +232,11 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     /** @return array{int, int}|null the drawn clickable span under $col, as `[from, to]` */
     private function litSpan(?int $col): ?array
     {
-        if (null === $col) {
-            return null;
-        }
-        foreach ([...$this->renderedMenus, ...$this->renderedClicks] as $span) {
-            if ($span->contains($col)) {
-                return [$span->from, $span->to];
-            }
-        }
+        $span = null === $col
+            ? null
+            : \array_find([...$this->renderedMenus, ...$this->renderedClicks], static fn (StatusMenuSpan|StatusClickSpan $span): bool => $span->contains($col));
 
-        return null;
+        return null === $span ? null : [$span->from, $span->to];
     }
 
     /**

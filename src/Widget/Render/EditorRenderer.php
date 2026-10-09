@@ -76,6 +76,7 @@ final class EditorRenderer
         $lines = $doc->lines;
         $lineCount = \count($lines);
 
+        $pair = null;
         while ($l >= 0 && $l < $lineCount && $scanned < 20_000) {
             $current = $lines[$l];
             $len = \strlen($current);
@@ -87,10 +88,11 @@ final class EditorRenderer
                 if ($ch === ($isOpen ? $close : $open)) {
                     --$depth;
                     if (0 === $depth) {
-                        return [
+                        $pair = [
                             [$line, $doc->displayColAt($line, $col)],
                             [$l, $doc->displayColAt($l, $c)],
                         ];
+                        break 2;
                     }
                 }
                 $c += $direction;
@@ -100,7 +102,7 @@ final class EditorRenderer
             $c = $direction > 0 ? 0 : \strlen($lines[$l] ?? '') - 1;
         }
 
-        return null;
+        return $pair;
     }
 
     /**
@@ -143,10 +145,7 @@ final class EditorRenderer
      */
     public static function identifierOccurrences(Document $doc, PaneFocus $focused, int $fromLine, int $toLine): array
     {
-        if (PaneFocus::Blurred === $focused || $doc->hasSelection()) {
-            return [];
-        }
-        $word = self::identifierUnderCaret($doc);
+        $word = PaneFocus::Blurred === $focused || $doc->hasSelection() ? null : self::identifierUnderCaret($doc);
         if (null === $word || \strlen(\ltrim($word, characters: '$')) < 2) {
             return [];
         }
@@ -357,16 +356,13 @@ final class EditorRenderer
             $message = $diag['message'] ?? '';
             break;
         }
-        if ('' === $message) {
-            return $content;
-        }
 
         // Where the decorated text ends on screen (accounting for horizontal scroll).
         $textEnd = \max(0, $textDisplayWidth - $hScroll);
         $start = \min($contentWidth, $textEnd) + 2; // two-space gap
         $available = $contentWidth - $start;
-        if ($available < 8) {
-            return $content; // not enough room to be useful
+        if ('' === $message || $available < 8) {
+            return $content; // nothing to say, or not enough room to be useful
         }
 
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
@@ -552,9 +548,6 @@ final class EditorRenderer
         int $docScroll = 0,
     ): ?array {
         $text = null === $selected ? '' : $selected->documentation;
-        if ('' === $text) {
-            return null;
-        }
         $framedWidth = PopupMetrics::COMPLETION_DOC_INNER + PopupFrame::CHROME_COLS;
         $right = $popupCol + $popupWidth;
         // A column of clearance on the left placement, because the panel's own
@@ -565,17 +558,6 @@ final class EditorRenderer
             ($popupCol - $framedWidth - 1) >= 0 => $popupCol - $framedWidth - 1,
             default => null,
         };
-        if (null === $col) {
-            return null;
-        }
-
-        $body = [];
-        foreach (\explode("\n", $text) as $paragraph) {
-            // Padded a column either side, as every box pads its content.
-            foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER - 2) as $wrapped) {
-                $body[] = $wrapped;
-            }
-        }
         // Down from the popup's top, or up from its bottom when the popup
         // opened upward — the caret is on the other side of that edge, and a
         // panel growing the wrong way would cover the line being typed.
@@ -588,8 +570,18 @@ final class EditorRenderer
         // else leaves a gap where a row could land past the end of the array.
         $room = $below ? \count($lines) - $popupTop : $popupTop + $popupHeight;
         $capacity = \min(self::POPUP_MAX_ITEMS, $room - PopupFrame::CHROME_ROWS);
-        if ($capacity < 1) {
-            return null; // a frame with no line of the docblock in it says nothing
+        // No docblock, no side with room, or a frame with no line of the
+        // docblock in it — which says nothing.
+        if ('' === $text || null === $col || $capacity < 1) {
+            return null;
+        }
+
+        $body = [];
+        foreach (\explode("\n", $text) as $paragraph) {
+            // Padded a column either side, as every box pads its content.
+            foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER - 2) as $wrapped) {
+                $body[] = $wrapped;
+            }
         }
         $maxScroll = \max(0, \count($body) - $capacity);
         $scroll = \min($docScroll, $maxScroll);

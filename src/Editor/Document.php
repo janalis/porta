@@ -512,12 +512,18 @@ final class Document
         if (null === $range) {
             return;
         }
-        $head = \substr($this->lines[$range['startLine']], offset: 0, length: $range['startCol']);
-        $tail = \substr($this->lines[$range['endLine']], $range['endCol']);
-        \array_splice($this->lines, $range['startLine'], $range['endLine'] - $range['startLine'] + 1, [$head.$tail]);
-        $this->cursorLine = $range['startLine'];
-        $this->cursorCol = $range['startCol'];
+        $this->removeBetween($range['startLine'], $range['startCol'], $range['endLine'], $range['endCol']);
         $this->selection->clear();
+    }
+
+    /** Removes the text from one position up to a later one, and leaves the cursor where it started. */
+    private function removeBetween(int $fromLine, int $fromCol, int $toLine, int $toCol): void
+    {
+        $head = \substr($this->lines[$fromLine], offset: 0, length: $fromCol);
+        $tail = \substr($this->lines[$toLine], $toCol);
+        \array_splice($this->lines, $fromLine, $toLine - $fromLine + 1, [$head.$tail]);
+        $this->cursorLine = $fromLine;
+        $this->cursorCol = $fromCol;
     }
 
     // --- Line operations ------------------------------------------------------
@@ -622,11 +628,8 @@ final class Document
         }
         $block = \array_slice($this->lines, $first, $last - $first + 1);
         $sorted = LineOperations::sorted($block);
-        if ($sorted === $block) {
-            return false;
-        }
 
-        return $this->replaceLineBlock($first, \count($block), $sorted);
+        return $sorted !== $block && $this->replaceLineBlock($first, \count($block), $sorted);
     }
 
     /**
@@ -910,14 +913,13 @@ final class Document
 
             return true;
         }
-        if ($this->cursorLine > 0) {
+        $moved = $this->cursorLine > 0;
+        if ($moved) {
             --$this->cursorLine;
             $this->cursorCol = \strlen($this->lines[$this->cursorLine]);
-
-            return true;
         }
 
-        return false;
+        return $moved;
     }
 
     public function moveRight(): bool
@@ -929,27 +931,25 @@ final class Document
 
             return true;
         }
-        if ($this->cursorLine < (\count($this->lines) - 1)) {
+        $moved = $this->cursorLine < (\count($this->lines) - 1);
+        if ($moved) {
             ++$this->cursorLine;
             $this->cursorCol = 0;
-
-            return true;
         }
 
-        return false;
+        return $moved;
     }
 
     public function moveUp(): bool
     {
         if (0 === $this->cursorLine) {
-            if ($this->cursorCol > 0) {
+            $moved = $this->cursorCol > 0;
+            if ($moved) {
                 $this->cursorCol = 0;
                 $this->goalCol = null;
-
-                return true;
             }
 
-            return false;
+            return $moved;
         }
 
         $this->goalCol ??= $this->getCursorDisplayCol();
@@ -963,14 +963,13 @@ final class Document
     {
         if ($this->cursorLine >= (\count($this->lines) - 1)) {
             $len = \strlen($this->lines[$this->cursorLine]);
-            if ($this->cursorCol < $len) {
+            $moved = $this->cursorCol < $len;
+            if ($moved) {
                 $this->cursorCol = $len;
                 $this->goalCol = null;
-
-                return true;
             }
 
-            return false;
+            return $moved;
         }
 
         $this->goalCol ??= $this->getCursorDisplayCol();
@@ -1029,12 +1028,7 @@ final class Document
         }
         $prefix = \substr($this->lines[$this->cursorLine], offset: 0, length: $this->cursorCol);
         $m = [];
-        if (\preg_match('/(?:[$\w]+|[^\s\w$]+)\s*$/u', $prefix, $m, \PREG_OFFSET_CAPTURE)) {
-            $this->cursorCol = (int) $m[0][1];
-
-            return true;
-        }
-        $this->cursorCol = 0;
+        $this->cursorCol = \preg_match('/(?:[$\w]+|[^\s\w$]+)\s*$/u', $prefix, $m, \PREG_OFFSET_CAPTURE) ? (int) $m[0][1] : 0;
 
         return true;
     }
@@ -1048,12 +1042,7 @@ final class Document
         }
         $suffix = \substr($line, $this->cursorCol);
         $m = [];
-        if (\preg_match('/^\s*(?:[$\w]+|[^\s\w$]+)/u', $suffix, $m)) {
-            $this->cursorCol += \strlen($m[0]);
-
-            return true;
-        }
-        $this->cursorCol = \strlen($line);
+        $this->cursorCol = \preg_match('/^\s*(?:[$\w]+|[^\s\w$]+)/u', $suffix, $m) ? $this->cursorCol + \strlen($m[0]) : \strlen($line);
 
         return true;
     }
@@ -1243,27 +1232,20 @@ final class Document
         if ($this->hasSelection()) {
             return $this->deleteSelection();
         }
-        if (0 === $this->cursorCol && 0 === $this->cursorLine) {
-            return false;
-        }
-        $this->pushUndo('backspace');
-        if ($this->cursorCol > 0) {
-            $line = $this->lines[$this->cursorLine];
-            $newCol = TextMetrics::prevGrapheme($line, $this->cursorCol);
-            $this->lines[$this->cursorLine] = \substr($line, offset: 0, length: $newCol).\substr($line, $this->cursorCol);
-            $this->cursorCol = $newCol;
+        $deleted = 0 !== $this->cursorCol || 0 !== $this->cursorLine;
+        if ($deleted) {
+            $this->pushUndo('backspace');
+            $line = $this->cursorLine;
+            $col = $this->cursorCol;
+            // At a line start, the line joins the one above it.
+            [$fromLine, $fromCol] = $col > 0
+                ? [$line, TextMetrics::prevGrapheme($this->lines[$line], $col)]
+                : [$line - 1, \strlen($this->lines[$line - 1])];
+            $this->removeBetween($fromLine, $fromCol, $line, $col);
             $this->touch();
-
-            return true;
         }
-        $current = $this->lines[$this->cursorLine];
-        $this->cursorCol = \strlen($this->lines[$this->cursorLine - 1]);
-        $this->lines[$this->cursorLine - 1] .= $current;
-        \array_splice($this->lines, $this->cursorLine, length: 1);
-        --$this->cursorLine;
-        $this->touch();
 
-        return true;
+        return $deleted;
     }
 
     public function deleteForward(): bool
@@ -1272,30 +1254,24 @@ final class Document
             return $this->deleteSelection();
         }
         $line = $this->lines[$this->cursorLine];
-        if ($this->cursorCol >= \strlen($line) && $this->cursorLine >= (\count($this->lines) - 1)) {
-            return false;
-        }
-        $this->pushUndo();
-        if ($this->cursorCol < \strlen($line)) {
-            $next = TextMetrics::nextGrapheme($line, $this->cursorCol);
-            $this->lines[$this->cursorLine] = \substr($line, offset: 0, length: $this->cursorCol).\substr($line, $next);
+        $deleted = $this->cursorCol < \strlen($line) || $this->cursorLine < (\count($this->lines) - 1);
+        if ($deleted) {
+            $this->pushUndo();
+            // At a line end, the next line joins this one.
+            [$toLine, $toCol] = $this->cursorCol >= \strlen($line)
+                ? [$this->cursorLine + 1, 0]
+                : [$this->cursorLine, TextMetrics::nextGrapheme($line, $this->cursorCol)];
+            $this->removeBetween($this->cursorLine, $this->cursorCol, $toLine, $toCol);
             $this->touch();
-
-            return true;
         }
-        $this->lines[$this->cursorLine] .= $this->lines[$this->cursorLine + 1];
-        \array_splice($this->lines, $this->cursorLine + 1, length: 1);
-        $this->touch();
 
-        return true;
+        return $deleted;
     }
 
     public function deleteWordBackward(): bool
     {
-        if ($this->hasSelection()) {
-            return $this->deleteSelection();
-        }
-        if (0 === $this->cursorCol) {
+        // deleteBackward() deletes the selection when there is one.
+        if ($this->hasSelection() || 0 === $this->cursorCol) {
             return $this->deleteBackward();
         }
         $this->pushUndo();
@@ -1315,11 +1291,9 @@ final class Document
 
     public function deleteToLineEnd(): bool
     {
-        if ($this->hasSelection()) {
-            return $this->deleteSelection();
-        }
+        // deleteForward() deletes the selection when there is one.
         $line = $this->lines[$this->cursorLine];
-        if ($this->cursorCol >= \strlen($line)) {
+        if ($this->hasSelection() || $this->cursorCol >= \strlen($line)) {
             return $this->deleteForward();
         }
         $this->pushUndo();
@@ -1449,13 +1423,12 @@ final class Document
             return $this->historyDelegate['undo']();
         }
         $state = $this->history->undo($this->snapshot());
-        if (null === $state) {
-            return false;
+        if (null !== $state) {
+            $this->restore($state);
+            $this->touch();
         }
-        $this->restore($state);
-        $this->touch();
 
-        return true;
+        return null !== $state;
     }
 
     public function redo(): bool
@@ -1464,13 +1437,12 @@ final class Document
             return $this->historyDelegate['redo']();
         }
         $state = $this->history->redo($this->snapshot());
-        if (null === $state) {
-            return false;
+        if (null !== $state) {
+            $this->restore($state);
+            $this->touch();
         }
-        $this->restore($state);
-        $this->touch();
 
-        return true;
+        return null !== $state;
     }
 
     // --- Internals --------------------------------------------------------

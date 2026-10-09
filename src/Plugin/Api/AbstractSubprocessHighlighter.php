@@ -230,7 +230,7 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
             /** @var array<array-key, mixed>|scalar|null $tokens */
             $tokens = \json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
-            return null;
+            $tokens = null;
         }
         if (!\is_array($tokens)) {
             return null;
@@ -240,7 +240,9 @@ abstract class AbstractSubprocessHighlighter extends AbstractToolPlugin implemen
         /** @var mixed $token */
         foreach ($tokens as $token) {
             if (!\is_array($token)) {
-                return null;
+                $markup = null;
+
+                break;
             }
             $value = \is_string($token['value'] ?? null) ? $token['value'] : '';
             $type = $this->tokenType(\is_string($token['type'] ?? null) ? $token['type'] : '');

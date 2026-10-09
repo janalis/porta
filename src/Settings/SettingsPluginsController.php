@@ -263,32 +263,34 @@ final class SettingsPluginsController
 
     public function changePlugin(string $name, string $key, bool|int|string $value): void
     {
-        if ('pluginEnabled' === $key) {
-            $this->armed = null;
-            (bool) $value ? $this->lifecycle->enable($name) : $this->lifecycle->disable($name);
+        match (true) {
+            'pluginEnabled' === $key => $this->toggle($name, $value),
+            'pluginInstallBinary' === $key => $this->installBinary($name),
+            'pluginDocs' === $key => $this->openDocs($name),
+            \str_starts_with($key, self::SETTING_PREFIX) => $this->changeSetting($name, \substr($key, offset: \strlen(self::SETTING_PREFIX)), $value),
+            default => null,
+        };
+    }
 
-            return;
-        }
-        if ('pluginInstallBinary' === $key) {
-            $this->armed = null;
-            $this->installBinary($name);
+    private function toggle(string $name, bool|int|string $value): void
+    {
+        $this->armed = null;
+        (bool) $value ? $this->lifecycle->enable($name) : $this->lifecycle->disable($name);
+    }
 
-            return;
+    private function openDocs(string $name): void
+    {
+        $this->armed = null;
+        $docs = $this->installer->docsIndex($name);
+        if (null !== $docs) {
+            $this->events?->dispatch(new HelpPageRequested($docs));
         }
-        if ('pluginDocs' === $key) {
-            $this->armed = null;
-            $docs = $this->installer->docsIndex($name);
-            if (null !== $docs) {
-                $this->events?->dispatch(new HelpPageRequested($docs));
-            }
+    }
 
-            return;
-        }
-        if (\str_starts_with($key, self::SETTING_PREFIX)) {
-            $setting = \substr($key, offset: \strlen(self::SETTING_PREFIX));
-            $this->pluginSettings->change($name, $setting, $value);
-            $this->lifecycle->onPluginSettingChanged($name, $setting, $value);
-        }
+    private function changeSetting(string $name, string $setting, bool|int|string $value): void
+    {
+        $this->pluginSettings->change($name, $setting, $value);
+        $this->lifecycle->onPluginSettingChanged($name, $setting, $value);
     }
 
     /**
@@ -304,6 +306,7 @@ final class SettingsPluginsController
     /** Install the (enabled) plugin's declared tool binary through its package manager(s). */
     private function installBinary(string $name): void
     {
+        $this->armed = null;
         $offer = $this->plugins->installOffer($name);
         if (null === $offer) {
             return;
@@ -344,26 +347,23 @@ final class SettingsPluginsController
     /** Route a settings edit/actuation for one of this section's keys. */
     public function change(string $key, string $value): void
     {
-        if ($this->scopeRow->owns($key)) {
-            $this->scopeRow->change($value);
-            $this->armed = null;
+        match (true) {
+            $this->scopeRow->owns($key) => $this->changeScope($value),
+            'pluginInstall' === $key => $this->install(\trim($value)),
+            \str_starts_with($key, 'pluginInfo:') => null, // a built-in marker / placeholder row — nothing to actuate
+            default => $this->removalPressed($key),
+        };
+    }
 
-            return;
-        }
-        if ('pluginInstall' === $key) {
-            $this->armed = null;
-            $this->install(\trim($value));
-
-            return;
-        }
-        if (\str_starts_with($key, 'pluginInfo:')) {
-            return; // a built-in marker / placeholder row — nothing to actuate
-        }
-        $this->removalPressed($key);
+    private function changeScope(string $value): void
+    {
+        $this->scopeRow->change($value);
+        $this->armed = null;
     }
 
     private function install(string $source): void
     {
+        $this->armed = null;
         if ('' === $source) {
             return;
         }

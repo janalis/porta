@@ -37,53 +37,39 @@ final readonly class SettingsMouseRouter implements ViewPointer
     #[\Override]
     public function wheel(WheelGesture $gesture): bool
     {
-        if (WheelAxis::Horizontal === $gesture->axis) {
-            return false; // no settings pane scrolls sideways
-        }
         $mouse = $gesture->mouse;
         // Every settings list scrolls under the wheel as it does under its
         // arrow keys — the nav changes the shown section, exactly as from the
-        // keyboard (see ArrowScrollTrait).
-        foreach ([$this->nav, $this->form, $this->keys] as $pane) {
-            if (null === $this->hit->hit($pane, $mouse->row, $mouse->col)) {
-                continue;
-            }
+        // keyboard (see ArrowScrollTrait). No settings pane scrolls sideways.
+        $pane = WheelAxis::Horizontal === $gesture->axis
+            ? null
+            : \array_find(
+                [$this->nav, $this->form, $this->keys],
+                fn (SettingsNavWidget|SettingsFormWidget|KeybindingsListWidget $pane): bool => null !== $this->hit->hit($pane, $mouse->row, $mouse->col),
+            );
+        $pane?->scrollBy($gesture->step);
 
-            $pane->scrollBy($gesture->step);
-
-            return true;
-        }
-
-        return false;
+        return null !== $pane;
     }
 
     /** A left press on a settings pane (rects exist only while the view is swapped in). */
     #[\Override]
     public function press(MouseEvent $mouse): bool
     {
-        if (null !== ($rel = $this->hit->hit($this->nav, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->nav);
-            $this->nav->handleClick($rel['row']);
+        $pressed = false;
+        foreach ([$this->nav, $this->form, $this->keys] as $pane) {
+            $rel = $this->hit->hit($pane, $mouse->row, $mouse->col);
+            if (null === $rel) {
+                continue;
+            }
+            $this->tui->setFocus($pane);
+            $pane instanceof SettingsNavWidget ? $pane->handleClick($rel['row']) : $pane->handleClick($rel['row'], $rel['col']);
             $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->form, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->form);
-            $this->form->handleClick($rel['row'], $rel['col']);
-            $this->tui->requestRender();
-
-            return true;
-        }
-        if (null !== ($rel = $this->hit->hit($this->keys, $mouse->row, $mouse->col))) {
-            $this->tui->setFocus($this->keys);
-            $this->keys->handleClick($rel['row'], $rel['col']);
-            $this->tui->requestRender();
-
-            return true;
+            $pressed = true;
+            break;
         }
 
-        return false;
+        return $pressed;
     }
 
     /**

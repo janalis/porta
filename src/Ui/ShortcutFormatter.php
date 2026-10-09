@@ -69,36 +69,24 @@ final class ShortcutFormatter
 
     public static function format(string $binding): string
     {
-        if ('' === $binding) {
-            return '';
-        }
-        // The literal '+' key is the only token that contains a '+'.
-        if ('+' === $binding) {
-            return '+';
-        }
-
-        $parts = \array_map(self::formatToken(...), \explode('+', $binding));
-
-        return \implode('+', $parts);
+        return match ($binding) {
+            '' => '',
+            // The literal '+' key is the only token that contains a '+'.
+            '+' => '+',
+            default => \implode('+', \array_map(self::formatToken(...), \explode('+', $binding))),
+        };
     }
 
     private static function formatToken(#[\SensitiveParameter] string $token): string
     {
-        if (\array_key_exists($token, self::MODIFIERS)) {
-            return self::MODIFIERS[$token];
-        }
-        if (\array_key_exists($token, self::KEYS)) {
-            return self::KEYS[$token];
-        }
-        // Function keys: f1..f12 → F1..F12.
-        if (1 === \preg_match('/^f([1-9]|1[0-2])$/', $token)) {
-            return \strtoupper($token);
-        }
-        // Single letters → uppercase; symbols and anything else kept verbatim.
-        if (1 === \preg_match('/^[a-z]$/', $token)) {
-            return \strtoupper($token);
-        }
-
-        return $token;
+        return match (true) {
+            \array_key_exists($token, self::MODIFIERS) => self::MODIFIERS[$token],
+            \array_key_exists($token, self::KEYS) => self::KEYS[$token],
+            // Function keys: f1..f12 → F1..F12.
+            1 === \preg_match('/^f([1-9]|1[0-2])$/', $token) => \strtoupper($token),
+            // Single letters → uppercase; symbols and anything else kept verbatim.
+            1 === \preg_match('/^[a-z]$/', $token) => \strtoupper($token),
+            default => $token,
+        };
     }
 }

@@ -63,22 +63,20 @@ final class UnsavedChangesGuard
             return true;
         }
         $now = Clocks::seconds($this->clock);
-        if (($now - ($this->lastRefusal[$verb] ?? 0.0)) <= self::WINDOW_SECONDS) {
-            return true;
+        $confirmed = ($now - ($this->lastRefusal[$verb] ?? 0.0)) <= self::WINDOW_SECONDS;
+        if (!$confirmed) {
+            $this->lastRefusal[$verb] = $now;
+            $this->notifier->flash(
+                0 === $dirty
+                    ? $this->translator->trans('Some changes are not on the server yet. %repeat%', ['%repeat%' => $repeat])
+                    : $this->translator->trans('Unsaved changes — %noun% edits. %repeat%', [
+                        '%noun%' => $this->translator->trans('1 file has|%count% files have', ['%count%' => $dirty]),
+                        '%repeat%' => $repeat,
+                    ]),
+                3.0,
+            );
         }
 
-        $this->lastRefusal[$verb] = $now;
-        if (0 === $dirty) {
-            $this->notifier->flash($this->translator->trans('Some changes are not on the server yet. %repeat%', ['%repeat%' => $repeat]), 3.0);
-
-            return false;
-        }
-        $noun = $this->translator->trans('1 file has|%count% files have', ['%count%' => $dirty]);
-        $this->notifier->flash($this->translator->trans('Unsaved changes — %noun% edits. %repeat%', [
-            '%noun%' => $noun,
-            '%repeat%' => $repeat,
-        ]), 3.0);
-
-        return false;
+        return $confirmed;
     }
 }

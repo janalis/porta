@@ -580,92 +580,107 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     #[\Override]
     public function handleInput(string $data): void
     {
-        if ($this->inputHookHandled($data)) {
+        if ($this->inputHookHandled($data) || 0 === \count($this->visible)) {
             return;
         }
 
         $kb = $this->getKeybindings();
         $count = \count($this->visible);
-        if (0 === $count) {
-            return;
-        }
+        match (true) {
+            $kb->matches($data, 'select_up') || $kb->matches($data, 'select_down') => $this->extendCursor($kb->matches($data, 'select_up') ? -1 : 1, $count),
+            // A page is what the window holds — {@see windowEntries()}, the same
+            // budget render() gives follow() and scrollWindow() gets above.
+            // Paging by the full height scrolled one entry past the bottom of the
+            // screen every press, and the entry you landed on had never been drawn.
+            // No floor, for the reason scrollWindow() has none: a pane with no room
+            // to draw an entry has no page to turn, and ListNavigation already
+            // ignores a page of zero.
+            ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->windowEntries($this->lastRows, $this->drawnRuled)) => $this->selectOnlyCursor(),
+            $kb->matches($data, 'collapse') => $this->collapseSelected(),
+            $kb->matches($data, 'expand') => $this->expandSelected(),
+            $kb->matches($data, 'open') => $this->openSelected(),
+            $kb->matches($data, 'reload') => $this->refresh(),
+            default => null,
+        };
+    }
 
-        if ($kb->matches($data, 'select_up') || $kb->matches($data, 'select_down')) {
-            $step = $kb->matches($data, 'select_up') ? -1 : 1;
-            $index = \max(0, \min($count - 1, $this->list->selected() + $step));
-            $this->list->select($index);
-            $this->extendSelection($index, ClickIntent::Range);
+    /** Shift+↑/↓: move the cursor $step rows and grow the range selection to it. */
+    private function extendCursor(int $step, int $count): void
+    {
+        $index = \max(0, \min($count - 1, $this->list->selected() + $step));
+        $this->list->select($index);
+        $this->extendSelection($index, ClickIntent::Range);
+        $this->invalidate();
+    }
+
+    /**
+     * Moving the cursor with no modifier collapses the selection to the
+     * row under it: a pair is built deliberately, and a stale second
+     * file surviving a walk through the tree is how a compare ends up
+     * diffing something nobody meant.
+     */
+    private function selectOnlyCursor(): void
+    {
+        $this->selection->only($this->visible[$this->list->selected()]->path);
+        $this->invalidate();
+    }
+
+    /** ←: fold the selected open directory, else jump to its parent. */
+    private function collapseSelected(): void
+    {
+        $node = $this->visible[$this->list->selected()];
+        if ($node->isDir && ($this->expanded[$node->path] ?? false)) {
+            $this->expanded[$node->path] = false;
+            $this->rebuild();
             $this->invalidate();
 
             return;
         }
-        // A page is what the window holds — {@see windowEntries()}, the same
-        // budget render() gives follow() and scrollWindow() gets above.
-        // Paging by the full height scrolled one entry past the bottom of the
-        // screen every press, and the entry you landed on had never been drawn.
-        // No floor, for the reason scrollWindow() has none: a pane with no room
-        // to draw an entry has no page to turn, and ListNavigation already
-        // ignores a page of zero.
-        if (ListNavigation::handleKey($data, $kb, $this->list, $count, page: $this->windowEntries($this->lastRows, $this->drawnRuled))) {
-            // Moving the cursor with no modifier collapses the selection to the
-            // row under it: a pair is built deliberately, and a stale second
-            // file surviving a walk through the tree is how a compare ends up
-            // diffing something nobody meant.
-            $this->selection->only($this->visible[$this->list->selected()]->path);
-            $this->invalidate();
-
-            return;
-        }
-        if ($kb->matches($data, 'collapse')) {
-            $node = $this->visible[$this->list->selected()];
-            if ($node->isDir && ($this->expanded[$node->path] ?? false)) {
-                $this->expanded[$node->path] = false;
-                $this->rebuild();
-                $this->invalidate();
-
-                return;
-            }
-            if ($node->depth > 0) {
-                // Jump to parent
-                for ($i = $this->list->selected() - 1; $i >= 0; --$i) {
-                    if ($this->visible[$i]->depth >= $node->depth) {
-                        continue;
-                    }
-
-                    $this->list->select($i);
-                    break;
+        if ($node->depth > 0) {
+            // Jump to parent
+            for ($i = $this->list->selected() - 1; $i >= 0; --$i) {
+                if ($this->visible[$i]->depth >= $node->depth) {
+                    continue;
                 }
+
+                $this->list->select($i);
+                break;
             }
+        }
+        $this->invalidate();
+    }
+
+    /** →: unfold the selected directory when it is folded. */
+    private function expandSelected(): void
+    {
+        $node = $this->visible[$this->list->selected()];
+        if ($node->isDir && !($this->expanded[$node->path] ?? false)) {
+            $this->expanded[$node->path] = true;
+            $this->rebuild();
             $this->invalidate();
+        }
+    }
+
+    /** Enter: open the selected file, or toggle the selected directory. */
+    private function openSelected(): void
+    {
+        $node = $this->visible[$this->list->selected()];
+        $this->openNode($node);
+        if ($node->isDir) {
+            $this->invalidate();
+        }
+    }
+
+    /** A directory toggles open/closed; a file asks to be opened. */
+    private function openNode(FileTreeNode $node): void
+    {
+        if ($node->isDir) {
+            $this->expanded[$node->path] = !($this->expanded[$node->path] ?? false);
+            $this->rebuild();
 
             return;
         }
-        if ($kb->matches($data, 'expand')) {
-            $node = $this->visible[$this->list->selected()];
-            if ($node->isDir && !($this->expanded[$node->path] ?? false)) {
-                $this->expanded[$node->path] = true;
-                $this->rebuild();
-                $this->invalidate();
-            }
-
-            return;
-        }
-        if ($kb->matches($data, 'open')) {
-            $node = $this->visible[$this->list->selected()];
-            if ($node->isDir) {
-                $this->expanded[$node->path] = !($this->expanded[$node->path] ?? false);
-                $this->rebuild();
-                $this->invalidate();
-
-                return;
-            }
-            $this->events?->dispatch(new TreeFileActivated($node->path));
-
-            return;
-        }
-        if ($kb->matches($data, 'reload')) {
-            $this->refresh();
-        }
+        $this->events?->dispatch(new TreeFileActivated($node->path));
     }
 
     /**
@@ -718,24 +733,15 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         if (null === $index) {
             return;
         }
+        $this->list->select($index);
         if (ClickIntent::Open !== $intent) {
-            $this->list->select($index);
             $this->extendSelection($index, $intent);
             $this->invalidate();
 
             return;
         }
-        $this->list->select($index);
         $this->selection->only($this->visible[$index]->path);
-        $node = $this->visible[$index];
-        if ($node->isDir) {
-            $this->expanded[$node->path] = !($this->expanded[$node->path] ?? false);
-            $this->rebuild();
-            $this->invalidate();
-
-            return;
-        }
-        $this->events?->dispatch(new TreeFileActivated($node->path));
+        $this->openNode($this->visible[$index]);
         $this->invalidate();
     }
 
@@ -1069,12 +1075,12 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
         if ($mtime === $scan['mtime'] && $mtime < $freshBefore && -1 !== $mtime) {
             return false;
         }
-        if ($this->dirSignature($dir) !== $scan['sig']) {
-            return true;
+        $changed = $this->dirSignature($dir) !== $scan['sig'];
+        if (!$changed) {
+            $this->scannedSigs[$dir]['mtime'] = $mtime; // signature verified at this mtime
         }
-        $this->scannedSigs[$dir]['mtime'] = $mtime; // signature verified at this mtime
 
-        return false;
+        return $changed;
     }
 
     /** A stable fingerprint of a directory's entries, or '' when it is gone. */

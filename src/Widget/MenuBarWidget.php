@@ -163,10 +163,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
      */
     public function hoverItem(int $index): bool
     {
-        if ([] === $this->menus) {
-            return false;
-        }
-        $item = $this->menus[$this->openIndex]->items[$index] ?? null;
+        $item = [] === $this->menus ? null : $this->menus[$this->openIndex]->items[$index] ?? null;
         if (null === $item || $item->separator || !$item->enabled() || $index === $this->selected) {
             return false;
         }
@@ -349,54 +346,47 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         if (!$this->open) {
             return;
         }
-        $kb = $this->getKeybindings();
-        $count = \count($this->menus);
-
-        if ($kb->matches($data, 'menu_close')) {
-            $this->close();
-
-            return;
-        }
-        if (!$this->dropped) {
-            $this->handleArmedInput($data);
-
-            return;
-        }
-        // A letter runs the item it is the access letter of.
-        $letter = MenuPanel::itemForKey($this->menus[$this->openIndex]->items, $data);
-        if (null !== $letter) {
-            $this->selected = $letter;
-            $this->runSelected();
-
-            return;
-        }
-        if ($kb->matches($data, 'menu_left')) {
-            $this->open(($this->openIndex - 1 + $count) % $count);
-
-            return;
-        }
-        if ($kb->matches($data, 'menu_right')) {
-            $this->open(($this->openIndex + 1) % $count);
-
-            return;
-        }
-        if ($kb->matches($data, 'menu_up')) {
-            $this->selected = $this->step(-1);
-            $this->afterNavigate();
-
-            return;
-        }
-        if ($kb->matches($data, 'menu_down')) {
-            $this->selected = $this->step(1);
-            $this->afterNavigate();
-
-            return;
-        }
-        if ($kb->matches($data, 'menu_select')) {
-            $this->runSelected();
-        }
+        match (true) {
+            $this->getKeybindings()->matches($data, 'menu_close') => $this->close(),
+            $this->dropped => $this->handleDroppedInput($data),
+            default => $this->handleArmedInput($data),
+        };
 
         // Any other key while open is swallowed (does not leak to the editor).
+    }
+
+    /**
+     * Dropped: a letter runs the item it is the access letter of, ←/→ move to
+     * the neighbouring menu, ↑/↓ walk the items, Enter runs the lit one.
+     */
+    private function handleDroppedInput(string $data): void
+    {
+        $kb = $this->getKeybindings();
+        $count = \count($this->menus);
+        $letter = MenuPanel::itemForKey($this->menus[$this->openIndex]->items, $data);
+        match (true) {
+            null !== $letter => $this->runItemAt($letter),
+            $kb->matches($data, 'menu_left') => $this->open(($this->openIndex - 1 + $count) % $count),
+            $kb->matches($data, 'menu_right') => $this->open(($this->openIndex + 1) % $count),
+            $kb->matches($data, 'menu_up') => $this->stepSelection(-1),
+            $kb->matches($data, 'menu_down') => $this->stepSelection(1),
+            $kb->matches($data, 'menu_select') => $this->runSelected(),
+            default => null,
+        };
+    }
+
+    /** Select the dropped menu's item at $index and run it. */
+    private function runItemAt(int $index): void
+    {
+        $this->selected = $index;
+        $this->runSelected();
+    }
+
+    /** Move the dropped menu's highlight one selectable item in $dir (-1 up, +1 down). */
+    private function stepSelection(int $dir): void
+    {
+        $this->selected = $this->step($dir);
+        $this->afterNavigate();
     }
 
     /**

@@ -642,21 +642,15 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function scopes(): array
     {
-        if (null === $this->filePath) {
-            return [];
-        }
         // PHP is scanned offline — instant, and right with no server running.
         // Everything else takes the language server's own symbols, which reach
         // the same shape, so the breadcrumb trail AND the sticky band work in
         // every language rather than only in PHP.
-        if (!\str_ends_with($this->filePath, '.php')) {
-            return $this->documentScopes->forPath($this->filePath);
+        if (null === $this->filePath || !\str_ends_with($this->filePath, '.php')) {
+            return null === $this->filePath ? [] : $this->documentScopes->forPath($this->filePath);
         }
         $docId = \spl_object_id($this->document);
         $key = $docId.':'.$this->document->version;
-        if ($key === $this->scopeKey) {
-            return $this->scopeCache;
-        }
 
         // A different document must never show the previous file's trail, and
         // a first look must not open blank — those scan in place. Only a
@@ -664,18 +658,13 @@ final class CodeEditorWidget extends AbstractWidget implements
         // stale until the typing pauses, so a keystroke costs no whole-file
         // tokenizer pass. (No scheduler = bare test construction: stay
         // synchronous, the rigs need determinism, the container always has one.)
-        if (null === $this->scheduler || !\str_starts_with($this->scopeKey, $docId.':')) {
-            $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
-            $this->scopeKey = $key;
-
-            return $this->scopeCache;
-        }
-
+        $stale = $key !== $this->scopeKey;
+        $sameDocument = \str_starts_with($this->scopeKey, $docId.':');
         // Re-arm only when the version moved on, not per call: scopes() runs
         // on every frame (sticky band + trail), and an ambient repaint stream
         // pushing the timer out forever would keep the trail stale for as long
         // as anything animates.
-        if ($this->scopeRescan?->key !== $key) {
+        if ($stale && null !== $this->scheduler && $sameDocument && $this->scopeRescan?->key !== $key) {
             if (null !== $this->scopeRescan) {
                 $this->scheduler->cancel($this->scopeRescan->timerId);
             }
@@ -690,6 +679,10 @@ final class CodeEditorWidget extends AbstractWidget implements
                 }),
                 $key,
             );
+        }
+        if ($stale && (null === $this->scheduler || !$sameDocument)) {
+            $this->scopeCache = BreadcrumbScanner::scan($this->document->getText());
+            $this->scopeKey = $key;
         }
 
         return $this->scopeCache;
@@ -1089,19 +1082,17 @@ final class CodeEditorWidget extends AbstractWidget implements
         if ($this->overlayHost->moveSelection($delta)) {
             return true;
         }
-        if (null !== $this->caretPopups->doc) {
-            $this->caretPopups->doc->scrollBy($delta);
+        $doc = $this->caretPopups->doc;
+        if (null !== $doc) {
+            $doc->scrollBy($delta);
             $this->invalidate();
-
-            return true;
         }
-        if ($this->completion->isOpen()) {
+        $completion = null === $doc && $this->completion->isOpen();
+        if ($completion) {
             $this->completion->moveSelection($delta);
-
-            return true;
         }
 
-        return false;
+        return null !== $doc || $completion;
     }
 
     /**

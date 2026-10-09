@@ -189,22 +189,10 @@ final class EditorStructural
      */
     private function conflictTarget(array $regions, int $cursor, int $dir): array
     {
-        if ($dir > 0) {
-            foreach ($regions as $region) {
-                if ($region['start'] > $cursor) {
-                    return $region;
-                }
-            }
+        // Walking away from the caret, the first region past it; else wrap round.
+        $ahead = $dir > 0 ? $regions : \array_reverse($regions);
 
-            return $regions[0];
-        }
-        foreach (\array_reverse($regions) as $region) {
-            if ($region['start'] < $cursor) {
-                return $region;
-            }
-        }
-
-        return $regions[\count($regions) - 1];
+        return \array_find($ahead, static fn (array $region): bool => $dir > 0 ? $region['start'] > $cursor : $region['start'] < $cursor) ?? $ahead[0];
     }
 
     /** Offer keep-ours/theirs/both for the conflict enclosing the caret. */

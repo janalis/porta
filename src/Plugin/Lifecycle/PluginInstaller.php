@@ -91,14 +91,14 @@ final class PluginInstaller
      */
     public function install(string $source, InstallScope $scope, \Closure $onDone): void
     {
-        if (null !== $this->running) {
-            $this->fail($onDone, $this->translator->trans('Another install is already running'));
-
-            return;
-        }
-        $root = $this->rootFor($scope);
+        $root = null === $this->running ? $this->rootFor($scope) : null;
         if (null === $root) {
-            $this->fail($onDone, $this->translator->trans('Cannot install globally (no home directory)'));
+            $this->fail(
+                $onDone,
+                null !== $this->running
+                    ? $this->translator->trans('Another install is already running')
+                    : $this->translator->trans('Cannot install globally (no home directory)'),
+            );
 
             return;
         }
@@ -110,22 +110,18 @@ final class PluginInstaller
         $isDir = !$isUrl && \is_dir($source);
         $isPackageName = !$isUrl && !$isDir && 1 === \preg_match(self::PACKAGE_NAME_PATTERN, $source);
 
-        if ($isDir) {
-            $this->requireByPath($source, $base, $root, $onDone);
+        $require = match (true) {
+            $isDir => $this->requireByPath(...),
+            $isPackageName => $this->requireByName(...),
+            $isUrl => $this->requireByGitUrl(...),
+            default => null,
+        };
+        if (null === $require) {
+            $this->fail($onDone, $this->translator->trans('"%source%" is not a git URL, a local directory, or a vendor/name package', ['%source%' => $source]));
 
             return;
         }
-        if ($isPackageName) {
-            $this->requireByName($source, $base, $root, $onDone);
-
-            return;
-        }
-        if ($isUrl) {
-            $this->requireByGitUrl($source, $base, $root, $onDone);
-
-            return;
-        }
-        $this->fail($onDone, $this->translator->trans('"%source%" is not a git URL, a local directory, or a vendor/name package', ['%source%' => $source]));
+        $require($source, $base, $root, $onDone);
     }
 
     /**
@@ -165,33 +161,14 @@ final class PluginInstaller
      */
     private function requireByPath(string $source, string $base, string $root, \Closure $onDone): void
     {
-        if (!\is_file($source.'/plugin.php')) {
-            $this->fail($onDone, $this->translator->trans('No plugin.php found in %source%', ['%source%' => $source]));
-
-            return;
-        }
-        [$packageName, $type] = $this->packageManifest($source);
-        if (null === $packageName || 'porta-plugin' !== $type) {
-            $this->fail($onDone, $this->translator->trans('No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")', ['%source%' => $source]));
-
-            return;
-        }
-        $name = $this->validatedName($packageName, $onDone);
-        if (null === $name) {
-            return;
-        }
-        $dest = $this->destFor($base, $name, $onDone);
-        if (null === $dest) {
+        $packageName = $this->pathPackage($source, $onDone);
+        $dest = null === $packageName ? null : $this->destination($base, $packageName, $onDone);
+        if (null === $packageName || null === $dest) {
             return;
         }
 
         $composerDir = $this->project->ensureScaffold($root);
-        if (null === $composerDir) {
-            $this->failScaffoldWrite($onDone, $root);
-
-            return;
-        }
-        if (!$this->project->addPathRepository($root, $packageName, (string) \realpath($source))) {
+        if (null === $composerDir || !$this->project->addPathRepository($root, $packageName, (string) \realpath($source))) {
             $this->failScaffoldWrite($onDone, $root);
 
             return;
@@ -216,6 +193,29 @@ final class PluginInstaller
     }
 
     /**
+     * The package name a local plugin directory declares — null (with $onDone
+     * already called) when it has no plugin.php or no Porta plugin manifest.
+     *
+     * @param \Closure(?string, ?string): void $onDone
+     */
+    private function pathPackage(string $source, \Closure $onDone): ?string
+    {
+        $hasPluginFile = \is_file($source.'/plugin.php');
+        [$packageName, $type] = $hasPluginFile ? $this->packageManifest($source) : [null, null];
+        $refusal = match (true) {
+            !$hasPluginFile => $this->translator->trans('No plugin.php found in %source%', ['%source%' => $source]),
+            null === $packageName || 'porta-plugin' !== $type
+                => $this->translator->trans('No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")', ['%source%' => $source]),
+            default => null,
+        };
+        if (null !== $refusal) {
+            $this->fail($onDone, $refusal);
+        }
+
+        return null === $refusal ? $packageName : null;
+    }
+
+    /**
      * A plain Packagist `vendor/name`: no repository entry needed, composer
      * resolves it normally. There is no way to check the landed package IS a
      * Porta plugin before the network round-trip, so this is the one flow
@@ -227,11 +227,7 @@ final class PluginInstaller
      */
     private function requireByName(string $source, string $base, string $root, \Closure $onDone): void
     {
-        $name = $this->validatedName($source, $onDone);
-        if (null === $name) {
-            return;
-        }
-        $dest = $this->destFor($base, $name, $onDone);
+        $dest = $this->destination($base, $source, $onDone);
         if (null === $dest) {
             return;
         }
@@ -334,22 +330,13 @@ final class PluginInstaller
 
                     // @codeCoverageIgnoreEnd
                 }
-                $name = $this->validatedName($packageName, $onDone);
-                if (null === $name) {
-                    return;
-                }
-                $dest = $this->destFor($base, $name, $onDone);
+                $dest = $this->destination($base, $packageName, $onDone);
                 if (null === $dest) {
                     return;
                 }
 
                 $composerDir = $this->project->ensureScaffold($root);
-                if (null === $composerDir) {
-                    $this->failScaffoldWrite($onDone, $root);
-
-                    return;
-                }
-                if (!$this->project->addVcsRepository($root, $packageName, $source)) {
+                if (null === $composerDir || !$this->project->addVcsRepository($root, $packageName, $source)) {
                     $this->failScaffoldWrite($onDone, $root);
 
                     return;
@@ -478,16 +465,22 @@ final class PluginInstaller
         // never disagree about whether an install is owed: a composer.json
         // whose only requirement is `php` asks for nothing, and shelling out
         // for it would be a subprocess to answer no.
-        if (!PluginManifest::beside($pluginDir.'/plugin.php')->needsInstall()) {
-            return DependencyInstall::NotNeeded;
-        }
-        if (null !== $this->running) {
-            return DependencyInstall::Busy;
-        }
-        if (null === $this->composerBinary) {
-            return DependencyInstall::NoComposer;
-        }
-        $this->running = new AsyncProcess([$this->composerBinary, 'install', '--no-dev', '--no-interaction'], $pluginDir, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
+        return match (true) {
+            !PluginManifest::beside($pluginDir.'/plugin.php')->needsInstall() => DependencyInstall::NotNeeded,
+            null !== $this->running => DependencyInstall::Busy,
+            null === $this->composerBinary => DependencyInstall::NoComposer,
+            default => $this->runComposerInstall($this->composerBinary, $pluginDir, $onExit),
+        };
+    }
+
+    /**
+     * Start `composer install` in $pluginDir, taking the single process slot.
+     *
+     * @param \Closure(int): void $onExit composer's exit code
+     */
+    private function runComposerInstall(string $composerBinary, string $pluginDir, \Closure $onExit): DependencyInstall
+    {
+        $this->running = new AsyncProcess([$composerBinary, 'install', '--no-dev', '--no-interaction'], $pluginDir, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         // The slot is cleared BEFORE the callback runs, with no loop turn in
         // between, so a caller draining a queue can start the next install from
         // inside it and never see Busy.
@@ -508,12 +501,10 @@ final class PluginInstaller
             // @codeCoverageIgnoreStart
             $this->running = null;
 
-            return DependencyInstall::NoComposer;
-
             // @codeCoverageIgnoreEnd
         }
 
-        return DependencyInstall::Started;
+        return $started ? DependencyInstall::Started : DependencyInstall::NoComposer;
     }
 
     /**
@@ -531,21 +522,22 @@ final class PluginInstaller
      */
     public function removeDependencies(string $pluginDir): DependencyRemoval
     {
-        if (!\is_file($pluginDir.'/'.self::MARKER)) {
-            return DependencyRemoval::NotOurs;
-        }
-        if (null !== $this->running) {
+        $outcome = match (true) {
+            !\is_file($pluginDir.'/'.self::MARKER) => DependencyRemoval::NotOurs,
             // Deleting a tree composer is writing into leaves a half-vendor
             // that needsInstall() would then call complete.
-            return DependencyRemoval::Busy;
-        }
-        try {
-            $this->fs->remove($pluginDir.'/vendor');
-        } catch (IOExceptionInterface) {
-            return DependencyRemoval::Failed;
+            null !== $this->running => DependencyRemoval::Busy,
+            default => DependencyRemoval::Removed,
+        };
+        if (DependencyRemoval::Removed === $outcome) {
+            try {
+                $this->fs->remove($pluginDir.'/vendor');
+            } catch (IOExceptionInterface) {
+                $outcome = DependencyRemoval::Failed;
+            }
         }
 
-        return DependencyRemoval::Removed;
+        return $outcome;
     }
 
     /**
@@ -561,14 +553,13 @@ final class PluginInstaller
      */
     public function remove(string $name, InstallScope $scope, \Closure $onDone): void
     {
-        if (InstallScope::Embedded === $scope) {
-            $onDone($this->translator->trans('Built-in plugins cannot be removed'));
-
-            return;
-        }
-        $root = $this->rootFor($scope);
+        $root = InstallScope::Embedded === $scope ? null : $this->rootFor($scope);
         if (null === $root) {
-            $onDone($this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]));
+            $onDone(
+                InstallScope::Embedded === $scope
+                    ? $this->translator->trans('Built-in plugins cannot be removed')
+                    : $this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]),
+            );
 
             return;
         }
@@ -578,15 +569,20 @@ final class PluginInstaller
 
             return;
         }
+        $this->removeByComposer($root, $dest, $name, $onDone);
+    }
 
+    /**
+     * `composer remove` the package a symlinked plugin entry points at, then
+     * unlink the entry.
+     *
+     * @param \Closure(?string): void $onDone
+     */
+    private function removeByComposer(string $root, string $dest, string $name, \Closure $onDone): void
+    {
         [$packageName] = $this->packageManifest($dest);
-        if (null === $packageName) {
-            $onDone($this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]));
-
-            return;
-        }
-        $composerDir = $this->project->ensureScaffold($root);
-        if (null === $composerDir) {
+        $composerDir = null === $packageName ? null : $this->project->ensureScaffold($root);
+        if (null === $packageName || null === $composerDir) {
             $onDone($this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]));
 
             return;
@@ -747,6 +743,19 @@ final class PluginInstaller
         }
 
         return $name;
+    }
+
+    /**
+     * Where $packageName installs under $base — null (with $onDone already
+     * called) when its name is not a valid plugin name or it is already there.
+     *
+     * @param \Closure(?string, ?string): void $onDone
+     */
+    private function destination(string $base, string $packageName, \Closure $onDone): ?string
+    {
+        $name = $this->validatedName($packageName, $onDone);
+
+        return null === $name ? null : $this->destFor($base, $name, $onDone);
     }
 
     /**

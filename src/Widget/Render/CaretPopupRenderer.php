@@ -143,14 +143,11 @@ final class CaretPopupRenderer
     /** The last $width columns of $text, an ellipsis standing for what went. */
     private static function tailOf(string $text, int $width): string
     {
-        if (AnsiUtils::visibleWidth($text) <= $width) {
-            return $text;
-        }
-        if ($width < 1) {
-            return '';
-        }
-
-        return Glyphs::ELLIPSIS.AnsiUtils::sliceByColumn($text, AnsiUtils::visibleWidth($text) - ($width - 1), $width - 1);
+        return match (true) {
+            AnsiUtils::visibleWidth($text) <= $width => $text,
+            $width < 1 => '',
+            default => Glyphs::ELLIPSIS.AnsiUtils::sliceByColumn($text, AnsiUtils::visibleWidth($text) - ($width - 1), $width - 1),
+        };
     }
 
     private static function counterTail(string $tail, Style $style): string
@@ -174,11 +171,44 @@ final class CaretPopupRenderer
     public static function docPopup(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, int $scroll, Styles $styles, ?TooltipBody $problems = null): ?array
     {
         $width = \min(PopupMetrics::COMPLETION_DOC_INNER, $columns - PopupFrame::CHROME_COLS - 1);
-        if ($width < 8) {
+        // Too narrow to hold a docblock: no rows, so nothing is shown below.
+        $body = $width < 8 ? [] : self::docBody($text, $width, $styles, $problems);
+        $wanted = \min(\count($body), PopupMetrics::COMPLETION_ROWS);
+        $roomBelow = $rows - $cursorScreenRow - 1 - PopupFrame::CHROME_ROWS;
+        $roomAbove = $cursorScreenRow - PopupFrame::CHROME_ROWS;
+        $below = $roomBelow >= $wanted || ($roomAbove < $wanted && $roomBelow >= $roomAbove);
+        $shown = \min($wanted, $below ? $roomBelow : $roomAbove);
+        if ($shown < 1) {
             return null;
         }
-        // Each row ready to frame, or null for the tee that parts the problems
-        // from the documentation under them.
+        $maxScroll = \count($body) - $shown;
+        $offset = \max(0, \min($scroll, $maxScroll));
+        $height = $shown + PopupFrame::CHROME_ROWS;
+        $top = $below ? $cursorScreenRow + 1 : $cursorScreenRow - $height;
+        $framedWidth = $width + PopupFrame::CHROME_COLS;
+        $col = IntMath::clamp($anchorCol - 1, 0, $columns - $framedWidth);
+
+        $framed = [PopupFrame::top($width, $styles, mark: $offset > 0 ? Glyphs::SCROLL_UP : '')];
+        foreach (\array_slice($body, $offset, $shown) as $row) {
+            $framed[] = null === $row ? PopupFrame::tee($width, $styles) : PopupFrame::rail($row, $width, $styles);
+        }
+        $framed[] = PopupFrame::bottom($width, $styles, mark: $offset < $maxScroll ? Glyphs::SCROLL_DOWN : '');
+        foreach ($framed as $i => $row) {
+            $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $framedWidth, $columns, $row);
+        }
+        $lines = ModalShadow::blit($lines, $top, $col, $framedWidth, $height, $columns, $styles);
+
+        return ['rect' => [$top, $col, $framedWidth, $height], 'maxScroll' => $maxScroll];
+    }
+
+    /**
+     * The doc popup's rows, ready to frame: the problems' card, then the
+     * documentation wrapped to $width, or null for the tee that parts them.
+     *
+     * @return list<string|null>
+     */
+    private static function docBody(string $text, int $width, Styles $styles, ?TooltipBody $problems): array
+    {
         $body = null === $problems ? [] : TooltipCard::rows(TooltipCard::layout($problems, $width - 2), $width, $styles);
         if ([] !== $body && '' !== $text) {
             $body[] = null;
@@ -192,32 +222,8 @@ final class CaretPopupRenderer
                 $body[] = $plain->apply(AnsiText::truncate(' '.$wrapped, $width, pad: true));
             }
         }
-        $wanted = \min(\count($body), PopupMetrics::COMPLETION_ROWS);
-        $roomBelow = $rows - $cursorScreenRow - 1 - PopupFrame::CHROME_ROWS;
-        $roomAbove = $cursorScreenRow - PopupFrame::CHROME_ROWS;
-        $below = $roomBelow >= $wanted || ($roomAbove < $wanted && $roomBelow >= $roomAbove);
-        $shown = \min($wanted, $below ? $roomBelow : $roomAbove);
-        if ($shown < 1) {
-            return null;
-        }
-        $maxScroll = \count($body) - $shown;
-        $scroll = \max(0, \min($scroll, $maxScroll));
-        $height = $shown + PopupFrame::CHROME_ROWS;
-        $top = $below ? $cursorScreenRow + 1 : $cursorScreenRow - $height;
-        $framedWidth = $width + PopupFrame::CHROME_COLS;
-        $col = IntMath::clamp($anchorCol - 1, 0, $columns - $framedWidth);
 
-        $framed = [PopupFrame::top($width, $styles, mark: $scroll > 0 ? Glyphs::SCROLL_UP : '')];
-        foreach (\array_slice($body, $scroll, $shown) as $row) {
-            $framed[] = null === $row ? PopupFrame::tee($width, $styles) : PopupFrame::rail($row, $width, $styles);
-        }
-        $framed[] = PopupFrame::bottom($width, $styles, mark: $scroll < $maxScroll ? Glyphs::SCROLL_DOWN : '');
-        foreach ($framed as $i => $row) {
-            $lines[$top + $i] = OverlayCompositor::into($lines[$top + $i], $col, $framedWidth, $columns, $row);
-        }
-        $lines = ModalShadow::blit($lines, $top, $col, $framedWidth, $height, $columns, $styles);
-
-        return ['rect' => [$top, $col, $framedWidth, $height], 'maxScroll' => $maxScroll];
+        return $body;
     }
 
     /**
@@ -231,11 +237,8 @@ final class CaretPopupRenderer
     public static function completionNote(array &$lines, int $columns, int $rows, int $cursorScreenRow, int $anchorCol, string $text, Styles $styles): ?CaretSide
     {
         $width = \min(AnsiUtils::visibleWidth($text) + 2, $columns - PopupFrame::CHROME_COLS);
-        if ($width < 3) {
-            return null;
-        }
         $top = ($cursorScreenRow + 1 + 3) <= $rows ? $cursorScreenRow + 1 : $cursorScreenRow - 3;
-        if ($top < 0) {
+        if ($width < 3 || $top < 0) {
             return null;
         }
         $col = IntMath::clamp($anchorCol - 1, 0, $columns - $width - PopupFrame::CHROME_COLS);

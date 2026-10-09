@@ -42,6 +42,7 @@ use Porta\Widget\Support\StylesDefault;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 use Symfony\Component\Tui\Widget\FocusableTrait;
@@ -173,105 +174,57 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     #[\Override]
     public function handleInput(string $data): void
     {
-        if ($this->inputHookHandled($data)) {
-            return;
-        }
-        if (!$this->open || null === $this->target) {
+        if ($this->inputHookHandled($data) || !$this->open || null === $this->target) {
             return;
         }
 
         $kb = $this->getKeybindings();
 
-        if ($kb->matches($data, 'close')) {
-            $this->close();
+        match (true) {
+            $kb->matches($data, 'close') => $this->close(),
+            $kb->matches($data, 'find_next') => $this->findNext(),
+            $kb->matches($data, 'history_prev') => $this->recallHistory(1),
+            $kb->matches($data, 'history_next') => $this->recallHistory(-1),
+            $kb->matches($data, 'find_prev') => $this->stepMatch(-1),
+            $kb->matches($data, 'switch_field') => $this->switchField(),
+            $kb->matches($data, 'toggle_regex') => $this->toggleRegex(),
+            $kb->matches($data, 'toggle_word') => $this->toggleWholeWord(),
+            $kb->matches($data, 'toggle_case') => $this->toggleMatchCase(),
+            $kb->matches($data, 'replace_one') => $this->replaceCurrent(),
+            $kb->matches($data, 'replace_all') => $this->replaceAll(),
+            $kb->matches($data, 'select_all_matches') => $this->selectAllMatches(),
+            $kb->matches($data, 'delete_char_backward') => $this->editActiveField(static fn (TextField $field): bool => $field->backspace()),
+            default => $this->typeKey($data, $kb),
+        };
+    }
 
-            return;
+    /**
+     * Enter/F3: the next match. Recorded on Enter/F3 rather than as you type:
+     * every prefix of every query would otherwise land in the list, and the
+     * one you meant would be twenty entries down.
+     */
+    private function findNext(): void
+    {
+        $this->history?->add($this->query->value());
+        $this->stepMatch(1);
+    }
+
+    /** Tab: hop between the query and the replacement, when there is one. */
+    private function switchField(): void
+    {
+        if ($this->withReplace) {
+            $this->activeField = 1 - $this->activeField;
+            $this->invalidate();
         }
+    }
 
-        if ($kb->matches($data, 'find_next')) {
-            // Recorded on Enter/F3 rather than as you type: every prefix of
-            // every query would otherwise land in the list, and the one you
-            // meant would be twenty entries down.
-            $this->history?->add($this->query->value());
-            $this->refreshIfStale();
-            $this->gotoMatch($this->currentIndex + 1);
-
-            return;
-        }
-
-        if ($kb->matches($data, 'history_prev')) {
-            $this->recallHistory(1);
-
-            return;
-        }
-
-        if ($kb->matches($data, 'history_next')) {
-            $this->recallHistory(-1);
-
-            return;
-        }
-
-        if ($kb->matches($data, 'find_prev')) {
-            $this->refreshIfStale();
-            $this->gotoMatch($this->currentIndex - 1);
-
-            return;
-        }
-
-        if ($kb->matches($data, 'switch_field')) {
-            if ($this->withReplace) {
-                $this->activeField = 1 - $this->activeField;
-                $this->invalidate();
-            }
-
-            return;
-        }
-
-        if ($kb->matches($data, 'toggle_regex')) {
-            $this->toggleRegex();
-
-            return;
-        }
-
-        if ($kb->matches($data, 'toggle_word')) {
-            $this->toggleWholeWord();
-
-            return;
-        }
-
-        if ($kb->matches($data, 'toggle_case')) {
-            $this->toggleMatchCase();
-
-            return;
-        }
-
-        if ($kb->matches($data, 'replace_one')) {
-            $this->replaceCurrent();
-
-            return;
-        }
-
-        if ($kb->matches($data, 'replace_all')) {
-            $this->replaceAll();
-
-            return;
-        }
-
-        if ($kb->matches($data, 'select_all_matches')) {
-            $this->selectAllMatches();
-
-            return;
-        }
-
-        if ($kb->matches($data, 'delete_char_backward')) {
-            $this->editActiveField(static fn (TextField $field): bool => $field->backspace());
-
-            return;
-        }
-
-        // Plain text input, or the field's caret keys. Typing leaves
-        // history-browsing, so the next Alt+Up starts from the top again
-        // rather than from wherever the cursor was left three searches ago.
+    /**
+     * Plain text input, or the field's caret keys. Typing leaves
+     * history-browsing, so the next Alt+Up starts from the top again
+     * rather than from wherever the cursor was left three searches ago.
+     */
+    private function typeKey(string $data, Keybindings $kb): void
+    {
         $this->historyCursor = -1;
         $this->editActiveField(static fn (TextField $field): bool => $field->editKey($data, $kb) || $field->insert($data));
     }
@@ -414,6 +367,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             return [];
         }
 
+        return $this->renderOpen($context);
+    }
+
+    /** @return list<string> */
+    private function renderOpen(RenderContext $context): array
+    {
         $columns = $context->getColumns();
         $count = \count($this->matches);
         $position = match (true) {
@@ -626,24 +585,16 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             }
         }
 
-        if (MatchJump::ToNearest === $jumpToNearest && [] !== $this->matches) {
-            $cursorLine = $this->target->findCaretLine;
-            $cursorCol = $this->target->findCaretCol;
-            foreach ($this->matches as $i => $match) {
-                if (!($match['line'] > $cursorLine || ($match['line'] === $cursorLine && $match['start'] >= $cursorCol))) {
-                    continue;
-                }
-
-                $this->gotoMatch($i);
-
-                return;
-            }
-            $this->gotoMatch(0);
-
-            return;
-        }
-
-        $this->notifyUpdate();
+        $cursorLine = $this->target->findCaretLine;
+        $cursorCol = $this->target->findCaretCol;
+        match (true) {
+            // The first match at or after the caret, else wrap to the first.
+            MatchJump::ToNearest === $jumpToNearest && [] !== $this->matches => $this->gotoMatch(\array_find_key(
+                $this->matches,
+                static fn (array $match): bool => $match['line'] > $cursorLine || ($match['line'] === $cursorLine && $match['start'] >= $cursorCol),
+            ) ?? 0),
+            default => $this->notifyUpdate(),
+        };
     }
 
     private function gotoMatch(int $index): void

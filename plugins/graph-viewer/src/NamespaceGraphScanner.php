@@ -72,24 +72,19 @@ final readonly class NamespaceGraphScanner
      */
     private static function bucket(?string $name, array $roots): ?array
     {
-        if (null === $name || '' === $name) {
+        $subject = $name ?? '';
+        $prefix = '' === $subject ? null : \array_find(\array_keys($roots), static fn (string $prefix): bool => $subject === $prefix || \str_starts_with($subject, $prefix.'\\'));
+        if (null === $prefix) {
             return null;
         }
-        foreach (\array_keys($roots) as $prefix) {
-            if ($name !== $prefix && !\str_starts_with($name, $prefix.'\\')) {
-                continue;
-            }
-            $rest = $name === $prefix ? '' : \substr($name, \strlen($prefix) + 1);
-            $segment = '' !== $rest ? \explode('\\', $rest)[0] : '';
+        $rest = $subject === $prefix ? '' : \substr($subject, \strlen($prefix) + 1);
+        $segment = '' !== $rest ? \explode('\\', $rest)[0] : '';
 
-            return (
-                '' !== $segment
-                    ? [$prefix.'\\'.$segment, $segment]
-                    : [$prefix, $prefix]
-            );
-        }
-
-        return null;
+        return (
+            '' !== $segment
+                ? [$prefix.'\\'.$segment, $segment]
+                : [$prefix, $prefix]
+        );
     }
 
     /** @return list<string> sorted */

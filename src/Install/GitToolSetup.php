@@ -74,17 +74,13 @@ final readonly class GitToolSetup
         if (null === $current) {
             return GitToolStatus::Unavailable;
         }
-        if ([] === $this->owned($current)) {
-            return GitToolStatus::Absent;
-        }
-        foreach ($this->entries() as [$key, $value]) {
-            // git reads keys case-insensitively and lists them in lower case.
-            if (($current[\strtolower($key)] ?? null) !== $value) {
-                return GitToolStatus::Stale;
-            }
-        }
 
-        return GitToolStatus::Current;
+        return match (true) {
+            [] === $this->owned($current) => GitToolStatus::Absent,
+            // git reads keys case-insensitively and lists them in lower case.
+            \array_any($this->entries(), static fn (array $entry): bool => ($current[\strtolower($entry[0])] ?? null) !== $entry[1]) => GitToolStatus::Stale,
+            default => GitToolStatus::Current,
+        };
     }
 
     /**

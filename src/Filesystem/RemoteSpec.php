@@ -32,11 +32,16 @@ final readonly class RemoteSpec
     {
         $input = \trim($input);
         $scheme = \strstr($input, needle: '://', before_needle: true);
-        if (false !== $scheme) {
-            return self::fromUrl(\strtolower($scheme), $input);
-        }
-        // scp's `[user@]host:path` — the colon before any slash is what makes
-        // it remote, which is also how scp tells it from a local path.
+
+        return false !== $scheme ? self::fromUrl(\strtolower($scheme), $input) : self::fromScp($input);
+    }
+
+    /**
+     * scp's `[user@]host:path` — the colon before any slash is what makes it
+     * remote, which is also how scp tells it from a local path.
+     */
+    private static function fromScp(string $input): ?self
+    {
         $parts = [];
         if (1 !== \preg_match('#^(?:([^@/:\s]+)@)?([^@/:\s]+):(.*)$#', $input, $parts)) {
             return null;

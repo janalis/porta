@@ -103,27 +103,28 @@ final class UndoHistory
     {
         if ($this->compoundDepth > 0) {
             // One snapshot for the whole compound; suppress the rest.
-            if ($this->compoundSnapshotted) {
-                $this->redoStack = [];
-
-                return;
+            $first = !$this->compoundSnapshotted;
+            if ($first) {
+                $this->compoundSnapshotted = true;
+                $this->lastEditKind = '';
+                $this->store($snapshot);
             }
-            $this->compoundSnapshotted = true;
-            $this->lastEditKind = '';
-            $this->store($snapshot);
+            if (!$first) {
+                $this->redoStack = [];
+            }
 
             return;
         }
 
         $now = Clocks::seconds($this->clock);
-        if (null !== $coalesceKey && $coalesceKey === $this->lastEditKind && ($now - $this->lastEditAt) < 1.0 && [] !== $this->undoStack) {
-            $this->lastEditAt = $now;
+        $coalesces = null !== $coalesceKey && $coalesceKey === $this->lastEditKind && ($now - $this->lastEditAt) < 1.0 && [] !== $this->undoStack;
+        $this->lastEditAt = $now;
+        if ($coalesces) {
             $this->redoStack = [];
 
             return;
         }
         $this->lastEditKind = $coalesceKey ?? '';
-        $this->lastEditAt = $now;
         $this->store($snapshot);
     }
 

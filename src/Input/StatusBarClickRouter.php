@@ -64,36 +64,39 @@ final readonly class StatusBarClickRouter
 
         $col = $rect->toRelative($mouse->row, $mouse->col)['col'];
         $file = $this->statusBar->fileAt($col);
-        if (null !== $file) {
-            if (2 === $clicks->countAt($mouse->row, $mouse->col)) {
-                $this->tree->revealPath($file);
-                $this->tui->requestRender();
-            }
+        $action = null === $file ? $this->statusBar->clickAt($col) : null;
 
-            return true;
-        }
+        return match (true) {
+            null !== $file => $this->pressFile($file, $mouse, $clicks),
+            null !== $action => $this->runAction($action),
+            default => $openMenu($mouse),
+        };
+    }
 
-        $action = $this->statusBar->clickAt($col);
-        if (null === $action) {
-            return $openMenu($mouse);
-        }
-
-        // The pane speaking on the right answers for its own cells (a
-        // preview's zoom), then registry commands (the tool windows); anything
-        // else is an editor verb, which is where `goto_line` lives.
-        $pane = $this->editorArea->widget();
-        if ($pane instanceof EditorPaneWidget && $pane->runStatusAction($action)) {
+    /** The file part: its first click is consumed, a double-click reveals the file. */
+    private function pressFile(string $file, MouseEvent $mouse, ClickCounter $clicks): bool
+    {
+        if (2 === $clicks->countAt($mouse->row, $mouse->col)) {
+            $this->tree->revealPath($file);
             $this->tui->requestRender();
-
-            return true;
-        }
-        if ($this->commands->has($action)) {
-            $this->commands->run($action);
-
-            return true;
         }
 
-        $this->editor->runAction($action);
+        return true;
+    }
+
+    /**
+     * The pane speaking on the right answers for its own cells (a
+     * preview's zoom), then registry commands (the tool windows); anything
+     * else is an editor verb, which is where `goto_line` lives.
+     */
+    private function runAction(string $action): bool
+    {
+        $pane = $this->editorArea->widget();
+        match (true) {
+            $pane instanceof EditorPaneWidget && $pane->runStatusAction($action) => $this->tui->requestRender(),
+            $this->commands->has($action) => $this->commands->run($action),
+            default => $this->editor->runAction($action),
+        };
 
         return true;
     }

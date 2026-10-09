@@ -34,7 +34,7 @@ final class HtmlSyntax
     {
         foreach (self::BLOCK_OPEN as $type => $pattern) {
             if (7 === $type && 1 === \preg_match('/^<\/?(?:script|style|pre|textarea)\b/i', $text)) {
-                return 0;
+                break;
             }
             if (1 === \preg_match($pattern, $text)) {
                 return $type;

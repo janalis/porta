@@ -255,18 +255,14 @@ final readonly class EditorRowAssembler
     private function trailing(int $lineIndex, EditorDecorations $decorations, array $lineDiags): array
     {
         $debugValue = $this->store->debugValues[$lineIndex] ?? '';
-        if ('' !== $debugValue) {
-            return [$debugValue, Role::DebugValue, false];
-        }
         $agent = $decorations->remoteCarets[$lineIndex][0] ?? null;
-        if (null !== $agent) {
-            return [$agent['label'], Role::agent($agent['slot']), false];
-        }
-        if (DiagnosticMessageMode::Inline === $this->diagnosticMessages && [] !== $lineDiags) {
-            return ['', Role::Inlay, true];
-        }
 
-        return [$this->store->lineAnnotations[$lineIndex] ?? '', Role::Inlay, false];
+        return match (true) {
+            '' !== $debugValue => [$debugValue, Role::DebugValue, false],
+            null !== $agent => [$agent['label'], Role::agent($agent['slot']), false],
+            DiagnosticMessageMode::Inline === $this->diagnosticMessages && [] !== $lineDiags => ['', Role::Inlay, true],
+            default => [$this->store->lineAnnotations[$lineIndex] ?? '', Role::Inlay, false],
+        };
     }
 
     /**
@@ -303,17 +299,13 @@ final readonly class EditorRowAssembler
      * underline under every character of the line being typed, so there the
      * gutter marks the caret line instead ({@see gutterCell()}).
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- whether this row is the focused caret line is the row's state, computed by the caller from four facts this method does not see.
     private function lineBand(string $content, int $lineIndex, bool $caretBand, int $width): string
     {
-        if ($lineIndex === $this->store->debugLine) {
-            return LineDecorator::applyFullWidth($content, $width, $this->styles->of(Role::DebugLineBg));
-        }
-        if ($caretBand && $this->styles->hasColor()) {
-            return LineDecorator::applyFullWidth($content, $width, $this->styles->of(Role::RowHighlightBg));
-        }
-
-        return $content;
+        return match (true) {
+            $lineIndex === $this->store->debugLine => LineDecorator::applyFullWidth($content, $width, $this->styles->of(Role::DebugLineBg)),
+            $caretBand && $this->styles->hasColor() => LineDecorator::applyFullWidth($content, $width, $this->styles->of(Role::RowHighlightBg)),
+            default => $content,
+        };
     }
 
     /**
@@ -509,12 +501,9 @@ final readonly class EditorRowAssembler
         if (0 === $geo->gutterWidth) {
             return '';
         }
-        if ($rowSegment > 0) {
-            return $this->shaded('', $geo->gutterWidth);
-        }
-        $tint = $this->lineTint($lineIndex);
+        $tint = $rowSegment > 0 ? null : $this->lineTint($lineIndex);
 
-        return $this->shaded($this->gutterCell($lineIndex, $caret, $geo->numberWidth, $tint), $geo->gutterWidth, $tint);
+        return $this->shaded($rowSegment > 0 ? '' : $this->gutterCell($lineIndex, $caret, $geo->numberWidth, $tint), $geo->gutterWidth, $tint);
     }
 
     /**
@@ -581,16 +570,13 @@ final readonly class EditorRowAssembler
      */
     private function separatorFrom(int $lineIndex, int $rowSegment, int $contentWidth): ?int
     {
-        if (null === ($this->separators[$lineIndex] ?? null)) {
-            return null;
-        }
-        if (null === $this->wrap) {
-            return 0;
-        }
-
-        return $rowSegment === ($this->wrap->rowsFor($lineIndex, $contentWidth) - 1)
-            ? WrapLayout::offsetOf($rowSegment, $contentWidth)
-            : null;
+        return match (true) {
+            null === ($this->separators[$lineIndex] ?? null) => null,
+            null === $this->wrap => 0,
+            default => $rowSegment === ($this->wrap->rowsFor($lineIndex, $contentWidth) - 1)
+                ? WrapLayout::offsetOf($rowSegment, $contentWidth)
+                : null,
+        };
     }
 
     /**

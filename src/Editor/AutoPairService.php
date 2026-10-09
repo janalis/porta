@@ -41,34 +41,28 @@ final class AutoPairService
         $nextChar = $line[$doc->cursorCol] ?? '';
 
         // Type over an existing closer/quote instead of inserting a new one.
-        if ($keys === $nextChar && \in_array($keys, self::PAIRS, strict: true)) {
+        $typesOver = $keys === $nextChar && \in_array($keys, self::PAIRS, strict: true);
+        $pairs = !$typesOver && $isOpen && self::pairs($keys, $line, $doc->cursorCol, $nextChar);
+        if ($typesOver) {
             $doc->moveRight();
-
-            return true;
+        }
+        if ($pairs) {
+            $doc->insert($keys.self::PAIRS[$keys]);
+            $doc->moveLeft();
         }
 
-        if (!$isOpen) {
-            return false;
-        }
+        return $typesOver || $pairs;
+    }
 
+    /** Whether typing the opener $keys at $col of $line inserts its closer too. */
+    private static function pairs(string $keys, string $line, int $col, string $nextChar): bool
+    {
         // Quote heuristic: don't pair a quote right after a word char (e.g. it's)
         // or when the same quote already sits under the cursor.
-        $close = self::PAIRS[$keys];
-        if ($keys === $close) {
-            $prevChar = $doc->cursorCol > 0 ? $line[$doc->cursorCol - 1] ?? '' : '';
-            if (1 === \preg_match('/[\w]/', $prevChar)) {
-                return false;
-            }
-        }
+        $afterWord = $keys === self::PAIRS[$keys] && 1 === \preg_match('/[\w]/', $col > 0 ? $line[$col - 1] ?? '' : '');
+
         // Don't pair when the next char is an identifier char (would be noise).
-        if ('' !== $nextChar && 1 === \preg_match('/[\w]/', $nextChar)) {
-            return false;
-        }
-
-        $doc->insert($keys.$close);
-        $doc->moveLeft();
-
-        return true;
+        return !$afterWord && ('' === $nextChar || 1 !== \preg_match('/[\w]/', $nextChar));
     }
 
     /**

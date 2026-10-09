@@ -42,23 +42,47 @@ final class ResultsView
     ): array {
         $needle = \mb_strtolower($filter);
 
-        if (ResultLayout::Flat === $grouped) {
-            $rows = [];
-            foreach ($results as $index => $result) {
-                if (!self::passes($result, $needle)) {
-                    continue;
-                }
+        return match (true) {
+            ResultLayout::Flat === $grouped => self::buildFlat($results, $needle),
+            ResultGrouping::Nested === $grouping => self::buildNested($results, $collapsed, $needle, $expanded, $context),
+            default => self::buildGrouped($results, $collapsed, $needle, $grouping, $expanded, $context),
+        };
+    }
 
-                $rows[] = DisplayRow::match($index);
+    /**
+     * The flat view: every passing match, one row each, in grep's order.
+     *
+     * @param list<ResultRow> $results
+     *
+     * @return list<DisplayRow>
+     */
+    private static function buildFlat(array $results, string $needle): array
+    {
+        $rows = [];
+        foreach ($results as $index => $result) {
+            if (!self::passes($result, $needle)) {
+                continue;
             }
 
-            return $rows;
+            $rows[] = DisplayRow::match($index);
         }
 
-        if (ResultGrouping::Nested === $grouping) {
-            return self::buildNested($results, $collapsed, $needle, $expanded, $context);
-        }
+        return $rows;
+    }
 
+    /**
+     * The grouped view: a header per file (or directory), then — unless
+     * collapsed — its matches.
+     *
+     * @param list<ResultRow> $results
+     * @param array<string, bool>                              $collapsed
+     * @param array<int, bool>                                 $expanded
+     * @param array<int, list<array{line: int, text: string}>> $context
+     *
+     * @return list<DisplayRow>
+     */
+    private static function buildGrouped(array $results, array $collapsed, string $needle, ResultGrouping $grouping, array $expanded, array $context): array
+    {
         // Group the passing matches by file or directory, preserving grep's first-seen order.
         $byKey = [];
         foreach ($results as $index => $result) {

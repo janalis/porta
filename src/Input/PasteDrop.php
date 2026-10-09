@@ -60,17 +60,14 @@ final class PasteDrop
     /** Whether $data was a paste of paths, now held; false leaves it to the paste paths. */
     public function take(string $data): bool
     {
-        if (!\str_starts_with($data, self::START) || !\str_ends_with($data, self::END) || $this->drop->isTyping()) {
-            return false;
+        $framed = \str_starts_with($data, self::START) && \str_ends_with($data, self::END) && !$this->drop->isTyping();
+        $paths = $framed ? DroppedPaths::parse((string) TextInput::pasted($data)) : null;
+        if (null !== $paths) {
+            $raw = \substr($data, \strlen(self::START), -\strlen(self::END));
+            $this->held = ['paths' => $paths, 'raw' => $raw, 'timer' => $this->clock->delay(self::WAIT, $this->settle(...))];
         }
-        $paths = DroppedPaths::parse((string) TextInput::pasted($data));
-        if (null === $paths) {
-            return false;
-        }
-        $raw = \substr($data, \strlen(self::START), -\strlen(self::END));
-        $this->held = ['paths' => $paths, 'raw' => $raw, 'timer' => $this->clock->delay(self::WAIT, $this->settle(...))];
 
-        return true;
+        return null !== $paths;
     }
 
     /**

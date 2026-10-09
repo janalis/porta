@@ -102,15 +102,12 @@ final class FilesystemReconciler
     private function pollBuffer(Buffer $buffer): void
     {
         $stamp = $buffer->diskStampNow();
-        if (null === $stamp) {
-            if (null !== $buffer->diskStamp) {
+        if (null === $stamp || $stamp === $buffer->diskStamp) {
+            if (null === $stamp && null !== $buffer->diskStamp) {
                 $buffer->diskStamp = null; // flash once; keep the buffer so it can be re-saved
                 $this->notifier->flash($this->translator->trans('%file% deleted on disk', ['%file%' => $this->paths->relative($buffer->path)]));
             }
 
-            return;
-        }
-        if ($stamp === $buffer->diskStamp) {
             return;
         }
 
@@ -121,29 +118,36 @@ final class FilesystemReconciler
 
             return;
         }
+        $this->reconcileTextBuffer($buffer);
+    }
+
+    /** A text tab's file changed on disk: reload it, or settle what its edits make of it. */
+    private function reconcileTextBuffer(Buffer $buffer): void
+    {
         $content = $this->readTextFile($buffer->path);
         if (null === $content) {
             return; // unreadable / too large / binary now — leave the buffer untouched
         }
-        if ($buffer->isDirty() && $content === $buffer->document->getText()) {
+        if (!$buffer->isDirty()) {
+            $this->reloadBuffer($buffer, $content);
+
+            return;
+        }
+        $saved = $content === $buffer->document->getText();
+        if ($saved) {
             // Written with the very text the buffer holds — by whoever the
             // edits came from (an agent's accepted proposal): saved, not a clash.
             $buffer->document->markSaved();
             $buffer->diskChangedUnderEdit = false;
             $this->tui->requestRender();
-
-            return;
         }
-        if ($buffer->isDirty()) {
+        if (!$saved) {
             // Remember it, not just flash it. The flash is gone in seconds and
             // the stamp above now matches disk, so without this the save that
             // follows cannot tell anyone else ever wrote here.
             $buffer->diskChangedUnderEdit = true;
             $this->notifier->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->paths->relative($buffer->path)]));
-
-            return;
         }
-        $this->reloadBuffer($buffer, $content);
     }
 
     /**

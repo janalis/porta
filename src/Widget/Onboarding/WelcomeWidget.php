@@ -371,19 +371,12 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         }
         $kb = $this->getKeybindings();
 
-        if ($kb->matches($data, 'exit_view')) {
-            $this->fire($this->onExit);
-
-            return;
-        }
-        if (ListNavigation::handleKey($data, $kb, $this->list, \count($this->steps), page: $this->lastPage)) {
-            $this->invalidate();
-
-            return;
-        }
-        if ($kb->matches($data, 'confirm')) {
-            $this->runSelected();
-        }
+        match (true) {
+            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
+            ListNavigation::handleKey($data, $kb, $this->list, \count($this->steps), page: $this->lastPage) => $this->invalidate(),
+            $kb->matches($data, 'confirm') => $this->runSelected(),
+            default => null,
+        };
     }
 
     /** Selecting is all a click does — running a step installs software. */

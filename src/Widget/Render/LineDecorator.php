@@ -82,10 +82,18 @@ final class LineDecorator
             }
             $clamped[$i] = [$startCol, $endCol, $openSgr, $closeSgr, $bgReapply];
         }
-        if ([] === $clamped) {
-            return $line;
-        }
 
+        return [] === $clamped ? $line : self::applyClamped($line, $lineWidth, $clamped);
+    }
+
+    /**
+     * {@see applyAll()} past the clamp: the spans cut to the line, none empty,
+     * keyed by application index.
+     *
+     * @param non-empty-array<int, array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $clamped
+     */
+    private static function applyClamped(string $line, int $lineWidth, array $clamped): string
+    {
         $bounds = [];
         foreach ($clamped as [$start, $end]) {
             $bounds[$start] = true;

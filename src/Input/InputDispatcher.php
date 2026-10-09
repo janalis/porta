@@ -129,15 +129,18 @@ final readonly class InputDispatcher
         // A file dropped from outside arrives as a paste of its path. Ahead of
         // the Welcome modal, which would swallow it, and of the pickers, which
         // it types into as text.
-        if (!$this->menuBar->isOpen() && $this->pasteDrop->take($data)) {
-            return true;
-        }
+        return (!$this->menuBar->isOpen() && $this->pasteDrop->take($data)) || $this->capturedByWelcome($data);
+    }
 
-        // The Welcome modal captures the keyboard whole while open: its widget
-        // is never mounted, so no key may fall through to the focused pane
-        // beneath the box. An open app menu wins, though — it is reachable by
-        // mouse over the modal, and its keys (arrows, Esc) flow through the
-        // focused-widget path below, so swallowing here would trap it open.
+    /**
+     * The Welcome modal captures the keyboard whole while open: its widget
+     * is never mounted, so no key may fall through to the focused pane
+     * beneath the box. An open app menu wins, though — it is reachable by
+     * mouse over the modal, and its keys (arrows, Esc) flow through the
+     * focused-widget path below, so swallowing here would trap it open.
+     */
+    private function capturedByWelcome(string $data): bool
+    {
         if (!$this->welcomeModal->isOpen() || $this->menuBar->isOpen()) {
             return false;
         }
@@ -160,12 +163,16 @@ final readonly class InputDispatcher
 
             return $this->rendered();
         }
-        if ($this->overlays->handleInput($data, $this->editor->getKeybindings())) {
-            return $this->rendered();
-        }
 
-        // The Find-in-Files modal is an EDITOR feature (it scopes to the open
-        // buffer) and stays editor-hosted, so it keeps its attachment guard.
+        return $this->overlays->handleInput($data, $this->editor->getKeybindings()) ? $this->rendered() : $this->capturedByFindModal($data);
+    }
+
+    /**
+     * The Find-in-Files modal is an EDITOR feature (it scopes to the open
+     * buffer) and stays editor-hosted, so it keeps its attachment guard.
+     */
+    private function capturedByFindModal(string $data): bool
+    {
         if (null === $this->editor->getContext() || !$this->editor->isFindModalOpen()) {
             return false;
         }

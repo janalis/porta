@@ -48,11 +48,11 @@ final readonly class BlockStarts
         ] as $start) {
             $result = $start($parser, $container);
             if (self::NONE !== $result) {
-                return $result;
+                break;
             }
         }
 
-        return $this->table->open($parser, $container);
+        return self::NONE === $result ? $this->table->open($parser, $container) : $result;
     }
 
     private function quote(BlockParser $parser, OpenBlock $container): int
@@ -116,11 +116,8 @@ final readonly class BlockStarts
     private function html(BlockParser $parser, OpenBlock $container): int
     {
         $cursor = $parser->cursor;
-        if ('<' !== $cursor->peekNonspace()) {
-            return self::NONE;
-        }
         $lazyParagraph = !$parser->allClosed && !$cursor->blank && BlockKind::Paragraph === $parser->tip->kind;
-        $type = HtmlSyntax::blockStart($cursor->restFromNonspace());
+        $type = '<' === $cursor->peekNonspace() ? HtmlSyntax::blockStart($cursor->restFromNonspace()) : 0;
         if (0 === $type || (7 === $type && (BlockKind::Paragraph === $container->kind || $lazyParagraph))) {
             return self::NONE;
         }
@@ -139,17 +136,18 @@ final readonly class BlockStarts
         }
         $parser->closeUnmatched();
         $parser->takeReferences($container);
-        if (null === $container->content || '' === $container->content->text) {
-            return self::NONE;
+        $result = self::NONE;
+        if (null !== $container->content && '' !== $container->content->text) {
+            $heading = new OpenBlock(BlockKind::Heading, $container->start, $container->startLine);
+            $heading->level = '=' === $m[0][0] ? 1 : 2;
+            $heading->setext = true;
+            $heading->content = $container->content;
+            $parser->replace($container, $heading);
+            $cursor->advance(\strlen($cursor->line) - $cursor->offset);
+            $result = self::LEAF;
         }
-        $heading = new OpenBlock(BlockKind::Heading, $container->start, $container->startLine);
-        $heading->level = '=' === $m[0][0] ? 1 : 2;
-        $heading->setext = true;
-        $heading->content = $container->content;
-        $parser->replace($container, $heading);
-        $cursor->advance(\strlen($cursor->line) - $cursor->offset);
 
-        return self::LEAF;
+        return $result;
     }
 
     private function thematicBreak(BlockParser $parser, OpenBlock $container): int

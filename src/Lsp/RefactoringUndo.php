@@ -188,7 +188,9 @@ final class RefactoringUndo
                 // mount). Named like any other blocker; the buffers are already
                 // back, which is the same partial outcome the forward direction
                 // accepts for an unwritable file.
-                return $path;
+                $blocker = $path;
+
+                break;
             }
             // The refactored version is what this write replaces, and it is
             // about to exist nowhere — the same reason the forward direction
@@ -196,9 +198,11 @@ final class RefactoringUndo
             $this->events->dispatch(new FileRewritten($path, $texts['written']));
         }
 
-        $this->clear();
+        if (null === $blocker) {
+            $this->clear();
+        }
 
-        return null;
+        return $blocker;
     }
 
     /**
@@ -207,22 +211,19 @@ final class RefactoringUndo
      */
     private function firstChanged(): ?string
     {
-        foreach ($this->buffers as $path => $version) {
+        $changed = \array_find_key($this->buffers, function (int $version, string $path): bool {
             $document = $this->bufferManager->get($path)?->document;
+
             // A closed buffer is not a blocker: its edit was applied and saved
             // or discarded by the close, and either way this class cannot undo
             // what it no longer holds. It is dropped from the walk above by the
             // same null check.
-            if (null !== $document && $document->version !== $version) {
-                return $path;
-            }
-        }
-        foreach ($this->files as $path => $texts) {
-            if (Files::readWritable($path) !== $texts['written']) {
-                return $path;
-            }
-        }
+            return null !== $document && $document->version !== $version;
+        });
 
-        return null;
+        return $changed ?? \array_find_key(
+            $this->files,
+            static fn (array $texts, string $path): bool => Files::readWritable($path) !== $texts['written'],
+        );
     }
 }

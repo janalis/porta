@@ -73,19 +73,16 @@ final class QuickFixProbe
         $this->current = $key;
         $this->onSettled = $onSettled;
         $known = $this->known[$key] ?? null;
-        if (null !== $known) {
-            return $known;
+        // A question already out is not asked again: its answer comes to the latest asker.
+        if (null === $known && !\array_key_exists($key, $this->asking)) {
+            $lspDiag = CodeActionContext::lspDiagnostic($line, $diag);
+            $this->asking[$key] = ['about' => $lspDiag, 'offered' => [], 'answered' => 0, 'asked' => \PHP_INT_MAX];
+            $this->scheduler->delay(0.0, function () use ($key, $path, $lspDiag): void {
+                $this->ask($key, $path, $lspDiag);
+            });
         }
-        if (\array_key_exists($key, $this->asking)) {
-            return FixLookup::pending(); // already out: its answer comes to the latest asker
-        }
-        $lspDiag = CodeActionContext::lspDiagnostic($line, $diag);
-        $this->asking[$key] = ['about' => $lspDiag, 'offered' => [], 'answered' => 0, 'asked' => \PHP_INT_MAX];
-        $this->scheduler->delay(0.0, function () use ($key, $path, $lspDiag): void {
-            $this->ask($key, $path, $lspDiag);
-        });
 
-        return FixLookup::pending();
+        return $known ?? FixLookup::pending();
     }
 
     /** The file's problems changed: what was offered for the old ones may not hold. */

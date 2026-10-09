@@ -389,15 +389,11 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 'end' => ['line' => $selection['endLine'], 'character' => $doc->byteColToUtf16($selection['endLine'], $selection['endCol'])],
             ];
         }
-        if ([] !== $diagnostics) {
-            /** @var array{start: array{line: int, character: int}, end: array{line: int, character: int}} */
-            return $diagnostics[\count($diagnostics) - 1]['range'];
-        }
+        /** @var array{start: array{line: int, character: int}, end: array{line: int, character: int}}|null $last */
+        $last = [] === $diagnostics ? null : $diagnostics[\count($diagnostics) - 1]['range'];
+        $caret = ['line' => $line, 'character' => $col];
 
-        return [
-            'start' => ['line' => $line, 'character' => $col],
-            'end' => ['line' => $line, 'character' => $col],
-        ];
+        return $last ?? ['start' => $caret, 'end' => $caret];
     }
 
     /**
@@ -503,17 +499,14 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function report(WorkspaceEditOutcome $outcome, string $success): string
     {
-        if ($outcome->isRefused()) {
-            return $this->trans('Refused: %reason% — nothing was changed', ['%reason%' => (string) $outcome->refused]);
-        }
-        if ([] === $outcome->skipped) {
-            return $success;
-        }
-
-        return $this->trans(
-            'Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written',
-            ['%count%' => $outcome->touched, '%skipped%' => \count($outcome->skipped)],
-        );
+        return match (true) {
+            $outcome->isRefused() => $this->trans('Refused: %reason% — nothing was changed', ['%reason%' => (string) $outcome->refused]),
+            [] === $outcome->skipped => $success,
+            default => $this->trans(
+                'Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written',
+                ['%count%' => $outcome->touched, '%skipped%' => \count($outcome->skipped)],
+            ),
+        };
     }
 
     private function applyCodeAction(array $action): void
