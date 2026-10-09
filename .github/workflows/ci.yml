@@ -209,3 +209,23 @@ jobs:
           path: coverage/plugins/*.xml
           if-no-files-found: ignore
           retention-days: 14
+
+  release-package:
+    if: github.event_name != 'schedule'
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: ${{ env.PHP_EXTENSIONS }}
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Verify release packaging without publishing
+        run: |
+          composer build:phar
+          test "$(php build/porta.phar --version)" = "porta $(git describe --tags --always --dirty)"
+          sha256sum build/porta.phar
