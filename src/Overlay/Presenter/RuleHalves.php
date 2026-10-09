@@ -401,7 +401,7 @@ final readonly class RuleHalves
                 if (null !== $shade && !$onBar) {
                     continue;
                 }
-                $cell = null === $shade ? $cells[$edge][$col] ?? '' : $shade->apply(' ');
+                $cell = $shade?->apply(' ') ?? $cells[$edge][$col] ?? '';
                 $segment = match (true) {
                     $onBar => self::onBar($cell, $half, $barTint), // a strip's unshaded `│` ends at the bar
                     Glyphs::FRAME_VERTICAL !== AnsiUtils::stripAnsiCodes($cell) => self::half($cell, $half),

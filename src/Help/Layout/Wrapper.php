@@ -81,7 +81,7 @@ final readonly class Wrapper
             // Printable ASCII is as wide as it is long: most prose skips the
             // grapheme measure word by word.
             $ascii = \strlen($fragment->text) === \strspn($fragment->text, self::PRINTABLE);
-            $source = null === $fragment->source ? -1 : $fragment->source->start;
+            $source = $fragment->source->start ?? -1;
             foreach ($pieces as [$text, $offset]) {
                 $fits = $ascii && \strlen($text) <= $room;
                 \array_push(

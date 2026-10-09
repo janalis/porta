@@ -69,7 +69,7 @@ final class ErrorStripe
             if (null !== $mark && $r === $hoveredRow) {
                 $style = $style?->withUnderline();
             }
-            $cells[] = Sgr::RESET.(null === $style ? $glyph : $style->apply($glyph));
+            $cells[] = Sgr::RESET.($style?->apply($glyph) ?? $glyph);
         }
 
         return $cells;

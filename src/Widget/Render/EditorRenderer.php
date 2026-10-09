@@ -547,7 +547,7 @@ final class EditorRenderer
         Styles $styles,
         int $docScroll = 0,
     ): ?array {
-        $text = null === $selected ? '' : $selected->documentation;
+        $text = $selected->documentation ?? '';
         $framedWidth = PopupMetrics::COMPLETION_DOC_INNER + PopupFrame::CHROME_COLS;
         $right = $popupCol + $popupWidth;
         // A column of clearance on the left placement, because the panel's own

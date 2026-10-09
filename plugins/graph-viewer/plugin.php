@@ -90,7 +90,7 @@ return new class('graph-viewer') extends AbstractPlugin {
         // $this->widget, which the pane factory assigns.
         $findNode = function () use ($api): void {
             $widget = $this->widget;
-            $choices = null === $widget ? [] : $widget->nodeChoices();
+            $choices = $widget?->nodeChoices() ?? [];
             if ([] === $choices) {
                 $api->flash($api->trans('No graph nodes to search'));
 

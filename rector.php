@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Rector\Php80\Rector\Class_\ClassPropertyAssignToConstructorPromotionRector;
+use Rector\Php80\Rector\Ternary\TernaryToNullsafeCoalesceRector;
 use Rector\CodeQuality\Rector\BooleanNot\SimplifyDeMorganBinaryRector;
 use Rector\CodeQuality\Rector\ClassMethod\LocallyCalledStaticMethodToNonStaticRector;
 use Rector\CodeQuality\Rector\Concat\DirnameDirConcatStringToDirectStringPathRector;
@@ -138,6 +139,13 @@ return RectorConfig::configure()
         // assertStringContainsString, where a variable needle checked against
         // a literal haystack is the whole assertion.
         FlipAssertRector::class,
+        // Rector 2.7 creates a nullsafe first-class callable that PHP 8.5
+        // rejects, and mago cannot narrow the receiver inside lazy arguments
+        // of a nullsafe call. Keep those two guarded ternaries.
+        TernaryToNullsafeCoalesceRector::class => [
+            __DIR__.'/src/Highlight/CodeHighlighterFactory.php',
+            __DIR__.'/src/Markdown/Block/OpenBlock.php',
+        ],
         ArrowFunctionDelegatingCallToFirstClassCallableRector::class => [
             __DIR__.'/src/Debug/DebugStateStore.php',
         ],
