@@ -32,11 +32,11 @@ env:
   PORTA_TEST_PROCESSES: 4
   PORTA_SHARD_PROCESSES: 4
   # setup-php installs prerequisites on the minimal ARC runner image.
-  runner: self-hosted
+  runner: ${{ vars.CI_RUNNER && 'self-hosted' || 'github-hosted' }}
 
 jobs:
   audit:
-    runs-on: porta-runners
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -55,7 +55,7 @@ jobs:
 
   static:
     if: github.event_name != 'schedule'
-    runs-on: porta-runners
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -87,7 +87,7 @@ jobs:
 
   tests:
     if: github.event_name != 'schedule'
-    runs-on: porta-runners
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -131,7 +131,7 @@ jobs:
   # rather than their sum. `coverage:check` still chains both locally.
   coverage:
     if: github.event_name != 'schedule'
-    runs-on: porta-runners
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -167,7 +167,7 @@ jobs:
 
   coverage-plugins:
     if: github.event_name != 'schedule'
-    runs-on: porta-runners
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7

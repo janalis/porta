@@ -12,11 +12,11 @@ permissions:
 
 env:
   PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
-  runner: self-hosted
+  runner: ${{ vars.CI_RUNNER && 'self-hosted' || 'github-hosted' }}
 
 jobs:
   phar:
-    runs-on: porta-runners
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
