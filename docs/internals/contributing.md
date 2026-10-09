@@ -74,9 +74,25 @@ Throttling a shared box means setting the first TWO: `coverage:check` runs both
 passes AT ONCE, and `PORTA_TEST_PROCESSES=4` alone still fans out three-quarter-core
 plugin shards behind it.
 
-**CI sets `PORTA_TEST_PROCESSES: auto` explicitly** (`.github/workflows/ci.yml`),
-because a runner is ours alone. Take every core on a machine nobody else is
-using, and say so where it is true rather than making it the default everywhere.
+**CI uses the `porta-runners` ARC scale set** (`.github/workflows/ci.yml`),
+with `PORTA_TEST_PROCESSES: 4` and `PORTA_SHARD_PROCESSES: 4`: its ephemeral
+Linux ARM64 pods share the developer machine. The scale set allows two jobs
+at once. Take every core only on a machine nobody else is using.
+
+The existing ARC controller manages the repository-scoped scale set. Its Helm
+values live in `docker/ci/arc/values.yaml`; `porta-runners-github-secret` in
+`arc-runners` holds the GitHub credential under `github_token`, outside git.
+Install or update it against the current Kubernetes context with:
+
+```bash
+helm upgrade --install porta-runners --namespace arc-runners --create-namespace \
+  --version 0.14.2 -f docker/ci/arc/values.yaml \
+  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
+```
+
+Both CI and release workflows target this scale set directly. Each job gets
+its own runner filesystem; setup-php installs PHP 8.5 and the declared
+extensions, including the explicit no-intl test variant.
 
 ```bash
 PORTA_TEST_PROCESSES=4 nice -n 10 composer test   # busier than usual
@@ -92,7 +108,7 @@ row: `composer test` at 8 went 109 / 116s → 86 / 89s (see testing.md).
 | 4 | 170s | |
 | 8 (the default: half of 16) | ~90s | 137s |
 | 12 | 62s | |
-| `auto` (16, what CI sets) | 52s | 76s |
+| `auto` (16, dedicated machine) | 52s | 76s |
 | 24 | 39.5s | **64–72s** |
 | 32 | **34s** | E2e errors — see below |
 | 48 | wedged at 99% | |
