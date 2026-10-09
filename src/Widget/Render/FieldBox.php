@@ -227,7 +227,7 @@ final class FieldBox
         $text = AnsiText::truncate($text, \max(0, $room));
         $lead = AnsiText::blank(\intdiv(\max(0, $room - AnsiUtils::visibleWidth($text)), num2: 2));
 
-        return AnsiText::padRight($lead.(null === $style ? $text : $style->apply($text)), $room);
+        return AnsiText::padRight($lead.($style?->apply($text) ?? $text), $room);
     }
 
     /**

@@ -26,9 +26,7 @@ final readonly class ResultContextProvider
     {
         $abs = $this->paths->absolute($relativePath);
         $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs);
-        $lines = null !== $buffer
-            ? $buffer->document->lines
-            : \explode("\n", Files::read($abs));
+        $lines = $buffer?->document->lines ?? \explode("\n", Files::read($abs));
 
         $context = [];
         for ($i = \max(0, $line - 2); $i <= \min(\count($lines) - 1, $line + 2); ++$i) {

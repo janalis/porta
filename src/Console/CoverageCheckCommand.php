@@ -577,7 +577,7 @@ final class CoverageCheckCommand extends Command
     /** A Clover count, read from an XML attribute; a missing node or attribute is zero. */
     private static function number(?\SimpleXMLElement $metrics, string $attribute): int
     {
-        $value = null === $metrics ? null : $metrics->attributes();
+        $value = $metrics?->attributes();
 
         return null === $value || null === $value[$attribute] ? 0 : (int) (string) $value[$attribute];
     }

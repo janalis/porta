@@ -182,7 +182,7 @@ final readonly class ContextMenuOpener
         // One row below the tab; a bottom strip anchors on its own top row so
         // the overlay's overflow flip opens the menu above it instead.
         $row = TabBarPosition::Bottom === $this->tabBar->position() ? $anchor['row'] : $anchor['row'] + $anchor['rows'];
-        $this->openAt($this->items->tabItems($active->path), (null === $rect ? 0 : $rect->row) + $row, (null === $rect ? 0 : $rect->col) + $anchor['col']);
+        $this->openAt($this->items->tabItems($active->path), ($rect->row ?? 0) + $row, ($rect->col ?? 0) + $anchor['col']);
     }
 
     private function openForSession(TerminalSession $session): void
@@ -191,7 +191,7 @@ final readonly class ContextMenuOpener
         // Anchor on the strip row itself: the overlay's overflow flip
         // opens the menu above the bottom strip.
         $col = $this->dockTabs->anchorFor(DockTab::Terminal, $session->id) ?? 0;
-        $this->openAt($this->items->dockTabItems(DockTab::Terminal, $session->id), null === $rect ? 0 : $rect->row, (null === $rect ? 0 : $rect->col) + $col);
+        $this->openAt($this->items->dockTabItems(DockTab::Terminal, $session->id), $rect->row ?? 0, ($rect->col ?? 0) + $col);
     }
 
     private function openForView(): void
