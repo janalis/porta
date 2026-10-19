@@ -202,7 +202,7 @@ integrations = ["symfony", "phpunit"]
 #                                with no correction note; re-probed
 #                                2026-09-09, the pin is right and the prose
 #                                was wrong — at 30 both classes fire.
-#   too-many-enum-cases      76  Ui/Role (the theme role vocabulary; 58 until
+#   too-many-enum-cases      78  Ui/Role (the theme role vocabulary; 58 until
 #                                OccurrenceWriteBg joined it — a read and a write
 #                                occurrence cannot share one role — and 60 with
 #                                DebugValue: an inlay hint is what the code
@@ -245,7 +245,12 @@ integrations = ["symfony", "phpunit"]
 #                                shade of its own, and a problem's line number
 #                                is tinted by severity — colour only, no glyph
 #                                — each a foreground AND a background a Diag
-#                                role cannot carry)
+#                                role cannot carry). 78 with AddedRowBg and
+#                                DeletedRowBg, 2026-10-20: GitHub's green and
+#                                red bands behind a whole diff row, which the
+#                                emphasis roles cannot be — they mark the
+#                                changed span INSIDE a banded row, a step
+#                                stronger, and the two must differ to read)
 #   excessive-parameter-list 26  Plugin/Runtime/PluginRuntime, 2026-10-03: the
 #                                ProjectSwitcher openProject() reaches, the
 #                                same decision as too-many-methods above.
@@ -370,7 +375,7 @@ integrations = ["symfony", "phpunit"]
 cyclomatic-complexity = { threshold = 143 }
 too-many-methods = { threshold = 90 }
 too-many-properties = { threshold = 31 }
-too-many-enum-cases = { threshold = 76 }
+too-many-enum-cases = { threshold = 78 }
 excessive-parameter-list = { threshold = 26 }
 kan-defect = { threshold = 8 }
 halstead = { effort-threshold = 18673, difficulty-threshold = 26, volume-threshold = 3163 }
