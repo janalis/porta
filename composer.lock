@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "6d8fbc89aade94f9371c3a9eb7f5b425",
+    "content-hash": "ec8be318bf472955f088708bab7e04ff",
     "packages": [
         {
             "name": "composer/semver",
@@ -85,11 +85,17 @@
         },
         {
             "name": "janalis/viz",
-            "version": "dev-main",
+            "version": "v0.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/janalis/viz.git",
+                "reference": "abfbef36084bca8e53f269b4aa945cd742c4a524"
+            },
             "dist": {
-                "type": "path",
-                "url": "../viz",
-                "reference": "8a3adcfbb17b5433d59ff211fb31e79b5ba29bab"
+                "type": "zip",
+                "url": "https://api.github.com/repos/janalis/viz/zipball/abfbef36084bca8e53f269b4aa945cd742c4a524",
+                "reference": "abfbef36084bca8e53f269b4aa945cd742c4a524",
+                "shasum": ""
             },
             "require": {
                 "ext-mbstring": "*",
@@ -162,10 +168,7 @@
                 "issues": "https://github.com/janalis/viz/issues",
                 "source": "https://github.com/janalis/viz"
             },
-            "transport-options": {
-                "symlink": true,
-                "relative": true
-            }
+            "time": "2026-10-19T12:43:18+00:00"
         },
         {
             "name": "psr/clock",
@@ -6156,9 +6159,7 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {
-        "janalis/viz": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

@@ -5,7 +5,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.5",
-        "janalis/viz": "dev-main",
+        "janalis/viz": "^0.1",
         "symfony/clock": "^8.2",
         "symfony/filesystem": "^8.2",
         "symfony/finder": "^8.2",

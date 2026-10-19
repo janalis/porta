@@ -24,7 +24,7 @@
         "ext-mbstring": "*",
         "ext-pcntl": "*",
         "composer/semver": "^3.4",
-        "janalis/viz": "dev-main",
+        "janalis/viz": "^0.1",
         "revolt/event-loop": "^1.0",
         "symfony/clock": "^8.2",
         "symfony/config": "^8.2",
@@ -136,10 +136,7 @@
     },
     "repositories": [{
         "name": "viz",
-        "type": "path",
-        "url": "../viz",
-        "options": {
-            "symlink": true
-        }
+        "type": "vcs",
+        "url": "https://github.com/janalis/viz"
     }]
 }
