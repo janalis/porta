@@ -45,6 +45,7 @@ final class ViewRegion
         private readonly ContainerWidget $sidebar,
         private readonly SeparatorWidget $separator,
         private readonly ContainerWidget $content,
+        private readonly ContainerWidget $header = new ContainerWidget(),
     ) {}
 
     /** The view declares how its sidebar resizes; without this the column is fixed. */
@@ -75,10 +76,25 @@ final class ViewRegion
         }
     }
 
-    /** Whether the window renders this region from its top padding row ({@see flushContentTop()}). */
+    /**
+     * Whether the window renders this region from its top padding row: the
+     * view asked ({@see flushContentTop()}), or a header fills it — a toolbar
+     * across the window reads as the window's own bar, as a pane's does.
+     */
     public function contentFlushTop(): bool
     {
-        return $this->flushTop;
+        return $this->flushTop || [] !== $this->header->all();
+    }
+
+    /**
+     * A full-width row above the sidebar, separator and content, empty unless
+     * the view fills it: the place for a toolbar that belongs to the whole
+     * view rather than to one of its panes. Its height is what its widgets
+     * render; the panes take the rest.
+     */
+    public function header(): ContainerWidget
+    {
+        return $this->header;
     }
 
     /** The horizontal area the view window holds; the view never fills this itself. */

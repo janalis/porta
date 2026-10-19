@@ -8,6 +8,8 @@ use Porta\Container\AsIdeService;
 use Porta\Layout\ViewRegion;
 use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\EditorArea;
+use Porta\Workbench\Menu\ContextMenuOpener;
+use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
@@ -31,6 +33,7 @@ final readonly class ViewHost
         private EditorArea $editorArea,
         private Tui $tui,
         private ?ViewRegistry $views = null,
+        private ?ContextMenuOpener $menus = null,
     ) {}
 
     /**
@@ -75,6 +78,19 @@ final readonly class ViewHost
     public function focused(): ?AbstractWidget
     {
         return $this->tui->getFocus();
+    }
+
+    /**
+     * Drop a menu from a control at this SCREEN cell — a toolbar button's
+     * list, a settings gear's options. It is the context menu, opened by a
+     * left press rather than a right one, so it floats, routes keys and
+     * dismisses like every other.
+     *
+     * @param list<MenuItem> $items
+     */
+    public function openMenu(array $items, int $row, int $col): void
+    {
+        $this->menus?->openAt($items, $row, $col);
     }
 
     /** Ask for a frame. */

@@ -8,6 +8,7 @@ use Porta\Container\AsIdeService;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Style\Style;
+use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
  * Mints a {@see ViewRegion} on demand, and remembers it.
@@ -42,7 +43,18 @@ final class ViewRegions
             LayoutWidgets::container($id.'-left', new Style(flex: 0)),
             LayoutWidgets::separator($this->styles, $id.'-separator'),
             LayoutWidgets::container($id.'-content', new Style(flex: 1)),
+            self::header($id),
         );
+    }
+
+    /** The region's header row: as tall as what it holds, never stretched to the window. */
+    private static function header(string $id): ContainerWidget
+    {
+        $header = new ContainerWidget();
+        $header->setId($id.'-header');
+        $header->setStyle(new Style(flex: 0));
+
+        return $header;
     }
 
     /**
