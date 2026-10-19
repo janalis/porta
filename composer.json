@@ -133,10 +133,5 @@
         "platform": {
             "php": "8.5.0"
         }
-    },
-    "repositories": [{
-        "name": "viz",
-        "type": "vcs",
-        "url": "https://github.com/janalis/viz"
-    }]
+    }
 }

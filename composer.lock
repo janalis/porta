@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ec8be318bf472955f088708bab7e04ff",
+    "content-hash": "5bea97947fc43c534d742c12bc49fc81",
     "packages": [
         {
             "name": "composer/semver",
@@ -121,34 +121,7 @@
                     "Janalis\\Viz\\": "src/"
                 }
             },
-            "autoload-dev": {
-                "psr-4": {
-                    "Janalis\\Viz\\Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "format": [
-                    "mago format"
-                ],
-                "format:check": [
-                    "mago format --check"
-                ],
-                "lint": [
-                    "mago lint --minimum-fail-level=note"
-                ],
-                "analyze": [
-                    "mago analyze --minimum-fail-level=note"
-                ],
-                "test": [
-                    "phpunit"
-                ],
-                "coverage": [
-                    "@php -d pcov.enabled=1 vendor/bin/phpunit --coverage-clover=var/coverage/clover.xml"
-                ],
-                "mutate": [
-                    "@php -d pcov.enabled=1 vendor/bin/infection --threads=max"
-                ]
-            },
+            "notification-url": "https://packagist.org/downloads/",
             "license": [
                 "MIT"
             ],
