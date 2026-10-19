@@ -477,7 +477,7 @@ because mago narrows a filter to strings through it and not through
 The false positives this round met went upstream (janalis/custos#2: `?->` and
 loop-condition narrowing, named arguments, escaped backslashes in patterns,
 string destructuring, filesystem calls costed as cheap, and more) and shipped
-in 0.1.1, the version required; the suppressions they needed are gone. Left off, by choice:
+in 0.1.1; the suppressions they needed are gone. Left off, by choice:
 - `UsingInclusionReturnValue`: it flags the plugin contract itself, as a
   `plugin.php` returns its instance.
 - `BadExceptionsProcessing`: its only hits are "too many statements in a try",
@@ -494,6 +494,20 @@ plugins and tests, with no suppression. mago's `no-else-clause` rules out the
 pins: `MouseRouter` dropped from 145 to 141 cyclomatic, and `BufferService` is
 now at the kan-defect limit. One frame-reading bug fell out of it: the mcp
 WebSocket reader took a 16-bit length of exactly 127 as the 64-bit marker.
+
+custos 0.1.6 (2026-10-19, now the required minimum) added the failure-check rules: unchecked
+`glob`, `file_get_contents`, `preg_replace`, `fopen`, `imagecreatefromstring` and
+`realpath` results, short `unpack` buffers and repeated `match` arms. Its 64 first
+findings were nearly all tests reading fixtures; they now handle the failure (the
+`false === $found ? [] : $found` idiom, a `(string)` cast, an explicit `fail()`),
+because custos does not read PHPUnit assertions as checks. One was real:
+`GuestSession::channel()` guarded its `fopen` with an `assert()`, which production
+compiles out. Three are false positives, suppressed with the new rules' own syntax,
+`// @custos-ignore <Rule> -- why` above the statement (`@noinspection` does not reach
+them): both WebSocket readers' `unpack`, whose first `match` arm already returns null
+on a short buffer, and `FindBarWidget`'s two different flags read as one repeated
+condition. That one is marked fixable, and its fix would delete a branch, so never
+run `custos fix` over it.
 
 ## Leave it alone
 

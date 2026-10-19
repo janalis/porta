@@ -375,6 +375,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
     {
         $columns = $context->getColumns();
         $count = \count($this->matches);
+        // @custos-ignore DuplicateMatchCondition -- two different flags, not one condition repeated; never apply its fix
         $position = match (true) {
             $this->patternInvalid => $this->translator->trans('bad regex'),
             $this->patternTooComplex => $this->translator->trans('pattern too complex'),

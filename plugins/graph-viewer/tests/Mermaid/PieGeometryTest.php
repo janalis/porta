@@ -171,14 +171,15 @@ final class PieGeometryTest extends TestCase
     #[DataProvider('fixtures')]
     public function testPinnedGraphicsFixtures(string $path): void
     {
-        $source = \file_get_contents($path);
+        $source = (string) \file_get_contents($path);
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 80)->rows);
         $this->assertStringContainsString('<polygon', NativeFixtureExport::render($source, Format::Svg));
     }
 
     public static function fixtures(): iterable
     {
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/pie/*.mmd') as $path) {
+        $found = \glob(__DIR__.'/../fixtures/mermaid/pie/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path];
         }
     }

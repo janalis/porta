@@ -12,7 +12,8 @@ final class FlowchartCorpusTest extends TestCase
 {
     public static function fixtures(): iterable
     {
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/flowchart/*.mmd') as $path) {
+        $found = \glob(__DIR__.'/../fixtures/mermaid/flowchart/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path];
         }
     }
@@ -20,9 +21,9 @@ final class FlowchartCorpusTest extends TestCase
     #[DataProvider('fixtures')]
     public function testPinnedBodiesRenderToRowsAndSvg(string $path): void
     {
-        $source = \file_get_contents($path);
-        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: $source);
-        $source = \preg_replace('/%%\{.*?\}%%/s', replacement: '', subject: $source);
+        $source = (string) \file_get_contents($path);
+        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: $source) ?? '';
+        $source = \preg_replace('/%%\{.*?\}%%/s', replacement: '', subject: $source) ?? '';
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 100)->rows);
         $this->assertStringContainsString('<svg', NativeFixtureExport::render($source, Format::Svg));
     }

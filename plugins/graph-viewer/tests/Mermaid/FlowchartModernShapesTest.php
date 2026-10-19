@@ -30,7 +30,7 @@ final class FlowchartModernShapesTest extends TestCase
 
     public static function shapes(): iterable
     {
-        $rows = \json_decode(\file_get_contents(__DIR__.'/../fixtures/mermaid/flowchart-shapes.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $rows = \json_decode((string) \file_get_contents(__DIR__.'/../fixtures/mermaid/flowchart-shapes.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         foreach ($rows as $row) {
             foreach (\array_unique([$row['name'], ...$row['aliases']]) as $alias) {
                 yield $alias => [$row['name'], $alias];

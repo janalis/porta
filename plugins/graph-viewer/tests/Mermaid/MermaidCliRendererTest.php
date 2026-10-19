@@ -70,7 +70,7 @@ final class MermaidCliRendererTest extends TestCase
         $this->assertSame([1, 2], \array_values($picture->scene->elements));
         $this->assertSame(['Alpha', 'Beta'], \array_column($picture->elements, 'label'));
         $this->assertSame([[0.05, 0.1], [0.35, 0.1], [0.35, 0.5], [0.05, 0.5]], $picture->elements[0]->polygon);
-        [$options, $source] = \json_decode(\file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$options, $source] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('svg', $options['--outputFormat']);
         $this->assertSame('1', $options['--scale']);
         $this->assertStringContainsString('Alpha', $source);
@@ -150,7 +150,7 @@ final class MermaidCliRendererTest extends TestCase
         $this->assertNull($error);
         $this->assertSame([120, 80], PngDimensions::read($picture->png));
         $this->assertNull($picture->scene);
-        [$options] = \json_decode(\file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$options] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('png', $options['--outputFormat']);
         $renderer->cancel();
     }

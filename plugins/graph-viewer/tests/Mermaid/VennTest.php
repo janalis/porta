@@ -25,8 +25,9 @@ final class VennTest extends TestCase
 
     public static function fixtures(): iterable
     {
-        $expected = \json_decode(\file_get_contents(__DIR__.'/../fixtures/mermaid/venn-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/venn/*.mmd') as $path) {
+        $expected = \json_decode((string) \file_get_contents(__DIR__.'/../fixtures/mermaid/venn-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $found = \glob(__DIR__.'/../fixtures/mermaid/venn/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path, $expected[\basename($path)]];
         }
     }
@@ -34,7 +35,7 @@ final class VennTest extends TestCase
     #[DataProvider('fixtures')]
     public function testPinnedBodiesMatchTheExecutableUpstreamParser(string $path, array $expected): void
     {
-        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: \file_get_contents($path));
+        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: (string) \file_get_contents($path)) ?? '';
         $diagram = self::parse($source);
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 100)->rows);
         $this->assertStringContainsString('<svg', NativeFixtureExport::render($source, Format::Svg));

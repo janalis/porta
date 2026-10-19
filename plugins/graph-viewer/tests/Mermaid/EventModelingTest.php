@@ -32,8 +32,9 @@ final class EventModelingTest extends TestCase
 
     public static function fixtures(): iterable
     {
-        $expected = \json_decode(\file_get_contents(__DIR__.'/../fixtures/mermaid/eventmodeling-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/eventmodeling/*.mmd') as $path) {
+        $expected = \json_decode((string) \file_get_contents(__DIR__.'/../fixtures/mermaid/eventmodeling-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $found = \glob(__DIR__.'/../fixtures/mermaid/eventmodeling/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path, $expected[\basename($path)]];
         }
     }
@@ -41,13 +42,13 @@ final class EventModelingTest extends TestCase
     #[DataProvider('fixtures')]
     public function testPinnedBodiesMatchTheExecutableUpstreamGrammar(string $path, array $expected): void
     {
-        $diagram = self::parse(\file_get_contents($path));
-        $scene = self::scene(\file_get_contents($path));
+        $diagram = self::parse((string) \file_get_contents($path));
+        $scene = self::scene((string) \file_get_contents($path));
         $palette = MermaidPalette::defaults('eventmodeling');
         foreach ($expected['colors'] as $index => $fill) {
             $this->assertSame(MermaidColor::css($fill), $palette->resolve($scene->graph->nodes[$index]->fillColor));
         }
-        $this->assertNotEmpty(NativeFixtureRows::render(\file_get_contents($path), width: 100)->rows);
+        $this->assertNotEmpty(NativeFixtureRows::render((string) \file_get_contents($path), width: 100)->rows);
         $work = EventModelingState::resolve($diagram);
         \iterator_to_array($work);
         $state = $work->getReturn();

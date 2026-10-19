@@ -263,7 +263,7 @@ final class WorkspaceEditorTest extends TestCase
         $outcome = $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => $edit]]);
 
         $this->assertSame(1, $outcome->touched);
-        $this->assertSame("X123456789\n", \file_get_contents($project->path('a.php')));
+        $this->assertSame("X123456789\n", (string) \file_get_contents($project->path('a.php')));
     }
 
     /**
@@ -291,7 +291,7 @@ final class WorkspaceEditorTest extends TestCase
         ]);
 
         $this->assertSame([[\realpath($project->path('a.php')), "0123456789\n"]], $seen);
-        $this->assertSame("X123456789\n", \file_get_contents($project->path('a.php')), 'and the new text is on disk');
+        $this->assertSame("X123456789\n", (string) \file_get_contents($project->path('a.php')), 'and the new text is on disk');
     }
 
     /**
@@ -359,7 +359,7 @@ final class WorkspaceEditorTest extends TestCase
         }
 
         $this->assertSame(0, $outcome->touched, 'an unwritable file is not touched');
-        $this->assertSame("0123456789\n", \file_get_contents($path), 'and its content is left alone');
+        $this->assertSame("0123456789\n", (string) \file_get_contents($path), 'and its content is left alone');
     }
 
     /**
@@ -409,7 +409,7 @@ final class WorkspaceEditorTest extends TestCase
         // realpath'd: the URI is canonicalised on the way in, and on macOS
         // the temp dir is a symlink.
         $this->assertSame([\realpath($project->path('a.php'))], $outcome->skipped);
-        $this->assertSame("0123456789\n", \file_get_contents($project->path('a.php')), 'nothing was written');
+        $this->assertSame("0123456789\n", (string) \file_get_contents($project->path('a.php')), 'nothing was written');
     }
 
     /**
@@ -444,7 +444,11 @@ final class WorkspaceEditorTest extends TestCase
     public function testBufferLookupFallsBackToARealpathMatch(): void
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);
-        $canonical = \realpath($project->dir).'/a.php';
+        $root = \realpath($project->dir);
+        if (false === $root) {
+            $this->fail('the project directory has no real path');
+        }
+        $canonical = $root.'/a.php';
         $aliased = $project->alias();
         $this->assertNotSame($aliased, \realpath($project->dir), 'precondition: a non-canonical spelling of the root to resolve through');
         // The buffer is opened under the CANONICAL path (as our own editor
@@ -829,10 +833,10 @@ final class WorkspaceEditorTest extends TestCase
 
         $outcome = $editor->applyWorkspaceEdit(['changes' => [...$edit($out->path('rc')), ...$edit((string) \realpath($out->path('open.php'))), ...$edit($in->path('a.php'))]]);
 
-        $this->assertSame("keep\n", \file_get_contents($out->path('rc')), 'nothing written out there');
+        $this->assertSame("keep\n", (string) \file_get_contents($out->path('rc')), 'nothing written out there');
         $this->assertSame([(string) \realpath($out->path('rc'))], $outcome->skipped, 'and said so');
         $this->assertSame(2, $outcome->touched, 'the open buffer and the project file took it');
-        $this->assertSame("evil <?php\nold\n", \file_get_contents($in->path('a.php')));
+        $this->assertSame("evil <?php\nold\n", (string) \file_get_contents($in->path('a.php')));
     }
 
     public function testAnOperationInsideTheProjectStillApplies(): void

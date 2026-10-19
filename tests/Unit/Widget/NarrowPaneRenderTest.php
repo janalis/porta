@@ -340,7 +340,8 @@ final class NarrowPaneRenderTest extends TestCase
         $swept += \array_map(static fn (string $why): bool => true, self::OUTSIDE_THE_PROVIDER);
 
         $missing = [];
-        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Widget/*.php') as $file) {
+        $found = \glob(\dirname(__DIR__, levels: 3).'/src/Widget/*.php');
+        foreach (false === $found ? [] : $found as $file) {
             $class = 'Porta\\Widget\\'.\basename($file, suffix: '.php');
             if (!\class_exists($class) || !\is_a($class, AbstractWidget::class, allow_string: true)) {
                 continue;

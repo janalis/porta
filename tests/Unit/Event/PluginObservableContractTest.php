@@ -50,7 +50,8 @@ final class PluginObservableContractTest extends TestCase
     private static function marked(): array
     {
         $marked = [];
-        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+        $found = \glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php');
+        foreach (false === $found ? [] : $found as $file) {
             $class = 'Porta\\Event\\'.\basename($file, suffix: '.php');
             if (\class_exists($class) && \is_a($class, PluginObservable::class, allow_string: true)) {
                 $marked[] = $class;
