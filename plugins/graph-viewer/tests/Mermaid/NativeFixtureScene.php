@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidScene;
 use PHPUnit\Framework\Assert;
-use Porta\GraphViewer\Mermaid\MermaidScene;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\Tests\Support\FakeScheduler;

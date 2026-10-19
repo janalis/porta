@@ -4,7 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Janalis\Viz\PlantUML\PlantUmlCommand;
+use Janalis\Viz\Process\Tool;
+use Janalis\Viz\Render\Format;
 use Porta\Support\SingleSlotProcess;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * The PlantUML-backed {@see DiagramEngine}: the diagram on stdin, PNG off
@@ -33,6 +38,8 @@ final readonly class PlantUmlEngine implements DiagramEngine
         private string $rootDir,
         private \Closure|string|null $toolPath = null,
         private SingleSlotProcess $slot = new SingleSlotProcess(),
+        private SingleSlotProcess $exportSlot = new SingleSlotProcess(),
+        private Filesystem $files = new Filesystem(),
     ) {}
 
     public function baseDpi(): int
@@ -42,7 +49,7 @@ final readonly class PlantUmlEngine implements DiagramEngine
 
     public function binary(): ?string
     {
-        return PlantUmlCommand::tool($this->toolPath instanceof \Closure ? ($this->toolPath)() : $this->toolPath);
+        return new Tool('plantuml', $this->toolPath instanceof \Closure ? ($this->toolPath)() : $this->toolPath)->path();
     }
 
     public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void
@@ -54,12 +61,46 @@ final readonly class PlantUmlEngine implements DiagramEngine
             return;
         }
         // -failfast2 puts syntax errors on stderr rather than in the picture.
-        $this->slot->run(PlantUmlCommand::argv($tool, $dpi), $this->rootDir, $source, 'plantuml', $onPng, $onError);
+        $this->slot->run(PlantUmlCommand::render($tool, Format::Png, $dpi), $this->rootDir, $source, 'plantuml', $onPng, $onError);
     }
 
-    /** Stop any in-flight render (viewer teardown; idempotent). */
+    /**
+     * Render $source to $outPath. The file is written only once plantuml has
+     * answered in full, so a failed export leaves an earlier one intact.
+     *
+     * @param \Closure(?string): void $onDone null on success, the error text on failure
+     */
+    public function export(string $source, Format $format, string $outPath, \Closure $onDone): void
+    {
+        $tool = $this->binary();
+        if (null === $tool) {
+            $onDone('plantuml not found');
+
+            return;
+        }
+        $this->exportSlot->run(
+            PlantUmlCommand::render($tool, $format),
+            $this->rootDir,
+            $source,
+            'plantuml',
+            function (string $bytes) use ($outPath, $onDone): void {
+                try {
+                    $this->files->dumpFile($outPath, $bytes);
+                } catch (IOExceptionInterface $exception) {
+                    $onDone($exception->getMessage());
+
+                    return;
+                }
+                $onDone(null);
+            },
+            $onDone,
+        );
+    }
+
+    /** Stop any in-flight render or export (viewer teardown; idempotent). */
     public function cancel(): void
     {
         $this->slot->cancel();
+        $this->exportSlot->cancel();
     }
 }

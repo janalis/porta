@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidPipeline;
+use Janalis\Viz\Mermaid\MermaidPng;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\GraphViewerWidget;
-use Porta\GraphViewer\Mermaid\MermaidPng;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\GraphViewer\Render\GraphCellGrid;
@@ -100,7 +101,7 @@ final class MermaidInteractionTest extends TestCase
         yield 'git' => ["gitGraph\ncommit id:'A'\nbranch topic\ncommit id:'B'", ['main', 'topic', 'A', 'B']];
         yield 'state' => ["stateDiagram-v2\nA --> B", ['A', 'B']];
         yield 'empty composite state' => ["stateDiagram-v2\nstate Parent {}", ['Parent']];
-        yield 'info' => ['info showInfo', ['Porta native Mermaid Compatibility target: v12.1.0']];
+        yield 'info' => ['info showInfo', ['Janalis Viz native Mermaid Compatibility target: v12.1.0']];
         yield 'requirement' => ["requirementDiagram\nrequirement Safe {}\nelement Code {}", ['<<Requirement>> Safe', '<<Element>> Code']];
         yield 'cynefin' => ["cynefin-beta\ncomplex\n\"Explore\"", ['Complex', 'Complicated', 'Chaotic', 'Clear', 'Confusion', 'Complex: Explore']];
         yield 'radar' => ["radar-beta\naxis A, B, C\ncurve S{1,2,3}", ['S · A: 1', 'S · B: 2', 'S · C: 3']];
@@ -155,7 +156,7 @@ final class MermaidInteractionTest extends TestCase
         $scheduler = new FakeScheduler();
         $mermaid = new FakeLayoutEngine();
         $mermaid->binary = null;
-        $native = new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPng(gdAvailable: false));
+        $native = new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPipeline(png: new MermaidPng(gdAvailable: false)));
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $mermaid, native: $native);
         $widget->show('/diagram.mmd', 'graph LR; A[Readable]');
         while ([] !== $scheduler->scheduled) {

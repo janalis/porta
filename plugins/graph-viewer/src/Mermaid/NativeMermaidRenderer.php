@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
-use Porta\GraphViewer\Graph\GraphExportFormat;
+use Janalis\Viz\Mermaid\MermaidPipeline;
+use Janalis\Viz\Mermaid\MermaidScene;
+use Janalis\Viz\Render\Format;
 use Porta\Help\Fence\FenceResult;
 use Porta\Ui\Theme\Styles;
 
-/** A hand-built native request: parsing, layout and row generation all happen off paint. */
+/**
+ * The library's native pipeline, sliced over the event loop: parsing, layout and
+ * row generation all happen off paint, a step at a time, latest request wins.
+ */
 final readonly class NativeMermaidRenderer
 {
     public function __construct(
         private MermaidTask $task = new MermaidTask(),
-        private MermaidPng $raster = new MermaidPng(),
-        private MermaidStyleSource $styles = new MermaidStyleSource(),
+        private MermaidPipeline $pipeline = new MermaidPipeline(),
     ) {}
 
     /** @param \Closure(MermaidScene): void $success
@@ -23,7 +27,7 @@ final readonly class NativeMermaidRenderer
      */
     public function render(string $source, \Closure $success, \Closure $error): \Closure
     {
-        return $this->task->run($this->scene($source), $success, $error);
+        return $this->task->run($this->pipeline->scene($source), $success, $error);
     }
 
     /** @param \Closure(FenceResult): void $success
@@ -45,9 +49,9 @@ final readonly class NativeMermaidRenderer
      * @param \Closure(string): void $error
      * @return \Closure(): void
      */
-    public function export(string $source, GraphExportFormat $format, \Closure $success, \Closure $error): \Closure
+    public function export(string $source, Format $format, \Closure $success, \Closure $error): \Closure
     {
-        return $this->task->run($this->exportWork($source, $format), $success, $error);
+        return $this->task->run($this->pipeline->export($source, $format), $success, $error);
     }
 
     /**
@@ -57,7 +61,7 @@ final readonly class NativeMermaidRenderer
      */
     public function raster(MermaidScene $scene, \Closure $success, \Closure $error): \Closure
     {
-        return $this->task->run($this->rasterWork($scene), $success, $error);
+        return $this->task->run($this->pipeline->image($scene, Format::Png), $success, $error);
     }
 
     /**
@@ -73,14 +77,14 @@ final readonly class NativeMermaidRenderer
     /** @return \Generator<int, null, mixed, FenceResult> */
     private function previewWork(string $source, int $width): \Generator
     {
-        $work = $this->scene($source);
+        $work = $this->pipeline->scene($source);
         yield from $work;
         $scene = $work->getReturn();
         $metadata = MermaidFenceElements::fromScene($scene);
         yield from $metadata;
         $elements = $metadata->getReturn();
         try {
-            $image = $this->rasterWork($scene);
+            $image = $this->pipeline->image($scene, Format::Png);
             yield from $image;
 
             return FenceResult::png($image->getReturn())->interactive($elements);
@@ -93,65 +97,10 @@ final readonly class NativeMermaidRenderer
         }
     }
 
-    /** @return \Generator<int, null, mixed, string> */
-    private function rasterWork(MermaidScene $scene): \Generator
-    {
-        $drawing = MermaidDrawing::scene($scene);
-        yield from $drawing;
-        $image = $this->raster->render($drawing->getReturn());
-        yield from $image;
-
-        return $image->getReturn();
-    }
-
-    /** @return \Generator<int, null, mixed, string> */
-    private function exportWork(string $source, GraphExportFormat $format): \Generator
-    {
-        $scene = $this->scene($source);
-        yield from $scene;
-        $drawing = MermaidDrawing::scene($scene->getReturn());
-        yield from $drawing;
-        $image = match ($format) {
-            GraphExportFormat::Svg => MermaidSvg::render($drawing->getReturn()),
-            GraphExportFormat::Png => $this->raster->render($drawing->getReturn()),
-        };
-        yield from $image;
-
-        return $image->getReturn();
-    }
-
-    /** @return \Generator<int, null, mixed, MermaidScene> */
-    private function scene(string $source): \Generator
-    {
-        $frontMatter = MermaidFrontMatter::parse(MermaidSource::unmarked($source));
-        $preparation = MermaidInitialization::parse($frontMatter->source, $frontMatter->configuration);
-        yield from $preparation;
-        $initialization = $preparation->getReturn();
-        $diagram = new NativeMermaidDiagram($initialization->source, $initialization->configuration, $this->styles);
-        $authoredTitle = false;
-        foreach ($diagram->statements() as $statement) {
-            $authoredTitle = $diagram->isTitle($statement) || $authoredTitle;
-            $diagram->accept($statement);
-            yield null;
-        }
-        $layout = $diagram->layout();
-        yield from $layout;
-
-        if (null !== $frontMatter->title && !$authoredTitle && $diagram->supportsTitle) {
-            $margin = $initialization->configuration->flowchart?->spacing('titleTopMargin', default: 1.0) ?? 1.0;
-            $caption = MermaidTitle::apply($layout->getReturn(), $frontMatter->title, $margin);
-            yield from $caption;
-
-            return $caption->getReturn()->themed($diagram->palette);
-        }
-
-        return $layout->getReturn()->themed($diagram->palette);
-    }
-
     /** @return \Generator<int, null, mixed, FenceResult> */
     private function rowWork(string $source, int $width): \Generator
     {
-        $work = $this->scene($source);
+        $work = $this->pipeline->scene($source);
         yield from $work;
         $scene = $work->getReturn();
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Render;
 
-use Porta\GraphViewer\Graph\GraphLayout;
+use Janalis\Viz\Layout\GraphLayout;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;

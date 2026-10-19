@@ -24,6 +24,7 @@
         "ext-mbstring": "*",
         "ext-pcntl": "*",
         "composer/semver": "^3.4",
+        "janalis/viz": "dev-main",
         "revolt/event-loop": "^1.0",
         "symfony/clock": "^8.2",
         "symfony/config": "^8.2",
@@ -132,5 +133,13 @@
         "platform": {
             "php": "8.5.0"
         }
-    }
+    },
+    "repositories": [{
+        "name": "viz",
+        "type": "path",
+        "url": "../viz",
+        "options": {
+            "symlink": true
+        }
+    }]
 }

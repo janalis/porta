@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidDrawing;
+use Janalis\Viz\Mermaid\MermaidFont;
+use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Mermaid\MermaidPng;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Mermaid\MermaidDrawing;
-use Porta\GraphViewer\Mermaid\MermaidFont;
-use Porta\GraphViewer\Mermaid\MermaidMark;
-use Porta\GraphViewer\Mermaid\MermaidPng;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\TempProject;
@@ -73,14 +73,6 @@ final class MermaidFontTest extends TestCase
         $cancel();
         $this->assertSame([], $scheduler->scheduled);
         $this->assertFileDoesNotExist($path, 'cancellation runs finally without waiting for cyclic garbage collection');
-    }
-
-    public function testMissingPackagedFontIsReportedBeforeCallingFreeType(): void
-    {
-        $font = new MermaidFont('phar:///nonexistent/font.tar/font.ttf');
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessageIsOrContains('Cannot read');
-        $font->path();
     }
 
     public function testExtractionErrorsAreReportedAsRenderFailures(): void

@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Janalis\Viz\GraphViz\DotCommand;
+use Janalis\Viz\GraphViz\DotJsonParser;
+use Janalis\Viz\GraphViz\GraphParseException;
+use Janalis\Viz\Render\Format;
 use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Process\ExecutableFinder;
 
@@ -41,9 +45,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
 
     public function baseDpi(): int
     {
-        // 72 dpi is one PostScript point per pixel, which is what makes a dot
-        // bitmap share its coordinates with the layout it was drawn from.
-        return 72;
+        return DotCommand::BASE_DPI;
     }
 
     public function binary(): ?string
@@ -66,7 +68,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
             return;
         }
         $this->layoutSlot->run(
-            [$binary, '-Tjson0'],
+            DotCommand::layout($binary),
             $this->rootDir,
             $dot,
             'dot',
@@ -89,17 +91,10 @@ final readonly class DotLayoutEngine implements LayoutEngine
 
             return;
         }
-        // -Gpad=0 is what makes the pixel grid line up with the layout: dot pads
-        // a bitmap by 4 points a side by default (measured — `margin` is NOT the
-        // knob, it leaves the canvas untouched), which would shift every
-        // coordinate the viewer hit-tests against. With pad 0 the PNG is exactly
-        // ceil(bb) × dpi/72 pixels. A dot built without libgd has no PNG support
-        // and says so on stderr; the viewer treats that as "fall back to the
-        // cell rendering".
-        $this->renderSlot->run([$binary, '-Tpng', '-Gdpi='.$dpi, '-Gpad=0'], $this->rootDir, $source, 'dot', $onPng, $onError);
+        $this->renderSlot->run(DotCommand::render($binary, Format::Png, $dpi), $this->rootDir, $source, 'dot', $onPng, $onError);
     }
 
-    public function export(string $dot, GraphExportFormat $format, string $outPath, \Closure $onDone): void
+    public function export(string $dot, Format $format, string $outPath, \Closure $onDone): void
     {
         $binary = $this->binary();
         if (null === $binary) {
@@ -108,7 +103,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
             return;
         }
         $this->exportSlot->run(
-            [$binary, $format->flag(), '-o', $outPath],
+            [...DotCommand::render($binary, $format), '-o', $outPath],
             $this->rootDir,
             $dot,
             'dot',

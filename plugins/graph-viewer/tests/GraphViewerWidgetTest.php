@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests;
 
+use Janalis\Viz\GraphViz\DotJsonParser;
+use Janalis\Viz\Layout\GraphLayout;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ActionCatalog;
-use Porta\GraphViewer\Graph\DotJsonParser;
-use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\Render\GraphRenderer;
 use Porta\I18n\Translator;

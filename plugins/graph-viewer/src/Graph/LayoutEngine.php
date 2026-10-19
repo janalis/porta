@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Render\Format;
+
 /**
  * Turns DOT source into a {@see GraphLayout} asynchronously — the seam the
  * graph viewer depends on, so tests (and any future non-Graphviz engine)
@@ -29,5 +32,5 @@ interface LayoutEngine extends DiagramEngine
      *
      * @param \Closure(?string): void $onDone null on success, the error text on failure
      */
-    public function export(string $dot, GraphExportFormat $format, string $outPath, \Closure $onDone): void;
+    public function export(string $dot, Format $format, string $outPath, \Closure $onDone): void;
 }

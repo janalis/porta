@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Render\Format;
 use Porta\GraphViewer\Graph\DiagramEngine;
-use Porta\GraphViewer\Graph\GraphExportFormat;
-use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\Graph\LayoutEngine;
 
 /**
@@ -18,7 +18,7 @@ final class FakeLayoutEngine implements DiagramEngine, LayoutEngine
 {
     public int $layoutCalls = 0;
 
-    /** @var list<array{string, GraphExportFormat, string}> */
+    /** @var list<array{string, Format, string}> */
     public array $exports = [];
 
     public ?string $binary = '/fake/dot';
@@ -97,7 +97,7 @@ final class FakeLayoutEngine implements DiagramEngine, LayoutEngine
         $this->pngIsError ? $onError($this->nextPng) : $onPng($this->nextPng);
     }
 
-    public function export(string $dot, GraphExportFormat $format, string $outPath, \Closure $onDone): void
+    public function export(string $dot, Format $format, string $outPath, \Closure $onDone): void
     {
         $this->exports[] = [$dot, $format, $outPath];
         $onDone(null);

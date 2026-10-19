@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer;
 
-use Porta\GraphViewer\Graph\GraphExportFormat;
+use Janalis\Viz\Render\Format;
 use Porta\GraphViewer\Mermaid\NativeMermaidExport;
 use Porta\Help\Fence\FenceAction;
 use Porta\Help\Fence\FenceContext;
@@ -37,7 +37,7 @@ final readonly class NativeFenceActions
         if ([] !== $this->elements) {
             $actions[] = new FenceAction('find-node', ($this->translate)('Find node', []), $this->find(...));
         }
-        foreach (GraphExportFormat::cases() as $format) {
+        foreach (Format::cases() as $format) {
             $actions[] = new FenceAction('export-'.$format->extension(), \strtoupper($format->extension()), fn (FenceContext $context) => $this->export($context, $format));
         }
 
@@ -53,7 +53,7 @@ final readonly class NativeFenceActions
         ($this->pick)(($this->translate)('Find node', []), $choices, $context->select(...));
     }
 
-    private function export(FenceContext $context, GraphExportFormat $format): void
+    private function export(FenceContext $context, Format $format): void
     {
         $path = \dirname($this->path).'/'.\pathinfo($this->path, flags: \PATHINFO_FILENAME).'-diagram-'.$context->number.'.'.$format->extension();
         $this->exports->export($this->source, $format, $path, function (?string $error) use ($path): void {

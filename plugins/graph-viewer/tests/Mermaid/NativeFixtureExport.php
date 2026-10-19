@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Assert;
-use Porta\GraphViewer\Graph\GraphExportFormat;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\Tests\Support\FakeScheduler;
@@ -13,7 +13,7 @@ use Porta\Tests\Support\FakeScheduler;
 /** Export cases share callback scheduling; each family asserts its own graphic and escaping contract. */
 final class NativeFixtureExport
 {
-    public static function render(string $source, GraphExportFormat $format): string
+    public static function render(string $source, Format $format): string
     {
         $scheduler = new FakeScheduler();
         $result = null;

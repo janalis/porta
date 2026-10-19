@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidSyntaxError;
 use Porta\Support\Clocks;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;

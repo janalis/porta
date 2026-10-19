@@ -4,18 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
-use PHPUnit\Framework\Attributes\DataProvider;
+use Janalis\Viz\Mermaid\JourneyDiagram;
+use Janalis\Viz\Mermaid\JourneyLayout;
+use Janalis\Viz\Mermaid\JourneyLexer;
+use Janalis\Viz\Mermaid\JourneyParser;
+use Janalis\Viz\Mermaid\MermaidPalette;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphNode;
-use Porta\GraphViewer\Mermaid\JourneyDiagram;
-use Porta\GraphViewer\Mermaid\JourneyFaces;
-use Porta\GraphViewer\Mermaid\JourneyLayout;
-use Porta\GraphViewer\Mermaid\JourneyLexer;
-use Porta\GraphViewer\Mermaid\JourneyParser;
-use Porta\GraphViewer\Mermaid\MermaidMark;
-use Porta\GraphViewer\Mermaid\MermaidPalette;
-use Porta\GraphViewer\Mermaid\MermaidScene;
-use Porta\GraphViewer\Mermaid\MermaidSyntaxError;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\GraphViewer\Render\GraphRenderer;
@@ -72,19 +66,6 @@ final class JourneyTest extends TestCase
         $this->assertCount((int) \ceil($scene->graph->height / 2), $scene->origins);
     }
 
-    public function testEmptyTrailingSectionsAndLiteralNames(): void
-    {
-        $diagram = self::parse("JOURNEY\naccDescr: details\n\"漢字 [box]\": 1\nsection Final\n#comment");
-        $this->assertSame('"漢字 [box]"', $diagram->tasks[0]['label']);
-        $this->assertNull($diagram->tasks[0]['section']);
-        $work = new JourneyLayout()->layout($diagram);
-        \iterator_to_array($work);
-        $this->assertSame('section: Final', $work->getReturn()->legend[3]['text']);
-        $work = new JourneyLayout()->layout(self::parse('journey'));
-        \iterator_to_array($work);
-        $this->assertSame('title: Journey', $work->getReturn()->legend[0]['text']);
-    }
-
     public function testScheduledCancellationAndNarrowRows(): void
     {
         $scheduler = new FakeScheduler();
@@ -110,63 +91,5 @@ final class JourneyTest extends TestCase
         $this->assertNull($error);
         $this->assertStringContainsString('Task|score:5/5|actors:["A"]', \implode('', $result->rows));
         $this->assertContains(1, $result->origins);
-    }
-
-    #[DataProvider('invalidSources')]
-    public function testInvalidSyntax(string $source, string $message): void
-    {
-        $this->expectException(MermaidSyntaxError::class);
-        $this->expectExceptionMessageIsOrContains($message);
-        self::parse($source);
-    }
-
-    public static function invalidSources(): iterable
-    {
-        yield ['', 'Expected journey'];
-        yield ['wrong', 'Expected journey'];
-        foreach (['Task', 'Task: bad', ':5', 'Task: 5: A: B', 'section A:5', 'Task:5;'] as $task) {
-            yield ["journey\n".$task, 'Expected journey task'];
-        }
-        foreach (['0', '6', '1e999'] as $score) {
-            yield ["journey\nTask: ".$score, 'Journey score'];
-        }
-        yield ["journey\n".\str_repeat('x', times: 65_537), 'Statement exceeds'];
-        yield ["journey\n".\str_repeat("Task:5\n", times: 4097), 'journey task limit'];
-        yield ["journey\n".\str_repeat("section A\n", times: 4097), 'journey section limit'];
-        yield ["journey\nTask:5:".\str_repeat('a,', times: 4096), 'journey actor limit'];
-    }
-
-    public function testFacesSmileFrownOrLevelAsPinned(): void
-    {
-        $node = new GraphNode(0, 'face', '', 10.0, 10.0, 3.0, 3.0, '#999999', '#ffffff', dashed: false);
-        $mouth = static fn (float $score): MermaidMark => \array_last(JourneyFaces::marks($node, JourneyFaces::shape($score)));
-        $this->assertCount(4, JourneyFaces::marks($node, JourneyFaces::shape(5.0)), 'a face, two eyes and a mouth');
-        // The smile's middle hangs below its ends; the frown's rises above them; 3 is level.
-        $smile = $mouth(4.0)->points;
-        $this->assertGreaterThan($smile[0][1], $smile[12][1]);
-        $frown = $mouth(2.0)->points;
-        $this->assertLessThan($frown[0][1], $frown[12][1]);
-        $this->assertSame([[9.5, 10.7], [10.5, 10.7]], $mouth(3.0)->points);
-        $this->assertSame([[9.5, 10.7], [10.5, 10.7]], \array_last(JourneyFaces::marks($node, 'journey-face:x'))->points, 'a malformed score reads as level');
-        $face = JourneyFaces::marks($node, 'journey-face:1')[0];
-        $this->assertSame(['#999999', '#ffffff', [10.0, 8.5]], [$face->stroke, $face->fill, $face->points[0]], 'a 15-pixel face in its theme color');
-    }
-
-    public function testTitleAndTaskSizesFollowTheirOptions(): void
-    {
-        $body = "journey\ntitle T\nsection S\nA: 5: Me\n";
-        $nodes = static fn (MermaidScene $scene): array => \array_column($scene->graph->nodes, null, 'name');
-        $sized = $nodes(NativeFixtureScene::render("---\nconfig:\n  journey:\n    titleFontSize: '48px'\n    taskFontSize: '28px'\n---\n".$body));
-        $this->assertSame([3.0, 2.0, 2.0], [$sized['title']->fontScale, $sized['task:0']->fontScale, $sized['section:0']->fontScale]);
-        $this->assertSame(6.0, $sized['task:0']->h, 'a larger task text grows its box');
-        $ex = $nodes(NativeFixtureScene::render("---\nconfig:\n  journey:\n    titleFontSize: 6ex\n---\n".$body));
-        $this->assertSame(3.0, $ex['title']->fontScale);
-        $this->assertSame(2.0, $nodes(NativeFixtureScene::render("---\nconfig:\n  journey:\n    titleFontSize: nonsense\n---\n".$body))['title']->fontScale);
-        // Pinned CSS fills a face with `faceColor`, which no theme sets and authors cannot: cornsilk.
-        $this->assertSame('#fff8dc', $nodes(NativeFixtureScene::render($body))['face:0']->fillColor);
-        $this->assertSame('#fff8dc', $nodes(NativeFixtureScene::render("---\nconfig:\n  theme: base\n  themeVariables:\n    faceColor: '#123456'\n---\n".$body))['face:0']->fillColor);
-        // A box tall enough to reach its face leaves only the line beneath the face.
-        $high = NativeFixtureScene::render("---\nconfig:\n  journey:\n    taskFontSize: 56\n---\njourney\nsection S\naaa bbb ccc: 5: Me\n");
-        $this->assertCount(2, $high->graph->edges, 'one task line piece and the timeline');
     }
 }

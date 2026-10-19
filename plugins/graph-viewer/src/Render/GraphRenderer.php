@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Render;
 
-use Porta\GraphViewer\Graph\GraphCluster;
-use Porta\GraphViewer\Graph\GraphEdge;
-use Porta\GraphViewer\Graph\GraphLayout;
-use Porta\GraphViewer\Graph\GraphNode;
+use Janalis\Viz\Layout\GraphCluster;
+use Janalis\Viz\Layout\GraphEdge;
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Layout\GraphNode;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;

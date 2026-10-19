@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
-use Porta\GraphViewer\Graph\GraphExportFormat;
+use Janalis\Viz\Render\Format;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -17,7 +17,7 @@ final readonly class NativeMermaidExport
     ) {}
 
     /** @param \Closure(?string): void $done */
-    public function export(string $source, GraphExportFormat $format, string $path, \Closure $done): void
+    public function export(string $source, Format $format, string $path, \Closure $done): void
     {
         $this->renderer->export(
             $source,

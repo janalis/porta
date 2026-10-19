@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
+use Janalis\Viz\Process\Tool;
+use Janalis\Viz\Render\Format;
 use Porta\Editor\PaneServices;
 use Porta\GraphViewer\ArchitectureArtifact;
 use Porta\GraphViewer\Graph\DiagramKind;
 use Porta\GraphViewer\Graph\DotFiles;
 use Porta\GraphViewer\Graph\DotLayoutEngine;
-use Porta\GraphViewer\Graph\GraphExportFormat;
 use Porta\GraphViewer\Graph\MermaidEngine;
-use Porta\GraphViewer\Graph\PlantUmlCommand;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\MarkdownFenceRenderer;
@@ -29,7 +29,7 @@ use Porta\Widget\EditorPaneWidget;
  * The Graphviz graph viewer as a bundled plugin: the routing claim (.dot/.gv
  * open as text with the graph pane previewing them live), the Project
  * Architecture command, the
- * SVG/PNG exports and the generator-command setting. This file only WIRES:
+ * SVG/PNG/PDF exports and the generator-command setting. This file only WIRES:
  * everything behind it — the pane widget, the layout engines, the DOT parser,
  * the renderers and the architecture scanner — is this plugin's OWN code
  * (`src/`, namespace `Porta\GraphViewer`, declared in composer.json and graded by
@@ -202,12 +202,27 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         });
         $api->addMenuItem('architecture');
 
-        $export = static function (GraphExportFormat $format) use ($api, $setting, $exports): void {
+        $api->registerCommand('find-node', 'Graph: Find Node', $findNode);
+        $this->registerExports($api, $setting, $exports, $plantUml, $diagram);
+    }
+
+    /**
+     * `Graph: Export SVG/PNG/PDF`: the active diagram drawn beside its file, by
+     * the native Mermaid renderer or the tool the pane draws it with.
+     *
+     * @param \Closure(string): (bool|int|string) $setting
+     * @param \Closure(string): bool               $diagram whether the pane claims a path
+     */
+    private function registerExports(PluginApi $api, \Closure $setting, NativeMermaidExport $exports, PlantUmlEngine $plantUml, \Closure $diagram): void
+    {
+        // A tab exports exactly when the diagram pane claims it, so a .puml left as text never offers to.
+        $isExportableTab = static fn (): bool => null !== ($file = $api->activeFile()) && $diagram($file);
+        $export = static function (Format $format) use ($api, $setting, $exports, $plantUml, $isExportableTab): void {
             $file = $api->activeFile();
-            $kind = null === $file ? null : DiagramKind::forPath($file);
-            if (null === $file || !\in_array($kind, [DiagramKind::Dot, DiagramKind::Mermaid], strict: true)) {
-                return; // palette self-guard: only a graph tab exports
+            if (null === $file || !$isExportableTab()) {
+                return; // palette self-guard: only a diagram tab exports
             }
+            $kind = DiagramKind::forPath($file);
             $out = \sprintf('%s/%s.%s', \dirname($file), pathinfo($file, \PATHINFO_FILENAME), $format->extension());
             $done = static function (?string $error) use ($api, $out): void {
                 null === $error
@@ -216,6 +231,11 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
             };
             if (DiagramKind::Mermaid === $kind) {
                 $exports->export($api->openBuffers()->text($file) ?? (string) file_get_contents($file), $format, $out, $done);
+
+                return;
+            }
+            if (DiagramKind::PlantUml === $kind) {
+                $plantUml->export((string) file_get_contents($file), $format, $out, $done);
 
                 return;
             }
@@ -228,12 +248,16 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
                 $done,
             );
         };
-        $api->registerCommand('find-node', 'Graph: Find Node', $findNode);
-        $api->registerCommand('export-svg', 'Graph: Export SVG', static fn () => $export(GraphExportFormat::Svg));
-        $api->registerCommand('export-png', 'Graph: Export PNG', static fn () => $export(GraphExportFormat::Png));
-        $isExportableTab = static fn (): bool => null !== ($file = $api->activeFile()) && \in_array(DiagramKind::forPath($file), [DiagramKind::Dot, DiagramKind::Mermaid], strict: true);
-        $api->addMenuItem('export-svg', $isExportableTab);
-        $api->addMenuItem('export-png', $isExportableTab);
+        foreach (Format::cases() as $format) {
+            // Literal titles, so the catalogs' completeness check can see each one.
+            $title = match ($format) {
+                Format::Svg => 'Graph: Export SVG',
+                Format::Png => 'Graph: Export PNG',
+                Format::Pdf => 'Graph: Export PDF',
+            };
+            $api->registerCommand('export-'.$format->extension(), $title, static fn () => $export($format));
+            $api->addMenuItem('export-'.$format->extension(), $isExportableTab);
+        }
     }
 
     /**
@@ -247,7 +271,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         return (
             DiagramKind::PlantUml === DiagramKind::forPath($path)
             && (bool) $this->api?->setting('plantuml')
-            && null !== PlantUmlCommand::tool(self::path($this->api?->setting('plantumlPath') ?? ''))
+            && null !== new Tool('plantuml', self::path($this->api?->setting('plantumlPath') ?? ''))->path()
         );
     }
 

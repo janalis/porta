@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Render;
 
+use Janalis\Viz\Layout\GraphCluster;
+use Janalis\Viz\Layout\GraphEdge;
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Layout\GraphNode;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphCluster;
-use Porta\GraphViewer\Graph\GraphEdge;
-use Porta\GraphViewer\Graph\GraphLayout;
-use Porta\GraphViewer\Graph\GraphNode;
 use Porta\GraphViewer\Render\GraphCellGrid;
 use Porta\GraphViewer\Render\GraphRenderer;
 use Porta\ImageViewer\ZoomPanModel;

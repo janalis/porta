@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\VennDiagram;
+use Janalis\Viz\Mermaid\VennLexer;
+use Janalis\Viz\Mermaid\VennParser;
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphExportFormat;
-use Porta\GraphViewer\Mermaid\VennDiagram;
-use Porta\GraphViewer\Mermaid\VennLexer;
-use Porta\GraphViewer\Mermaid\VennParser;
 
 final class VennTest extends TestCase
 {
@@ -37,7 +37,7 @@ final class VennTest extends TestCase
         $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: \file_get_contents($path));
         $diagram = self::parse($source);
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 100)->rows);
-        $this->assertStringContainsString('<svg', NativeFixtureExport::render($source, GraphExportFormat::Svg));
+        $this->assertStringContainsString('<svg', NativeFixtureExport::render($source, Format::Svg));
         $this->assertSame($expected['title'], $diagram->title->text ?? '');
         foreach (['subsets', 'texts', 'styles'] as $key) {
             $this->assertCount(\count($expected[$key]), $diagram->{$key});

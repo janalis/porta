@@ -41,7 +41,8 @@ final class NativeFenceActionsTest extends TestCase
                 return static function (): void {};
             },
         )->actions();
-        $this->assertSame(['find-node', 'export-svg', 'export-png'], \array_column($actions, 'id'));
+        $this->assertSame(['find-node', 'export-svg', 'export-png', 'export-pdf'], \array_column($actions, 'id'));
+        $this->assertSame(['SVG', 'PNG', 'PDF'], \array_column(\array_slice($actions, offset: 1), 'label'));
         $selected = [];
         $context = new FenceContext(2, static function (string $id) use (&$selected): void {
             $selected[] = $id;
@@ -50,7 +51,7 @@ final class NativeFenceActionsTest extends TestCase
         $this->assertSame(['Find node', [['label' => 'Unsaved', 'hint' => '4', 'value' => 'node']]], $choices);
         $picked('node');
         $this->assertSame(['node'], $selected);
-        foreach (['svg', 'png'] as $index => $extension) {
+        foreach (['svg', 'png', 'pdf'] as $index => $extension) {
             ($actions[$index + 1]->run)($context);
             while ([] !== $scheduler->scheduled) {
                 $scheduler->fire();
@@ -61,6 +62,7 @@ final class NativeFenceActionsTest extends TestCase
         }
         $this->assertStringContainsString('>Unsaved</text>', \file_get_contents($project->path('doc-diagram-2.svg')));
         $this->assertStringStartsWith("\x89PNG", \file_get_contents($project->path('doc-diagram-2.png')));
+        $this->assertStringStartsWith('%PDF-', \file_get_contents($project->path('doc-diagram-2.pdf')));
         $this->assertStringContainsString('Saved', \file_get_contents($project->path('doc.md')));
         $this->assertStringNotContainsString('Unsaved', \file_get_contents($project->path('doc.md')));
         $exports->cancel();
@@ -104,7 +106,7 @@ final class NativeFenceActionsTest extends TestCase
                 self::fail('No semantic elements should create a picker');
             },
         )->actions();
-        $this->assertSame(['export-svg', 'export-png'], \array_column($actions, 'id'));
+        $this->assertSame(['export-svg', 'export-png', 'export-pdf'], \array_column($actions, 'id'));
         ($actions[0]->run)(new FenceContext(1, static function (): void {}));
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();

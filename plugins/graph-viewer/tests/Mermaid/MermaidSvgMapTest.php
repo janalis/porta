@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Layout\GraphNode;
+use Janalis\Viz\Mermaid\MermaidScene;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphLayout;
-use Porta\GraphViewer\Graph\GraphNode;
-use Porta\GraphViewer\Mermaid\MermaidScene;
 use Porta\GraphViewer\Mermaid\MermaidSvgIndex;
 use Porta\GraphViewer\Mermaid\MermaidSvgMap;
 

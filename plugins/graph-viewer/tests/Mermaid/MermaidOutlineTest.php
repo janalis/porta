@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Layout\GraphNode;
+use Janalis\Viz\Mermaid\MermaidDrawing;
+use Janalis\Viz\Mermaid\MermaidOutline;
+use Janalis\Viz\Mermaid\MermaidScene;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphNode;
-use Porta\GraphViewer\Mermaid\MermaidDrawing;
-use Porta\GraphViewer\Mermaid\MermaidOutline;
-use Porta\GraphViewer\Mermaid\MermaidScene;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\Tests\Support\FakeScheduler;
@@ -97,22 +97,6 @@ final class MermaidOutlineTest extends TestCase
             yield $alias => ['A@{ shape: '.$alias.', label: Label }', $alias, $marks];
         }
         yield 'attributes default' => ['A@{ label: Label }', 'rect', 1];
-    }
-
-    public function testHitTestingRejectsEmptyCornersAndIncludesTheOutline(): void
-    {
-        $node = new GraphNode(0, 'n', '', 10, 10, 10, 10, null, null, dashed: false);
-        $this->assertFalse(MermaidOutline::contains($node, 'diamond', x: 5.5, y: 5.5));
-        $this->assertTrue(MermaidOutline::contains($node, 'diamond', x: 5.0, y: 10.0));
-        $this->assertTrue(MermaidOutline::contains($node, 'rect', x: 5.0, y: 5.0));
-        $this->assertFalse(MermaidOutline::contains($node, 'circle', x: 5.5, y: 5.5));
-        $this->assertFalse(MermaidOutline::contains($node, 'rounded', x: 5.1, y: 5.1));
-        $this->assertSame([12.5, 12.5], MermaidOutline::boundary($node, 'diamond', towardX: 20.0, towardY: 20.0));
-        $this->assertSame([15.0, 15.0], MermaidOutline::boundary($node, 'rect', towardX: 20.0, towardY: 20.0));
-        $this->assertSame([10.0, 5.0], MermaidOutline::boundary($node, 'rect', towardX: 10.0, towardY: 10.0));
-        $this->assertEqualsWithDelta([13.535_533_906, 13.535_533_906], MermaidOutline::boundary($node, 'circle', towardX: 20.0, towardY: 20.0), delta: 0.000_001);
-        $point = new GraphNode(0, 'point', '', 10, 10, 0, 0, null, null, dashed: false);
-        $this->assertSame([10.0, 10.0], MermaidOutline::boundary($point, 'rect', towardX: 20.0, towardY: 20.0));
     }
 
     public function testExpensiveWorkYieldsAtTheSliceDeadline(): void

@@ -94,6 +94,10 @@
         <source>Graph: Export PNG</source>
         <target>Graph: Als PNG exportieren</target>
       </trans-unit>
+      <trans-unit id="34">
+        <source>Graph: Export PDF</source>
+        <target>Graph: Als PDF exportieren</target>
+      </trans-unit>
       <trans-unit id="24">
         <source>Graphviz dot path</source>
         <target>Graphviz-dot-Pfad</target>

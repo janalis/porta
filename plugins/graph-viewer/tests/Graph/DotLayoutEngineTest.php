@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Graph;
 
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\DotLayoutEngine;
-use Porta\GraphViewer\Graph\GraphExportFormat;
-use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\GraphvizBinary;
@@ -143,7 +143,7 @@ final class DotLayoutEngineTest extends TestCase
         $this->assertNull($engine->binary());
 
         $exportError = 'unset';
-        $engine->export(self::SMALL_DOT, GraphExportFormat::Svg, '/tmp/never-written.svg', static function (?string $message) use (&$exportError): void {
+        $engine->export(self::SMALL_DOT, Format::Svg, '/tmp/never-written.svg', static function (?string $message) use (&$exportError): void {
             $exportError = $message;
         });
         $this->assertSame('graphviz not found', $exportError);
@@ -188,7 +188,7 @@ final class DotLayoutEngineTest extends TestCase
         }
         $engine = $this->engine('fake-dot');
         $result = 'unset';
-        $engine->export(self::SMALL_DOT, GraphExportFormat::Svg, $out, static function (?string $message) use (&$result): void {
+        $engine->export(self::SMALL_DOT, Format::Svg, $out, static function (?string $message) use (&$result): void {
             $result = $message;
         });
         $this->await(static function () use (&$result): bool {
@@ -205,7 +205,7 @@ final class DotLayoutEngineTest extends TestCase
     {
         $engine = $this->engine('fake-dot-fail');
         $result = null;
-        $engine->export(self::SMALL_DOT, GraphExportFormat::Png, '/tmp/never-written.png', static function (?string $message) use (&$result): void {
+        $engine->export(self::SMALL_DOT, Format::Png, '/tmp/never-written.png', static function (?string $message) use (&$result): void {
             $result = $message;
         });
         $this->await(static function () use (&$result): bool {

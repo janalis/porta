@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "554e2c22e85d30d37190e28d12c9e2eb",
+    "content-hash": "6d8fbc89aade94f9371c3a9eb7f5b425",
     "packages": [
         {
             "name": "composer/semver",
@@ -82,6 +82,90 @@
                 }
             ],
             "time": "2026-10-05T13:12:12+00:00"
+        },
+        {
+            "name": "janalis/viz",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../viz",
+                "reference": "8a3adcfbb17b5433d59ff211fb31e79b5ba29bab"
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": ">=8.5",
+                "symfony/filesystem": "^8.0",
+                "symfony/polyfill-intl-grapheme": "^1.33",
+                "symfony/process": "^8.0",
+                "symfony/string": "^8.0",
+                "symfony/yaml": "^8.2"
+            },
+            "require-dev": {
+                "carthage-software/mago": "1.47.*",
+                "infection/infection": "^0.35.4",
+                "phpunit/phpunit": "^13.2"
+            },
+            "suggest": {
+                "ext-gd": "Native PNG export of Mermaid diagrams (needs FreeType)",
+                "ext-zlib": "Compressed native PDF export"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Janalis\\Viz\\": "src/"
+                }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Janalis\\Viz\\Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "format": [
+                    "mago format"
+                ],
+                "format:check": [
+                    "mago format --check"
+                ],
+                "lint": [
+                    "mago lint --minimum-fail-level=note"
+                ],
+                "analyze": [
+                    "mago analyze --minimum-fail-level=note"
+                ],
+                "test": [
+                    "phpunit"
+                ],
+                "coverage": [
+                    "@php -d pcov.enabled=1 vendor/bin/phpunit --coverage-clover=var/coverage/clover.xml"
+                ],
+                "mutate": [
+                    "@php -d pcov.enabled=1 vendor/bin/infection --threads=max"
+                ]
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Mermaid, Graphviz and PlantUML for PHP: native rendering with a CLI fallback, SVG/PNG/PDF export and conversion between the three",
+            "homepage": "https://github.com/janalis/viz",
+            "keywords": [
+                "diagram",
+                "dot",
+                "graphviz",
+                "mermaid",
+                "pdf",
+                "plantuml",
+                "png",
+                "svg"
+            ],
+            "support": {
+                "issues": "https://github.com/janalis/viz/issues",
+                "source": "https://github.com/janalis/viz"
+            },
+            "transport-options": {
+                "symlink": true,
+                "relative": true
+            }
         },
         {
             "name": "psr/clock",
@@ -6072,7 +6156,9 @@
     ],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {},
+    "stability-flags": {
+        "janalis/viz": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {

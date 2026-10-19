@@ -5,12 +5,12 @@
     "license": "MIT",
     "require": {
         "php": ">=8.5",
+        "janalis/viz": "dev-main",
         "symfony/clock": "^8.2",
         "symfony/filesystem": "^8.2",
         "symfony/finder": "^8.2",
         "symfony/process": "^8.2",
-        "symfony/tui": "^8.2",
-        "symfony/yaml": "^8.2"
+        "symfony/tui": "^8.2"
     },
     "autoload": {
         "psr-4": {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidScene;
 use Porta\GraphViewer\Render\GraphRenderer;
 use Porta\Help\Fence\FenceResult;
 use Porta\ImageViewer\ZoomPanModel;

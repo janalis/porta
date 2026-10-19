@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Janalis\Viz\Source\SourceFormat;
 use Porta\Support\ProjectPaths;
 
 /**
@@ -25,9 +26,9 @@ enum DiagramKind
     public function extensions(): array
     {
         return match ($this) {
-            self::Dot => ['dot', 'gv'],
-            self::Mermaid => ['mmd', 'mermaid'],
-            self::PlantUml => ['puml', 'plantuml', 'pu', 'iuml', 'wsd'],
+            self::Dot => SourceFormat::Dot->extensions(),
+            self::Mermaid => SourceFormat::Mermaid->extensions(),
+            self::PlantUml => SourceFormat::PlantUml->extensions(),
         };
     }
 

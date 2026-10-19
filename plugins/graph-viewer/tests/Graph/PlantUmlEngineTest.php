@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Graph;
 
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
 use Porta\ImageViewer\ImageData;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
+use Symfony\Component\Filesystem\Filesystem;
 
 final class PlantUmlEngineTest extends TestCase
 {
@@ -149,5 +151,60 @@ final class PlantUmlEngineTest extends TestCase
         $configured = \dirname(__DIR__, levels: 4).'/tests/Support/fake-plantuml';
 
         $this->assertNotNull($engine->binary(), 'the new value is picked up with no rebuild');
+    }
+
+    public function testAnExportWritesTheImageOnlyOnceItHasRendered(): void
+    {
+        $directory = \sys_get_temp_dir().'/porta-puml-export-'.\bin2hex(\random_bytes(6));
+        \mkdir($directory);
+        try {
+            $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
+            $results = [];
+            $done = static function (?string $error) use (&$results): void {
+                $results[] = $error;
+            };
+
+            $engine->export(self::SMALL_UML, Format::Png, $directory.'/seq.png', $done);
+            $this->await(static function () use (&$results): bool {
+                return 1 === \count($results);
+            }, what: 'the export to settle');
+            $this->assertNull($results[0]);
+            $this->assertSame([120, 80], \array_slice((array) \getimagesize($directory.'/seq.png'), offset: 0, length: 2), 'drawn at the natural 96 dpi');
+
+            $engine->export("@startuml\nbroken\n@enduml", Format::Png, $directory.'/seq.png', $done);
+            $this->await(static function () use (&$results): bool {
+                return 2 === \count($results);
+            }, what: 'the failed export to settle');
+            $this->assertStringContainsString('Syntax Error', (string) $results[1]);
+            $this->assertSame([120, 80], \array_slice((array) \getimagesize($directory.'/seq.png'), offset: 0, length: 2), 'the earlier export is left as it was');
+
+            \file_put_contents($directory.'/blocker', data: '');
+            $engine->export(self::SMALL_UML, Format::Svg, $directory.'/blocker/seq.svg', $done);
+            $this->await(static function () use (&$results): bool {
+                return 3 === \count($results);
+            }, what: 'the unwritable export to settle');
+            $this->assertNotNull($results[2]);
+        } finally {
+            new Filesystem()->remove($directory);
+        }
+    }
+
+    public function testAnExportWithoutTheToolFailsAndACancelledOneNeverReports(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $error = 'unset';
+        new PlantUmlEngine(\sys_get_temp_dir())->export(self::SMALL_UML, Format::Pdf, '/nonexistent/seq.pdf', static function (?string $message) use (&$error): void {
+            $error = $message;
+        });
+        $this->assertSame('plantuml not found', $error);
+
+        $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
+        $fired = false;
+        $engine->export(self::SMALL_UML, Format::Png, \sys_get_temp_dir().'/porta-never-'.\bin2hex(\random_bytes(6)).'.png', static function () use (&$fired): void {
+            $fired = true;
+        });
+        $engine->cancel();
+        $this->pump(0.2);
+        $this->assertFalse($fired, 'a cancelled export never reports');
     }
 }
