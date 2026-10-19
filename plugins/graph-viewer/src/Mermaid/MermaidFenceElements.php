@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidOutline;
+use Janalis\Viz\Mermaid\MermaidScene;
 use Porta\Help\Fence\FenceElement;
 
 /** Semantic silhouettes use image-relative coordinates, independent of the inline image's fitted size. */

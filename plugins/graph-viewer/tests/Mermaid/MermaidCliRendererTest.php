@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidScene;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\MermaidEngine;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\Mermaid\MermaidCliPicture;
 use Porta\GraphViewer\Mermaid\MermaidCliRenderer;
-use Porta\GraphViewer\Mermaid\MermaidScene;
 use Porta\GraphViewer\Mermaid\MermaidSvgRasterizer;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;

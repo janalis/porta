@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\RailroadExpression;
+use Janalis\Viz\Mermaid\RailroadLexer;
+use Janalis\Viz\Mermaid\RailroadParser;
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphExportFormat;
-use Porta\GraphViewer\Mermaid\RailroadExpression;
-use Porta\GraphViewer\Mermaid\RailroadLexer;
-use Porta\GraphViewer\Mermaid\RailroadParser;
 
 final class RailroadTest extends TestCase
 {
@@ -29,7 +29,7 @@ final class RailroadTest extends TestCase
             $parser->accept($statement);
         }
         $this->assertNotEmpty(NativeFixtureRows::render(\file_get_contents($path), width: 100)->rows);
-        $this->assertStringContainsString('<svg', NativeFixtureExport::render(\file_get_contents($path), GraphExportFormat::Svg));
+        $this->assertStringContainsString('<svg', NativeFixtureExport::render(\file_get_contents($path), Format::Svg));
         $source = $parser->finish();
         $this->assertSame($expected['metadata'], $source->metadata);
         $rules = [];

@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Layout\GraphNode;
+use Janalis\Viz\Mermaid\MermaidDrawing;
+use Janalis\Viz\Mermaid\MermaidOutline;
+use Janalis\Viz\Mermaid\MermaidScene;
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphExportFormat;
-use Porta\GraphViewer\Graph\GraphNode;
-use Porta\GraphViewer\Mermaid\MermaidConfiguration;
-use Porta\GraphViewer\Mermaid\MermaidDrawing;
-use Porta\GraphViewer\Mermaid\MermaidOutline;
-use Porta\GraphViewer\Mermaid\MermaidScene;
-use Porta\GraphViewer\Mermaid\MermaidStatement;
-use Porta\GraphViewer\Mermaid\MermaidSyntaxError;
+use Porta\GraphViewer\Mermaid\MermaidHitTest;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
-use Porta\GraphViewer\Mermaid\PieConfiguration;
 use Porta\GraphViewer\Render\GraphCellGrid;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Tests\Support\FakeScheduler;
@@ -91,8 +88,8 @@ final class PieGeometryTest extends TestCase
         $percentage = \array_find($scene->graph->nodes, static fn (GraphNode $node): bool => '25%' === $node->label);
         $this->assertEqualsWithDelta(16.8, \hypot($percentage->x - $cx, $percentage->y - $cy), delta: 1.0e-10);
         $this->assertLessThan($firstCaption, $lastSector, 'all sectors paint before captions and centered legends');
-        $this->assertStringStartsWith("\x89PNG", NativeFixtureExport::render($source, GraphExportFormat::Png));
-        $this->assertStringContainsString('75%', NativeFixtureExport::render($source, GraphExportFormat::Svg));
+        $this->assertStringStartsWith("\x89PNG", NativeFixtureExport::render($source, Format::Png));
+        $this->assertStringContainsString('75%', NativeFixtureExport::render($source, Format::Svg));
     }
 
     public static function positions(): iterable
@@ -129,7 +126,7 @@ final class PieGeometryTest extends TestCase
         $hole = 0;
         for ($row = 0; $row < $rows; ++$row) {
             for ($col = 0; $col < $cols; ++$col) {
-                $id = MermaidOutline::nodeAt($scene, $view, $cols, $rows, $row, $col);
+                $id = MermaidHitTest::nodeAt($scene, $view, $cols, $rows, $row, $col);
                 if (null === $id) {
                     ++$hole;
                     continue;
@@ -143,9 +140,9 @@ final class PieGeometryTest extends TestCase
         $cx = $nodes[0]->x + (float) $parts[4];
         $cy = $nodes[0]->y + (float) $parts[5];
         $grid = new GraphCellGrid($cols, $rows, $view, null);
-        $this->assertSame($nodes[0]->id, MermaidOutline::nodeAt($scene, $view, $cols, $rows, $grid->rowOf($cy + 15), $grid->colOf($cx + 15)));
-        $this->assertSame($nodes[1]->id, MermaidOutline::nodeAt($scene, $view, $cols, $rows, $grid->rowOf($cy + 15), $grid->colOf($cx - 15)));
-        $this->assertNull(MermaidOutline::nodeAt($scene, $view, $cols, $rows, (int) ($cy / 2), (int) $cx));
+        $this->assertSame($nodes[0]->id, MermaidHitTest::nodeAt($scene, $view, $cols, $rows, $grid->rowOf($cy + 15), $grid->colOf($cx + 15)));
+        $this->assertSame($nodes[1]->id, MermaidHitTest::nodeAt($scene, $view, $cols, $rows, $grid->rowOf($cy + 15), $grid->colOf($cx - 15)));
+        $this->assertNull(MermaidHitTest::nodeAt($scene, $view, $cols, $rows, (int) ($cy / 2), (int) $cx));
     }
 
     public function testAWholePieHasNoRadialSeamAndAWholeDonutKeepsItsHole(): void
@@ -176,7 +173,7 @@ final class PieGeometryTest extends TestCase
     {
         $source = \file_get_contents($path);
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 80)->rows);
-        $this->assertStringContainsString('<polygon', NativeFixtureExport::render($source, GraphExportFormat::Svg));
+        $this->assertStringContainsString('<polygon', NativeFixtureExport::render($source, Format::Svg));
     }
 
     public static function fixtures(): iterable
@@ -184,40 +181,5 @@ final class PieGeometryTest extends TestCase
         foreach (\glob(__DIR__.'/../fixtures/mermaid/pie/*.mmd') as $path) {
             yield \basename($path) => [$path];
         }
-    }
-
-    public function testConfigurationOverlaysKeepZeroAndValidateTheFamily(): void
-    {
-        $statement = new MermaidStatement('', offset: 0, line: 0, column: 0);
-        $base = MermaidConfiguration::parse((object) ['pie' => (object) ['donutHole' => 0.4, 'textPosition' => 0.7, 'legendPosition' => 'left']], $statement);
-        $zero = MermaidConfiguration::parse((object) ['pie' => (object) ['donutHole' => 0, 'textPosition' => 0]], $statement);
-        $merged = $base->overlay($zero)->pie;
-        $this->assertSame(0.0, $merged->donutHole);
-        $this->assertSame(0.0, $merged->textPosition);
-        $this->assertSame('left', $merged->legendPosition);
-        $this->assertFalse(new PieConfiguration()->configured());
-        $this->assertTrue($merged->configured());
-        foreach ([-1, 1, 99] as $hole) {
-            $this->assertSame(0.0, PieConfiguration::parse((object) ['donutHole' => $hole], $statement)->donutHole);
-        }
-        $this->expectException(MermaidSyntaxError::class);
-        $base->validateFamily('sequence');
-    }
-
-    #[DataProvider('invalid')]
-    public function testInvalidConfigurationIsRejected(string $key, mixed $value): void
-    {
-        $this->expectException(MermaidSyntaxError::class);
-        PieConfiguration::parse((object) [$key => $value], new MermaidStatement('', offset: 0, line: 0, column: 0));
-    }
-
-    public static function invalid(): iterable
-    {
-        yield ['legendPosition', 'outside'];
-        yield ['textPosition', -1];
-        yield ['textPosition', 2];
-        yield ['donutHole', \INF];
-        yield ['donutHole', '0.4'];
-        yield ['textPosition', false];
     }
 }

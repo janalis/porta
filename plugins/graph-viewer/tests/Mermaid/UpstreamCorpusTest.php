@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphExportFormat;
 
 /**
  * Every pinned upstream end-to-end diagram, verbatim, renders natively: the picture exports
@@ -31,19 +31,12 @@ final class UpstreamCorpusTest extends TestCase
         }
     }
 
-    public function testTheCorpusIsThePinnedOneInFull(): void
-    {
-        $this->assertSame('21f72f07ea22c0af48a3149c550654e80d8e40cb', self::provenance()['commit']);
-        $files = \iterator_to_array(new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator(self::ROOT, \FilesystemIterator::SKIP_DOTS)));
-        $this->assertCount(\count(self::provenance()['files']), $files, 'no file is added or missing');
-    }
-
     #[DataProvider('diagrams')]
     public function testEachDiagramRendersNatively(string $path, string $hash): void
     {
         $source = (string) \file_get_contents(self::ROOT.$path);
         $this->assertSame($hash, \hash('sha256', $source), 'the file is the pinned one');
-        $this->assertStringStartsWith('<svg', NativeFixtureExport::render($source, GraphExportFormat::Svg));
+        $this->assertStringStartsWith('<svg', NativeFixtureExport::render($source, Format::Svg));
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 80)->rows);
     }
 }

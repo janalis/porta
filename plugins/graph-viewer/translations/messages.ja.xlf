@@ -94,6 +94,10 @@
         <source>Graph: Export PNG</source>
         <target>グラフ: PNG としてエクスポート</target>
       </trans-unit>
+      <trans-unit id="34">
+        <source>Graph: Export PDF</source>
+        <target>グラフ: PDF としてエクスポート</target>
+      </trans-unit>
       <trans-unit id="24">
         <source>Graphviz dot path</source>
         <target>Graphviz dot のパス</target>

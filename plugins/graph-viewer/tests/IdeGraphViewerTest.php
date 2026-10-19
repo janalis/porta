@@ -519,6 +519,9 @@ final class IdeGraphViewerTest extends TestCase
                 $commands->run('graph-viewer:export-png');
                 $this->await(static fn (): bool => \is_file($project->path('native.png')), what: 'the native PNG export');
                 $this->assertStringStartsWith("\x89PNG", (string) \file_get_contents($project->path('native.png')));
+                $commands->run('graph-viewer:export-pdf');
+                $this->await(static fn (): bool => \is_file($project->path('native.pdf')), what: 'the native PDF export');
+                $this->assertStringStartsWith('%PDF-', (string) \file_get_contents($project->path('native.pdf')));
                 $this->assertStringContainsString('Saved', (string) \file_get_contents($project->path('native.mmd')), 'export does not save the document');
             },
         ]);
@@ -542,7 +545,7 @@ final class IdeGraphViewerTest extends TestCase
             $project,
             $project->path('seq.puml'),
             [
-                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Previews::alone($ide);
                     $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
                     $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: "PlantUML's picture to paint");
@@ -554,6 +557,11 @@ final class IdeGraphViewerTest extends TestCase
                     // No geometry exists for it, so the pane reports zoom only.
                     $this->assertSame('', Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->statusInfo());
                     $this->assertStringContainsString('Fit', Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class)->zoomLabel());
+
+                    // The library draws it through the same tool: an export lands beside the document.
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
+                    $this->await(static fn (): bool => \is_file($project->path('seq.png')), what: 'the PlantUML PNG export');
+                    $this->assertStringStartsWith("\x89PNG", (string) \file_get_contents($project->path('seq.png')));
                 },
             ],
         );
@@ -708,6 +716,9 @@ final class IdeGraphViewerTest extends TestCase
                     $this->await(static fn (): bool => \is_file($project->path('architecture.svg')), what: 'the SVG export');
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
                     $this->await(static fn (): bool => \is_file($project->path('architecture.png')), what: 'the PNG export');
+                    Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-pdf');
+                    $this->await(static fn (): bool => \is_file($project->path('architecture.pdf')), what: 'the PDF export');
+                    $this->assertStringContainsString('-Tpdf -o', (string) \file_get_contents($project->path('architecture.pdf')), 'dot drew the PDF itself');
                 },
             ],
         );

@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidPipeline;
+use Janalis\Viz\Mermaid\MermaidPng;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\MarkdownFenceRenderer;
-use Porta\GraphViewer\Mermaid\MermaidPng;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\Help\Fence\FenceResult;
@@ -329,7 +330,7 @@ final class NativePreviewTest extends TestCase
         $renderer = new MarkdownFenceRenderer(
             static fn (string $key): string => 'renderMode' === $key ? 'bitmap' : '/nonexistent/mmdc',
             static fn (string $message): string => $message,
-            static fn (): NativeMermaidRenderer => new NativeMermaidRenderer(new MermaidTask(), new MermaidPng(gdAvailable: false)),
+            static fn (): NativeMermaidRenderer => new NativeMermaidRenderer(new MermaidTask(), new MermaidPipeline(png: new MermaidPng(gdAvailable: false))),
         );
         $result = null;
         $renderer(

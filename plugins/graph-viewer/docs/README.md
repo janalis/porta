@@ -1,5 +1,10 @@
 # Graph viewer
 
+The diagram engines themselves — native Mermaid, the `dot`, `plantuml` and `mmdc`
+invocations, SVG/PNG/PDF export and conversion between the three languages — live in
+[janalis/viz](https://github.com/janalis/viz); this plugin is the pane, the previews and
+the event-loop scheduling around them.
+
 Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
 it as a [live preview](../../../docs/editor.md#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
@@ -49,7 +54,7 @@ every render, so setting changes apply without restarting. The picture supports
 zoom, fit and pan, and keeps the previous successful result on invalid edits.
 Bitmap mode prefers the local CLI and falls back to native rendering for the
 families listed below. Native previews support node selection and search;
-Mermaid documents also support native SVG/PNG export. CLI pictures expose source
+Mermaid documents also support native SVG/PNG/PDF export. CLI pictures expose source
 selection and search when native semantics can be matched to unambiguous SVG IDs
 or labels. The installed official CLI browser rasterizes that same SVG, preserving
 HTML labels and fonts. Other toolchains keep ordinary CLI PNG rendering without
@@ -62,7 +67,7 @@ the last successful picture. PNGs use terminal graphics when available and fitte
 half-block rows otherwise. At most two blocks render at once. Changing tool paths
 rerenders the fences; disabling graph-viewer restores ordinary code fences.
 Mermaid fences with semantic maps expose clickable source-linked node regions, searchable labels
-and a Find node picker. SVG/PNG controls export the successful unsaved fence snapshot
+and a Find node picker. SVG/PNG/PDF controls export the successful unsaved fence snapshot
 beside the document as `<name>-diagram-<number>.<format>`. Pending replacements
 disable old interactions; delayed picker selections cannot act on replaced results.
 
@@ -86,8 +91,8 @@ plugin's *Architecture output directory* setting picks where that file goes —
 empty means the project root, a relative path resolves from it, an absolute one
 is taken as given, and the directory is created if it does not exist. (Its
 *Architecture command* setting supplies the DOT instead — that command's stdout
-wins.) `Graph: Export SVG/PNG` in the palette renders the active graph
-beside its file.
+wins.) `Graph: Export SVG/PNG/PDF` in the palette renders the active graph —
+Graphviz, PlantUML or Mermaid — beside its file.
 
 ## Keys
 
@@ -131,7 +136,7 @@ use case, Venn, swimlane and agentflow draw `redux-color` in the `neo` look.
 hachure fills reproducible from `handDrawnSeed`, while terminal cells stay classic.
 Markdown string labels draw bold, italic and wrapped runs, and PNG text falls back to host
 fonts for glyphs the bundled face lacks. Every pinned configuration option is accepted and checked; the
-[compatibility ledger](mermaid-compatibility.md#configuration) lists those that change the
+[compatibility ledger](https://github.com/janalis/viz/blob/main/docs/mermaid-compatibility.md#configuration) lists those that change the
 native picture.
 Native rendering preserves labels and relationships in a terminal
 scene and includes a statement legend in inline previews. Invalid edits keep
@@ -267,11 +272,11 @@ Periods follow the timeline axis, with event chains perpendicular to it. Native
 selection/search covers semantic elements and excludes metadata decorations.
 Exports include unsaved edits without saving the document.
 
-See the [compatibility checklist](mermaid-compatibility.md) for each family's limits
+See the [compatibility checklist](https://github.com/janalis/viz/blob/main/docs/mermaid-compatibility.md) for each family's limits
 and the non-goals. Every pinned upstream end-to-end diagram renders natively; what a
 terminal-native renderer leaves to the browser, such as exact browser geometry, KaTeX
 math, HTML labels and remote images, renders through the Mermaid CLI. How each family
-was brought up and verified is in [the compatibility history](mermaid-compatibility-history.md).
+was brought up and verified is in [the compatibility history](https://github.com/janalis/viz/blob/main/docs/mermaid-compatibility-history.md).
 
 The native `mindmap` renderer follows indentation, including uneven indentation
 and repeated labels on separate branches. It supports quoted multiline labels,
@@ -296,7 +301,7 @@ point labels and accessibility metadata. Bars begin at the first endpoint of
 the value range and overlap across series. Individual values support selection,
 search and source navigation, including line points over bars. Native output
 uses fixed colors, point markers and horizontal axis captions. See the
-[compatibility checklist](mermaid-compatibility.md) for remaining differences.
+[compatibility checklist](https://github.com/janalis/viz/blob/main/docs/mermaid-compatibility.md) for remaining differences.
 
 The native `packet`/`packet-beta` renderer draws proportional fields in ascending
 32-bit rows. It supports single bits, inclusive ranges, automatic `+count`
@@ -418,7 +423,7 @@ Node classes and styles support colors, stroke width and dash presence, includin
 forward assignments. Metadata and relationships remain in the source-linked inline
 legend. Cards draw the pinned type header, bold name, divider and left-aligned fields,
 and edges the SysML circled plus and open arrowheads; exact geometry still needs the CLI. See the
-[compatibility checklist](mermaid-compatibility.md) for syntax and style limits.
+[compatibility checklist](https://github.com/janalis/viz/blob/main/docs/mermaid-compatibility.md) for syntax and style limits.
 
 Native `info` and `info showInfo` diagrams display Porta's native renderer name and
 its pinned Mermaid compatibility target. This identifies the native implementation;

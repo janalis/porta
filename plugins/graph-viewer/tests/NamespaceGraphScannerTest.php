@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\DotWriter;
 use Porta\GraphViewer\NamespaceGraphScanner;
 use Porta\Tests\Support\TempProject;
 
@@ -32,7 +31,7 @@ final class NamespaceGraphScannerTest extends TestCase
         $project = $this->project();
         $dot = new NamespaceGraphScanner($project->dir)->scan();
 
-        $this->assertStringContainsString('digraph architecture {', $dot);
+        $this->assertStringContainsString('digraph "architecture" {', $dot);
         $this->assertStringContainsString('label="App";', $dot, 'one cluster per composer root');
         $this->assertStringContainsString('"App\\\\Editor" [label="Editor"];', $dot);
         $this->assertStringContainsString('"App\\\\Support" [label="Support"];', $dot);
@@ -66,19 +65,10 @@ final class NamespaceGraphScannerTest extends TestCase
         $this->assertSame($scanner->scan(), $scanner->scan(), 'byte-identical across runs — stable hash, no spurious re-layout');
     }
 
-    public function testDotWriterEscapesQuotesAndBackslashes(): void
-    {
-        $dot = DotWriter::write(['A"B' => ['Ns\\Sub' => 'Su"b']], [['Ns\\Sub', 'Ns\\Sub']]);
-
-        $this->assertStringContainsString('label="A\\"B";', $dot);
-        $this->assertStringContainsString('"Ns\\\\Sub" [label="Su\\"b"];', $dot);
-        $this->assertStringContainsString('"Ns\\\\Sub" -> "Ns\\\\Sub";', $dot);
-    }
-
     public function testEmptyProjectYieldsAnEmptyGraph(): void
     {
         $project = new TempProject(['composer.json' => '{}']);
 
-        $this->assertSame("digraph architecture {\n    rankdir=LR;\n    node [shape=box];\n}\n", new NamespaceGraphScanner($project->dir)->scan());
+        $this->assertSame("digraph \"architecture\" {\n    rankdir=LR;\n    node [shape=box];\n}\n", new NamespaceGraphScanner($project->dir)->scan());
     }
 }

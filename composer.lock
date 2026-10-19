@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "554e2c22e85d30d37190e28d12c9e2eb",
+    "content-hash": "5bea97947fc43c534d742c12bc49fc81",
     "packages": [
         {
             "name": "composer/semver",
@@ -82,6 +82,66 @@
                 }
             ],
             "time": "2026-10-05T13:12:12+00:00"
+        },
+        {
+            "name": "janalis/viz",
+            "version": "v0.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/janalis/viz.git",
+                "reference": "abfbef36084bca8e53f269b4aa945cd742c4a524"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/janalis/viz/zipball/abfbef36084bca8e53f269b4aa945cd742c4a524",
+                "reference": "abfbef36084bca8e53f269b4aa945cd742c4a524",
+                "shasum": ""
+            },
+            "require": {
+                "ext-mbstring": "*",
+                "php": ">=8.5",
+                "symfony/filesystem": "^8.0",
+                "symfony/polyfill-intl-grapheme": "^1.33",
+                "symfony/process": "^8.0",
+                "symfony/string": "^8.0",
+                "symfony/yaml": "^8.2"
+            },
+            "require-dev": {
+                "carthage-software/mago": "1.47.*",
+                "infection/infection": "^0.35.4",
+                "phpunit/phpunit": "^13.2"
+            },
+            "suggest": {
+                "ext-gd": "Native PNG export of Mermaid diagrams (needs FreeType)",
+                "ext-zlib": "Compressed native PDF export"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Janalis\\Viz\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Mermaid, Graphviz and PlantUML for PHP: native rendering with a CLI fallback, SVG/PNG/PDF export and conversion between the three",
+            "homepage": "https://github.com/janalis/viz",
+            "keywords": [
+                "diagram",
+                "dot",
+                "graphviz",
+                "mermaid",
+                "pdf",
+                "plantuml",
+                "png",
+                "svg"
+            ],
+            "support": {
+                "issues": "https://github.com/janalis/viz/issues",
+                "source": "https://github.com/janalis/viz"
+            },
+            "time": "2026-10-19T12:43:18+00:00"
         },
         {
             "name": "psr/clock",

@@ -4,16 +4,16 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Mermaid\FlowchartParser;
+use Janalis\Viz\Mermaid\MermaidDrawing;
+use Janalis\Viz\Mermaid\MermaidLexer;
+use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Mermaid\MermaidScene;
+use Janalis\Viz\Mermaid\MermaidStatement;
+use Janalis\Viz\Mermaid\MermaidTitle;
+use Janalis\Viz\Mermaid\RankedGraphLayout;
+use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\TestCase;
-use Porta\GraphViewer\Graph\GraphExportFormat;
-use Porta\GraphViewer\Mermaid\FlowchartParser;
-use Porta\GraphViewer\Mermaid\MermaidDrawing;
-use Porta\GraphViewer\Mermaid\MermaidLexer;
-use Porta\GraphViewer\Mermaid\MermaidMark;
-use Porta\GraphViewer\Mermaid\MermaidScene;
-use Porta\GraphViewer\Mermaid\MermaidStatement;
-use Porta\GraphViewer\Mermaid\MermaidTitle;
-use Porta\GraphViewer\Mermaid\RankedGraphLayout;
 use Porta\GraphViewer\Render\GraphRenderer;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Theme\Styles;
@@ -30,47 +30,6 @@ final class FlowchartClusterStylesTest extends TestCase
         \iterator_to_array($work);
 
         return $work->getReturn();
-    }
-
-    public function testNestedGroupStylesPreserveGeometryAndIgnoreTheImplicitNodeDefault(): void
-    {
-        $body = "flowchart TD\nsubgraph Outer[Services]\nsubgraph Inner[Workers]\nA --> B\nend\nC\nend\nsubgraph Plain\nD\nend";
-        $plain = self::scene($body);
-        $scene = self::scene(
-            $body
-            .'; classDef default fill:yellow,stroke:red; class Outer frame; Inner:::warning; classDef frame fill:#eef,stroke:blue,color:green; classDef warning fill:pink; style Inner stroke:none,stroke-width:4px,stroke-dasharray:5 5,color:purple',
-        );
-        $this->assertCount(4, $scene->graph->nodes);
-        $this->assertCount(3, $scene->graph->clusters);
-        $groups = \array_column($scene->graph->clusters, null, 'name');
-        $this->assertSame('#eeeeff', $groups['Outer']->fillColor);
-        $this->assertSame('#0000ff', $groups['Outer']->color);
-        $this->assertSame('#008000', $groups['Outer']->textColor);
-        $this->assertSame('#ffc0cb', $groups['Inner']->fillColor);
-        $this->assertSame('none', $groups['Inner']->color);
-        $this->assertSame('#800080', $groups['Inner']->textColor);
-        $this->assertSame(0.4, $groups['Inner']->strokeWidth);
-        $this->assertTrue($groups['Inner']->dashed);
-        // Unstyled groups carry their color theme slot, which other themes resolve to their roles.
-        $this->assertSame('@slot:fill:2', $groups['Plain']->fillColor);
-        $this->assertSame('@slot:stroke:2', $groups['Plain']->color);
-        $this->assertFalse($groups['Plain']->dashed);
-        $original = \array_column($plain->graph->clusters, null, 'name');
-        foreach ($groups as $name => $group) {
-            $before = $original[$name];
-            $this->assertSame([$before->x0, $before->y0, $before->x1, $before->y1, $before->label, $before->labelPos], [
-                $group->x0,
-                $group->y0,
-                $group->x1,
-                $group->y1,
-                $group->label,
-                $group->labelPos,
-            ]);
-        }
-        $this->assertSame($plain->origins, $scene->origins);
-        $this->assertSame($plain->elements, $scene->elements);
-        $this->assertEquals($plain->graph->edges, $scene->graph->edges);
-        $this->assertSame('#ffff00', $scene->graph->nodes[0]->fillColor);
     }
 
     public function testTitleDrawingAndTerminalPreserveContainerPresentation(): void
@@ -102,25 +61,14 @@ final class FlowchartClusterStylesTest extends TestCase
         $this->assertStringContainsString('┆', $rows);
     }
 
-    public function testExplicitDefaultClassAndStylePrecedenceApplyToGroups(): void
-    {
-        $scene = self::scene('graph LR; subgraph G; A; end; classDef default fill:yellow,stroke:red; class G default; style G fill:white; style G color:blue; style G stroke-dasharray:0');
-        $group = $scene->graph->clusters[0];
-        $this->assertSame('#ffffff', $group->fillColor);
-        $this->assertSame('#ff0000', $group->color);
-        $this->assertSame('#0000ff', $group->textColor);
-        $this->assertSame(0.12, $group->strokeWidth);
-        $this->assertFalse($group->dashed);
-    }
-
     public function testNativeSvgPngAndNarrowRowsIncludeSubgraphStyling(): void
     {
         $source = "---\ntitle: Styled groups\n---\nflowchart TD\nsubgraph G[Services]\nA-->B\nend\nstyle G fill:#eef,stroke:red,color:green,stroke-width:4px,stroke-dasharray:5";
-        $svg = NativeFixtureExport::render($source, GraphExportFormat::Svg);
+        $svg = NativeFixtureExport::render($source, Format::Svg);
         foreach (['#eeeeff', '#ff0000', '#008000', 'stroke-width="0.4"', 'stroke-dasharray='] as $needle) {
             $this->assertStringContainsString($needle, $svg, $needle);
         }
-        $this->assertStringStartsWith("\x89PNG", NativeFixtureExport::render($source, GraphExportFormat::Png));
+        $this->assertStringStartsWith("\x89PNG", NativeFixtureExport::render($source, Format::Png));
         $rows = NativeFixtureRows::render($source, width: 24);
         $this->assertStringContainsString('Services', \implode("\n", $rows->rows));
         $this->assertContains(4, $rows->origins);

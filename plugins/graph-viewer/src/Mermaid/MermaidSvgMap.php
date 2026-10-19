@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
-use Porta\GraphViewer\Graph\GraphLayout;
-use Porta\GraphViewer\Graph\GraphNode;
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Layout\GraphNode;
+use Janalis\Viz\Mermaid\MermaidScene;
 use Porta\Support\AnsiText;
 
 /** Unambiguous semantic IDs win; unique plain labels provide a conservative fallback. */

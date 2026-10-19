@@ -4,18 +4,18 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer;
 
+use Janalis\Viz\GraphViz\DotDiagnostics;
+use Janalis\Viz\GraphViz\DotSource;
+use Janalis\Viz\Layout\GraphLayout;
+use Janalis\Viz\Layout\GraphNode;
+use Janalis\Viz\Mermaid\MermaidScene;
 use Porta\GraphViewer\Graph\DiagramEngine;
 use Porta\GraphViewer\Graph\DiagramKind;
-use Porta\GraphViewer\Graph\DotDiagnostics;
-use Porta\GraphViewer\Graph\DotSource;
-use Porta\GraphViewer\Graph\GraphLayout;
-use Porta\GraphViewer\Graph\GraphNode;
 use Porta\GraphViewer\Graph\GraphRenderMode;
 use Porta\GraphViewer\Graph\LayoutEngine;
 use Porta\GraphViewer\Mermaid\MermaidCliPicture;
 use Porta\GraphViewer\Mermaid\MermaidCliRenderer;
-use Porta\GraphViewer\Mermaid\MermaidOutline;
-use Porta\GraphViewer\Mermaid\MermaidScene;
+use Porta\GraphViewer\Mermaid\MermaidHitTest;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\GraphViewer\Render\GraphRenderer;
@@ -373,7 +373,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // Over Graphviz's own picture, the node that picture shows in the cell;
         // over the cell drawing, the box drawn there.
         $this->selected = match (true) {
-            $this->nativeBitmap && null !== $this->nativeScene => MermaidOutline::nodeAt($this->nativeScene, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
+            $this->nativeBitmap && null !== $this->nativeScene => MermaidHitTest::nodeAt($this->nativeScene, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
             $this->showsBitmap() => GraphRenderer::nodeShownAt($layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
             default => GraphRenderer::nodeAt($this->nativeScene->selectionGraph ?? $layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
         };

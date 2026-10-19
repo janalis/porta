@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer;
 
+use Janalis\Viz\Diagram\Cluster;
+use Janalis\Viz\Diagram\Direction;
+use Janalis\Viz\Diagram\Edge;
+use Janalis\Viz\Diagram\Graph;
+use Janalis\Viz\Diagram\Node;
+use Janalis\Viz\GraphViz\DotWriter;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -57,7 +63,17 @@ final readonly class NamespaceGraphScanner
         unset($nodes);
         \ksort($edgeSet);
 
-        return DotWriter::write($nodesByCluster, \array_values($edgeSet));
+        $nodes = [];
+        $clusters = [];
+        foreach ($nodesByCluster as $label => $members) {
+            foreach ($members as $id => $name) {
+                $nodes[] = new Node($id, $name);
+            }
+            $clusters[] = new Cluster($label, $label, \array_map(\strval(...), \array_keys($members)));
+        }
+        $edges = \array_map(static fn (array $edge): Edge => new Edge($edge[0], $edge[1]), \array_values($edgeSet));
+
+        return DotWriter::write(new Graph($nodes, $edges, $clusters, Direction::LeftRight), 'architecture');
     }
 
     /**

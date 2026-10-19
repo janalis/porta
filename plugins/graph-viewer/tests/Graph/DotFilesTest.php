@@ -6,7 +6,6 @@ namespace Porta\GraphViewer\Tests\Graph;
 
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\DotFiles;
-use Porta\GraphViewer\Graph\GraphExportFormat;
 
 final class DotFilesTest extends TestCase
 {
@@ -16,13 +15,5 @@ final class DotFilesTest extends TestCase
         $this->assertTrue(DotFiles::isDotPath('/p/graph.GV'), 'case-insensitive');
         $this->assertFalse(DotFiles::isDotPath('/p/readme.md'));
         $this->assertFalse(DotFiles::isDotPath('/p/dot'), 'no extension');
-    }
-
-    public function testExportFormats(): void
-    {
-        $this->assertSame('-Tsvg', GraphExportFormat::Svg->flag());
-        $this->assertSame('-Tpng', GraphExportFormat::Png->flag());
-        $this->assertSame('svg', GraphExportFormat::Svg->extension());
-        $this->assertSame('png', GraphExportFormat::Png->extension());
     }
 }

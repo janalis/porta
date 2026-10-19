@@ -24,6 +24,7 @@
         "ext-mbstring": "*",
         "ext-pcntl": "*",
         "composer/semver": "^3.4",
+        "janalis/viz": "^0.1",
         "revolt/event-loop": "^1.0",
         "symfony/clock": "^8.2",
         "symfony/config": "^8.2",

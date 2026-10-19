@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
+use Janalis\Viz\Mermaid\MermaidScene;
 use Porta\Help\Fence\FenceElement;
 
 /** The pixels and their optional geometry come from a single CLI SVG snapshot. */

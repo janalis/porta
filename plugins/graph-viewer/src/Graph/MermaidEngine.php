@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Graph;
 
+use Janalis\Viz\Mermaid\MermaidCommand;
+use Janalis\Viz\Render\Format;
 use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\ExecutableFinder;
@@ -24,7 +26,7 @@ final class MermaidEngine implements DiagramEngine
 
     public function baseDpi(): int
     {
-        return 96;
+        return MermaidCommand::BASE_DPI;
     }
 
     public function binary(): ?string
@@ -37,7 +39,7 @@ final class MermaidEngine implements DiagramEngine
 
     public function render(string $source, int $dpi, \Closure $onPng, \Closure $onError): void
     {
-        $this->start($source, $dpi, GraphExportFormat::Png, $onPng, $onError);
+        $this->start($source, $dpi, Format::Png, $onPng, $onError);
     }
 
     /** @param \Closure(string): void $onSvg
@@ -45,13 +47,13 @@ final class MermaidEngine implements DiagramEngine
      */
     public function renderSvg(string $source, \Closure $onSvg, \Closure $onError): void
     {
-        $this->start($source, $this->baseDpi(), GraphExportFormat::Svg, $onSvg, $onError);
+        $this->start($source, $this->baseDpi(), Format::Svg, $onSvg, $onError);
     }
 
     /** @param \Closure(string): void $onBytes
      * @param \Closure(string): void $onError
      */
-    private function start(string $source, int $dpi, GraphExportFormat $format, \Closure $onBytes, \Closure $onError): void
+    private function start(string $source, int $dpi, Format $format, \Closure $onBytes, \Closure $onError): void
     {
         $this->cancel();
         $tool = $this->binary();
@@ -65,7 +67,7 @@ final class MermaidEngine implements DiagramEngine
         $this->directory = $directory;
         $output = $directory.'/diagram.'.$format->extension();
         $this->slot->run(
-            [$tool, '--quiet', '--input', '-', '--outputFormat', $format->extension(), '--output', $output, '--scale', (string) (\max(1, $dpi) / $this->baseDpi())],
+            MermaidCommand::render($tool, $format, $output, $dpi),
             $this->rootDir,
             $source,
             'mmdc',
@@ -98,7 +100,7 @@ final class MermaidEngine implements DiagramEngine
         if (null === $this->directory) {
             return;
         }
-        foreach (GraphExportFormat::cases() as $format) {
+        foreach (Format::cases() as $format) {
             $output = $this->directory.'/diagram.'.$format->extension();
             if (\is_file($output)) {
                 \unlink($output);
