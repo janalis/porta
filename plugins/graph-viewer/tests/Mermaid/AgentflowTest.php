@@ -11,7 +11,8 @@ final class AgentflowTest extends TestCase
 {
     public static function fixtures(): iterable
     {
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/agentflow/*.mmd') as $path) {
+        $found = \glob(__DIR__.'/../fixtures/mermaid/agentflow/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path];
         }
     }
@@ -19,7 +20,7 @@ final class AgentflowTest extends TestCase
     #[DataProvider('fixtures')]
     public function testPinnedBodiesRender(string $path): void
     {
-        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: \file_get_contents($path));
+        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: (string) \file_get_contents($path)) ?? '';
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 100)->rows);
     }
 }

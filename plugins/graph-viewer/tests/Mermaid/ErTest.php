@@ -54,10 +54,11 @@ final class ErTest extends TestCase
     {
         $edge = self::parse("erDiagram\nA||--o{B:owns")->graph->edges[0];
         $this->assertSame(['A', 'B', '1 : 0..* · owns'], [$edge['from'], $edge['to'], $edge['label']]);
-        $paths = \glob(__DIR__.'/../fixtures/mermaid/er/*.mmd');
+        $found = \glob(__DIR__.'/../fixtures/mermaid/er/*.mmd');
+        $paths = false === $found ? [] : $found;
         $this->assertCount(15, $paths);
         foreach ($paths as $path) {
-            $source = \file_get_contents($path);
+            $source = (string) \file_get_contents($path);
             $this->assertIsString($source);
             $diagram = self::parse($source);
             $this->assertNotEmpty($diagram->graph->nodes);

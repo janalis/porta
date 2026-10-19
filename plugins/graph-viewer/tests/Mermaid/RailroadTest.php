@@ -15,8 +15,9 @@ final class RailroadTest extends TestCase
 {
     public static function fixtures(): iterable
     {
-        $expected = \json_decode(\file_get_contents(__DIR__.'/../fixtures/mermaid/railroad-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/railroad/*.mmd') as $path) {
+        $expected = \json_decode((string) \file_get_contents(__DIR__.'/../fixtures/mermaid/railroad-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $found = \glob(__DIR__.'/../fixtures/mermaid/railroad/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path, $expected[\basename($path)]];
         }
     }
@@ -25,11 +26,11 @@ final class RailroadTest extends TestCase
     public function testPinnedGrammarsProduceTheSameTransformedExpressionTrees(string $path, array $expected): void
     {
         $parser = new RailroadParser();
-        foreach (new RailroadLexer(\file_get_contents($path))->statements() as $statement) {
+        foreach (new RailroadLexer((string) \file_get_contents($path))->statements() as $statement) {
             $parser->accept($statement);
         }
-        $this->assertNotEmpty(NativeFixtureRows::render(\file_get_contents($path), width: 100)->rows);
-        $this->assertStringContainsString('<svg', NativeFixtureExport::render(\file_get_contents($path), Format::Svg));
+        $this->assertNotEmpty(NativeFixtureRows::render((string) \file_get_contents($path), width: 100)->rows);
+        $this->assertStringContainsString('<svg', NativeFixtureExport::render((string) \file_get_contents($path), Format::Svg));
         $source = $parser->finish();
         $this->assertSame($expected['metadata'], $source->metadata);
         $rules = [];

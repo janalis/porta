@@ -34,7 +34,8 @@ final class GanttTest extends TestCase
 
     public static function fixtures(): iterable
     {
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/gantt/*.mmd') as $path) {
+        $found = \glob(__DIR__.'/../fixtures/mermaid/gantt/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
             yield \basename($path) => [$path];
         }
     }
@@ -42,8 +43,8 @@ final class GanttTest extends TestCase
     #[DataProvider('fixtures')]
     public function testPinnedBodiesParse(string $path): void
     {
-        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: \file_get_contents($path));
-        $source = \preg_replace('/%%\{.*?\}%%/s', replacement: '', subject: $source);
+        $source = \preg_replace('/\A---\R.*?\R---\R/s', replacement: '', subject: (string) \file_get_contents($path)) ?? '';
+        $source = \preg_replace('/%%\{.*?\}%%/s', replacement: '', subject: $source) ?? '';
         $this->assertNotEmpty(self::parse($source)->tasks);
         $this->assertNotEmpty(NativeFixtureRows::render($source, width: 100)->rows);
     }

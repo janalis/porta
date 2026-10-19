@@ -201,7 +201,7 @@ final class KeybindingsDocTest extends TestCase
     {
         $text = '';
         foreach (DocsTree::pagesUnder(DocsTree::plugins()[$plugin] ?? '') as $page) {
-            $text .= \file_get_contents($page)."\n";
+            $text .= (string) \file_get_contents($page)."\n";
         }
 
         return $text;

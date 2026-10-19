@@ -32,8 +32,8 @@ final class SankeyTest extends TestCase
     /** @return iterable<array{string}> */
     public static function upstreamExamples(): iterable
     {
-        yield [\file_get_contents(__DIR__.'/../fixtures/mermaid/sankey/should-render-a-simple-example.mmd')];
-        yield ["sankey\n".\file_get_contents(__DIR__.'/../fixtures/mermaid/sankey/energy.csv')];
+        yield [(string) \file_get_contents(__DIR__.'/../fixtures/mermaid/sankey/should-render-a-simple-example.mmd')];
+        yield ["sankey\n".(string) \file_get_contents(__DIR__.'/../fixtures/mermaid/sankey/energy.csv')];
     }
 
     public function testCancellationNeverPublishesAnIncompleteWeightedScene(): void

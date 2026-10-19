@@ -114,8 +114,8 @@ final class MermaidSvgMapTest extends TestCase
     public function testPublishedMermaidSvgBoundsAgreeWithTheBrowserReference(string $name, array $expected): void
     {
         $path = __DIR__.'/../fixtures/mermaid/cli-svg/'.$name;
-        $source = NativeFixtureScene::render(\file_get_contents($path.'.mmd'));
-        $work = MermaidSvgMap::project(\file_get_contents($path.'.svg'), $source, $expected['width'], $expected['height']);
+        $source = NativeFixtureScene::render((string) \file_get_contents($path.'.mmd'));
+        $work = MermaidSvgMap::project((string) \file_get_contents($path.'.svg'), $source, $expected['width'], $expected['height']);
         \iterator_to_array($work);
         $mapped = $work->getReturn();
         $this->assertInstanceOf(MermaidScene::class, $mapped);
@@ -140,7 +140,7 @@ final class MermaidSvgMapTest extends TestCase
 
     public static function browserFixtures(): iterable
     {
-        $reference = \json_decode(\file_get_contents(__DIR__.'/../fixtures/mermaid/cli-svg-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $reference = \json_decode((string) \file_get_contents(__DIR__.'/../fixtures/mermaid/cli-svg-reference.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         foreach ($reference['diagrams'] as $name => $expected) {
             yield $name => [$name, $expected];
         }

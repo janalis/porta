@@ -173,7 +173,8 @@ final class EventListenerWiringTest extends TestCase
     private function observableEvents(): array
     {
         $events = [];
-        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+        $found = \glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php');
+        foreach (false === $found ? [] : $found as $file) {
             $class = 'Porta\\Event\\'.\basename($file, suffix: '.php');
             if (\is_a($class, PluginObservable::class, allow_string: true) && \class_exists($class)) {
                 $events[] = $class;
@@ -308,7 +309,8 @@ final class EventListenerWiringTest extends TestCase
 
         $dispatcher = $this->dispatcher();
         $unheard = [];
-        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php') as $file) {
+        $found = \glob(\dirname(__DIR__, levels: 3).'/src/Event/*.php');
+        foreach (false === $found ? [] : $found as $file) {
             $name = \basename($file, suffix: '.php');
             $class = 'Porta\\Event\\'.$name;
             if (!\class_exists($class) || \in_array($name, $observedOnlyAtRuntime, strict: true)) {
@@ -336,7 +338,9 @@ final class EventListenerWiringTest extends TestCase
         // one-directional.
         $dispatcher = $this->dispatcher();
 
-        foreach (\glob(\dirname(__DIR__, levels: 3).'/src/Event/*Requested.php') as $file) {
+        $found = \glob(\dirname(__DIR__, levels: 3).'/src/Event/*Requested.php');
+
+        foreach (false === $found ? [] : $found as $file) {
             $class = 'Porta\\Event\\'.\basename($file, suffix: '.php');
             if (!\class_exists($class)) {
                 continue;

@@ -52,8 +52,9 @@ final class InfoTest extends TestCase
 
     public function testPinnedUpstreamFixtures(): void
     {
-        foreach (\glob(__DIR__.'/../fixtures/mermaid/info/*.mmd') as $path) {
-            $source = \file_get_contents($path);
+        $found = \glob(__DIR__.'/../fixtures/mermaid/info/*.mmd');
+        foreach (false === $found ? [] : $found as $path) {
+            $source = (string) \file_get_contents($path);
             $this->assertIsString($source);
             $this->assertCount(1, self::parse($source)->nodes);
             $this->assertNotEmpty(NativeFixtureRows::render($source, width: 40)->rows);

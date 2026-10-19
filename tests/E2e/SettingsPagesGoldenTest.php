@@ -100,7 +100,8 @@ final class SettingsPagesGoldenTest extends TestCase
     public function testEverySettingsSectionHasAGoldenPage(): void
     {
         $sections = [];
-        foreach (\glob(\dirname(__DIR__, levels: 2).'/src/Settings/Section/*.php') as $file) {
+        $found = \glob(\dirname(__DIR__, levels: 2).'/src/Settings/Section/*.php');
+        foreach (false === $found ? [] : $found as $file) {
             $sections[] = 'Porta\\Settings\\Section\\'.\basename($file, suffix: '.php');
         }
         \sort($sections);

@@ -17,7 +17,7 @@ final class TreeViewTest extends TestCase
     #[DataProvider('upstreamExamples')]
     public function testUpstreamExamplesRenderWithoutTheCli(string $file): void
     {
-        $source = \file_get_contents($file);
+        $source = (string) \file_get_contents($file);
         $this->assertIsString($source);
         $result = NativeFixtureRows::render($source, width: 32);
         $this->assertNotEmpty($result->rows);
@@ -82,7 +82,9 @@ final class TreeViewTest extends TestCase
         }
         $this->assertStringStartsWith("\x89PNG", $result);
         $image = \imagecreatefromstring($result);
-        $this->assertInstanceOf(\GdImage::class, $image);
+        if (!$image instanceof \GdImage) {
+            $this->fail('the PNG did not decode');
+        }
         $this->assertGreaterThan(0, \imagesx($image));
     }
 
