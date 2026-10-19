@@ -16,6 +16,9 @@ namespace Porta\GraphViewer\Graph;
 interface DiagramEngine
 {
     /** The resolved tool path, or null when it is not installed. */
+    /** Stop an obsolete render without reporting a result. */
+    public function cancel(): void;
+
     public function binary(): ?string;
 
     /**
@@ -26,8 +29,8 @@ interface DiagramEngine
     public function baseDpi(): int;
 
     /**
-     * Render $source to PNG bytes at $dpi. Bytes, not a file: the child's
-     * stdout goes straight to the decoder, so there is nothing to clean up.
+     * Render $source to PNG bytes at $dpi. Callers receive bytes, not a file;
+     * an engine using temporary output owns its cleanup, including cancellation.
      * Multiples of {@see baseDpi()} oversample for zoom.
      *
      * One slot, latest wins: a superseded call goes silent.

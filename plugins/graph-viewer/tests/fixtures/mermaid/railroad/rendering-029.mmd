@@ -1,0 +1,7 @@
+railroad-peg-beta
+Expression <- Term (("+" / "-") Term)* ;
+Term <- Factor (("*" / "/") Factor)* ;
+Factor <- Number / "(" Expression ")" ;
+Number <- Digit+ ;
+Digit <- "0" / "1" / "2" / "3" ;
+        

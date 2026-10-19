@@ -1,0 +1,709 @@
+{
+ "mermaid": "12.1.0",
+ "mermaidCommit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+ "cases": [
+  {
+   "variant": "html",
+   "label": "**Bold** and *it* text",
+   "lines": [
+    [
+     {
+      "text": "Bold",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " and ",
+      "bold": false,
+      "italic": false
+     },
+     {
+      "text": "it",
+      "bold": false,
+      "italic": true
+     },
+     {
+      "text": " text",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "html",
+   "label": "***both*** plain",
+   "lines": [
+    [
+     {
+      "text": "both",
+      "bold": true,
+      "italic": true
+     },
+     {
+      "text": " plain",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "html",
+   "label": "__strong__ and _em_",
+   "lines": [
+    [
+     {
+      "text": "strong",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " and ",
+      "bold": false,
+      "italic": false
+     },
+     {
+      "text": "em",
+      "bold": false,
+      "italic": true
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "html",
+   "label": "**bold *nested* bold**",
+   "lines": [
+    [
+     {
+      "text": "bold ",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": "nested",
+      "bold": true,
+      "italic": true
+     },
+     {
+      "text": " bold",
+      "bold": true,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "html",
+   "label": "a very long markdown string that should wrap automatically when it exceeds the width",
+   "lines": [
+    [
+     {
+      "text": "a very long ",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "markdown string ",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "that should wrap ",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "automatically ",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "when it exceeds ",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "the width",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 126
+  },
+  {
+   "variant": "html",
+   "label": "line one\nline two",
+   "lines": [
+    [
+     {
+      "text": "line one",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "line two",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 42
+  },
+  {
+   "variant": "html",
+   "label": "with<br/>break",
+   "lines": [
+    [
+     {
+      "text": "with",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "break",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 42
+  },
+  {
+   "variant": "html",
+   "label": "a \\*literal\\* star",
+   "lines": [
+    [
+     {
+      "text": "a *literal* star",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "html",
+   "label": "plain words only",
+   "lines": [
+    [
+     {
+      "text": "plain words only",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "html",
+   "label": "supercalifragilisticexpialidociouslylongword and more",
+   "lines": [
+    [
+     {
+      "text": "supercalifragilisticexpialidociouslylongword ",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "and more",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 269,
+   "height": 42
+  },
+  {
+   "variant": "svg",
+   "label": "**Bold** and *it* text",
+   "lines": [
+    [
+     {
+      "text": "Bold",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " and",
+      "bold": false,
+      "italic": false
+     },
+     {
+      "text": " it",
+      "bold": false,
+      "italic": true
+     },
+     {
+      "text": " text",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 96,
+   "height": 16
+  },
+  {
+   "variant": "svg",
+   "label": "***both*** plain",
+   "lines": [
+    [
+     {
+      "text": "both",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " plain",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 64,
+   "height": 16
+  },
+  {
+   "variant": "svg",
+   "label": "__strong__ and _em_",
+   "lines": [
+    [
+     {
+      "text": "strong",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " and",
+      "bold": false,
+      "italic": false
+     },
+     {
+      "text": " em",
+      "bold": false,
+      "italic": true
+     }
+    ]
+   ],
+   "width": 94,
+   "height": 16
+  },
+  {
+   "variant": "svg",
+   "label": "**bold *nested* bold**",
+   "lines": [
+    [
+     {
+      "text": "bold",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " nested",
+      "bold": false,
+      "italic": true
+     },
+     {
+      "text": " bold",
+      "bold": true,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 109,
+   "height": 16
+  },
+  {
+   "variant": "svg",
+   "label": "a very long markdown string that should wrap automatically when it exceeds the width",
+   "lines": [
+    [
+     {
+      "text": "a very long",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "markdown string",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "that should wrap",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "automatically when",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "it exceeds the",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "width",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 119,
+   "height": 93
+  },
+  {
+   "variant": "svg",
+   "label": "line one\nline two",
+   "lines": [
+    [
+     {
+      "text": "line one",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "line two",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 49,
+   "height": 31
+  },
+  {
+   "variant": "svg",
+   "label": "with<br/>break",
+   "lines": [
+    [
+     {
+      "text": "with",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "break",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 35,
+   "height": 31
+  },
+  {
+   "variant": "svg",
+   "label": "a \\*literal\\* star",
+   "lines": [
+    [
+     {
+      "text": "a literal star",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 73,
+   "height": 16
+  },
+  {
+   "variant": "svg",
+   "label": "plain words only",
+   "lines": [
+    [
+     {
+      "text": "plain words only",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 100,
+   "height": 16
+  },
+  {
+   "variant": "svg",
+   "label": "supercalifragilisticexpialidociouslylongword and more",
+   "lines": [
+    [
+     {
+      "text": "supercalifragilistice",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "xpialidociouslylong",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "word and more",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 118,
+   "height": 47
+  },
+  {
+   "variant": "nowrap",
+   "label": "**Bold** and *it* text",
+   "lines": [
+    [
+     {
+      "text": "Bold",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " and ",
+      "bold": false,
+      "italic": false
+     },
+     {
+      "text": "it",
+      "bold": false,
+      "italic": true
+     },
+     {
+      "text": " text",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "***both*** plain",
+   "lines": [
+    [
+     {
+      "text": "both",
+      "bold": true,
+      "italic": true
+     },
+     {
+      "text": " plain",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "__strong__ and _em_",
+   "lines": [
+    [
+     {
+      "text": "strong",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": " and ",
+      "bold": false,
+      "italic": false
+     },
+     {
+      "text": "em",
+      "bold": false,
+      "italic": true
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "**bold *nested* bold**",
+   "lines": [
+    [
+     {
+      "text": "bold ",
+      "bold": true,
+      "italic": false
+     },
+     {
+      "text": "nested",
+      "bold": true,
+      "italic": true
+     },
+     {
+      "text": " bold",
+      "bold": true,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "a very long markdown string that should wrap automatically when it exceeds the width",
+   "lines": [
+    [
+     {
+      "text": "a very long markdown string that should wrap automatically when it exceeds the width",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 532,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "line one\nline two",
+   "lines": [
+    [
+     {
+      "text": "line one",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "line two",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 42
+  },
+  {
+   "variant": "nowrap",
+   "label": "with<br/>break",
+   "lines": [
+    [
+     {
+      "text": "with",
+      "bold": false,
+      "italic": false
+     }
+    ],
+    [
+     {
+      "text": "break",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 42
+  },
+  {
+   "variant": "nowrap",
+   "label": "a \\*literal\\* star",
+   "lines": [
+    [
+     {
+      "text": "a *literal* star",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "plain words only",
+   "lines": [
+    [
+     {
+      "text": "plain words only",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 120,
+   "height": 21
+  },
+  {
+   "variant": "nowrap",
+   "label": "supercalifragilisticexpialidociouslylongword and more",
+   "lines": [
+    [
+     {
+      "text": "supercalifragilisticexpialidociouslylongword and more",
+      "bold": false,
+      "italic": false
+     }
+    ]
+   ],
+   "width": 328,
+   "height": 21
+  }
+ ]
+}

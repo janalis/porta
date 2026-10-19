@@ -51,6 +51,8 @@ final class FakeLayoutEngine implements DiagramEngine, LayoutEngine
     /** @var ?\Closure(string): void the held render onError when $deferred */
     public ?\Closure $pendingPngError = null;
 
+    public function cancel(): void {}
+
     public function binary(): ?string
     {
         return $this->binary;

@@ -11,13 +11,14 @@ use Porta\GraphViewer\Graph\GraphNode;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * Rasterizes a {@see GraphLayout} into terminal lines — pure statics over
  * passed state (the render-tier rule). World coordinates are points, y-down;
  * the {@see ZoomPanModel} viewport maps 1 pt → `scale` columns × `scale`
  * half-rows (the image viewer's px = half-row convention gives the 2:1 cell
- * aspect correction for free). Draw order: cluster frames → edges (direction
+ * aspect correction for free). Draw order: cluster frames → background nodes → edges (direction
  * glyphs, arrowheads) → nodes (boxed with centered labels, a single `▪` when
  * too small to box) → edge labels where they fit. Everything is culled
  * against the visible world rect (edges via their precomputed bbox), so a
@@ -36,10 +37,19 @@ final class GraphRenderer
         foreach ($graph->clusters as $cluster) {
             self::drawCluster($grid, $cluster);
         }
+        foreach ($graph->nodes as $node) {
+            if (!$node->background) {
+                continue;
+            }
+            self::drawNode($grid, $node, $selected);
+        }
         foreach ($graph->edges as $edge) {
             self::drawEdge($grid, $edge);
         }
         foreach ($graph->nodes as $node) {
+            if ($node->background) {
+                continue;
+            }
             self::drawNode($grid, $node, $selected);
         }
         foreach ($graph->edges as $edge) {
@@ -102,7 +112,7 @@ final class GraphRenderer
 
     private static function drawCluster(GraphCellGrid $grid, GraphCluster $cluster): void
     {
-        if (!$grid->intersects($cluster->x0, $cluster->y0, $cluster->x1, $cluster->y1)) {
+        if (('none' === $cluster->color && '' === $cluster->label) || !$grid->intersects($cluster->x0, $cluster->y0, $cluster->x1, $cluster->y1)) {
             return;
         }
         $x0 = $grid->colOf($cluster->x0);
@@ -118,15 +128,17 @@ final class GraphRenderer
         $grid->put($x0, $y1, '└', $key);
         $grid->put($x1, $y1, '┘', $key);
         for ($x = $x0 + 1; $x < $x1; ++$x) {
-            $grid->put($x, $y0, '─', $key);
-            $grid->put($x, $y1, '─', $key);
+            $grid->put($x, $y0, $cluster->dashed ? '┄' : '─', $key);
+            $grid->put($x, $y1, $cluster->dashed ? '┄' : '─', $key);
         }
         for ($y = $y0 + 1; $y < $y1; ++$y) {
-            $grid->put($x0, $y, '│', $key);
-            $grid->put($x1, $y, '│', $key);
+            $grid->put($x0, $y, $cluster->dashed ? '┆' : '│', $key);
+            $grid->put($x1, $y, $cluster->dashed ? '┆' : '│', $key);
         }
         if ('' !== $cluster->label) {
-            $grid->text($x0 + 2, $y0, ' '.$cluster->label.' ', $key, $x1 - 1);
+            foreach (\explode("\n", $cluster->label) as $index => $line) {
+                $grid->text($x0 + 2, $y0 + $index, ' '.$line.' ', $grid->colorKey($cluster->textColor ?? $cluster->color, Role::Dim), $x1 - 1);
+            }
         }
     }
 
@@ -148,9 +160,15 @@ final class GraphRenderer
         if (null === $edge->arrowTip || !$grid->intersects($edge->minX, $edge->minY, $edge->maxX, $edge->maxY)) {
             return;
         }
-        $last = $edge->points[\count($edge->points) - 1];
+        $count = \count($edge->points);
+        $last = $edge->points[$count - 1];
         $dx = $edge->arrowTip[0] - $last[0];
         $dy = $edge->arrowTip[1] - $last[1];
+        if ($count > 1 && (\abs($dx) + \abs($dy)) < 1.0e-9) {
+            $previous = $edge->points[$count - 2];
+            $dx = $edge->arrowTip[0] - $previous[0];
+            $dy = $edge->arrowTip[1] - $previous[1];
+        }
         $glyph = match (true) {
             \abs($dx) >= \abs($dy) && $dx >= 0 => '▸',
             \abs($dx) >= \abs($dy) => '◂',
@@ -169,8 +187,8 @@ final class GraphRenderer
         if ('' === $label) {
             return;
         }
-        $col = $grid->colOf($edge->labelPos[0]) - \intdiv(\mb_strlen($label), num2: 2);
-        $grid->text($col, $grid->rowOf($edge->labelPos[1]), $label, $grid->colorKey($edge->color, Role::Muted), null);
+        $col = $grid->colOf($edge->labelPos[0]) - \intdiv(AnsiUtils::visibleWidth($label), num2: 2);
+        $grid->text($col, $grid->rowOf($edge->labelPos[1]), $label, $grid->colorKey($edge->textColor ?? $edge->color, Role::Muted), null);
     }
 
     private static function drawNode(GraphCellGrid $grid, GraphNode $node, ?int $selected): void
@@ -208,10 +226,9 @@ final class GraphRenderer
         $firstRow = $y0 + 1 + \intdiv(\max(0, $innerRows - \count($labelLines)), num2: 2);
         foreach ($labelLines as $index => $line) {
             $width = $x1 - $x0 - 1;
-            if (\mb_strlen($line) > $width) {
-                $line = $width > 1 ? \mb_substr($line, start: 0, length: $width - 1).'…' : '…';
-            }
-            $col = $x0 + 1 + \intdiv(\max(0, $width - \mb_strlen($line)), num2: 2);
+            // The grid supplies styling; the slicer's reset must not become a cell.
+            $line = AnsiUtils::stripAnsiCodes(AnsiUtils::truncateToWidth($line, $width, ellipsis: '…'));
+            $col = $x0 + 1 + \intdiv(\max(0, $width - AnsiUtils::visibleWidth($line)), num2: 2);
             $grid->text($col, $firstRow + $index, $line, $key, $x1 - 1);
         }
     }

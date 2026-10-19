@@ -1,0 +1,415 @@
+[
+  {
+    "name": "rect",
+    "aliases": [
+      "proc",
+      "process",
+      "rectangle",
+      "squareRect"
+    ],
+    "handler": "squareRect"
+  },
+  {
+    "name": "rounded",
+    "aliases": [
+      "event",
+      "roundedRect"
+    ],
+    "handler": "roundedRect"
+  },
+  {
+    "name": "stadium",
+    "aliases": [
+      "terminal",
+      "pill"
+    ],
+    "handler": "stadium"
+  },
+  {
+    "name": "fr-rect",
+    "aliases": [
+      "subprocess",
+      "subproc",
+      "framed-rectangle",
+      "subroutine"
+    ],
+    "handler": "subroutine"
+  },
+  {
+    "name": "cyl",
+    "aliases": [
+      "db",
+      "database",
+      "cylinder"
+    ],
+    "handler": "cylinder"
+  },
+  {
+    "name": "datastore",
+    "aliases": [
+      "data-store"
+    ],
+    "handler": "datastore"
+  },
+  {
+    "name": "folder",
+    "aliases": [
+      "directory"
+    ],
+    "handler": "folder"
+  },
+  {
+    "name": "bucket",
+    "aliases": [],
+    "handler": "bucket"
+  },
+  {
+    "name": "console",
+    "aliases": [],
+    "handler": "consoleWindow"
+  },
+  {
+    "name": "browser",
+    "aliases": [],
+    "handler": "browser"
+  },
+  {
+    "name": "person",
+    "aliases": [],
+    "handler": "person"
+  },
+  {
+    "name": "circle",
+    "aliases": [
+      "circ"
+    ],
+    "handler": "circle"
+  },
+  {
+    "name": "bang",
+    "aliases": [
+      "bang"
+    ],
+    "handler": "bang"
+  },
+  {
+    "name": "cloud",
+    "aliases": [
+      "cloud"
+    ],
+    "handler": "cloud"
+  },
+  {
+    "name": "diam",
+    "aliases": [
+      "decision",
+      "diamond",
+      "question"
+    ],
+    "handler": "question"
+  },
+  {
+    "name": "hex",
+    "aliases": [
+      "hexagon",
+      "prepare"
+    ],
+    "handler": "hexagon"
+  },
+  {
+    "name": "lean-r",
+    "aliases": [
+      "lean-right",
+      "in-out",
+      "lean_right"
+    ],
+    "handler": "lean_right"
+  },
+  {
+    "name": "lean-l",
+    "aliases": [
+      "lean-left",
+      "out-in",
+      "lean_left"
+    ],
+    "handler": "lean_left"
+  },
+  {
+    "name": "trap-b",
+    "aliases": [
+      "priority",
+      "trapezoid-bottom",
+      "trapezoid"
+    ],
+    "handler": "trapezoid"
+  },
+  {
+    "name": "trap-t",
+    "aliases": [
+      "manual",
+      "trapezoid-top",
+      "inv-trapezoid",
+      "inv_trapezoid"
+    ],
+    "handler": "inv_trapezoid"
+  },
+  {
+    "name": "dbl-circ",
+    "aliases": [
+      "double-circle",
+      "doublecircle"
+    ],
+    "handler": "doublecircle"
+  },
+  {
+    "name": "text",
+    "aliases": [],
+    "handler": "text"
+  },
+  {
+    "name": "notch-rect",
+    "aliases": [
+      "card",
+      "notched-rectangle"
+    ],
+    "handler": "card"
+  },
+  {
+    "name": "lin-rect",
+    "aliases": [
+      "lined-rectangle",
+      "lined-process",
+      "lin-proc",
+      "shaded-process"
+    ],
+    "handler": "shadedProcess"
+  },
+  {
+    "name": "sm-circ",
+    "aliases": [
+      "start",
+      "small-circle",
+      "stateStart"
+    ],
+    "handler": "stateStart"
+  },
+  {
+    "name": "fr-circ",
+    "aliases": [
+      "stop",
+      "framed-circle",
+      "stateEnd"
+    ],
+    "handler": "stateEnd"
+  },
+  {
+    "name": "fork",
+    "aliases": [
+      "join",
+      "forkJoin"
+    ],
+    "handler": "forkJoin"
+  },
+  {
+    "name": "hourglass",
+    "aliases": [
+      "hourglass",
+      "collate"
+    ],
+    "handler": "hourglass"
+  },
+  {
+    "name": "brace",
+    "aliases": [
+      "comment",
+      "brace-l"
+    ],
+    "handler": "curlyBraceLeft"
+  },
+  {
+    "name": "brace-r",
+    "aliases": [],
+    "handler": "curlyBraceRight"
+  },
+  {
+    "name": "braces",
+    "aliases": [],
+    "handler": "curlyBraces"
+  },
+  {
+    "name": "bolt",
+    "aliases": [
+      "com-link",
+      "lightning-bolt"
+    ],
+    "handler": "lightningBolt"
+  },
+  {
+    "name": "doc",
+    "aliases": [
+      "doc",
+      "document"
+    ],
+    "handler": "waveEdgedRectangle"
+  },
+  {
+    "name": "delay",
+    "aliases": [
+      "half-rounded-rectangle"
+    ],
+    "handler": "halfRoundedRectangle"
+  },
+  {
+    "name": "h-cyl",
+    "aliases": [
+      "das",
+      "horizontal-cylinder"
+    ],
+    "handler": "tiltedCylinder"
+  },
+  {
+    "name": "lin-cyl",
+    "aliases": [
+      "disk",
+      "lined-cylinder"
+    ],
+    "handler": "linedCylinder"
+  },
+  {
+    "name": "curv-trap",
+    "aliases": [
+      "curved-trapezoid",
+      "display"
+    ],
+    "handler": "curvedTrapezoid"
+  },
+  {
+    "name": "div-rect",
+    "aliases": [
+      "div-proc",
+      "divided-rectangle",
+      "divided-process"
+    ],
+    "handler": "dividedRectangle"
+  },
+  {
+    "name": "tri",
+    "aliases": [
+      "extract",
+      "triangle"
+    ],
+    "handler": "triangle"
+  },
+  {
+    "name": "win-pane",
+    "aliases": [
+      "internal-storage",
+      "window-pane"
+    ],
+    "handler": "windowPane"
+  },
+  {
+    "name": "f-circ",
+    "aliases": [
+      "junction",
+      "filled-circle"
+    ],
+    "handler": "filledCircle"
+  },
+  {
+    "name": "notch-pent",
+    "aliases": [
+      "loop-limit",
+      "notched-pentagon"
+    ],
+    "handler": "trapezoidalPentagon"
+  },
+  {
+    "name": "flip-tri",
+    "aliases": [
+      "manual-file",
+      "flipped-triangle"
+    ],
+    "handler": "flippedTriangle"
+  },
+  {
+    "name": "sl-rect",
+    "aliases": [
+      "manual-input",
+      "sloped-rectangle"
+    ],
+    "handler": "slopedRect"
+  },
+  {
+    "name": "docs",
+    "aliases": [
+      "documents",
+      "st-doc",
+      "stacked-document"
+    ],
+    "handler": "multiWaveEdgedRectangle"
+  },
+  {
+    "name": "st-rect",
+    "aliases": [
+      "procs",
+      "processes",
+      "stacked-rectangle"
+    ],
+    "handler": "multiRect"
+  },
+  {
+    "name": "bow-rect",
+    "aliases": [
+      "stored-data",
+      "bow-tie-rectangle"
+    ],
+    "handler": "bowTieRect"
+  },
+  {
+    "name": "cross-circ",
+    "aliases": [
+      "summary",
+      "crossed-circle"
+    ],
+    "handler": "crossedCircle"
+  },
+  {
+    "name": "tag-doc",
+    "aliases": [
+      "tag-doc",
+      "tagged-document"
+    ],
+    "handler": "taggedWaveEdgedRectangle"
+  },
+  {
+    "name": "tag-rect",
+    "aliases": [
+      "tagged-rectangle",
+      "tag-proc",
+      "tagged-process"
+    ],
+    "handler": "taggedRect"
+  },
+  {
+    "name": "flag",
+    "aliases": [
+      "paper-tape"
+    ],
+    "handler": "waveRectangle"
+  },
+  {
+    "name": "odd",
+    "aliases": [
+      "rect_left_inv_arrow"
+    ],
+    "handler": "rect_left_inv_arrow"
+  },
+  {
+    "name": "lin-doc",
+    "aliases": [
+      "lined-document"
+    ],
+    "handler": "linedWaveEdgedRect"
+  }
+]

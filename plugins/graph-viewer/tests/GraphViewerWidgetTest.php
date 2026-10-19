@@ -870,6 +870,76 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))));
     }
 
+    public function testMermaidUsesItsOwnEngineAndRetainsAGoodPictureOnInvalidEdits(): void
+    {
+        $mermaid = new FakeLayoutEngine();
+        $mermaid->baseDpi = 96;
+        $mermaid->nextPng = PngFixture::bytes(120, 80);
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'bitmap', mermaid: $mermaid);
+        $widget->show('/p/diagram.mmd', 'flowchart LR');
+        $this->settle();
+        $this->assertSame([96], $mermaid->renderDpis);
+        $this->assertSame(0, $this->engine->layoutCalls);
+        $this->assertStringContainsString('▀', \implode("\n", $widget->render(new RenderContext(80, 24))));
+        $this->assertSame([], $widget->nodeChoices());
+        $widget->handleInput('n');
+        $widget->selectAt(4, 4);
+        $this->assertSame('', $widget->statusInfo());
+
+        $mermaid->pngIsError = true;
+        $mermaid->nextPng = 'parse error at line 2';
+        $widget->show('/p/diagram.mmd', 'broken');
+        $this->settle();
+        $screen = $widget->render(new RenderContext(80, 24));
+        $this->assertStringContainsString('parse error at line 2', self::plain($screen));
+        $this->assertStringContainsString('▀', \implode("\n", $screen));
+
+        $oldView = Probe::get($widget, 'view');
+        $mermaid->pngIsError = false;
+        $mermaid->nextPng = PngFixture::bytes(240, 160);
+        $widget->show('/p/diagram.mmd', 'flowchart TD');
+        $this->settle();
+        $this->assertStringNotContainsString('parse error', self::plain($widget->render(new RenderContext(80, 24))));
+        $view = Probe::get($widget, 'view');
+        $this->assertInstanceOf(ZoomPanModel::class, $view);
+        $this->assertNotSame($oldView, $view, 'a larger successful edit replaces the old fit and pan bounds');
+        $this->assertSame([240, 160], $view->dimensions());
+        $widget->handleInput('1');
+        $this->settle();
+        $mermaid->nextPng = PngFixture::bytes(480, 320);
+        $widget->handleInput('=');
+        $this->settle();
+        $this->assertSame($view, Probe::get($widget, 'view'), 'resolution-only changes preserve zoom and logical geometry');
+        $this->assertSame([96, 96, 96, 192], $mermaid->renderDpis);
+        $widget->clear();
+    }
+
+    public function testTheMissingMermaidMessageStaysTranslatedAfterTheRendererAnswers(): void
+    {
+        $translator = new Translator('fr');
+        $translator->addCatalogDirectory(\dirname(__DIR__).'/translations');
+        $mermaid = new FakeLayoutEngine();
+        $mermaid->binary = null;
+        $mermaid->pngIsError = true;
+        $mermaid->nextPng = 'mmdc not found — install mermaid-cli, or set the "mermaidPath" setting';
+        $widget = new GraphViewerWidget($this->engine, $translator, scheduler: $this->scheduler, mermaid: $mermaid);
+        $widget->show('/p/diagram.mmd', 'flowchart TD');
+        $this->assertStringContainsString('mmdc introuvable', self::plain($widget->render(new RenderContext(100, 10))));
+        $this->settle();
+        $this->assertStringContainsString('mmdc introuvable', self::plain($widget->render(new RenderContext(100, 10))));
+    }
+
+    public function testMermaidMissingBinaryHasAnActionableMessage(): void
+    {
+        $mermaid = new FakeLayoutEngine();
+        $mermaid->binary = null;
+        $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, mermaid: $mermaid);
+        $widget->show('/p/diagram.mermaid', 'flowchart TD');
+        $screen = self::plain($widget->render(new RenderContext(100, 10)));
+        $this->assertStringContainsString('mmdc not found', $screen);
+        $this->assertStringContainsString('"mermaidPath" setting', $screen);
+    }
+
     public function testAPlantUmlTabIsThePictureAndNothingElse(): void
     {
         $this->plantUml->nextPng = PngFixture::bytes(120, 80);

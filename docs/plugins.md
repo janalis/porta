@@ -620,6 +620,50 @@ Disabling your plugin stops the routing, so its files fall back to the text
 editor; a tab already open in your pane keeps working. Removing the plugin drops
 the pane for good.
 
+### Markdown fence renderers
+
+`registerMarkdownFence(array $languages, Closure $render)` adds a buffered
+renderer registration during `activate()`. Languages are case-insensitive fence
+info tokens, such as `mermaid`, `dot` or `puml`. Registrations become visible
+only on successful activation and disappear on disable; the first active
+provider for a language wins.
+
+The callback receives `(string $language, string $source, string $documentPath,
+int $availableWidth, Closure $success, Closure $error)` and returns a cancellation
+closure. Call `$success(FenceResult::png($bytes))` for PNG output, or
+`$success(FenceResult::rows($rows, $origins))` for terminal rows. Import
+`Porta\Help\Fence\FenceResult`; origins are zero-based line numbers relative
+to the fence body, one per generated row. Both factories accept an optional
+`error:` message alongside successful output, for a fallback that preserves the
+external renderer error. Report a renderer failure through
+`$error($message)`. Each request must own its own process slot and cleanup.
+
+Attach optional semantic interactions with `$result->interactive($elements, $actions)`.
+Each `FenceElement` carries a unique ID, a plain label, a zero-based body source
+line and a polygon in normalized image coordinates (`0..1`). Core maps the
+polygon onto the fitted picture, exposes labels to Markdown search and keyboard
+navigation, and follows selections into the Markdown source. Terminal rows reuse
+matching labels; otherwise core adds a clickable legend. Origins are clamped to
+the current fence body.
+
+Each `FenceAction` has a unique lowercase identifier, a label and a
+`Closure(FenceContext): void`. The context exposes the current one-based diagram
+number and `select($elementId)`, suitable for a delayed picker callback. Actions
+are invoked only through generated controls. Pending or stale results cannot run
+actions, and a context stops selecting once its request is replaced or removed.
+Results accept at most 4,096 elements and 16 actions; polygons contain 3–512
+finite points. Import these types from `Porta\Help\Fence`.
+
+Core's shared queue schedules requests outside paint, runs at most two at once,
+and ignores callbacks after cancellation. The document session retains a prior
+result during edits and errors and clears it on navigation or plugin removal.
+Markdown previews and Help pages display completed results in place of the fence
+body. Before completion they keep the source with a pending label. PNGs use terminal
+graphics where available and fitted half-block rows otherwise. Graph-viewer registers
+`mermaid`, `dot`, `graphviz`, `plantuml` and `puml`; each block owns an engine.
+Hiding a pane cancels work and releases its images; live settings changes rerender
+registered fences, and disabling the plugin immediately restores source fences.
+
 ### Previewing a file beside its text
 
 A pane can also be a **live preview**: the file opens in the text editor as

@@ -1,0 +1,1749 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "nullKey",
+      "configuration": "{\nnull: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "boolKey",
+      "configuration": "{\nfalse: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "floatKey",
+      "configuration": "{\n.nan: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "negativeZero",
+      "configuration": "{\n-0: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "dateKey",
+      "configuration": "{\n2026-10-17: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nullDuplicate",
+      "configuration": "{\n\"null\": First\nnull: Second\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "boolDuplicate",
+      "configuration": "{\n\"false\": First\nfalse: Second\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "floatDuplicate",
+      "configuration": "{\n\"NaN\": First\n.nan: Second\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nullEmptyDistinct",
+      "configuration": "{\nnull: Value\n\"\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "boolZeroDistinct",
+      "configuration": "{\n0: Value\nfalse: Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "octal",
+      "configuration": "{\n01: Value\n\"1\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "typedNullString",
+      "configuration": "{\nprefix: Value\n!!str null: Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedZeroString",
+      "configuration": "{\nprefix: Value\n!!str 01: Other\n\"01\": Later\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "typedQuotedInt",
+      "configuration": "{\nprefix: Value\n!!int \"1\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedQuotedFloat",
+      "configuration": "{\nprefix: Value\n!!float \".nan\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedLiteralName",
+      "configuration": "{\nprefix: Value\n!!str alias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchorScalar",
+      "configuration": "{\nprefix: Value\n&key Stored: Other\nalias: *key\n}",
+      "alias": "Stored",
+      "type": null
+    },
+    {
+      "name": "anchorArray",
+      "configuration": "{\nprefix: Value\n&key [alias]: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "taggedArray",
+      "configuration": "{\nprefix: Value\n!!seq [alias]: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "rootTypedInt",
+      "configuration": "{\n!!str 01: Other\nalias: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "rootTypedQuoted",
+      "configuration": "{\n!!int \"1\": Other\nalias: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "rootAnchorPrimitive",
+      "configuration": "{\n&key Stored: Other\nalias: *key\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "rootAnchorOwnLine",
+      "configuration": "{\n&root\n01: Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "rootMapTagOwnLine",
+      "configuration": "{\n!!map\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "commaKey",
+      "configuration": "{\nfoo,bar: Value\n\"foo,bar\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "bracketKey",
+      "configuration": "{\nfoo[bar]: Value\n\"foo[bar]\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "taggedComma",
+      "configuration": "{\nprefix: Value\n!!str foo,bar: Value\n\"foo,bar\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "rootTaggedComma",
+      "configuration": "{\n!!str foo,bar: Value\nalias: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "rootMapHeaderLater",
+      "configuration": "{\nprefix: Value\n!!map\nalias: Name\n}",
+      "error": "can not read a block mapping entry; a multiline key may not be an implicit key"
+    },
+    {
+      "name": "childMapHeader",
+      "configuration": "{\nprefix:\n !!map\n alias: Nested\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "taggedExplicitBlockInt",
+      "configuration": "{\n?\n !!int |2-\n  1\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit0 format0",
+      "configuration": "{\nseed: Value\nalias : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit0 format1",
+      "configuration": "{\nignored:\n seed: Value\n alias : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit0 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   alias : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit0 format3",
+      "configuration": "{\nalias : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit0 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\nalias : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit0 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\nalias : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit1 format0",
+      "configuration": "{\nseed: Value\nnull : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit1 format1",
+      "configuration": "{\nignored:\n seed: Value\n null : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit1 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   null : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit1 format3",
+      "configuration": "{\nnull : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit1 format4",
+      "configuration": "{\n\"null\": First\nseed: Value\nnull : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit1 format5",
+      "configuration": "{\n\"null\": null\nseed: Value\nnull : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit2 format0",
+      "configuration": "{\nseed: Value\ntrue : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit2 format1",
+      "configuration": "{\nignored:\n seed: Value\n true : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit2 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   true : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit2 format3",
+      "configuration": "{\ntrue : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit2 format4",
+      "configuration": "{\n\"true\": First\nseed: Value\ntrue : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit2 format5",
+      "configuration": "{\n\"true\": null\nseed: Value\ntrue : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit3 format0",
+      "configuration": "{\nseed: Value\nfalse : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit3 format1",
+      "configuration": "{\nignored:\n seed: Value\n false : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit3 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   false : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit3 format3",
+      "configuration": "{\nfalse : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit3 format4",
+      "configuration": "{\n\"false\": First\nseed: Value\nfalse : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit3 format5",
+      "configuration": "{\n\"false\": null\nseed: Value\nfalse : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit4 format0",
+      "configuration": "{\nseed: Value\n0 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit4 format1",
+      "configuration": "{\nignored:\n seed: Value\n 0 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit4 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   0 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit4 format3",
+      "configuration": "{\n0 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit4 format4",
+      "configuration": "{\n\"0\": First\nseed: Value\n0 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit4 format5",
+      "configuration": "{\n\"0\": null\nseed: Value\n0 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit5 format0",
+      "configuration": "{\nseed: Value\n-0 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit5 format1",
+      "configuration": "{\nignored:\n seed: Value\n -0 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit5 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   -0 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit5 format3",
+      "configuration": "{\n-0 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit5 format4",
+      "configuration": "{\n\"0\": First\nseed: Value\n-0 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit5 format5",
+      "configuration": "{\n\"0\": null\nseed: Value\n-0 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit6 format0",
+      "configuration": "{\nseed: Value\n01 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit6 format1",
+      "configuration": "{\nignored:\n seed: Value\n 01 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit6 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   01 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit6 format3",
+      "configuration": "{\n01 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit6 format4",
+      "configuration": "{\n\"1\": First\nseed: Value\n01 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit6 format5",
+      "configuration": "{\n\"1\": null\nseed: Value\n01 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit7 format0",
+      "configuration": "{\nseed: Value\n0x10 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit7 format1",
+      "configuration": "{\nignored:\n seed: Value\n 0x10 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit7 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   0x10 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit7 format3",
+      "configuration": "{\n0x10 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit7 format4",
+      "configuration": "{\n\"16\": First\nseed: Value\n0x10 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit7 format5",
+      "configuration": "{\n\"16\": null\nseed: Value\n0x10 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit8 format0",
+      "configuration": "{\nseed: Value\n1.5 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit8 format1",
+      "configuration": "{\nignored:\n seed: Value\n 1.5 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit8 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   1.5 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit8 format3",
+      "configuration": "{\n1.5 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit8 format4",
+      "configuration": "{\n\"1.5\": First\nseed: Value\n1.5 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit8 format5",
+      "configuration": "{\n\"1.5\": null\nseed: Value\n1.5 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit9 format0",
+      "configuration": "{\nseed: Value\n.nan : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit9 format1",
+      "configuration": "{\nignored:\n seed: Value\n .nan : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit9 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   .nan : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit9 format3",
+      "configuration": "{\n.nan : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit9 format4",
+      "configuration": "{\n\"NaN\": First\nseed: Value\n.nan : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit9 format5",
+      "configuration": "{\n\"NaN\": null\nseed: Value\n.nan : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit10 format0",
+      "configuration": "{\nseed: Value\n.inf : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit10 format1",
+      "configuration": "{\nignored:\n seed: Value\n .inf : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit10 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   .inf : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit10 format3",
+      "configuration": "{\n.inf : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit10 format4",
+      "configuration": "{\n\"Infinity\": First\nseed: Value\n.inf : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit10 format5",
+      "configuration": "{\n\"Infinity\": null\nseed: Value\n.inf : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit11 format0",
+      "configuration": "{\nseed: Value\n-.inf : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit11 format1",
+      "configuration": "{\nignored:\n seed: Value\n -.inf : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit11 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   -.inf : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit11 format3",
+      "configuration": "{\n-.inf : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit11 format4",
+      "configuration": "{\n\"-Infinity\": First\nseed: Value\n-.inf : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit11 format5",
+      "configuration": "{\n\"-Infinity\": null\nseed: Value\n-.inf : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit12 format0",
+      "configuration": "{\nseed: Value\n1e20 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit12 format1",
+      "configuration": "{\nignored:\n seed: Value\n 1e20 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit12 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   1e20 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit12 format3",
+      "configuration": "{\n1e20 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit12 format4",
+      "configuration": "{\n\"100000000000000000000\": First\nseed: Value\n1e20 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit12 format5",
+      "configuration": "{\n\"100000000000000000000\": null\nseed: Value\n1e20 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit13 format0",
+      "configuration": "{\nseed: Value\n9007199254740993 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit13 format1",
+      "configuration": "{\nignored:\n seed: Value\n 9007199254740993 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit13 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   9007199254740993 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit13 format3",
+      "configuration": "{\n9007199254740993 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit13 format4",
+      "configuration": "{\n\"9007199254740992\": First\nseed: Value\n9007199254740993 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit13 format5",
+      "configuration": "{\n\"9007199254740992\": null\nseed: Value\n9007199254740993 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit14 format0",
+      "configuration": "{\nseed: Value\n2026-10-17 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit14 format1",
+      "configuration": "{\nignored:\n seed: Value\n 2026-10-17 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit14 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   2026-10-17 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit14 format3",
+      "configuration": "{\n2026-10-17 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit14 format4",
+      "configuration": "{\n\"2026-10-17\": First\nseed: Value\n2026-10-17 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit14 format5",
+      "configuration": "{\n\"2026-10-17\": null\nseed: Value\n2026-10-17 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit15 format0",
+      "configuration": "{\nseed: Value\n\"alias\" : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit15 format1",
+      "configuration": "{\nignored:\n seed: Value\n \"alias\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit15 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   \"alias\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit15 format3",
+      "configuration": "{\n\"alias\" : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit15 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\n\"alias\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit15 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\n\"alias\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit16 format0",
+      "configuration": "{\nseed: Value\n\"null\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit16 format1",
+      "configuration": "{\nignored:\n seed: Value\n \"null\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit16 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   \"null\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit16 format3",
+      "configuration": "{\n\"null\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit16 format4",
+      "configuration": "{\n\"null\": First\nseed: Value\n\"null\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit16 format5",
+      "configuration": "{\n\"null\": null\nseed: Value\n\"null\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit17 format0",
+      "configuration": "{\nseed: Value\n\"01\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit17 format1",
+      "configuration": "{\nignored:\n seed: Value\n \"01\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit17 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   \"01\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit17 format3",
+      "configuration": "{\n\"01\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit17 format4",
+      "configuration": "{\n\"01\": First\nseed: Value\n\"01\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit17 format5",
+      "configuration": "{\n\"01\": null\nseed: Value\n\"01\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit18 format0",
+      "configuration": "{\nseed: Value\n\"\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit18 format1",
+      "configuration": "{\nignored:\n seed: Value\n \"\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit18 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   \"\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit18 format3",
+      "configuration": "{\n\"\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit18 format4",
+      "configuration": "{\n\"\": First\nseed: Value\n\"\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit18 format5",
+      "configuration": "{\n\"\": null\nseed: Value\n\"\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit19 format0",
+      "configuration": "{\nseed: Value\nfoo,bar : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit19 format1",
+      "configuration": "{\nignored:\n seed: Value\n foo,bar : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit19 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   foo,bar : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit19 format3",
+      "configuration": "{\nfoo,bar : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit19 format4",
+      "configuration": "{\n\"foo,bar\": First\nseed: Value\nfoo,bar : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit19 format5",
+      "configuration": "{\n\"foo,bar\": null\nseed: Value\nfoo,bar : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit20 format0",
+      "configuration": "{\nseed: Value\nfoo[bar] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit20 format1",
+      "configuration": "{\nignored:\n seed: Value\n foo[bar] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit20 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   foo[bar] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit20 format3",
+      "configuration": "{\nfoo[bar] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit20 format4",
+      "configuration": "{\n\"foo[bar]\": First\nseed: Value\nfoo[bar] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit20 format5",
+      "configuration": "{\n\"foo[bar]\": null\nseed: Value\nfoo[bar] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit21 format0",
+      "configuration": "{\nseed: Value\n(entry) : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit21 format1",
+      "configuration": "{\nignored:\n seed: Value\n (entry) : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit21 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   (entry) : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit21 format3",
+      "configuration": "{\n(entry) : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit21 format4",
+      "configuration": "{\n\"(entry)\": First\nseed: Value\n(entry) : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit21 format5",
+      "configuration": "{\n\"(entry)\": null\nseed: Value\n(entry) : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit22 format0",
+      "configuration": "{\nseed: Value\n<entry> : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit22 format1",
+      "configuration": "{\nignored:\n seed: Value\n <entry> : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit22 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   <entry> : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit22 format3",
+      "configuration": "{\n<entry> : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit22 format4",
+      "configuration": "{\n\"<entry>\": First\nseed: Value\n<entry> : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit22 format5",
+      "configuration": "{\n\"<entry>\": null\nseed: Value\n<entry> : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit23 format0",
+      "configuration": "{\nseed: Value\n!!str alias : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit23 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!str alias : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit23 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!str alias : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit23 format3",
+      "configuration": "{\n!!str alias : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit23 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\n!!str alias : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit23 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\n!!str alias : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit24 format0",
+      "configuration": "{\nseed: Value\n!!str null : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit24 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!str null : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit24 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!str null : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit24 format3",
+      "configuration": "{\n!!str null : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit24 format4",
+      "configuration": "{\n\"null\": First\nseed: Value\n!!str null : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit24 format5",
+      "configuration": "{\n\"null\": null\nseed: Value\n!!str null : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit25 format0",
+      "configuration": "{\nseed: Value\n!!str 01 : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit25 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!str 01 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit25 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!str 01 : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit25 format3",
+      "configuration": "{\n!!str 01 : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit25 format4",
+      "configuration": "{\n\"01\": First\nseed: Value\n!!str 01 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit25 format5",
+      "configuration": "{\n\"01\": null\nseed: Value\n!!str 01 : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit26 format0",
+      "configuration": "{\nseed: Value\n!!int \"1\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit26 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!int \"1\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit26 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!int \"1\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit26 format3",
+      "configuration": "{\n!!int \"1\" : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit26 format4",
+      "configuration": "{\n\"1\": First\nseed: Value\n!!int \"1\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit26 format5",
+      "configuration": "{\n\"1\": null\nseed: Value\n!!int \"1\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit27 format0",
+      "configuration": "{\nseed: Value\n!!float \".nan\" : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit27 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!float \".nan\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit27 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!float \".nan\" : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit27 format3",
+      "configuration": "{\n!!float \".nan\" : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit27 format4",
+      "configuration": "{\n\"NaN\": First\nseed: Value\n!!float \".nan\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit27 format5",
+      "configuration": "{\n\"NaN\": null\nseed: Value\n!!float \".nan\" : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit28 format0",
+      "configuration": "{\nseed: Value\n!!str foo,bar : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit28 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!str foo,bar : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit28 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!str foo,bar : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit28 format3",
+      "configuration": "{\n!!str foo,bar : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit28 format4",
+      "configuration": "{\n\"foo,bar\": First\nseed: Value\n!!str foo,bar : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit28 format5",
+      "configuration": "{\n\"foo,bar\": null\nseed: Value\n!!str foo,bar : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit29 format0",
+      "configuration": "{\nseed: Value\n&key Stored : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit29 format1",
+      "configuration": "{\nignored:\n seed: Value\n &key Stored : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit29 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   &key Stored : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit29 format3",
+      "configuration": "{\n&key Stored : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit29 format4",
+      "configuration": "{\n\"Stored\": First\nseed: Value\n&key Stored : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit29 format5",
+      "configuration": "{\n\"Stored\": null\nseed: Value\n&key Stored : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit30 format0",
+      "configuration": "{\nseed: Value\n&key [alias] : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit30 format1",
+      "configuration": "{\nignored:\n seed: Value\n &key [alias] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit30 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   &key [alias] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit30 format3",
+      "configuration": "{\n&key [alias] : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit30 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\n&key [alias] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit30 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\n&key [alias] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit31 format0",
+      "configuration": "{\nseed: Value\n!!seq [alias] : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit31 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!seq [alias] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit31 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!seq [alias] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit31 format3",
+      "configuration": "{\n!!seq [alias] : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit31 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\n!!seq [alias] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit31 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\n!!seq [alias] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit32 format0",
+      "configuration": "{\nseed: Value\n! alias : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit32 format1",
+      "configuration": "{\nignored:\n seed: Value\n ! alias : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit32 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   ! alias : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit32 format3",
+      "configuration": "{\n! alias : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit32 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\n! alias : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit32 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\n! alias : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit33 format0",
+      "configuration": "{\nseed: Value\n! null : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit33 format1",
+      "configuration": "{\nignored:\n seed: Value\n ! null : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit33 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   ! null : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit33 format3",
+      "configuration": "{\n! null : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit33 format4",
+      "configuration": "{\n\"null\": First\nseed: Value\n! null : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit33 format5",
+      "configuration": "{\n\"null\": null\nseed: Value\n! null : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit34 format0",
+      "configuration": "{\nseed: Value\n!!str : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit34 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!str : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit34 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!str : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit34 format3",
+      "configuration": "{\n!!str : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit34 format4",
+      "configuration": "{\n\"\": First\nseed: Value\n!!str : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit34 format5",
+      "configuration": "{\n\"\": null\nseed: Value\n!!str : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit35 format0",
+      "configuration": "{\nseed: Value\n! : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit35 format1",
+      "configuration": "{\nignored:\n seed: Value\n ! : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit35 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   ! : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit35 format3",
+      "configuration": "{\n! : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit35 format4",
+      "configuration": "{\n\"null\": First\nseed: Value\n! : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit35 format5",
+      "configuration": "{\n\"null\": null\nseed: Value\n! : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit36 format0",
+      "configuration": "{\nseed: Value\n[] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit36 format1",
+      "configuration": "{\nignored:\n seed: Value\n [] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit36 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   [] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit36 format3",
+      "configuration": "{\n[] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit36 format4",
+      "configuration": "{\n\"\": First\nseed: Value\n[] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit36 format5",
+      "configuration": "{\n\"\": null\nseed: Value\n[] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit37 format0",
+      "configuration": "{\nseed: Value\n[alias] : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit37 format1",
+      "configuration": "{\nignored:\n seed: Value\n [alias] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit37 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   [alias] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit37 format3",
+      "configuration": "{\n[alias] : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit37 format4",
+      "configuration": "{\n\"alias\": First\nseed: Value\n[alias] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit37 format5",
+      "configuration": "{\n\"alias\": null\nseed: Value\n[alias] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit38 format0",
+      "configuration": "{\nseed: Value\n[null] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit38 format1",
+      "configuration": "{\nignored:\n seed: Value\n [null] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit38 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   [null] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit38 format3",
+      "configuration": "{\n[null] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit38 format4",
+      "configuration": "{\n\"\": First\nseed: Value\n[null] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit38 format5",
+      "configuration": "{\n\"\": null\nseed: Value\n[null] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit39 format0",
+      "configuration": "{\nseed: Value\n[{a: Value}] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit39 format1",
+      "configuration": "{\nignored:\n seed: Value\n [{a: Value}] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit39 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   [{a: Value}] : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit39 format3",
+      "configuration": "{\n[{a: Value}] : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit39 format4",
+      "configuration": "{\n\"[object Object]\": First\nseed: Value\n[{a: Value}] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit39 format5",
+      "configuration": "{\n\"[object Object]\": null\nseed: Value\n[{a: Value}] : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit40 format0",
+      "configuration": "{\nseed: Value\n[[alias]] : Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit40 format1",
+      "configuration": "{\nignored:\n seed: Value\n [[alias]] : Value\nalias: Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit40 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   [[alias]] : Value\nalias: Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit40 format3",
+      "configuration": "{\n[[alias]] : Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit41 format0",
+      "configuration": "{\nseed: Value\n{a: Value} : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit41 format1",
+      "configuration": "{\nignored:\n seed: Value\n {a: Value} : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit41 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   {a: Value} : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit41 format3",
+      "configuration": "{\n{a: Value} : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit41 format4",
+      "configuration": "{\n\"[object Object]\": First\nseed: Value\n{a: Value} : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit41 format5",
+      "configuration": "{\n\"[object Object]\": null\nseed: Value\n{a: Value} : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit42 format0",
+      "configuration": "{\nseed: Value\n&key {a: Value} : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit42 format1",
+      "configuration": "{\nignored:\n seed: Value\n &key {a: Value} : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit42 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   &key {a: Value} : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit42 format3",
+      "configuration": "{\n&key {a: Value} : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit42 format4",
+      "configuration": "{\n\"[object Object]\": First\nseed: Value\n&key {a: Value} : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit42 format5",
+      "configuration": "{\n\"[object Object]\": null\nseed: Value\n&key {a: Value} : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit43 format0",
+      "configuration": "{\nseed: Value\n&key {self: *key} : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "implicit43 format1",
+      "configuration": "{\nignored:\n seed: Value\n &key {self: *key} : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit43 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   &key {self: *key} : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicit43 format3",
+      "configuration": "{\n&key {self: *key} : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit43 format4",
+      "configuration": "{\n\"[object Object]\": First\nseed: Value\n&key {self: *key} : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit43 format5",
+      "configuration": "{\n\"[object Object]\": null\nseed: Value\n&key {self: *key} : Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "implicit44 format0",
+      "configuration": "{\nseed: Value\n&key [*key] : Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit44 format1",
+      "configuration": "{\nignored:\n seed: Value\n &key [*key] : Value\nalias: Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit44 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   &key [*key] : Value\nalias: Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "implicit44 format3",
+      "configuration": "{\n&key [*key] : Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "implicit45 format0",
+      "configuration": "{\nseed: Value\n!!str [alias] : Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "implicit45 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!str [alias] : Value\nalias: Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "implicit45 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!str [alias] : Value\nalias: Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "implicit45 format3",
+      "configuration": "{\n!!str [alias] : Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "implicit46 format0",
+      "configuration": "{\nseed: Value\n!!int bad : Name\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "name": "implicit46 format1",
+      "configuration": "{\nignored:\n seed: Value\n !!int bad : Value\nalias: Name\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "name": "implicit46 format2",
+      "configuration": "{\nignored:\n - seed: Value\n   !!int bad : Value\nalias: Name\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "name": "implicit46 format3",
+      "configuration": "{\n!!int bad : Name\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "name": "missingSeparator",
+      "configuration": "{\nseed: Value\nbroken\nalias: Name\n}",
+      "error": "can not read a block mapping entry; a multiline key may not be an implicit key"
+    },
+    {
+      "name": "unseparatedQuote",
+      "configuration": "{\n\"alias\":Name\n}",
+      "error": "a whitespace character is expected after the key-value separator within a block mapping"
+    },
+    {
+      "name": "multilineImplicit",
+      "configuration": "{\n\"ali\nas\": Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "multilineProperty",
+      "configuration": "{\nseed: Value\n!!str\n alias: Name\n}",
+      "error": "can not read a block mapping entry; a multiline key may not be an implicit key"
+    },
+    {
+      "name": "duplicateKeyTag",
+      "configuration": "{\nseed: Value\n!!str !!str alias: Name\n}",
+      "error": "duplication of a tag property"
+    },
+    {
+      "name": "duplicateKeyAnchor",
+      "configuration": "{\nseed: Value\n&a &b alias: Name\n}",
+      "error": "duplication of an anchor property"
+    },
+    {
+      "name": "decoratedAlias",
+      "configuration": "{\nseed: &key alias\n!!str *key: Name\n}",
+      "error": "unidentified alias \"key:\""
+    },
+    {
+      "name": "quotedNumericDistinct",
+      "configuration": "{\n\"01\": First\n01: Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    }
+  ]
+}

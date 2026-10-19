@@ -1,0 +1,23 @@
+{
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "https://github.com/mermaid-js/mermaid/tree/21f72f07ea22c0af48a3149c550654e80d8e40cb/e2e/diagrams/pie",
+  "files": {
+    "should-render-a-donut-diagram.mmd": "87574628f50408f255ea8ac1504782f3028be2d6f89eef810573c606a6cb845b",
+    "should-render-a-pie-diagram-if-donuthole-parameter-is-negative.mmd": "f19d49909966a47197ec0a341492973e23a9229bddf7eecc7d8054355f9fe66d",
+    "should-render-a-pie-diagram-if-donuthole-parameter-is-too-large.mmd": "0639f39029bffd9219433835909c1c42f7c27791dadb8ba2fca05e6edf08f1b9",
+    "should-render-a-pie-diagram-when-textposition-is-set.mmd": "5c7567065370056d971ba822cb764695262492aa196c98a41fa0d07ec7aa2ec5",
+    "should-render-a-pie-diagram-with-a-long-title-without-clipping.mmd": "634aad81efa5de4a456090b76f5df0977d08b554da7122fd6f1cd9554d5c4b1b",
+    "should-render-a-pie-diagram-with-legend-at-the-bottom-of-the-diagram.mmd": "20203a55b4d0312acf04fa500d77bb66ecc92217ff9e3c68c8d6b7687d020e1b",
+    "should-render-a-pie-diagram-with-readable-title-and-legend-in-dark-mode.mmd": "d2f47b5365da77846c6db668ab024150f452f1035407a2fa86b11784922690f5",
+    "should-render-a-pie-diagram-with-showdata.mmd": "5de5614face3d0f2f707d657f6d0da7f9e6f862a4f94c9bbc111426638e4420c",
+    "should-render-a-simple-pie-diagram-with-capital-letters-for-labels.mmd": "c8499516c2fcd9c5783f7d32f14eb09b0df673e44adff14cd31bfe4a67a62112",
+    "should-render-a-simple-pie-diagram-with-long-labels.mmd": "e198886c3d914f8d034ca1a7ad8cfb7586a5928f12a796b8f64c23e4b753baed",
+    "should-render-a-simple-pie-diagram.mmd": "c64889e4ee197570a0412583a5895ee556aad3839e3c48ba9d933fd5e39e87b7",
+    "should-render-pie-slices-only-for-non-zero-values-but-shows-all-legends.mmd": "28e85aa94ed71541ada2e0a2745cbb7d19055be4a2c0e328e22009dea35f929e",
+    "simple-sports.mmd": "c64889e4ee197570a0412583a5895ee556aad3839e3c48ba9d933fd5e39e87b7"
+  },
+  "pendingGlobalConfiguration": [
+    "theme: dark",
+    "logLevel: 1"
+  ]
+}

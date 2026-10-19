@@ -1,0 +1,294 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "flowOne",
+      "configuration": "{ignored: &key [alias], *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowEmpty",
+      "configuration": "{ignored: &key [], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowMany",
+      "configuration": "{ignored: &key [one, two], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockOne",
+      "configuration": "{\nignored: &key\n - alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedOne",
+      "configuration": "{ignored: &key [\"alias\"], *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "primitive",
+      "configuration": "{ignored: &key [null, false, 0, .nan, .inf, -.inf], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "primitiveDuplicate",
+      "configuration": "{ignored: &key [null, false, 0, .nan, .inf, -.inf], \",false,0,NaN,Infinity,-Infinity\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nested",
+      "configuration": "{ignored: &key [[]], *key : Value, alias: Name}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "mapItem",
+      "configuration": "{ignored: &key [{}], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapDuplicate",
+      "configuration": "{ignored: &key [{}], \"[object Object]\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nullDuplicate",
+      "configuration": "{ignored: &key [null], \"\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "scalarReference",
+      "configuration": "{text: &text alias, ignored: &key [*text], *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "redefinedReference",
+      "configuration": "{text: &text alias, ignored: &key [*text], later: &text type, *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapReference",
+      "configuration": "{map: &map {a: Value}, ignored: &key [*map], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "listReference",
+      "configuration": "{list: &list [one], ignored: &key [*list], *key : Value, alias: Name}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "cyclicMap",
+      "configuration": "{map: &map {self: *map}, ignored: &key [*map], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "selfSequence",
+      "configuration": "{ignored: &key [*key], *key : Value, alias: Name}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "prefixOne",
+      "configuration": "{ignored: &key [alias, {\"alias\": First, *key : Second}], alias: Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "prefixEmpty",
+      "configuration": "{ignored: &key [{\"\": First, *key : Second}], alias: Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "prefixValid",
+      "configuration": "{ignored: &key [alias, {*key : Value}], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicitPair",
+      "configuration": "{ignored: &key [alias: Value], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typed",
+      "configuration": "{ignored: &key !!seq [alias], *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockFolded",
+      "configuration": "{\nignored: &key\n - >-\n   alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockMap",
+      "configuration": "{\nignored: &key\n - name: Value\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "stringNull",
+      "configuration": "{ignored: &key [\"null\"], null: First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "stringZero",
+      "configuration": "{ignored: &key [\"0\"], 0: First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "mixedNull",
+      "configuration": "{ignored: &key [null, \"null\"], \",null\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "emptyTyped",
+      "configuration": "{ignored: &key [!!str], \"\": First, *key : Second}",
+      "error": "tag suffix cannot contain flow indicator characters"
+    },
+    {
+      "name": "escapedUnicode",
+      "configuration": "{ignored: &key [\"\\uD83D\\uDE00\"], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockReference",
+      "configuration": "{\ntext: &text alias\nignored: &key\n - *text\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "missingElement",
+      "configuration": "{ignored: &key [*missing], *key : Value, alias: Name}",
+      "error": "unidentified alias \"missing\""
+    },
+    {
+      "name": "unterminated",
+      "configuration": "{ignored: &key [one, *key : Value}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "blockMany",
+      "configuration": "{\nignored: &key\n - one\n - two\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockEmpty",
+      "configuration": "{\nignored: &key\n -\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockEmptyDuplicate",
+      "configuration": "{\nignored: &key\n -\n - null\n\",\": First\n*key : Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "blockActiveEof",
+      "configuration": "{\nignored: &key\n - alias\n - {*key : Value}\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "blockComments",
+      "configuration": "{\nignored: &key\n - one\n # comment\n\n - two\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchoredElement",
+      "configuration": "{ignored: &key [&part alias], *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyItemAnchor",
+      "configuration": "{\nignored:\n - &text\n - alias\nalias: *text\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyTypedItemAnchor",
+      "configuration": "{\nignored:\n - &text !!str\n - alias\nalias: *text\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "quotedPunctuation",
+      "configuration": "{ignored: &key [\"a,b\", 'c]d'], *key : Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "plainColonItem",
+      "configuration": "{ignored: &key [a:b], \"a:b\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "blockCompactArray",
+      "configuration": "{\nignored: &key\n - alias\n - *key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockCompactScalar",
+      "configuration": "{\ntext: &text alias\nignored:\n - *text : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockCompactDuplicate",
+      "configuration": "{\ntext: &text alias\nignored:\n - *text : First\n   alias: Second\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "blockCompactAnchor",
+      "configuration": "{\nignored: &key\n - alias\n - *key : &label Name\nalias: *label\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockNestedList",
+      "configuration": "{\ntext: &text alias\nignored:\n - - *text : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapCommaDuplicate",
+      "configuration": "{ignored: &key [{a: First, b: Second}], \"[object Object]\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "blockCsvDuplicate",
+      "configuration": "{\nignored: &key\n - one\n - two\n\"one,two\": First\n*key : Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "quotedPunctuationDuplicate",
+      "configuration": "{ignored: &key [\"a,b\", 'c]d'], \"a,b,c]d\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "arrayType",
+      "configuration": "{ignored: &key [type], *key : actor}",
+      "alias": null,
+      "type": "actor"
+    }
+  ]
+}

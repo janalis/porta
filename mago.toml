@@ -151,7 +151,10 @@ integrations = ["symfony", "phpunit"]
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         88  Plugin/Api/PluginApi, 2026-10-03: openProject(),
+#   too-many-methods         90  Plugin/Api/PluginApi: registerMarkdownFence() and
+#                                its buffered drain add the Markdown rendering
+#                                extension point requested by the Mermaid plan.
+#                                88 before, 2026-10-03: openProject(),
 #                                so the git plugin can switch worktree — the
 #                                File › Open Project switch, guard and trust
 #                                included. No handle fits one verb, and an
@@ -365,7 +368,7 @@ integrations = ["symfony", "phpunit"]
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 143 }
-too-many-methods = { threshold = 88 }
+too-many-methods = { threshold = 90 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 76 }
 excessive-parameter-list = { threshold = 26 }

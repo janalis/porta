@@ -1,0 +1,248 @@
+[
+  {
+    "name": "excluded-weekend",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2026-10-19, 5d",
+      ":b, after a, 1d"
+    ],
+    "excludes": "weekends",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2026-10-19T00:00:00.000Z",
+        "end": "2026-10-26T00:00:00.000Z",
+        "draw": "2026-10-24T00:00:00.000Z"
+      },
+      {
+        "id": "b",
+        "start": "2026-10-26T00:00:00.000Z",
+        "end": "2026-10-27T00:00:00.000Z",
+        "draw": "2026-10-27T00:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "name": "implicit-start",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-01, 1d",
+      ":1d"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-02T00:00:00.000Z",
+        "draw": null
+      },
+      {
+        "id": "task1",
+        "start": "2024-01-02T00:00:00.000Z",
+        "end": "2024-01-03T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "fraction-year",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-31, 1.5y"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-31T00:00:00.000Z",
+        "end": "2025-01-31T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "fraction-day",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-01, 0.5d"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-02T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "fraction-week",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-01, 0.5w"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-05T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "month-end",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-31, 1M"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-31T00:00:00.000Z",
+        "end": "2024-02-29T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "multi-after",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-01, 1d",
+      ":b, 2024-01-01, 3d",
+      ":c, after a b, 2d"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-02T00:00:00.000Z",
+        "draw": null
+      },
+      {
+        "id": "b",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-04T00:00:00.000Z",
+        "draw": null
+      },
+      {
+        "id": "c",
+        "start": "2024-01-04T00:00:00.000Z",
+        "end": "2024-01-06T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "multi-until",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-10, 1d",
+      ":b, 2024-01-20, 3d",
+      ":c, 2024-01-01, until a b"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-10T00:00:00.000Z",
+        "end": "2024-01-11T00:00:00.000Z",
+        "draw": null
+      },
+      {
+        "id": "b",
+        "start": "2024-01-20T00:00:00.000Z",
+        "end": "2024-01-23T00:00:00.000Z",
+        "draw": null
+      },
+      {
+        "id": "c",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-10T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "seconds-fallback",
+    "format": "ss",
+    "data": [
+      ":a, 0, 20"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2000-01-01T00:00:00.000Z",
+        "end": "2026-10-18T00:00:20.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "millis",
+    "format": "x",
+    "data": [
+      ":a, 000, 120"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "1970-01-01T00:00:00.000Z",
+        "end": "1970-01-01T00:00:00.120Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "seconds-epoch",
+    "format": "X",
+    "data": [
+      ":a, 000, 120"
+    ],
+    "excludes": "",
+    "inclusive": false,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "1970-01-01T00:00:00.000Z",
+        "end": "1970-01-01T00:02:00.000Z",
+        "draw": null
+      }
+    ]
+  },
+  {
+    "name": "inclusive",
+    "format": "YYYY-MM-DD",
+    "data": [
+      ":a, 2024-01-01, 2024-01-05"
+    ],
+    "excludes": "",
+    "inclusive": true,
+    "tasks": [
+      {
+        "id": "a",
+        "start": "2024-01-01T00:00:00.000Z",
+        "end": "2024-01-06T00:00:00.000Z",
+        "draw": null
+      }
+    ]
+  }
+]

@@ -1,0 +1,378 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned multiline metadata wrapping",
+  "cases": [
+    {
+      "name": "plain",
+      "configuration": "{\nignored: &key alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quoted",
+      "configuration": "{\nignored: &key \"alias\"\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "singleQuoted",
+      "configuration": "{\nignored: &key 'alias'\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typed",
+      "configuration": "{\nignored: !!str &key alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchorTyped",
+      "configuration": "{\nignored: &key !!str alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literal",
+      "configuration": "{\nignored: &key |-\n  alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "folded",
+      "configuration": "{\nignored: &key >-\n  alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "explicit",
+      "configuration": "{\nignored: &key alias\n? *key\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "explicitInline",
+      "configuration": "{\nignored: &key alias\n? *key : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "explicitSeparate",
+      "configuration": "{\nignored: &key alias\n?\n  *key\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "explicitComments",
+      "configuration": "{\nignored: &key alias\n? # key\n  *key # value\n# before value\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "type",
+      "configuration": "{\nignored: &key type\n*key : actor\n}",
+      "alias": null,
+      "type": "actor"
+    },
+    {
+      "name": "both",
+      "configuration": "{\na: &a alias\nt: &t type\n*a : Name\n*t : actor\n}",
+      "alias": "Name",
+      "type": "actor"
+    },
+    {
+      "name": "redefine",
+      "configuration": "{\nfirst: &key alias\n*key : Name\nsecond: &key type\n*key : actor\n}",
+      "alias": "Name",
+      "type": "actor"
+    },
+    {
+      "name": "duplicate",
+      "configuration": "{\nignored: &key alias\nalias: First\n*key : Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "missing",
+      "configuration": "{\n*missing : Name\n}",
+      "error": "unidentified alias \"missing\""
+    },
+    {
+      "name": "unknown",
+      "configuration": "{\nignored: &key color\n*key : red\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "entitiesAreNotFieldNames",
+      "configuration": "{\nignored: &key \"al#105;as\"\n*key : NotUsed\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "retainedNewline",
+      "configuration": "{\nignored: &key |\n  alias\n*key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyString",
+      "configuration": "{\nignored: &key !!str\n*key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalKeyReference",
+      "configuration": "{\nignored: &key alias\nalias: \"*key\"\n}",
+      "alias": "*key",
+      "type": null
+    },
+    {
+      "name": "ordinaryKeyText",
+      "configuration": "{\nignored: &key alias\nsome *key suffix: NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyExplicit",
+      "configuration": "{\nignored: &key alias\n? *key\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyCommented",
+      "configuration": "{\nignored: &key alias\n? *key # last\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "nextEntry",
+      "configuration": "{\nignored: &key alias\n? *key\nother: Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "indentedColon",
+      "configuration": "{\nignored: &key alias\n? *key\n  : Name\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "indentedSeparateColon",
+      "configuration": "{\nignored: &key alias\n?\n  *key\n  : Name\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "emptyAnchorKey",
+      "configuration": "{\nignored: &key\n*key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "numericKey",
+      "configuration": "{\nignored: &key 12\n*key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "booleanKey",
+      "configuration": "{\nignored: &key false\n*key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "badStringCollection",
+      "configuration": "{\nignored: &key !!str [a]\n*key : NotUsed\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "collectionPlainKey",
+      "configuration": "{\nignored: &data [one]\nsome *data suffix: First\nsome [] suffix: Second\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalUnknownKeyRef",
+      "configuration": "{\nsome *missing text: NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flow",
+      "configuration": "{ignored: &key alias, *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowUnspacedValue",
+      "configuration": "{ignored: &key alias, *key :Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowExplicit",
+      "configuration": "{ignored: &key alias, ? *key : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowEmpty",
+      "configuration": "{ignored: &key alias, *key }",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "flowExplicitEmpty",
+      "configuration": "{ignored: &key alias, ? *key }",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "flowComment",
+      "configuration": "{\nignored: &key alias, # \" comment\n*key : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "flowDuplicate",
+      "configuration": "{ignored: &key alias, alias: First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "flowMissing",
+      "configuration": "{*missing : Name}",
+      "error": "unidentified alias \"missing\""
+    },
+    {
+      "name": "flowValue",
+      "configuration": "{ignored: &key alias, alias: *key}",
+      "alias": "alias",
+      "type": null
+    },
+    {
+      "name": "flowQuotedLiteral",
+      "configuration": "{ignored: &key alias, alias: \"*key\"}",
+      "alias": "*key",
+      "type": null
+    },
+    {
+      "name": "flowPlainKeyText",
+      "configuration": "{ignored: &key alias, some *key suffix: NotUsed, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowQuestionText",
+      "configuration": "{ignored: &key alias, some ? *key suffix: NotUsed, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowMapAlias",
+      "configuration": "{ignored: &key {a: value}, *key : NotUsed, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockMapAlias",
+      "configuration": "{\nignored: &key\n  a: value\n*key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockMapDuplicate",
+      "configuration": "{\nfirst: &a {one: value}\nsecond: &b {two: value}\n*a : First\n*b : Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "flowImplicitPair",
+      "configuration": "{ignored: &key alias, values: [*key : NotUsed], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowExplicitPair",
+      "configuration": "{ignored: &key alias, values: [? *key : NotUsed], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowActualComment",
+      "configuration": "{\n{ignored: &key alias, *key # comment\n : Name}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "flowCommentAfterComma",
+      "configuration": "{\n{ignored: &key alias, # \" comment\n *key : Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "pairMapValue",
+      "configuration": "{ignored: &key alias, values: [*key : {a: Value}], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "pairListValue",
+      "configuration": "{ignored: &key alias, values: [*key : [one, two]], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "pairMultiple",
+      "configuration": "{ignored: &key alias, values: [*key : One, *key : Two], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "pairNested",
+      "configuration": "{ignored: &key alias, values: [*key : [*key : Value]], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "bareAlias",
+      "configuration": "{alias: * }",
+      "error": "name of an alias node must contain at least one character"
+    },
+    {
+      "name": "blockExplicitMapAlias",
+      "configuration": "{\nignored: &key {a: Value}\n? *key : NotUsed\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockInlineKeyDuplicate",
+      "configuration": "{\nignored: &key alias\n\"[object Object]\": One\n? *key : Two\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "blockInlineMissing",
+      "configuration": "{\n? *missing : Value\n}",
+      "error": "unidentified alias \"missing\""
+    },
+    {
+      "name": "blockInlineAnchorValue",
+      "configuration": "{\nignored: &key alias\n? *key : &name Name\nalias: *name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockUnspacedInline",
+      "configuration": "{\nignored: &key alias\n? *key :Name\n}",
+      "error": "a whitespace character is expected after the key-value separator within a block mapping"
+    },
+    {
+      "name": "unicodePair",
+      "configuration": "{\nignored: &key \"\\uD83D\\uDE00\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unicodeDuplicate",
+      "configuration": "{\nignored: &key \"\\uD83D\\uDE00\"\n\"😀\": First\n*key : Second\n}",
+      "error": "duplicated mapping key"
+    }
+  ]
+}

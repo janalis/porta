@@ -8,11 +8,19 @@ use Porta\GraphViewer\Graph\DiagramKind;
 use Porta\GraphViewer\Graph\DotFiles;
 use Porta\GraphViewer\Graph\DotLayoutEngine;
 use Porta\GraphViewer\Graph\GraphExportFormat;
+use Porta\GraphViewer\Graph\MermaidEngine;
 use Porta\GraphViewer\Graph\PlantUmlCommand;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
 use Porta\GraphViewer\GraphViewerWidget;
+use Porta\GraphViewer\MarkdownFenceRenderer;
+use Porta\GraphViewer\Mermaid\MermaidCliRenderer;
+use Porta\GraphViewer\Mermaid\MermaidSvgRasterizer;
+use Porta\GraphViewer\Mermaid\NativeMermaidExport;
+use Porta\GraphViewer\NativeFenceActions;
+use Porta\Help\Fence\FenceResult;
 use Porta\ImageViewer\ImageDecoder;
 use Porta\Plugin\Api\AbstractPlugin;
+use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\LegacyCoreSettings;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Widget\EditorPaneWidget;
@@ -31,15 +39,19 @@ use Porta\Widget\EditorPaneWidget;
  * menu live.
  * Enabled by default ({@see \Porta\Config\IdeConfig::DEFAULT_ENABLED_PLUGINS}).
  */
-return new class('graph-viewer') extends AbstractPlugin {
+return new class('graph-viewer') extends AbstractPlugin implements DisposablePlugin {
     /** Held so the routing claim can read this plugin's own settings. */
     private ?PluginApi $api = null;
+    private ?MermaidEngine $mermaid = null;
+    private ?NativeMermaidExport $exports = null;
 
     /** The standing pane, so a `renderMode` edit can be pushed into it. */
     private ?GraphViewerWidget $widget = null;
 
     public function activate(PluginApi $api): void
     {
+        $api->registerSetting('mermaid', 'Preview Mermaid beside its source', 'bool', true);
+        $api->registerSetting('mermaidPath', 'Mermaid CLI path', hint: 'empty = discover on PATH');
         $api->registerSetting('plantuml', 'Preview PlantUML beside its source', 'bool', true);
         // The three tool knobs were CORE settings until this plugin owned
         // them (the git-keys precedent): `dotPath`, `graphRender` and the
@@ -53,7 +65,7 @@ return new class('graph-viewer') extends AbstractPlugin {
         // A diagram is its SOURCE: it opens in the editor with the drawing
         // beside it, re-laid-out as it is edited. The viewer claim keeps a
         // file too large for the editor, which the preview claim declines.
-        $diagram = fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path);
+        $diagram = fn (string $path): bool => DotFiles::isDotPath($path) || $this->claimsPlantUml($path) || $this->claimsMermaid($path);
         $api->registerPreview('graph', $diagram);
         $api->registerViewer('graph', $diagram);
         // A value written under the pre-move core key is adopted once and
@@ -83,6 +95,11 @@ return new class('graph-viewer') extends AbstractPlugin {
         // restart — the AbstractToolPlugin::binary() idiom.
         $dot = new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')));
         $plantUml = new PlantUmlEngine($api->projectRoot(), static fn (): ?string => self::path($setting('plantumlPath')));
+        $mermaid = new MermaidEngine($api->projectRoot(), static fn (): ?string => self::path($api->setting('mermaidPath')));
+        $this->mermaid = $mermaid;
+        $exports = new NativeMermaidExport();
+        $this->exports = $exports;
+        $this->registerFences($api, $setting, $exports);
         $renderMode = (string) $values['renderMode'];
         // The `/` key and the palette command reach ONE closure. The widget
         // knows the key was pressed and which nodes exist; opening an overlay
@@ -120,7 +137,7 @@ return new class('graph-viewer') extends AbstractPlugin {
             // can be pushed into the standing pane (the two paths need no push,
             // being read per spawn).
             // @mago-expect lint:prefer-arrow-function -- the body ASSIGNS to $this->widget; an arrow function hides a side effect inside an expression
-            function (PaneServices $pane) use ($api, $dot, $plantUml, $renderMode, $findNode): EditorPaneWidget {
+            function (PaneServices $pane) use ($api, $dot, $plantUml, $mermaid, $renderMode, $findNode): EditorPaneWidget {
                 return $this->widget = new GraphViewerWidget(
                     $dot,
                     $pane->translator,
@@ -134,6 +151,8 @@ return new class('graph-viewer') extends AbstractPlugin {
                     // What dot says is wrong with a source lands in the
                     // editor, as every other analyser's errors do.
                     $api->setDiagnostics(...),
+                    $mermaid,
+                    cli: new MermaidCliRenderer($mermaid, new MermaidSvgRasterizer($api->projectRoot(), $mermaid->binary(...))),
                 );
             },
             // The pane's payload is the DOT (or PlantUML) source. The size guard
@@ -167,6 +186,7 @@ return new class('graph-viewer') extends AbstractPlugin {
         });
 
         $this->api = $api;
+        $api->onShutdown($this->deactivate(...));
 
         $api->registerCommand('architecture', 'Project Architecture', static function () use ($api): void {
             $command = (string) $api->setting('command');
@@ -182,31 +202,38 @@ return new class('graph-viewer') extends AbstractPlugin {
         });
         $api->addMenuItem('architecture');
 
-        $export = static function (GraphExportFormat $format) use ($api, $setting): void {
+        $export = static function (GraphExportFormat $format) use ($api, $setting, $exports): void {
             $file = $api->activeFile();
-            if (null === $file || !DotFiles::isDotPath($file)) {
+            $kind = null === $file ? null : DiagramKind::forPath($file);
+            if (null === $file || !\in_array($kind, [DiagramKind::Dot, DiagramKind::Mermaid], strict: true)) {
                 return; // palette self-guard: only a graph tab exports
             }
             $out = \sprintf('%s/%s.%s', \dirname($file), pathinfo($file, \PATHINFO_FILENAME), $format->extension());
+            $done = static function (?string $error) use ($api, $out): void {
+                null === $error
+                    ? $api->flash($api->trans('Exported %file%', ['%file%' => basename($out)]))
+                    : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), 5.0);
+            };
+            if (DiagramKind::Mermaid === $kind) {
+                $exports->export($api->openBuffers()->text($file) ?? (string) file_get_contents($file), $format, $out, $done);
+
+                return;
+            }
             // One knob: this throwaway engine resolves `dotPath` exactly as the
             // pane's long-lived one does, per spawn.
             new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')))->export(
                 (string) file_get_contents($file),
                 $format,
                 $out,
-                static function (?string $error) use ($api, $out): void {
-                    null === $error
-                        ? $api->flash($api->trans('Exported %file%', ['%file%' => basename($out)]))
-                        : $api->flash($api->trans('Export failed: %error%', ['%error%' => $error]), 5.0);
-                },
+                $done,
             );
         };
         $api->registerCommand('find-node', 'Graph: Find Node', $findNode);
         $api->registerCommand('export-svg', 'Graph: Export SVG', static fn () => $export(GraphExportFormat::Svg));
         $api->registerCommand('export-png', 'Graph: Export PNG', static fn () => $export(GraphExportFormat::Png));
-        $isDotTab = static fn (): bool => null !== ($file = $api->activeFile()) && DotFiles::isDotPath($file);
-        $api->addMenuItem('export-svg', $isDotTab);
-        $api->addMenuItem('export-png', $isDotTab);
+        $isExportableTab = static fn (): bool => null !== ($file = $api->activeFile()) && \in_array(DiagramKind::forPath($file), [DiagramKind::Dot, DiagramKind::Mermaid], strict: true);
+        $api->addMenuItem('export-svg', $isExportableTab);
+        $api->addMenuItem('export-png', $isExportableTab);
     }
 
     /**
@@ -218,11 +245,41 @@ return new class('graph-viewer') extends AbstractPlugin {
     private function claimsPlantUml(string $path): bool
     {
         return (
-            null !== DiagramKind::forPath($path)
-            && !DotFiles::isDotPath($path)
+            DiagramKind::PlantUml === DiagramKind::forPath($path)
             && (bool) $this->api?->setting('plantuml')
             && null !== PlantUmlCommand::tool(self::path($this->api?->setting('plantumlPath') ?? ''))
         );
+    }
+
+    /** @param \Closure(string): (bool|int|string) $setting */
+    private function registerFences(PluginApi $api, \Closure $setting, NativeMermaidExport $exports): void
+    {
+        $fences = new MarkdownFenceRenderer(
+            $setting,
+            $api->trans(...),
+            actionFactory: static fn (string $source, string $path, FenceResult $result): array => new NativeFenceActions(
+                $source,
+                $path,
+                $result->elements,
+                $exports,
+                $api->trans(...),
+                $api->flash(...),
+                $api->pick(...),
+            )->actions(),
+        );
+        $api->registerMarkdownFence(['mermaid', 'dot', 'graphviz', 'plantuml', 'puml'], $fences(...));
+    }
+
+    public function deactivate(): void
+    {
+        $this->widget?->clear();
+        $this->mermaid?->cancel();
+        $this->exports?->cancel();
+    }
+
+    private function claimsMermaid(string $path): bool
+    {
+        return DiagramKind::Mermaid === DiagramKind::forPath($path) && (bool) $this->api?->setting('mermaid');
     }
 
     /** A path setting's '' -to-null: empty means "discover", which the engines spell as null. */

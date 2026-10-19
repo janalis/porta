@@ -9,6 +9,7 @@ use Porta\ImageViewer\ZoomPanModel;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Style\Color;
 
 /**
@@ -117,13 +118,19 @@ final class GraphCellGrid
     /** Write a text run left-to-right, clipped to the grid (and to $maxCol when given). */
     public function text(int $col, int $row, string $text, string $key, ?int $maxCol): void
     {
-        $length = \mb_strlen($text);
-        for ($i = 0; $i < $length; ++$i) {
-            $target = $col + $i;
-            if (null !== $maxCol && $target > $maxCol) {
+        $characters = [];
+        \preg_match_all('/\X/u', $text, $characters);
+        $target = $col;
+        foreach ($characters[0] ?? [] as $char) {
+            $width = \max(1, AnsiUtils::visibleWidth($char));
+            if (($target + $width) > $this->cols || (null !== $maxCol && ($target + $width - 1) > $maxCol)) {
                 return;
             }
-            $this->put($target, $row, \mb_substr($text, $i, length: 1), $key);
+            $this->put($target, $row, $char, $key);
+            for ($i = 1; $i < $width; ++$i) {
+                $this->put($target + $i, $row, '', $key);
+            }
+            $target += $width;
         }
     }
 
@@ -194,8 +201,11 @@ final class GraphCellGrid
     /** A style key for a DOT truecolor (when the palette has color) or the fallback role. */
     public function colorKey(?string $hex, Role $fallback): string
     {
+        // Cell outlines remain readable when native graphics omit their stroke.
+        $hex = 'none' === $hex ? null : $hex;
         if (null !== $hex && null !== $this->styles && $this->styles->hasColor()) {
-            $prefix = Color::hex($hex)->toForegroundCode(); // DotColor hands over `#rrggbb` only
+            // A cell has no alpha: a theme's `#rrggbbaa` draws its opaque color.
+            $prefix = Color::hex(\substr($hex, offset: 0, length: 7))->toForegroundCode();
             $this->painters[$prefix] ??= static fn (string $text): string => $prefix.$text.Sgr::RESET;
 
             return $prefix;

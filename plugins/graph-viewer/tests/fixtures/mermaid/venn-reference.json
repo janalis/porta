@@ -1,0 +1,975 @@
+{
+  "1-should-render-a-simple-two-set-venn-diagram.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": ""
+  },
+  "10-should-render-a-venn-diagram-with-many-text-nodes.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "Fruits"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Vegetables"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Fruits",
+          "Vegetables"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [
+      {
+        "sets": [
+          "Fruits"
+        ],
+        "id": "Apple"
+      },
+      {
+        "sets": [
+          "Fruits"
+        ],
+        "id": "Banana"
+      },
+      {
+        "sets": [
+          "Fruits"
+        ],
+        "id": "Orange"
+      },
+      {
+        "sets": [
+          "Vegetables"
+        ],
+        "id": "Carrot"
+      },
+      {
+        "sets": [
+          "Vegetables"
+        ],
+        "id": "Broccoli"
+      },
+      {
+        "sets": [
+          "Fruits",
+          "Vegetables"
+        ],
+        "id": "Tomato"
+      }
+    ],
+    "styles": [],
+    "title": "Fruits and Vegetables"
+  },
+  "11-should-render-a-venn-diagram-with-custom-text-colors-via-style.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [
+      {
+        "sets": [
+          "A"
+        ],
+        "id": "A1",
+        "label": "Red Text"
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "id": "B1",
+        "label": "Blue Text"
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "id": "AB1",
+        "label": "Green Text"
+      }
+    ],
+    "styles": [
+      {
+        "targets": [
+          "A1"
+        ],
+        "styles": {
+          "color": "#ff0000"
+        }
+      },
+      {
+        "targets": [
+          "B1"
+        ],
+        "styles": {
+          "color": "#0000ff"
+        }
+      },
+      {
+        "targets": [
+          "AB1"
+        ],
+        "styles": {
+          "color": "#00ff00"
+        }
+      }
+    ],
+    "title": ""
+  },
+  "12-should-render-a-two-set-venn-with-asymmetric-sizes.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 30
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 5
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": ""
+  },
+  "13-should-render-a-complex-venn-with-labels-text-nodes-and-styles.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "size": 10,
+        "label": "Frontend"
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "size": 10,
+        "label": "Backend"
+      },
+      {
+        "sets": [
+          "DevOps"
+        ],
+        "size": 10,
+        "label": "DevOps"
+      },
+      {
+        "sets": [
+          "Backend",
+          "Frontend"
+        ],
+        "size": 2.5,
+        "label": "Fullstack"
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "DevOps",
+          "Frontend"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps",
+          "Frontend"
+        ],
+        "size": 1.1111111111111112
+      }
+    ],
+    "texts": [
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "id": "React"
+      },
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "id": "CSS"
+      },
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "id": "HTML"
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "id": "Node.js"
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "id": "SQL"
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "id": "APIs"
+      },
+      {
+        "sets": [
+          "DevOps"
+        ],
+        "id": "Docker"
+      },
+      {
+        "sets": [
+          "DevOps"
+        ],
+        "id": "CI/CD"
+      },
+      {
+        "sets": [
+          "Backend",
+          "Frontend"
+        ],
+        "id": "REST"
+      },
+      {
+        "sets": [
+          "Backend",
+          "Frontend"
+        ],
+        "id": "GraphQL"
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps"
+        ],
+        "id": "Monitoring"
+      },
+      {
+        "sets": [
+          "DevOps",
+          "Frontend"
+        ],
+        "id": "Performance"
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps",
+          "Frontend"
+        ],
+        "id": "Architecture"
+      }
+    ],
+    "styles": [
+      {
+        "targets": [
+          "Frontend"
+        ],
+        "styles": {
+          "fill": "#ff6b6b"
+        }
+      },
+      {
+        "targets": [
+          "Backend"
+        ],
+        "styles": {
+          "fill": "#4ecdc4"
+        }
+      },
+      {
+        "targets": [
+          "DevOps"
+        ],
+        "styles": {
+          "fill": "#45b7d1"
+        }
+      }
+    ],
+    "title": "Software Engineering Skills"
+  },
+  "14-should-render-a-two-set-venn-diagram-with-handdrawn-look.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": ""
+  },
+  "15-should-render-a-three-set-venn-with-handdrawn-look-and-title.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "DevOps"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Backend",
+          "Frontend"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "DevOps",
+          "Frontend"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps",
+          "Frontend"
+        ],
+        "size": 1.1111111111111112
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "HandDrawn Skills"
+  },
+  "16-should-render-a-venn-diagram-with-a-3-set-union-without-explicit-pairwise-subsets.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "Desirable"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Feasible"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Viable"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Desirable",
+          "Feasible",
+          "Viable"
+        ],
+        "size": 1.1111111111111112,
+        "label": "Innovation"
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "Innovation"
+  },
+  "17-should-render-a-venn-diagram-with-partial-pairwise-subsets.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "C"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B",
+          "C"
+        ],
+        "size": 1.1111111111111112,
+        "label": "ABC"
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5,
+        "label": "AB"
+      },
+      {
+        "sets": [
+          "B",
+          "C"
+        ],
+        "size": 2.5,
+        "label": "BC"
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "Partial Pairwise"
+  },
+  "18-should-render-a-handdrawn-venn-with-custom-styles-and-text-nodes.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [
+      {
+        "sets": [
+          "A"
+        ],
+        "id": "Item 1"
+      },
+      {
+        "sets": [
+          "A"
+        ],
+        "id": "Item 2"
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "id": "Item 3"
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "id": "Shared"
+      }
+    ],
+    "styles": [
+      {
+        "targets": [
+          "A"
+        ],
+        "styles": {
+          "fill": "#ff6b6b"
+        }
+      },
+      {
+        "targets": [
+          "B"
+        ],
+        "styles": {
+          "fill": "#4ecdc4"
+        }
+      },
+      {
+        "targets": [
+          "A",
+          "B"
+        ],
+        "styles": {
+          "fill": "#ffe66d"
+        }
+      }
+    ],
+    "title": ""
+  },
+  "2-should-render-a-three-set-venn-diagram.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "C"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "B",
+          "C"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "A",
+          "C"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "A",
+          "B",
+          "C"
+        ],
+        "size": 1.1111111111111112
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": ""
+  },
+  "3-should-render-a-venn-diagram-with-a-title.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "DevOps"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Backend",
+          "Frontend"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "DevOps",
+          "Frontend"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "Backend",
+          "DevOps",
+          "Frontend"
+        ],
+        "size": 1.1111111111111112
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "Skills Overlap"
+  },
+  "4-should-render-a-venn-diagram-with-custom-set-sizes.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 20
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 15
+      },
+      {
+        "sets": [
+          "C"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 5
+      },
+      {
+        "sets": [
+          "B",
+          "C"
+        ],
+        "size": 3
+      },
+      {
+        "sets": [
+          "A",
+          "C"
+        ],
+        "size": 2
+      },
+      {
+        "sets": [
+          "A",
+          "B",
+          "C"
+        ],
+        "size": 1
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": ""
+  },
+  "5-should-render-a-venn-diagram-with-labels.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "Frontend"
+        ],
+        "size": 10,
+        "label": "Frontend"
+      },
+      {
+        "sets": [
+          "Backend"
+        ],
+        "size": 10,
+        "label": "Backend"
+      },
+      {
+        "sets": [
+          "Backend",
+          "Frontend"
+        ],
+        "size": 2.5,
+        "label": "Fullstack"
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "Team Skills"
+  },
+  "6-should-render-a-venn-diagram-with-text-nodes.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [
+      {
+        "sets": [
+          "A"
+        ],
+        "id": "Item 1"
+      },
+      {
+        "sets": [
+          "A"
+        ],
+        "id": "Item 2"
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "id": "Item 3"
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "id": "Shared"
+      }
+    ],
+    "styles": [],
+    "title": ""
+  },
+  "7-should-render-a-venn-diagram-with-custom-colors-via-style.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [],
+    "styles": [
+      {
+        "targets": [
+          "A"
+        ],
+        "styles": {
+          "fill": "#ff6b6b"
+        }
+      },
+      {
+        "targets": [
+          "B"
+        ],
+        "styles": {
+          "fill": "#4ecdc4"
+        }
+      },
+      {
+        "targets": [
+          "A",
+          "B"
+        ],
+        "styles": {
+          "fill": "#ffe66d"
+        }
+      }
+    ],
+    "title": ""
+  },
+  "8-should-render-a-venn-diagram-with-string-identifiers.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "JavaScript"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "Python"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "TypeScript"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "JavaScript",
+          "TypeScript"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "Programming Languages"
+  },
+  "9-should-render-with-dark-theme.mmd": {
+    "subsets": [
+      {
+        "sets": [
+          "A"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "B"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "C"
+        ],
+        "size": 10
+      },
+      {
+        "sets": [
+          "A",
+          "B"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "B",
+          "C"
+        ],
+        "size": 2.5
+      },
+      {
+        "sets": [
+          "A",
+          "C"
+        ],
+        "size": 2.5
+      }
+    ],
+    "texts": [],
+    "styles": [],
+    "title": "Dark Theme"
+  }
+}

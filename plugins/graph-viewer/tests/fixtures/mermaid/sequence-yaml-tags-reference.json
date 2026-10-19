@@ -1,0 +1,299 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA, metadata wrapping and alias fallback from the pinned database",
+  "cases": [
+    {
+      "name": "stringBool",
+      "configuration": "{alias: !!str true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "stringNumber",
+      "configuration": "{alias: !!str 123}",
+      "alias": "123",
+      "type": null
+    },
+    {
+      "name": "stringNull",
+      "configuration": "{alias: !!str null}",
+      "alias": "null",
+      "type": null
+    },
+    {
+      "name": "stringInfinity",
+      "configuration": "{alias: !!str .inf}",
+      "alias": ".inf",
+      "type": null
+    },
+    {
+      "name": "stringDate",
+      "configuration": "{alias: !!str 2024-01-01}",
+      "alias": "2024-01-01",
+      "type": null
+    },
+    {
+      "name": "verbatimBool",
+      "configuration": "{alias: !<tag:yaml.org,2002:str> true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "verbatimDate",
+      "configuration": "{alias: !<tag:yaml.org,2002:str> 2024-01-01}",
+      "alias": "2024-01-01",
+      "type": null
+    },
+    {
+      "name": "nonSpecific",
+      "configuration": "{alias: ! 123}",
+      "alias": "123",
+      "type": null
+    },
+    {
+      "name": "emptyString",
+      "configuration": "{alias: !!str ''}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyTagged",
+      "configuration": "{alias: !!str, type: actor}",
+      "error": "tag suffix cannot contain flow indicator characters"
+    },
+    {
+      "name": "tagAnchor",
+      "configuration": "{alias: !!str &a true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "anchorTag",
+      "configuration": "{alias: &a !!str true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "dateTagAnchor",
+      "configuration": "{alias: !!str &a 2024-01-01}",
+      "alias": "2024-01-01",
+      "type": null
+    },
+    {
+      "name": "scalarReference",
+      "configuration": "{alias: !!str &a database, type: *a}",
+      "alias": "database",
+      "type": "database"
+    },
+    {
+      "name": "scalarReferenceReverse",
+      "configuration": "{type: !!str &a actor, alias: *a}",
+      "alias": "actor",
+      "type": "actor"
+    },
+    {
+      "name": "verbatimAnchor",
+      "configuration": "{alias: !<tag:yaml.org,2002:str> &a \"A } [; # literal\"}",
+      "alias": "A } [; # literal",
+      "type": null
+    },
+    {
+      "name": "quotedTag",
+      "configuration": "{alias: \"!!binary aGk=\"}",
+      "alias": "!!binary aGk=",
+      "type": null
+    },
+    {
+      "name": "plainTag",
+      "configuration": "{alias: prefix !!binary aGk=}",
+      "alias": "prefix !!binary aGk=",
+      "type": null
+    },
+    {
+      "name": "tagType",
+      "configuration": "{type: !<tag:yaml.org,2002:str> actor}",
+      "alias": null,
+      "type": "actor"
+    },
+    {
+      "name": "taggedKey",
+      "configuration": "{!<tag:yaml.org,2002:str> alias: Tagged key}",
+      "alias": "Tagged key",
+      "type": null
+    },
+    {
+      "name": "taggedLiteral",
+      "configuration": "{\n  alias: !!str |-\n    !!binary aGk=\n    \"unclosed } [;\n}",
+      "alias": "!!binary aGk=\n\"unclosed } [;",
+      "type": null
+    },
+    {
+      "name": "taggedFolded",
+      "configuration": "{\n  alias: !!str >-\n    !<tag:yaml.org,2002:binary>\n    second\n}",
+      "alias": "!<tag:yaml.org,2002:binary> second",
+      "type": null
+    },
+    {
+      "name": "tagAnchorLiteral",
+      "configuration": "{\n  alias: !!str &a |-\n    alias: 2024-01-01\n    !!str literal\n}",
+      "alias": "alias: 2024-01-01\n!!str literal",
+      "type": null
+    },
+    {
+      "name": "anchorTagLiteral",
+      "configuration": "{\n  alias: &a !!str |-\n    !!str literal\n}",
+      "alias": "!!str literal",
+      "type": null
+    },
+    {
+      "name": "binary",
+      "configuration": "{alias: !!binary aGk=}",
+      "error": "unknown tag !<tag:yaml.org,2002:binary>"
+    },
+    {
+      "name": "verbatimBinary",
+      "configuration": "{alias: !<tag:yaml.org,2002:binary> aGk=}",
+      "error": "unknown tag !<tag:yaml.org,2002:binary>"
+    },
+    {
+      "name": "timestamp",
+      "configuration": "{alias: !!timestamp 2024-01-01}",
+      "error": "unknown tag !<tag:yaml.org,2002:timestamp>"
+    },
+    {
+      "name": "custom",
+      "configuration": "{alias: !custom Hello}",
+      "error": "unknown tag !<!custom>"
+    },
+    {
+      "name": "stringCollection",
+      "configuration": "{alias: !!str [a]}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "tagAnchorCollection",
+      "configuration": "{alias: !!str &a [a]}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "doubleTag",
+      "configuration": "{alias: !!str !!str Hello}",
+      "error": "duplication of a tag property"
+    },
+    {
+      "name": "doubleAnchor",
+      "configuration": "{alias: &a !!str &b Hello}",
+      "error": "duplication of an anchor property"
+    },
+    {
+      "name": "tagDoubleAnchor",
+      "configuration": "{alias: !!str &a &b Hello}",
+      "error": "duplication of an anchor property"
+    },
+    {
+      "name": "unterminated",
+      "configuration": "{alias: !<tag:yaml.org,2002:str Hello}",
+      "error": "unexpected end of the stream within a verbatim tag"
+    },
+    {
+      "name": "encodedShort",
+      "configuration": "{alias: !!%73tr true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "encodedUri",
+      "configuration": "{alias: !<tag:yaml.org,2002:%73tr> true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "encodedNamespace",
+      "configuration": "{alias: !<tag:yaml.org%2C2002:str> true}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "encodedKey",
+      "configuration": "{\n  type: actor\n  !!%73tr alias: Second key\n}",
+      "alias": "Second key",
+      "type": "actor"
+    },
+    {
+      "name": "localSpoof",
+      "configuration": "{alias: !%3Ctag:yaml.org%2C2002:str%3E true}",
+      "error": "unknown tag !<!<tag:yaml.org,2002:str>>"
+    },
+    {
+      "name": "foreignUri",
+      "configuration": "{alias: !<tag:example.org,str> true}",
+      "error": "unknown tag !<tag:example.org,str>"
+    },
+    {
+      "name": "malformedUri",
+      "configuration": "{alias: !<tag:yaml.org,2002:strX true}",
+      "error": "unexpected end of the stream within a verbatim tag"
+    },
+    {
+      "name": "quotedKey",
+      "configuration": "{!<tag:yaml.org,2002:str> \"alias\": Tagged key}",
+      "alias": "Tagged key",
+      "type": null
+    },
+    {
+      "name": "blockQuotedKey",
+      "configuration": "{\n  type: actor\n  !<tag:yaml.org,2002:str> \"alias\": Second key\n}",
+      "alias": "Second key",
+      "type": "actor"
+    },
+    {
+      "name": "blockSingleQuotedKey",
+      "configuration": "{\n  type: actor\n  !!str 'alias': Second key\n}",
+      "alias": "Second key",
+      "type": "actor"
+    },
+    {
+      "name": "blockTaggedKey",
+      "configuration": "{\n  type: actor\n  !<tag:yaml.org,2002:str> alias: Second key\n}",
+      "alias": "Second key",
+      "type": "actor"
+    },
+    {
+      "name": "blockShortTaggedKey",
+      "configuration": "{\n  type: actor\n  !!str alias: Second key\n}",
+      "alias": "Second key",
+      "type": "actor"
+    },
+    {
+      "name": "blockPlainColon",
+      "configuration": "{\n  alias: before\n    !!str type: actor\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "blockBrackets",
+      "configuration": "{\n  alias: before [ !!binary aGk= ]\n}",
+      "alias": "before [ !!binary aGk= ]",
+      "type": null
+    },
+    {
+      "name": "blockComma",
+      "configuration": "{\n  alias: before, !!binary aGk=\n}",
+      "alias": "before, !!binary aGk=",
+      "type": null
+    },
+    {
+      "name": "blockUrl",
+      "configuration": "{\n  alias: service:!!binary aGk=\n}",
+      "alias": "service:!!binary aGk=",
+      "type": null
+    },
+    {
+      "name": "blockContinuation",
+      "configuration": "{\n  alias: before\n    !!binary aGk=\n}",
+      "alias": "before !!binary aGk=",
+      "type": null
+    }
+  ]
+}

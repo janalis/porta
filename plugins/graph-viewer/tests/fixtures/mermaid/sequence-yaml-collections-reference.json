@@ -1,0 +1,279 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping; merge spellings are literal keys",
+  "cases": [
+    {
+      "name": "unknown",
+      "configuration": "{color: red}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "unknownJson",
+      "configuration": "{\"color\":\"blue\",\"extra\":{\"alias\":\"Wrong\"},\"alias\":\"Right\"}",
+      "alias": "Right",
+      "type": null
+    },
+    {
+      "name": "unknownNull",
+      "configuration": "{unknown: null, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknownBoolean",
+      "configuration": "{unknown: true, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknownNumeric",
+      "configuration": "{unknown: 123, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknownList",
+      "configuration": "{unknown: [a, b], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknownMap",
+      "configuration": "{\nunknown:\n  alias: Wrong\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknownBlockList",
+      "configuration": "{\nunknown:\n  - a\n  - b\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "scalarFromUnknown",
+      "configuration": "{unknown: &name Name, alias: *name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapAliasIgnored",
+      "configuration": "{\nunknown: &data\n  alias: Wrong\ncopy: *data\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "listAliasIgnored",
+      "configuration": "{unknown: &data [a, b], copy: *data, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nestedAliases",
+      "configuration": "{\na: &a [one, two]\nb: &b [*a, *a]\nc: [*b, *b]\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mergeMap",
+      "configuration": "{\n<<:\n  alias: Wrong\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "mergeAlias",
+      "configuration": "{\nsource: &data\n  alias: Wrong\n<<: *data\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "mergeExplicit",
+      "configuration": "{\n<<:\n  alias: Wrong\nalias: Right\n}",
+      "alias": "Right",
+      "type": null
+    },
+    {
+      "name": "mergeScalar",
+      "configuration": "{<<: Plain}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "mergeNumber",
+      "configuration": "{<<: 123}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "mergeList",
+      "configuration": "{<<: [one, two]}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "nestedMerge",
+      "configuration": "{\nunknown:\n  <<:\n    alias: Wrong\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalMerge",
+      "configuration": "{alias: \"<< literal >>\"}",
+      "alias": "<< literal >>",
+      "type": null
+    },
+    {
+      "name": "plainMerge",
+      "configuration": "{alias: << literal >>}",
+      "alias": "<< literal >>",
+      "type": null
+    },
+    {
+      "name": "blockMerge",
+      "configuration": "{\nalias: |-\n  << literal >>\n  <<: text\n}",
+      "alias": "<< literal >>\n<<: text",
+      "type": null
+    },
+    {
+      "name": "quotedMergeKey",
+      "configuration": "{\"<<\":{\"alias\":\"Wrong\"},\"alias\":\"Right\"}",
+      "alias": "Right",
+      "type": null
+    },
+    {
+      "name": "quotedYamlMergeKey",
+      "configuration": "{'<<': {alias: Wrong}, alias: Right}",
+      "alias": "Right",
+      "type": null
+    },
+    {
+      "name": "escapedMerge",
+      "configuration": "{alias: \"\\x3c\\x3c\"}",
+      "alias": "<<",
+      "type": null
+    },
+    {
+      "name": "markerCollision",
+      "configuration": "{alias: \"__porta_merge_0__ <<\"}",
+      "alias": "__porta_merge_0__ <<",
+      "type": null
+    },
+    {
+      "name": "markerEscaped",
+      "configuration": "{alias: \"\\u005f_porta_merge_0__ <<\"}",
+      "alias": "__porta_merge_0__ <<",
+      "type": null
+    },
+    {
+      "name": "markerContinuation",
+      "configuration": "{\nalias: \"__porta_mer\\\n  ge_0__ <<\"\n}",
+      "alias": "__porta_merge_0__ <<",
+      "type": null
+    },
+    {
+      "name": "tagUnknownInvalid",
+      "configuration": "{unknown: !!binary aGk=}",
+      "error": "unknown tag !<tag:yaml.org,2002:binary>"
+    },
+    {
+      "name": "unknownMissingRef",
+      "configuration": "{unknown: *missing}",
+      "error": "unidentified alias \"missing\""
+    },
+    {
+      "name": "unknownDuplicate",
+      "configuration": "{unknown: one, unknown: two}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "markerHex",
+      "configuration": "{alias: \"\\x5f_porta_merge_0__ <<\"}",
+      "alias": "__porta_merge_0__ <<",
+      "type": null
+    },
+    {
+      "name": "markerUnicode",
+      "configuration": "{alias: \"\\U0000005f_porta_merge_0__ <<\"}",
+      "alias": "__porta_merge_0__ <<",
+      "type": null
+    },
+    {
+      "name": "markerNonAscii",
+      "configuration": "{alias: \"\\u00e9__porta_merge_0__ <<\"}",
+      "alias": "é__porta_merge_0__ <<",
+      "type": null
+    },
+    {
+      "name": "listScalar",
+      "configuration": "{unknown: [&text -.0], alias: *text}",
+      "alias": "-.0",
+      "type": null
+    },
+    {
+      "name": "blockListScalar",
+      "configuration": "{\nunknown:\n  - &text -.0\nalias: *text\n}",
+      "alias": "-.0",
+      "type": null
+    },
+    {
+      "name": "laterListScalar",
+      "configuration": "{unknown: [ignored, &text -.0], alias: *text}",
+      "alias": "-.0",
+      "type": null
+    },
+    {
+      "name": "implicitPair",
+      "configuration": "{unknown: [alias: Wrong], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nestedBlockSequence",
+      "configuration": "{\nunknown:\n  - - item\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "inlineBlockMap",
+      "configuration": "{\nunknown:\n  - item: Name\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicitAnchoredPair",
+      "configuration": "{unknown: [text: &text -.0], alias: *text}",
+      "alias": "-.0",
+      "type": null
+    },
+    {
+      "name": "invalidDirectivePrefix",
+      "configuration": "{\n%TAG !e! <<\n---\nalias: Name\n}",
+      "error": "ill-formed tag prefix (second argument) of the TAG directive"
+    },
+    {
+      "name": "markersTogether",
+      "configuration": "{alias: \"__porta_merge_0__ __porta_merge_1__ <<\"}",
+      "alias": "__porta_merge_0__ __porta_merge_1__ <<",
+      "type": null
+    },
+    {
+      "name": "multipleMerges",
+      "configuration": "{\nunknown:\n  <<:\n    alias: NotUsed\n<<:\n  alias: Wrong\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "taggedUnknownKey",
+      "configuration": "{\ntype: actor\n!!str unknown: Name\nalias: Right\n}",
+      "alias": "Right",
+      "type": "actor"
+    },
+    {
+      "name": "rootUnknownKey",
+      "configuration": "{\n!!str unknown: Name\nalias: Right\n}",
+      "error": "end of the stream or a document separator is expected"
+    }
+  ]
+}

@@ -12,6 +12,12 @@ use Porta\GraphViewer\Graph\GraphLayout;
 use Porta\GraphViewer\Graph\GraphNode;
 use Porta\GraphViewer\Graph\GraphRenderMode;
 use Porta\GraphViewer\Graph\LayoutEngine;
+use Porta\GraphViewer\Mermaid\MermaidCliPicture;
+use Porta\GraphViewer\Mermaid\MermaidCliRenderer;
+use Porta\GraphViewer\Mermaid\MermaidOutline;
+use Porta\GraphViewer\Mermaid\MermaidScene;
+use Porta\GraphViewer\Mermaid\MermaidTask;
+use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\GraphViewer\Render\GraphRenderer;
 use Porta\GraphViewer\Render\GraphSelectionOverlay;
 use Porta\I18n\Translator;
@@ -80,10 +86,13 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private DiagramKind $kind = DiagramKind::Dot;
     /** The picture dot rendered, or null while none has arrived for this graph. */
     private ?ImageData $bitmap = null;
+    /** A native or mapped CLI picture shares the current scene geometry. */
+    private bool $nativeBitmap = false;
     /** The dpi the shown bitmap was rendered at — its pixels per layout point. */
     private int $bitmapDpi = self::BITMAP_DPI;
     /** Coalesces and debounces the re-render the current zoom wants. */
     private readonly DebouncedRequest $pending;
+    private readonly DiagramBitmapRenderer $bitmaps;
     /** Which rendering paints: the persisted default, flipped live by its key. */
     private GraphRenderMode $mode;
     /** The laid-out extent in points, for the resolution cap. */
@@ -105,6 +114,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** Whether the source is on screen beside this pane, its errors with it ({@see textBeside()}). */
     private bool $besideText = false;
     private bool $layingOut = false;
+    private bool $resumePicture = false;
     /** The selected node's _gvid. */
     private ?int $selected = null;
     /** @var list<int> node ids in (y, x) order — the n/p cycling order */
@@ -113,6 +123,10 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private array $layoutCache = [];
     /** @var array<string, array{ZoomPanModel, int, int}> path => [view, extent w, extent h], preserved across regenerations */
     private array $viewCache = [];
+    private readonly NativeMermaidRenderer $native;
+    private ?MermaidScene $nativeScene = null;
+    /** @var array<string, MermaidScene> */
+    private array $nativeCache = [];
     private readonly ImageDecoder $decoder;
 
     public function __construct(
@@ -142,14 +156,19 @@ final class GraphViewerWidget extends NavigablePaneWidget
         // api's, which only the plugin file holds. Told the source's errors
         // for a path, 0-based, as the api takes them; an empty list clears.
         private readonly ?\Closure $onSourceErrors = null,
+        private readonly ?DiagramEngine $mermaid = null,
+        ?NativeMermaidRenderer $native = null,
+        ?MermaidCliRenderer $cli = null,
     ) {
         $this->initStyles($styles);
+        $this->bitmaps = new DiagramBitmapRenderer($cli);
         // Hand-built (a plugin class cannot be a container service), so the id
         // the #[AsWidget] attribute used to apply is set here — tests and the
         // hit-tester both look widgets up by it.
         $this->setId('graph-viewer');
         $this->mode = GraphRenderMode::fromId($renderMode);
         $this->decoder = $decoder ?? new ImageDecoder();
+        $this->native = $native ?? new NativeMermaidRenderer(new MermaidTask($scheduler ?? new RevoltScheduler()));
         $this->pending = new DebouncedRequest($scheduler ?? new RevoltScheduler(), self::RENDER_DEBOUNCE);
         $this->scaled = new ScaledSource();
         $this->pixels = null !== $graphics ? new PixelPlacement($graphics, $this->afterViewChange(...)) : null;
@@ -165,20 +184,34 @@ final class GraphViewerWidget extends NavigablePaneWidget
     public function show(string $path, mixed $payload): void
     {
         $dot = (string) $payload;
-        $hash = \hash('xxh128', $dot);
+        $kind = DiagramKind::forPath($path) ?? DiagramKind::Dot;
+        $hash = \hash('xxh128', $kind->name."\0".$dot);
         if ($path === $this->path && $hash === $this->dotHash) {
+            if ($this->resumePicture && !$kind->hasLayout()) {
+                $this->resumePicture = false;
+                $this->showPicture();
+            }
+
             return; // same tab, same content — nothing to do
         }
         if ($path !== $this->path) {
             $this->sourceError = null; // another file's, until its own layout says
         }
+        $changedPath = $path !== $this->path;
+        $this->bitmaps->cancel($this->drawingEngine());
+        $this->native->cancel();
+        $this->pending->reset();
         $this->path = $path;
         $this->dotHash = $hash;
         $this->dot = $dot;
-        $this->kind = DiagramKind::forPath($path) ?? DiagramKind::Dot;
+        $this->kind = $kind;
         // The previous tab's picture must not paint under this tab's geometry;
         // the cell rendering covers the gap until the new bitmap lands.
-        $this->bitmap = null;
+        if ($changedPath || DiagramKind::Mermaid !== $kind) {
+            $this->nativeScene = null;
+            $this->bitmap = null;
+            $this->nativeBitmap = false;
+        }
         $this->selected = null;
         match (true) {
             !$this->kind->hasLayout() => $this->showPicture(),
@@ -195,9 +228,17 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private function showPicture(): void
     {
         $this->layout = null;
-        $this->view = null;
+        if (null === $this->bitmap && null === $this->nativeScene) {
+            $this->view = null;
+        }
         $this->selectionOrder = [];
-        $this->error = null === $this->plantUml?->binary() ? 'missing-plantuml' : null;
+        $missing = DiagramKind::Mermaid === $this->kind ? 'missing-mermaid' : 'missing-plantuml';
+        $this->error = null === $this->drawingEngine()?->binary() ? $missing : null;
+        if (DiagramKind::Mermaid === $this->kind && (GraphRenderMode::Cells === $this->mode || null !== $this->error)) {
+            $this->requestNative(
+                GraphRenderMode::Cells === $this->mode ? null : $this->translator->trans('mmdc not found — install mermaid-cli, or set the "mermaidPath" setting'),
+            );
+        }
         $this->pending->reset();
         $this->invalidate();
         $this->scheduleRefine();
@@ -255,10 +296,14 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** Detach the current tab (another buffer kind takes the pane); layout caches survive. */
     public function clear(): void
     {
+        $this->bitmaps->cancel($this->drawingEngine());
+        $this->native->cancel();
+        $this->nativeScene = null;
         $this->path = null;
         $this->dotHash = null;
         $this->dot = null;
         $this->bitmap = null;
+        $this->nativeBitmap = false;
         $this->pixels?->forget();
         $this->pending->reset();
         $this->layout = null;
@@ -274,6 +319,10 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** Another pane took the slot: the terminal's copy is freed, and re-sent on return. */
     public function hide(): void
     {
+        $this->resumePicture = true;
+        $this->bitmaps->cancel($this->drawingEngine());
+        $this->native->cancel();
+        $this->pending->reset();
         $this->pixels?->forget();
     }
 
@@ -295,7 +344,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $info = \sprintf('%d nodes · %d edges', $this->layout->nodeCount(), $this->layout->edgeCount());
         $selected = null !== $this->selected ? $this->layout->nodes[$this->selected] ?? null : null;
 
-        return null !== $selected ? $info.' · '.\strtr($selected->label, ["\n" => ' ']) : $info;
+        return null !== $selected ? $info.' · '.self::oneLine($selected->label) : $info;
     }
 
     /** This pane's status-segment key hints (n/p select, unlike the image pane's). */
@@ -323,9 +372,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         // Over Graphviz's own picture, the node that picture shows in the cell;
         // over the cell drawing, the box drawn there.
-        $this->selected = $this->showsBitmap()
-            ? GraphRenderer::nodeShownAt($layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol)
-            : GraphRenderer::nodeAt($layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol);
+        $this->selected = match (true) {
+            $this->nativeBitmap && null !== $this->nativeScene => MermaidOutline::nodeAt($this->nativeScene, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
+            $this->showsBitmap() => GraphRenderer::nodeShownAt($layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
+            default => GraphRenderer::nodeAt($this->nativeScene->selectionGraph ?? $layout, $view, $this->lastCols, $this->lastRows, $relRow, $relCol),
+        };
         $this->afterViewChange();
         $this->revealSelected();
     }
@@ -337,6 +388,14 @@ final class GraphViewerWidget extends NavigablePaneWidget
     #[\Override]
     public function followSource(int $line, int $byteCol): void
     {
+        if (DiagramKind::Mermaid === $this->kind) {
+            $id = $this->nativeScene?->onLine($line);
+            if (null !== $id && $id !== $this->selected) {
+                $this->focusNode($id);
+            }
+
+            return;
+        }
         $nodes = $this->layout->nodes ?? [];
         $name = DotSource::nodeAt((string) $this->dot, \array_values(\array_map(static fn (GraphNode $node): string => $node->name, $nodes)), $line, $byteCol);
         foreach ($nodes as $id => $node) {
@@ -356,6 +415,14 @@ final class GraphViewerWidget extends NavigablePaneWidget
      */
     private function revealSelected(): void
     {
+        if (DiagramKind::Mermaid === $this->kind) {
+            $line = $this->nativeScene?->origin($this->selected);
+            if (null !== $line) {
+                $this->handler?->revealSource($line, byteCol: 0);
+            }
+
+            return;
+        }
         $node = null === $this->selected ? null : $this->layout?->nodes[$this->selected] ?? null;
         $offset = null === $node ? null : DotSource::declarationOf((string) $this->dot, $node->name);
         if (null !== $offset) {
@@ -384,7 +451,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         // The banner/progress row outranks the focus frame's top border — an
         // error (or in-flight hint) must never hide behind focus chrome.
-        if (null !== $this->layout) {
+        if (null !== $this->layout || null !== $this->bitmap || null !== $this->nativeScene) {
             // A source error is the editor's to show while the text is beside
             // this pane; shown alone, the picture has to say it.
             $banner = $this->error ?? ($this->besideText ? null : $this->sourceError);
@@ -504,7 +571,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** The tool that draws the shown tab, or null when this instance has none for it. */
     private function drawingEngine(): ?DiagramEngine
     {
-        return $this->kind->hasLayout() ? $this->engine : $this->plantUml;
+        return match ($this->kind) {
+            DiagramKind::Dot => $this->engine,
+            DiagramKind::PlantUml => $this->plantUml,
+            DiagramKind::Mermaid => $this->mermaid,
+        };
     }
 
     /**
@@ -539,11 +610,14 @@ final class GraphViewerWidget extends NavigablePaneWidget
      */
     protected function scheduleRefine(): void
     {
-        if (null === $this->dot || null === $this->drawingEngine()) {
-            return;
-        }
-        if (GraphRenderMode::Cells === $this->mode && $this->kind->hasLayout()) {
-            return; // the cell rendering needs no process (and only dot has one)
+        $engine = $this->drawingEngine();
+        if (
+            null === $this->dot
+            || null === $engine
+            || (DiagramKind::Mermaid === $this->kind && (GraphRenderMode::Cells === $this->mode || null === $engine->binary()))
+            || (GraphRenderMode::Cells === $this->mode && $this->kind->hasLayout())
+        ) {
+            return; // Native cells need no external render.
         }
         // A tab with no geometry has no view until its first render lands, and
         // that render is what creates one — at the tool's own 1:1.
@@ -568,46 +642,148 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $hash = $this->dotHash;
         $engine = $this->drawingEngine();
         \assert(null !== $engine, description: 'a bitmap is only ever requested for a tool that exists');
-        $engine->render(
+        $this->native->cancel();
+        $this->bitmaps->render(
+            $this->kind,
+            $engine,
             $dot,
             $dpi,
-            function (string $png) use ($hash, $dpi, $engine): void {
-                if ($hash !== $this->dotHash) {
-                    return; // the tab moved on while dot was working
-                }
-                $image = $this->decoder->decodeBytes($png);
-                if (null === $image) {
-                    // Undecodable: keep whatever is on screen (a re-render must
-                    // not blank a good picture) and say why it did not change.
-                    $this->error = $this->translator->trans('the graph bitmap could not be decoded');
-                    $this->invalidate();
+            fn (MermaidCliPicture $picture) => $this->acceptBitmap($picture, $hash, $dpi, $engine),
+            fn (string $message) => $this->bitmapError($message, $hash),
+        );
+    }
 
-                    return;
+    private function acceptBitmap(MermaidCliPicture $picture, ?string $hash, int $dpi, DiagramEngine $engine): void
+    {
+        if ($hash !== $this->dotHash) {
+            return;
+        }
+        $image = $this->decoder->decodeBytes($picture->png);
+        $mapped = $picture->scene;
+        if (null === $image) {
+            $this->error = $this->translator->trans('the graph bitmap could not be decoded');
+            $this->fallbackNative();
+            $this->invalidate();
+
+            return;
+        }
+        $this->native->cancel();
+        $this->error = null;
+        if (DiagramKind::Mermaid === $this->kind) {
+            $this->nativeScene = $mapped;
+            $this->layout = $mapped?->graph;
+            // @mago-expect analysis:invalid-type-cast -- An absent map deliberately becomes an empty selection; null is initialized, not an error.
+            $this->selectionOrder = \array_keys((array) $mapped?->elements);
+            $this->selected = $mapped?->selectable($this->selected);
+        }
+        $this->nativeBitmap = null !== $mapped;
+        $this->bitmap = $image;
+        $this->bitmapDpi = $dpi;
+        if (!$this->kind->hasLayout()) {
+            $this->adoptPictureExtent($image, $dpi, $engine->baseDpi());
+        }
+        $this->invalidate();
+        $this->handler?->viewChanged();
+    }
+
+    private function bitmapError(string $message, ?string $hash): void
+    {
+        if ($hash === $this->dotHash) {
+            $this->error = $this->translator->trans($message);
+            $this->fallbackNative();
+            $this->invalidate();
+        }
+    }
+
+    private function fallbackNative(): void
+    {
+        if (DiagramKind::Mermaid === $this->kind) {
+            $this->requestNative($this->error);
+        }
+    }
+
+    private function requestNative(?string $warning = null): void
+    {
+        $this->bitmaps->cancel($this->drawingEngine());
+        $this->native->cancel();
+        $source = $this->dot;
+        $hash = $this->dotHash;
+        if (null === $source || null === $hash) {
+            return;
+        }
+        if (null !== ($cached = $this->nativeCache[$hash] ?? null)) {
+            $this->adoptNative($cached, $warning);
+
+            return;
+        }
+        $this->native->render(
+            $source,
+            function (MermaidScene $scene) use ($hash, $warning): void {
+                $this->nativeCache[$hash] = $scene;
+                if (\count($this->nativeCache) > self::LAYOUT_CACHE_CAP) {
+                    \array_shift($this->nativeCache);
                 }
-                $this->bitmap = $image;
-                $this->bitmapDpi = $dpi;
-                // With no layout there is nothing else to size the zoom model
-                // from, so the first render does it — and only that one may, for
-                // the reason the image viewer's probe records: a re-render at a
-                // higher dpi must not redefine its own coordinate space.
-                if (null === $this->view) {
-                    $base = $engine->baseDpi();
-                    $this->extentW = \max(1, (int) \round(($image->width * $base) / $dpi));
-                    $this->extentH = \max(1, (int) \round(($image->height * $base) / $dpi));
-                    $this->view = new ZoomPanModel($this->extentW, $this->extentH, self::ZOOM_STEPS);
-                }
-                $this->invalidate();
-                $this->handler?->viewChanged();
+                $this->adoptNative($scene, $warning);
             },
-            function (string $message) use ($hash): void {
-                if ($hash === $this->dotHash) {
-                    // No picture: the cell rendering keeps the pane usable and
-                    // the banner says why (a dot without libgd lands here).
-                    $this->error = $message;
-                    $this->invalidate();
-                }
+            function (string $message) use ($warning): void {
+                $this->error = (null === $warning ? '' : $warning.' · ').$message;
+                $this->invalidate();
             },
         );
+    }
+
+    private function adoptNative(MermaidScene $scene, ?string $warning): void
+    {
+        $this->bitmap = null;
+        $this->nativeBitmap = false;
+        $this->nativeScene = $scene;
+        $this->layout = $scene->graph;
+        $this->selectionOrder = \array_keys($scene->elements);
+        $this->error = $warning;
+        $width = \max(1, (int) \ceil($scene->graph->width));
+        $height = \max(1, (int) \ceil($scene->graph->height));
+        if (null === $this->view || $width !== $this->extentW || $height !== $this->extentH) {
+            $this->extentW = $width;
+            $this->extentH = $height;
+            $this->view = new ZoomPanModel($width, $height, self::ZOOM_STEPS);
+        }
+        $this->invalidate();
+        $this->handler?->viewChanged();
+        if (GraphRenderMode::Bitmap === $this->mode) {
+            $this->rasterNative($scene);
+        }
+    }
+
+    private function rasterNative(MermaidScene $scene): void
+    {
+        $this->native->raster(
+            $scene,
+            function (string $png): void {
+                $image = $this->decoder->decodeBytes($png);
+                if (null !== $image) {
+                    $this->bitmap = $image;
+                    $this->nativeBitmap = true;
+                    $this->invalidate();
+                }
+            },
+            function (string $message): void {
+                $this->error = (null === $this->error ? '' : $this->error.' · ').$message;
+                $this->invalidate();
+            },
+        );
+    }
+
+    /** Retain zoom for the same natural dimensions, fit again when the diagram grows or shrinks. */
+    private function adoptPictureExtent(ImageData $image, int $dpi, int $base): void
+    {
+        $width = \max(1, (int) \round(($image->width * $base) / $dpi));
+        $height = \max(1, (int) \round(($image->height * $base) / $dpi));
+        if (null !== $this->view && $width === $this->extentW && $height === $this->extentH) {
+            return;
+        }
+        $this->extentW = $width;
+        $this->extentH = $height;
+        $this->view = new ZoomPanModel($width, $height, self::ZOOM_STEPS);
     }
 
     /**
@@ -617,8 +793,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
      */
     private function toggleRenderMode(): void
     {
-        if (!$this->kind->hasLayout()) {
-            return; // there is no cell rendering of a picture
+        if (DiagramKind::PlantUml === $this->kind) {
+            return; // PlantUML has no native cell renderer
         }
         $this->apply($this->mode->toggled());
     }
@@ -641,6 +817,12 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private function apply(GraphRenderMode $mode): void
     {
         $this->mode = $mode;
+        if (DiagramKind::Mermaid === $this->kind && (GraphRenderMode::Cells === $mode || null === $this->drawingEngine()?->binary())) {
+            $this->bitmaps->cancel($this->drawingEngine());
+            $this->native->cancel();
+            $this->pending->reset();
+            $this->requestNative();
+        }
         $this->invalidate();
         $this->scheduleRefine();
         $this->handler?->viewChanged();
@@ -683,6 +865,9 @@ final class GraphViewerWidget extends NavigablePaneWidget
      */
     public function focusNode(int $id): void
     {
+        if (DiagramKind::Mermaid === $this->kind && null === $this->nativeScene?->selectable($id)) {
+            return;
+        }
         $node = $this->layout->nodes[$id] ?? null;
         if (null === $node || null === $this->view) {
             return;
@@ -713,7 +898,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         $in = [];
         $out = [];
-        foreach ($this->layout->edges as $edge) {
+        foreach ($this->layout->relationships as $edge) {
             $out[$edge->tail] = ($out[$edge->tail] ?? 0) + 1;
             $in[$edge->head] = ($in[$edge->head] ?? 0) + 1;
         }
@@ -724,7 +909,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             // same access {@see cycleSelection()} has always made.
             $node = $this->layout->nodes[$id];
             $rows[] = [
-                'label' => \strtr($node->label, ["\n" => ' ']),
+                'label' => self::oneLine($node->label),
                 'hint' => $this->translator->trans('%in% in · %out% out', ['%in%' => $in[$id] ?? 0, '%out%' => $out[$id] ?? 0]),
                 'value' => (string) $id,
             ];
@@ -736,7 +921,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** Whether the pane shows Graphviz's own picture rather than the cell drawing. */
     private function showsBitmap(): bool
     {
-        return GraphRenderMode::Bitmap === $this->mode && null !== $this->bitmap;
+        return (
+            !(DiagramKind::Mermaid === $this->kind && null !== $this->nativeScene && (GraphRenderMode::Cells === $this->mode || (null !== $this->error && !$this->nativeBitmap)))
+            && (!$this->kind->hasLayout() || GraphRenderMode::Bitmap === $this->mode)
+            && null !== $this->bitmap
+        );
     }
 
     /** The selected node's outline, for a picture the terminal draws; null when nothing is selected. */
@@ -759,6 +948,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
 
         return match (true) {
             $this->showsBitmap() && null !== $bitmap && null !== $view => $this->bitmapLines($bitmap, $view, $cols, $rows),
+            null !== $this->nativeScene && null !== $view => GraphRenderer::render($this->nativeScene->graph, $view, $this->selected, $cols, $rows, $this->styles),
             null !== $this->layout && null !== $this->view => GraphRenderer::render($this->layout, $this->view, $this->selected, $cols, $rows, $this->styles),
             default => $this->statusLines($cols, $rows),
         };
@@ -768,7 +958,9 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private function bitmapLines(ImageData $bitmap, ZoomPanModel $view, int $cols, int $rows): array
     {
         // The raster's own density: dpi over whatever this tool calls 1:1.
-        $ratio = $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI);
+        $ratio = $this->nativeBitmap && null !== $this->nativeScene
+            ? $bitmap->width / \max(1.0, $this->nativeScene->graph->width)
+            : $this->bitmapDpi / ($this->drawingEngine()?->baseDpi() ?? self::BITMAP_DPI);
         // Drawn by the terminal, the selection is stroked into the picture
         // itself, to the pixel; a frame of glyphs would blank the cells it
         // sits on.
@@ -798,6 +990,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
     {
         $message = match (true) {
             'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
+            'missing-mermaid' === $this->error => $this->translator->trans('mmdc not found — install mermaid-cli, or set the "mermaidPath" setting'),
             'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantumlPath" setting'),
             null !== $this->error => Text::firstLine($this->error),
             $this->layingOut => Glyphs::WORKING.' '.$this->translator->trans('layout…'),
@@ -806,5 +999,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $style = 'missing-binary' === $this->error || (null !== $this->error && !$this->layingOut) ? Role::DiagError : Role::Dim;
 
         return $this->messagePane($message, $style, $cols, $rows);
+    }
+
+    /** A label on one line; an empty card compartment leaves trailing blank lines. */
+    private static function oneLine(string $label): string
+    {
+        return \trim(\strtr($label, ["\n" => ' ']));
     }
 }

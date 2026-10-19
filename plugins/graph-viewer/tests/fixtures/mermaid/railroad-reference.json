@@ -1,0 +1,4382 @@
+{
+  "docs-001.mmd": {
+    "metadata": {
+      "title": "Digit Definition",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-002.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "letter",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      },
+      {
+        "name": "identifier",
+        "definition": {
+          "type": "nonterminal",
+          "name": "letter"
+        }
+      }
+    ]
+  },
+  "docs-003.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "greeting",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "Hello"
+            },
+            {
+              "type": "terminal",
+              "value": " "
+            },
+            {
+              "type": "terminal",
+              "value": "World"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-004.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "sign",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "+"
+            },
+            {
+              "type": "terminal",
+              "value": "-"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-005.mmd": {
+    "metadata": {
+      "title": "Optional Sign",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "sign",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "+"
+            },
+            {
+              "type": "terminal",
+              "value": "-"
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "optional",
+              "element": {
+                "type": "nonterminal",
+                "name": "sign"
+              }
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "nonterminal",
+                "name": "digit"
+              },
+              "min": 1,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-006.mmd": {
+    "metadata": {
+      "title": "Identifier with Repetition",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "identifier",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "letter"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "nonterminal",
+                    "name": "letter"
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "digit"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "_"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "letter",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            },
+            {
+              "type": "terminal",
+              "value": "d"
+            },
+            {
+              "type": "terminal",
+              "value": "e"
+            }
+          ]
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-007.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "terminal",
+          "value": "number"
+        }
+      }
+    ]
+  },
+  "docs-008.mmd": {
+    "metadata": {
+      "title": "Arithmetic Expression Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "factor"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-009.mmd": {
+    "metadata": {
+      "title": "JSON Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "json",
+        "definition": {
+          "type": "nonterminal",
+          "name": "element"
+        }
+      },
+      {
+        "name": "element",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "object"
+            },
+            {
+              "type": "nonterminal",
+              "name": "array"
+            },
+            {
+              "type": "nonterminal",
+              "name": "string"
+            },
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "terminal",
+              "value": "true"
+            },
+            {
+              "type": "terminal",
+              "value": "false"
+            },
+            {
+              "type": "terminal",
+              "value": "null"
+            }
+          ]
+        }
+      },
+      {
+        "name": "object",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "{"
+            },
+            {
+              "type": "optional",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "nonterminal",
+                    "name": "member"
+                  },
+                  {
+                    "type": "repetition",
+                    "element": {
+                      "type": "sequence",
+                      "elements": [
+                        {
+                          "type": "terminal",
+                          "value": ","
+                        },
+                        {
+                          "type": "nonterminal",
+                          "name": "member"
+                        }
+                      ]
+                    },
+                    "min": 0,
+                    "max": null
+                  }
+                ]
+              }
+            },
+            {
+              "type": "terminal",
+              "value": "}"
+            }
+          ]
+        }
+      },
+      {
+        "name": "array",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "["
+            },
+            {
+              "type": "optional",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "nonterminal",
+                    "name": "element"
+                  },
+                  {
+                    "type": "repetition",
+                    "element": {
+                      "type": "sequence",
+                      "elements": [
+                        {
+                          "type": "terminal",
+                          "value": ","
+                        },
+                        {
+                          "type": "nonterminal",
+                          "name": "element"
+                        }
+                      ]
+                    },
+                    "min": 0,
+                    "max": null
+                  }
+                ]
+              }
+            },
+            {
+              "type": "terminal",
+              "value": "]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "member",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "string"
+            },
+            {
+              "type": "terminal",
+              "value": ":"
+            },
+            {
+              "type": "nonterminal",
+              "name": "element"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-010.mmd": {
+    "metadata": {
+      "title": "Email Address",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "address",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "local-part"
+            },
+            {
+              "type": "terminal",
+              "value": "@"
+            },
+            {
+              "type": "nonterminal",
+              "name": "domain"
+            }
+          ]
+        }
+      },
+      {
+        "name": "local-part",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "choice",
+            "alternatives": [
+              {
+                "type": "nonterminal",
+                "name": "ALPHA"
+              },
+              {
+                "type": "nonterminal",
+                "name": "DIGIT"
+              },
+              {
+                "type": "terminal",
+                "value": "."
+              },
+              {
+                "type": "terminal",
+                "value": "-"
+              }
+            ]
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "domain",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "label"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "terminal",
+                    "value": "."
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "label"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "label",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "choice",
+            "alternatives": [
+              {
+                "type": "nonterminal",
+                "name": "ALPHA"
+              },
+              {
+                "type": "nonterminal",
+                "name": "DIGIT"
+              },
+              {
+                "type": "terminal",
+                "value": "-"
+              }
+            ]
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "docs-011.mmd": {
+    "metadata": {
+      "title": "Phone Number",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "phone",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "optional",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "terminal",
+                    "value": "+"
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "country-code"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "nonterminal",
+              "name": "subscriber"
+            }
+          ]
+        }
+      },
+      {
+        "name": "country-code",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "DIGIT"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "subscriber",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "choice",
+            "alternatives": [
+              {
+                "type": "nonterminal",
+                "name": "DIGIT"
+              },
+              {
+                "type": "terminal",
+                "value": "-"
+              },
+              {
+                "type": "terminal",
+                "value": " "
+              }
+            ]
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "docs-012.mmd": {
+    "metadata": {
+      "title": "Calculator Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "Expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "Term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "Term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "Factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "Factor"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "Number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "Expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "Number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "Digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "Digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-013.mmd": {
+    "metadata": {
+      "title": "Identifiers (keywords excluded)",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "Identifier",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "special",
+              "text": "!Keyword"
+            },
+            {
+              "type": "nonterminal",
+              "name": "Letter"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "nonterminal",
+                "name": "Letter"
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Keyword",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "if"
+            },
+            {
+              "type": "terminal",
+              "value": "else"
+            },
+            {
+              "type": "terminal",
+              "value": "while"
+            }
+          ]
+        }
+      },
+      {
+        "name": "Letter",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            },
+            {
+              "type": "terminal",
+              "value": "_"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "docs-014.mmd": {
+    "metadata": {
+      "title": "Expression Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "factor"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-015.mmd": {
+    "metadata": {
+      "title": "Example Grammar",
+      "accTitle": "Accessible Railroad",
+      "accDescr": "Railroad description"
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-016.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "nonterminal",
+              "name": "b"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-017.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-018.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "r1",
+        "definition": {
+          "type": "optional",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          }
+        }
+      },
+      {
+        "name": "r2",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "b"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "r3",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "c"
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-019.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "special",
+          "text": "any character"
+        }
+      }
+    ]
+  },
+  "parser-020.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      },
+      {
+        "name": "next",
+        "definition": {
+          "type": "nonterminal",
+          "name": "rule"
+        }
+      }
+    ]
+  },
+  "rendering-021.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "digit",
+        "definition": {
+          "type": "terminal",
+          "value": "0"
+        }
+      }
+    ]
+  },
+  "rendering-022.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "term"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "term"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-023.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "sign",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "+"
+            },
+            {
+              "type": "terminal",
+              "value": "-"
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "optional",
+              "element": {
+                "type": "nonterminal",
+                "name": "sign"
+              }
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "nonterminal",
+                "name": "digit"
+              },
+              "min": 1,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "list",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "["
+            },
+            {
+              "type": "optional",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "nonterminal",
+                    "name": "number"
+                  },
+                  {
+                    "type": "repetition",
+                    "element": {
+                      "type": "sequence",
+                      "elements": [
+                        {
+                          "type": "terminal",
+                          "value": ","
+                        },
+                        {
+                          "type": "nonterminal",
+                          "name": "number"
+                        }
+                      ]
+                    },
+                    "min": 0,
+                    "max": null
+                  }
+                ]
+              }
+            },
+            {
+              "type": "terminal",
+              "value": "]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-024.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "json",
+        "definition": {
+          "type": "nonterminal",
+          "name": "element"
+        }
+      },
+      {
+        "name": "element",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "object"
+            },
+            {
+              "type": "nonterminal",
+              "name": "array"
+            },
+            {
+              "type": "nonterminal",
+              "name": "string"
+            },
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "terminal",
+              "value": "true"
+            },
+            {
+              "type": "terminal",
+              "value": "false"
+            },
+            {
+              "type": "terminal",
+              "value": "null"
+            }
+          ]
+        }
+      },
+      {
+        "name": "object",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "{"
+            },
+            {
+              "type": "optional",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "nonterminal",
+                    "name": "member"
+                  },
+                  {
+                    "type": "repetition",
+                    "element": {
+                      "type": "sequence",
+                      "elements": [
+                        {
+                          "type": "terminal",
+                          "value": ","
+                        },
+                        {
+                          "type": "nonterminal",
+                          "name": "member"
+                        }
+                      ]
+                    },
+                    "min": 0,
+                    "max": null
+                  }
+                ]
+              }
+            },
+            {
+              "type": "terminal",
+              "value": "}"
+            }
+          ]
+        }
+      },
+      {
+        "name": "array",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "["
+            },
+            {
+              "type": "optional",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "nonterminal",
+                    "name": "element"
+                  },
+                  {
+                    "type": "repetition",
+                    "element": {
+                      "type": "sequence",
+                      "elements": [
+                        {
+                          "type": "terminal",
+                          "value": ","
+                        },
+                        {
+                          "type": "nonterminal",
+                          "name": "element"
+                        }
+                      ]
+                    },
+                    "min": 0,
+                    "max": null
+                  }
+                ]
+              }
+            },
+            {
+              "type": "terminal",
+              "value": "]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "member",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "string"
+            },
+            {
+              "type": "terminal",
+              "value": ":"
+            },
+            {
+              "type": "nonterminal",
+              "name": "element"
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-025.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "value",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "string"
+            },
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "nonterminal",
+              "name": "object"
+            },
+            {
+              "type": "nonterminal",
+              "name": "array"
+            },
+            {
+              "type": "terminal",
+              "value": "true"
+            },
+            {
+              "type": "terminal",
+              "value": "false"
+            },
+            {
+              "type": "terminal",
+              "value": "null"
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-026.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "term"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "term"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-027.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "identifier",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "letter"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "nonterminal",
+                    "name": "letter"
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "digit"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "_"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "letter",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-028.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "scheme",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "ALPHA"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "nonterminal",
+                    "name": "ALPHA"
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "DIGIT"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "+"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "-"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "."
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "rendering-029.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "Expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "Term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "Term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "Factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "Factor"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "Number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "Expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "Number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "Digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "Digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-030.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "hello"
+        }
+      }
+    ]
+  },
+  "parser-031.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "nonterminal",
+          "name": "expression"
+        }
+      }
+    ]
+  },
+  "parser-032.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-033.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-034.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-035.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-036.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "optional",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          }
+        }
+      }
+    ]
+  },
+  "parser-037.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-038.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-039.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "special",
+          "text": "any character"
+        }
+      }
+    ]
+  },
+  "parser-040.mmd": {
+    "metadata": {
+      "title": "Test Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-041.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule1",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      },
+      {
+        "name": "rule2",
+        "definition": {
+          "type": "terminal",
+          "value": "b"
+        }
+      },
+      {
+        "name": "rule3",
+        "definition": {
+          "type": "terminal",
+          "value": "c"
+        }
+      }
+    ]
+  },
+  "parser-042.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "choice",
+              "alternatives": [
+                {
+                  "type": "terminal",
+                  "value": "a"
+                },
+                {
+                  "type": "terminal",
+                  "value": "b"
+                }
+              ]
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "terminal",
+                    "value": "c"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "d"
+                  }
+                ]
+              },
+              "min": 1,
+              "max": null
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-043.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-044.mmd": {
+    "metadata": {
+      "title": "Empty Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": []
+  },
+  "parser-045.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "hello world"
+        }
+      }
+    ]
+  },
+  "parser-046.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "my_rule",
+        "definition": {
+          "type": "terminal",
+          "value": "test"
+        }
+      }
+    ]
+  },
+  "parser-047.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule123",
+        "definition": {
+          "type": "terminal",
+          "value": "test"
+        }
+      }
+    ]
+  },
+  "parser-048.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "choice",
+              "alternatives": [
+                {
+                  "type": "terminal",
+                  "value": "a"
+                },
+                {
+                  "type": "terminal",
+                  "value": "b"
+                }
+              ]
+            },
+            {
+              "type": "choice",
+              "alternatives": [
+                {
+                  "type": "terminal",
+                  "value": "c"
+                },
+                {
+                  "type": "terminal",
+                  "value": "d"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-049.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "choice",
+            "alternatives": [
+              {
+                "type": "terminal",
+                "value": "a"
+              },
+              {
+                "type": "terminal",
+                "value": "b"
+              }
+            ]
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-050.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-051.mmd": {
+    "metadata": {
+      "title": "Simple Expression",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "factor"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-052.mmd": {
+    "metadata": {
+      "title": "JSON Subset",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "value",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "string"
+            },
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "terminal",
+              "value": "true"
+            },
+            {
+              "type": "terminal",
+              "value": "false"
+            },
+            {
+              "type": "terminal",
+              "value": "null"
+            }
+          ]
+        }
+      },
+      {
+        "name": "string",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "\""
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "nonterminal",
+                "name": "character"
+              },
+              "min": 0,
+              "max": null
+            },
+            {
+              "type": "terminal",
+              "value": "\""
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "character",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "letter"
+            },
+            {
+              "type": "nonterminal",
+              "name": "digit"
+            }
+          ]
+        }
+      },
+      {
+        "name": "letter",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-053.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "terminal"
+        }
+      }
+    ]
+  },
+  "parser-054.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "nonterminal",
+          "name": "other_rule"
+        }
+      }
+    ]
+  },
+  "parser-055.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-056.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-057.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "optional",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          }
+        }
+      }
+    ]
+  },
+  "parser-058.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "optional",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          }
+        }
+      }
+    ]
+  },
+  "parser-059.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-060.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-061.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-062.mmd": {
+    "metadata": {
+      "title": "Test Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-063.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "special",
+          "text": "special"
+        }
+      }
+    ]
+  },
+  "parser-064.mmd": {
+    "metadata": {
+      "title": "Simple Expression",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "term"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "term"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "factor"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "sequence",
+                    "elements": [
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      },
+                      {
+                        "type": "nonterminal",
+                        "name": "factor"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-065.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "hello"
+        }
+      }
+    ]
+  },
+  "parser-066.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "%x41"
+        }
+      }
+    ]
+  },
+  "parser-067.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "nonterminal",
+          "name": "other-rule"
+        }
+      }
+    ]
+  },
+  "parser-068.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-069.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-070.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "optional",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          }
+        }
+      }
+    ]
+  },
+  "parser-071.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-072.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-073.mmd": {
+    "metadata": {
+      "title": "Test Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-074.mmd": {
+    "metadata": {
+      "title": "URI",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "URI",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "scheme"
+            },
+            {
+              "type": "terminal",
+              "value": ":"
+            },
+            {
+              "type": "nonterminal",
+              "name": "hier-part"
+            }
+          ]
+        }
+      },
+      {
+        "name": "scheme",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "ALPHA"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "choice",
+                "alternatives": [
+                  {
+                    "type": "nonterminal",
+                    "name": "ALPHA"
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "DIGIT"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "+"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "-"
+                  },
+                  {
+                    "type": "terminal",
+                    "value": "."
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "hier-part",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "//"
+            },
+            {
+              "type": "nonterminal",
+              "name": "authority"
+            },
+            {
+              "type": "nonterminal",
+              "name": "path-abempty"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-075.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "hello"
+        }
+      }
+    ]
+  },
+  "parser-076.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "nonterminal",
+          "name": "other_rule"
+        }
+      }
+    ]
+  },
+  "parser-077.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-078.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "a"
+            },
+            {
+              "type": "terminal",
+              "value": "b"
+            },
+            {
+              "type": "terminal",
+              "value": "c"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "parser-079.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "optional",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          }
+        }
+      }
+    ]
+  },
+  "parser-080.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 0,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-081.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "terminal",
+            "value": "a"
+          },
+          "min": 1,
+          "max": null
+        }
+      }
+    ]
+  },
+  "parser-082.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "special",
+          "text": "."
+        }
+      }
+    ]
+  },
+  "parser-083.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "special",
+          "text": "&\"a\""
+        }
+      }
+    ]
+  },
+  "parser-084.mmd": {
+    "metadata": {
+      "title": "",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "special",
+          "text": "!\"a\""
+        }
+      }
+    ]
+  },
+  "parser-085.mmd": {
+    "metadata": {
+      "title": "Test Grammar",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "rule",
+        "definition": {
+          "type": "terminal",
+          "value": "a"
+        }
+      }
+    ]
+  },
+  "parser-086.mmd": {
+    "metadata": {
+      "title": "Calculator",
+      "accTitle": "",
+      "accDescr": ""
+    },
+    "rules": [
+      {
+        "name": "Expression",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "Term"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "+"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "-"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "Term"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Term",
+        "definition": {
+          "type": "sequence",
+          "elements": [
+            {
+              "type": "nonterminal",
+              "name": "Factor"
+            },
+            {
+              "type": "repetition",
+              "element": {
+                "type": "sequence",
+                "elements": [
+                  {
+                    "type": "choice",
+                    "alternatives": [
+                      {
+                        "type": "terminal",
+                        "value": "*"
+                      },
+                      {
+                        "type": "terminal",
+                        "value": "/"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "nonterminal",
+                    "name": "Factor"
+                  }
+                ]
+              },
+              "min": 0,
+              "max": null
+            }
+          ]
+        }
+      },
+      {
+        "name": "Factor",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "nonterminal",
+              "name": "Number"
+            },
+            {
+              "type": "sequence",
+              "elements": [
+                {
+                  "type": "terminal",
+                  "value": "("
+                },
+                {
+                  "type": "nonterminal",
+                  "name": "Expression"
+                },
+                {
+                  "type": "terminal",
+                  "value": ")"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "name": "Number",
+        "definition": {
+          "type": "repetition",
+          "element": {
+            "type": "nonterminal",
+            "name": "Digit"
+          },
+          "min": 1,
+          "max": null
+        }
+      },
+      {
+        "name": "Digit",
+        "definition": {
+          "type": "choice",
+          "alternatives": [
+            {
+              "type": "terminal",
+              "value": "0"
+            },
+            {
+              "type": "terminal",
+              "value": "1"
+            },
+            {
+              "type": "terminal",
+              "value": "2"
+            },
+            {
+              "type": "terminal",
+              "value": "3"
+            },
+            {
+              "type": "terminal",
+              "value": "4"
+            },
+            {
+              "type": "terminal",
+              "value": "5"
+            },
+            {
+              "type": "terminal",
+              "value": "6"
+            },
+            {
+              "type": "terminal",
+              "value": "7"
+            },
+            {
+              "type": "terminal",
+              "value": "8"
+            },
+            {
+              "type": "terminal",
+              "value": "9"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

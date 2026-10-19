@@ -74,6 +74,10 @@ Throttling a shared box means setting the first TWO: `coverage:check` runs both
 passes AT ONCE, and `PORTA_TEST_PROCESSES=4` alone still fans out three-quarter-core
 plugin shards behind it.
 
+CI builds pushes to `main` and `develop`, plus pull requests from any branch.
+Manual runs on other branches skip every job; the weekly dependency audit
+runs on the default branch.
+
 **CI uses the `porta-runners` ARC scale set** (`.github/workflows/ci.yml`),
 with `PORTA_TEST_PROCESSES: 4` and `PORTA_SHARD_PROCESSES: 4`: its ephemeral
 Linux ARM64 pods share the developer machine. The scale set allows two jobs

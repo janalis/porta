@@ -4,24 +4,33 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\DocumentReplacer;
 use Porta\Editor\OpenFocus;
 use Porta\GraphViewer\GraphViewerWidget;
+use Porta\GraphViewer\Render\GraphCellGrid;
+use Porta\Help\LinkSpan;
+use Porta\Help\RenderedDoc;
 use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Previews;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\MarkdownPreviewWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
@@ -348,6 +357,171 @@ final class IdeGraphViewerTest extends TestCase
                 },
             ],
         );
+    }
+
+    public function testAMermaidDocumentOpensAndRendersInTheDiagramPane(): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(
+                [
+                    'enabledPlugins' => ['graph-viewer', 'image-viewer'],
+                    'plugins' => ['graph-viewer' => ['mermaidPath' => \dirname(__DIR__, levels: 3).'/tests/Support/fake-mmdc']],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
+            'diagram.mmd' => "flowchart LR\nA --> B\n",
+        ]);
+        $this->phpOnlyPath($project);
+        \symlink(\dirname(__DIR__, levels: 3).'/tests/Support/fake-mermaid-browser', $project->path('.php-only-bin/node'));
+        $this->runIde($project, $project->path('diagram.mmd'), [
+            200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                Previews::alone($ide);
+                $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
+                $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: 'the Mermaid picture to paint');
+                $this->assertSame('graph-viewer', $tui->getFocus()?->getId());
+                $this->assertStringContainsString('diagram.mmd', $grid());
+                $widget = Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class);
+                $this->await(static fn (): bool => [] !== $widget->nodeChoices(), what: 'the CLI source map');
+                $this->assertSame(['A', 'B'], \array_column($widget->nodeChoices(), 'label'));
+                $scene = Probe::get($widget, 'nativeScene');
+                $node = $scene->graph->nodes[\array_key_first($scene->elements)];
+                $cells = new GraphCellGrid((int) Probe::get($widget, 'lastCols'), (int) Probe::get($widget, 'lastRows'), Probe::get($widget, 'view'), null);
+                $active = Services::resolve($ide, BufferManager::class)->active();
+                $this->assertInstanceOf(Buffer::class, $active);
+                $widget->selectAt($cells->rowOf($node->y), $cells->colOf($node->x));
+                $this->await(static fn (): bool => 1 === $active->document->cursorLine, what: 'the mapped CLI node source line');
+            },
+        ]);
+    }
+
+    public function testInlineMermaidSearchSourceFollowingAndExportsUseUnsavedFenceText(): void
+    {
+        $saved = "Intro\n\n```mermaid\nflowchart LR\nA[Saved]\nB[Tail]\nA-->B\n```\n";
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer']], \JSON_THROW_ON_ERROR),
+            'doc.md' => $saved,
+        ]);
+        $this->phpOnlyPath($project);
+        $this->runIde($project, $project->path('doc.md'), [
+            200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $saved): void {
+                Previews::alone($ide);
+                $pane = Widgets::byId($tui, 'markdown-preview', MarkdownPreviewWidget::class);
+                $read = static function () use ($pane): ?RenderedDoc {
+                    $doc = Probe::get($pane, 'doc');
+
+                    return $doc instanceof RenderedDoc ? $doc : null;
+                };
+                $ready = static fn (string $label): bool => (
+                    \str_contains(\implode("\n", $pane->findLines), $label) && \array_any($read()->links ?? [], static fn (LinkSpan $span): bool => \str_ends_with($span->target, ':export-svg'))
+                );
+                $this->await(static fn (): bool => $ready('Saved'), what: 'inline semantic controls');
+                $active = Services::resolve($ide, BufferManager::class)->active();
+                $this->assertInstanceOf(Buffer::class, $active);
+                Services::resolve($ide, DocumentReplacer::class)->replace($active, \str_replace('Saved', replace: 'Unsaved', subject: $saved));
+                // This service edit is outside an input event; feed the frame observer explicitly.
+                $tui->requestRender();
+                $this->await(static fn (): bool => $ready('Unsaved'), what: 'the unsaved fence replacement');
+                $click = static function (string $id) use ($pane, $read): void {
+                    $span = \array_find($read()->links ?? [], static fn (LinkSpan $span): bool => \str_ends_with($span->target, ':'.$id));
+                    self::assertNotNull($span);
+                    self::assertTrue($pane->clickAt($span->line + 2 - (int) Probe::get($pane, 'scrollTop'), $span->col + (int) Probe::get($pane, 'marginCols')));
+                };
+                $click('export-svg');
+                $this->await(static fn (): bool => \is_file($project->path('doc-diagram-1.svg')), what: 'the inline SVG export');
+                $svg = (string) \file_get_contents($project->path('doc-diagram-1.svg'));
+                $this->assertStringContainsString('>Unsaved</text>', $svg);
+                $this->assertStringNotContainsString('>Saved</text>', $svg);
+                $click('export-png');
+                $this->await(static fn (): bool => \is_file($project->path('doc-diagram-1.png')), what: 'the inline PNG export');
+                $this->assertStringStartsWith("\x89PNG", (string) \file_get_contents($project->path('doc-diagram-1.png')));
+                $this->assertSame($saved, \file_get_contents($project->path('doc.md')));
+                $terminal->clearOutput();
+                $click('find-node');
+                $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
+                $this->await(static fn (): bool => \str_contains($screen(), 'Find node'), what: 'the inline node picker');
+                $terminal->clearOutput();
+                $tui->handleInput('Tail');
+                $this->await(static fn (): bool => \str_contains($screen(), 'Tail') && !\str_contains($screen(), 'Unsaved'), what: 'the filtered inline node');
+                $editor = Services::resolve($ide, CodeEditorWidget::class);
+                $tui->handleInput("\r");
+                $this->await(static fn (): bool => !EditorState::pickerOpen($editor) && 5 === $editor->getDocument()->cursorLine, what: 'the semantic source line');
+                $this->assertSame(5, $editor->getDocument()->cursorLine);
+            },
+        ]);
+    }
+
+    /** @return iterable<string, array{0: string, 1?: string}> */
+    public static function nativeDocuments(): iterable
+    {
+        yield 'sequence array alias key' => ["sequenceDiagram\nactor A@{ignored: &key [alias], *key : Configured} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence literal array key' => ["sequenceDiagram\nactor A@{[alias]: Configured} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'flowchart document geometry' => ["---\nconfig:\n  flowchart: {rankSpacing: 90, padding: 15, minNodeWidth: 100}\n---\nflowchart TD\nA[%s]-->B\n"];
+        yield 'sequence overridden non-string alias' => ["sequenceDiagram\nactor A@{alias: true} as Visible\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence surrogate metadata key' => ["sequenceDiagram\nactor A@{\n\"\\uD800\": Value\nalias: Configured\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence primitive property key' => ["sequenceDiagram\nactor A@{\nseed: Value\n!!str alias : Configured\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence root array metadata' => ["sequenceDiagram\nactor A@{\n[Entry]\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence literal block key' => ["sequenceDiagram\nactor A@{\n? [alias]\n: Configured\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence plain flow key' => ["sequenceDiagram\nactor A@{alias:Unused, \"alias\": Configured, ignored: [foo: Value]} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence alias key' => ["sequenceDiagram\nactor A@{\nignored: &key alias\n*key : Configured\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence cyclic alias' => ["sequenceDiagram\nactor A@{\nignored: &data\n  self: *data\n  label: &text Configured\nalias: *text\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence collection alias' => ["sequenceDiagram\nactor A@{\nignored: &data [one, two]\ncopy: *data\n<<: *data\nalias: Configured\n} as A\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence tag directive' => ["sequenceDiagram\nactor A@{\n%%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!str Tagged\n}\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence false alias' => ["sequenceDiagram\nactor A@{alias: false, type: null}\nnote over A: %s\nA->>B: after\n"];
+        yield 'sequence YAML tags' => ["sequenceDiagram\nparticipant A@{alias: !<tag:yaml.org,2002:str> &label \"%s\", type: !!str actor}\nA->>B: after\n"];
+        yield 'pie dark theme' => ["---\nconfig: {theme: dark, themeVariables: {pie1: red, pieOpacity: 0.5}}\n---\npie title %s\n\"A\":3\n\"B\":1\n", 'title: %s'];
+        yield 'pie donut' => ["---\nconfig: {pie: {donutHole: 0.4, legendPosition: bottom}}\n---\npie title %s\n\"A\":3\n\"B\":1\n", 'title: %s'];
+        yield 'railroad' => ["railroad-beta\nx=terminal(\"%s\");"];
+        yield 'railroad EBNF' => ["railroad-ebnf-beta\nx=\"%s\";"];
+        yield 'railroad ABNF' => ["railroad-abnf-beta\nx=\"%s\";"];
+        yield 'railroad PEG' => ["railroad-peg-beta\nx<-\"%s\";"];
+        yield 'venn' => ["venn-beta\nset A [\"%s\"]\nset B\nunion A,B\n"];
+        yield 'eventmodeling' => ["eventmodeling\ntf 01 ui Screen \"%s\"\n"];
+        yield 'architecture' => ["architecture-beta\nservice a[\"%s\"]\n"];
+        yield 'usecase' => ["usecase-beta\nactor A\nA --> B(\"%s\")\n"];
+        yield 'gantt' => ["gantt\n%s:2024-01-01, 1d\n"];
+        yield 'agentflow' => ["agentflow-beta LR\nflow Agent\nA[\"%s\"]@{shape: task}\nend\nA --> B\n"];
+        yield 'swimlane' => ["swimlane-beta LR\nsubgraph Team\nA[\"%s\"]\nend\nA --> B\n"];
+        yield 'modern flowchart graphics' => ["flowchart LR\nA@{shape:person,label:\"%s\"} --> B@{shape:docs,label:\"Documents\"}\n"];
+        yield 'flowchart' => ["flowchart\nA[\"%s\"]:::large o--o B\nclassDef large font-size:24px\n"];
+        yield 'timeline' => ["timeline\n2000 : %s\n"];
+        yield 'class' => ["classDiagram\nclass Entry[\"%s\"] {\n+String name\n+run() void\n}\n"];
+        yield 'block' => ["block\nA[\"%s\"] B\nA --> B"];
+        yield 'c4' => ["C4Context\nSystem(entry,\"%s\")\n"];
+        yield 'wardley' => ["wardley-beta\ncomponent \"%s\" [0.5,0.5]\n"];
+        yield 'git' => ["gitGraph\ncommit id:'%s'\n"];
+        yield 'state' => ["stateDiagram-v2\nstate \"%s\" as Entry\nEntry --> [*]\n"];
+    }
+
+    #[DataProvider('nativeDocuments')]
+    public function testNativeMermaidRendersAndExportsUnsavedSourceWithoutCli(string $syntax, string $exportLabel = '%s'): void
+    {
+        $project = new TempProject([
+            '.porta.json' => (string) \json_encode(['enabledPlugins' => ['graph-viewer', 'image-viewer']], \JSON_THROW_ON_ERROR),
+            'native.mmd' => \sprintf($syntax, 'Saved'),
+        ]);
+        $this->phpOnlyPath($project);
+        $this->runIde($project, $project->path('native.mmd'), [
+            200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $syntax, $exportLabel): void {
+                Previews::alone($ide);
+                $widget = Widgets::byId($tui, 'graph-viewer', GraphViewerWidget::class);
+                $this->await(static fn (): bool => [] !== $widget->nodeChoices(), what: 'the native scene');
+                $grid = fn (): string => \implode("\n", $this->screenGrid($tui, $terminal));
+                $this->await(static fn (): bool => \str_contains($grid(), '▀'), what: 'the native bitmap');
+                $active = Services::resolve($ide, BufferManager::class)->active();
+                $this->assertInstanceOf(Buffer::class, $active);
+                Services::resolve($ide, DocumentReplacer::class)->replace($active, \sprintf($syntax, 'Unsaved'));
+                $commands = Services::resolve($ide, CommandRegistry::class);
+                $commands->run('graph-viewer:export-svg');
+                $this->await(static fn (): bool => \is_file($project->path('native.svg')), what: 'the native SVG export');
+                $svg = (string) \file_get_contents($project->path('native.svg'));
+                $this->assertStringContainsString(\sprintf('>'.$exportLabel.'</text>', 'Unsaved'), $svg);
+                $this->assertStringNotContainsString(\sprintf('>'.$exportLabel.'</text>', 'Saved'), $svg);
+                $commands->run('graph-viewer:export-png');
+                $this->await(static fn (): bool => \is_file($project->path('native.png')), what: 'the native PNG export');
+                $this->assertStringStartsWith("\x89PNG", (string) \file_get_contents($project->path('native.png')));
+                $this->assertStringContainsString('Saved', (string) \file_get_contents($project->path('native.mmd')), 'export does not save the document');
+            },
+        ]);
     }
 
     public function testAPlantUmlDocumentOpensInTheDiagramPane(): void

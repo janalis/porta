@@ -1,0 +1,1578 @@
+{
+  "01-basic-use-cases.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Admin",
+        "label": "Administrator",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Browse",
+        "label": "Browse catalog",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Checkout",
+        "label": "Place order",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Manage",
+        "label": "Manage catalog",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Browse",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Customer",
+        "to": "Checkout",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Admin",
+        "to": "Manage",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "02-system-boundaries.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Support",
+        "label": "Support agent",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Browse",
+        "label": "Browse products",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Order",
+        "label": "Place order",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Track",
+        "label": "Track order",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Process",
+        "label": "Process orders",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Returns",
+        "label": "Handle returns",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [
+      {
+        "id": "Storefront",
+        "label": "Storefront",
+        "type": "rect",
+        "members": [
+          "Browse",
+          "Order",
+          "Track"
+        ]
+      },
+      {
+        "id": "admin",
+        "label": "Admin Panel",
+        "type": "package",
+        "members": [
+          "Process",
+          "Returns"
+        ]
+      }
+    ],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Browse",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Customer",
+        "to": "Order",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Customer",
+        "to": "Track",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Order",
+        "to": "Process",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Support",
+        "to": "Process",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Support",
+        "to": "Returns",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "03-actor-variants.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Normal",
+        "label": "Normal actor",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Hollow",
+        "label": "Hollow actor",
+        "type": "hollow",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Awesome",
+        "label": "Awesome actor",
+        "type": "awesome",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Icon",
+        "label": "Icon actor",
+        "type": "icon",
+        "business": false,
+        "icon": "fa:user",
+        "stereotype": null
+      },
+      {
+        "id": "Fallback",
+        "label": "Missing icon fallback",
+        "type": "icon",
+        "business": false,
+        "icon": "not-registered:user",
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Manage",
+        "label": "Manage catalog",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Normal",
+        "to": "Manage",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Hollow",
+        "to": "Manage",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Awesome",
+        "to": "Manage",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Icon",
+        "to": "Manage",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Fallback",
+        "to": "Manage",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "04-labels-and-notes.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Reviewer",
+        "label": "*Reviewer*",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Literal",
+        "label": "**Literal markers**",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Formatted",
+        "label": "**Formatted label**\n    with a physical line break",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Quoted",
+        "label": "Show #quot;quoted#quot; text",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Reviewer",
+        "to": "Formatted",
+        "kind": "association",
+        "id": null,
+        "label": "opens **review form**",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Reviewer",
+        "to": "Literal",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Reviewer",
+        "to": "Quoted",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": [
+      {
+        "id": "note-0",
+        "target": "Formatted",
+        "label": "Requires an **active session**\n    and reviewer approval.",
+        "labelType": "markdown"
+      },
+      {
+        "id": "note-1",
+        "target": "Reviewer",
+        "label": "Starts the review workflow",
+        "labelType": "text"
+      }
+    ]
+  },
+  "05-association-markers.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "User",
+        "label": "User",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Support",
+        "label": "Support",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Start",
+        "label": "Start workflow",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Finish",
+        "label": "Finish workflow",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "User",
+        "to": "Start",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Start",
+        "to": "Support",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 1
+      },
+      {
+        "from": "Start",
+        "to": "Finish",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 2
+      },
+      {
+        "from": "User",
+        "to": "Finish",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 3
+      },
+      {
+        "from": "Start",
+        "to": "Support",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 5
+      },
+      {
+        "from": "User",
+        "to": "Finish",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 4
+      },
+      {
+        "from": "Finish",
+        "to": "Support",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 6
+      }
+    ],
+    "notes": []
+  },
+  "06-uml-relationships.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Admin",
+        "label": "Admin",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Person",
+        "label": "Person",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Checkout",
+        "label": "Checkout",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Payment",
+        "label": "Process payment",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Coupon",
+        "label": "Apply coupon",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Admin",
+        "to": "Person",
+        "kind": "generalization",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Checkout",
+        "to": "Payment",
+        "kind": "include",
+        "id": null,
+        "label": "include",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Coupon",
+        "to": "Checkout",
+        "kind": "extend",
+        "id": null,
+        "label": "extend",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Coupon",
+        "to": "Checkout",
+        "kind": "generalization",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "07-edge-styles-and-animation.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Checkout",
+        "label": "Checkout",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Payment",
+        "label": "Payment",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Checkout",
+        "kind": "association",
+        "id": "opens",
+        "label": "starts checkout",
+        "minlen": 2,
+        "arrow": 0
+      },
+      {
+        "from": "Checkout",
+        "to": "Payment",
+        "kind": "include",
+        "id": "payment",
+        "label": "include",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "08-json-table.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Analyst",
+        "label": "Analyst",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Inspect",
+        "label": "Inspect payload",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [
+      "Payload"
+    ],
+    "relations": [
+      {
+        "from": "Analyst",
+        "to": "Inspect",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Inspect",
+        "to": "Payload",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "09-business-and-stereotypes.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "SalesAgent",
+        "label": "Sales agent",
+        "type": "normal",
+        "business": true,
+        "icon": null,
+        "stereotype": "Employee"
+      },
+      {
+        "id": "Broker",
+        "label": "Broker",
+        "type": "hollow",
+        "business": true,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Quote",
+        "label": "Prepare quote",
+        "shape": "ellipse",
+        "business": true,
+        "stereotype": "Core"
+      },
+      {
+        "id": "Archive",
+        "label": "Archive quote",
+        "shape": "rect",
+        "business": false,
+        "stereotype": "Record"
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "SalesAgent",
+        "to": "Quote",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Broker",
+        "to": "Quote",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Quote",
+        "to": "Archive",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "10-configuration-and-accessibility.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "SignIn",
+        "label": "Sign in",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Reset",
+        "label": "Reset password",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "SignIn",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Customer",
+        "to": "Reset",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "11-order-independent-refinement.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Login",
+        "label": "Sign in",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Reset",
+        "label": "Reset",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Request_support",
+        "label": "Request support",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Login",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Customer",
+        "to": "Reset",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "12-boundary-contained-actors.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Guest",
+        "label": "Restaurant guest",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Chef",
+        "label": "Chef",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "ReviewMeal",
+        "label": "Review meal",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "PrepareMeal",
+        "label": "Prepare meal",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [
+      {
+        "id": "Professional_Services",
+        "label": "Professional Services",
+        "type": "package",
+        "members": [
+          "Chef",
+          "ReviewMeal",
+          "PrepareMeal"
+        ]
+      }
+    ],
+    "json": [],
+    "relations": [
+      {
+        "from": "Chef",
+        "to": "PrepareMeal",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Chef",
+        "to": "ReviewMeal",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Guest",
+        "to": "ReviewMeal",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "13-minimum-edge-lengths.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "User",
+        "label": "User",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "A",
+        "label": "Base length",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "B",
+        "label": "One extra dash",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "C",
+        "label": "Two extra dashes",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "D",
+        "label": "Labelled long edge",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "User",
+        "to": "A",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "A",
+        "to": "B",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 2,
+        "arrow": 0
+      },
+      {
+        "from": "B",
+        "to": "C",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 3,
+        "arrow": 0
+      },
+      {
+        "from": "C",
+        "to": "D",
+        "kind": "association",
+        "id": null,
+        "label": "longer association",
+        "minlen": 3,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "14-element-styling-precedence.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "User",
+        "label": "User",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Login",
+        "label": "Sign in",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Profile",
+        "label": "Edit profile",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [
+      {
+        "id": "Account",
+        "label": "Account",
+        "type": "rect",
+        "members": [
+          "Profile"
+        ]
+      }
+    ],
+    "json": [
+      "Session"
+    ],
+    "relations": [
+      {
+        "from": "User",
+        "to": "Login",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Login",
+        "to": "Profile",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Profile",
+        "to": "Session",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "15-animation-variants.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Operator",
+        "label": "Operator",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "A",
+        "label": "Animate true",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "B",
+        "label": "Fast animation",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "C",
+        "label": "Slow animation",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "D",
+        "label": "Animation disabled",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Operator",
+        "to": "A",
+        "kind": "association",
+        "id": "trueEdge",
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Operator",
+        "to": "B",
+        "kind": "association",
+        "id": "fastEdge",
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Operator",
+        "to": "C",
+        "kind": "association",
+        "id": "slowEdge",
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Operator",
+        "to": "D",
+        "kind": "association",
+        "id": "offEdge",
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "16-json-order-and-values.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Inspector",
+        "label": "Inspector",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Inspect",
+        "label": "Inspect all values",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [
+      "Payload"
+    ],
+    "relations": [
+      {
+        "from": "Inspector",
+        "to": "Inspect",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Inspect",
+        "to": "Payload",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "17-direction-bottom-up.mmd": {
+    "direction": "BT",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Browse",
+        "label": "Browse catalog",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Checkout",
+        "label": "Checkout",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Receipt",
+        "label": "Download receipt",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Browse",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Browse",
+        "to": "Checkout",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Checkout",
+        "to": "Receipt",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "18-direction-right-to-left.mmd": {
+    "direction": "RL",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Browse",
+        "label": "Browse catalog",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Checkout",
+        "label": "Checkout",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Receipt",
+        "label": "Download receipt",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Browse",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Browse",
+        "to": "Checkout",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Checkout",
+        "to": "Receipt",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "19-association-label-semantics.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "User",
+        "label": "User",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Login",
+        "label": "Sign in",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Checkout",
+        "label": "Checkout",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Payment",
+        "label": "Process payment",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Discount",
+        "label": "Apply discount",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [],
+    "json": [],
+    "relations": [
+      {
+        "from": "User",
+        "to": "Login",
+        "kind": "association",
+        "id": null,
+        "label": "include account details",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Login",
+        "to": "Checkout",
+        "kind": "association",
+        "id": null,
+        "label": "extend active session",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Checkout",
+        "to": "Payment",
+        "kind": "include",
+        "id": null,
+        "label": "include",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Discount",
+        "to": "Checkout",
+        "kind": "extend",
+        "id": null,
+        "label": "extend",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": []
+  },
+  "20-full-featured-order-system.mmd": {
+    "direction": "LR",
+    "actors": [
+      {
+        "id": "Customer",
+        "label": "Customer",
+        "type": "normal",
+        "business": false,
+        "icon": null,
+        "stereotype": null
+      },
+      {
+        "id": "Staff",
+        "label": "Order staff",
+        "type": "hollow",
+        "business": true,
+        "icon": null,
+        "stereotype": "Employee"
+      }
+    ],
+    "usecases": [
+      {
+        "id": "Browse",
+        "label": "Browse products",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Checkout",
+        "label": "Checkout",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": "Core"
+      },
+      {
+        "id": "Payment",
+        "label": "Process payment",
+        "shape": "ellipse",
+        "business": false,
+        "stereotype": null
+      },
+      {
+        "id": "Review",
+        "label": "Review order",
+        "shape": "rect",
+        "business": false,
+        "stereotype": null
+      }
+    ],
+    "boundaries": [
+      {
+        "id": "ordering",
+        "label": "Ordering System",
+        "type": "package",
+        "members": [
+          "Browse",
+          "Checkout",
+          "Payment",
+          "Review"
+        ]
+      }
+    ],
+    "json": [
+      "OrderData"
+    ],
+    "relations": [
+      {
+        "from": "Customer",
+        "to": "Checkout",
+        "kind": "association",
+        "id": "starts",
+        "label": "places order",
+        "minlen": 2,
+        "arrow": 0
+      },
+      {
+        "from": "Customer",
+        "to": "Browse",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Checkout",
+        "to": "Payment",
+        "kind": "include",
+        "id": "pays",
+        "label": "include",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Staff",
+        "to": "Review",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      },
+      {
+        "from": "Review",
+        "to": "OrderData",
+        "kind": "association",
+        "id": null,
+        "label": "",
+        "minlen": 1,
+        "arrow": 0
+      }
+    ],
+    "notes": [
+      {
+        "id": "note-0",
+        "target": "Checkout",
+        "label": "Validates the **cart** before payment",
+        "labelType": "markdown"
+      }
+    ]
+  }
+}

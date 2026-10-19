@@ -1,0 +1,934 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "root anchor 0/0",
+      "configuration": "{\n{\n? &key\n[alias]: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "root anchor 0/1",
+      "configuration": "{\n{\n? &key\n [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 0/2",
+      "configuration": "{\n{\n? &key\n  [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 0/4",
+      "configuration": "{\n{\n? &key\n    [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 0/5",
+      "configuration": "{\n{\n? &key\n     [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 0/7",
+      "configuration": "{\n{\n? &key\n       [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 2/0",
+      "configuration": "{\n{\n  ? &key\n[alias]: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "root anchor 2/1",
+      "configuration": "{\n{\n  ? &key\n [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 2/2",
+      "configuration": "{\n{\n  ? &key\n  [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 2/4",
+      "configuration": "{\n{\n  ? &key\n    [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 2/5",
+      "configuration": "{\n{\n  ? &key\n     [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 2/7",
+      "configuration": "{\n{\n  ? &key\n       [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 6/0",
+      "configuration": "{\n{\n      ? &key\n[alias]: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "root anchor 6/1",
+      "configuration": "{\n{\n      ? &key\n [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 6/2",
+      "configuration": "{\n{\n      ? &key\n  [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 6/4",
+      "configuration": "{\n{\n      ? &key\n    [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 6/5",
+      "configuration": "{\n{\n      ? &key\n     [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root anchor 6/7",
+      "configuration": "{\n{\n      ? &key\n       [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 0/0",
+      "configuration": "{\n{\n? !!seq &key\n[alias]: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "root typed 0/1",
+      "configuration": "{\n{\n? !!seq &key\n [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 0/2",
+      "configuration": "{\n{\n? !!seq &key\n  [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 0/4",
+      "configuration": "{\n{\n? !!seq &key\n    [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 0/5",
+      "configuration": "{\n{\n? !!seq &key\n     [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 0/7",
+      "configuration": "{\n{\n? !!seq &key\n       [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 2/0",
+      "configuration": "{\n{\n  ? !!seq &key\n[alias]: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "root typed 2/1",
+      "configuration": "{\n{\n  ? !!seq &key\n [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 2/2",
+      "configuration": "{\n{\n  ? !!seq &key\n  [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 2/4",
+      "configuration": "{\n{\n  ? !!seq &key\n    [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 2/5",
+      "configuration": "{\n{\n  ? !!seq &key\n     [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 2/7",
+      "configuration": "{\n{\n  ? !!seq &key\n       [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 6/0",
+      "configuration": "{\n{\n      ? !!seq &key\n[alias]: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "root typed 6/1",
+      "configuration": "{\n{\n      ? !!seq &key\n [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 6/2",
+      "configuration": "{\n{\n      ? !!seq &key\n  [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 6/4",
+      "configuration": "{\n{\n      ? !!seq &key\n    [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 6/5",
+      "configuration": "{\n{\n      ? !!seq &key\n     [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "root typed 6/7",
+      "configuration": "{\n{\n      ? !!seq &key\n       [alias]: Name\n}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 0/0",
+      "configuration": "{\nignored: {\n? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block anchor 0/1",
+      "configuration": "{\nignored: {\n? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block anchor 0/2",
+      "configuration": "{\nignored: {\n? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 0/4",
+      "configuration": "{\nignored: {\n? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 0/5",
+      "configuration": "{\nignored: {\n? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 0/7",
+      "configuration": "{\nignored: {\n? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 2/0",
+      "configuration": "{\nignored: {\n  ? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block anchor 2/1",
+      "configuration": "{\nignored: {\n  ? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block anchor 2/2",
+      "configuration": "{\nignored: {\n  ? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 2/4",
+      "configuration": "{\nignored: {\n  ? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 2/5",
+      "configuration": "{\nignored: {\n  ? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 2/7",
+      "configuration": "{\nignored: {\n  ? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 6/0",
+      "configuration": "{\nignored: {\n      ? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block anchor 6/1",
+      "configuration": "{\nignored: {\n      ? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block anchor 6/2",
+      "configuration": "{\nignored: {\n      ? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 6/4",
+      "configuration": "{\nignored: {\n      ? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 6/5",
+      "configuration": "{\nignored: {\n      ? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block anchor 6/7",
+      "configuration": "{\nignored: {\n      ? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 0/0",
+      "configuration": "{\nignored: {\n? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block typed 0/1",
+      "configuration": "{\nignored: {\n? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block typed 0/2",
+      "configuration": "{\nignored: {\n? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 0/4",
+      "configuration": "{\nignored: {\n? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 0/5",
+      "configuration": "{\nignored: {\n? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 0/7",
+      "configuration": "{\nignored: {\n? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 2/0",
+      "configuration": "{\nignored: {\n  ? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block typed 2/1",
+      "configuration": "{\nignored: {\n  ? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block typed 2/2",
+      "configuration": "{\nignored: {\n  ? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 2/4",
+      "configuration": "{\nignored: {\n  ? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 2/5",
+      "configuration": "{\nignored: {\n  ? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 2/7",
+      "configuration": "{\nignored: {\n  ? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 6/0",
+      "configuration": "{\nignored: {\n      ? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block typed 6/1",
+      "configuration": "{\nignored: {\n      ? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "block typed 6/2",
+      "configuration": "{\nignored: {\n      ? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 6/4",
+      "configuration": "{\nignored: {\n      ? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 6/5",
+      "configuration": "{\nignored: {\n      ? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block typed 6/7",
+      "configuration": "{\nignored: {\n      ? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 0/0",
+      "configuration": "{\nignored:\n  child: {\n? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 0/1",
+      "configuration": "{\nignored:\n  child: {\n? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 0/2",
+      "configuration": "{\nignored:\n  child: {\n? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 0/4",
+      "configuration": "{\nignored:\n  child: {\n? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 0/5",
+      "configuration": "{\nignored:\n  child: {\n? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 0/7",
+      "configuration": "{\nignored:\n  child: {\n? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 2/0",
+      "configuration": "{\nignored:\n  child: {\n  ? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 2/1",
+      "configuration": "{\nignored:\n  child: {\n  ? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 2/2",
+      "configuration": "{\nignored:\n  child: {\n  ? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 2/4",
+      "configuration": "{\nignored:\n  child: {\n  ? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 2/5",
+      "configuration": "{\nignored:\n  child: {\n  ? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 2/7",
+      "configuration": "{\nignored:\n  child: {\n  ? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 6/0",
+      "configuration": "{\nignored:\n  child: {\n      ? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 6/1",
+      "configuration": "{\nignored:\n  child: {\n      ? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 6/2",
+      "configuration": "{\nignored:\n  child: {\n      ? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested anchor 6/4",
+      "configuration": "{\nignored:\n  child: {\n      ? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 6/5",
+      "configuration": "{\nignored:\n  child: {\n      ? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested anchor 6/7",
+      "configuration": "{\nignored:\n  child: {\n      ? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 0/0",
+      "configuration": "{\nignored:\n  child: {\n? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 0/1",
+      "configuration": "{\nignored:\n  child: {\n? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 0/2",
+      "configuration": "{\nignored:\n  child: {\n? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 0/4",
+      "configuration": "{\nignored:\n  child: {\n? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 0/5",
+      "configuration": "{\nignored:\n  child: {\n? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 0/7",
+      "configuration": "{\nignored:\n  child: {\n? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 2/0",
+      "configuration": "{\nignored:\n  child: {\n  ? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 2/1",
+      "configuration": "{\nignored:\n  child: {\n  ? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 2/2",
+      "configuration": "{\nignored:\n  child: {\n  ? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 2/4",
+      "configuration": "{\nignored:\n  child: {\n  ? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 2/5",
+      "configuration": "{\nignored:\n  child: {\n  ? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 2/7",
+      "configuration": "{\nignored:\n  child: {\n  ? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 6/0",
+      "configuration": "{\nignored:\n  child: {\n      ? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 6/1",
+      "configuration": "{\nignored:\n  child: {\n      ? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 6/2",
+      "configuration": "{\nignored:\n  child: {\n      ? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nested typed 6/4",
+      "configuration": "{\nignored:\n  child: {\n      ? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 6/5",
+      "configuration": "{\nignored:\n  child: {\n      ? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested typed 6/7",
+      "configuration": "{\nignored:\n  child: {\n      ? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence anchor 0/0",
+      "configuration": "{\nignored:\n - child: {\n? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 0/1",
+      "configuration": "{\nignored:\n - child: {\n? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 0/2",
+      "configuration": "{\nignored:\n - child: {\n? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 0/4",
+      "configuration": "{\nignored:\n - child: {\n? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 0/5",
+      "configuration": "{\nignored:\n - child: {\n? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence anchor 0/7",
+      "configuration": "{\nignored:\n - child: {\n? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence anchor 2/0",
+      "configuration": "{\nignored:\n - child: {\n  ? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 2/1",
+      "configuration": "{\nignored:\n - child: {\n  ? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 2/2",
+      "configuration": "{\nignored:\n - child: {\n  ? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 2/4",
+      "configuration": "{\nignored:\n - child: {\n  ? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 2/5",
+      "configuration": "{\nignored:\n - child: {\n  ? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence anchor 2/7",
+      "configuration": "{\nignored:\n - child: {\n  ? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence anchor 6/0",
+      "configuration": "{\nignored:\n - child: {\n      ? &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 6/1",
+      "configuration": "{\nignored:\n - child: {\n      ? &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 6/2",
+      "configuration": "{\nignored:\n - child: {\n      ? &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 6/4",
+      "configuration": "{\nignored:\n - child: {\n      ? &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence anchor 6/5",
+      "configuration": "{\nignored:\n - child: {\n      ? &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence anchor 6/7",
+      "configuration": "{\nignored:\n - child: {\n      ? &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence typed 0/0",
+      "configuration": "{\nignored:\n - child: {\n? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 0/1",
+      "configuration": "{\nignored:\n - child: {\n? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 0/2",
+      "configuration": "{\nignored:\n - child: {\n? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 0/4",
+      "configuration": "{\nignored:\n - child: {\n? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 0/5",
+      "configuration": "{\nignored:\n - child: {\n? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence typed 0/7",
+      "configuration": "{\nignored:\n - child: {\n? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence typed 2/0",
+      "configuration": "{\nignored:\n - child: {\n  ? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 2/1",
+      "configuration": "{\nignored:\n - child: {\n  ? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 2/2",
+      "configuration": "{\nignored:\n - child: {\n  ? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 2/4",
+      "configuration": "{\nignored:\n - child: {\n  ? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 2/5",
+      "configuration": "{\nignored:\n - child: {\n  ? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence typed 2/7",
+      "configuration": "{\nignored:\n - child: {\n  ? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence typed 6/0",
+      "configuration": "{\nignored:\n - child: {\n      ? !!seq &key\n[entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 6/1",
+      "configuration": "{\nignored:\n - child: {\n      ? !!seq &key\n [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 6/2",
+      "configuration": "{\nignored:\n - child: {\n      ? !!seq &key\n  [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 6/4",
+      "configuration": "{\nignored:\n - child: {\n      ? !!seq &key\n    [entry]: Name\n}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "sequence typed 6/5",
+      "configuration": "{\nignored:\n - child: {\n      ? !!seq &key\n     [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence typed 6/7",
+      "configuration": "{\nignored:\n - child: {\n      ? !!seq &key\n       [entry]: Name\n}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "propertyComment",
+      "configuration": "{\n{? &key # comment\n [alias]: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unterminatedKey",
+      "configuration": "{[alias: Name}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "compactScalar",
+      "configuration": "{\nignored:\n - field: &key |-\n     alias\n   next: Value\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "compactIndentless",
+      "configuration": "{\nignored:\n - field: &key\n   - alias\n   next: Value\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedDash",
+      "configuration": "{ignored: !!str -, alias: Name}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "typedQuestion",
+      "configuration": "{ignored: !!str ?[], alias: Name}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "typedColon",
+      "configuration": "{ignored: !!null :Value, alias: Name}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:null> explicit tag"
+    },
+    {
+      "name": "plainFlowFold",
+      "configuration": "{\nignored:\n   child: {\n? &key\n    alias\n   more : Value, alias: Name\n}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "taggedFlowFold",
+      "configuration": "{\nignored:\n   child: {value: !!str\n    first\n   second, [alias]: Value}\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "nonspecificList",
+      "configuration": "{ignored: ! [one], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nonspecificMap",
+      "configuration": "{ignored: ! {one: two}, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "blockBadSeq",
+      "configuration": "{\nignored: !!seq Wrong\nalias: Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:seq>"
+    },
+    {
+      "name": "blockBadMap",
+      "configuration": "{\nignored: !!map Wrong\nalias: Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:map>"
+    },
+    {
+      "name": "emptyPropertyStr",
+      "configuration": "{\nignored: &key\n  !!str\n*key : Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "tagContinuation",
+      "configuration": "{\nignored: &key\n  !!str alias\n*key : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedFlowFoldValid",
+      "configuration": "{\nignored:\n   child: {value: !!str\n     first\n    second, [alias]: Value}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedFlowFoldValid",
+      "configuration": "{\nignored:\n   child: {value: \"first\n    second\", [alias]: Value}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchorTab",
+      "configuration": "{\n{ignored: &key\n\t[one], [alias]: Name}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "tagTab",
+      "configuration": "{\n{ignored: !!seq\n\t[one], [alias]: Name}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "anchorSpaceTab",
+      "configuration": "{\n{ignored: &key\n \t[one], [alias]: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "tagSpaceTab",
+      "configuration": "{\n{ignored: !!seq\n \t[one], [alias]: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "propertyFinalComment",
+      "configuration": "{&key # final comment}",
+      "alias": null,
+      "type": null
+    }
+  ]
+}

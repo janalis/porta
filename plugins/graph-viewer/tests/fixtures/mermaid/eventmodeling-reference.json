@@ -1,0 +1,2680 @@
+{
+  "docs-01.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "docs-03.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "command",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "event",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "docs-04.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "dataInlineValue": "{ description: string }",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "dataInlineValue": "{ description: string }",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "docs-05.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "command",
+          "entityIdentifier": "AddItem",
+          "dataInlineValue": "{ description: string }",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "event",
+          "entityIdentifier": "ItemAdded",
+          "dataInlineValue": "{ description: string }",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "docs-06.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "dataReference": "AddItem01",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "dataReference": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "dataReference": "AddItem02",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "dataReference": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [
+        {
+          "name": "AddItem01",
+          "dataBlockValue": "{\n  description: 'john'\n  image: 'avatar_john'\n  price: 20.4\n}\n"
+        },
+        {
+          "name": "AddItem02",
+          "dataBlockValue": "{\n  description: 'jack'\n  image: 'avatar_jack'\n  price: 12.5\n}\n"
+        },
+        {
+          "name": "ItemAdded",
+          "dataBlockValue": "{\n  description: string\n  image: string\n  price: number\n}\n"
+        }
+      ],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "03",
+        "04"
+      ],
+      [
+        "04",
+        "05"
+      ]
+    ]
+  },
+  "docs-07.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "command",
+          "entityIdentifier": "AddItem",
+          "dataReference": "AddItem01",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "event",
+          "entityIdentifier": "ItemAdded",
+          "dataReference": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "command",
+          "entityIdentifier": "AddItem",
+          "dataReference": "AddItem02",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "event",
+          "entityIdentifier": "ItemAdded",
+          "dataReference": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [
+        {
+          "name": "AddItem01",
+          "dataBlockValue": "{\n  description: 'john'\n  image: 'avatar_john'\n  price: 20.4\n}\n"
+        },
+        {
+          "name": "AddItem02",
+          "dataBlockValue": "{\n  description: 'jack'\n  image: 'avatar_jack'\n  price: 12.5\n}\n"
+        },
+        {
+          "name": "ItemAdded",
+          "dataBlockValue": "{\n  description: string\n  image: string\n  price: number\n}\n"
+        }
+      ],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "03",
+        "04"
+      ],
+      [
+        "04",
+        "05"
+      ]
+    ]
+  },
+  "docs-08.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "evt",
+          "entityIdentifier": "External.InventoryChanged",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "05",
+          "modelEntityType": "pcr",
+          "entityIdentifier": "InventoryProcessor",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "06",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "ChangeInventory",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "07",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Cart.InventoryChanged",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#ffb778",
+      "#edb3f6",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 201,
+        "label": "Stream: External"
+      },
+      {
+        "frame": "05",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "06",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "07",
+        "index": 202,
+        "label": "Stream: Cart"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "04",
+        "05"
+      ],
+      [
+        "05",
+        "06"
+      ],
+      [
+        "06",
+        "07"
+      ]
+    ]
+  },
+  "docs-09.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "command",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "event",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "event",
+          "entityIdentifier": "External.InventoryChanged",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "05",
+          "modelEntityType": "processor",
+          "entityIdentifier": "InventoryProcessor",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "06",
+          "modelEntityType": "command",
+          "entityIdentifier": "ChangeInventory",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "07",
+          "modelEntityType": "event",
+          "entityIdentifier": "Cart.InventoryChanged",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#ffb778",
+      "#edb3f6",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 201,
+        "label": "Stream: External"
+      },
+      {
+        "frame": "05",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "06",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "07",
+        "index": 202,
+        "label": "Stream: Cart"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "04",
+        "05"
+      ],
+      [
+        "05",
+        "06"
+      ],
+      [
+        "06",
+        "07"
+      ]
+    ]
+  },
+  "docs-10.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "ui",
+          "entityIdentifier": "OtherUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "CartItems",
+          "sourceFrames": [
+            "01"
+          ],
+          "reset": true
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778",
+      "white",
+      "#d3f1a2"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "02",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "03",
+        "index": 100,
+        "label": "Command/Read Model"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "01",
+        "03"
+      ]
+    ]
+  },
+  "docs-11.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "02",
+          "modelEntityType": "evt",
+          "entityIdentifier": "CartCreated",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "04",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemRemoved",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "CartCleared",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "01",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [
+            "02",
+            "03",
+            "04",
+            "05"
+          ],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778",
+      "#ffb778",
+      "#ffb778",
+      "#ffb778",
+      "#d3f1a2"
+    ],
+    "lanes": [
+      {
+        "frame": "02",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "01",
+        "index": 100,
+        "label": "Command/Read Model"
+      }
+    ],
+    "relations": [
+      [
+        "02",
+        "01"
+      ],
+      [
+        "03",
+        "01"
+      ],
+      [
+        "04",
+        "01"
+      ],
+      [
+        "05",
+        "01"
+      ]
+    ]
+  },
+  "docs-13.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "CartItems",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778",
+      "#d3f1a2",
+      "white"
+    ],
+    "lanes": [
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "04",
+        "index": 0,
+        "label": "UI/Automation"
+      }
+    ],
+    "relations": [
+      [
+        "03",
+        "02"
+      ],
+      [
+        "02",
+        "04"
+      ]
+    ]
+  },
+  "docs-14.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "External.InventoryChanged",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "pcr",
+          "entityIdentifier": "InventoryProcessor",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "ChangeInventory",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Cart.InventoryChanged",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778",
+      "#edb3f6",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "03",
+        "index": 201,
+        "label": "Stream: External"
+      },
+      {
+        "frame": "02",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 202,
+        "label": "Stream: Cart"
+      }
+    ],
+    "relations": [
+      [
+        "03",
+        "02"
+      ],
+      [
+        "02",
+        "04"
+      ],
+      [
+        "04",
+        "05"
+      ]
+    ]
+  },
+  "docs-18.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Inventory.InventoryChanged",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "02",
+          "modelEntityType": "evt",
+          "entityIdentifier": "External.InventoryChanged",
+          "sourceFrames": [],
+          "reset": true
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 201,
+        "label": "Stream: Inventory"
+      },
+      {
+        "frame": "02",
+        "index": 202,
+        "label": "Stream: External"
+      }
+    ],
+    "relations": []
+  },
+  "parser-01.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "UpdateCartCommand",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "evt",
+          "entityIdentifier": "CartUpdatedEvent",
+          "sourceFrames": [
+            "01"
+          ],
+          "dataType": "jsobj",
+          "dataInlineValue": "{ a: b }",
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "CartItemsReadModel",
+          "sourceFrames": [
+            "02"
+          ],
+          "dataReference": "CartItemsReadModel03",
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ProductDescriptionUpdatedEvent",
+          "sourceFrames": [
+            "01"
+          ],
+          "dataType": "jsobj",
+          "dataInlineValue": "{ a: { c: d } }",
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ProductTitleUpdatedEvent",
+          "sourceFrames": [
+            "01"
+          ],
+          "dataInlineValue": "{ \"a\": { \"c\": true } }",
+          "reset": false
+        },
+        {
+          "name": "06",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ProductCountIncrementedEvent",
+          "sourceFrames": [
+            "01"
+          ],
+          "dataType": "json",
+          "dataInlineValue": "\" { \"a\": { \"c\": true } } \"",
+          "reset": false
+        }
+      ],
+      "dataEntities": [
+        {
+          "name": "CartItemsReadModel03",
+          "dataBlockValue": "{\n  { a: b }\n}\n"
+        },
+        {
+          "name": "NotAssignedData02",
+          "dataType": "jsobj",
+          "dataBlockValue": "{\n  { a: {\n    d: true\n  }}\n}\n"
+        },
+        {
+          "name": "AnotherNotAssignedData06",
+          "dataBlockValue": "{\n  a: 'abc'\n}\n"
+        }
+      ],
+      "noteEntities": [
+        {
+          "sourceFrame": "02",
+          "dataType": "md",
+          "dataBlockValue": "{\n    # head 1\n    this is markdown note\n}\n"
+        },
+        {
+          "sourceFrame": "05",
+          "dataBlockValue": "{\n  This is whatever <b>you</b> want\n  On multiple lines\n}\n"
+        }
+      ],
+      "gwtEntities": [
+        {
+          "sourceFrame": "01",
+          "givenStatements": [
+            {
+              "entityIdentifier": "CartUpdatedEvent"
+            },
+            {
+              "entityIdentifier": "CartUpdatedEvent"
+            }
+          ],
+          "whenStatements": [
+            {
+              "entityIdentifier": "ProductDescriptionUpdatedEvent"
+            },
+            {
+              "entityIdentifier": "ProductTitleUpdatedEvent"
+            }
+          ],
+          "thenStatements": [
+            {
+              "entityIdentifier": "ProductTitleUpdatedEvent"
+            }
+          ]
+        },
+        {
+          "sourceFrame": "03",
+          "givenStatements": [
+            {
+              "entityIdentifier": "CartUpdatedEvent"
+            },
+            {
+              "entityIdentifier": "ProductTitleUpdatedEvent"
+            }
+          ],
+          "thenStatements": [
+            {
+              "entityIdentifier": "ProductTitleUpdatedEvent"
+            },
+            {
+              "entityIdentifier": "CartUpdatedEvent"
+            }
+          ],
+          "whenStatements": []
+        }
+      ],
+      "modelEntities": []
+    },
+    "colors": [
+      "#bcd6fe",
+      "#ffb778",
+      "#d3f1a2",
+      "#ffb778",
+      "#ffb778",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "02",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "03",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "04",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "06",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "01",
+        "04"
+      ],
+      [
+        "01",
+        "05"
+      ],
+      [
+        "01",
+        "06"
+      ]
+    ]
+  },
+  "parser-02.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "event",
+          "entityIdentifier": "Start",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": []
+  },
+  "parser-03.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "02",
+          "modelEntityType": "ui",
+          "entityIdentifier": "UI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "01",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Product.PriceChanged",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Cart.ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#ffb778",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "02",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "01",
+        "index": 201,
+        "label": "Stream: Product"
+      },
+      {
+        "frame": "03",
+        "index": 202,
+        "label": "Stream: Cart"
+      }
+    ],
+    "relations": [
+      [
+        "02",
+        "01"
+      ],
+      [
+        "01",
+        "03"
+      ]
+    ]
+  },
+  "parser-04.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "02",
+          "modelEntityType": "ui",
+          "entityIdentifier": "UI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "01",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Product.PriceChanged",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Cart.ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#ffb778",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "02",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "01",
+        "index": 201,
+        "label": "Stream: Product"
+      },
+      {
+        "frame": "03",
+        "index": 202,
+        "label": "Stream: Cart"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "03"
+      ]
+    ]
+  },
+  "parser-05.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Start",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "evt",
+          "entityIdentifier": "End",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "readmodel",
+          "entityIdentifier": "ReadModel01",
+          "sourceFrames": [
+            "01",
+            "02"
+          ],
+          "dataInlineValue": "{ a: true }",
+          "reset": true
+        },
+        {
+          "name": "04",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "ReadModel02",
+          "sourceFrames": [
+            "01",
+            "02"
+          ],
+          "reset": true
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#ffb778",
+      "#ffb778",
+      "#d3f1a2",
+      "#d3f1a2"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "02",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "03",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "03"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "01",
+        "04"
+      ],
+      [
+        "02",
+        "04"
+      ]
+    ]
+  },
+  "parser-06.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "UI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "RunAction",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ActionExecuted",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "parser-07.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "dataInlineValue": "{ productId: 7 }",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "dataInlineValue": "{ productId: 7 }",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "02",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ]
+    ]
+  },
+  "parser-08.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "dataReference": "ItemAddedData",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [
+        {
+          "name": "ItemAddedData",
+          "dataBlockValue": "{\n  productId: 7\n}"
+        }
+      ],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "02",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ]
+    ]
+  },
+  "parser-09.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "Inventory.AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Inventory.ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 101,
+        "label": "C/RM: Inventory"
+      },
+      {
+        "frame": "03",
+        "index": 201,
+        "label": "Stream: Inventory"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "parser-10.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "RemoveItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemChanged",
+          "sourceFrames": [
+            "02",
+            "03"
+          ],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "04",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "01",
+        "03"
+      ],
+      [
+        "02",
+        "04"
+      ],
+      [
+        "03",
+        "04"
+      ]
+    ]
+  },
+  "parser-11.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartUI",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": true
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": true
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": []
+  },
+  "parser-12.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "09",
+          "modelEntityType": "ui",
+          "entityIdentifier": "PreviousDiagram",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white"
+    ],
+    "lanes": [
+      {
+        "frame": "09",
+        "index": 0,
+        "label": "UI/Automation"
+      }
+    ],
+    "relations": []
+  },
+  "parser-13.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "UI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "Command",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Event",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "ReadModel",
+          "sourceFrames": [
+            "03"
+          ],
+          "reset": true
+        },
+        {
+          "name": "05",
+          "modelEntityType": "ui",
+          "entityIdentifier": "OtherUI",
+          "sourceFrames": [],
+          "reset": true
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#d3f1a2",
+      "white"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 0,
+        "label": "UI/Automation"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "03",
+        "04"
+      ]
+    ]
+  },
+  "parser-14.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "UI",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "ui",
+          "entityIdentifier": "UI2",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "Command",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "command",
+          "entityIdentifier": "Command2",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Event",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "06",
+          "modelEntityType": "event",
+          "entityIdentifier": "Event2",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "07",
+          "modelEntityType": "pcr",
+          "entityIdentifier": "Processor",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "08",
+          "modelEntityType": "processor",
+          "entityIdentifier": "Processor2",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "09",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "ReadModel",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "10",
+          "modelEntityType": "readmodel",
+          "entityIdentifier": "ReadModel2",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "white",
+      "#bcd6fe",
+      "#bcd6fe",
+      "#ffb778",
+      "#ffb778",
+      "#edb3f6",
+      "#edb3f6",
+      "#d3f1a2",
+      "#d3f1a2"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "03",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "06",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "07",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "08",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "09",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "10",
+        "index": 100,
+        "label": "Command/Read Model"
+      }
+    ],
+    "relations": [
+      [
+        "02",
+        "03"
+      ],
+      [
+        "02",
+        "04"
+      ],
+      [
+        "04",
+        "05"
+      ],
+      [
+        "04",
+        "06"
+      ],
+      [
+        "06",
+        "07"
+      ],
+      [
+        "06",
+        "08"
+      ],
+      [
+        "08",
+        "09"
+      ],
+      [
+        "08",
+        "10"
+      ]
+    ]
+  },
+  "rendering-01.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartScreen",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "rendering-02.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartScreen",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "RemoveItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemRemoved",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "03",
+        "04"
+      ],
+      [
+        "04",
+        "05"
+      ]
+    ]
+  },
+  "rendering-03.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartScreen",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "rmo",
+          "entityIdentifier": "CartItems",
+          "sourceFrames": [
+            "03"
+          ],
+          "reset": false
+        },
+        {
+          "name": "05",
+          "modelEntityType": "evt",
+          "entityIdentifier": "AccountingItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778",
+      "#d3f1a2",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      },
+      {
+        "frame": "04",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "05",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ],
+      [
+        "03",
+        "04"
+      ],
+      [
+        "04",
+        "05"
+      ]
+    ]
+  },
+  "rendering-04.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartScreen",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "dataInlineValue": "{ productId: 7 }",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemAdded",
+          "dataReference": "ItemAddedData",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [
+        {
+          "name": "ItemAddedData",
+          "dataBlockValue": "{\n  productId: 7,\n  quantity: 1\n}\n"
+        }
+      ],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "rendering-05.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartScreen",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "Inventory.AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "evt",
+          "entityIdentifier": "Inventory.ItemAdded",
+          "sourceFrames": [],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 101,
+        "label": "C/RM: Inventory"
+      },
+      {
+        "frame": "03",
+        "index": 201,
+        "label": "Stream: Inventory"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "02",
+        "03"
+      ]
+    ]
+  },
+  "rendering-06.mmd": {
+    "model": {
+      "frames": [
+        {
+          "name": "01",
+          "modelEntityType": "ui",
+          "entityIdentifier": "CartScreen",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "02",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "AddItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "03",
+          "modelEntityType": "cmd",
+          "entityIdentifier": "RemoveItem",
+          "sourceFrames": [],
+          "reset": false
+        },
+        {
+          "name": "04",
+          "modelEntityType": "evt",
+          "entityIdentifier": "ItemChanged",
+          "sourceFrames": [
+            "02",
+            "03"
+          ],
+          "reset": false
+        }
+      ],
+      "dataEntities": [],
+      "gwtEntities": [],
+      "modelEntities": [],
+      "noteEntities": []
+    },
+    "colors": [
+      "white",
+      "#bcd6fe",
+      "#bcd6fe",
+      "#ffb778"
+    ],
+    "lanes": [
+      {
+        "frame": "01",
+        "index": 0,
+        "label": "UI/Automation"
+      },
+      {
+        "frame": "02",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "03",
+        "index": 100,
+        "label": "Command/Read Model"
+      },
+      {
+        "frame": "04",
+        "index": 200,
+        "label": "Events"
+      }
+    ],
+    "relations": [
+      [
+        "01",
+        "02"
+      ],
+      [
+        "01",
+        "03"
+      ],
+      [
+        "02",
+        "04"
+      ],
+      [
+        "03",
+        "04"
+      ]
+    ]
+  }
+}

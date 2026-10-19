@@ -1,0 +1,398 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA; doc.alias truthiness and doc.type nullish fallback from the pinned database",
+  "cases": [
+    {
+      "configuration": "{alias: null}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: ~}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: Null}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: NULL}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: false}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: False}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: FALSE}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 00}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0x0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0o0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0b0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0_0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0.0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: -0.0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: -.0}",
+      "alias": "-.0",
+      "type": null
+    },
+    {
+      "configuration": "{alias: +0.0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0e0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0.0e10}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: .nan}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: .NaN}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: .NAN}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!int 0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!float .nan}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!bool false}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!null null}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!null \"\"}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:null> explicit tag"
+    },
+    {
+      "configuration": "{alias: \"0\"}",
+      "alias": "0",
+      "type": null
+    },
+    {
+      "configuration": "{alias: '0'}",
+      "alias": "0",
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!str 0}",
+      "alias": "0",
+      "type": null
+    },
+    {
+      "configuration": "{alias: ! 0}",
+      "alias": "0",
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!%73tr 0}",
+      "alias": "0",
+      "type": null
+    },
+    {
+      "configuration": "{alias: \"false\"}",
+      "alias": "false",
+      "type": null
+    },
+    {
+      "configuration": "{alias: \".nan\"}",
+      "alias": ".nan",
+      "type": null
+    },
+    {
+      "configuration": "{\"alias\":null}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\"alias\":false}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\"alias\":0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\"alias\":0.0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\"alias\":-0.0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{type: null, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "configuration": "{type: ~, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "configuration": "{\"type\":null,\"alias\":\"Name\"}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "configuration": "{alias: !!int &zero 0, type: null}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!int |-\n   0b0\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!float >-\n   0.0\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!bool |-\n   false\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!null |-\n   null\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!null |-\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:null> explicit tag"
+    },
+    {
+      "configuration": "{\n alias: !!int |\n   0\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "configuration": "{\n alias: !!float |-\n   -.0\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:float> explicit tag"
+    },
+    {
+      "configuration": "{\n alias:\n   0b0\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: 0b0\n   continued\n}",
+      "alias": "0b0 continued",
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: 0b0\n\n   continued\n}",
+      "alias": "0b0\ncontinued",
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: &zero\n   0b0\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!int\n   0b0\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "configuration": "{\n alias: !!int \"\\q\"\n}",
+      "error": "unknown escape sequence"
+    },
+    {
+      "configuration": "{alias: !!int \"0\"junk}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{alias: !!int \"0\" junk}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{\n alias: !!int \"0\"# comment\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!int \"0\" # comment\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{type: &x actor, alias: !!str *x}",
+      "error": "alias node should not have any properties"
+    },
+    {
+      "configuration": "{\n alias: !!int &zero |-\n   0b0\n type: actor\n}",
+      "alias": null,
+      "type": "actor"
+    },
+    {
+      "configuration": "{\n alias: before\n\tcontinued\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "configuration": "{alias: @reserved}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{alias: - item}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{alias: before: invalid}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{alias: ?}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{alias: -}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "configuration": "{\n type: !!str actor\n alias:\n}",
+      "alias": null,
+      "type": "actor"
+    },
+    {
+      "configuration": "{type: &x actor, alias: &a *x}",
+      "error": "alias node should not have any properties"
+    },
+    {
+      "configuration": "{alias: &a &b Word}",
+      "error": "duplication of an anchor property"
+    },
+    {
+      "configuration": "{\n alias: 0b0\n\tcontinued\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "configuration": "{\n alias: 0b0\n   \tcontinued\n}",
+      "alias": "0b0 continued",
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: !!int |?\n   0\n}",
+      "error": "a line break is expected"
+    },
+    {
+      "configuration": "{\n alias: before\n\n   continued\n}",
+      "alias": "before\ncontinued",
+      "type": null
+    },
+    {
+      "configuration": "{\n alias:\n # comment\n   0b0\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{\n alias: # comment\n   0b0\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "configuration": "{alias: tRuE}",
+      "alias": "tRuE",
+      "type": null
+    },
+    {
+      "configuration": "{alias: fAlSe}",
+      "alias": "fAlSe",
+      "type": null
+    },
+    {
+      "configuration": "{alias: nUlL}",
+      "alias": "nUlL",
+      "type": null
+    },
+    {
+      "configuration": "{alias: .iNF}",
+      "alias": ".iNF",
+      "type": null
+    },
+    {
+      "configuration": "{alias: 0b0: invalid}",
+      "error": "missed comma between flow collection entries"
+    }
+  ]
+}

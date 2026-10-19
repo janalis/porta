@@ -333,6 +333,13 @@ final class CatalogCoverageTest extends TestCase
         '/plugins/git/src/Command/GitCommands.php' => false, // stash subjects and branch names
         '/plugins/git/src/Command/WorktreeCommands.php' => false, // worktree folder and branch names
         '/plugins/assist/plugin.php' => false, // 'localhost:'.$port, the host's shared servers
+        '/plugins/graph-viewer/src/Mermaid/CynefinParser.php' => false, // source-defined transition labels
+        '/plugins/graph-viewer/src/Mermaid/GanttLayout.php' => false, // theme color tokens keyed by text role
+        '/plugins/graph-viewer/src/Mermaid/JourneyLayout.php' => false, // diagram-family name used when the source has no title
+        '/plugins/graph-viewer/src/Mermaid/PieLayout.php' => false, // diagram-family name used when the source has no title
+        '/plugins/graph-viewer/src/Mermaid/SwimlaneLayout.php' => false, // anonymous lane metadata and source-defined labels
+        '/plugins/graph-viewer/src/Mermaid/UsecaseRelations.php' => false, // UML relationship labels from the diagram grammar
+        '/plugins/graph-viewer/src/Mermaid/TimelineLayout.php' => false, // timeline metadata and source-defined labels
     ];
 
     /**

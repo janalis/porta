@@ -1,0 +1,1685 @@
+{
+  "flowchart": [
+    [
+      "rect.basic.label-container < g.node.default",
+      "fill",
+      "node:A",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.default",
+      "stroke",
+      "node:A",
+      "stroke",
+      1.0
+    ],
+    [
+      "p < span.nodeLabel < div < foreignobject < g.label",
+      "color",
+      "node:A",
+      "text",
+      1.0
+    ],
+    [
+      "path < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "p < span.edgeLabel",
+      "color",
+      "edge:label",
+      "text",
+      1.0
+    ],
+    [
+      "rect < g.cluster < g.clusters",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.cluster < g.clusters",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "p < span.nodeLabel < div < foreignobject < g.cluster-label",
+      "color",
+      "cluster:0",
+      "text",
+      1.0
+    ]
+  ],
+  "agentflow": [
+    [
+      "rect.basic.label-container < g.node.default.af-kind-task",
+      "fill",
+      "node:A",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.default.af-kind-task",
+      "stroke",
+      "node:A",
+      "stroke",
+      1.0
+    ],
+    [
+      "p < span.nodeLabel < div < foreignobject < g.label",
+      "color",
+      "node:A",
+      "text",
+      1.0
+    ],
+    [
+      "path < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect < g.cluster.flow-cluster",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.cluster.flow-cluster",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "class": [
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-0",
+      "fill",
+      "node:Animal",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-0",
+      "stroke",
+      "node:Animal",
+      "stroke",
+      1.0
+    ],
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-1",
+      "fill",
+      "node:Cage",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-2",
+      "stroke",
+      "node:Dog",
+      "stroke",
+      1.0
+    ],
+    [
+      "span.nodeLabel.markdown-node-label < div < foreignobject < g.label < g.label-group.text",
+      "color",
+      "node:Animal",
+      "text",
+      1.0
+    ],
+    [
+      "path.relation < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect < g.cluster.undefined",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.cluster.undefined",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "span.nodeLabel < div < foreignobject < g.cluster-label",
+      "color",
+      "cluster:0",
+      "text",
+      1.0
+    ]
+  ],
+  "er": [
+    [
+      "path < g.outer-path < g.node.default|color-0",
+      "fill",
+      "node:CUSTOMER",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.outer-path < g.node.default|color-0",
+      "stroke",
+      "node:CUSTOMER",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.default|color-1",
+      "fill",
+      "node:ORDER",
+      "fill",
+      1.0
+    ],
+    [
+      "p < span.nodeLabel < div < foreignobject < g.label.name",
+      "color",
+      "node:CUSTOMER",
+      "text",
+      1.0
+    ],
+    [
+      "path.relationshipLine < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "p < span.edgeLabel < div.labelBkg",
+      "color",
+      "edge:label",
+      "text",
+      1.0
+    ]
+  ],
+  "requirement": [
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-0",
+      "fill",
+      "node:r1",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-0",
+      "stroke",
+      "node:r1",
+      "stroke",
+      1.0
+    ],
+    [
+      "path < g.basic.label-container.outer-path < g.node.default|color-1",
+      "fill",
+      "node:e1",
+      "fill",
+      1.0
+    ],
+    [
+      "path.relationshipLine < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "state": [
+    [
+      "rect.basic.label-container < g.node.statediagram-state",
+      "fill",
+      "node:Still",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.statediagram-state",
+      "stroke",
+      "node:Still",
+      "stroke",
+      1.0
+    ],
+    [
+      "circle.state-start < g.node.default",
+      "fill",
+      "node:@start:",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.basic.label-container.outer-path < g.node.statediag",
+      "fill",
+      "node:@note:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.inner < g.statediagram-state.statediagram-cluster",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.outer < g < g.statediagram-state.statediagram-cluster|color-0",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.transition < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "span.nodeLabel.markdown-node-label < div < foreignobject < g.label < g.node.statediagram-state",
+      "color",
+      "node:Still",
+      "text",
+      1.0
+    ],
+    [
+      "span.nodeLabel.markdown-node-label < div < foreignobject < g.label.noteLabel",
+      "color",
+      "node:@note:0",
+      "text",
+      1.0
+    ],
+    [
+      "span.nodeLabel < div < foreignobject < g.cluster-label",
+      "color",
+      "cluster:0",
+      "text",
+      1.0
+    ]
+  ],
+  "usecase": [
+    [
+      "path.usecase-actor-stick",
+      "fill",
+      "node:Customer",
+      "fill",
+      1.0
+    ],
+    [
+      "path.usecase-actor-stick",
+      "stroke",
+      "node:Customer",
+      "stroke",
+      1.0
+    ],
+    [
+      "ellipse.basic.label-container < g.node.default.usecase-eleme",
+      "fill",
+      "node:Browse",
+      "fill",
+      1.0
+    ],
+    [
+      "ellipse.basic.label-container < g.node.default.usecase-eleme",
+      "stroke",
+      "node:Browse",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.default.relationship.relationship-association",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "sequence": [
+    [
+      "rect.actor.actor-top",
+      "fill",
+      "node:A",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.actor.actor-top",
+      "stroke",
+      "node:A",
+      "stroke",
+      1.0
+    ],
+    [
+      "tspan < text.actor.actor-box < g < g",
+      "fill",
+      "node:A",
+      "text",
+      1.0
+    ],
+    [
+      "rect.note",
+      "fill",
+      "node:event3",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.note",
+      "stroke",
+      "node:event3",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.noteText",
+      "fill",
+      "node:event3",
+      "text",
+      1.0
+    ],
+    [
+      "rect.activation0",
+      "fill",
+      "node:activation0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.activation0",
+      "stroke",
+      "node:activation0",
+      "stroke",
+      1.0
+    ],
+    [
+      "polygon.labelBox",
+      "fill",
+      "node:control4",
+      "fill",
+      1.0
+    ],
+    [
+      "line.loopLine",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.messageText",
+      "fill",
+      "node:event2",
+      "text",
+      1.0
+    ]
+  ],
+  "venn": [
+    [
+      "path < g.venn-area.venn-circle.venn-set-0",
+      "fill",
+      "node:@venn-circle:A",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.venn-area.venn-circle.venn-set-1",
+      "stroke",
+      "node:@venn-circle:B",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.label < g.venn-area.venn-circle.venn-set-0",
+      "fill",
+      "node:A",
+      "text",
+      1.0
+    ],
+    [
+      "text.label < g.venn-area.venn-circle.venn-set-1",
+      "fill",
+      "node:B",
+      "text",
+      1.0
+    ],
+    [
+      "text.label < g.venn-area.venn-intersection",
+      "fill",
+      "node:A & B",
+      "text",
+      1.0
+    ]
+  ],
+  "block": [
+    [
+      "rect.basic.label-container < g.node.default.flowchart-label",
+      "fill",
+      "node:A",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.default.flowchart-label",
+      "stroke",
+      "node:A",
+      "stroke",
+      1.0
+    ],
+    [
+      "path < g.block",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "mindmap": [
+    [
+      "circle.basic.label-container < g.node.mindmap-node.section-r",
+      "fill",
+      "node:mindmap-0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.mindmap-node.section-0",
+      "fill",
+      "node:mindmap-1",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.mindmap-node.section-1",
+      "fill",
+      "node:mindmap-3",
+      "fill",
+      1.0
+    ],
+    [
+      "polygon.label-container < g.node.mindmap-node.section-2",
+      "fill",
+      "node:mindmap-4",
+      "fill",
+      1.0
+    ],
+    [
+      "?line.node-line- < g.node.mindmap-node.section-0",
+      "stroke",
+      "node:mindmap-2",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.edge.section-edge-0",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "kanban": [
+    [
+      "rect < g.cluster.undefined.section-1",
+      "fill",
+      "node:column-0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.cluster.undefined.section-2",
+      "fill",
+      "node:column-1",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container.__APA__",
+      "fill",
+      "node:kanban-1",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container.__APA__",
+      "stroke",
+      "node:kanban-1",
+      "stroke",
+      1.0
+    ]
+  ],
+  "timeline": [
+    [
+      "path.node-bkg.node-undefined < g < g.timeline-node.section--1",
+      "fill",
+      "node:section-0",
+      "fill",
+      1.0
+    ],
+    [
+      "path.node-bkg.node-undefined < g < g.timeline-node.section-0",
+      "fill",
+      "node:section-1",
+      "fill",
+      1.0
+    ],
+    [
+      "text < g < g.timeline-node.section--1 < g.taskWrapper",
+      "fill",
+      "node:period-0",
+      "text",
+      1.0
+    ],
+    [
+      "text < g < g.timeline-node.section-0 < g.taskWrapper",
+      "fill",
+      "node:period-2",
+      "text",
+      1.0
+    ],
+    [
+      "line < g.lineWrapper",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "journey": [
+    [
+      "rect.journey-section.section-type-0",
+      "fill",
+      "node:section:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.task.task-type-0",
+      "fill",
+      "node:task:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.task.task-type-0",
+      "stroke",
+      "node:task:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.journey-section.section-type-1",
+      "fill",
+      "node:section:1",
+      "fill",
+      1.0
+    ],
+    [
+      "text.task < switch < g",
+      "fill",
+      "node:task:0",
+      "text",
+      1.0
+    ],
+    [
+      "line.task-line",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "git": [
+    [
+      "line.branch.branch0",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.arrow.arrow1",
+      "stroke",
+      "edge:2",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.arrow.arrow0",
+      "stroke",
+      "edge:3",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.branchLabelBkg.label0",
+      "fill",
+      "node:main",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.branchLabelBkg.label0",
+      "stroke",
+      "node:main",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.branchLabelBkg.label1",
+      "fill",
+      "node:dev",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.branchLabelBkg.label1",
+      "stroke",
+      "node:dev",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g.label.branch-label0",
+      "fill",
+      "node:main",
+      "text",
+      1.0
+    ],
+    [
+      "text < g.label.branch-label1",
+      "fill",
+      "node:dev",
+      "text",
+      1.0
+    ],
+    [
+      "circle.commit.commit0",
+      "fill",
+      "node:0-native",
+      "fill",
+      1.0
+    ],
+    [
+      "circle.commit.commit0",
+      "stroke",
+      "node:0-native",
+      "stroke",
+      1.0
+    ],
+    [
+      "circle.commit.commit1",
+      "fill",
+      "node:1-native",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.commit.commit-highlight0.commit-highlight-outer",
+      "fill",
+      "node:3-native",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.commit.commit-highlight0.commit-highlight-outer",
+      "stroke",
+      "node:3-native",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.commit-label-bkg",
+      "fill",
+      "node:@caption:0-native",
+      "fill",
+      0.5
+    ],
+    [
+      "text.commit-label",
+      "fill",
+      "node:@caption:0-native",
+      "text",
+      1.0
+    ],
+    [
+      "polygon.tag-label-bkg",
+      "fill",
+      "node:@tag:1-native",
+      "fill",
+      1.0
+    ],
+    [
+      "polygon.tag-label-bkg",
+      "stroke",
+      "node:@tag:1-native",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.tag-label",
+      "fill",
+      "node:@tag:1-native",
+      "text",
+      1.0
+    ]
+  ],
+  "pie": [
+    [
+      "circle.pieOuterCircle",
+      "stroke",
+      "node:@pie-outer",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.pieCircle",
+      "fill",
+      "node:pie0",
+      "fill",
+      1.0
+    ],
+    [
+      "path.pieCircle",
+      "stroke",
+      "node:pie0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.slice",
+      "fill",
+      "node:@pie-text:3",
+      "text",
+      1.0
+    ],
+    [
+      "rect < g.legend",
+      "fill",
+      "node:@pie-color:0",
+      "fill",
+      1.0
+    ],
+    [
+      "text < g.legend",
+      "fill",
+      "node:@pie-text:4",
+      "text",
+      1.0
+    ]
+  ],
+  "quadrant": [
+    [
+      "rect < g.quadrant",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "text < g.quadrant",
+      "fill",
+      "node:quadrant-1",
+      "text",
+      1.0
+    ],
+    [
+      "line < g.border",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "circle < g.data-point",
+      "fill",
+      "node:point-9",
+      "fill",
+      1.0
+    ],
+    [
+      "text < g.data-point",
+      "fill",
+      "node:point-9",
+      "text",
+      1.0
+    ],
+    [
+      "text < g.label",
+      "fill",
+      "node:x-axis-low",
+      "text",
+      1.0
+    ],
+    [
+      "text < g.title",
+      "fill",
+      "node:title",
+      "text",
+      1.0
+    ]
+  ],
+  "xy": [
+    [
+      "text < g.chart-title",
+      "fill",
+      "node:title",
+      "text",
+      1.0
+    ],
+    [
+      "rect < g.bar-plot-0",
+      "fill",
+      "node:xy-0-0",
+      "fill",
+      1.0
+    ],
+    [
+      "path < g.line-plot-1",
+      "stroke",
+      "edge:2",
+      "stroke",
+      1.0
+    ],
+    [
+      "path < g.axis-line < g.bottom-axis",
+      "stroke",
+      "edge:1",
+      "stroke",
+      1.0
+    ],
+    [
+      "path < g.axisl-line < g.left-axis",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g.label < g.bottom-axis",
+      "fill",
+      "node:category-0",
+      "text",
+      1.0
+    ],
+    [
+      "text < g.label < g.left-axis",
+      "fill",
+      "node:value-0",
+      "text",
+      1.0
+    ],
+    [
+      "text < g.title < g.left-axis",
+      "fill",
+      "node:y-axis",
+      "text",
+      1.0
+    ]
+  ],
+  "sankey": [
+    [
+      "rect < g.node < g.nodes",
+      "fill",
+      "node:sankey-0",
+      "fill",
+      1.0
+    ],
+    [
+      "text < g.node-labels",
+      "fill",
+      "node:caption-0",
+      "text",
+      1.0
+    ]
+  ],
+  "packet": [
+    [
+      "rect.packetBlock",
+      "fill",
+      "node:packet-0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.packetBlock",
+      "stroke",
+      "node:packet-0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.packetLabel",
+      "fill",
+      "node:packet-0",
+      "text",
+      1.0
+    ],
+    [
+      "text.packetByte.start",
+      "fill",
+      "node:bit-3",
+      "text",
+      1.0
+    ]
+  ],
+  "architecture": [
+    [
+      "path.edge",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.node-bkg",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g < g < g.architecture-service",
+      "fill",
+      "node:db",
+      "text",
+      1.0
+    ],
+    [
+      "text < g < g < g < g.architecture-groups",
+      "fill",
+      "node:g",
+      "text",
+      1.0
+    ]
+  ],
+  "radar": [
+    [
+      "circle.radarGraticule",
+      "stroke",
+      "edge:1",
+      "stroke",
+      1.0
+    ],
+    [
+      "circle.radarGraticule",
+      "fill",
+      "edge:0",
+      "stroke",
+      0.3
+    ],
+    [
+      "line.radarAxisLine",
+      "stroke",
+      "edge:10",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.radarAxisLabel",
+      "fill",
+      "node:A",
+      "text",
+      1.0
+    ],
+    [
+      "path.radarCurve-0",
+      "stroke",
+      "edge:14",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.radarCurve-0",
+      "fill",
+      "edge:13",
+      "stroke",
+      0.5
+    ],
+    [
+      "path.radarCurve-1",
+      "stroke",
+      "edge:16",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.radarCurve-1",
+      "fill",
+      "edge:15",
+      "stroke",
+      0.5
+    ],
+    [
+      "path.radarCurve-0",
+      "fill",
+      "node:radar-0-0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.radarLegendBox-0",
+      "fill",
+      "node:swatch-0",
+      "fill",
+      0.5
+    ],
+    [
+      "text.radarLegendText",
+      "fill",
+      "node:caption-6",
+      "text",
+      1.0
+    ]
+  ],
+  "treemap": [
+    [
+      "rect.treemapSection.section1",
+      "fill",
+      "node:section-3",
+      "fill",
+      0.6
+    ],
+    [
+      "rect.treemapSection.section1",
+      "stroke",
+      "node:section-3",
+      "stroke",
+      0.4
+    ],
+    [
+      "text.treemapSectionLabel",
+      "fill",
+      "node:treemap-0",
+      "text",
+      1.0
+    ],
+    [
+      "rect.treemapLeaf",
+      "fill",
+      "node:treemap-1",
+      "fill",
+      0.3
+    ],
+    [
+      "rect.treemapLeaf",
+      "stroke",
+      "node:treemap-1",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.treemapLabel < g.treemapNode.treemapLeafGroup.leaf0x",
+      "fill",
+      "node:treemap-1",
+      "text",
+      1.0
+    ],
+    [
+      "text.treemapLabel < g.treemapNode.treemapLeafGroup.leaf1x",
+      "fill",
+      "node:treemap-2",
+      "text",
+      1.0
+    ]
+  ],
+  "ishikawa": [
+    [
+      "line.ishikawa-spine",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.ishikawa-head",
+      "fill",
+      "node:ishikawa-0",
+      "fill",
+      1.0
+    ],
+    [
+      "path.ishikawa-head",
+      "stroke",
+      "node:ishikawa-0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.ishikawa-head-label",
+      "fill",
+      "node:ishikawa-0",
+      "text",
+      1.0
+    ],
+    [
+      "rect.ishikawa-label-box",
+      "fill",
+      "node:ishikawa-1",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.ishikawa-label-box",
+      "stroke",
+      "node:ishikawa-1",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.ishikawa-label.cause",
+      "fill",
+      "node:ishikawa-1",
+      "text",
+      1.0
+    ],
+    [
+      "text.ishikawa-label.align",
+      "fill",
+      "node:ishikawa-2",
+      "text",
+      1.0
+    ]
+  ],
+  "treeView": [
+    [
+      "line.treeView-node-line",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.treeView-node-label.treeView-node-dir",
+      "fill",
+      "node:tree-view-0",
+      "text",
+      1.0
+    ],
+    [
+      "text.treeView-node-label < g",
+      "fill",
+      "node:tree-view-2",
+      "text",
+      1.0
+    ]
+  ],
+  "cynefin": [
+    [
+      "rect.cynefinDomain",
+      "fill",
+      "node:region-complex",
+      "fill",
+      0.4
+    ],
+    [
+      "path.cynefinBoundary",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.cynefinCliff",
+      "stroke",
+      "edge:2",
+      "stroke",
+      1.0
+    ],
+    [
+      "path.cynefinConfusion",
+      "fill",
+      "node:region-confusion",
+      "fill",
+      0.5
+    ],
+    [
+      "path.cynefinConfusion",
+      "stroke",
+      "node:region-confusion",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.cynefinDomainLabel",
+      "fill",
+      "node:complex",
+      "text",
+      1.0
+    ],
+    [
+      "text.cynefinSubtitle",
+      "fill",
+      "node:caption-6",
+      "text",
+      1.0
+    ],
+    [
+      "rect.cynefinItem",
+      "fill",
+      "node:complex-7",
+      "fill",
+      0.95
+    ],
+    [
+      "rect.cynefinItem",
+      "stroke",
+      "node:complex-7",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.cynefinItemText",
+      "fill",
+      "node:complex-7",
+      "text",
+      1.0
+    ]
+  ],
+  "info": [
+    [
+      "text.version",
+      "fill",
+      "node:info",
+      "text",
+      1.0
+    ]
+  ],
+  "railroad": [
+    [
+      "rect < g.railroad-terminal",
+      "fill",
+      "node:a",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.railroad-terminal",
+      "stroke",
+      "node:a",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g.railroad-terminal",
+      "fill",
+      "node:a",
+      "text",
+      1.0
+    ],
+    [
+      "rect < g.railroad-nonterminal",
+      "fill",
+      "node:letter#2",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.railroad-nonterminal",
+      "stroke",
+      "node:letter#2",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g.railroad-nonterminal",
+      "fill",
+      "node:letter#2",
+      "text",
+      1.0
+    ],
+    [
+      "text.railroad-rule-name",
+      "fill",
+      "node:letter",
+      "text",
+      1.0
+    ],
+    [
+      "circle < g.railroad-start",
+      "fill",
+      "node:@marker",
+      "fill",
+      1.0
+    ],
+    [
+      "path.railroad-line",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "eventmodeling": [
+    [
+      "rect < g.em-swimlane",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.em-swimlane",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g.em-swimlane",
+      "fill",
+      "node:@event-lane:0",
+      "text",
+      1.0
+    ],
+    [
+      "rect < g.em-box",
+      "fill",
+      "node:01",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.em-box",
+      "stroke",
+      "node:01",
+      "stroke",
+      1.0
+    ],
+    [
+      "span < div < foreignobject < g.em-box",
+      "fill",
+      "node:01",
+      "text",
+      1.0
+    ],
+    [
+      "path.em-relation",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ]
+  ],
+  "c4": [
+    [
+      "rect < g.basic.label-container < g.node.c4-shape.c4-person",
+      "fill",
+      "node:a",
+      "fill",
+      1.0
+    ],
+    [
+      "rect < g.basic.label-container < g.node.c4-shape.c4-person",
+      "stroke",
+      "node:a",
+      "stroke",
+      1.0
+    ],
+    [
+      "text < g < g.c4-name < g.label < g.node.c4-shape.c4-person",
+      "fill",
+      "node:a",
+      "text",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.c4-shape.c4-system",
+      "fill",
+      "node:s",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.c4-shape.c4-system",
+      "stroke",
+      "node:s",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.c4-shape.c4-external_system",
+      "fill",
+      "node:x",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.c4-shape.c4-external_system",
+      "stroke",
+      "node:x",
+      "stroke",
+      1.0
+    ],
+    [
+      "line < g",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "tspan < text < g",
+      "fill",
+      "edge:0",
+      "text",
+      1.0
+    ]
+  ],
+  "wardley": [
+    [
+      "text.wardley-title",
+      "fill",
+      "node:frontmatter-title",
+      "text",
+      1.0
+    ],
+    [
+      "line < g.wardley-axes",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.wardley-axis-label.wardley-axis-label-x",
+      "fill",
+      "node:@evolution",
+      "text",
+      1.0
+    ],
+    [
+      "text.wardley-stage-label",
+      "fill",
+      "node:@stage:0",
+      "text",
+      1.0
+    ],
+    [
+      "line < g.wardley-stages",
+      "stroke",
+      "edge:0",
+      "stroke",
+      0.8
+    ],
+    [
+      "line.wardley-link",
+      "stroke",
+      "edge:3",
+      "stroke",
+      1.0
+    ],
+    [
+      "circle < g.wardley-node.wardley-node--component",
+      "fill",
+      "node:A",
+      "fill",
+      1.0
+    ],
+    [
+      "circle < g.wardley-node.wardley-node--component",
+      "stroke",
+      "node:A",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.wardley-node-label",
+      "fill",
+      "node:@label:A",
+      "text",
+      1.0
+    ]
+  ],
+  "gantt": [
+    [
+      "rect.section.section0 < g",
+      "fill",
+      "cluster:0",
+      "fill",
+      0.2
+    ],
+    [
+      "rect.section.section1 < g",
+      "fill",
+      "cluster:1",
+      "fill",
+      0.2
+    ],
+    [
+      "rect.task.done0 < g",
+      "fill",
+      "node:t1",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.task.done0 < g",
+      "stroke",
+      "node:t1",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.task.active0 < g",
+      "fill",
+      "node:t2",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.task.active0 < g",
+      "stroke",
+      "node:t2",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.task.milestone",
+      "fill",
+      "node:m1",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.task.crit1 < g",
+      "fill",
+      "node:t3",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.task.crit1 < g",
+      "stroke",
+      "node:t3",
+      "stroke",
+      1.0
+    ],
+    [
+      "text.sectionTitle.sectionTitle0 < g",
+      "fill",
+      "node:section:A",
+      "text",
+      1.0
+    ],
+    [
+      "text.taskTextOutsideLeft",
+      "fill",
+      "node:label:3",
+      "text",
+      1.0
+    ],
+    [
+      "text < g.tick < g.grid",
+      "fill",
+      "node:tick:0",
+      "text",
+      1.0
+    ]
+  ],
+  "swimlane": [
+    [
+      "rect.basic.label-container < g.node.default",
+      "fill",
+      "node:A",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.basic.label-container < g.node.default",
+      "stroke",
+      "node:A",
+      "stroke",
+      1.0
+    ],
+    [
+      "p < span.nodeLabel < div < foreignobject < g.label",
+      "color",
+      "node:A",
+      "text",
+      1.0
+    ],
+    [
+      "path < g.edges.edgePaths",
+      "stroke",
+      "edge:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.swimlane-body < g.cluster.swimlane|color-0",
+      "fill",
+      "cluster:0",
+      "fill",
+      1.0
+    ],
+    [
+      "rect.swimlane-body < g.cluster.swimlane|color-0",
+      "stroke",
+      "cluster:0",
+      "stroke",
+      1.0
+    ],
+    [
+      "rect.swimlane-body < g.cluster.swimlane|color-1",
+      "fill",
+      "cluster:1",
+      "fill",
+      1.0
+    ]
+  ]
+}

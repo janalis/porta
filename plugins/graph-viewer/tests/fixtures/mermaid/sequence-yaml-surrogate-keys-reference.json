@@ -1,0 +1,417 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "surrogate0 form0",
+      "configuration": "{\n\"\\uD800\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate0 form1",
+      "configuration": "{\n{\"\\uD800\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate0 form2",
+      "configuration": "{\nseed: &key \"\\uD800\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate0 form3",
+      "configuration": "{\nseed: &key [\"\\uD800\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate0 form4",
+      "configuration": "{\n? \"\\uD800\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate0 form5",
+      "configuration": "{\n\"\\uD800\": null\n\"\\uD800\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate0 form6",
+      "configuration": "{\n\"\\uD800\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate1 form0",
+      "configuration": "{\n\"\\uDC00\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate1 form1",
+      "configuration": "{\n{\"\\uDC00\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate1 form2",
+      "configuration": "{\nseed: &key \"\\uDC00\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate1 form3",
+      "configuration": "{\nseed: &key [\"\\uDC00\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate1 form4",
+      "configuration": "{\n? \"\\uDC00\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate1 form5",
+      "configuration": "{\n\"\\uDC00\": null\n\"\\uDC00\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate1 form6",
+      "configuration": "{\n\"\\uDC00\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate2 form0",
+      "configuration": "{\n\"\\uD801\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate2 form1",
+      "configuration": "{\n{\"\\uD801\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate2 form2",
+      "configuration": "{\nseed: &key \"\\uD801\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate2 form3",
+      "configuration": "{\nseed: &key [\"\\uD801\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate2 form4",
+      "configuration": "{\n? \"\\uD801\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate2 form5",
+      "configuration": "{\n\"\\uD801\": null\n\"\\uD801\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate2 form6",
+      "configuration": "{\n\"\\uD801\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate3 form0",
+      "configuration": "{\n\"\\uD800tail\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate3 form1",
+      "configuration": "{\n{\"\\uD800tail\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate3 form2",
+      "configuration": "{\nseed: &key \"\\uD800tail\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate3 form3",
+      "configuration": "{\nseed: &key [\"\\uD800tail\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate3 form4",
+      "configuration": "{\n? \"\\uD800tail\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate3 form5",
+      "configuration": "{\n\"\\uD800tail\": null\n\"\\uD800tail\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate3 form6",
+      "configuration": "{\n\"\\uD800tail\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate4 form0",
+      "configuration": "{\n\"head\\uDC00\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate4 form1",
+      "configuration": "{\n{\"head\\uDC00\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate4 form2",
+      "configuration": "{\nseed: &key \"head\\uDC00\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate4 form3",
+      "configuration": "{\nseed: &key [\"head\\uDC00\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate4 form4",
+      "configuration": "{\n? \"head\\uDC00\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate4 form5",
+      "configuration": "{\n\"head\\uDC00\": null\n\"head\\uDC00\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate4 form6",
+      "configuration": "{\n\"head\\uDC00\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate5 form0",
+      "configuration": "{\n\"\\uD800\\uD800\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate5 form1",
+      "configuration": "{\n{\"\\uD800\\uD800\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate5 form2",
+      "configuration": "{\nseed: &key \"\\uD800\\uD800\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate5 form3",
+      "configuration": "{\nseed: &key [\"\\uD800\\uD800\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate5 form4",
+      "configuration": "{\n? \"\\uD800\\uD800\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate5 form5",
+      "configuration": "{\n\"\\uD800\\uD800\": null\n\"\\uD800\\uD800\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate5 form6",
+      "configuration": "{\n\"\\uD800\\uD800\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate6 form0",
+      "configuration": "{\n\"\\uD800\\uDC00\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate6 form1",
+      "configuration": "{\n{\"\\uD800\\uDC00\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate6 form2",
+      "configuration": "{\nseed: &key \"\\uD800\\uDC00\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate6 form3",
+      "configuration": "{\nseed: &key [\"\\uD800\\uDC00\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate6 form4",
+      "configuration": "{\n? \"\\uD800\\uDC00\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate6 form5",
+      "configuration": "{\n\"\\uD800\\uDC00\": null\n\"\\uD800\\uDC00\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate6 form6",
+      "configuration": "{\n\"\\uD800\\uDC00\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate7 form0",
+      "configuration": "{\n\"\\U00010000\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate7 form1",
+      "configuration": "{\n{\"\\U00010000\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate7 form2",
+      "configuration": "{\nseed: &key \"\\U00010000\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate7 form3",
+      "configuration": "{\nseed: &key [\"\\U00010000\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate7 form4",
+      "configuration": "{\n? \"\\U00010000\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate7 form5",
+      "configuration": "{\n\"\\U00010000\": null\n\"\\U00010000\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate7 form6",
+      "configuration": "{\n\"\\U00010000\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate8 form0",
+      "configuration": "{\n\"\\uFFFD\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate8 form1",
+      "configuration": "{\n{\"\\uFFFD\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate8 form2",
+      "configuration": "{\nseed: &key \"\\uFFFD\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate8 form3",
+      "configuration": "{\nseed: &key [\"\\uFFFD\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate8 form4",
+      "configuration": "{\n? \"\\uFFFD\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate8 form5",
+      "configuration": "{\n\"\\uFFFD\": null\n\"\\uFFFD\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate8 form6",
+      "configuration": "{\n\"\\uFFFD\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate9 form0",
+      "configuration": "{\n\"\\uD800,alias\": Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate9 form1",
+      "configuration": "{\n{\"\\uD800,alias\": Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate9 form2",
+      "configuration": "{\nseed: &key \"\\uD800,alias\"\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate9 form3",
+      "configuration": "{\nseed: &key [\"\\uD800,alias\"]\n*key : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate9 form4",
+      "configuration": "{\n? \"\\uD800,alias\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "surrogate9 form5",
+      "configuration": "{\n\"\\uD800,alias\": null\n\"\\uD800,alias\": Other\nalias: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "surrogate9 form6",
+      "configuration": "{\n\"\\uD800,alias\": First\n\"\\uD800\": Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    }
+  ]
+}

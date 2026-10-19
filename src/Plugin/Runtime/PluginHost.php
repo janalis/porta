@@ -8,6 +8,7 @@ use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
+use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsScope;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -41,9 +42,10 @@ final class PluginHost
         ?PortaJsonWriter $writer = null,
         ?SettingsScope $scope = null,
         ?Translator $translator = null,
+        ?MarkdownFenceRegistry $markdownFences = null,
     ) {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer, $scope);
-        $this->manager = new PluginManager($events, $this->settings);
+        $this->manager = new PluginManager($events, $this->settings, $markdownFences ?? new MarkdownFenceRegistry());
         $this->loader = new PluginLoader(
             $rootDir,
             PortaHome::base(),

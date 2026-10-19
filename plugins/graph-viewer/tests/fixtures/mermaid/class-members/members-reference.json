@@ -1,0 +1,144 @@
+{
+ "mermaid": "12.1.0",
+ "mermaidCommit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+ "cases": [
+  {
+   "input": "+int age",
+   "kind": "attribute",
+   "text": "+int age",
+   "style": ""
+  },
+  {
+   "input": "+String gender",
+   "kind": "attribute",
+   "text": "+String gender",
+   "style": ""
+  },
+  {
+   "input": "-List~int~ ids",
+   "kind": "attribute",
+   "text": "-List<int> ids",
+   "style": ""
+  },
+  {
+   "input": "+isMammal()$",
+   "kind": "method",
+   "text": "+isMammal()",
+   "style": "text-decoration:underline;"
+  },
+  {
+   "input": "+mate()*",
+   "kind": "method",
+   "text": "+mate()",
+   "style": "font-style:italic;"
+  },
+  {
+   "input": "+quack() bool",
+   "kind": "method",
+   "text": "+quack() : bool",
+   "style": ""
+  },
+  {
+   "input": "+quack()$ bool",
+   "kind": "method",
+   "text": "+quack() : bool",
+   "style": "text-decoration:underline;"
+  },
+  {
+   "input": "+quack() bool*",
+   "kind": "method",
+   "text": "+quack() : bool",
+   "style": "font-style:italic;"
+  },
+  {
+   "input": "#run(List~T~ items, Map~K,V~ map) List~List~T~~",
+   "kind": "method",
+   "text": "#run(List<T> items, Map<K,V> map) : List<List<T>>",
+   "style": ""
+  },
+  {
+   "input": "~internal",
+   "kind": "attribute",
+   "text": "~internal",
+   "style": ""
+  },
+  {
+   "input": "size$",
+   "kind": "attribute",
+   "text": "size",
+   "style": "text-decoration:underline;"
+  },
+  {
+   "input": "shape*",
+   "kind": "attribute",
+   "text": "shape",
+   "style": "font-style:italic;"
+  },
+  {
+   "input": "+ spaced",
+   "kind": "attribute",
+   "text": "+ spaced",
+   "style": ""
+  },
+  {
+   "input": "+ spaced()",
+   "kind": "method",
+   "text": "+ spaced()",
+   "style": ""
+  },
+  {
+   "input": "~T~ value",
+   "kind": "attribute",
+   "text": "~T~ value",
+   "style": ""
+  },
+  {
+   "input": "Map~K, V~ pairs",
+   "kind": "attribute",
+   "text": "Map<K, V> pairs",
+   "style": ""
+  },
+  {
+   "input": "a~b~c~d",
+   "kind": "attribute",
+   "text": "a<b~c>d",
+   "style": ""
+  },
+  {
+   "input": "~lone~tilde~",
+   "kind": "attribute",
+   "text": "~lone<tilde>",
+   "style": ""
+  },
+  {
+   "input": "compute(int a, int b)$ int",
+   "kind": "method",
+   "text": "compute(int a, int b) : int",
+   "style": "text-decoration:underline;"
+  },
+  {
+   "input": "nested(Map~String,List~Int~~)",
+   "kind": "method",
+   "text": "nested(Map~String,List<Int~>)",
+   "style": ""
+  },
+  {
+   "input": "-x()*  void",
+   "kind": "method",
+   "text": "-x() : void",
+   "style": "font-style:italic;"
+  },
+  {
+   "input": "$",
+   "kind": "attribute",
+   "text": "",
+   "style": "text-decoration:underline;"
+  },
+  {
+   "input": "run(~T~ x)",
+   "kind": "method",
+   "text": "run(<T> x)",
+   "style": ""
+  }
+ ]
+}

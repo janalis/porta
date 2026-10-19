@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Porta\Widget;
 
 use Porta\Editor\Document;
+use Porta\Help\Fence\FenceRenderQueue;
+use Porta\Help\Fence\FenceSession;
+use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\Help\Layout\PageWords;
 use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
@@ -15,6 +18,9 @@ use Porta\Search\FindTarget;
 use Porta\Support\AnsiText;
 use Porta\Support\Files;
 use Porta\Support\IntMath;
+use Porta\Support\RevoltScheduler;
+use Porta\Support\Scheduler;
+use Porta\Support\Text;
 use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Graphics\TerminalGraphics;
@@ -81,16 +87,29 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     /** @var array<int, true> the `<details>` the reader opened, by their number in source order — typing above one keeps it open */
     private array $openDetails = [];
     private readonly MarkdownRenderer $renderer;
+    private readonly ?FenceSession $fences;
+    private ?string $fenceTimer = null;
+    private int $fenceWidth = 0;
+    private bool $fencesVisible = false;
 
     public function __construct(
         ?Styles $styles = null,
         ?CodeHighlighterFactory $highlighters = null,
         ?Translator $translator = null,
         ?TerminalGraphics $graphics = null,
+        ?MarkdownFenceRegistry $fences = null,
+        ?FenceRenderQueue $fenceQueue = null,
+        private readonly Scheduler $scheduler = new RevoltScheduler(),
     ) {
         $this->initStyles($styles);
         $words = null === $translator ? null : new PageWords(static fn (string $name): string => self::pageWord($translator, $name));
-        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $words, $graphics);
+        $this->fences =
+            null !== $fences && null !== $fenceQueue
+                ? new FenceSession($fences, $fenceQueue, function (): void {
+                    $this->relayout();
+                    $this->scheduleFences();
+                }) : null;
+        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $words, $graphics, $this->fences);
         $this->headerZones = new ClickZones();
         // The terminal's answer arrives after the first frame: images that
         // were text until then are pixels now.
@@ -110,6 +129,8 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             'WARNING' => $translator->trans('Warning'),
             'CAUTION' => $translator->trans('Caution'),
             'DETAILS' => $translator->trans('Details'),
+            'DIAGRAM_PENDING' => $translator->trans('Rendering diagram…'),
+            'DIAGRAM_IMAGE_ERROR' => $translator->trans('Cannot display diagram PNG'),
             default => $translator->trans('Note'),
         };
     }
@@ -119,12 +140,54 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     {
         $this->doc = null;
         $this->invalidate();
+        $this->getContext()?->requestRender();
     }
 
     public function setDocsRoot(string $dir): void
     {
         $this->docsRoot = Files::canonical($dir);
         $this->tree = null === $this->path ? null : $this->treeOf($this->path);
+    }
+
+    private function scheduleFences(): void
+    {
+        if (!$this->fencesVisible || null === $this->fences || null === $this->path || $this->fenceWidth < 1 || null !== $this->fenceTimer) {
+            return;
+        }
+        $this->fenceTimer = $this->scheduler->delay(0.0, function (): void {
+            $this->fenceTimer = null;
+            $this->prepareFences();
+        });
+    }
+
+    private function prepareFences(): void
+    {
+        if ($this->fencesVisible && null !== $this->path && $this->fenceWidth > 0) {
+            $this->renderer->prepareFences($this->markdown, $this->path, $this->fenceWidth);
+            $this->relayout();
+        }
+    }
+
+    protected function resumeFences(): void
+    {
+        if ($this->fencesVisible) {
+            return;
+        }
+        $this->fencesVisible = true;
+        $this->scheduleFences();
+    }
+
+    #[\Override]
+    public function hide(): void
+    {
+        $this->fencesVisible = false;
+        if (null !== $this->fenceTimer) {
+            $this->scheduler->cancel($this->fenceTimer);
+            $this->fenceTimer = null;
+        }
+        $this->fences?->clear();
+        $this->renderer->clearImages();
+        $this->relayout();
     }
 
     /**
@@ -149,9 +212,15 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the one difference between a new page and a new text for the same page.
     protected function adopt(string $path, string $markdown, bool $fromTop): void
     {
-        $this->path = Files::canonical($path);
+        $canonical = Files::canonical($path);
+        if ($canonical !== $this->path) {
+            $this->renderer->clearImages();
+        }
+        $this->path = $canonical;
+        $this->fencesVisible = true;
         $this->tree = $this->treeOf($this->path);
         $this->markdown = $markdown;
+        $this->prepareFences();
         $this->doc = null;
         if ($fromTop) {
             $this->scrollTop = 0;
@@ -166,6 +235,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     #[\Override]
     public function clear(): void
     {
+        $this->hide();
         $this->path = null;
         $this->markdown = '';
         $this->doc = null;
@@ -303,6 +373,11 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         $margin = $this->margin($cols);
         $this->marginCols = \strlen($margin);
         $width = $cols - $this->marginCols;
+        $fenceWidth = \max(1, \max(20, $width) - 4);
+        if ($fenceWidth !== $this->fenceWidth) {
+            $this->fenceWidth = $fenceWidth;
+            $this->scheduleFences();
+        }
         if (null === $this->doc || $width !== $this->renderedWidth) {
             // A resize rewraps the page, so the same scroll offset would show
             // other text: keep the source line at the top instead. A new text
@@ -585,9 +660,28 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         $m = [];
         match (true) {
             !$doc->isAction($group) => $this->follow($target),
+            1 === \preg_match('/^fence-(element|action):(\d+):(.+)$/', $target, $m) => $this->fenceAction($m[1], (int) $m[2], $m[3]),
             1 === \preg_match('/^task:(\d+)-(\d+)$/', $target, $m) => $this->toggleTask((int) $m[1], (int) $m[2]),
             default => $this->toggleDetails((int) \substr($target, offset: \strlen('details:'))),
         };
+    }
+
+    private function fenceAction(string $kind, int $offset, string $id): void
+    {
+        $selected = function (int $line, string $element) use ($offset): void {
+            $target = 'fence-element:'.$offset.':'.$element;
+            $span = \array_find($this->doc->links ?? [], static fn (LinkSpan $span): bool => $target === $span->target);
+            if (null !== $span) {
+                $this->currentLink = $span->group;
+            }
+            $origin = Text::lineAndColumn($this->markdown, $offset)[0] + $line;
+            $this->pointAtSource($origin, 0);
+            $this->followLine = $origin;
+            $this->invalidate();
+        };
+        'element' === $kind
+            ? $this->fences?->select($offset, $id, $selected)
+            : $this->fences?->invoke($offset, $id, $selected);
     }
 
     /**

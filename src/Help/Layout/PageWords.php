@@ -22,7 +22,11 @@ final readonly class PageWords
 
     public static function english(): self
     {
-        return new self(static fn (string $name): string => \ucfirst(\strtolower($name)));
+        return new self(static fn (string $name): string => match ($name) {
+            'DIAGRAM_PENDING' => 'Rendering diagram…',
+            'DIAGRAM_IMAGE_ERROR' => 'Cannot display diagram PNG',
+            default => \ucfirst(\strtolower($name)),
+        });
     }
 
     public function title(AlertKind $kind): string
@@ -34,6 +38,16 @@ final readonly class PageWords
     public function details(): string
     {
         return ($this->translate)('DETAILS');
+    }
+
+    public function diagramPending(): string
+    {
+        return ($this->translate)('DIAGRAM_PENDING');
+    }
+
+    public function diagramImageError(): string
+    {
+        return ($this->translate)('DIAGRAM_IMAGE_ERROR');
     }
 
     public function role(AlertKind $kind): Role

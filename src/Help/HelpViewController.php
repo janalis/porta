@@ -118,6 +118,7 @@ final class HelpViewController implements ContributedView
         if (null === $this->page->path()) {
             return; // the front page could not be read: the error says so
         }
+        $this->page->resume();
         $this->open = true;
         $this->host->show($this->region, self::ID);
         $this->focusPage();
@@ -130,6 +131,7 @@ final class HelpViewController implements ContributedView
             return;
         }
         $this->open = false;
+        $this->page->hide();
         if ($this->find->isOpen()) {
             $this->find->close();
         }

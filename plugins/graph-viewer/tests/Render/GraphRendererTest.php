@@ -202,6 +202,27 @@ final class GraphRendererTest extends TestCase
         $this->assertStringNotContainsString("\x1b[", \implode('', $lines), 'a style-less grid emits no escapes');
     }
 
+    public function testNodeLabelsCenterAndTruncateByDisplayColumns(): void
+    {
+        foreach ([10 => '漢字漢字', 6 => '漢字…'] as $width => $expected) {
+            $graph = new GraphLayout(24.0, 12.0, [self::node(0, 'Unicode', 10.0, 6.0, (float) $width, h: 6.0, label: '漢字漢字')], [], []);
+            $view = new ZoomPanModel(24, 12, [1.0]);
+            $lines = GraphRenderer::render($graph, $view, null, 24, 6, Styles::dark());
+            $this->assertStringContainsString($expected, self::plain($lines));
+            $this->assertSame(24, AnsiUtils::visibleWidth($lines[2]));
+        }
+    }
+
+    public function testWideGraphemesOccupyTwoCellsAndClipAtTheBoundary(): void
+    {
+        $grid = new GraphCellGrid(5, 2, new ZoomPanModel(5, 4), null);
+        $grid->text(0, 0, '漢字X', '', maxCol: null);
+        $grid->text(0, 1, 'é漢字', '', maxCol: 2);
+        $this->assertSame(['漢字X', 'é漢  '], $grid->lines());
+        $grid->text(4, 0, '漢', '', maxCol: null);
+        $this->assertSame('漢字X', $grid->lines()[0]);
+    }
+
     public function testABlankRunUnderAnOrdinaryRoleSkipsEscapesButASelectedRowRunDoesNot(): void
     {
         $view = new ZoomPanModel(100, 100);

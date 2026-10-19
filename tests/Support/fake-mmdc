@@ -1,0 +1,42 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require dirname(__DIR__, 2).'/vendor/autoload.php';
+
+$options = [];
+foreach (array_slice($argv, 1) as $index => $arg) {
+    if (str_starts_with($arg, '--')) {
+        $options[$arg] = $argv[$index + 2] ?? '';
+    }
+}
+$source = (string) stream_get_contents(STDIN);
+file_put_contents('mermaid-request.json', json_encode([$options, $source], JSON_THROW_ON_ERROR));
+if (str_contains($source, 'deferred')) {
+    fclose(STDOUT);
+    fclose(STDERR);
+    usleep(200000);
+    exit(str_contains($source, 'failure') ? 1 : 0);
+}
+if (str_contains($source, 'broken')) {
+    file_put_contents($options['--output'], 'partial');
+    fwrite(STDERR, "Mermaid parse error on line 2\n");
+    exit(1);
+}
+if (str_contains($source, 'empty-output')) {
+    exit(0);
+}
+if (str_contains($source, 'slow')) {
+    usleep(500000);
+}
+if ('svg' === ($options['--outputFormat'] ?? '')) {
+    $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><g class="node" id="flowchart-A-0" data-id="A" transform="translate(5,5)"><rect width="30" height="20"/><text x="10" y="16">A</text></g><g class="node" id="flowchart-B-1" data-id="B" transform="translate(60,20)"><rect width="30" height="20"/><text x="10" y="16">B</text></g></svg>';
+    if (str_contains($source, 'oversized-svg')) {
+        $svg = str_replace('</svg>', '<!--'.str_repeat('x', 4_194_305).'--></svg>', $svg);
+    }
+    file_put_contents($options['--output'], $svg);
+    exit(0);
+}
+$scale = (float) ($options['--scale'] ?? 1);
+file_put_contents($options['--output'], Porta\Tests\Support\PngFixture::bytes(max(1, (int) (120 * $scale)), max(1, (int) (80 * $scale))));

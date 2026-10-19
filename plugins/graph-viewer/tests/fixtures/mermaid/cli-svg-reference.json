@@ -1,0 +1,201 @@
+{
+  "renderer": "mermaid@12.1.0",
+  "integrity": "sha512-wlVCp+8eTupfCeeFvoZNNiTuHrvag0P2jz/ILgb/f/6jkVokUefOcujefi8qUe/j2asHiSePncVsz/xzzA80LQ==",
+  "browser": "Google Chrome via isolated Playwright context",
+  "note": "Published package evidence; no claim that the npm build is byte-identical to the pinned source commit. Text estimates are conservative.",
+  "diagrams": {
+    "flowchart": {
+      "width": 360,
+      "height": 61,
+      "matches": {
+        "A": {
+          "bounds": [
+            8,
+            8,
+            160,
+            53
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            200,
+            8,
+            352,
+            53
+          ],
+          "exact": true
+        }
+      }
+    },
+    "modern": {
+      "width": 360,
+      "height": 61,
+      "matches": {
+        "A": {
+          "bounds": [
+            8,
+            8,
+            160,
+            53
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            200,
+            8,
+            352,
+            53
+          ],
+          "exact": true
+        }
+      }
+    },
+    "class": {
+      "width": 78.890625,
+      "height": 218,
+      "matches": {
+        "A": {
+          "bounds": [
+            8,
+            8,
+            70.890625,
+            89
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            12.265625,
+            129,
+            66.625,
+            210
+          ],
+          "exact": true
+        }
+      }
+    },
+    "state": {
+      "width": 152,
+      "height": 130,
+      "matches": {
+        "A": {
+          "bounds": [
+            8,
+            8,
+            144,
+            45
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            8,
+            85,
+            144,
+            122
+          ],
+          "exact": true
+        }
+      }
+    },
+    "sequence": {
+      "width": 450,
+      "height": 265,
+      "matches": {
+        "A": {
+          "bounds": [
+            50,
+            10,
+            200,
+            84
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            250,
+            10,
+            400,
+            84
+          ],
+          "exact": true
+        },
+        "event2": {
+          "bounds": [
+            205.09375,
+            105.140625,
+            238.90625,
+            122.15625
+          ],
+          "exact": false
+        }
+      }
+    },
+    "er": {
+      "width": 116,
+      "height": 279,
+      "matches": {
+        "A": {
+          "bounds": [
+            8,
+            8,
+            108,
+            89
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            8,
+            190,
+            108,
+            271
+          ],
+          "exact": true
+        }
+      }
+    },
+    "usecase": {
+      "width": 316,
+      "height": 161,
+      "matches": {
+        "A": {
+          "bounds": [
+            20,
+            20,
+            96,
+            141
+          ],
+          "exact": true
+        },
+        "B": {
+          "bounds": [
+            136,
+            51.5,
+            296,
+            109.5
+          ],
+          "exact": true
+        }
+      }
+    }
+  },
+  "sha256": {
+    "class.mmd": "65d88a862448d425917f537b9fcbd2aad0afd72b5671bdd3cab2f77993229a77",
+    "class.svg": "e7fd75ac8288227e24a38b26e945eb3dc88fe6194cd7dda3b94b605888bc402f",
+    "er.mmd": "514a01be318724d2c1e70c0c7594c4af6f25665995a551235aadb1b6596e4be6",
+    "er.svg": "09780756d4863964ea094b0f2eaaf59a945d2f2b5ee7cf14dd53d1351150c40d",
+    "flowchart.mmd": "d3f58d26d081cf8d4cd4d14ae4124a3d19f192b29e2f59ea0101192b1af70b15",
+    "flowchart.svg": "7fd441e9cfa459bf95c8df1d666bc8d09c931e3b6db4baac81d0600dce43d055",
+    "modern.mmd": "294129b3d6f86175110385a0adc5972479a0fa8ca73013c0fd9fc64a372d2500",
+    "modern.svg": "e0b061208cb78c93e1587778232b215a94c90d60be79866d07f4234a7a4429f3",
+    "sequence.mmd": "db2a8c95c64a144c978b3e61f00fde3ddd8aef0dd3a7be88b63a60cc3d520768",
+    "sequence.svg": "447de96faeb6ea16a844454ec90feacfcddc16392aab79df172ca26d0c586441",
+    "state.mmd": "9c8407df1e315c0a7a42fb4ab08c06283dba0d7817ac711b47d8fc3ab7611f86",
+    "state.svg": "7eea025b153dc495c1d491df1def731ff941e4547b8518c29386925f570a24e3",
+    "usecase.mmd": "1ef9963838df5318424ea78069cef7d36083c9954a2e9c10bf0183d5f225e9e5",
+    "usecase.svg": "12aedbbd0aff7f8958d7ba70dafba0218ec8151dd8e44927d5abc60a37fbe925"
+  }
+}

@@ -1,0 +1,435 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned multiline metadata wrapping",
+  "cases": [
+    {
+      "name": "colonAlias",
+      "configuration": "{alias:*missing}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonText",
+      "configuration": "{alias:Name}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonQuote",
+      "configuration": "{alias:\"Name\"}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonNumber",
+      "configuration": "{alias:0}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonUri",
+      "configuration": "{http://example: Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "colonNested",
+      "configuration": "{ignored: {alias:*missing}, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "colonAtEnd",
+      "configuration": "{alias:}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonQuestion",
+      "configuration": "{alias:?value}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonComment",
+      "configuration": "{alias:#hash}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonBang",
+      "configuration": "{alias:!!str}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "literalRef",
+      "configuration": "{a: &key alias, alias:*key}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "duplicate",
+      "configuration": "{alias:Name, \"alias:Name\": Value}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "quoteKey",
+      "configuration": "{\"alias\":Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nullDuplicate",
+      "configuration": "{alias: null, alias: Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "emptyDuplicate",
+      "configuration": "{alias:, alias: Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "aliasNullDuplicate",
+      "configuration": "{a: &key alias, alias: null, *key : Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "aliasNullFirst",
+      "configuration": "{a: &key alias, *key : null, alias: Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "numericDuplicate",
+      "configuration": "{0: First, 0.0: Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "pairDuplicate",
+      "configuration": "{a: &key \"😀\", \"\\uD83D\\uDE00\": First, *key : Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "mixedColon",
+      "configuration": "{a: b, alias:Name: Value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "mapEmpty",
+      "configuration": "{alias:Name, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "questionLiteral",
+      "configuration": "{alias:?value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "bangLiteral",
+      "configuration": "{alias:!!str, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "hashLiteral",
+      "configuration": "{alias:#hash, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "nestedList",
+      "configuration": "{ignored: [{alias:Name}], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "nestedString",
+      "configuration": "{ignored: [alias:Name], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "quotedLiteral",
+      "configuration": "{ignored: \"alias:Name\", alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "singleLiteral",
+      "configuration": "{ignored: 'alias:Name', alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "quotedColonKey",
+      "configuration": "{\"alias:Name\": Value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "urlValue",
+      "configuration": "{ignored: http://example, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "commentQuote",
+      "configuration": "{ignored: Something, # \"literal\n alias:Name, alias: Good}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "emptyAfterComma",
+      "configuration": "{alias:Name,}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "commaText",
+      "configuration": "{alias:Name,other}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "nestedDupe",
+      "configuration": "{ignored: {one: null, one: Second}, alias: Good}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "separateMaps",
+      "configuration": "{one: {same: null}, two: {same: null}, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "numericStringKey",
+      "configuration": "{0: First, \"0\": Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nullStringKey",
+      "configuration": "{null: First, \"null\": Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "booleanStringKey",
+      "configuration": "{true: First, \"true\": Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "literalEscapes",
+      "configuration": "{alias:\\u0061, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "duplicateQuotedColonFirst",
+      "configuration": "{\"alias:Name\": null, alias:Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "blockShield",
+      "configuration": "{\nignored: |-\n  {alias:Name}\nalias: Good\n}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "nestedBlockFlow",
+      "configuration": "{\nignored: {alias:Name}\nalias: Good\n}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "emptyPlain",
+      "configuration": "{type boundary}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "explicitPlain",
+      "configuration": "{? alias:Name : Value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "explicitQuoted",
+      "configuration": "{? \"alias\": Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "multilineImplicit",
+      "configuration": "{\n{alias:Name\n: Value}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "multilineExplicit",
+      "configuration": "{\n{? alias\n: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "malformedQuotedKey",
+      "configuration": "{\"al\\qias\": Value}",
+      "error": "unknown escape sequence"
+    },
+    {
+      "name": "explicitComment",
+      "configuration": "{\n{? # comment\n alias:Name\n: Value, alias: Good}\n}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "hiddenBinary",
+      "configuration": "{alias:\"unclosed, ignored: !!binary aGk=}",
+      "error": "unknown tag !<tag:yaml.org,2002:binary>"
+    },
+    {
+      "name": "hiddenTimestamp",
+      "configuration": "{alias:\"unclosed, ignored: !!timestamp 2024-01-01}",
+      "error": "unknown tag !<tag:yaml.org,2002:timestamp>"
+    },
+    {
+      "name": "quotedInsidePlain",
+      "configuration": "{alias:\"unclosed, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "explicitBraceKey",
+      "configuration": "{? \"has } literal\": Value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "explicitListBrace",
+      "configuration": "{ignored: [? \"has } literal\": Value], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "blockListBrace",
+      "configuration": "{\nignored:\n - \"has } literal\"\nalias: Good\n}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "blockListSingleBrace",
+      "configuration": "{\nignored:\n - 'has } literal'\nalias: Good\n}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "explicitSingleBrace",
+      "configuration": "{? 'has } literal': Value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "plainQuoteBrace",
+      "configuration": "{alias:\"part\"text, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listPlainPair",
+      "configuration": "{ignored: [foo: Value], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listQuotedPair",
+      "configuration": "{ignored: [\"foo\": Value], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listRepeatedPair",
+      "configuration": "{ignored: [foo: One, foo: Two], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listEmptyExplicit",
+      "configuration": "{ignored: [? foo], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listQuotedScalar",
+      "configuration": "{ignored: [\"foo\", \"bar\"], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listNestedPair",
+      "configuration": "{ignored: [foo: [bar: Value]], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "listBooleanPair",
+      "configuration": "{ignored: [true: Value], alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "unicodeLiteralKey",
+      "configuration": "{\"\\uD83D\\uDE00\": Value, alias: Good}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "quotedJsonBrace",
+      "configuration": "{\"alias\":\"Name } ; literal\"}",
+      "alias": "Name } ; literal",
+      "type": null
+    },
+    {
+      "name": "jsonDuplicate",
+      "configuration": "{\"alias\":null,\"alias\":\"Name\"}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "jsonNestedDuplicate",
+      "configuration": "{\"ignored\":{\"key\":null,\"key\":true},\"alias\":\"Good\"}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "jsonEscapedDuplicate",
+      "configuration": "{\"al\\u0069as\":\"First\",\"alias\":\"Second\"}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "jsonUnicodeDuplicate",
+      "configuration": "{\"\\uD83D\\uDE00\":null,\"😀\":true,\"alias\":\"Good\"}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "jsonIndependentMaps",
+      "configuration": "{\"ignored\":{\"first\":null},\"other\":{\"first\":null},\"alias\":\"Good\"}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "jsonPrototypeDuplicate",
+      "configuration": "{\"__proto__\":null,\"__proto__\":true,\"alias\":\"Good\"}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "jsonEmptyDuplicate",
+      "configuration": "{\"\":null,\"\":true,\"alias\":\"Good\"}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "jsonStringZero",
+      "configuration": "{\"0\":null,\"alias\":\"Good\"}",
+      "alias": "Good",
+      "type": null
+    }
+  ]
+}

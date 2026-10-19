@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
-  # A red gate should be re-runnable after a flake fix without pushing a no-op.
+  # Manual runs are restricted to main/develop by every job below.
   workflow_dispatch:
   # Advisories land against an unchanged lock too: without this, a new CVE
   # surfaces only when someone next opens a PR. Schedule runs execute the
@@ -36,6 +36,7 @@ env:
 
 jobs:
   audit:
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
@@ -54,7 +55,7 @@ jobs:
         run: composer audit --locked
 
   static:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
@@ -86,7 +87,7 @@ jobs:
         run: composer custos
 
   tests:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
@@ -130,7 +131,7 @@ jobs:
   # produce separate reports, so the long pole is now the longer of the two
   # rather than their sum. `coverage:check` still chains both locally.
   coverage:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:
@@ -166,7 +167,7 @@ jobs:
           retention-days: 14
 
   coverage-plugins:
-    if: github.event_name != 'schedule'
+    if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     steps:

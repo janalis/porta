@@ -1,0 +1,266 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned multiline metadata wrapping",
+  "cases": [
+    {
+      "name": "version12",
+      "configuration": "{\n%YAML 1.2\n---\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "version11",
+      "configuration": "{\n%YAML 1.1\n---\nalias: yes\n}",
+      "alias": "yes",
+      "type": null
+    },
+    {
+      "name": "version10",
+      "configuration": "{\n%YAML 1.0\n---\nalias: yes\n}",
+      "alias": "yes",
+      "type": null
+    },
+    {
+      "name": "version13",
+      "configuration": "{\n%YAML 1.3\n---\nalias: yes\n}",
+      "alias": "yes",
+      "type": null
+    },
+    {
+      "name": "leadingZero",
+      "configuration": "{\n%YAML 001.02\n---\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "custom",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!str true\n}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "encodedPrefix",
+      "configuration": "{\n%TAG !e! tag:yaml.org%2C2002:\n---\nalias: !e!str true\n}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "encodedSuffix",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!%73tr true\n}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "primary",
+      "configuration": "{\n%TAG ! tag:yaml.org,2002:\n---\nalias: !str true\n}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "secondary",
+      "configuration": "{\n%TAG !! tag:yaml.org,2002:\n---\nalias: !!str true\n}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "barePrimary",
+      "configuration": "{\n%TAG ! tag:yaml.org,2002:str\n---\nalias: ! true\n}",
+      "alias": "true",
+      "type": null
+    },
+    {
+      "name": "stringNull",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!null null\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "key",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\n!e!str alias: Key\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "comment",
+      "configuration": "{\n# comment\n%TAG !e! tag:yaml.org,2002: # suffix\n# second\n%YAML 1.2\n---\nalias: !e!str Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknown",
+      "configuration": "{\n%FOO ignored arguments\n---\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "unknownEmpty",
+      "configuration": "{\n%FOO\n---\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "block",
+      "configuration": "{\n%YAML 1.2\n---\nalias: |-\n  %TAG !e! text\n  !e!str literal\n}",
+      "alias": "%TAG !e! text\n!e!str literal",
+      "type": null
+    },
+    {
+      "name": "quoted",
+      "configuration": "{\n%YAML 1.2\n---\nalias: \"%TAG !e! text\"\n}",
+      "alias": "%TAG !e! text",
+      "type": null
+    },
+    {
+      "name": "noMarker",
+      "configuration": "{\n%YAML 1.2\nalias: Name\n}",
+      "error": "directives end mark is expected"
+    },
+    {
+      "name": "duplicateVersion",
+      "configuration": "{\n%YAML 1.2\n%YAML 1.2\n---\nalias: Name\n}",
+      "error": "duplication of %YAML directive"
+    },
+    {
+      "name": "badMajor",
+      "configuration": "{\n%YAML 2.0\n---\nalias: Name\n}",
+      "error": "unacceptable YAML version of the document"
+    },
+    {
+      "name": "badVersion",
+      "configuration": "{\n%YAML 1.x\n---\nalias: Name\n}",
+      "error": "ill-formed argument of the YAML directive"
+    },
+    {
+      "name": "extraVersion",
+      "configuration": "{\n%YAML 1.2 extra\n---\nalias: Name\n}",
+      "error": "YAML directive accepts exactly one argument"
+    },
+    {
+      "name": "missingVersion",
+      "configuration": "{\n%YAML\n---\nalias: Name\n}",
+      "error": "YAML directive accepts exactly one argument"
+    },
+    {
+      "name": "duplicateHandle",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!str Name\n}",
+      "error": "there is a previously declared suffix for \"!e!\" tag handle"
+    },
+    {
+      "name": "badHandle",
+      "configuration": "{\n%TAG !a1! tag:yaml.org,2002:\n---\nalias: Name\n}",
+      "error": "ill-formed tag handle (first argument) of the TAG directive"
+    },
+    {
+      "name": "missingPrefix",
+      "configuration": "{\n%TAG !e!\n---\nalias: Name\n}",
+      "error": "TAG directive accepts exactly two arguments"
+    },
+    {
+      "name": "extraPrefix",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002: extra\n---\nalias: Name\n}",
+      "error": "TAG directive accepts exactly two arguments"
+    },
+    {
+      "name": "badPrefix",
+      "configuration": "{\n%TAG !e! [bad\n---\nalias: Name\n}",
+      "error": "ill-formed tag prefix (second argument) of the TAG directive"
+    },
+    {
+      "name": "badPercent",
+      "configuration": "{\n%TAG !e! %XX\n---\nalias: Name\n}",
+      "error": "tag prefix is malformed: %XX"
+    },
+    {
+      "name": "badUtf8",
+      "configuration": "{\n%TAG !e! %FF\n---\nalias: Name\n}",
+      "error": "tag prefix is malformed: %FF"
+    },
+    {
+      "name": "emptyDirective",
+      "configuration": "{\n%\n---\nalias: Name\n}",
+      "error": "directive name must not be less than one character in length"
+    },
+    {
+      "name": "undeclared",
+      "configuration": "{\n%YAML 1.2\n---\nalias: !e!str Name\n}",
+      "error": "undeclared tag handle \"!e!\""
+    },
+    {
+      "name": "foreign",
+      "configuration": "{\n%TAG !! tag:foreign:\n---\nalias: !!str Name\n}",
+      "error": "unknown tag !<tag:foreign:str>"
+    },
+    {
+      "name": "timestamp",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!timestamp 2024-01-01\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:timestamp>"
+    },
+    {
+      "name": "crlf",
+      "configuration": "{\n%YAML 1.2\r\n---\r\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "laterKey",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\ntype: actor\n!e!str alias: Name\n}",
+      "alias": "Name",
+      "type": "actor"
+    },
+    {
+      "name": "plain",
+      "configuration": "{\nalias: before %YAML 1.2\n}",
+      "alias": "before %YAML 1.2",
+      "type": null
+    },
+    {
+      "name": "escapedPrefix",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:%2573\n---\nalias: !e!tr true\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:%73tr>"
+    },
+    {
+      "name": "primaryOverride",
+      "configuration": "{\n%TAG ! tag:foreign:\n---\nalias: !str Name\n}",
+      "error": "unknown tag !<tag:foreign:str>"
+    },
+    {
+      "name": "suffixPercent",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n---\nalias: !e!%XX true\n}",
+      "error": "tag name is malformed: %XX"
+    },
+    {
+      "name": "rootComment",
+      "configuration": "{\n%TAG !e! tag:yaml.org,2002:\n--- # marker\n# root\n!e!str alias: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "duplicateUnknown",
+      "configuration": "{\n%FOO\n%FOO\n---\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "rootTagComment",
+      "configuration": "{\n# !!str alias: ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "markerTagComment",
+      "configuration": "{\n%YAML 1.2\n--- # !!str alias: ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "eofDirective",
+      "configuration": "{\n%FOO\n}",
+      "error": "directives end mark is expected"
+    },
+    {
+      "name": "eofComment",
+      "configuration": "{\n%FOO\n# no document\n}",
+      "error": "directives end mark is expected"
+    }
+  ]
+}

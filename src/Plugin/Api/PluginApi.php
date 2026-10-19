@@ -110,6 +110,8 @@ final class PluginApi
     private readonly PluginBuffer $viewers;
     /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
     private readonly PluginBuffer $previews;
+    /** @var PluginBuffer<array{plugin: string, languages: list<string>, render: \Closure(string, string, string, int, \Closure(\Porta\Help\Fence\FenceResult): void, \Closure(string): void): \Closure(): void}> */
+    private readonly PluginBuffer $markdownFences;
     /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
     private readonly PluginBuffer $panes;
 
@@ -148,6 +150,7 @@ final class PluginApi
         $this->tokenSpans = new PluginBuffer();
         $this->viewers = new PluginBuffer();
         $this->previews = new PluginBuffer();
+        $this->markdownFences = new PluginBuffer();
         $this->panes = new PluginBuffer();
         $this->views = new PluginBuffer();
         $this->actions = new PluginBuffer();
@@ -1099,6 +1102,33 @@ final class PluginApi
         $this->hooks[] = [$eventClass, $listener];
     }
 
+    /**
+     * Render fenced Markdown asynchronously. The returned closure cancels the
+     * request. Success carries PNG bytes or terminal rows with relative origins.
+     *
+     * @param non-empty-list<string> $languages
+     * @param \Closure(string, string, string, int, \Closure(\Porta\Help\Fence\FenceResult): void, \Closure(string): void): \Closure(): void $render
+     */
+    public function registerMarkdownFence(array $languages, \Closure $render): void
+    {
+        if ($this->drained) {
+            throw new PluginException('Markdown fences must be registered during activate()');
+        }
+        if ([] === $languages) {
+            throw new PluginException('Markdown fence languages must not be empty');
+        }
+        foreach ($languages as $language) {
+            if (1 !== \preg_match('/^[a-zA-Z][a-zA-Z0-9_-]*$/D', $language)) {
+                throw new PluginException('Invalid Markdown fence language: '.$language);
+            }
+        }
+        $this->markdownFences->add([
+            'plugin' => $this->pluginName,
+            'languages' => \array_values(\array_unique(\array_map(\strtolower(...), $languages))),
+            'render' => $render,
+        ]);
+    }
+
     // --- Actions (live IDE; PluginException during activate()) ---------------
 
     /**
@@ -1795,6 +1825,12 @@ final class PluginApi
     public function bufferedPreviews(): array
     {
         return $this->previews->all();
+    }
+
+    /** @return list<array{plugin: string, languages: list<string>, render: \Closure(string, string, string, int, \Closure(\Porta\Help\Fence\FenceResult): void, \Closure(string): void): \Closure(): void}> */
+    public function bufferedMarkdownFences(): array
+    {
+        return $this->markdownFences->all();
     }
 
     /** @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */

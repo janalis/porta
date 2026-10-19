@@ -90,6 +90,7 @@ final class PluginApiDocTest extends TestCase
                 'bufferedInstallers',
                 'bufferedLanguageServers',
                 'bufferedListTools',
+                'bufferedMarkdownFences',
                 'bufferedMenuItems',
                 'bufferedMenus',
                 'bufferedPanes',

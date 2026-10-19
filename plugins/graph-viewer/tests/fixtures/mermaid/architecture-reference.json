@@ -1,0 +1,1958 @@
+{
+  "should-align-siblings-in-a-row-when-their-edges-feed-a-common-downstream-node.mmd": {
+    "services": [
+      {
+        "id": "src1",
+        "icon": "server",
+        "title": "Source 1"
+      },
+      {
+        "id": "src2",
+        "icon": "server",
+        "title": "Source 2"
+      },
+      {
+        "id": "src3",
+        "icon": "server",
+        "title": "Source 3"
+      },
+      {
+        "id": "proc",
+        "icon": "server",
+        "title": "Processor"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "src1",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "proc",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "src2",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "proc",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "src3",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "proc",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [
+      {
+        "direction": "row",
+        "members": [
+          "src1",
+          "src2",
+          "src3"
+        ]
+      }
+    ],
+    "groups": [],
+    "junctions": []
+  },
+  "should-render-a-deterministic-layout-for-a-complex-deeply-nested-diagram.mmd": {
+    "groups": [
+      {
+        "id": "sub1",
+        "icon": "cloud",
+        "title": "Subscription A"
+      },
+      {
+        "id": "vnet1",
+        "icon": "cloud",
+        "title": "VNet A",
+        "in": "sub1"
+      },
+      {
+        "id": "sub2",
+        "icon": "cloud",
+        "title": "Subscription B"
+      },
+      {
+        "id": "shared",
+        "icon": "cloud",
+        "title": "Shared",
+        "in": "sub2"
+      },
+      {
+        "id": "env",
+        "icon": "cloud",
+        "title": "Environment",
+        "in": "sub2"
+      },
+      {
+        "id": "vnet",
+        "icon": "cloud",
+        "title": "VNet",
+        "in": "env"
+      },
+      {
+        "id": "snet1",
+        "icon": "cloud",
+        "title": "App Subnet",
+        "in": "vnet"
+      },
+      {
+        "id": "snet2",
+        "icon": "cloud",
+        "title": "PE Subnet",
+        "in": "vnet"
+      }
+    ],
+    "services": [
+      {
+        "id": "vm1",
+        "icon": "server",
+        "title": "VM",
+        "in": "vnet1"
+      },
+      {
+        "id": "reg",
+        "icon": "database",
+        "title": "Registry",
+        "in": "shared"
+      },
+      {
+        "id": "nsg",
+        "icon": "server",
+        "title": "NSG",
+        "in": "snet1"
+      },
+      {
+        "id": "asp",
+        "icon": "server",
+        "title": "App Plan",
+        "in": "snet1"
+      },
+      {
+        "id": "web",
+        "icon": "server",
+        "title": "Web App",
+        "in": "snet1"
+      },
+      {
+        "id": "pe1",
+        "icon": "server",
+        "title": "PE Blob",
+        "in": "snet2"
+      },
+      {
+        "id": "pe2",
+        "icon": "server",
+        "title": "PE Bus",
+        "in": "snet2"
+      },
+      {
+        "id": "storage",
+        "icon": "disk",
+        "title": "Storage",
+        "in": "env"
+      },
+      {
+        "id": "container",
+        "icon": "disk",
+        "title": "Container",
+        "in": "env"
+      },
+      {
+        "id": "bus",
+        "icon": "server",
+        "title": "Service Bus",
+        "in": "env"
+      },
+      {
+        "id": "dns",
+        "icon": "server",
+        "title": "DNS Zone",
+        "in": "env"
+      },
+      {
+        "id": "client",
+        "icon": "internet",
+        "title": "Client"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "reg",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "web",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "nsg",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "asp",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "asp",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "web",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "web",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "pe1",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "pe1",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "storage",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "storage",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "container",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "web",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "pe2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "pe2",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "bus",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "vm1",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "pe2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-render-a-deterministic-layout-with-an-explicit-seed-override.mmd": {
+    "groups": [
+      {
+        "id": "sub1",
+        "icon": "cloud",
+        "title": "Subscription A"
+      },
+      {
+        "id": "vnet1",
+        "icon": "cloud",
+        "title": "VNet A",
+        "in": "sub1"
+      },
+      {
+        "id": "sub2",
+        "icon": "cloud",
+        "title": "Subscription B"
+      }
+    ],
+    "services": [
+      {
+        "id": "vm1",
+        "icon": "server",
+        "title": "VM",
+        "in": "vnet1"
+      },
+      {
+        "id": "web",
+        "icon": "server",
+        "title": "Web App",
+        "in": "sub2"
+      },
+      {
+        "id": "db",
+        "icon": "database",
+        "title": "Registry",
+        "in": "sub2"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "vm1",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "web",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "web",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "db",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-render-a-grid-via-combined-row-column-alignments.mmd": {
+    "groups": [
+      {
+        "id": "tier1",
+        "icon": "cloud",
+        "title": "Tier 1"
+      },
+      {
+        "id": "tier2",
+        "icon": "database",
+        "title": "Tier 2"
+      }
+    ],
+    "services": [
+      {
+        "id": "a1",
+        "icon": "server",
+        "title": "A1",
+        "in": "tier1"
+      },
+      {
+        "id": "a2",
+        "icon": "server",
+        "title": "A2",
+        "in": "tier1"
+      },
+      {
+        "id": "a3",
+        "icon": "server",
+        "title": "A3",
+        "in": "tier1"
+      },
+      {
+        "id": "b1",
+        "icon": "database",
+        "title": "B1",
+        "in": "tier2"
+      },
+      {
+        "id": "b2",
+        "icon": "database",
+        "title": "B2",
+        "in": "tier2"
+      },
+      {
+        "id": "b3",
+        "icon": "database",
+        "title": "B3",
+        "in": "tier2"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "a1",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "b1",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "a2",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "b2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "a3",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "b3",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [
+      {
+        "direction": "row",
+        "members": [
+          "a1",
+          "a2",
+          "a3"
+        ]
+      },
+      {
+        "direction": "row",
+        "members": [
+          "b1",
+          "b2",
+          "b3"
+        ]
+      },
+      {
+        "direction": "column",
+        "members": [
+          "a1",
+          "b1"
+        ]
+      },
+      {
+        "direction": "column",
+        "members": [
+          "a2",
+          "b2"
+        ]
+      },
+      {
+        "direction": "column",
+        "members": [
+          "a3",
+          "b3"
+        ]
+      }
+    ],
+    "junctions": []
+  },
+  "should-render-a-simple-architecture-diagram-with-groups.mmd": {
+    "groups": [
+      {
+        "id": "api",
+        "icon": "cloud",
+        "title": "API"
+      }
+    ],
+    "services": [
+      {
+        "id": "db",
+        "icon": "database",
+        "title": "Database",
+        "in": "api"
+      },
+      {
+        "id": "disk1",
+        "icon": "disk",
+        "title": "Storage",
+        "in": "api"
+      },
+      {
+        "id": "disk2",
+        "icon": "disk",
+        "title": "Storage",
+        "in": "api"
+      },
+      {
+        "id": "server",
+        "icon": "server",
+        "title": "Server",
+        "in": "api"
+      },
+      {
+        "id": "gateway",
+        "icon": "internet",
+        "title": "Gateway"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "db",
+        "lhsDir": "L",
+        "rhsDir": "R",
+        "rhsId": "server",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "disk1",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "server",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "disk2",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "db",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "server",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "gateway",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-render-a-simple-architecture-diagram-with-titleandaccessibilities.mmd": {
+    "title": "Simple Architecture Diagram",
+    "accTitle": "Accessibility Title",
+    "accDescr": "Accessibility Description",
+    "groups": [
+      {
+        "id": "api",
+        "icon": "cloud",
+        "title": "API"
+      }
+    ],
+    "services": [
+      {
+        "id": "db",
+        "icon": "database",
+        "title": "Database",
+        "in": "api"
+      },
+      {
+        "id": "disk1",
+        "icon": "disk",
+        "title": "Storage",
+        "in": "api"
+      },
+      {
+        "id": "disk2",
+        "icon": "disk",
+        "title": "Storage",
+        "in": "api"
+      },
+      {
+        "id": "server",
+        "icon": "server",
+        "title": "Server",
+        "in": "api"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "db",
+        "lhsDir": "L",
+        "rhsDir": "R",
+        "rhsId": "server",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "disk1",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "server",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "disk2",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "db",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-render-an-architecture-diagram-with-a-reasonable-height.mmd": {
+    "groups": [
+      {
+        "id": "federated",
+        "icon": "cloud",
+        "title": "Federated Environment"
+      },
+      {
+        "id": "on_prem",
+        "icon": "cloud",
+        "title": "Hub"
+      }
+    ],
+    "services": [
+      {
+        "id": "server1",
+        "icon": "server",
+        "title": "System",
+        "in": "federated"
+      },
+      {
+        "id": "edge",
+        "icon": "server",
+        "title": "Edge Device",
+        "in": "federated"
+      },
+      {
+        "id": "firewall",
+        "icon": "server",
+        "title": "Firewall Device",
+        "in": "on_prem"
+      },
+      {
+        "id": "server",
+        "icon": "server",
+        "title": "Server",
+        "in": "on_prem"
+      },
+      {
+        "id": "db1",
+        "icon": "database",
+        "title": "db1",
+        "in": "on_prem"
+      },
+      {
+        "id": "db2",
+        "icon": "database",
+        "title": "db2",
+        "in": "on_prem"
+      },
+      {
+        "id": "db3",
+        "icon": "database",
+        "title": "db3",
+        "in": "on_prem"
+      },
+      {
+        "id": "db4",
+        "icon": "database",
+        "title": "db4",
+        "in": "on_prem"
+      },
+      {
+        "id": "db5",
+        "icon": "database",
+        "title": "db5",
+        "in": "on_prem"
+      },
+      {
+        "id": "db6",
+        "icon": "database",
+        "title": "db6",
+        "in": "on_prem"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "server1",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "edge",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "firewall",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "server",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "server",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "mid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "1Leftofmid",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "mid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "1Leftofmid",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "db1",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "2Leftofmid",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "1Leftofmid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "2Leftofmid",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "db2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "3Leftofmid",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "2Leftofmid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "3Leftofmid",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "db3",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "mid",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "1RightOfMid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "1RightOfMid",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "db4",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "1RightOfMid",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "2RightOfMid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "2RightOfMid",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "db5",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "2RightOfMid",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "3RightOfMid",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "3RightOfMid",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "db6",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "edge",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "firewall",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "junctions": [
+      {
+        "id": "mid",
+        "in": "on_prem"
+      },
+      {
+        "id": "1Leftofmid",
+        "in": "on_prem"
+      },
+      {
+        "id": "2Leftofmid",
+        "in": "on_prem"
+      },
+      {
+        "id": "3Leftofmid",
+        "in": "on_prem"
+      },
+      {
+        "id": "1RightOfMid",
+        "in": "on_prem"
+      },
+      {
+        "id": "2RightOfMid",
+        "in": "on_prem"
+      },
+      {
+        "id": "3RightOfMid",
+        "in": "on_prem"
+      }
+    ],
+    "alignments": []
+  },
+  "should-render-an-architecture-diagram-with-complex-junction-edges.mmd": {
+    "groups": [
+      {
+        "id": "left"
+      },
+      {
+        "id": "right"
+      }
+    ],
+    "services": [
+      {
+        "id": "left_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "left"
+      },
+      {
+        "id": "top_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "left"
+      },
+      {
+        "id": "bottom_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "left"
+      },
+      {
+        "id": "top_gateway",
+        "icon": "internet",
+        "title": "Gateway",
+        "in": "right"
+      },
+      {
+        "id": "bottom_gateway",
+        "icon": "internet",
+        "title": "Gateway",
+        "in": "right"
+      }
+    ],
+    "junctions": [
+      {
+        "id": "juncC",
+        "in": "left"
+      },
+      {
+        "id": "juncR",
+        "in": "right"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "left_disk",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "juncC",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "top_disk",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "juncC",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "bottom_disk",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "juncC",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "top_gateway",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "juncR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "bottom_gateway",
+        "lhsDir": "T",
+        "rhsInto": true,
+        "rhsDir": "B",
+        "rhsId": "juncR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "juncC",
+        "lhsGroup": true,
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "juncR",
+        "rhsGroup": true,
+        "lhsInto": false
+      }
+    ],
+    "alignments": []
+  },
+  "should-render-an-architecture-diagram-with-directional-arrows.mmd": {
+    "services": [
+      {
+        "id": "servC",
+        "icon": "server",
+        "title": "Server 1"
+      },
+      {
+        "id": "servL",
+        "icon": "server",
+        "title": "Server 2"
+      },
+      {
+        "id": "servR",
+        "icon": "server",
+        "title": "Server 3"
+      },
+      {
+        "id": "servT",
+        "icon": "server",
+        "title": "Server 4"
+      },
+      {
+        "id": "servB",
+        "icon": "server",
+        "title": "Server 5"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "servC",
+        "lhsDir": "L",
+        "rhsInto": true,
+        "rhsDir": "R",
+        "rhsId": "servL",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servC",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "servR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servC",
+        "lhsDir": "T",
+        "rhsInto": true,
+        "rhsDir": "B",
+        "rhsId": "servT",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servC",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "servB",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servL",
+        "lhsDir": "T",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "servT",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servL",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "servB",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servR",
+        "lhsDir": "T",
+        "rhsInto": true,
+        "rhsDir": "R",
+        "rhsId": "servT",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "servR",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "R",
+        "rhsId": "servB",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [],
+    "groups": [],
+    "junctions": []
+  },
+  "should-render-an-architecture-diagram-with-edge-labels.mmd": {
+    "services": [
+      {
+        "id": "servC",
+        "icon": "server",
+        "title": "Server 1"
+      },
+      {
+        "id": "servL",
+        "icon": "server",
+        "title": "Server 2"
+      },
+      {
+        "id": "servR",
+        "icon": "server",
+        "title": "Server 3"
+      },
+      {
+        "id": "servT",
+        "icon": "server",
+        "title": "Server 4"
+      },
+      {
+        "id": "servB",
+        "icon": "server",
+        "title": "Server 5"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "servC",
+        "lhsDir": "L",
+        "title": "Label",
+        "rhsDir": "R",
+        "rhsId": "servL",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servC",
+        "lhsDir": "R",
+        "title": "Label",
+        "rhsDir": "L",
+        "rhsId": "servR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servC",
+        "lhsDir": "T",
+        "title": "Label",
+        "rhsDir": "B",
+        "rhsId": "servT",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servC",
+        "lhsDir": "B",
+        "title": "Label",
+        "rhsDir": "T",
+        "rhsId": "servB",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servL",
+        "lhsDir": "T",
+        "title": "Label",
+        "rhsDir": "L",
+        "rhsId": "servT",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servL",
+        "lhsDir": "B",
+        "title": "Label",
+        "rhsDir": "L",
+        "rhsId": "servB",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servR",
+        "lhsDir": "T",
+        "title": "Label",
+        "rhsDir": "R",
+        "rhsId": "servT",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "servR",
+        "lhsDir": "B",
+        "title": "Label",
+        "rhsDir": "R",
+        "rhsId": "servB",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "alignments": [],
+    "groups": [],
+    "junctions": []
+  },
+  "should-render-an-architecture-diagram-with-group-edges.mmd": {
+    "groups": [
+      {
+        "id": "left_group",
+        "icon": "cloud",
+        "title": "Left"
+      },
+      {
+        "id": "right_group",
+        "icon": "cloud",
+        "title": "Right"
+      },
+      {
+        "id": "top_group",
+        "icon": "cloud",
+        "title": "Top"
+      },
+      {
+        "id": "bottom_group",
+        "icon": "cloud",
+        "title": "Bottom"
+      },
+      {
+        "id": "center_group",
+        "icon": "cloud",
+        "title": "Center"
+      }
+    ],
+    "services": [
+      {
+        "id": "left_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "left_group"
+      },
+      {
+        "id": "right_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "right_group"
+      },
+      {
+        "id": "top_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "top_group"
+      },
+      {
+        "id": "bottom_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "bottom_group"
+      },
+      {
+        "id": "center_disk",
+        "icon": "disk",
+        "title": "Disk",
+        "in": "center_group"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "left_disk",
+        "lhsGroup": true,
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "center_disk",
+        "rhsGroup": true,
+        "lhsInto": false
+      },
+      {
+        "lhsId": "right_disk",
+        "lhsGroup": true,
+        "lhsDir": "L",
+        "rhsInto": true,
+        "rhsDir": "R",
+        "rhsId": "center_disk",
+        "rhsGroup": true,
+        "lhsInto": false
+      },
+      {
+        "lhsId": "top_disk",
+        "lhsGroup": true,
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "center_disk",
+        "rhsGroup": true,
+        "lhsInto": false
+      },
+      {
+        "lhsId": "bottom_disk",
+        "lhsGroup": true,
+        "lhsDir": "T",
+        "rhsInto": true,
+        "rhsDir": "B",
+        "rhsId": "center_disk",
+        "rhsGroup": true,
+        "lhsInto": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-render-an-architecture-diagram-with-groups-within-groups.mmd": {
+    "groups": [
+      {
+        "id": "api",
+        "title": "API"
+      },
+      {
+        "id": "public",
+        "title": "Public API",
+        "in": "api"
+      },
+      {
+        "id": "private",
+        "title": "Private API",
+        "in": "api"
+      }
+    ],
+    "services": [
+      {
+        "id": "serv1",
+        "icon": "server",
+        "title": "Server",
+        "in": "public"
+      },
+      {
+        "id": "serv2",
+        "icon": "server",
+        "title": "Server",
+        "in": "private"
+      },
+      {
+        "id": "db",
+        "icon": "database",
+        "title": "Database",
+        "in": "private"
+      },
+      {
+        "id": "gateway",
+        "icon": "internet",
+        "title": "Gateway",
+        "in": "api"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "serv1",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "serv2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "serv2",
+        "lhsDir": "L",
+        "rhsDir": "R",
+        "rhsId": "db",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "serv1",
+        "lhsDir": "L",
+        "rhsDir": "R",
+        "rhsId": "gateway",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-render-an-architecture-diagram-with-simple-junction-edges.mmd": {
+    "services": [
+      {
+        "id": "left_disk",
+        "icon": "disk",
+        "title": "Disk"
+      },
+      {
+        "id": "top_disk",
+        "icon": "disk",
+        "title": "Disk"
+      },
+      {
+        "id": "bottom_disk",
+        "icon": "disk",
+        "title": "Disk"
+      },
+      {
+        "id": "top_gateway",
+        "icon": "internet",
+        "title": "Gateway"
+      },
+      {
+        "id": "bottom_gateway",
+        "icon": "internet",
+        "title": "Gateway"
+      }
+    ],
+    "junctions": [
+      {
+        "id": "juncC"
+      },
+      {
+        "id": "juncR"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "left_disk",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "juncC",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "top_disk",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "juncC",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "bottom_disk",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "juncC",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "juncC",
+        "lhsDir": "R",
+        "rhsDir": "L",
+        "rhsId": "juncR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "top_gateway",
+        "lhsDir": "B",
+        "rhsDir": "T",
+        "rhsId": "juncR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "bottom_gateway",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "juncR",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "alignments": [],
+    "groups": []
+  },
+  "should-render-an-architecture-diagram-with-split-directioning.mmd": {
+    "services": [
+      {
+        "id": "db",
+        "icon": "database",
+        "title": "Database"
+      },
+      {
+        "id": "s3",
+        "icon": "disk",
+        "title": "Storage"
+      },
+      {
+        "id": "serv1",
+        "icon": "server",
+        "title": "Server 1"
+      },
+      {
+        "id": "serv2",
+        "icon": "server",
+        "title": "Server 2"
+      },
+      {
+        "id": "disk",
+        "icon": "disk",
+        "title": "Disk"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "db",
+        "lhsDir": "L",
+        "rhsDir": "R",
+        "rhsId": "s3",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "serv1",
+        "lhsDir": "L",
+        "rhsDir": "T",
+        "rhsId": "s3",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "serv2",
+        "lhsDir": "L",
+        "rhsDir": "B",
+        "rhsId": "s3",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      },
+      {
+        "lhsId": "serv1",
+        "lhsDir": "T",
+        "rhsDir": "B",
+        "rhsId": "disk",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false,
+        "rhsInto": false
+      }
+    ],
+    "alignments": [],
+    "groups": [],
+    "junctions": []
+  },
+  "should-render-an-architecture-diagram-with-the-fallback-icon.mmd": {
+    "services": [
+      {
+        "id": "unknown",
+        "icon": "iconnamedoesntexist",
+        "title": "Unknown Icon"
+      }
+    ],
+    "alignments": [],
+    "edges": [],
+    "groups": [],
+    "junctions": []
+  },
+  "should-render-edges-at-correct-length.mmd": {
+    "services": [
+      {
+        "id": "cell",
+        "title": "Table Cell"
+      },
+      {
+        "id": "colspan",
+        "title": "colspan"
+      },
+      {
+        "id": "rowspan",
+        "title": "rowspan"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "cell",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "colspan",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "cell",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "rowspan",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [],
+    "groups": [],
+    "junctions": []
+  },
+  "should-render-with-randomize-true-without-errors.mmd": {
+    "groups": [
+      {
+        "id": "sub1",
+        "icon": "cloud",
+        "title": "Subscription A"
+      },
+      {
+        "id": "vnet1",
+        "icon": "cloud",
+        "title": "VNet A",
+        "in": "sub1"
+      },
+      {
+        "id": "sub2",
+        "icon": "cloud",
+        "title": "Subscription B"
+      },
+      {
+        "id": "shared",
+        "icon": "cloud",
+        "title": "Shared",
+        "in": "sub2"
+      },
+      {
+        "id": "env",
+        "icon": "cloud",
+        "title": "Environment",
+        "in": "sub2"
+      },
+      {
+        "id": "vnet",
+        "icon": "cloud",
+        "title": "VNet",
+        "in": "env"
+      },
+      {
+        "id": "snet1",
+        "icon": "cloud",
+        "title": "App Subnet",
+        "in": "vnet"
+      },
+      {
+        "id": "snet2",
+        "icon": "cloud",
+        "title": "PE Subnet",
+        "in": "vnet"
+      }
+    ],
+    "services": [
+      {
+        "id": "vm1",
+        "icon": "server",
+        "title": "VM",
+        "in": "vnet1"
+      },
+      {
+        "id": "reg",
+        "icon": "database",
+        "title": "Registry",
+        "in": "shared"
+      },
+      {
+        "id": "nsg",
+        "icon": "server",
+        "title": "NSG",
+        "in": "snet1"
+      },
+      {
+        "id": "asp",
+        "icon": "server",
+        "title": "App Plan",
+        "in": "snet1"
+      },
+      {
+        "id": "web",
+        "icon": "server",
+        "title": "Web App",
+        "in": "snet1"
+      },
+      {
+        "id": "pe1",
+        "icon": "server",
+        "title": "PE Blob",
+        "in": "snet2"
+      },
+      {
+        "id": "pe2",
+        "icon": "server",
+        "title": "PE Bus",
+        "in": "snet2"
+      },
+      {
+        "id": "storage",
+        "icon": "disk",
+        "title": "Storage",
+        "in": "env"
+      },
+      {
+        "id": "container",
+        "icon": "disk",
+        "title": "Container",
+        "in": "env"
+      },
+      {
+        "id": "bus",
+        "icon": "server",
+        "title": "Service Bus",
+        "in": "env"
+      },
+      {
+        "id": "dns",
+        "icon": "server",
+        "title": "DNS Zone",
+        "in": "env"
+      },
+      {
+        "id": "client",
+        "icon": "internet",
+        "title": "Client"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "reg",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "web",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "nsg",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "asp",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "asp",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "web",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "web",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "pe1",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "pe1",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "storage",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "storage",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "container",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "web",
+        "lhsDir": "B",
+        "rhsInto": true,
+        "rhsDir": "T",
+        "rhsId": "pe2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "pe2",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "bus",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "vm1",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "pe2",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [],
+    "junctions": []
+  },
+  "should-stack-three-same-port-databases-in-a-column-without-overlap.mmd": {
+    "groups": [
+      {
+        "id": "api",
+        "icon": "cloud",
+        "title": "API"
+      }
+    ],
+    "services": [
+      {
+        "id": "db1",
+        "icon": "database",
+        "title": "DB1",
+        "in": "api"
+      },
+      {
+        "id": "db2",
+        "icon": "database",
+        "title": "DB2",
+        "in": "api"
+      },
+      {
+        "id": "db3",
+        "icon": "database",
+        "title": "DB3",
+        "in": "api"
+      },
+      {
+        "id": "mcp",
+        "icon": "server",
+        "title": "MCP",
+        "in": "api"
+      }
+    ],
+    "edges": [
+      {
+        "lhsId": "db1",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "mcp",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "db2",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "mcp",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      },
+      {
+        "lhsId": "db3",
+        "lhsDir": "R",
+        "rhsInto": true,
+        "rhsDir": "L",
+        "rhsId": "mcp",
+        "lhsGroup": false,
+        "lhsInto": false,
+        "rhsGroup": false
+      }
+    ],
+    "alignments": [
+      {
+        "direction": "column",
+        "members": [
+          "db1",
+          "db2",
+          "db3"
+        ]
+      }
+    ],
+    "junctions": []
+  }
+}

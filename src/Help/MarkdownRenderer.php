@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Help;
 
+use Porta\Help\Fence\FenceSession;
 use Porta\Help\Layout\BlockLayout;
 use Porta\Help\Layout\CodeLayout;
 use Porta\Help\Layout\HtmlBlockLayout;
@@ -51,12 +52,13 @@ final class MarkdownRenderer
         ?CodeHighlighter $highlighter = null,
         ?PageWords $words = null,
         ?TerminalGraphics $graphics = null,
+        private readonly ?FenceSession $fences = null,
     ) {
         $this->parser = new MarkdownParser();
         $this->pen = new StylePen($styles);
-        $this->code = new CodeLayout($this->pen, $highlighter);
         $this->words = $words ?? PageWords::english();
         $this->images = new ImageLayout($graphics);
+        $this->code = new CodeLayout($this->pen, $highlighter, $fences, $this->images, $this->words);
         $this->html = new HtmlBlockLayout($this->pen, $this->images);
     }
 
@@ -69,6 +71,17 @@ final class MarkdownRenderer
         }
 
         return $this->document;
+    }
+
+    /** Parse/discover requests outside paint; the queue starts renderers later. */
+    public function prepareFences(string $markdown, string $path, int $width): void
+    {
+        $this->fences?->prepare($this->document($markdown), $path, $width);
+    }
+
+    public function clearImages(): void
+    {
+        $this->images->clear();
     }
 
     /** Colours are baked into the lines and the code memo: drop them on a theme switch. */

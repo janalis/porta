@@ -3422,6 +3422,14 @@
         <source>Details</source>
         <target>Details</target>
       </trans-unit>
+      <trans-unit id="1177">
+        <source>Rendering diagram…</source>
+        <target>Diagramm wird gerendert…</target>
+      </trans-unit>
+      <trans-unit id="1178">
+        <source>Cannot display diagram PNG</source>
+        <target>Diagramm-PNG kann nicht angezeigt werden</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

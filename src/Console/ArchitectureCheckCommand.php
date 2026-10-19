@@ -191,6 +191,7 @@ final class ArchitectureCheckCommand extends Command
         'GitPlugin>Ui',
         'GitPlugin>Widget',
         'GitPlugin>Workbench',
+        'GraphViewer>Help', // graph-viewer's fence callbacks return core's Markdown render result
         'GraphViewer>ImageViewer',
         'GraphViewer>Support',
         'GraphViewer>Ui',
@@ -288,6 +289,7 @@ final class ArchitectureCheckCommand extends Command
         'Plugin>Editor',
         'Plugin>Event',
         'Plugin>Filesystem', // a RemoteProjectPlugin hands core the transport for its scheme
+        'Plugin>Help', // committed Markdown fence renderers live in core's page renderer
         'Plugin>Highlight',
         'Plugin>Install', // OpenRemoteCommand opens this very Porta on the cache
         'Plugin>Lsp',

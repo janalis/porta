@@ -10,6 +10,9 @@ namespace Porta\GraphViewer\Graph;
  */
 final readonly class GraphLayout
 {
+    /** @var list<GraphEdge> semantic connections, excluding marker and grid decorations */
+    public array $relationships;
+
     /**
      * @param array<int, GraphNode> $nodes keyed by Graphviz _gvid
      * @param list<GraphEdge>       $edges
@@ -21,7 +24,9 @@ final readonly class GraphLayout
         public array $nodes,
         public array $edges,
         public array $clusters,
-    ) {}
+    ) {
+        $this->relationships = \array_values(\array_filter($edges, static fn (GraphEdge $edge): bool => !$edge->decoration));
+    }
 
     public function nodeCount(): int
     {
@@ -30,6 +35,6 @@ final readonly class GraphLayout
 
     public function edgeCount(): int
     {
-        return \count($this->edges);
+        return \count($this->relationships);
     }
 }

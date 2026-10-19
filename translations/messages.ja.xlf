@@ -3422,6 +3422,14 @@
         <source>Details</source>
         <target>詳細</target>
       </trans-unit>
+      <trans-unit id="1177">
+        <source>Rendering diagram…</source>
+        <target>図を描画中…</target>
+      </trans-unit>
+      <trans-unit id="1178">
+        <source>Cannot display diagram PNG</source>
+        <target>図の PNG を表示できません</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

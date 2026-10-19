@@ -1,0 +1,550 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "array",
+      "configuration": "{\n? [alias]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicitArray",
+      "configuration": "{\n[alias]: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "map",
+      "configuration": "{\n? {field: Value}\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequence",
+      "configuration": "{\n? - alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "longSequence",
+      "configuration": "{\n?\n - alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchoredScalar",
+      "configuration": "{\n? &key Stored\n: Value\nalias: *key\n}",
+      "alias": "Stored",
+      "type": null
+    },
+    {
+      "name": "scalar",
+      "configuration": "{\n? alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "inlineMap",
+      "configuration": "{\n? alias: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "arrayDuplicate",
+      "configuration": "{\nalias: First\n? [alias]\n: Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nullFirst",
+      "configuration": "{\nalias: null\n? [alias]\n: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "emptyArray",
+      "configuration": "{\n? []\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyDuplicate",
+      "configuration": "{\n\"\": First\n? []\n: Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nestedArray",
+      "configuration": "{\n? [[alias]]\n: Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "arrayMap",
+      "configuration": "{\n? [{field: Value}]\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapDuplicate",
+      "configuration": "{\n\"[object Object]\": First\n? {field: Value}\n: Second\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "anchoredArray",
+      "configuration": "{\n? &key [alias]\n: Name\nignored: *key\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedArray",
+      "configuration": "{\n? !!seq [alias]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "badString",
+      "configuration": "{\n? !!str [alias]\n: Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "typedScalar",
+      "configuration": "{\n? !!str alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedInt",
+      "configuration": "{\n? !!int 1\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literal",
+      "configuration": "{\n? |-\n alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "folded",
+      "configuration": "{\n? >-\n alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "scalarContinuation",
+      "configuration": "{\n? alias\n more\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "keyOwnLine",
+      "configuration": "{\n?\n [alias]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "noValue",
+      "configuration": "{\n? [alias]\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "empty",
+      "configuration": "{\n?\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "consecutiveEmpty",
+      "configuration": "{\n? [alias]\n? [alias]\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nullKey",
+      "configuration": "{\n? null\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "compactList",
+      "configuration": "{\nignored:\n - ? [entry]\n   : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nested",
+      "configuration": "{\nignored:\n  ? [entry]\n  : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nestedSequence",
+      "configuration": "{\nignored:\n ? - entry\n : Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nestedMap",
+      "configuration": "{\n?\n field: Value\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "sequenceMap",
+      "configuration": "{\n? - field: Value\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "keyAnchorValue",
+      "configuration": "{\n? &key Stored\n: Value\nalias: *key\n}",
+      "alias": "Stored",
+      "type": null
+    },
+    {
+      "name": "keyAnchorRedefine",
+      "configuration": "{\n? &key First\n: Value\n? &key Stored\n: Value\nalias: *key\n}",
+      "alias": "Stored",
+      "type": null
+    },
+    {
+      "name": "comments",
+      "configuration": "{\n? # key\n [alias] # end\n# before value\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "commentBetween",
+      "configuration": "{\n? &key # property\n [alias]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalKeep",
+      "configuration": "{\n? |+\n alias\n\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "badImplicitMultiline",
+      "configuration": "{\n[alias,\n other]: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "wrongValueIndent",
+      "configuration": "{\n ? [alias]\n: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "sameLineValue",
+      "configuration": "{\n? [alias]: Name\nalias: Other\n}",
+      "alias": "Other",
+      "type": null
+    },
+    {
+      "name": "scalarMap",
+      "configuration": "{\n? alias: Value\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "taggedMap",
+      "configuration": "{\n? !!map\n field: Value\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "tagsOwnLine",
+      "configuration": "{\n? !!seq &key\n - alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "aliasKey",
+      "configuration": "{\ndata: &data [alias]\n? *data\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flatMany",
+      "configuration": "{\n? [entry0]\n: Value\n? [entry1]\n: Value\n? [entry2]\n: Value\n? [entry3]\n: Value\n? [entry4]\n: Value\n? [entry5]\n: Value\n? [entry6]\n: Value\n? [entry7]\n: Value\n? [entry8]\n: Value\n? [entry9]\n: Value\n? [entry10]\n: Value\n? [entry11]\n: Value\n? [entry12]\n: Value\n? [entry13]\n: Value\n? [entry14]\n: Value\n? [entry15]\n: Value\n? [entry16]\n: Value\n? [entry17]\n: Value\n? [entry18]\n: Value\n? [entry19]\n: Value\n? [entry20]\n: Value\n? [entry21]\n: Value\n? [entry22]\n: Value\n? [entry23]\n: Value\n? [entry24]\n: Value\n? [entry25]\n: Value\n? [entry26]\n: Value\n? [entry27]\n: Value\n? [entry28]\n: Value\n? [entry29]\n: Value\n? [entry30]\n: Value\n? [entry31]\n: Value\n? [entry32]\n: Value\n? [entry33]\n: Value\n? [entry34]\n: Value\n? [entry35]\n: Value\n? [entry36]\n: Value\n? [entry37]\n: Value\n? [entry38]\n: Value\n? [entry39]\n: Value\n? [entry40]\n: Value\n? [entry41]\n: Value\n? [entry42]\n: Value\n? [entry43]\n: Value\n? [entry44]\n: Value\n? [entry45]\n: Value\n? [entry46]\n: Value\n? [entry47]\n: Value\n? [entry48]\n: Value\n? [entry49]\n: Value\n? [entry50]\n: Value\n? [entry51]\n: Value\n? [entry52]\n: Value\n? [entry53]\n: Value\n? [entry54]\n: Value\n? [entry55]\n: Value\n? [entry56]\n: Value\n? [entry57]\n: Value\n? [entry58]\n: Value\n? [entry59]\n: Value\n? [entry60]\n: Value\n? [entry61]\n: Value\n? [entry62]\n: Value\n? [entry63]\n: Value\n? [entry64]\n: Value\n? [entry65]\n: Value\n? [entry66]\n: Value\n? [entry67]\n: Value\n? [entry68]\n: Value\n? [entry69]\n: Value\n? [entry70]\n: Value\n? [entry71]\n: Value\n? [entry72]\n: Value\n? [entry73]\n: Value\n? [entry74]\n: Value\n? [entry75]\n: Value\n? [entry76]\n: Value\n? [entry77]\n: Value\n? [entry78]\n: Value\n? [entry79]\n: Value\n? [entry80]\n: Value\n? [entry81]\n: Value\n? [entry82]\n: Value\n? [entry83]\n: Value\n? [entry84]\n: Value\n? [entry85]\n: Value\n? [entry86]\n: Value\n? [entry87]\n: Value\n? [entry88]\n: Value\n? [entry89]\n: Value\n? [entry90]\n: Value\n? [entry91]\n: Value\n? [entry92]\n: Value\n? [entry93]\n: Value\n? [entry94]\n: Value\n? [entry95]\n: Value\n? [entry96]\n: Value\n? [entry97]\n: Value\n? [entry98]\n: Value\n? [entry99]\n: Value\n? [entry100]\n: Value\n? [entry101]\n: Value\n? [entry102]\n: Value\n? [entry103]\n: Value\n? [entry104]\n: Value\n? [entry105]\n: Value\n? [entry106]\n: Value\n? [entry107]\n: Value\n? [entry108]\n: Value\n? [entry109]\n: Value\n? [entry110]\n: Value\n? [entry111]\n: Value\n? [entry112]\n: Value\n? [entry113]\n: Value\n? [entry114]\n: Value\n? [entry115]\n: Value\n? [entry116]\n: Value\n? [entry117]\n: Value\n? [entry118]\n: Value\n? [entry119]\n: Value\n? [entry120]\n: Value\n? [entry121]\n: Value\n? [entry122]\n: Value\n? [entry123]\n: Value\n? [entry124]\n: Value\n? [entry125]\n: Value\n? [entry126]\n: Value\n? [entry127]\n: Value\n? [entry128]\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "shadowCollision",
+      "configuration": "{\n\"__porta_block_key_0__k0\": Original\n? [alias]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "escapedShadowCollision",
+      "configuration": "{\n\"\\u005f\\u005fporta_block_key_0__k0\": Original\n? [alias]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchorCollision",
+      "configuration": "{\nignored: &__porta_block_key_0__a0 actor\n? [alias]\n: Name\ntype: *__porta_block_key_0__a0\n}",
+      "alias": "Name",
+      "type": "actor"
+    },
+    {
+      "name": "undefinedGenerated",
+      "configuration": "{\n? [alias]\n: Name\nignored: *__porta_block_key_0__a0\n}",
+      "error": "unidentified alias \"__porta_block_key_0__a0\""
+    },
+    {
+      "name": "mixedKeys",
+      "configuration": "{\n? [entry]\n: Value\nignored: {[alias]: Value}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapCycle",
+      "configuration": "{\n? &key\n {self: *key}\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchoredCompactList",
+      "configuration": "{\n? &key - entry\n: Value\nalias: Name\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "taggedCompactList",
+      "configuration": "{\n? !!seq - entry\n: Value\nalias: Name\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "anchorNextLineCompact",
+      "configuration": "{\n?\n &key - entry\n: Value\nalias: Name\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "taggedCompactMap",
+      "configuration": "{\n? !!map field: Value\n: Ignored\nalias: Name\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:map>"
+    },
+    {
+      "name": "taggedStringCompactMap",
+      "configuration": "{\n? !!str field: Value\n: Ignored\nalias: Name\n}",
+      "error": "bad indentation of a mapping entry"
+    },
+    {
+      "name": "tagNewlineCollection",
+      "configuration": "{\n? !!seq\n - alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchorNewlineCollection",
+      "configuration": "{\n? &key\n - alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nestedFlowProperties",
+      "configuration": "{\n? [\n &key\n  entry]\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nestedFlowInvalidProperties",
+      "configuration": "{\n? [\n &key\n entry]\n: Value\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "explicitQuoteMap",
+      "configuration": "{\n? \"entry\": Value\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicitNoSpace",
+      "configuration": "{\n[alias]:Name\n}",
+      "error": "a whitespace character is expected after the key-value separator within a block mapping"
+    },
+    {
+      "name": "quoteFirstRoot",
+      "configuration": "{\n# root\n  ? \"alias\"\n  : Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalSibling",
+      "configuration": "{\nignored:\n - ? |-\n      entry\n   : Value\n   ? [next]\n   : Other\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalFlowSibling",
+      "configuration": "{\nignored:\n - field: |-\n      text\n   next: {[entry]: Value}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalMergeSibling",
+      "configuration": "{\nignored:\n - field: |-\n      text\n   <<: {extra: Value}\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "plainSiblingIndentInvalid",
+      "configuration": "{\n  ignored: Value\nalias: Name\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "questionExtraGap",
+      "configuration": "{\n?    field: Value\n     next: Other\n: Ignored\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quoteContinuation",
+      "configuration": "{\n? \"entry\n continuation\"\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "plainFlowInvalid",
+      "configuration": "{\n? [entry\nmore]\n: Value\nalias: Name\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "flowClosingOutdent",
+      "configuration": "{\n? [\n alias\n]\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "ownLineLiteral",
+      "configuration": "{\n?\n |-\n  alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "ownLineFolded",
+      "configuration": "{\n?\n >-\n  alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "ownLineFoldedKeep",
+      "configuration": "{\n?\n >\n  alias\n: Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "ownLineTaggedLiteral",
+      "configuration": "{\n?\n !!str |-\n  alias\n: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "ownLineMapAnchor",
+      "configuration": "{\n?\n &key {entry: Value}\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "ownLineMapCycle",
+      "configuration": "{\n?\n &key {self: *key}\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "nonSpecificEmptyKey",
+      "configuration": "{\n\"\": First\n? !\n: Name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "explicitEmptyStringDuplicate",
+      "configuration": "{\n\"\": First\n? !!str\n: Name\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nonSpecificEmptyFlowKey",
+      "configuration": "{\n{\"\": First, ! : Name}\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "ownLineEmptyProperty",
+      "configuration": "{\n?\n &key\n: Value\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "<< indent0",
+      "configuration": "{\n<<: &key\n [alias]\n*key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "<< indent2",
+      "configuration": "{\n  <<: &key\n   [alias]\n  *key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "(entry) indent0",
+      "configuration": "{\n(entry): &key\n [alias]\n*key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "(entry) indent2",
+      "configuration": "{\n  (entry): &key\n   [alias]\n  *key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "<entry> indent0",
+      "configuration": "{\n<entry>: &key\n [alias]\n*key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "<entry> indent2",
+      "configuration": "{\n  <entry>: &key\n   [alias]\n  *key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "entry indent0",
+      "configuration": "{\nentry: &key\n [alias]\n*key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "entry indent2",
+      "configuration": "{\n  entry: &key\n   [alias]\n  *key : Name\n\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flowAngleDuplicate",
+      "configuration": "{\n{\"<alias:Name\": First, <alias:Name}\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "flowParenDuplicate",
+      "configuration": "{\n{\"(alias:Name)\": First, (alias:Name)}\n}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "flowParenLiteral",
+      "configuration": "{\n{(alias:Name), alias: Good}\n}",
+      "alias": "Good",
+      "type": null
+    },
+    {
+      "name": "flowAngles",
+      "configuration": "{\n{<entry>: Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    }
+  ]
+}

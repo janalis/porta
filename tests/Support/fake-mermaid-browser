@@ -1,0 +1,19 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+require dirname(__DIR__, 2).'/vendor/autoload.php';
+
+[$script, $cli, $input, $scale] = array_slice($argv, 1);
+$svg = (string) file_get_contents($input);
+file_put_contents('mermaid-browser-request.json', json_encode([$script, $cli, $input, $scale, $svg, file_get_contents($script)], JSON_THROW_ON_ERROR));
+if (str_contains($svg, 'deferred-browser')) {
+    usleep(500000);
+}
+if (str_contains($svg, 'broken-browser')) {
+    fwrite(STDERR, "Browser could not render SVG\n");
+    exit(1);
+}
+$factor = (float) $scale;
+echo Porta\Tests\Support\PngFixture::bytes(max(1, (int) round(100 * $factor)), max(1, (int) round(50 * $factor)));

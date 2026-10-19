@@ -7,6 +7,7 @@ namespace Porta\Custos\Tests;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Ide;
+use Porta\Lsp\LspLog;
 use Porta\Lsp\RefactorController;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
@@ -110,11 +111,30 @@ final class IdeCustosRealServerTest extends TestCase
                 // so it goes back in the codeAction context.
                 $this->assertSame(['rule' => 'NestedNotOperators', 'start' => 11, 'end' => 15], $diagnostic['data'] ?? null, 'the diagnostic `data` survives the mapping');
 
+                // The server reanalyses after its initial index and retires the
+                // earlier action snapshot even when the document text is unchanged.
+                $log = Services::resolve($ide, LspLog::class);
+                $this->await(
+                    static fn (): bool => null !== \array_find($log->entries(), static fn (array $entry): bool => \str_contains($entry['text'], 'custos: indexed ')),
+                    what: 'custos to finish its initial workspace index',
+                    timeout: 20.0,
+                );
                 $refactor = Services::resolve($ide, RefactorController::class);
                 $refactor->requestCodeActions(0, 11);
                 $this->await(
                     // The controller is captured; its actions are re-read each turn.
-                    static fn (): bool => [] !== self::offered($refactor),
+                    static function () use ($refactor): bool {
+                        if ([] !== self::offered($refactor)) {
+                            return true;
+                        }
+                        // Index completion precedes the refreshed diagnostics. A
+                        // request during that analysis can correctly return empty.
+                        if (Probe::get($refactor, 'answers') === Probe::get($refactor, 'asked')) {
+                            $refactor->requestCodeActions(0, 11);
+                        }
+
+                        return false;
+                    },
                     what: 'custos to answer textDocument/codeAction',
                     timeout: 20.0,
                 );

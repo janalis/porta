@@ -1,0 +1,228 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA, pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "cyclicList",
+      "configuration": "{unknown: &self [*self], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "cyclicMap",
+      "configuration": "{\nunknown: &self\n  self: *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "rootCycle",
+      "configuration": "{\n&root\nunknown: *root\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mutual",
+      "configuration": "{\nunknown: &first\n  second: &second\n    first: *first\n  again: *second\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "scalarInsideCycle",
+      "configuration": "{\nunknown: &self\n  self: *self\n  label: &name Configured\nalias: *name\n}",
+      "alias": "Configured",
+      "type": null
+    },
+    {
+      "name": "literalRef",
+      "configuration": "{unknown: &self [*self], alias: \"*self\"}",
+      "alias": "*self",
+      "type": null
+    },
+    {
+      "name": "blockLiteralRef",
+      "configuration": "{\nunknown: &self [*self]\nalias: |-\n  *self\n}",
+      "alias": "*self",
+      "type": null
+    },
+    {
+      "name": "unknownForward",
+      "configuration": "{unknown: *later, later: &later [a], alias: Name}",
+      "error": "unidentified alias \"later\""
+    },
+    {
+      "name": "duplicateAnchor",
+      "configuration": "{a: &name First, b: &name Second, alias: *name}",
+      "alias": "Second",
+      "type": null
+    },
+    {
+      "name": "quotedColon",
+      "configuration": "{unknown: &name \"before: after\", alias: *name}",
+      "alias": "before: after",
+      "type": null
+    },
+    {
+      "name": "singleQuotedColon",
+      "configuration": "{unknown: &name 'before: after', alias: *name}",
+      "alias": "before: after",
+      "type": null
+    },
+    {
+      "name": "scalarComment",
+      "configuration": "{\nunknown: &name 0 # comment: text\nalias: *name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyAnchor",
+      "configuration": "{\nunknown: &name\ncopy: *name\nalias: *name\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyTaggedList",
+      "configuration": "{\nunknown: &name !!seq\ncopy: *name\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyTaggedMap",
+      "configuration": "{\nunknown: &name !!map\ncopy: *name\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "taggedList",
+      "configuration": "{unknown: !!seq &self [*self], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "taggedMap",
+      "configuration": "{\nunknown: !!map &self\n  self: *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedMapKey",
+      "configuration": "{\nunknown: &self\n  \"self\": *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedUnspacedKey",
+      "configuration": "{\nunknown: &self\n  \"self\":*self\nalias: Name\n}",
+      "error": "a whitespace character is expected after the key-value separator within a block mapping"
+    },
+    {
+      "name": "rootComment",
+      "configuration": "{\n# before\n&root\n# child\nunknown: *root\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "indentlessList",
+      "configuration": "{\nunknown: &self\n- *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "scalarShadow",
+      "configuration": "{\nunknown: &name [*name]\nlater: &name Configured\nalias: *name\n}",
+      "alias": "Configured",
+      "type": null
+    },
+    {
+      "name": "unspacedQuotedColon",
+      "configuration": "{unknown: &data [a], \"ignored\":*data, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalAnchor",
+      "configuration": "{unknown: \"&data [x]\", alias: \"*data\"}",
+      "alias": "*data",
+      "type": null
+    },
+    {
+      "name": "falseAnchor",
+      "configuration": "{unknown:&data [a], ignored: *data, alias: Name}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "badTaggedCollection",
+      "configuration": "{unknown: &data !!seq Name, copy: *data, alias: Name}",
+      "error": "unknown tag !<tag:yaml.org,2002:seq>"
+    },
+    {
+      "name": "quotedInnerKey",
+      "configuration": "{\nunknown: &self\n  \"inner\": *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedEscapedKey",
+      "configuration": "{\nunknown: &self\n  \"a\\\"b\": *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedSingleKey",
+      "configuration": "{\nunknown: &self\n  'it''s': *self\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyAtEnd",
+      "configuration": "{\nunknown: &data\nalias: Name\ncopy: &last # eof\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyFlowList",
+      "configuration": "{unknown: !!seq }",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyFlowMap",
+      "configuration": "{unknown: !!map }",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyRootMap",
+      "configuration": "{\n!!map\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "duplicateAliasKeys",
+      "configuration": "{\nunknown: &self [*self]\n*self : One\n*self : Two\nalias: Name\n}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "compactRootAnchor",
+      "configuration": "{\n&root alias: Name\ncopy: *root\n}",
+      "error": "end of the stream or a document separator is expected"
+    },
+    {
+      "name": "compactRootTagAnchor",
+      "configuration": "{\n!!map &root alias: Name\ncopy: *root\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:map>"
+    },
+    {
+      "name": "explicitRootTagAnchor",
+      "configuration": "{\n!!map &root\nunknown: *root\nalias: Name\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "duplicateRootAnchor",
+      "configuration": "{\n&first &second {alias: Name}\n}",
+      "error": "duplication of an anchor property"
+    }
+  ]
+}

@@ -122,6 +122,18 @@
         <source>Line %line%: %message%</source>
         <target>Zeile %line%: %message%</target>
       </trans-unit>
+      <trans-unit id="31">
+        <source>Preview Mermaid beside its source</source>
+        <target>Mermaid neben dem Quelltext anzeigen</target>
+      </trans-unit>
+      <trans-unit id="32">
+        <source>Mermaid CLI path</source>
+        <target>Pfad zur Mermaid CLI</target>
+      </trans-unit>
+      <trans-unit id="33">
+        <source>mmdc not found — install mermaid-cli, or set the &quot;mermaidPath&quot; setting</source>
+        <target>mmdc nicht gefunden — mermaid-cli installieren oder „mermaidPath“ festlegen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

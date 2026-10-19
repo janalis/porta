@@ -14,6 +14,7 @@ use Porta\Editor\EditorPaneSource;
 use Porta\Editor\ViewerProviderSource;
 use Porta\Event\PluginObservable;
 use Porta\Event\ToolsChanged;
+use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\Highlight\CallableHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProvider;
 use Porta\Highlight\SyntaxHighlightProviderSource;
@@ -155,6 +156,7 @@ final class PluginManager implements
     public function __construct(
         private readonly EventDispatcherInterface $events,
         private readonly PluginSettings $settings,
+        private readonly MarkdownFenceRegistry $markdownFences = new MarkdownFenceRegistry(),
     ) {}
 
     public function hasPlugin(string $name): bool
@@ -248,6 +250,7 @@ final class PluginManager implements
             $this->tools[] = $tool;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
+        $this->markdownFences->add($api->bufferedMarkdownFences());
         // A live enable only: at boot the runtime is not wired yet, and nothing
         // could have read the set before every plugin committed.
         if ([] !== $tools && null !== $this->runtime) {
@@ -371,6 +374,7 @@ final class PluginManager implements
         $this->tokenSpans = \array_values(\array_filter($this->tokenSpans, static fn (array $spans): bool => $name !== $spans['plugin']));
         $this->viewers = \array_values(\array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
         $this->previews = \array_values(\array_filter($this->previews, static fn (array $preview): bool => $name !== $preview['plugin']));
+        $this->markdownFences->remove($name);
         $this->panes = \array_values(\array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->views = \array_values(\array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
         $this->menus = \array_values(\array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));
@@ -776,6 +780,7 @@ final class PluginManager implements
                 $this->reportFailure($plugin, $error);
             }
         }
+        $this->markdownFences->refresh($plugin);
     }
 
     /** @return list<array{plugin: string, contribution: MenuContribution}> */

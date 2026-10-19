@@ -9,6 +9,8 @@ use Porta\Config\ActionCatalog;
 use Porta\Config\ActionRegistry;
 use Porta\Config\IdeConfig;
 use Porta\Config\KeybindingsFactory;
+use Porta\Help\Fence\FenceResult;
+use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -45,6 +47,44 @@ final class PluginHostTest extends TestCase
         $this->assertSame([], $host->manager->warnings, 'a second load must not even attempt to re-discover, let alone warn about a "duplicate" plugin');
         $this->assertSame($host->settings, $host->settings);
         $this->assertSame($host->loader, $host->loader);
+    }
+
+    public function testFenceRegistrationsReachTheRegistrySharedWithMarkdownWidgets(): void
+    {
+        $project = new TempProject([
+            '.porta/plugins/fenced/plugin.php' => <<<'PHP'
+                <?php
+                return new class implements Porta\Plugin\Api\PortaPlugin {
+                    public function name(): string { return 'fenced'; }
+                    public function activate(Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerMarkdownFence(['mermaid'], static function (string $language, string $source, string $path, int $width, Closure $success, Closure $error): Closure {
+                            $success(Porta\Help\Fence\FenceResult::rows([$source], [0]));
+                            return static function (): void {};
+                        });
+                    }
+                };
+                PHP,
+        ]);
+        $registry = new MarkdownFenceRegistry();
+        $host = new PluginHost(IdeConfig::load($project->dir), new EventDispatcher(), $project->dir, markdownFences: $registry);
+        $host->ensureLoaded();
+        $render = $registry->renderer('mermaid');
+        $this->assertInstanceOf(\Closure::class, $render);
+        $result = null;
+        $render(
+            'mermaid',
+            source: 'snapshot',
+            path: '/doc.md',
+            width: 40,
+            success: static function (FenceResult $value) use (&$result): void {
+                $result = $value;
+            },
+            error: static function (): never {
+                self::fail('The registered renderer must succeed');
+            },
+        );
+        $this->assertSame(['snapshot'], $result->rows);
     }
 
     public function testKeybindingsFactoryMergesDefaultsPluginKeysAndUserKeymap(): void

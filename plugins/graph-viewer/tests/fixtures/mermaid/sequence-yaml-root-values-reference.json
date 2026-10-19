@@ -1,0 +1,194 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "empty",
+      "configuration": "{\n\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "comment",
+      "configuration": "{\n# only comment\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "null",
+      "configuration": "{\nnull\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "tilde",
+      "configuration": "{\n~\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "true",
+      "configuration": "{\ntrue\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "false",
+      "configuration": "{\nfalse\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "integer",
+      "configuration": "{\n1\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "negative",
+      "configuration": "{\n-1\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "float",
+      "configuration": "{\n1.5\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "nan",
+      "configuration": "{\n.nan\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "infinity",
+      "configuration": "{\n.inf\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "date",
+      "configuration": "{\n2026-10-17\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "plain",
+      "configuration": "{\nValue\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "quoted",
+      "configuration": "{\n\"Value\"\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyString",
+      "configuration": "{\n\"\"\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "array",
+      "configuration": "{\n[Entry]\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyArray",
+      "configuration": "{\n[]\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "blockSequence",
+      "configuration": "{\n- Entry\n- Other\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "taggedArray",
+      "configuration": "{\n!!seq [Entry]\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "taggedString",
+      "configuration": "{\n!!str Value\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "literal",
+      "configuration": "{\n|-\n  Value\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "rootAnchor",
+      "configuration": "{\n&root Value\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "nestedArray",
+      "configuration": "{\n[[Entry]]\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "aliasLookingArray",
+      "configuration": "{\n[alias, type]\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "document",
+      "configuration": "{\n---\nValue\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyDocument",
+      "configuration": "{\n---\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "badArray",
+      "configuration": "{\n[Entry\n}",
+      "error": "unexpected end of the stream within a flow collection"
+    },
+    {
+      "name": "badTag",
+      "configuration": "{\n!!binary aGk=\n}",
+      "error": "unknown tag !<tag:yaml.org,2002:binary>"
+    },
+    {
+      "name": "badScalar",
+      "configuration": "{\n!!int bad\n}",
+      "error": "cannot resolve a node with !<tag:yaml.org,2002:int> explicit tag"
+    },
+    {
+      "name": "badQuote",
+      "configuration": "{\n\"unclosed\n}",
+      "error": "unexpected end of the stream within a double quoted scalar"
+    },
+    {
+      "name": "multipleDocuments",
+      "configuration": "{\n---\nValue\n---\nOther\n}",
+      "error": "expected a single document in the stream, but found more"
+    },
+    {
+      "name": "rootAlias",
+      "configuration": "{\n*unknown\n}",
+      "error": "unidentified alias \"unknown\""
+    }
+  ]
+}

@@ -1,0 +1,405 @@
+{
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA compiled implicit scalar resolvers",
+  "cases": [
+    {
+      "text": "~",
+      "kind": "null",
+      "value": null
+    },
+    {
+      "text": "null",
+      "kind": "null",
+      "value": null
+    },
+    {
+      "text": "Null",
+      "kind": "null",
+      "value": null
+    },
+    {
+      "text": "NULL",
+      "kind": "null",
+      "value": null
+    },
+    {
+      "text": "nUlL",
+      "kind": "str",
+      "value": "nUlL"
+    },
+    {
+      "text": "true",
+      "kind": "bool",
+      "value": true
+    },
+    {
+      "text": "True",
+      "kind": "bool",
+      "value": true
+    },
+    {
+      "text": "TRUE",
+      "kind": "bool",
+      "value": true
+    },
+    {
+      "text": "tRuE",
+      "kind": "str",
+      "value": "tRuE"
+    },
+    {
+      "text": "false",
+      "kind": "bool",
+      "value": false
+    },
+    {
+      "text": "False",
+      "kind": "bool",
+      "value": false
+    },
+    {
+      "text": "FALSE",
+      "kind": "bool",
+      "value": false
+    },
+    {
+      "text": "fAlSe",
+      "kind": "str",
+      "value": "fAlSe"
+    },
+    {
+      "text": "0",
+      "kind": "int",
+      "value": 0
+    },
+    {
+      "text": "00",
+      "kind": "int",
+      "value": 0
+    },
+    {
+      "text": "01",
+      "kind": "int",
+      "value": 1
+    },
+    {
+      "text": "010",
+      "kind": "int",
+      "value": 10
+    },
+    {
+      "text": "0_0",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": "00_0",
+      "kind": "int",
+      "value": 0
+    },
+    {
+      "text": "0_",
+      "kind": "str",
+      "value": "0_"
+    },
+    {
+      "text": "1",
+      "kind": "int",
+      "value": 1
+    },
+    {
+      "text": "-1",
+      "kind": "int",
+      "value": -1
+    },
+    {
+      "text": "+1",
+      "kind": "int",
+      "value": 1
+    },
+    {
+      "text": "12",
+      "kind": "int",
+      "value": 12
+    },
+    {
+      "text": "1_2",
+      "kind": "int",
+      "value": 12
+    },
+    {
+      "text": "1__2",
+      "kind": "int",
+      "value": 12
+    },
+    {
+      "text": "_1",
+      "kind": "str",
+      "value": "_1"
+    },
+    {
+      "text": "012",
+      "kind": "int",
+      "value": 12
+    },
+    {
+      "text": "0b0",
+      "kind": "int",
+      "value": 0
+    },
+    {
+      "text": "0b1",
+      "kind": "int",
+      "value": 1
+    },
+    {
+      "text": "0b_1",
+      "kind": "int",
+      "value": 1
+    },
+    {
+      "text": "-0b10",
+      "kind": "int",
+      "value": -2
+    },
+    {
+      "text": "+0b10",
+      "kind": "int",
+      "value": 2
+    },
+    {
+      "text": "0b1_",
+      "kind": "str",
+      "value": "0b1_"
+    },
+    {
+      "text": "0o0",
+      "kind": "int",
+      "value": 0
+    },
+    {
+      "text": "0o17",
+      "kind": "int",
+      "value": 15
+    },
+    {
+      "text": "-0o17",
+      "kind": "int",
+      "value": -15
+    },
+    {
+      "text": "0x0",
+      "kind": "int",
+      "value": 0
+    },
+    {
+      "text": "0xFF",
+      "kind": "int",
+      "value": 255
+    },
+    {
+      "text": "-0xFF",
+      "kind": "int",
+      "value": -255
+    },
+    {
+      "text": "0XFF",
+      "kind": "str",
+      "value": "0XFF"
+    },
+    {
+      "text": "1.0",
+      "kind": "float",
+      "value": 1
+    },
+    {
+      "text": "0.0",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": "-0.0",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": "-.0",
+      "kind": "str",
+      "value": "-.0"
+    },
+    {
+      "text": "+.0",
+      "kind": "str",
+      "value": "+.0"
+    },
+    {
+      "text": ".0",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": ".5",
+      "kind": "float",
+      "value": 0.5
+    },
+    {
+      "text": "-.5",
+      "kind": "str",
+      "value": "-.5"
+    },
+    {
+      "text": "+.5",
+      "kind": "str",
+      "value": "+.5"
+    },
+    {
+      "text": "0.",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": ".1_",
+      "kind": "str",
+      "value": ".1_"
+    },
+    {
+      "text": "1.e2",
+      "kind": "float",
+      "value": 100
+    },
+    {
+      "text": "1_e2",
+      "kind": "float",
+      "value": 100
+    },
+    {
+      "text": "1e2",
+      "kind": "float",
+      "value": 100
+    },
+    {
+      "text": "1e+2",
+      "kind": "float",
+      "value": 100
+    },
+    {
+      "text": "1e-2",
+      "kind": "float",
+      "value": 0.01
+    },
+    {
+      "text": "1e_2",
+      "kind": "str",
+      "value": "1e_2"
+    },
+    {
+      "text": "1e999",
+      "kind": "float",
+      "value": "Infinity"
+    },
+    {
+      "text": "-1e999",
+      "kind": "float",
+      "value": "-Infinity"
+    },
+    {
+      "text": "1e-999",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": "-1e-999",
+      "kind": "float",
+      "value": 0
+    },
+    {
+      "text": ".inf",
+      "kind": "float",
+      "value": "Infinity"
+    },
+    {
+      "text": ".Inf",
+      "kind": "float",
+      "value": "Infinity"
+    },
+    {
+      "text": ".INF",
+      "kind": "float",
+      "value": "Infinity"
+    },
+    {
+      "text": "+.inf",
+      "kind": "float",
+      "value": "Infinity"
+    },
+    {
+      "text": "-.inf",
+      "kind": "float",
+      "value": "-Infinity"
+    },
+    {
+      "text": ".iNF",
+      "kind": "str",
+      "value": ".iNF"
+    },
+    {
+      "text": ".nan",
+      "kind": "float",
+      "value": "NaN"
+    },
+    {
+      "text": ".NaN",
+      "kind": "float",
+      "value": "NaN"
+    },
+    {
+      "text": ".NAN",
+      "kind": "float",
+      "value": "NaN"
+    },
+    {
+      "text": ".nAN",
+      "kind": "str",
+      "value": ".nAN"
+    },
+    {
+      "text": "-.nan",
+      "kind": "str",
+      "value": "-.nan"
+    },
+    {
+      "text": "9007199254740993",
+      "kind": "int",
+      "value": 9007199254740992
+    },
+    {
+      "text": "18446744073709551616",
+      "kind": "int",
+      "value": 18446744073709552000
+    },
+    {
+      "text": "1:20",
+      "kind": "str",
+      "value": "1:20"
+    },
+    {
+      "text": "2024-01-01",
+      "kind": "str",
+      "value": "2024-01-01"
+    },
+    {
+      "text": "text",
+      "kind": "str",
+      "value": "text"
+    },
+    {
+      "text": "用户",
+      "kind": "str",
+      "value": "用户"
+    },
+    {
+      "text": "0b0 continued",
+      "kind": "str",
+      "value": "0b0 continued"
+    }
+  ]
+}

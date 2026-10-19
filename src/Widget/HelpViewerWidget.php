@@ -62,6 +62,11 @@ final class HelpViewerWidget extends MarkdownPageWidget
         return '';
     }
 
+    public function resume(): void
+    {
+        $this->resumeFences();
+    }
+
     /**
      * Adopt the tab's page — but only when this pane is empty. Switching back to
      * a help tab keeps whatever the user navigated to, which is why the caller
@@ -75,6 +80,8 @@ final class HelpViewerWidget extends MarkdownPageWidget
     public function show(string $path, mixed $payload): void
     {
         if (null !== $this->path) {
+            $this->resumeFences();
+
             return;
         }
         $this->refreshPage($path, (string) $payload);

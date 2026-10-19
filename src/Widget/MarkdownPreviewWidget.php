@@ -7,8 +7,13 @@ namespace Porta\Widget;
 use Porta\Container\AsIdeService;
 use Porta\Container\AsWidget;
 use Porta\Event\SourceEditRequested;
+use Porta\Help\Fence\FenceRenderQueue;
+use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\Highlight\CodeHighlighterFactory;
 use Porta\I18n\Translator;
+use Porta\Support\Files;
+use Porta\Support\RevoltScheduler;
+use Porta\Support\Scheduler;
 use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\Styles;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -49,9 +54,12 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
         ?CodeHighlighterFactory $highlighters = null,
         ?Translator $translator = null,
         ?TerminalGraphics $graphics = null,
+        ?MarkdownFenceRegistry $fences = null,
+        ?FenceRenderQueue $fenceQueue = null,
+        Scheduler $scheduler = new RevoltScheduler(),
         private readonly ?EventDispatcherInterface $events = null,
     ) {
-        parent::__construct($styles, $highlighters, $translator, $graphics);
+        parent::__construct($styles, $highlighters, $translator, $graphics, $fences, $fenceQueue, $scheduler);
     }
 
     /** A click on the page puts the editor's caret on what was clicked. */
@@ -91,10 +99,20 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
         $markdown = (string) $payload;
         $this->bufferPath = $path;
         $same = $path === $this->path || \realpath($path) === $this->path;
+        $this->resumeFences();
         if ($same && $markdown === $this->markdown) {
             return; // the same text for the same file: nothing to draw again
         }
         $this->adopt($path, $markdown, fromTop: !$same);
+    }
+
+    #[\Override]
+    public function forget(string $path): void
+    {
+        if ($this->bufferPath === $path || $this->path === Files::canonical($path)) {
+            $this->clear();
+            $this->bufferPath = null;
+        }
     }
 
     /**

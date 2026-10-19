@@ -1,0 +1,289 @@
+{
+  "repository": "https://github.com/mermaid-js/mermaid",
+  "commit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+  "source": "packages/mermaid/src/diagrams/sequence/sequenceDb.ts:addActor",
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA with pinned metadata wrapping",
+  "cases": [
+    {
+      "name": "array",
+      "configuration": "{[alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "explicitArray",
+      "configuration": "{? [alias] : Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyValue",
+      "configuration": "{[alias]}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "emptyArray",
+      "configuration": "{[]: Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "arrayDuplicate",
+      "configuration": "{alias: First, [alias]: Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nullFirst",
+      "configuration": "{alias: null, [alias]: Name}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "emptyDuplicate",
+      "configuration": "{\"\": First, []: Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "flatScalars",
+      "configuration": "{[null, false, 0, .nan, .inf, -.inf]: Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "flatDuplicate",
+      "configuration": "{\",false,0,NaN,Infinity,-Infinity\": First, [null, false, 0, .nan, .inf, -.inf]: Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "nestedArray",
+      "configuration": "{[[alias]]: Name}",
+      "error": "nested arrays are not supported inside keys"
+    },
+    {
+      "name": "map",
+      "configuration": "{{a: Value}: Other, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapDuplicate",
+      "configuration": "{\"[object Object]\": First, {a: Value}: Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "arrayMap",
+      "configuration": "{[{a: Value}]: Other, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "arrayMapDuplicate",
+      "configuration": "{\"[object Object]\": First, [{a: Value}]: Second}",
+      "error": "duplicated mapping key"
+    },
+    {
+      "name": "anchoredArray",
+      "configuration": "{&key [alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchoredScalar",
+      "configuration": "{&key Stored: Value, alias: *key}",
+      "alias": "Stored",
+      "type": null
+    },
+    {
+      "name": "explicitAnchoredScalar",
+      "configuration": "{? &key Stored : Value, alias: *key}",
+      "alias": "Stored",
+      "type": null
+    },
+    {
+      "name": "typedArray",
+      "configuration": "{!!seq [alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "typedMap",
+      "configuration": "{!!map {a: Value}: Other, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "badString",
+      "configuration": "{!!str [alias]: Name}",
+      "error": "unknown tag !<tag:yaml.org,2002:str>"
+    },
+    {
+      "name": "scalarRef",
+      "configuration": "{text: &text alias, [*text]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "mapSelf",
+      "configuration": "{&key {self: *key}: Other, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "arrayRefKey",
+      "configuration": "{&key [alias]: Name, ignored: *key}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "undefined",
+      "configuration": "{[*missing]: Name}",
+      "error": "unidentified alias \"missing\""
+    },
+    {
+      "name": "listPair",
+      "configuration": "{ignored: [[alias]: Value], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "listExplicitPair",
+      "configuration": "{ignored: [? [alias]: Value], alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "quotedComma",
+      "configuration": "{[\"a,b\", \"c]d\"]: Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "literalReference",
+      "configuration": "{ignored: \"[alias]: Value\", alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "shadowCollision",
+      "configuration": "{\"__porta_key_0__k0\": Original, [alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "escapedShadowCollision",
+      "configuration": "{\"\\u005f\\u005fporta_key_0__k0\": Original, [alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "anchorCollision",
+      "configuration": "{ignored: &__porta_key_0__a0 actor, [alias]: Name, type: *__porta_key_0__a0}",
+      "alias": "Name",
+      "type": "actor"
+    },
+    {
+      "name": "undefinedGeneratedName",
+      "configuration": "{[alias]: Name, ignored: *__porta_key_0__a0}",
+      "error": "unidentified alias \"__porta_key_0__a0\""
+    },
+    {
+      "name": "symbolPool",
+      "configuration": "{ignored: [\"__porta_key_0__\", \"__porta_key_1__\", \"__porta_key_2__\"], [alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "shortTagSpacing",
+      "configuration": "{!!seq[alias]: Name}",
+      "error": "tag suffix cannot contain flow indicator characters"
+    },
+    {
+      "name": "anchorSpacing",
+      "configuration": "{&key[alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "uriSpacing",
+      "configuration": "{!<tag:yaml.org,2002:seq>[alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "uriAnchorSpacing",
+      "configuration": "{!<tag:yaml.org,2002:seq>&key [alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "implicitMultiline",
+      "configuration": "{\n{[alias,\n type]: Value, alias: Name}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "explicitMultiline",
+      "configuration": "{\n{? [alias,\n type]: Value, alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyMultiline",
+      "configuration": "{\n{[alias,\n type], alias: Name}\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "explicitAnchorLine",
+      "configuration": "{\n{? &key\n[alias]: Name}\n}",
+      "error": "missed comma between flow collection entries"
+    },
+    {
+      "name": "uriQuotedKey",
+      "configuration": "{!<tag:yaml.org,2002:str>\"alias\": Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "uriQuotedValue",
+      "configuration": "{alias: !<tag:yaml.org,2002:str>\"Name\"}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "uriAdjacentBoth",
+      "configuration": "{!<tag:yaml.org,2002:seq>&key[alias]: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "manyLiteralKeys",
+      "configuration": "{[key0]: Value, [key1]: Value, [key2]: Value, [key3]: Value, [key4]: Value, [key5]: Value, [key6]: Value, [key7]: Value, [key8]: Value, [key9]: Value, [key10]: Value, [key11]: Value, [key12]: Value, [key13]: Value, [key14]: Value, [key15]: Value, [key16]: Value, [key17]: Value, [key18]: Value, [key19]: Value, [key20]: Value, [key21]: Value, [key22]: Value, [key23]: Value, [key24]: Value, [key25]: Value, [key26]: Value, [key27]: Value, [key28]: Value, [key29]: Value, [key30]: Value, [key31]: Value, [key32]: Value, [key33]: Value, [key34]: Value, [key35]: Value, [key36]: Value, [key37]: Value, [key38]: Value, [key39]: Value, [key40]: Value, [key41]: Value, [key42]: Value, [key43]: Value, [key44]: Value, [key45]: Value, [key46]: Value, [key47]: Value, [key48]: Value, [key49]: Value, [key50]: Value, [key51]: Value, [key52]: Value, [key53]: Value, [key54]: Value, [key55]: Value, [key56]: Value, [key57]: Value, [key58]: Value, [key59]: Value, [key60]: Value, [key61]: Value, [key62]: Value, [key63]: Value, [key64]: Value, [key65]: Value, [key66]: Value, [key67]: Value, [key68]: Value, [key69]: Value, [key70]: Value, [key71]: Value, [key72]: Value, [key73]: Value, [key74]: Value, [key75]: Value, [key76]: Value, [key77]: Value, [key78]: Value, [key79]: Value, [key80]: Value, [key81]: Value, [key82]: Value, [key83]: Value, [key84]: Value, [key85]: Value, [key86]: Value, [key87]: Value, [key88]: Value, [key89]: Value, [key90]: Value, [key91]: Value, [key92]: Value, [key93]: Value, [key94]: Value, [key95]: Value, [key96]: Value, [key97]: Value, [key98]: Value, [key99]: Value, [key100]: Value, [key101]: Value, [key102]: Value, [key103]: Value, [key104]: Value, [key105]: Value, [key106]: Value, [key107]: Value, [key108]: Value, [key109]: Value, [key110]: Value, [key111]: Value, [key112]: Value, [key113]: Value, [key114]: Value, [key115]: Value, [key116]: Value, [key117]: Value, [key118]: Value, [key119]: Value, [key120]: Value, [key121]: Value, [key122]: Value, [key123]: Value, [key124]: Value, [key125]: Value, [key126]: Value, [key127]: Value, [key128]: Value, alias: Name}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "documentFlow",
+      "configuration": "{\n---\n{[alias]: Name}\n...\n}",
+      "alias": "Name",
+      "type": null
+    },
+    {
+      "name": "emptyPropertyLine",
+      "configuration": "{\n{? &key\n: Name, alias: *key}\n}",
+      "alias": null,
+      "type": null
+    },
+    {
+      "name": "colonPropertyText",
+      "configuration": "{&key :Name, alias: *key}",
+      "alias": ":Name",
+      "type": null
+    },
+    {
+      "name": "nullPropertyKey",
+      "configuration": "{&key : Name, alias: *key}",
+      "alias": null,
+      "type": null
+    }
+  ]
+}

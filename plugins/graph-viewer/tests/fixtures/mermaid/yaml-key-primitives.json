@@ -1,0 +1,389 @@
+{
+  "oracle": "js-yaml 4.1.0 JSON_SCHEMA compiled scalar resolvers followed by JavaScript String(value)",
+  "cases": [
+    {
+      "text": "~",
+      "key": "null"
+    },
+    {
+      "text": "null",
+      "key": "null"
+    },
+    {
+      "text": "Null",
+      "key": "null"
+    },
+    {
+      "text": "NULL",
+      "key": "null"
+    },
+    {
+      "text": "nUlL",
+      "key": "nUlL"
+    },
+    {
+      "text": "true",
+      "key": "true"
+    },
+    {
+      "text": "True",
+      "key": "true"
+    },
+    {
+      "text": "TRUE",
+      "key": "true"
+    },
+    {
+      "text": "tRuE",
+      "key": "tRuE"
+    },
+    {
+      "text": "false",
+      "key": "false"
+    },
+    {
+      "text": "False",
+      "key": "false"
+    },
+    {
+      "text": "FALSE",
+      "key": "false"
+    },
+    {
+      "text": "fAlSe",
+      "key": "fAlSe"
+    },
+    {
+      "text": "0",
+      "key": "0"
+    },
+    {
+      "text": "00",
+      "key": "0"
+    },
+    {
+      "text": "01",
+      "key": "1"
+    },
+    {
+      "text": "010",
+      "key": "10"
+    },
+    {
+      "text": "0_0",
+      "key": "0"
+    },
+    {
+      "text": "00_0",
+      "key": "0"
+    },
+    {
+      "text": "0_",
+      "key": "0_"
+    },
+    {
+      "text": "1",
+      "key": "1"
+    },
+    {
+      "text": "-1",
+      "key": "-1"
+    },
+    {
+      "text": "+1",
+      "key": "1"
+    },
+    {
+      "text": "12",
+      "key": "12"
+    },
+    {
+      "text": "1_2",
+      "key": "12"
+    },
+    {
+      "text": "1__2",
+      "key": "12"
+    },
+    {
+      "text": "_1",
+      "key": "_1"
+    },
+    {
+      "text": "012",
+      "key": "12"
+    },
+    {
+      "text": "0b0",
+      "key": "0"
+    },
+    {
+      "text": "0b1",
+      "key": "1"
+    },
+    {
+      "text": "0b_1",
+      "key": "1"
+    },
+    {
+      "text": "-0b10",
+      "key": "-2"
+    },
+    {
+      "text": "+0b10",
+      "key": "2"
+    },
+    {
+      "text": "0b1_",
+      "key": "0b1_"
+    },
+    {
+      "text": "0o0",
+      "key": "0"
+    },
+    {
+      "text": "0o17",
+      "key": "15"
+    },
+    {
+      "text": "-0o17",
+      "key": "-15"
+    },
+    {
+      "text": "0x0",
+      "key": "0"
+    },
+    {
+      "text": "0xFF",
+      "key": "255"
+    },
+    {
+      "text": "-0xFF",
+      "key": "-255"
+    },
+    {
+      "text": "0XFF",
+      "key": "0XFF"
+    },
+    {
+      "text": "1.0",
+      "key": "1"
+    },
+    {
+      "text": "0.0",
+      "key": "0"
+    },
+    {
+      "text": "-0.0",
+      "key": "0"
+    },
+    {
+      "text": "-.0",
+      "key": "-.0"
+    },
+    {
+      "text": "+.0",
+      "key": "+.0"
+    },
+    {
+      "text": ".0",
+      "key": "0"
+    },
+    {
+      "text": ".5",
+      "key": "0.5"
+    },
+    {
+      "text": "-.5",
+      "key": "-.5"
+    },
+    {
+      "text": "+.5",
+      "key": "+.5"
+    },
+    {
+      "text": "0.",
+      "key": "0"
+    },
+    {
+      "text": ".1_",
+      "key": ".1_"
+    },
+    {
+      "text": "1.e2",
+      "key": "100"
+    },
+    {
+      "text": "1_e2",
+      "key": "100"
+    },
+    {
+      "text": "1e2",
+      "key": "100"
+    },
+    {
+      "text": "1e+2",
+      "key": "100"
+    },
+    {
+      "text": "1e-2",
+      "key": "0.01"
+    },
+    {
+      "text": "1e_2",
+      "key": "1e_2"
+    },
+    {
+      "text": "1e999",
+      "key": "Infinity"
+    },
+    {
+      "text": "-1e999",
+      "key": "-Infinity"
+    },
+    {
+      "text": "1e-999",
+      "key": "0"
+    },
+    {
+      "text": "-1e-999",
+      "key": "0"
+    },
+    {
+      "text": ".inf",
+      "key": "Infinity"
+    },
+    {
+      "text": ".Inf",
+      "key": "Infinity"
+    },
+    {
+      "text": ".INF",
+      "key": "Infinity"
+    },
+    {
+      "text": "+.inf",
+      "key": "Infinity"
+    },
+    {
+      "text": "-.inf",
+      "key": "-Infinity"
+    },
+    {
+      "text": ".iNF",
+      "key": ".iNF"
+    },
+    {
+      "text": ".nan",
+      "key": "NaN"
+    },
+    {
+      "text": ".NaN",
+      "key": "NaN"
+    },
+    {
+      "text": ".NAN",
+      "key": "NaN"
+    },
+    {
+      "text": ".nAN",
+      "key": ".nAN"
+    },
+    {
+      "text": "-.nan",
+      "key": "-.nan"
+    },
+    {
+      "text": "9007199254740993",
+      "key": "9007199254740992"
+    },
+    {
+      "text": "18446744073709551616",
+      "key": "18446744073709552000"
+    },
+    {
+      "text": "1:20",
+      "key": "1:20"
+    },
+    {
+      "text": "2024-01-01",
+      "key": "2024-01-01"
+    },
+    {
+      "text": "text",
+      "key": "text"
+    },
+    {
+      "text": "用户",
+      "key": "用户"
+    },
+    {
+      "text": "0b0 continued",
+      "key": "0b0 continued"
+    },
+    {
+      "text": "",
+      "key": ""
+    },
+    {
+      "text": "1.25",
+      "key": "1.25"
+    },
+    {
+      "text": "-1.25",
+      "key": "-1.25"
+    },
+    {
+      "text": "1e-6",
+      "key": "0.000001"
+    },
+    {
+      "text": "1e-7",
+      "key": "1e-7"
+    },
+    {
+      "text": "1e20",
+      "key": "100000000000000000000"
+    },
+    {
+      "text": "1e21",
+      "key": "1e+21"
+    },
+    {
+      "text": "1.2345e-7",
+      "key": "1.2345e-7"
+    },
+    {
+      "text": "1.2345e22",
+      "key": "1.2345e+22"
+    },
+    {
+      "text": "-1.2345e-7",
+      "key": "-1.2345e-7"
+    },
+    {
+      "text": "-1.2345e22",
+      "key": "-1.2345e+22"
+    },
+    {
+      "text": "1000000000000000100",
+      "key": "1000000000000000100"
+    },
+    {
+      "text": "1.7976931348623157e308",
+      "key": "1.7976931348623157e+308"
+    },
+    {
+      "text": "5e-324",
+      "key": "5e-324"
+    },
+    {
+      "text": "-5e-324",
+      "key": "-5e-324"
+    },
+    {
+      "text": "2.2250738585072014e-308",
+      "key": "2.2250738585072014e-308"
+    }
+  ]
+}

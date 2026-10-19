@@ -1,0 +1,3534 @@
+{
+ "mermaid": "12.1.0",
+ "mermaidCommit": "21f72f07ea22c0af48a3149c550654e80d8e40cb",
+ "cases": [
+  {
+   "specifier": ",",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": ",",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": ",",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": ",",
+   "value": 0.5,
+   "output": "0.5"
+  },
+  {
+   "specifier": ",",
+   "value": 1234.5678,
+   "output": "1,234.5678"
+  },
+  {
+   "specifier": ",",
+   "value": -1234.5678,
+   "output": "−1,234.5678"
+  },
+  {
+   "specifier": ",",
+   "value": 1000000,
+   "output": "1,000,000"
+  },
+  {
+   "specifier": ",",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": ",",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": ",",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": ",",
+   "value": 1234567.891,
+   "output": "1,234,567.891"
+  },
+  {
+   "specifier": ",",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": ",",
+   "value": -0.0001,
+   "output": "−0.0001"
+  },
+  {
+   "specifier": ",",
+   "value": 12.345,
+   "output": "12.345"
+  },
+  {
+   "specifier": ",",
+   "value": 1e-30,
+   "output": "1e-30"
+  },
+  {
+   "specifier": ",",
+   "value": 4.2e-27,
+   "output": "4.2e-27"
+  },
+  {
+   "specifier": "",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "",
+   "value": 0.5,
+   "output": "0.5"
+  },
+  {
+   "specifier": "",
+   "value": 1234.5678,
+   "output": "1234.5678"
+  },
+  {
+   "specifier": "",
+   "value": -1234.5678,
+   "output": "−1234.5678"
+  },
+  {
+   "specifier": "",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": "",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": "",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": "",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "",
+   "value": 1234567.891,
+   "output": "1234567.891"
+  },
+  {
+   "specifier": "",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": "",
+   "value": -0.0001,
+   "output": "−0.0001"
+  },
+  {
+   "specifier": "",
+   "value": 12.345,
+   "output": "12.345"
+  },
+  {
+   "specifier": "",
+   "value": 1e-30,
+   "output": "1e-30"
+  },
+  {
+   "specifier": "",
+   "value": 4.2e-27,
+   "output": "4.2e-27"
+  },
+  {
+   "specifier": "$",
+   "value": 0,
+   "output": "$0"
+  },
+  {
+   "specifier": "$",
+   "value": 1,
+   "output": "$1"
+  },
+  {
+   "specifier": "$",
+   "value": -1,
+   "output": "−$1"
+  },
+  {
+   "specifier": "$",
+   "value": 0.5,
+   "output": "$0.5"
+  },
+  {
+   "specifier": "$",
+   "value": 1234.5678,
+   "output": "$1234.5678"
+  },
+  {
+   "specifier": "$",
+   "value": -1234.5678,
+   "output": "−$1234.5678"
+  },
+  {
+   "specifier": "$",
+   "value": 1000000,
+   "output": "$1000000"
+  },
+  {
+   "specifier": "$",
+   "value": 0.000123,
+   "output": "$0.000123"
+  },
+  {
+   "specifier": "$",
+   "value": 42,
+   "output": "$42"
+  },
+  {
+   "specifier": "$",
+   "value": 999.999,
+   "output": "$999.999"
+  },
+  {
+   "specifier": "$",
+   "value": 1234567.891,
+   "output": "$1234567.891"
+  },
+  {
+   "specifier": "$",
+   "value": 1e+21,
+   "output": "$1e+21"
+  },
+  {
+   "specifier": "$",
+   "value": -0.0001,
+   "output": "−$0.0001"
+  },
+  {
+   "specifier": "$",
+   "value": 12.345,
+   "output": "$12.345"
+  },
+  {
+   "specifier": "$",
+   "value": 1e-30,
+   "output": "$1e-30"
+  },
+  {
+   "specifier": "$",
+   "value": 4.2e-27,
+   "output": "$4.2e-27"
+  },
+  {
+   "specifier": "$,",
+   "value": 0,
+   "output": "$0"
+  },
+  {
+   "specifier": "$,",
+   "value": 1,
+   "output": "$1"
+  },
+  {
+   "specifier": "$,",
+   "value": -1,
+   "output": "−$1"
+  },
+  {
+   "specifier": "$,",
+   "value": 0.5,
+   "output": "$0.5"
+  },
+  {
+   "specifier": "$,",
+   "value": 1234.5678,
+   "output": "$1,234.5678"
+  },
+  {
+   "specifier": "$,",
+   "value": -1234.5678,
+   "output": "−$1,234.5678"
+  },
+  {
+   "specifier": "$,",
+   "value": 1000000,
+   "output": "$1,000,000"
+  },
+  {
+   "specifier": "$,",
+   "value": 0.000123,
+   "output": "$0.000123"
+  },
+  {
+   "specifier": "$,",
+   "value": 42,
+   "output": "$42"
+  },
+  {
+   "specifier": "$,",
+   "value": 999.999,
+   "output": "$999.999"
+  },
+  {
+   "specifier": "$,",
+   "value": 1234567.891,
+   "output": "$1,234,567.891"
+  },
+  {
+   "specifier": "$,",
+   "value": 1e+21,
+   "output": "$1e+21"
+  },
+  {
+   "specifier": "$,",
+   "value": -0.0001,
+   "output": "−$0.0001"
+  },
+  {
+   "specifier": "$,",
+   "value": 12.345,
+   "output": "$12.345"
+  },
+  {
+   "specifier": "$,",
+   "value": 1e-30,
+   "output": "$1e-30"
+  },
+  {
+   "specifier": "$,",
+   "value": 4.2e-27,
+   "output": "$4.2e-27"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 0,
+   "output": "0.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 1,
+   "output": "1.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": -1,
+   "output": "−1.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 0.5,
+   "output": "0.50"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 1234.5678,
+   "output": "1,234.57"
+  },
+  {
+   "specifier": ",.2f",
+   "value": -1234.5678,
+   "output": "−1,234.57"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 1000000,
+   "output": "1,000,000.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 0.000123,
+   "output": "0.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 42,
+   "output": "42.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 999.999,
+   "output": "1,000.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 1234567.891,
+   "output": "1,234,567.89"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": ",.2f",
+   "value": -0.0001,
+   "output": "0.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 12.345,
+   "output": "12.35"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 1e-30,
+   "output": "0.00"
+  },
+  {
+   "specifier": ",.2f",
+   "value": 4.2e-27,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 0,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 1,
+   "output": "1.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": -1,
+   "output": "−1.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 0.5,
+   "output": "0.50"
+  },
+  {
+   "specifier": ".2f",
+   "value": 1234.5678,
+   "output": "1234.57"
+  },
+  {
+   "specifier": ".2f",
+   "value": -1234.5678,
+   "output": "−1234.57"
+  },
+  {
+   "specifier": ".2f",
+   "value": 1000000,
+   "output": "1000000.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 0.000123,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 42,
+   "output": "42.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 999.999,
+   "output": "1000.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 1234567.891,
+   "output": "1234567.89"
+  },
+  {
+   "specifier": ".2f",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": ".2f",
+   "value": -0.0001,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 12.345,
+   "output": "12.35"
+  },
+  {
+   "specifier": ".2f",
+   "value": 1e-30,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".2f",
+   "value": 4.2e-27,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".0f",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": ".0f",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": ".0f",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": ".0f",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": ".0f",
+   "value": 1234.5678,
+   "output": "1235"
+  },
+  {
+   "specifier": ".0f",
+   "value": -1234.5678,
+   "output": "−1235"
+  },
+  {
+   "specifier": ".0f",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": ".0f",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": ".0f",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": ".0f",
+   "value": 999.999,
+   "output": "1000"
+  },
+  {
+   "specifier": ".0f",
+   "value": 1234567.891,
+   "output": "1234568"
+  },
+  {
+   "specifier": ".0f",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": ".0f",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": ".0f",
+   "value": 12.345,
+   "output": "12"
+  },
+  {
+   "specifier": ".0f",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": ".0f",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "d",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "d",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "d",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "d",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": "d",
+   "value": 1234.5678,
+   "output": "1235"
+  },
+  {
+   "specifier": "d",
+   "value": -1234.5678,
+   "output": "−1235"
+  },
+  {
+   "specifier": "d",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": "d",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": "d",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": "d",
+   "value": 999.999,
+   "output": "1000"
+  },
+  {
+   "specifier": "d",
+   "value": 1234567.891,
+   "output": "1234568"
+  },
+  {
+   "specifier": "d",
+   "value": 1e+21,
+   "output": "1000000000000000000000"
+  },
+  {
+   "specifier": "d",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": "d",
+   "value": 12.345,
+   "output": "12"
+  },
+  {
+   "specifier": "d",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": "d",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": ",d",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": ",d",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": ",d",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": ",d",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": ",d",
+   "value": 1234.5678,
+   "output": "1,235"
+  },
+  {
+   "specifier": ",d",
+   "value": -1234.5678,
+   "output": "−1,235"
+  },
+  {
+   "specifier": ",d",
+   "value": 1000000,
+   "output": "1,000,000"
+  },
+  {
+   "specifier": ",d",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": ",d",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": ",d",
+   "value": 999.999,
+   "output": "1,000"
+  },
+  {
+   "specifier": ",d",
+   "value": 1234567.891,
+   "output": "1,234,568"
+  },
+  {
+   "specifier": ",d",
+   "value": 1e+21,
+   "output": "1,000,000,000,000,000,000,000"
+  },
+  {
+   "specifier": ",d",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": ",d",
+   "value": 12.345,
+   "output": "12"
+  },
+  {
+   "specifier": ",d",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": ",d",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": ".3s",
+   "value": 0,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".3s",
+   "value": 1,
+   "output": "1.00"
+  },
+  {
+   "specifier": ".3s",
+   "value": -1,
+   "output": "−1.00"
+  },
+  {
+   "specifier": ".3s",
+   "value": 0.5,
+   "output": "500m"
+  },
+  {
+   "specifier": ".3s",
+   "value": 1234.5678,
+   "output": "1.23k"
+  },
+  {
+   "specifier": ".3s",
+   "value": -1234.5678,
+   "output": "−1.23k"
+  },
+  {
+   "specifier": ".3s",
+   "value": 1000000,
+   "output": "1.00M"
+  },
+  {
+   "specifier": ".3s",
+   "value": 0.000123,
+   "output": "123µ"
+  },
+  {
+   "specifier": ".3s",
+   "value": 42,
+   "output": "42.0"
+  },
+  {
+   "specifier": ".3s",
+   "value": 999.999,
+   "output": "1.00k"
+  },
+  {
+   "specifier": ".3s",
+   "value": 1234567.891,
+   "output": "1.23M"
+  },
+  {
+   "specifier": ".3s",
+   "value": 1e+21,
+   "output": "1.00Z"
+  },
+  {
+   "specifier": ".3s",
+   "value": -0.0001,
+   "output": "−100µ"
+  },
+  {
+   "specifier": ".3s",
+   "value": 12.345,
+   "output": "12.3"
+  },
+  {
+   "specifier": ".3s",
+   "value": 1e-30,
+   "output": "0.000001y"
+  },
+  {
+   "specifier": ".3s",
+   "value": 4.2e-27,
+   "output": "0.0042y"
+  },
+  {
+   "specifier": "s",
+   "value": 0,
+   "output": "0.00000"
+  },
+  {
+   "specifier": "s",
+   "value": 1,
+   "output": "1.00000"
+  },
+  {
+   "specifier": "s",
+   "value": -1,
+   "output": "−1.00000"
+  },
+  {
+   "specifier": "s",
+   "value": 0.5,
+   "output": "500.000m"
+  },
+  {
+   "specifier": "s",
+   "value": 1234.5678,
+   "output": "1.23457k"
+  },
+  {
+   "specifier": "s",
+   "value": -1234.5678,
+   "output": "−1.23457k"
+  },
+  {
+   "specifier": "s",
+   "value": 1000000,
+   "output": "1.00000M"
+  },
+  {
+   "specifier": "s",
+   "value": 0.000123,
+   "output": "123.000µ"
+  },
+  {
+   "specifier": "s",
+   "value": 42,
+   "output": "42.0000"
+  },
+  {
+   "specifier": "s",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "s",
+   "value": 1234567.891,
+   "output": "1.23457M"
+  },
+  {
+   "specifier": "s",
+   "value": 1e+21,
+   "output": "1.00000Z"
+  },
+  {
+   "specifier": "s",
+   "value": -0.0001,
+   "output": "−100.000µ"
+  },
+  {
+   "specifier": "s",
+   "value": 12.345,
+   "output": "12.3450"
+  },
+  {
+   "specifier": "s",
+   "value": 1e-30,
+   "output": "0.000001y"
+  },
+  {
+   "specifier": "s",
+   "value": 4.2e-27,
+   "output": "0.00420y"
+  },
+  {
+   "specifier": ".2s",
+   "value": 0,
+   "output": "0.0"
+  },
+  {
+   "specifier": ".2s",
+   "value": 1,
+   "output": "1.0"
+  },
+  {
+   "specifier": ".2s",
+   "value": -1,
+   "output": "−1.0"
+  },
+  {
+   "specifier": ".2s",
+   "value": 0.5,
+   "output": "500m"
+  },
+  {
+   "specifier": ".2s",
+   "value": 1234.5678,
+   "output": "1.2k"
+  },
+  {
+   "specifier": ".2s",
+   "value": -1234.5678,
+   "output": "−1.2k"
+  },
+  {
+   "specifier": ".2s",
+   "value": 1000000,
+   "output": "1.0M"
+  },
+  {
+   "specifier": ".2s",
+   "value": 0.000123,
+   "output": "120µ"
+  },
+  {
+   "specifier": ".2s",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": ".2s",
+   "value": 999.999,
+   "output": "1.0k"
+  },
+  {
+   "specifier": ".2s",
+   "value": 1234567.891,
+   "output": "1.2M"
+  },
+  {
+   "specifier": ".2s",
+   "value": 1e+21,
+   "output": "1.0Z"
+  },
+  {
+   "specifier": ".2s",
+   "value": -0.0001,
+   "output": "−100µ"
+  },
+  {
+   "specifier": ".2s",
+   "value": 12.345,
+   "output": "12"
+  },
+  {
+   "specifier": ".2s",
+   "value": 1e-30,
+   "output": "0.000001y"
+  },
+  {
+   "specifier": ".2s",
+   "value": 4.2e-27,
+   "output": "0.0042y"
+  },
+  {
+   "specifier": "~s",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "~s",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "~s",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "~s",
+   "value": 0.5,
+   "output": "500m"
+  },
+  {
+   "specifier": "~s",
+   "value": 1234.5678,
+   "output": "1.23457k"
+  },
+  {
+   "specifier": "~s",
+   "value": -1234.5678,
+   "output": "−1.23457k"
+  },
+  {
+   "specifier": "~s",
+   "value": 1000000,
+   "output": "1M"
+  },
+  {
+   "specifier": "~s",
+   "value": 0.000123,
+   "output": "123µ"
+  },
+  {
+   "specifier": "~s",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": "~s",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "~s",
+   "value": 1234567.891,
+   "output": "1.23457M"
+  },
+  {
+   "specifier": "~s",
+   "value": 1e+21,
+   "output": "1Z"
+  },
+  {
+   "specifier": "~s",
+   "value": -0.0001,
+   "output": "−100µ"
+  },
+  {
+   "specifier": "~s",
+   "value": 12.345,
+   "output": "12.345"
+  },
+  {
+   "specifier": "~s",
+   "value": 1e-30,
+   "output": "0.000001y"
+  },
+  {
+   "specifier": "~s",
+   "value": 4.2e-27,
+   "output": "0.0042y"
+  },
+  {
+   "specifier": ".1%",
+   "value": 0,
+   "output": "0.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 1,
+   "output": "100.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": -1,
+   "output": "−100.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 0.5,
+   "output": "50.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 1234.5678,
+   "output": "123456.8%"
+  },
+  {
+   "specifier": ".1%",
+   "value": -1234.5678,
+   "output": "−123456.8%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 1000000,
+   "output": "100000000.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 0.000123,
+   "output": "0.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 42,
+   "output": "4200.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 999.999,
+   "output": "99999.9%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 1234567.891,
+   "output": "123456789.1%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 1e+21,
+   "output": "1e+23%"
+  },
+  {
+   "specifier": ".1%",
+   "value": -0.0001,
+   "output": "0.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 12.345,
+   "output": "1234.5%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 1e-30,
+   "output": "0.0%"
+  },
+  {
+   "specifier": ".1%",
+   "value": 4.2e-27,
+   "output": "0.0%"
+  },
+  {
+   "specifier": "%",
+   "value": 0,
+   "output": "0.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": 1,
+   "output": "100.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": -1,
+   "output": "−100.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": 0.5,
+   "output": "50.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": 1234.5678,
+   "output": "123456.780000%"
+  },
+  {
+   "specifier": "%",
+   "value": -1234.5678,
+   "output": "−123456.780000%"
+  },
+  {
+   "specifier": "%",
+   "value": 1000000,
+   "output": "100000000.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": 0.000123,
+   "output": "0.012300%"
+  },
+  {
+   "specifier": "%",
+   "value": 42,
+   "output": "4200.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": 999.999,
+   "output": "99999.900000%"
+  },
+  {
+   "specifier": "%",
+   "value": 1234567.891,
+   "output": "123456789.100000%"
+  },
+  {
+   "specifier": "%",
+   "value": 1e+21,
+   "output": "1e+23%"
+  },
+  {
+   "specifier": "%",
+   "value": -0.0001,
+   "output": "−0.010000%"
+  },
+  {
+   "specifier": "%",
+   "value": 12.345,
+   "output": "1234.500000%"
+  },
+  {
+   "specifier": "%",
+   "value": 1e-30,
+   "output": "0.000000%"
+  },
+  {
+   "specifier": "%",
+   "value": 4.2e-27,
+   "output": "0.000000%"
+  },
+  {
+   "specifier": ".2e",
+   "value": 0,
+   "output": "0.00e+0"
+  },
+  {
+   "specifier": ".2e",
+   "value": 1,
+   "output": "1.00e+0"
+  },
+  {
+   "specifier": ".2e",
+   "value": -1,
+   "output": "−1.00e+0"
+  },
+  {
+   "specifier": ".2e",
+   "value": 0.5,
+   "output": "5.00e-1"
+  },
+  {
+   "specifier": ".2e",
+   "value": 1234.5678,
+   "output": "1.23e+3"
+  },
+  {
+   "specifier": ".2e",
+   "value": -1234.5678,
+   "output": "−1.23e+3"
+  },
+  {
+   "specifier": ".2e",
+   "value": 1000000,
+   "output": "1.00e+6"
+  },
+  {
+   "specifier": ".2e",
+   "value": 0.000123,
+   "output": "1.23e-4"
+  },
+  {
+   "specifier": ".2e",
+   "value": 42,
+   "output": "4.20e+1"
+  },
+  {
+   "specifier": ".2e",
+   "value": 999.999,
+   "output": "1.00e+3"
+  },
+  {
+   "specifier": ".2e",
+   "value": 1234567.891,
+   "output": "1.23e+6"
+  },
+  {
+   "specifier": ".2e",
+   "value": 1e+21,
+   "output": "1.00e+21"
+  },
+  {
+   "specifier": ".2e",
+   "value": -0.0001,
+   "output": "−1.00e-4"
+  },
+  {
+   "specifier": ".2e",
+   "value": 12.345,
+   "output": "1.23e+1"
+  },
+  {
+   "specifier": ".2e",
+   "value": 1e-30,
+   "output": "1.00e-30"
+  },
+  {
+   "specifier": ".2e",
+   "value": 4.2e-27,
+   "output": "4.20e-27"
+  },
+  {
+   "specifier": "e",
+   "value": 0,
+   "output": "0.000000e+0"
+  },
+  {
+   "specifier": "e",
+   "value": 1,
+   "output": "1.000000e+0"
+  },
+  {
+   "specifier": "e",
+   "value": -1,
+   "output": "−1.000000e+0"
+  },
+  {
+   "specifier": "e",
+   "value": 0.5,
+   "output": "5.000000e-1"
+  },
+  {
+   "specifier": "e",
+   "value": 1234.5678,
+   "output": "1.234568e+3"
+  },
+  {
+   "specifier": "e",
+   "value": -1234.5678,
+   "output": "−1.234568e+3"
+  },
+  {
+   "specifier": "e",
+   "value": 1000000,
+   "output": "1.000000e+6"
+  },
+  {
+   "specifier": "e",
+   "value": 0.000123,
+   "output": "1.230000e-4"
+  },
+  {
+   "specifier": "e",
+   "value": 42,
+   "output": "4.200000e+1"
+  },
+  {
+   "specifier": "e",
+   "value": 999.999,
+   "output": "9.999990e+2"
+  },
+  {
+   "specifier": "e",
+   "value": 1234567.891,
+   "output": "1.234568e+6"
+  },
+  {
+   "specifier": "e",
+   "value": 1e+21,
+   "output": "1.000000e+21"
+  },
+  {
+   "specifier": "e",
+   "value": -0.0001,
+   "output": "−1.000000e-4"
+  },
+  {
+   "specifier": "e",
+   "value": 12.345,
+   "output": "1.234500e+1"
+  },
+  {
+   "specifier": "e",
+   "value": 1e-30,
+   "output": "1.000000e-30"
+  },
+  {
+   "specifier": "e",
+   "value": 4.2e-27,
+   "output": "4.200000e-27"
+  },
+  {
+   "specifier": ".3r",
+   "value": 0,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".3r",
+   "value": 1,
+   "output": "1.00"
+  },
+  {
+   "specifier": ".3r",
+   "value": -1,
+   "output": "−1.00"
+  },
+  {
+   "specifier": ".3r",
+   "value": 0.5,
+   "output": "0.500"
+  },
+  {
+   "specifier": ".3r",
+   "value": 1234.5678,
+   "output": "1230"
+  },
+  {
+   "specifier": ".3r",
+   "value": -1234.5678,
+   "output": "−1230"
+  },
+  {
+   "specifier": ".3r",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": ".3r",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": ".3r",
+   "value": 42,
+   "output": "42.0"
+  },
+  {
+   "specifier": ".3r",
+   "value": 999.999,
+   "output": "1000"
+  },
+  {
+   "specifier": ".3r",
+   "value": 1234567.891,
+   "output": "1230000"
+  },
+  {
+   "specifier": ".3r",
+   "value": 1e+21,
+   "output": "1000000000000000000000"
+  },
+  {
+   "specifier": ".3r",
+   "value": -0.0001,
+   "output": "−0.000100"
+  },
+  {
+   "specifier": ".3r",
+   "value": 12.345,
+   "output": "12.3"
+  },
+  {
+   "specifier": ".3r",
+   "value": 1e-30,
+   "output": "0.00000000000000000000000000000100"
+  },
+  {
+   "specifier": ".3r",
+   "value": 4.2e-27,
+   "output": "0.00000000000000000000000000420"
+  },
+  {
+   "specifier": "r",
+   "value": 0,
+   "output": "0.00000"
+  },
+  {
+   "specifier": "r",
+   "value": 1,
+   "output": "1.00000"
+  },
+  {
+   "specifier": "r",
+   "value": -1,
+   "output": "−1.00000"
+  },
+  {
+   "specifier": "r",
+   "value": 0.5,
+   "output": "0.500000"
+  },
+  {
+   "specifier": "r",
+   "value": 1234.5678,
+   "output": "1234.57"
+  },
+  {
+   "specifier": "r",
+   "value": -1234.5678,
+   "output": "−1234.57"
+  },
+  {
+   "specifier": "r",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": "r",
+   "value": 0.000123,
+   "output": "0.000123000"
+  },
+  {
+   "specifier": "r",
+   "value": 42,
+   "output": "42.0000"
+  },
+  {
+   "specifier": "r",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "r",
+   "value": 1234567.891,
+   "output": "1234570"
+  },
+  {
+   "specifier": "r",
+   "value": 1e+21,
+   "output": "1000000000000000000000"
+  },
+  {
+   "specifier": "r",
+   "value": -0.0001,
+   "output": "−0.000100000"
+  },
+  {
+   "specifier": "r",
+   "value": 12.345,
+   "output": "12.3450"
+  },
+  {
+   "specifier": "r",
+   "value": 1e-30,
+   "output": "0.00000000000000000000000000000100000"
+  },
+  {
+   "specifier": "r",
+   "value": 4.2e-27,
+   "output": "0.00000000000000000000000000420000"
+  },
+  {
+   "specifier": ".3g",
+   "value": 0,
+   "output": "0.00"
+  },
+  {
+   "specifier": ".3g",
+   "value": 1,
+   "output": "1.00"
+  },
+  {
+   "specifier": ".3g",
+   "value": -1,
+   "output": "−1.00"
+  },
+  {
+   "specifier": ".3g",
+   "value": 0.5,
+   "output": "0.500"
+  },
+  {
+   "specifier": ".3g",
+   "value": 1234.5678,
+   "output": "1.23e+3"
+  },
+  {
+   "specifier": ".3g",
+   "value": -1234.5678,
+   "output": "−1.23e+3"
+  },
+  {
+   "specifier": ".3g",
+   "value": 1000000,
+   "output": "1.00e+6"
+  },
+  {
+   "specifier": ".3g",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": ".3g",
+   "value": 42,
+   "output": "42.0"
+  },
+  {
+   "specifier": ".3g",
+   "value": 999.999,
+   "output": "1.00e+3"
+  },
+  {
+   "specifier": ".3g",
+   "value": 1234567.891,
+   "output": "1.23e+6"
+  },
+  {
+   "specifier": ".3g",
+   "value": 1e+21,
+   "output": "1.00e+21"
+  },
+  {
+   "specifier": ".3g",
+   "value": -0.0001,
+   "output": "−0.000100"
+  },
+  {
+   "specifier": ".3g",
+   "value": 12.345,
+   "output": "12.3"
+  },
+  {
+   "specifier": ".3g",
+   "value": 1e-30,
+   "output": "1.00e-30"
+  },
+  {
+   "specifier": ".3g",
+   "value": 4.2e-27,
+   "output": "4.20e-27"
+  },
+  {
+   "specifier": "g",
+   "value": 0,
+   "output": "0.00000"
+  },
+  {
+   "specifier": "g",
+   "value": 1,
+   "output": "1.00000"
+  },
+  {
+   "specifier": "g",
+   "value": -1,
+   "output": "−1.00000"
+  },
+  {
+   "specifier": "g",
+   "value": 0.5,
+   "output": "0.500000"
+  },
+  {
+   "specifier": "g",
+   "value": 1234.5678,
+   "output": "1234.57"
+  },
+  {
+   "specifier": "g",
+   "value": -1234.5678,
+   "output": "−1234.57"
+  },
+  {
+   "specifier": "g",
+   "value": 1000000,
+   "output": "1.00000e+6"
+  },
+  {
+   "specifier": "g",
+   "value": 0.000123,
+   "output": "0.000123000"
+  },
+  {
+   "specifier": "g",
+   "value": 42,
+   "output": "42.0000"
+  },
+  {
+   "specifier": "g",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "g",
+   "value": 1234567.891,
+   "output": "1.23457e+6"
+  },
+  {
+   "specifier": "g",
+   "value": 1e+21,
+   "output": "1.00000e+21"
+  },
+  {
+   "specifier": "g",
+   "value": -0.0001,
+   "output": "−0.000100000"
+  },
+  {
+   "specifier": "g",
+   "value": 12.345,
+   "output": "12.3450"
+  },
+  {
+   "specifier": "g",
+   "value": 1e-30,
+   "output": "1.00000e-30"
+  },
+  {
+   "specifier": "g",
+   "value": 4.2e-27,
+   "output": "4.20000e-27"
+  },
+  {
+   "specifier": "~g",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "~g",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "~g",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "~g",
+   "value": 0.5,
+   "output": "0.5"
+  },
+  {
+   "specifier": "~g",
+   "value": 1234.5678,
+   "output": "1234.57"
+  },
+  {
+   "specifier": "~g",
+   "value": -1234.5678,
+   "output": "−1234.57"
+  },
+  {
+   "specifier": "~g",
+   "value": 1000000,
+   "output": "1e+6"
+  },
+  {
+   "specifier": "~g",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": "~g",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": "~g",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "~g",
+   "value": 1234567.891,
+   "output": "1.23457e+6"
+  },
+  {
+   "specifier": "~g",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": "~g",
+   "value": -0.0001,
+   "output": "−0.0001"
+  },
+  {
+   "specifier": "~g",
+   "value": 12.345,
+   "output": "12.345"
+  },
+  {
+   "specifier": "~g",
+   "value": 1e-30,
+   "output": "1e-30"
+  },
+  {
+   "specifier": "~g",
+   "value": 4.2e-27,
+   "output": "4.2e-27"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": ".2~f",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 0.5,
+   "output": "0.5"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 1234.5678,
+   "output": "1234.57"
+  },
+  {
+   "specifier": ".2~f",
+   "value": -1234.5678,
+   "output": "−1234.57"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 999.999,
+   "output": "1000"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 1234567.891,
+   "output": "1234567.89"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": ".2~f",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 12.345,
+   "output": "12.35"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": ".2~f",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "x",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "x",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "x",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "x",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": "x",
+   "value": 1234.5678,
+   "output": "4d3"
+  },
+  {
+   "specifier": "x",
+   "value": -1234.5678,
+   "output": "−4d3"
+  },
+  {
+   "specifier": "x",
+   "value": 1000000,
+   "output": "f4240"
+  },
+  {
+   "specifier": "x",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": "x",
+   "value": 42,
+   "output": "2a"
+  },
+  {
+   "specifier": "x",
+   "value": 999.999,
+   "output": "3e8"
+  },
+  {
+   "specifier": "x",
+   "value": 1234567.891,
+   "output": "12d688"
+  },
+  {
+   "specifier": "x",
+   "value": 1e+21,
+   "output": "3635c9adc5dea00000"
+  },
+  {
+   "specifier": "x",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": "x",
+   "value": 12.345,
+   "output": "c"
+  },
+  {
+   "specifier": "x",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": "x",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "X",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "X",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "X",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "X",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": "X",
+   "value": 1234.5678,
+   "output": "4D3"
+  },
+  {
+   "specifier": "X",
+   "value": -1234.5678,
+   "output": "−4D3"
+  },
+  {
+   "specifier": "X",
+   "value": 1000000,
+   "output": "F4240"
+  },
+  {
+   "specifier": "X",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": "X",
+   "value": 42,
+   "output": "2A"
+  },
+  {
+   "specifier": "X",
+   "value": 999.999,
+   "output": "3E8"
+  },
+  {
+   "specifier": "X",
+   "value": 1234567.891,
+   "output": "12D688"
+  },
+  {
+   "specifier": "X",
+   "value": 1e+21,
+   "output": "3635C9ADC5DEA00000"
+  },
+  {
+   "specifier": "X",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": "X",
+   "value": 12.345,
+   "output": "C"
+  },
+  {
+   "specifier": "X",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": "X",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "#x",
+   "value": 0,
+   "output": "0x0"
+  },
+  {
+   "specifier": "#x",
+   "value": 1,
+   "output": "0x1"
+  },
+  {
+   "specifier": "#x",
+   "value": -1,
+   "output": "−0x1"
+  },
+  {
+   "specifier": "#x",
+   "value": 0.5,
+   "output": "0x1"
+  },
+  {
+   "specifier": "#x",
+   "value": 1234.5678,
+   "output": "0x4d3"
+  },
+  {
+   "specifier": "#x",
+   "value": -1234.5678,
+   "output": "−0x4d3"
+  },
+  {
+   "specifier": "#x",
+   "value": 1000000,
+   "output": "0xf4240"
+  },
+  {
+   "specifier": "#x",
+   "value": 0.000123,
+   "output": "0x0"
+  },
+  {
+   "specifier": "#x",
+   "value": 42,
+   "output": "0x2a"
+  },
+  {
+   "specifier": "#x",
+   "value": 999.999,
+   "output": "0x3e8"
+  },
+  {
+   "specifier": "#x",
+   "value": 1234567.891,
+   "output": "0x12d688"
+  },
+  {
+   "specifier": "#x",
+   "value": 1e+21,
+   "output": "0x3635c9adc5dea00000"
+  },
+  {
+   "specifier": "#x",
+   "value": -0.0001,
+   "output": "0x0"
+  },
+  {
+   "specifier": "#x",
+   "value": 12.345,
+   "output": "0xc"
+  },
+  {
+   "specifier": "#x",
+   "value": 1e-30,
+   "output": "0x0"
+  },
+  {
+   "specifier": "#x",
+   "value": 4.2e-27,
+   "output": "0x0"
+  },
+  {
+   "specifier": "b",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "b",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "b",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "b",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": "b",
+   "value": 1234.5678,
+   "output": "10011010011"
+  },
+  {
+   "specifier": "b",
+   "value": -1234.5678,
+   "output": "−10011010011"
+  },
+  {
+   "specifier": "b",
+   "value": 1000000,
+   "output": "11110100001001000000"
+  },
+  {
+   "specifier": "b",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": "b",
+   "value": 42,
+   "output": "101010"
+  },
+  {
+   "specifier": "b",
+   "value": 999.999,
+   "output": "1111101000"
+  },
+  {
+   "specifier": "b",
+   "value": 1234567.891,
+   "output": "100101101011010001000"
+  },
+  {
+   "specifier": "b",
+   "value": 1e+21,
+   "output": "1101100011010111001001101011011100010111011110101000000000000000000000"
+  },
+  {
+   "specifier": "b",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": "b",
+   "value": 12.345,
+   "output": "1100"
+  },
+  {
+   "specifier": "b",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": "b",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "#b",
+   "value": 0,
+   "output": "0b0"
+  },
+  {
+   "specifier": "#b",
+   "value": 1,
+   "output": "0b1"
+  },
+  {
+   "specifier": "#b",
+   "value": -1,
+   "output": "−0b1"
+  },
+  {
+   "specifier": "#b",
+   "value": 0.5,
+   "output": "0b1"
+  },
+  {
+   "specifier": "#b",
+   "value": 1234.5678,
+   "output": "0b10011010011"
+  },
+  {
+   "specifier": "#b",
+   "value": -1234.5678,
+   "output": "−0b10011010011"
+  },
+  {
+   "specifier": "#b",
+   "value": 1000000,
+   "output": "0b11110100001001000000"
+  },
+  {
+   "specifier": "#b",
+   "value": 0.000123,
+   "output": "0b0"
+  },
+  {
+   "specifier": "#b",
+   "value": 42,
+   "output": "0b101010"
+  },
+  {
+   "specifier": "#b",
+   "value": 999.999,
+   "output": "0b1111101000"
+  },
+  {
+   "specifier": "#b",
+   "value": 1234567.891,
+   "output": "0b100101101011010001000"
+  },
+  {
+   "specifier": "#b",
+   "value": 1e+21,
+   "output": "0b1101100011010111001001101011011100010111011110101000000000000000000000"
+  },
+  {
+   "specifier": "#b",
+   "value": -0.0001,
+   "output": "0b0"
+  },
+  {
+   "specifier": "#b",
+   "value": 12.345,
+   "output": "0b1100"
+  },
+  {
+   "specifier": "#b",
+   "value": 1e-30,
+   "output": "0b0"
+  },
+  {
+   "specifier": "#b",
+   "value": 4.2e-27,
+   "output": "0b0"
+  },
+  {
+   "specifier": "o",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "o",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "o",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "o",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": "o",
+   "value": 1234.5678,
+   "output": "2323"
+  },
+  {
+   "specifier": "o",
+   "value": -1234.5678,
+   "output": "−2323"
+  },
+  {
+   "specifier": "o",
+   "value": 1000000,
+   "output": "3641100"
+  },
+  {
+   "specifier": "o",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": "o",
+   "value": 42,
+   "output": "52"
+  },
+  {
+   "specifier": "o",
+   "value": 999.999,
+   "output": "1750"
+  },
+  {
+   "specifier": "o",
+   "value": 1234567.891,
+   "output": "4553210"
+  },
+  {
+   "specifier": "o",
+   "value": 1e+21,
+   "output": "154327115334273650000000"
+  },
+  {
+   "specifier": "o",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": "o",
+   "value": 12.345,
+   "output": "14"
+  },
+  {
+   "specifier": "o",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": "o",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "+,",
+   "value": 0,
+   "output": "+0"
+  },
+  {
+   "specifier": "+,",
+   "value": 1,
+   "output": "+1"
+  },
+  {
+   "specifier": "+,",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": "+,",
+   "value": 0.5,
+   "output": "+0.5"
+  },
+  {
+   "specifier": "+,",
+   "value": 1234.5678,
+   "output": "+1,234.5678"
+  },
+  {
+   "specifier": "+,",
+   "value": -1234.5678,
+   "output": "−1,234.5678"
+  },
+  {
+   "specifier": "+,",
+   "value": 1000000,
+   "output": "+1,000,000"
+  },
+  {
+   "specifier": "+,",
+   "value": 0.000123,
+   "output": "+0.000123"
+  },
+  {
+   "specifier": "+,",
+   "value": 42,
+   "output": "+42"
+  },
+  {
+   "specifier": "+,",
+   "value": 999.999,
+   "output": "+999.999"
+  },
+  {
+   "specifier": "+,",
+   "value": 1234567.891,
+   "output": "+1,234,567.891"
+  },
+  {
+   "specifier": "+,",
+   "value": 1e+21,
+   "output": "+1e+21"
+  },
+  {
+   "specifier": "+,",
+   "value": -0.0001,
+   "output": "−0.0001"
+  },
+  {
+   "specifier": "+,",
+   "value": 12.345,
+   "output": "+12.345"
+  },
+  {
+   "specifier": "+,",
+   "value": 1e-30,
+   "output": "+1e-30"
+  },
+  {
+   "specifier": "+,",
+   "value": 4.2e-27,
+   "output": "+4.2e-27"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 0,
+   "output": "0.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 1,
+   "output": "1.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": -1,
+   "output": "(1.00)"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 0.5,
+   "output": "0.50"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 1234.5678,
+   "output": "1,234.57"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": -1234.5678,
+   "output": "(1,234.57)"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 1000000,
+   "output": "1,000,000.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 0.000123,
+   "output": "0.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 42,
+   "output": "42.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 999.999,
+   "output": "1,000.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 1234567.891,
+   "output": "1,234,567.89"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": -0.0001,
+   "output": "0.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 12.345,
+   "output": "12.35"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 1e-30,
+   "output": "0.00"
+  },
+  {
+   "specifier": "(,.2f",
+   "value": 4.2e-27,
+   "output": "0.00"
+  },
+  {
+   "specifier": " ,",
+   "value": 0,
+   "output": " 0"
+  },
+  {
+   "specifier": " ,",
+   "value": 1,
+   "output": " 1"
+  },
+  {
+   "specifier": " ,",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": " ,",
+   "value": 0.5,
+   "output": " 0.5"
+  },
+  {
+   "specifier": " ,",
+   "value": 1234.5678,
+   "output": " 1,234.5678"
+  },
+  {
+   "specifier": " ,",
+   "value": -1234.5678,
+   "output": "−1,234.5678"
+  },
+  {
+   "specifier": " ,",
+   "value": 1000000,
+   "output": " 1,000,000"
+  },
+  {
+   "specifier": " ,",
+   "value": 0.000123,
+   "output": " 0.000123"
+  },
+  {
+   "specifier": " ,",
+   "value": 42,
+   "output": " 42"
+  },
+  {
+   "specifier": " ,",
+   "value": 999.999,
+   "output": " 999.999"
+  },
+  {
+   "specifier": " ,",
+   "value": 1234567.891,
+   "output": " 1,234,567.891"
+  },
+  {
+   "specifier": " ,",
+   "value": 1e+21,
+   "output": " 1e+21"
+  },
+  {
+   "specifier": " ,",
+   "value": -0.0001,
+   "output": "−0.0001"
+  },
+  {
+   "specifier": " ,",
+   "value": 12.345,
+   "output": " 12.345"
+  },
+  {
+   "specifier": " ,",
+   "value": 1e-30,
+   "output": " 1e-30"
+  },
+  {
+   "specifier": " ,",
+   "value": 4.2e-27,
+   "output": " 4.2e-27"
+  },
+  {
+   "specifier": "08,d",
+   "value": 0,
+   "output": "0,000,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": 1,
+   "output": "0,000,001"
+  },
+  {
+   "specifier": "08,d",
+   "value": -1,
+   "output": "−0,000,001"
+  },
+  {
+   "specifier": "08,d",
+   "value": 0.5,
+   "output": "0,000,001"
+  },
+  {
+   "specifier": "08,d",
+   "value": 1234.5678,
+   "output": "0,001,235"
+  },
+  {
+   "specifier": "08,d",
+   "value": -1234.5678,
+   "output": "−0,001,235"
+  },
+  {
+   "specifier": "08,d",
+   "value": 1000000,
+   "output": "1,000,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": 0.000123,
+   "output": "0,000,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": 42,
+   "output": "0,000,042"
+  },
+  {
+   "specifier": "08,d",
+   "value": 999.999,
+   "output": "0,001,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": 1234567.891,
+   "output": "1,234,568"
+  },
+  {
+   "specifier": "08,d",
+   "value": 1e+21,
+   "output": "1,000,000,000,000,000,000,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": -0.0001,
+   "output": "0,000,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": 12.345,
+   "output": "0,000,012"
+  },
+  {
+   "specifier": "08,d",
+   "value": 1e-30,
+   "output": "0,000,000"
+  },
+  {
+   "specifier": "08,d",
+   "value": 4.2e-27,
+   "output": "0,000,000"
+  },
+  {
+   "specifier": "0>8",
+   "value": 0,
+   "output": "00000000"
+  },
+  {
+   "specifier": "0>8",
+   "value": 1,
+   "output": "00000001"
+  },
+  {
+   "specifier": "0>8",
+   "value": -1,
+   "output": "000000−1"
+  },
+  {
+   "specifier": "0>8",
+   "value": 0.5,
+   "output": "000000.5"
+  },
+  {
+   "specifier": "0>8",
+   "value": 1234.5678,
+   "output": "1234.5678"
+  },
+  {
+   "specifier": "0>8",
+   "value": -1234.5678,
+   "output": "−1234.5678"
+  },
+  {
+   "specifier": "0>8",
+   "value": 1000000,
+   "output": "01000000"
+  },
+  {
+   "specifier": "0>8",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": "0>8",
+   "value": 42,
+   "output": "00000042"
+  },
+  {
+   "specifier": "0>8",
+   "value": 999.999,
+   "output": "0999.999"
+  },
+  {
+   "specifier": "0>8",
+   "value": 1234567.891,
+   "output": "1234567.891"
+  },
+  {
+   "specifier": "0>8",
+   "value": 1e+21,
+   "output": "0001e+21"
+  },
+  {
+   "specifier": "0>8",
+   "value": -0.0001,
+   "output": "0−0.0001"
+  },
+  {
+   "specifier": "0>8",
+   "value": 12.345,
+   "output": "0012.345"
+  },
+  {
+   "specifier": "0>8",
+   "value": 1e-30,
+   "output": "0001e-30"
+  },
+  {
+   "specifier": "0>8",
+   "value": 4.2e-27,
+   "output": "04.2e-27"
+  },
+  {
+   "specifier": "*^9",
+   "value": 0,
+   "output": "****0****"
+  },
+  {
+   "specifier": "*^9",
+   "value": 1,
+   "output": "****1****"
+  },
+  {
+   "specifier": "*^9",
+   "value": -1,
+   "output": "***−1****"
+  },
+  {
+   "specifier": "*^9",
+   "value": 0.5,
+   "output": "***0.5***"
+  },
+  {
+   "specifier": "*^9",
+   "value": 1234.5678,
+   "output": "1234.5678"
+  },
+  {
+   "specifier": "*^9",
+   "value": -1234.5678,
+   "output": "−1234.5678"
+  },
+  {
+   "specifier": "*^9",
+   "value": 1000000,
+   "output": "*1000000*"
+  },
+  {
+   "specifier": "*^9",
+   "value": 0.000123,
+   "output": "0.000123*"
+  },
+  {
+   "specifier": "*^9",
+   "value": 42,
+   "output": "***42****"
+  },
+  {
+   "specifier": "*^9",
+   "value": 999.999,
+   "output": "*999.999*"
+  },
+  {
+   "specifier": "*^9",
+   "value": 1234567.891,
+   "output": "1234567.891"
+  },
+  {
+   "specifier": "*^9",
+   "value": 1e+21,
+   "output": "**1e+21**"
+  },
+  {
+   "specifier": "*^9",
+   "value": -0.0001,
+   "output": "*−0.0001*"
+  },
+  {
+   "specifier": "*^9",
+   "value": 12.345,
+   "output": "*12.345**"
+  },
+  {
+   "specifier": "*^9",
+   "value": 1e-30,
+   "output": "**1e-30**"
+  },
+  {
+   "specifier": "*^9",
+   "value": 4.2e-27,
+   "output": "*4.2e-27*"
+  },
+  {
+   "specifier": "<9",
+   "value": 0,
+   "output": "0        "
+  },
+  {
+   "specifier": "<9",
+   "value": 1,
+   "output": "1        "
+  },
+  {
+   "specifier": "<9",
+   "value": -1,
+   "output": "−1       "
+  },
+  {
+   "specifier": "<9",
+   "value": 0.5,
+   "output": "0.5      "
+  },
+  {
+   "specifier": "<9",
+   "value": 1234.5678,
+   "output": "1234.5678"
+  },
+  {
+   "specifier": "<9",
+   "value": -1234.5678,
+   "output": "−1234.5678"
+  },
+  {
+   "specifier": "<9",
+   "value": 1000000,
+   "output": "1000000  "
+  },
+  {
+   "specifier": "<9",
+   "value": 0.000123,
+   "output": "0.000123 "
+  },
+  {
+   "specifier": "<9",
+   "value": 42,
+   "output": "42       "
+  },
+  {
+   "specifier": "<9",
+   "value": 999.999,
+   "output": "999.999  "
+  },
+  {
+   "specifier": "<9",
+   "value": 1234567.891,
+   "output": "1234567.891"
+  },
+  {
+   "specifier": "<9",
+   "value": 1e+21,
+   "output": "1e+21    "
+  },
+  {
+   "specifier": "<9",
+   "value": -0.0001,
+   "output": "−0.0001  "
+  },
+  {
+   "specifier": "<9",
+   "value": 12.345,
+   "output": "12.345   "
+  },
+  {
+   "specifier": "<9",
+   "value": 1e-30,
+   "output": "1e-30    "
+  },
+  {
+   "specifier": "<9",
+   "value": 4.2e-27,
+   "output": "4.2e-27  "
+  },
+  {
+   "specifier": "=+9,",
+   "value": 0,
+   "output": "+       0"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 1,
+   "output": "+       1"
+  },
+  {
+   "specifier": "=+9,",
+   "value": -1,
+   "output": "−       1"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 0.5,
+   "output": "+     0.5"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 1234.5678,
+   "output": "+1,234.5678"
+  },
+  {
+   "specifier": "=+9,",
+   "value": -1234.5678,
+   "output": "−1,234.5678"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 1000000,
+   "output": "+1,000,000"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 0.000123,
+   "output": "+0.000123"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 42,
+   "output": "+      42"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 999.999,
+   "output": "+ 999.999"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 1234567.891,
+   "output": "+1,234,567.891"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 1e+21,
+   "output": "+   1e+21"
+  },
+  {
+   "specifier": "=+9,",
+   "value": -0.0001,
+   "output": "−  0.0001"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 12.345,
+   "output": "+  12.345"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 1e-30,
+   "output": "+   1e-30"
+  },
+  {
+   "specifier": "=+9,",
+   "value": 4.2e-27,
+   "output": "+ 4.2e-27"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 0,
+   "output": "000,000.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 1,
+   "output": "000,001.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": -1,
+   "output": "−000,001.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 0.5,
+   "output": "000,000.50"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 1234.5678,
+   "output": "001,234.57"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": -1234.5678,
+   "output": "−001,234.57"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 1000000,
+   "output": "1,000,000.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 0.000123,
+   "output": "000,000.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 42,
+   "output": "000,042.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 999.999,
+   "output": "001,000.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 1234567.891,
+   "output": "1,234,567.89"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 1e+21,
+   "output": "00,001e+21"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": -0.0001,
+   "output": "000,000.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 12.345,
+   "output": "000,012.35"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 1e-30,
+   "output": "000,000.00"
+  },
+  {
+   "specifier": "010,.2f",
+   "value": 4.2e-27,
+   "output": "000,000.00"
+  },
+  {
+   "specifier": "c",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": "c",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": "c",
+   "value": -1,
+   "output": "-1"
+  },
+  {
+   "specifier": "c",
+   "value": 0.5,
+   "output": "0.5"
+  },
+  {
+   "specifier": "c",
+   "value": 1234.5678,
+   "output": "1234.5678"
+  },
+  {
+   "specifier": "c",
+   "value": -1234.5678,
+   "output": "-1234.5678"
+  },
+  {
+   "specifier": "c",
+   "value": 1000000,
+   "output": "1000000"
+  },
+  {
+   "specifier": "c",
+   "value": 0.000123,
+   "output": "0.000123"
+  },
+  {
+   "specifier": "c",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": "c",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "c",
+   "value": 1234567.891,
+   "output": "1234567.891"
+  },
+  {
+   "specifier": "c",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": "c",
+   "value": -0.0001,
+   "output": "-0.0001"
+  },
+  {
+   "specifier": "c",
+   "value": 12.345,
+   "output": "12.345"
+  },
+  {
+   "specifier": "c",
+   "value": 1e-30,
+   "output": "1e-30"
+  },
+  {
+   "specifier": "c",
+   "value": 4.2e-27,
+   "output": "4.2e-27"
+  },
+  {
+   "specifier": ".0%",
+   "value": 0,
+   "output": "0%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 1,
+   "output": "100%"
+  },
+  {
+   "specifier": ".0%",
+   "value": -1,
+   "output": "−100%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 0.5,
+   "output": "50%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 1234.5678,
+   "output": "123457%"
+  },
+  {
+   "specifier": ".0%",
+   "value": -1234.5678,
+   "output": "−123457%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 1000000,
+   "output": "100000000%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 0.000123,
+   "output": "0%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 42,
+   "output": "4200%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 999.999,
+   "output": "100000%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 1234567.891,
+   "output": "123456789%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 1e+21,
+   "output": "1e+23%"
+  },
+  {
+   "specifier": ".0%",
+   "value": -0.0001,
+   "output": "0%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 12.345,
+   "output": "1235%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 1e-30,
+   "output": "0%"
+  },
+  {
+   "specifier": ".0%",
+   "value": 4.2e-27,
+   "output": "0%"
+  },
+  {
+   "specifier": "p",
+   "value": 0,
+   "output": "0.00000%"
+  },
+  {
+   "specifier": "p",
+   "value": 1,
+   "output": "100.000%"
+  },
+  {
+   "specifier": "p",
+   "value": -1,
+   "output": "−100.000%"
+  },
+  {
+   "specifier": "p",
+   "value": 0.5,
+   "output": "50.0000%"
+  },
+  {
+   "specifier": "p",
+   "value": 1234.5678,
+   "output": "123457%"
+  },
+  {
+   "specifier": "p",
+   "value": -1234.5678,
+   "output": "−123457%"
+  },
+  {
+   "specifier": "p",
+   "value": 1000000,
+   "output": "100000000%"
+  },
+  {
+   "specifier": "p",
+   "value": 0.000123,
+   "output": "0.0123000%"
+  },
+  {
+   "specifier": "p",
+   "value": 42,
+   "output": "4200.00%"
+  },
+  {
+   "specifier": "p",
+   "value": 999.999,
+   "output": "99999.9%"
+  },
+  {
+   "specifier": "p",
+   "value": 1234567.891,
+   "output": "123457000%"
+  },
+  {
+   "specifier": "p",
+   "value": 1e+21,
+   "output": "100000000000000000000000%"
+  },
+  {
+   "specifier": "p",
+   "value": -0.0001,
+   "output": "−0.0100000%"
+  },
+  {
+   "specifier": "p",
+   "value": 12.345,
+   "output": "1234.50%"
+  },
+  {
+   "specifier": "p",
+   "value": 1e-30,
+   "output": "0.000000000000000000000000000100000%"
+  },
+  {
+   "specifier": "p",
+   "value": 4.2e-27,
+   "output": "0.000000000000000000000000420000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 0,
+   "output": "0.0%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 1,
+   "output": "100%"
+  },
+  {
+   "specifier": ".2p",
+   "value": -1,
+   "output": "−100%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 0.5,
+   "output": "50%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 1234.5678,
+   "output": "120000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": -1234.5678,
+   "output": "−120000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 1000000,
+   "output": "100000000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 0.000123,
+   "output": "0.012%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 42,
+   "output": "4200%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 999.999,
+   "output": "100000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 1234567.891,
+   "output": "120000000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 1e+21,
+   "output": "100000000000000000000000%"
+  },
+  {
+   "specifier": ".2p",
+   "value": -0.0001,
+   "output": "−0.010%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 12.345,
+   "output": "1200%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 1e-30,
+   "output": "0.00000000000000000000000000010%"
+  },
+  {
+   "specifier": ".2p",
+   "value": 4.2e-27,
+   "output": "0.00000000000000000000000042%"
+  },
+  {
+   "specifier": "n",
+   "value": 0,
+   "output": "0.00000"
+  },
+  {
+   "specifier": "n",
+   "value": 1,
+   "output": "1.00000"
+  },
+  {
+   "specifier": "n",
+   "value": -1,
+   "output": "−1.00000"
+  },
+  {
+   "specifier": "n",
+   "value": 0.5,
+   "output": "0.500000"
+  },
+  {
+   "specifier": "n",
+   "value": 1234.5678,
+   "output": "1,234.57"
+  },
+  {
+   "specifier": "n",
+   "value": -1234.5678,
+   "output": "−1,234.57"
+  },
+  {
+   "specifier": "n",
+   "value": 1000000,
+   "output": "1.00000e+6"
+  },
+  {
+   "specifier": "n",
+   "value": 0.000123,
+   "output": "0.000123000"
+  },
+  {
+   "specifier": "n",
+   "value": 42,
+   "output": "42.0000"
+  },
+  {
+   "specifier": "n",
+   "value": 999.999,
+   "output": "999.999"
+  },
+  {
+   "specifier": "n",
+   "value": 1234567.891,
+   "output": "1.23457e+6"
+  },
+  {
+   "specifier": "n",
+   "value": 1e+21,
+   "output": "1.00000e+21"
+  },
+  {
+   "specifier": "n",
+   "value": -0.0001,
+   "output": "−0.000100000"
+  },
+  {
+   "specifier": "n",
+   "value": 12.345,
+   "output": "12.3450"
+  },
+  {
+   "specifier": "n",
+   "value": 1e-30,
+   "output": "1.00000e-30"
+  },
+  {
+   "specifier": "n",
+   "value": 4.2e-27,
+   "output": "4.20000e-27"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 0,
+   "output": "0"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 1,
+   "output": "1"
+  },
+  {
+   "specifier": ",.0f",
+   "value": -1,
+   "output": "−1"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 0.5,
+   "output": "1"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 1234.5678,
+   "output": "1,235"
+  },
+  {
+   "specifier": ",.0f",
+   "value": -1234.5678,
+   "output": "−1,235"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 1000000,
+   "output": "1,000,000"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 0.000123,
+   "output": "0"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 42,
+   "output": "42"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 999.999,
+   "output": "1,000"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 1234567.891,
+   "output": "1,234,568"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 1e+21,
+   "output": "1e+21"
+  },
+  {
+   "specifier": ",.0f",
+   "value": -0.0001,
+   "output": "0"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 12.345,
+   "output": "12"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 1e-30,
+   "output": "0"
+  },
+  {
+   "specifier": ",.0f",
+   "value": 4.2e-27,
+   "output": "0"
+  },
+  {
+   "specifier": "abc",
+   "invalid": true
+  },
+  {
+   "specifier": ".2q",
+   "invalid": false
+  }
+ ]
+}

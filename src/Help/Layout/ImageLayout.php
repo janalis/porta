@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Help\Layout;
 
 use Porta\Ui\Graphics\KittyPlaceholders;
+use Porta\Ui\Graphics\PngDimensions;
+use Porta\Ui\Graphics\PngRaster;
 use Porta\Ui\Graphics\TerminalGraphics;
 
 /**
@@ -22,7 +24,9 @@ final class ImageLayout
 {
     /** The tallest an image may stand, in rows: a page is read, not looked at. */
     private const int MAX_ROWS = 24;
-    private const string PNG = "\x89PNG\r\n\x1a\n";
+
+    /** @var array<string, list<string>|null> fitted fallback rows */
+    private array $rasters = [];
 
     /** @var array<string, int> file, mtime and size => the terminal image id */
     private array $ids = [];
@@ -31,6 +35,7 @@ final class ImageLayout
 
     public function __construct(
         private readonly ?TerminalGraphics $graphics = null,
+        private readonly PngRaster $raster = new PngRaster(),
     ) {}
 
     /**
@@ -47,7 +52,7 @@ final class ImageLayout
             return null;
         }
         // The header is all a layout reads: the whole file only goes to the terminal once.
-        $size = self::size((string) \file_get_contents($file, length: 24));
+        $size = PngDimensions::read((string) \file_get_contents($file, length: 24));
 
         return null === $size ? null : $this->placed($graphics, $file, $size, $image, $width, $target, $group);
     }
@@ -64,21 +69,77 @@ final class ImageLayout
     {
         [$columns, $rows] = $this->cells($size, $image->width, $width);
         $key = $file."\0".(int) \filemtime($file)."\0".$columns.'x'.$rows;
+
+        return $this->place(
+            $graphics,
+            $key,
+            static fn (): string => (string) \file_get_contents($file),
+            $columns,
+            $rows,
+            null === $target ? [] : [[0, $columns, $target, $group]],
+        );
+    }
+
+    /**
+     * @param \Closure(): string $bytes
+     * @param list<array{int, int, string, int}> $links
+     * @return list<PageLine>
+     */
+    private function place(TerminalGraphics $graphics, string $key, \Closure $bytes, int $columns, int $rows, array $links = []): array
+    {
         $id = $this->ids[$key] ?? null;
         if (null === $id) {
             $id = $graphics->allocateId();
             $this->ids[$key] = $id;
-            $graphics->transmit($id, (string) \file_get_contents($file));
+            $graphics->transmit($id, $bytes());
         }
         $graphics->place($id, $columns, $rows);
         $this->used[$id] = true;
-        $links = null === $target ? [] : [[0, $columns, $target, $group]];
         $lines = [];
         for ($row = 0; $row < $rows; ++$row) {
             $lines[] = new PageLine(KittyPlaceholders::row($id, $row, 0, $columns), $columns, 0, $links);
         }
 
         return $lines;
+    }
+
+    /** @return list<PageLine>|null completed diagram PNG, fitted into this block */
+    public function png(string $bytes, int $width): ?array
+    {
+        $size = PngDimensions::read($bytes);
+        if (null === $size) {
+            return null;
+        }
+        [$columns, $rows] = $this->cells($size, '', \max(1, $width));
+        $key = \hash('sha256', $bytes).'@'.$columns.'x'.$rows;
+        $graphics = $this->graphics;
+
+        return null !== $graphics && $graphics->available()
+            ? $this->place($graphics, $key, static fn (): string => $bytes, $columns, $rows)
+            : $this->fallback($key, $bytes, $columns, $rows);
+    }
+
+    /** @return list<PageLine>|null */
+    private function fallback(string $key, string $bytes, int $columns, int $rows): ?array
+    {
+        if (!\array_key_exists($key, $this->rasters)) {
+            // Keep the memo bounded across live edits.
+            if (\count($this->rasters) >= 64) {
+                $this->rasters = [];
+            }
+            $this->rasters[$key] = $this->raster->rows($bytes, $columns, $rows);
+        }
+        $raster = $this->rasters[$key];
+
+        return null === $raster ? null : \array_map(static fn (string $row): PageLine => new PageLine($row, $columns), $raster);
+    }
+
+    /** Release graphics when the pane hides, without laying out another page. */
+    public function clear(): void
+    {
+        $this->used = [];
+        $this->sweep();
+        $this->rasters = [];
     }
 
     /**
@@ -141,16 +202,7 @@ final class ImageLayout
         $fence = \realpath($root ?? $baseDir);
         $inside = false !== $file && false !== $fence && \str_starts_with($file, \rtrim($fence, characters: '/').'/') && \is_file($file);
 
-        return $inside && self::PNG === \file_get_contents($file, length: 8) ? $file : null;
-    }
-
-    /** @return array{int, int}|null a PNG's width and height, read from the IHDR chunk its first 24 bytes hold */
-    private static function size(string $head): ?array
-    {
-        $header = \strlen($head) >= 24 && 'IHDR' === \substr($head, offset: 12, length: 4);
-        $dimensions = $header ? \unpack('Nwidth/Nheight', \substr($head, offset: 16, length: 8)) : false;
-
-        return false === $dimensions || $dimensions['width'] < 1 || $dimensions['height'] < 1 ? null : [(int) $dimensions['width'], (int) $dimensions['height']];
+        return $inside && PngDimensions::MAGIC === \file_get_contents($file, length: 8) ? $file : null;
     }
 
     /**
