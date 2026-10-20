@@ -227,6 +227,11 @@ bottom one, beside a side one.
 `TabStripTail` runs the baseline on past the last tab. On a `Density::Compact`
 screen (below 30 terminal rows) a strip is one row on the toolbar shade, each
 cell closed by a divider.
+The one exception is the git view's Changes|History pair (`GitTabsWidget`):
+roomy, the column is cut in two halves, each label centred in its own, the
+active one underlined `━` (`TabAccent` while the sidebar has the keys) over the
+`─` rule — GitHub Desktop's shape, for two modes of one pane that are never
+more and never closed. Compact, it is the strip like any other.
 
 The editor strip at the side (`TabBarWidget::renderVertical`) is spaced like
 the file tree on a roomy screen: a tab is one row, a blank gap between every
