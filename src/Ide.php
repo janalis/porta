@@ -673,12 +673,12 @@ final class Ide
         $this->notifier->warn($this->service(Translator::class)->trans('Enable the git plugin to see the comparison'));
     }
 
-    /** Whether $path is readable and holds no conflict block. */
+    /** Whether $path is readable and holds no conflict block, nor a marker line one left behind. */
     private static function resolved(string $path): bool
     {
         $text = \is_file($path) ? \file_get_contents($path) : false;
 
-        return false !== $text && [] === ConflictMarkers::find(\explode("\n", $text));
+        return false !== $text && !ConflictMarkers::unresolved(\explode("\n", $text));
     }
 
     private function openFile(string $path): void

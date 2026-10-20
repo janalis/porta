@@ -182,6 +182,31 @@ final class IdeGitToolLaunchTest extends TestCase
         $this->assertSame(0, $ide->exitCode());
     }
 
+    public function testAMergeSavedWithAStrayMarkerExitsOne(): void
+    {
+        // A diff3 block resolved by hand with its base marker overlooked: no
+        // whole region is left, but git must not stage what is.
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['m.php' => self::CONFLICTED]);
+        $ide = null;
+
+        $this->runIde(
+            $project,
+            null,
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $running) use (&$ide, $project): void {
+                    $ide = $running;
+                    $this->awaitPainted($tui, $terminal, "echo 'theirs';");
+                    \file_put_contents($project->path('m.php'), data: "<?php\necho 'ours';\n||||||| base\necho 'base';\n");
+                },
+            ],
+            tool: self::merge($project),
+        );
+
+        $this->assertInstanceOf(Ide::class, $ide);
+        $this->assertSame(1, $ide->exitCode(), 'git keeps the file unresolved');
+    }
+
     public function testAMergeWhoseResultIsGoneExitsOne(): void
     {
         \putenv('PATH=/nonexistent');

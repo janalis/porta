@@ -15,25 +15,33 @@ namespace Porta\Editor;
  *   >>>>>>> theirs
  *
  * Only well-formed regions (an opener, then a separator, then a closer, in
- * that order) are reported. Diff3-style base sections (`|||||||`) are treated
- * as part of the "ours" side.
+ * that order) are reported. A diff3/zdiff3 base section — `||||||| base`
+ * between the opener and the separator — is recorded as `base`, and belongs
+ * to neither side: no resolution keeps it.
  */
 final class ConflictMarkers
 {
     /**
      * @param list<string> $lines
      *
-     * @return list<array{start: int, sep: int, end: int}> 0-based marker lines
+     * @return list<array{start: int, base: int|null, sep: int, end: int}> 0-based marker lines; `base` is null without a diff3 section
      */
     public static function find(array $lines): array
     {
         $regions = [];
         $start = null;
+        $base = null;
         $sep = null;
         foreach ($lines as $i => $line) {
             if (\str_starts_with($line, '<<<<<<<')) {
                 $start = $i;
+                $base = null;
                 $sep = null;
+
+                continue;
+            }
+            if (null !== $start && null === $base && null === $sep && \str_starts_with($line, '|||||||')) {
+                $base = $i;
 
                 continue;
             }
@@ -43,8 +51,9 @@ final class ConflictMarkers
                 continue;
             }
             if (null !== $start && null !== $sep && \str_starts_with($line, '>>>>>>>')) {
-                $regions[] = ['start' => (int) $start, 'sep' => (int) $sep, 'end' => $i];
+                $regions[] = ['start' => (int) $start, 'base' => $base, 'sep' => (int) $sep, 'end' => $i];
                 $start = null;
+                $base = null;
                 $sep = null;
             }
         }
@@ -58,7 +67,7 @@ final class ConflictMarkers
      *
      * @param list<string> $lines
      *
-     * @return array{start: int, sep: int, end: int}|null
+     * @return array{start: int, base: int|null, sep: int, end: int}|null
      */
     public static function regionAt(array $lines, int $line): ?array
     {
@@ -70,13 +79,14 @@ final class ConflictMarkers
      * "theirs" or "both".
      *
      * @param list<string>                            $lines
-     * @param array{start: int, sep: int, end: int}   $region
+     * @param array{start: int, base: int|null, sep: int, end: int} $region
      *
      * @return list<string>
      */
     public static function resolution(array $lines, array $region, ConflictSide $which): array
     {
-        $ours = \array_slice($lines, $region['start'] + 1, $region['sep'] - $region['start'] - 1);
+        $oursEnd = $region['base'] ?? $region['sep'];
+        $ours = \array_slice($lines, $region['start'] + 1, $oursEnd - $region['start'] - 1);
         $theirs = \array_slice($lines, $region['sep'] + 1, $region['end'] - $region['sep'] - 1);
 
         return match ($which) {
@@ -84,5 +94,23 @@ final class ConflictMarkers
             ConflictSide::Theirs => $theirs,
             ConflictSide::Both => [...$ours, ...$theirs],
         };
+    }
+
+    /**
+     * Whether $lines still hold anything of a conflict: a whole region, or a
+     * marker line a hand resolution left behind — an opener, a base or a
+     * closer with no partner. What decides a merge tool's verdict, where
+     * {@see find()} alone would pass a half-deleted block as resolved. Every
+     * region {@see find()} reports opens on such a line, so it needs no
+     * separate check.
+     *
+     * A lone `=======` is not counted: it is a Markdown or RST underline as
+     * often as a separator, and without an opener or closer it marks nothing.
+     *
+     * @param list<string> $lines
+     */
+    public static function unresolved(array $lines): bool
+    {
+        return null !== \array_find($lines, static fn (string $line): bool => \str_starts_with($line, '<<<<<<<') || \str_starts_with($line, '|||||||') || \str_starts_with($line, '>>>>>>>'));
     }
 }
