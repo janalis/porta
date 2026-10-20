@@ -50,7 +50,8 @@ ln -s "$PWD/bin/porta" ~/.local/bin/porta
 
 Once Porta runs, **Settings → Command line** does the same from inside it —
 installs, updates or removes the `porta` link, and Porta as git's difftool and
-mergetool. From a shell, `porta --git-setup` makes it git's tools — see
+mergetool. From a shell, `porta --git-setup` makes it git's tools, and
+`porta diff a.php b.php` compares two files by hand — see
 [the git guide](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool).
 
 ## Language server

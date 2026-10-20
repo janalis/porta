@@ -38,9 +38,9 @@ use Symfony\Component\Process\Process;
           <info>porta src/Ide.php:200</info>     open a file at line 200
           <info>porta --no-lsp .</info>          start without a language server
           <info>porta --git-setup</info>         make porta git's difftool and mergetool
-          <info>porta --diff A B</info>          compare two files (what git difftool runs)
-          <info>porta --merge L R B M</info>     resolve M (what git mergetool runs; exits 1 while
-                                   conflict markers remain in M)
+          <info>porta diff A B</info>            compare two files (--diff A B: what git difftool runs)
+          <info>porta merge L R B M</info>       resolve M in the merge view (--merge L R B M: what git
+                                   mergetool runs; exits 1 while conflict markers remain in M)
           <info>porta --self-update</info>       replace this porta.phar with the latest release
           <info>porta review …</info>            write and read local code reviews (porta review --help)
 
@@ -53,7 +53,7 @@ use Symfony\Component\Process\Process;
         xml, json and dotenv, plus PHP when neither PHP server is enabled), then
         typescript-language-server / pyright on PATH.
         HELP,
-    usages: ['src/', 'src/Ide.php:200', '--no-lsp .', '--git-setup', '--diff LOCAL REMOTE', '--merge LOCAL REMOTE BASE MERGED', '--self-update'],
+    usages: ['src/', 'src/Ide.php:200', '--no-lsp .', '--git-setup', 'diff LOCAL REMOTE', 'merge LOCAL REMOTE BASE MERGED', '--diff LOCAL REMOTE', '--merge LOCAL REMOTE BASE MERGED', '--self-update'],
 )]
 final class PortaCommand extends Command
 {
