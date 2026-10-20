@@ -58,6 +58,9 @@ final class PaneSplit
     /** @var list<\Closure(bool): void> */
     private array $fitListeners = [];
 
+    /** @var list<\Closure(): void> */
+    private array $moveListeners = [];
+
     /**
      * @param int $share   the lead side's share before anything was dragged, in thousandths
      * @param int $minSide the narrowest either side may be dragged to
@@ -177,6 +180,16 @@ final class PaneSplit
     }
 
     /**
+     * Hear when the divider moves — a drag, a nudge, a restored share. A
+     * widget that lines itself up with it ({@see leadColumns()}) caches its
+     * paint like any other, and the move is news only the split has.
+     */
+    public function onMove(\Closure $listener): void
+    {
+        $this->moveListeners[] = $listener;
+    }
+
+    /**
      * Seat the lead on the reading direction's leading side: left, or right
      * in a mirrored workspace — the order every other pane pair follows.
      */
@@ -228,6 +241,9 @@ final class PaneSplit
         }
         $this->share = $share;
         $this->applyShare();
+        foreach ($this->moveListeners as $listener) {
+            $listener();
+        }
     }
 
     /**

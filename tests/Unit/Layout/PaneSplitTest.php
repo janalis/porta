@@ -128,4 +128,24 @@ final class PaneSplitTest extends TestCase
         $this->assertSame(1, $this->split(columns: 120, share: 0)->percent());
         $this->assertSame(99, $this->split(columns: 120, share: 2000)->percent());
     }
+
+    /** A widget lining itself up with the divider hears it move — by a drag, a nudge or a restore — and only then. */
+    public function testAMoveIsSaidOnlyWhenTheDividerMoves(): void
+    {
+        $split = $this->split(columns: 101);
+        $moves = 0;
+        $split->onMove(static function () use (&$moves): void {
+            ++$moves;
+        });
+        $area = $this->rectOf($split->area);
+
+        $split->dragTo(50, $area);
+        $split->nudge(2, $area);
+        $split->setPercent(30);
+        $this->assertSame(3, $moves);
+
+        $split->setPercent(30);
+        $split->dragTo(30, $area);
+        $this->assertSame(3, $moves, 'the same share again is no move');
+    }
 }
