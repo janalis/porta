@@ -190,6 +190,7 @@ final class ArchitectureCheckCommand extends Command
         // direction, and the same set `Help` and `GraphViewer` already reach for.
         'GitPlugin>Config', // an untrusted repository's own config may not name a program git runs (WorkspaceTrust)
         'GitPlugin>DiffPlugin', // its diffs and the diff pane; the manifest declares `requires: ["diff"]`
+        'GitPlugin>Editor', // marking a conflicted file resolved is refused while ConflictMarkers finds one left
         'GitPlugin>Event',
         'GitPlugin>Input',
         'GitPlugin>Layout',

@@ -42,7 +42,13 @@ return new class('diff') extends AbstractPlugin {
                         $api->jumpTo($caret['line'], $caret['column'], \max(0, $caret['top'] + $rows));
                     }
                 };
-                $sides = [$services->translator, $api->documentText(...), $api->caretPosition(...), $api->replaceDocument(...), $jump, $scroll, $services->styles];
+                $save = static function () use ($api): void {
+                    $path = $api->activeFile();
+                    if (null !== $path) {
+                        $api->openBuffers()->save($path);
+                    }
+                };
+                $sides = [$services->translator, $api->documentText(...), $api->caretPosition(...), $api->replaceDocument(...), $jump, $scroll, $save, $services->styles];
                 $ours = new MergePaneWidget(ConflictSide::Ours, ...$sides);
 
                 return new MergePaneWidget(ConflictSide::Theirs, ...$sides, ours: $ours);

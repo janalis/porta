@@ -62,6 +62,7 @@ In the merge view, with the keys on ours or theirs:
 | `a` / `Enter` | Keep this side for the conflict |
 | `b` | Keep both, ours first |
 | `n` / `p` | The caret to the next / previous conflict |
+| `Ctrl+S` | Save the result, as from the editor |
 
 In the diff pane:
 

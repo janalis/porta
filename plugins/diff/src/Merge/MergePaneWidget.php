@@ -29,7 +29,7 @@ use Symfony\Component\Tui\Render\RenderContext;
  *
  * What the pane needs of the IDE arrives as closures, a plugin class being no
  * service: the result's current text, the caret and the editor's top line, a
- * replace of the whole text, a jump and a scroll.
+ * replace of the whole text, a jump, a scroll and a save.
  */
 final class MergePaneWidget extends EditorPaneWidget
 {
@@ -48,6 +48,7 @@ final class MergePaneWidget extends EditorPaneWidget
      * @param \Closure(string): void                                 $replace the result's whole text, as one undo step
      * @param \Closure(int): void                                    $jump    the caret to the start of a 0-based line
      * @param \Closure(int): void                                    $scroll  the editor's view by a number of rows, the caret where it is
+     * @param \Closure(): void                                       $save    the result to disk, as the editor's own Ctrl+S
      */
     public function __construct(
         private readonly ConflictSide $side,
@@ -57,6 +58,7 @@ final class MergePaneWidget extends EditorPaneWidget
         private readonly \Closure $replace,
         private readonly \Closure $jump,
         private readonly \Closure $scroll,
+        private readonly \Closure $save,
         ?Styles $styles = null,
         private readonly ?self $ours = null,
     ) {
@@ -147,8 +149,10 @@ final class MergePaneWidget extends EditorPaneWidget
             $kb->matches($data, 'merge_keep_both') => null === $current ? null : $this->accept($current, ConflictSide::Both),
             $kb->matches($data, 'merge_next') => $this->step(1),
             $kb->matches($data, 'merge_prev') => $this->step(-1),
-            // Re-bound to the editor's defaults so tab management keeps working
-            // while this pane has the keys (see EditorKeymap).
+            // Re-bound to the editor's defaults so saving and tab management
+            // keep working while this pane has the keys (see EditorKeymap):
+            // the next thing after the last accept is the save.
+            $kb->matches($data, 'save') => ($this->save)(),
             $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
             $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
             $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
@@ -251,6 +255,7 @@ final class MergePaneWidget extends EditorPaneWidget
             'merge_keep_both' => ['b'],
             'merge_next' => ['n'],
             'merge_prev' => ['p'],
+            'save' => ['ctrl+s'],
             'next_buffer' => ['ctrl+right'],
             'prev_buffer' => ['ctrl+left'],
             'close_buffer' => ['ctrl+f4', 'alt+w'],

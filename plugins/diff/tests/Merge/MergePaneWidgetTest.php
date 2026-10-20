@@ -50,6 +50,9 @@ final class MergePaneWidgetTest extends TestCase
             function (int $rows): void {
                 $this->calls[] = 'scroll:'.$rows;
             },
+            function (): void {
+                $this->calls[] = 'save';
+            },
             Styles::dark(),
             $ours,
         );
@@ -255,6 +258,13 @@ final class MergePaneWidgetTest extends TestCase
         }
 
         $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto', 'save'], $tabs->calls);
+    }
+
+    public function testCtrlSSavesTheResultFromASide(): void
+    {
+        $this->shown(ConflictSide::Ours)->handleInput("\x13");
+
+        $this->assertSame(['save'], $this->calls);
     }
 
     public function testAWheelNotchScrollsTheEditor(): void
