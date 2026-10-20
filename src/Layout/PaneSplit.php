@@ -268,6 +268,9 @@ final class PaneSplit
         $focus = $this->tui?->getFocus();
         $stacked = $this->narrow && NarrowSplit::Stacked === $this->whenNarrow;
         $this->area->setStyle(new Style(direction: $stacked ? Direction::Vertical : Direction::Horizontal, gap: 0, flex: 1));
+        // Stacked, the lead is as tall as it draws and the rest takes what is
+        // left: a lead that still filled would share the height with it.
+        $this->leadSide->expandVertically(!$stacked);
         $this->applyShare();
         $sides = match (true) {
             $stacked => [$this->leadSide, $this->restSide],

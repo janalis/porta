@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
+use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
@@ -27,6 +28,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  * Idempotent by id: the view that owns a region and the layout that arranges it
  * both ask for it, and neither should have to care which came first.
  */
+#[AsEager]
 #[AsIdeService]
 final class ViewRegions
 {

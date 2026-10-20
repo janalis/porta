@@ -11,11 +11,13 @@ use Porta\Layout\PaneSplit;
 use Porta\Tests\Support\TestPane;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Keybindings;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Style\StyleSheet;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
+use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
  * What a view's split adds to the preview's ({@see PreviewSplitTest} grades
@@ -147,5 +149,29 @@ final class PaneSplitTest extends TestCase
         $split->setPercent(30);
         $split->dragTo(30, $area);
         $this->assertSame(3, $moves, 'the same share again is no move');
+    }
+
+    /** Stacked, a lead that draws one row takes one row: the rest has everything under it. */
+    public function testStackedTheLeadIsAsTallAsItDraws(): void
+    {
+        $this->terminal = new VirtualTerminal(columns: 40, rows: 10);
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new Tui(terminal: $this->terminal, keybindings: new Keybindings([]), renderer: $this->renderer);
+        $split = new PaneSplit('s', Styles::dark(), NarrowSplit::Stacked, $this->renderer, $this->tui, minSide: 28);
+        $line = new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return [\str_repeat('x', \max(0, $context->getColumns()))];
+            }
+        };
+        $split->mount($line, $this->rest = new TestPane('diff'));
+        $this->tui->add($split->area);
+        $this->frame();
+        $split->fit();
+        $this->frame();
+
+        $this->assertTrue($split->isNarrow());
+        $this->assertSame(1, $this->rectOf($this->rest)->row);
+        $this->assertSame(9, $this->rectOf($this->rest)->rows);
     }
 }

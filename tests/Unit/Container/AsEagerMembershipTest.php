@@ -11,6 +11,7 @@ use Porta\Input\TooltipRouter;
 use Porta\Layout\ChromeHeight;
 use Porta\Layout\PreviewSplit;
 use Porta\Layout\ResponsiveLayout;
+use Porta\Layout\ViewRegions;
 use Porta\Lsp\HighlightController;
 use Porta\Overlay\Presenter\FindModalPresenter;
 use Porta\Overlay\Presenter\FrameJoins;
@@ -82,6 +83,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
             TooltipRouter::class, // asks again at the pointer after a resize moved the elements
             PreviewFeeder::class, // hands a live preview the text once typing pauses
             PreviewSplit::class, // steps the preview aside while the split is too narrow for two sides
+            ViewRegions::class, // fits each view split it mints before every frame
         ];
 
         $this->assertSame($ordered, \array_slice($actual, offset: 0, length: \count($ordered)), 'the contractual construction order');

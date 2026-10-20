@@ -105,4 +105,28 @@ final class FrameJoinsTest extends TestCase
     {
         $this->assertSame(['│a', '│a'], self::joined(['│a', '│a'], [[0, 0, 2]]), 'nothing above the first row, below the last or left of column 0');
     }
+
+    /**
+     * A view's divider stands IN its window, a floating surface: the window's
+     * own regions do not stop its joins, but a menu open over the window does.
+     */
+    public function testADividerInTheViewWindowJoinsThroughTheWindowButNotUnderAMenu(): void
+    {
+        $grid = ['────────', 'a  │────', 'a  │ b  ', '────────'];
+        $window = [new DropdownRegion(0, 0, 8, 4), new DropdownRegion(1, 3, 1, 2)];
+        $menu = new DropdownRegion(1, 4, 4, 1);
+
+        $cells = static function (array $floating, array $window, bool $inWindow) use ($grid): array {
+            $cells = \array_map(\mb_str_split(...), $grid);
+            foreach (FrameJoins::junctions($grid, [[1, 3, 2, $inWindow]], $floating, $window) as [$row, $col, $glyph]) {
+                $cells[$row][$col] = $glyph;
+            }
+
+            return \array_map(\implode(...), $cells);
+        };
+
+        $this->assertSame(['───┬────', 'a  ├────', 'a  │ b  ', '───┴────'], $cells([...$window], $window, inWindow: true), 'its own window is what it stands on');
+        $this->assertSame($grid, $cells([...$window], $window, inWindow: false), 'a workspace divider under the window stays covered');
+        $this->assertSame(['───┬────', 'a  │────', 'a  │ b  ', '───┴────'], $cells([...$window, $menu], $window, inWindow: true), 'a menu over the window still covers the rule beside it');
+    }
 }
