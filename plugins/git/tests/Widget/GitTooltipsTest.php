@@ -9,6 +9,7 @@ use Porta\GitPlugin\ChangeEntry;
 use Porta\GitPlugin\LogEntry;
 use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\GitPlugin\Widget\CommitBoxWidget;
+use Porta\GitPlugin\Widget\CommitDetailsWidget;
 use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\GitPlugin\Widget\HistoryListWidget;
 use Porta\I18n\Translator;
@@ -42,19 +43,19 @@ final class GitTooltipsTest extends TestCase
         $list = $this->changes();
         $letter = 1 + 3 + 1; // the lead space, the box, a space
 
-        $modified = $list->tooltipAt(1, $letter);
-        $this->assertSame(['git:status:src/a.php', "Modified\nStaged", 1, $letter, $letter + 1], [$modified?->key, $modified?->text, $modified?->row, $modified?->colStart, $modified?->colEnd]);
-        $this->assertSame("Untracked: new to git\nNot staged", $list->tooltipAt(2, $letter)?->text, 'untracked shows as A, and is not an addition');
-        $this->assertSame("Modified\nPartly staged", $list->tooltipAt(3, $letter)?->text, 'the worktree side wins the letter');
-        $this->assertSame("Deleted\nNot staged", $list->tooltipAt(4, $letter)?->text);
+        $modified = $list->tooltipAt(2, $letter);
+        $this->assertSame(['git:status:src/a.php', "Modified\nStaged", 2, $letter, $letter + 1], [$modified?->key, $modified?->text, $modified?->row, $modified?->colStart, $modified?->colEnd]);
+        $this->assertSame("Untracked: new to git\nNot staged", $list->tooltipAt(3, $letter)?->text, 'untracked shows as A, and is not an addition');
+        $this->assertSame("Modified\nPartly staged", $list->tooltipAt(4, $letter)?->text, 'the worktree side wins the letter');
+        $this->assertSame("Deleted\nNot staged", $list->tooltipAt(5, $letter)?->text);
     }
 
     public function testTheBoxSaysWhatAClickDoesAndItsKey(): void
     {
         $list = $this->changes();
 
-        $this->assertSame("Unstage this file\tSpace", $list->tooltipAt(1, 2)?->text);
-        $this->assertSame("Stage this file\tSpace", $list->tooltipAt(2, 1)?->text);
+        $this->assertSame("Unstage this file\tSpace", $list->tooltipAt(2, 2)?->text);
+        $this->assertSame("Stage this file\tSpace", $list->tooltipAt(3, 1)?->text);
         $this->assertSame('Stage everything', $list->tooltipAt(0, 2)?->text, "the header's box, over a mix");
     }
 
@@ -62,9 +63,9 @@ final class GitTooltipsTest extends TestCase
     {
         $list = $this->changes();
 
-        $this->assertSame('src/a/very/deep/directory/with/a/long/name/File.php', $list->tooltipAt(4, 20)?->text);
-        $this->assertNull($list->tooltipAt(1, 10), 'src/a.php is drawn whole');
-        $this->assertNull($list->tooltipAt(8, 10), 'past the entries');
+        $this->assertSame('src/a/very/deep/directory/with/a/long/name/File.php', $list->tooltipAt(5, 20)?->text);
+        $this->assertNull($list->tooltipAt(2, 10), 'src/a.php is drawn whole');
+        $this->assertNull($list->tooltipAt(9, 10), 'past the entries');
     }
 
     public function testEveryLetterGitCanShowHasWords(): void
@@ -80,7 +81,7 @@ final class GitTooltipsTest extends TestCase
         ]);
         $list->render(new RenderContext(40, 10));
 
-        $texts = \array_map(static fn (int $row): ?string => $list->tooltipAt($row, 5)?->text, \range(1, end: 6));
+        $texts = \array_map(static fn (int $row): ?string => $list->tooltipAt($row, 5)?->text, \range(2, end: 7));
 
         $this->assertSame(
             [
@@ -113,22 +114,26 @@ final class GitTooltipsTest extends TestCase
         $this->assertNull($list->tooltipAt(0, 1));
     }
 
-    public function testTheDiffTogglesSayWhatTheyDoAndWhetherTheyAreOn(): void
+    public function testTheGearSaysWhatTheDiffShows(): void
     {
         $diff = new DiffViewWidget(new Translator('en'));
-        $rows = \explode("\n", $this->plain($diff->render(new RenderContext(80, 10))));
-        $captions = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'split')));
-        $split = (int) \mb_strpos($rows[$captions], needle: 'split');
-        $ws = (int) \mb_strpos($rows[$captions], needle: 'hide-ws');
+        $diff->render(new RenderContext(80, 10));
+        $anchor = $diff->settingsAnchor();
+        $this->assertNotNull($anchor);
 
-        $tip = $diff->tooltipAt(0, $split);
-        $this->assertSame(['git:diff:split', 'Side-by-side diff · off', 0, 3], [$tip?->key, $tip?->text, $tip?->row, $tip?->rows], 'any row of a boxed toggle; the card spans all three');
-        $this->assertSame('Hide whitespace-only changes · off', $diff->tooltipAt($captions, $ws)?->text);
-        $this->assertNull($diff->tooltipAt($captions, 2), 'the title');
-        $this->assertNull($diff->tooltipAt(5, $split), 'below the toolbar');
+        $tip = $diff->tooltipAt(0, $anchor[0] + 1);
+        $this->assertSame(
+            ['git:diff:settings', 'Diff settings: Unified diff, whitespace changes shown', 0, 1],
+            [$tip?->key, $tip?->text, $tip?->row, $tip?->rows],
+            'the gear on the bar row',
+        );
+        $this->assertNull($diff->tooltipAt(0, 2), 'the title');
+        $this->assertNull($diff->tooltipAt(1, $anchor[0] + 1), 'the close under the bar');
+        $this->assertNull($diff->tooltipAt(5, $anchor[0] + 1), 'below the toolbar');
 
-        $diff->handleClick($captions, $split);
-        $this->assertSame('Side-by-side diff · on', $diff->tooltipAt($captions, $split)?->text);
+        $diff->useSplitView();
+        $diff->hideWhitespace();
+        $this->assertSame('Diff settings: Side-by-side diff, whitespace changes hidden', $diff->tooltipAt(0, $anchor[0] + 1)?->text);
     }
 
     public function testADisabledCommitButtonSaysWhy(): void
@@ -156,15 +161,23 @@ final class GitTooltipsTest extends TestCase
     {
         $history = new HistoryListWidget(new Translator('en'));
         $history->setCommits([new LogEntry('abcdef1234567890', 'abcdef1', 'Alice', 1_700_000_000, 'A subject long enough to be cut by the pane')]);
-        $history->setFiles([['status' => 'M', 'path' => 'src/a/deep/path/that/will/not/fit/in/the/pane.php'], ['status' => 'A', 'path' => 'x.php']]);
-        $rows = \explode("\n", $this->plain($history->render(new RenderContext(30, 14))));
+        $history->render(new RenderContext(30, 14));
 
         $commit = $history->tooltipAt(1, 3);
         $this->assertSame("abcdef1234567890\nA subject long enough to be cut by the pane\nAlice · ".\date('Y-m-d H:i', timestamp: 1_700_000_000), $commit?->text);
         $this->assertSame([1, 0, 30], [$commit?->row, $commit?->colStart, $commit?->colEnd]);
+    }
 
-        $cut = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'src/a/deep')));
-        $this->assertSame('src/a/deep/path/that/will/not/fit/in/the/pane.php', $history->tooltipAt($cut, 3)?->text);
-        $this->assertNull($history->tooltipAt($cut + 1, 3), 'x.php is drawn whole');
+    /** A commit's file whose path was cut says the path; one drawn whole says nothing. */
+    public function testACommitFileRowSaysACutPath(): void
+    {
+        $details = new CommitDetailsWidget(new Translator('en'));
+        $details->setCommit(new LogEntry('abcdef1234567890', 'abcdef1', 'Alice', 1_700_000_000, 'Short'));
+        $details->setFiles([['status' => 'M', 'path' => 'src/a/deep/path/that/will/not/fit/in/the/pane.php'], ['status' => 'A', 'path' => 'x.php']]);
+        $rows = \explode("\n", $this->plain($details->render(new RenderContext(30, 14))));
+
+        $cut = (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'pane.php')));
+        $this->assertSame('src/a/deep/path/that/will/not/fit/in/the/pane.php', $details->tooltipAt($cut, 3)?->text);
+        $this->assertNull($details->tooltipAt($cut + 1, 3), 'x.php is drawn whole');
     }
 }

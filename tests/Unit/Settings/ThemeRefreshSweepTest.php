@@ -128,6 +128,27 @@ final class ThemeRefreshSweepTest extends TestCase
         $this->assertTrue($content, 'and so did the content pane');
     }
 
+    public function testAPaneInsideAContainerIsSweptToo(): void
+    {
+        // A view's split seats its panes in containers of its own: the git
+        // diff sits two levels below the content, and a sweep of the content's
+        // direct children would leave it on the old theme's codes.
+        $refreshed = false;
+        $regions = new ViewRegions(Styles::dark());
+        $split = $regions->mint('git')->split('history');
+        $regions->mint('git')->content()->add($split->area);
+        $split->mount(new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return [];
+            }
+        }, $this->widget($refreshed));
+
+        $this->applier($regions)->applyTheme('light');
+
+        $this->assertTrue($refreshed, 'the pane inside the split rebaked');
+    }
+
     public function testAWidgetThatDoesNotBakeColoursIsLeftAlone(): void
     {
         // The interface is the opt-in, not the region: most widgets hold the

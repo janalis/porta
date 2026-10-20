@@ -6,22 +6,6 @@
         <source>%count% changed file|%count% changed files</source>
         <target>%count% archivo modificado|%count% archivos modificados</target>
       </trans-unit>
-      <trans-unit id="2">
-        <source>Files (%count%)</source>
-        <target>Archivos (%count%)</target>
-      </trans-unit>
-      <trans-unit id="3">
-        <source>History (%count%)</source>
-        <target>Historial (%count%)</target>
-      </trans-unit>
-      <trans-unit id="4">
-        <source> S split </source>
-        <target> S split </target>
-      </trans-unit>
-      <trans-unit id="5">
-        <source> W hide-ws </source>
-        <target> W hide-ws </target>
-      </trans-unit>
       <trans-unit id="6">
         <source>Commit failed (nothing staged?)</source>
         <target>Error al confirmar (¿nada preparado?)</target>
@@ -470,10 +454,6 @@
         <source>Side-by-side diff</source>
         <target>Diff en paralelo</target>
       </trans-unit>
-      <trans-unit id="118">
-        <source>Hide whitespace-only changes</source>
-        <target>Ocultar cambios solo de espacios</target>
-      </trans-unit>
       <trans-unit id="119">
         <source>Write a summary first</source>
         <target>Escriba primero un resumen</target>
@@ -661,6 +641,190 @@
       <trans-unit id="165">
         <source>%branch% is checked out in another worktree</source>
         <target>%branch% está activo en otro worktree</target>
+      </trans-unit>
+      <trans-unit id="166">
+        <source>%ahead% ahead, %behind% behind its upstream</source>
+        <target>%ahead% por delante, %behind% por detrás de su upstream</target>
+      </trans-unit>
+      <trans-unit id="167">
+        <source>%count% day ago|%count% days ago</source>
+        <target>hace %count% día|hace %count% días</target>
+      </trans-unit>
+      <trans-unit id="168">
+        <source>%count% hour ago|%count% hours ago</source>
+        <target>hace %count% hora|hace %count% horas</target>
+      </trans-unit>
+      <trans-unit id="169">
+        <source>%count% minute ago|%count% minutes ago</source>
+        <target>hace %count% minuto|hace %count% minutos</target>
+      </trans-unit>
+      <trans-unit id="170">
+        <source>%count%d</source>
+        <target>%count% d</target>
+      </trans-unit>
+      <trans-unit id="171">
+        <source>%count%h</source>
+        <target>%count% h</target>
+      </trans-unit>
+      <trans-unit id="172">
+        <source>%count%m</source>
+        <target>%count% min</target>
+      </trans-unit>
+      <trans-unit id="173">
+        <source>Branch %branch% — %state%</source>
+        <target>Rama %branch% — %state%</target>
+      </trans-unit>
+      <trans-unit id="174">
+        <source>Click to switch, create or delete a branch</source>
+        <target>Haz clic para cambiar, crear o eliminar una rama</target>
+      </trans-unit>
+      <trans-unit id="175">
+        <source>Current branch</source>
+        <target>Rama actual</target>
+      </trans-unit>
+      <trans-unit id="176">
+        <source>Current repository</source>
+        <target>Repositorio actual</target>
+      </trans-unit>
+      <trans-unit id="177">
+        <source>Detached HEAD</source>
+        <target>HEAD desacoplado</target>
+      </trans-unit>
+      <trans-unit id="178">
+        <source>Fetch: ask the remote what changed, without touching this branch</source>
+        <target>Fetch: pregunta al remoto qué ha cambiado, sin tocar esta rama</target>
+      </trans-unit>
+      <trans-unit id="179">
+        <source>Last fetched %when%</source>
+        <target>Última obtención %when%</target>
+      </trans-unit>
+      <trans-unit id="180">
+        <source>Never fetched</source>
+        <target>Nunca obtenido</target>
+      </trans-unit>
+      <trans-unit id="181">
+        <source>Publish this branch: push it and track it upstream</source>
+        <target>Publicar esta rama: enviarla y seguirla como upstream</target>
+      </trans-unit>
+      <trans-unit id="182">
+        <source>Pull request #%number%</source>
+        <target>Pull request #%number%</target>
+      </trans-unit>
+      <trans-unit id="183">
+        <source>Pull the commits the upstream has and this branch does not</source>
+        <target>Traer los commits que tiene el upstream y esta rama no</target>
+      </trans-unit>
+      <trans-unit id="184">
+        <source>Push the commits this branch has and the upstream does not</source>
+        <target>Enviar los commits que tiene esta rama y el upstream no</target>
+      </trans-unit>
+      <trans-unit id="185">
+        <source>Repository %name% — click for its worktrees</source>
+        <target>Repositorio %name% — haz clic para ver sus árboles de trabajo</target>
+      </trans-unit>
+      <trans-unit id="186">
+        <source>just now</source>
+        <target>ahora mismo</target>
+      </trans-unit>
+      <trans-unit id="187">
+        <source>no upstream branch</source>
+        <target>sin rama upstream</target>
+      </trans-unit>
+      <trans-unit id="188">
+        <source>now</source>
+        <target>ahora</target>
+      </trans-unit>
+      <trans-unit id="189">
+        <source>Copy the full commit hash</source>
+        <target>Copiar el hash completo del commit</target>
+      </trans-unit>
+      <trans-unit id="190">
+        <source>Diff settings: %layout%, %whitespace%</source>
+        <target>Ajustes del diff: %layout%, %whitespace%</target>
+      </trans-unit>
+      <trans-unit id="191">
+        <source>Hide whitespace changes</source>
+        <target>Ocultar cambios de espacios en blanco</target>
+      </trans-unit>
+      <trans-unit id="192">
+        <source>Show more of the file around the changes (c)</source>
+        <target>Mostrar más del archivo alrededor de los cambios (c)</target>
+      </trans-unit>
+      <trans-unit id="193">
+        <source>Unified</source>
+        <target>Unificado</target>
+      </trans-unit>
+      <trans-unit id="194">
+        <source>Unified diff</source>
+        <target>Diff unificado</target>
+      </trans-unit>
+      <trans-unit id="195">
+        <source>whitespace changes hidden</source>
+        <target>cambios de espacios ocultos</target>
+      </trans-unit>
+      <trans-unit id="196">
+        <source>whitespace changes shown</source>
+        <target>cambios de espacios visibles</target>
+      </trans-unit>
+      <trans-unit id="197">
+        <source>Fetch</source>
+        <target>Obtener</target>
+      </trans-unit>
+      <trans-unit id="198">
+        <source>Pull</source>
+        <target>Pull</target>
+      </trans-unit>
+      <trans-unit id="199">
+        <source>Push</source>
+        <target>Push</target>
+      </trans-unit>
+      <trans-unit id="200">
+        <source>Publish branch</source>
+        <target>Publicar la rama</target>
+      </trans-unit>
+      <trans-unit id="201">
+        <source>Fetch %remote%</source>
+        <target>Obtener de %remote%</target>
+      </trans-unit>
+      <trans-unit id="202">
+        <source>Pull %remote%</source>
+        <target>Pull de %remote%</target>
+      </trans-unit>
+      <trans-unit id="203">
+        <source>Push %remote%</source>
+        <target>Push a %remote%</target>
+      </trans-unit>
+      <trans-unit id="205">
+        <source>Fetching %remote%…</source>
+        <target>Obteniendo de %remote%…</target>
+      </trans-unit>
+      <trans-unit id="206">
+        <source>Pulling %remote%…</source>
+        <target>Pull de %remote%…</target>
+      </trans-unit>
+      <trans-unit id="207">
+        <source>Pushing %remote%…</source>
+        <target>Push a %remote%…</target>
+      </trans-unit>
+      <trans-unit id="208">
+        <source>Current worktree</source>
+        <target>Worktree actual</target>
+      </trans-unit>
+      <trans-unit id="209">
+        <source>Repository %name%</source>
+        <target>Repositorio %name%</target>
+      </trans-unit>
+      <trans-unit id="210">
+        <source>Worktree %name% — click to switch or add one</source>
+        <target>Worktree %name%: haz clic para cambiar o añadir uno</target>
+      </trans-unit>
+      <trans-unit id="211">
+        <source>Commit to %branch%</source>
+        <target>Confirmar en %branch%</target>
+      </trans-unit>
+      <trans-unit id="212">
+        <source>Commit %count% file to %branch%|Commit %count% files to %branch%</source>
+        <target>Confirmar %count% archivo en %branch%|Confirmar %count% archivos en %branch%</target>
       </trans-unit>
     </body>
   </file>

@@ -6,85 +6,25 @@ namespace Porta\GitPlugin\Tests\View;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\Config\LayoutStore;
-use Porta\Editor\BufferManager;
-use Porta\Editor\EditorPanes;
-use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
 use Porta\GitPlugin\ChangeEntry;
-use Porta\GitPlugin\Command\GitCommands;
-use Porta\GitPlugin\Command\GitRemoteCommands;
 use Porta\GitPlugin\Command\RefreshMode;
-use Porta\GitPlugin\Event\GitChangeDiscardRequested;
-use Porta\GitPlugin\Event\GitChangeSelected;
-use Porta\GitPlugin\Event\GitChangeStageToggleRequested;
-use Porta\GitPlugin\Event\GitCommitFileSelected;
-use Porta\GitPlugin\Event\GitCommitSelected;
-use Porta\GitPlugin\Event\GitDiffContextCycleRequested;
-use Porta\GitPlugin\Event\GitDiffCopyRequested;
-use Porta\GitPlugin\Event\GitDiffLayoutToggled;
-use Porta\GitPlugin\Event\GitDiffStagingRequested;
-use Porta\GitPlugin\Event\GitDiffWhitespaceToggleRequested;
-use Porta\GitPlugin\Event\GitHistoryEndReached;
-use Porta\GitPlugin\Event\GitRemoteRequested;
 use Porta\GitPlugin\Event\GitStageAllRequested;
-use Porta\GitPlugin\Event\GitViewModeRequested;
-use Porta\GitPlugin\GitInfo;
-use Porta\GitPlugin\GitRefresher;
-use Porta\GitPlugin\Process\GitRemote;
-use Porta\GitPlugin\Process\ProcessLane;
 use Porta\GitPlugin\StagedState;
-use Porta\GitPlugin\Tests\Support\GitDoubles;
-use Porta\GitPlugin\View\GitContextMenus;
-use Porta\GitPlugin\View\GitMouseRouter;
-use Porta\GitPlugin\View\GitPanes;
+use Porta\GitPlugin\Tests\Support\GitViewRig;
 use Porta\GitPlugin\View\GitViewController;
 use Porta\GitPlugin\View\GitViewMode;
 use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\GitPlugin\Widget\CommitBoxWidget;
 use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\GitPlugin\Widget\GitTabsWidget;
-use Porta\GitPlugin\Widget\HistoryListWidget;
-use Porta\I18n\Translator;
-use Porta\Input\HitTester;
-use Porta\Layout\LayoutController;
-use Porta\Layout\PreviewSplit;
-use Porta\Layout\ViewRegion;
-use Porta\Layout\ViewRegions;
-use Porta\Support\Clipboard;
-use Porta\Support\ProjectPaths;
-use Porta\Tests\Support\AwaitsGit;
-use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
-use Porta\Tests\Support\PumpsLoop;
-use Porta\Tests\Support\StatusReads;
-use Porta\Tests\Support\TempProject;
-use Porta\Tests\Support\TestBottomDock;
-use Porta\Tests\Support\TestTui;
-use Porta\Ui\Theme\Styles;
-use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\FileTreeWidget;
-use Porta\Widget\MenuBarWidget;
-use Porta\Widget\ResultsPanelWidget;
-use Porta\Widget\StatusBarWidget;
-use Porta\Widget\TabBarWidget;
-use Porta\Widget\TerminalPanelWidget;
-use Porta\Workbench\EditorArea;
 use Porta\Workbench\Menu\Menu;
-use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewHost;
-use Porta\Workbench\View\ViewRegistry;
-use Porta\Workbench\View\ViewWindow;
 use Revolt\EventLoop;
 use Revolt\EventLoop\InvalidCallbackError;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Style\StyleSheet;
-use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
@@ -95,230 +35,7 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
  */
 final class GitViewControllerTest extends TestCase
 {
-    use GitBinary;
-    use AwaitsGit;
-    use PumpsLoop;
-    use StatusReads;
-
-    /** Under .porta/, which the fixture gitignores — see {@see installShim()}. */
-    private const string SHIM_RELEASE = '.porta/release-git';
-    private const string SHIM_CAPTURED = '.porta/captured-git';
-
-    private TempProject $project;
-    /** @var array<string, bool|int|string> the plugin settings DiffPrefs persists into */
-    private array $diffPrefs = [];
-    private ?GitInfo $git = null;
-    /** Held so tearDown can close the view a test left open (the poll timer is armed by open()). */
-    private ?GitViewController $controller = null;
-
-    /**
-     * A test that opens the view and asserts on layout or focus leaves two
-     * things behind: the 2s status-POLL the open armed (a repeating timer that
-     * outlives the test, which is most of what this class used to leak), and
-     * whatever git subprocesses the refresh started, whose watchers sit on
-     * streams their reaped children are about to close.
-     *
-     * Closing cancels the first, draining waits out the second. Doing it here
-     * beats bolting both onto thirty-odd tests that do not otherwise care.
-     */
-    protected function tearDown(): void
-    {
-        $this->controller?->close();
-        if (null !== $this->git) {
-            $this->awaitLanes([Probe::get(Probe::get($this->git, 'runner'), 'lane')]);
-        }
-    }
-
-    private Tui $tui;
-    private ChangesListWidget $changes;
-    private DiffViewWidget $diffView;
-    private CommitBoxWidget $commitBox;
-    private HistoryListWidget $history;
-    private GitTabsWidget $tabs;
-    private MenuBarWidget $menuBar;
-    private ContainerWidget $gitLeft;
-    private ViewRegion $region;
-    private ContainerWidget $main;
-    private StatusBarWidget $statusBar;
-    private int $committed = 0;
-    private CodeEditorWidget $editor;
-    private LayoutController $layoutController;
-    private EventDispatcher $dispatcher;
-
-    /**
-     * @param (\Closure(): ?string)|null $gitPath a live `git` path, for the two tests
-     *                                            that force one call through a
-     *                                            blocking shim to ORDER two answers
-     */
-    private function controller(Presence $realRepo = Presence::With, int $historyPageSize = 200, ?\Closure $gitPath = null): GitViewController
-    {
-        if (Presence::With === $realRepo && null === $this->whichGit()) {
-            $this->markTestSkipped('git not available');
-        }
-        // .porta/ is ignored so the real LayoutController's pref writes never
-        // dirty the porcelain assertions.
-        $this->project = new TempProject(['a.txt' => "one\ntwo\n", '.gitignore' => ".porta/\n"]);
-        if (Presence::With === $realRepo) {
-            $this->project->initGit();
-            $this->project->commitAll('init');
-        }
-        $this->git = new GitInfo($this->project->dir, gitPath: $gitPath);
-
-        $this->dispatcher = new EventDispatcher();
-        $dispatcher = $this->dispatcher;
-        $this->changes = new ChangesListWidget(new Translator('en'), events: $dispatcher);
-        $this->diffView = new DiffViewWidget(new Translator('en'), events: $dispatcher);
-        $this->commitBox = new CommitBoxWidget(new Translator('en'));
-        $this->history = new HistoryListWidget(new Translator('en'), events: $dispatcher);
-        $this->history->setId('git-history');
-        $this->tabs = new GitTabsWidget(new Translator('en'), events: $dispatcher);
-        $this->tabs->setId('git-tabs');
-        $this->menuBar = new MenuBarWidget();
-        $this->menuBar->setId('menu');
-        $editWidget = new ContainerWidget();
-        $editWidget->setId('edit-stub');
-        $this->main = new ContainerWidget();
-        $this->main->add($editWidget);
-        // The controller mints its own region and seeds the sidebar for the
-        // initial Changes mode, so the test asks the registry for the same one
-        // instead of hand-stacking the containers.
-        $regions = new ViewRegions(Styles::dark());
-        $this->statusBar = new StatusBarWidget();
-        $this->tui = TestTui::create(100, 24);
-        $this->committed = 0;
-        $dispatcher->addListener(GitCommitted::class, function (): void {
-            ++$this->committed;
-        });
-        // The restored editor area holds a focusable editor so close() has a
-        // real focus target (EditorArea resolves to it with no buffers open).
-        $this->editor = new CodeEditorWidget();
-        $this->editor->setId('editor');
-        $editWidget->add($this->editor);
-        $editorArea = new EditorArea(
-            new BufferManager(),
-            $this->editor,
-            new EditorPanes(),
-            $this->tui,
-        );
-        $t = new Translator('en');
-        $views = new ViewRegistry();
-        $notifier = new Notifier($this->statusBar, $this->tui);
-        $renderer = new Renderer(new StyleSheet());
-        $this->layoutController = new LayoutController(
-            new LayoutStore($this->project->dir),
-            $this->tui,
-            $renderer,
-            new FileTreeWidget($this->project->dir),
-            TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
-            new TabBarWidget(),
-            // The controller declares its own sidebar when it mints the region,
-            // so the layout gets it from there rather than being handed one.
-            $regions,
-            $t,
-            new PreviewSplit(Styles::dark()),
-        );
-
-        // The region arrives already minted, exactly as ViewServices delivers
-        // it: core mints it for the registered id before calling the factory.
-        $region = $regions->mint('git');
-        $host = new ViewHost(
-            new ViewWindow($this->main),
-            $this->menuBar,
-            $editorArea,
-            $this->tui,
-        );
-        $flash = GitDoubles::flash($notifier);
-        $trans = GitDoubles::translate($t);
-        $repaint = $this->tui->requestRender(...);
-        $copy = new Clipboard($this->tui)->copy(...);
-        $modals = GitDoubles::modals($this->editor);
-
-        $controller = new GitViewController(
-            $this->git,
-            new ProjectPaths($this->project->dir),
-            new GitPanes($this->changes, $this->diffView, $this->commitBox, $this->history, $this->tabs),
-            $region,
-            $host,
-            new GitMouseRouter(
-                new HitTester($renderer),
-                $host,
-                $this->changes,
-                $this->diffView,
-                $this->commitBox,
-                $this->history,
-                $this->tabs,
-            ),
-            new GitContextMenus(
-                new HitTester($renderer),
-                $host,
-                $this->changes,
-                $this->history,
-                new GitCommands(
-                    $this->git,
-                    $modals,
-                    $flash,
-                    $repaint,
-                    $trans,
-                    new GitRefresher($this->git, static function (): void {}),
-                    $copy,
-                    $dispatcher,
-                    static fn (): array => [],
-                    static function (array $lines, string $title): void {},
-                    GitDoubles::worktrees($this->git, \sys_get_temp_dir()),
-                ),
-                $t,
-            ),
-            $flash,
-            $t,
-            $dispatcher,
-            GitDoubles::diffPrefs($this->diffPrefs),
-            $copy,
-            // Wired, because plugin.php wires it: with the nullable dependency
-            // left null the remote listener is a no-op, and a test of it can
-            // only assert that nothing threw.
-            new GitRemoteCommands(new GitRemote($this->project->dir), $flash, $trans, $dispatcher, $modals, $repaint),
-            historyPageSize: $historyPageSize,
-        );
-        $views->register($controller);
-        // PaneLayout fills the AREA at runtime; the region's two panes are
-        // the controller's own doing and are asserted, not arranged, below.
-        $this->region = $regions->mint('git');
-        $this->gitLeft = $this->region->sidebar();
-        $this->region->area()->add($this->gitLeft)->add($this->region->content());
-        // The container compiles these from #[AsEventListener]; a unit test
-        // wires the same two by hand.
-        $dispatcher->addListener(GitViewModeRequested::class, $controller->onViewModeRequested(...));
-        $dispatcher->addListener(GitRemoteRequested::class, $controller->onRemoteRequested(...));
-        $dispatcher->addListener(GitChangeSelected::class, $controller->onChangeSelected(...));
-        $dispatcher->addListener(GitChangeStageToggleRequested::class, $controller->onChangeStageToggled(...));
-        $dispatcher->addListener(GitStageAllRequested::class, $controller->onStageAllRequested(...));
-        $dispatcher->addListener(GitChangeDiscardRequested::class, $controller->onChangeDiscarded(...));
-        $dispatcher->addListener(GitCommitSelected::class, $controller->onCommitSelected(...));
-        $dispatcher->addListener(GitCommitFileSelected::class, $controller->onCommitFileSelected(...));
-        $dispatcher->addListener(GitHistoryEndReached::class, $controller->onHistoryEndReached(...));
-        $dispatcher->addListener(GitDiffStagingRequested::class, $controller->onDiffLinesStaged(...));
-        $dispatcher->addListener(GitDiffContextCycleRequested::class, $controller->onDiffContextCycled(...));
-        $dispatcher->addListener(GitDiffLayoutToggled::class, $controller->onDiffLayoutToggled(...));
-        $dispatcher->addListener(GitDiffWhitespaceToggleRequested::class, $controller->onDiffWhitespaceToggled(...));
-        $dispatcher->addListener(GitDiffCopyRequested::class, $controller->onDiffTextCopied(...));
-
-        return $this->controller = $controller;
-    }
-
-    /** @return list<string> porcelain rows of the test repo */
-    /**
-     * The index as git sees it. --no-optional-locks, as every reader the plugin
-     * runs: this is polled by awaits WHILE the plugin mutates the index, and a
-     * plain `git status` takes index.lock to refresh stat data — under load it
-     * held the lock at the moment the plugin's `git reset` needed it, and the
-     * unstage failed ("git refused the staging change") one run in ~80.
-     */
-    private function porcelain(): array
-    {
-        \exec('git --no-optional-locks -C '.\escapeshellarg($this->project->dir).' status --porcelain 2>/dev/null', $lines);
-
-        return $lines;
-    }
+    use GitViewRig;
 
     public function testTheControllerSeedsItsOwnRegionOnConstruction(): void
     {
@@ -401,7 +118,7 @@ final class GitViewControllerTest extends TestCase
         $this->menuBar->open(0);
         $controller->toggle();
         $this->assertTrue($controller->isOpen());
-        $this->assertSame(['git-area'], $ids(), 'the region is in the window');
+        $this->assertSame(['git-header', 'git-area'], $ids(), 'the region is in the window, its toolbar row above it');
         $this->assertFalse($this->menuBar->isOpen(), 'an open dropdown closes as the window opens');
         $controller->open(); // idempotent
         $this->assertTrue($controller->isOpen());
@@ -718,120 +435,6 @@ final class GitViewControllerTest extends TestCase
         $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
-    /**
-     * A shim `git` that runs NOW and then holds its bytes until released: the
-     * caller gets a genuinely OLD answer, late. The stale `git status`
-     * snapshot.
-     *
-     * Pair it with {@see awaitCapture()} — proc_open returning is not the
-     * child having run.
-     *
-     * @param-out string $shim
-     */
-    private function gitHoldingItsAnswer(?string &$shim): \Closure
-    {
-        return $this->installShim(
-            $shim,
-            'tmp=$(mktemp)'
-            ."\n"
-            .$this->gitBinary()
-            .' "$@" > "$tmp"'
-            ."\n"
-            .'rc=$?'
-            ."\n"
-            .'touch '
-            .\escapeshellarg($this->project->path(self::SHIM_CAPTURED))
-            ."\n"
-            .$this->waitForRelease()
-            ."\n"
-            .'cat "$tmp"'
-            ."\n"
-            .'rm -f "$tmp"'
-            ."\n"
-            .'exit $rc',
-        );
-    }
-
-    /**
-     * A shim `git` that holds the CALL and runs only once released: an old
-     * request answered against today's tree. The stale `git diff` SIDE, chosen
-     * from an entry that has since been staged.
-     *
-     * The distinction from {@see gitHoldingItsAnswer()} is not cosmetic. Using
-     * this one for the status race is not a failing test but a passing one: a
-     * held-then-run `git status` returns the post-staging porcelain and races
-     * nothing at all.
-     *
-     * @param-out string $shim
-     */
-    private function gitHoldingItsCall(?string &$shim): \Closure
-    {
-        return $this->installShim($shim, $this->waitForRelease()."\n".'exec '.$this->gitBinary().' "$@"');
-    }
-
-    /**
-     * Write $script as the project's shim `git` and return the closure that
-     * releases whatever it is holding.
-     *
-     * Blocking the PROCESS rather than sleeping in the test is what makes the
-     * ordering a fact and not another timing bet: the older answer cannot
-     * arrive until the newer one already has, whatever the machine is doing.
-     *
-     * @param-out string $shim
-     */
-    private function installShim(?string &$shim, string $script): \Closure
-    {
-        // Under .porta/, which this fixture gitignores: a shim script sitting
-        // in the worktree would show up as `?? ` in the very porcelain these
-        // tests compare.
-        $shim = $this->project->write('.porta/shim/git', '#!/bin/sh'."\n".$script."\n");
-        \chmod($shim, permissions: 0o755);
-        $project = $this->project;
-
-        return static function () use ($project): void {
-            \touch($project->path(self::SHIM_RELEASE));
-        };
-    }
-
-    /** Single-quoted on purpose: PHP would eat $tmp and $rc out of these scripts. */
-    private function gitBinary(): string
-    {
-        return \escapeshellarg((string) $this->whichGit());
-    }
-
-    private function waitForRelease(): string
-    {
-        return 'while [ ! -f '.\escapeshellarg($this->project->path(self::SHIM_RELEASE)).' ]; do sleep 0.02; done';
-    }
-
-    /**
-     * Wait until the capture shim has actually RUN git, not merely been spawned.
-     *
-     * proc_open returns as soon as the child exists; the child is a /bin/sh that
-     * still has to be scheduled before it reaches its `git status` line. Without
-     * this barrier the capture happened after the test's next `git add` and the
-     * "stale" answer carried today's porcelain — a test that passes against the
-     * bug, which is how it read the first time.
-     */
-    private function awaitCapture(): void
-    {
-        $marker = $this->project->path(self::SHIM_CAPTURED);
-        $this->await(static fn (): bool => \is_file($marker), what: 'the held status to capture its answer');
-    }
-
-    /**
-     * Stop the 2s status poll from healing the damage a test is looking for.
-     *
-     * Disabled rather than cancelled so tearDown's close() still has a
-     * callback to cancel. The poll is not what these two tests are about: a
-     * refresh landing between the stale answer and the assertion would repair
-     * the pane and read as a pass.
-     */
-    private function freezeStatusPoll(GitViewController $controller): void
-    {
-        EventLoop::disable((string) Probe::get($controller, 'poll'));
-    }
-
     public function testAStaleStatusAnswerCannotRepublishThePreStagingSnapshot(): void
     {
         // Two `git status` calls overlap in ordinary use — a staging completion
@@ -935,12 +538,6 @@ final class GitViewControllerTest extends TestCase
 
         $this->assertNotNull(Probe::get($controller, 'shownDocument'), 'the superseded worktree load did not blank the pane');
         $this->assertStringContainsString('+one CHANGED', $this->diffText(), 'the newer cached diff still holds the pane');
-    }
-
-    /** The one lane every git call in this test class runs through. */
-    private function lane(): ProcessLane
-    {
-        return Probe::get(Probe::get($this->git, 'runner'), 'lane');
     }
 
     public function testStageSelectionGuardsUntrackedAndEmptySelections(): void
@@ -1136,29 +733,42 @@ final class GitViewControllerTest extends TestCase
         );
         $this->assertSame('second', $this->history->selectedCommit()?->subject);
         $this->assertTrue(Probe::get($this->diffView, 'readOnly'));
+        $this->assertSame(
+            ['git-commit-header', 'git-columns'],
+            \array_map(static fn (AbstractWidget $w): ?string => $w->getId(), $this->region->content()->all()),
+            'the content is the commit header over GitHub Desktop\'s middle column and the diff',
+        );
+        $split = $this->region->split('columns');
+        $this->assertSame([$this->details, $this->diffView], [$split->lead(), $split->rest()]);
 
-        // The files of the newest commit load, and the FIRST file's patch
-        // shows immediately — no keyboard step needed to see a diff.
-        $this->await(fn (): bool => \str_contains($this->historyText(), 'M a.txt'));
+        // The files of the newest commit load beside it, and the FIRST file's
+        // patch shows immediately — no keyboard step needed to see a diff.
+        $this->await(fn (): bool => \str_contains($this->detailsText(), 'a.txt'));
+        $this->assertStringContainsString('second', $this->detailsText(), 'under the commit\'s own header');
         $this->await(fn (): bool => \str_contains($this->diffText(), '+three'), what: "the first file's patch auto-loads on commit selection");
 
-        // Keyboard file browsing still refires loads.
+        // Enter moves into the files, and browsing them still refires loads.
         $this->history->setFocused(true);
-        $this->history->handleInput("\r"); // into the file list
-        $this->history->handleInput("\x1b[B");
-        $this->history->handleInput("\x1b[A");
+        $this->history->handleInput("\r");
+        $this->assertSame($this->details, $this->tui->getFocus(), 'Enter hands the keys to the files');
+        $this->details->setFocused(true);
+        $this->details->handleInput("\x1b[B");
+        $this->details->handleInput("\x1b[A");
         $this->await(fn (): bool => \str_contains($this->diffText(), '+three'), what: 'the commit file patch renders');
+        $this->details->handleInput("\r");
+        $this->assertSame($this->history, $this->tui->getFocus(), 'and Enter hands them back');
 
         // Staged keys are inert in read-only mode.
         $this->diffView->setFocused(true);
         $this->diffView->handleInput(' ');
         $this->assertSame([], $this->porcelain(), 'nothing staged from history');
 
-        // Back to Changes: left pane restored, diff editable again.
+        // Back to Changes: left pane restored, the diff alone and editable again.
         $this->history->setFocused(true);
         $this->history->handleInput('1');
         $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
         $this->assertFalse(Probe::get($this->diffView, 'readOnly'));
+        $this->assertSame([$this->diffView], $this->region->content()->all());
     }
 
     public function testRightClickSelectsAHistoryCommitForItsContextMenu(): void
@@ -1175,17 +785,17 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => null !== $this->history->selectedCommit());
         $this->history->render(new RenderContext(44, 20)); // set the row geometry
 
-        $commit = $this->history->selectCommitAt(1); // the newest commit row
+        $commit = $this->history->selectCommitAt(1); // the newest commit's subject row
         $this->assertSame('second', $commit?->subject, 'a right-click selects the commit under it');
-        $this->assertSame(1, $this->history->selectedCommitRow(), 'the newest commit sits on the first row');
+        $this->assertSame(1, $this->history->selectedCommitRow(), 'its menu opens under its who-and-when row');
 
-        // Selecting a different row moves the selection (and fires the callback).
-        $older = $this->history->selectCommitAt(2);
-        $this->assertNotSame('second', $older?->subject, 'the second row is an older commit');
-        $this->assertSame(2, $this->history->selectedCommitRow());
+        // Selecting a different commit moves the selection (and fires the callback).
+        $older = $this->history->selectCommitAt(4);
+        $this->assertNotSame('second', $older?->subject, 'the next entry is an older commit');
+        $this->assertSame(4, $this->history->selectedCommitRow());
 
-        $this->assertNull($this->history->selectCommitAt(0), 'the header row is no commit');
-        $this->assertNull($this->history->selectCommitAt(3), 'an empty commit slot is no commit');
+        $this->assertNull($this->history->selectCommitAt(2), 'the hairline between two is no commit');
+        $this->assertNull($this->history->selectCommitAt(6), 'an empty commit slot is no commit');
         $this->assertNull($this->history->selectCommitAt(99), 'past the list is no commit');
     }
 
@@ -1217,12 +827,15 @@ final class GitViewControllerTest extends TestCase
         $this->await(fn (): bool => 3 === \count($this->gitLeft->all()));
         $this->assertFalse(Probe::get($this->diffView, 'readOnly'));
 
-        // History-mode focus cycle: history <-> diff only.
+        // History-mode focus cycle: commits → files → diff → commits.
         $this->changes->setFocused(true);
         $this->changes->handleInput('2');
         $this->await(fn (): bool => 2 === \count($this->gitLeft->all()));
         $this->history->setFocused(true);
         $this->history->handleInput("\t");
+        $this->assertSame($this->details, $this->tui->getFocus());
+        $this->details->setFocused(true);
+        $this->details->handleInput("\t");
         $this->assertSame($this->diffView, $this->tui->getFocus());
         $this->diffView->setFocused(true);
         $this->diffView->handleInput("\t");
@@ -1280,19 +893,14 @@ final class GitViewControllerTest extends TestCase
         $this->history->setFocused(true);
         $this->history->handleInput("\x1b[B");
         $this->await(fn (): bool => \str_contains($this->diffText(), '+.porta/'), what: "the older commit's first file loads");
-        $this->assertStringContainsString('.gitignore', $this->historyText());
+        $this->assertStringContainsString('.gitignore', $this->detailsText());
 
         // Into that commit's file list and down to a.txt: only
         // GitCommitFileSelected can swap the patch.
-        $this->history->handleInput("\r");
-        $this->history->handleInput("\x1b[B");
+        $this->details->setFocused(true);
+        $this->details->handleInput("\x1b[B");
         $this->await(fn (): bool => \str_contains($this->diffText(), '+two'), what: 'selecting a file loads that file');
         $this->assertStringNotContainsString('+.porta/', $this->diffText());
-    }
-
-    private function historyText(): string
-    {
-        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->history->render(new RenderContext(44, 20))));
     }
 
     /**
@@ -1514,11 +1122,6 @@ final class GitViewControllerTest extends TestCase
         $this->assertStringNotContainsString('two', $this->diffText(), 'an answer for a closed comparison is dropped');
     }
 
-    private function diffText(): string
-    {
-        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->diffView->render(new RenderContext(80, 20))));
-    }
-
     public function testHistoryPagesInOlderCommitsAtTheListBottom(): void
     {
         $controller = $this->controller(historyPageSize: 2);
@@ -1608,7 +1211,7 @@ final class GitViewControllerTest extends TestCase
         // The reset emptied the files pane; it has to come back, or the patch
         // still on screen is one nothing in the list points at any more.
         $this->await(
-            fn (): bool => [] !== Probe::get($this->history, 'files'),
+            fn (): bool => null !== $this->details->selectedFile(),
             what: "the kept commit's files reloaded under it",
         );
         $this->assertStringContainsString('+alpha', $this->diffText(), 'and the patch under it is still its own');

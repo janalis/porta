@@ -14,7 +14,6 @@ use Porta\GitPlugin\StagedState;
 use Porta\GitPlugin\View\GitViewMode;
 use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
-use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
 use Porta\Ui\Role;
@@ -29,6 +28,7 @@ use Porta\Widget\Render\FieldState;
 use Porta\Widget\Render\HeaderRenderer;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\HoverTrait;
@@ -37,6 +37,7 @@ use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -66,15 +67,6 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     use PanelWidth;
     use PanelRowStyle;
 
-    /** @var array<string, Role> file-status char → color role */
-    private const array STATUS_ROLE = [
-        'A' => Role::Added,
-        'M' => Role::Modified,
-        'D' => Role::Deleted,
-        'R' => Role::Hunk,
-        'C' => Role::Hunk,
-    ];
-
     /** @var list<ChangeEntry> */
     private array $entries = [];
     private readonly ListSelection $list;
@@ -84,6 +76,10 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
     private int $lastPage = 1;
     /** Index of the entry an inline discard confirmation is armed for, or null. */
     private ?int $confirmDiscard = null;
+
+    /** The rows over the files: the heading with its select-all box, and the rule under it. */
+    private const int HEAD_ROWS = 2;
+
     /**
      * Which entry each screen row of the last render belongs to — null for the
      * title and the padding — so a click and a hover land on what was drawn:
@@ -426,8 +422,9 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         // and the partial mark for a mix. Untinted: the header's style runs
         // across it, and a tint's closing code would drop it for the title.
         $box = [] === $this->entries ? '' : $this->litBox(FieldBox::checkbox($this->allStaged()), -1).' ';
-        $lines = [HeaderRenderer::title($box.$title, $width, $this->styles)];
-        $this->rowOwner = [null];
+        // GitHub Desktop's list heading, ruled off from the files under it.
+        $lines = [HeaderRenderer::title($box.$title, $width, $this->styles), Rule::horizontal($width, $this->styles)];
+        $this->rowOwner = [null, null];
         $this->confirmButtons = null;
 
         // Every entry is a row, the armed one a block: its question, then
@@ -436,8 +433,8 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         foreach (\array_keys($this->entries) as $index) {
             $heights[] = $index === $this->confirmDiscard ? 1 + FieldBox::rowsFor($this->density->current()) : 1;
         }
-        $scroll = $this->list->followHeights($heights, $rows - 1);
-        $this->lastPage = $this->list->countFitting($heights, $scroll, $rows - 1);
+        $scroll = $this->list->followHeights($heights, $rows - self::HEAD_ROWS);
+        $this->lastPage = $this->list->countFitting($heights, $scroll, $rows - self::HEAD_ROWS);
         for ($index = $scroll; $index < $count && \count($lines) < $rows; ++$index) {
             $block = $index === $this->confirmDiscard ? $this->confirmBlock($this->entries[$index], $width, \count($lines)) : [$this->entryRow($index, $width)];
             foreach ($block as $line) {
@@ -485,13 +482,13 @@ final class ChangesListWidget extends AbstractWidget implements FocusableInterfa
         // Lit, the box is untinted: the underline's close would cut the tint.
         $lit = $index === $this->hoveredBox;
         $checkbox = $this->litBox($entry->stagedState()->checkbox($lit || $this->list->isSelected($index) ? null : $this->styles), $index);
-        $status = $entry->displayStatus();
-        $statusText = \array_key_exists($status, self::STATUS_ROLE) ? $this->styles->of(self::STATUS_ROLE[$status])->apply($status) : $status;
-        $label = $entry->path.(null !== $entry->renamedFrom ? ' '.Glyphs::RENAME_FROM.' '.$entry->renamedFrom : '');
+        $box = ' '.$checkbox.' ';
+        // GitHub Desktop's row: the box, the path with its folder dim, the status flush right.
+        $file = FileRow::render($entry->path, $entry->displayStatus(), \max(0, $width - AnsiUtils::visibleWidth($box)), $this->styles, $entry->renamedFrom);
 
         $selected = $this->list->isSelected($index);
 
-        return $this->shadeRow($this->barred(AnsiText::truncate(' '.$checkbox.' '.$statusText.' '.$label, $width, pad: true), $selected), $selected, $index === $this->hoveredIndex);
+        return $this->shadeRow($this->barred(AnsiText::truncate($box.$file, $width, pad: true), $selected), $selected, $index === $this->hoveredIndex);
     }
 
     /**

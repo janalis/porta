@@ -404,7 +404,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
 
         $this->assertTrue($controller->isOpen());
-        $this->assertSame(['settings-area'], $this->ids($this->main));
+        $this->assertSame(['settings-header', 'settings-area'], $this->ids($this->main), 'the region, under its (empty) header row');
         $this->assertSame(['settings-form'], $this->ids($this->content));
         $this->assertSame($this->form, $this->tui->getFocus());
         $this->assertSame('general', $this->nav->selectedId());
@@ -887,7 +887,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->toggle();
         $this->assertTrue($controller->isOpen());
         $controller->open(); // idempotent
-        $this->assertSame(['settings-area'], $this->ids($this->main));
+        $this->assertSame(['settings-header', 'settings-area'], $this->ids($this->main), 'the region, under its (empty) header row');
         $controller->toggle();
         $this->assertFalse($controller->isOpen());
 

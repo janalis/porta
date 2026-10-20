@@ -66,7 +66,7 @@ trait BuildsLayoutController
             new HistoryListWidget(new Translator('en')),
         );
         $this->settingsSidebar = new SettingsNavWidget(new Translator('en'));
-        $this->regions = self::regionsWith($this->gitSidebar, $this->settingsSidebar);
+        $this->regions = $this->regionsWith($this->gitSidebar, $this->settingsSidebar);
 
         return new LayoutController(
             new LayoutStore($this->project->dir),
@@ -88,7 +88,7 @@ trait BuildsLayoutController
      * changed the tree's width and did NOT reach disk is the defect this
      * catches, and an empty array is a real expected value — hence no null.
      *
-     * @return array<string, int|bool|array<string, int>> the persisted layout.json contents, viewSidebarWidthPercent keyed by view id
+     * @return array<string, int|bool|array<string, int>> the persisted layout.json contents, viewSidebarWidthPercent keyed by view id, viewSplitPercent by `view:split`
      */
     private function layoutFile(): array
     {
@@ -105,9 +105,9 @@ trait BuildsLayoutController
      * The two regions, each already told how its sidebar resizes — which is
      * what each view does when it mints its own.
      */
-    private static function regionsWith(ResizableSidebar $git, ResizableSidebar $settings): ViewRegions
+    private function regionsWith(ResizableSidebar $git, ResizableSidebar $settings): ViewRegions
     {
-        $regions = new ViewRegions(Styles::dark());
+        $regions = new ViewRegions(Styles::dark(), $this->renderer, $this->tui);
         $regions->mint('git')->setSidebarPanes($git);
         $regions->mint('settings')->setSidebarPanes($settings);
 

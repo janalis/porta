@@ -135,7 +135,7 @@ final class TooltipRouter
 
         return match (true) {
             null !== $status => $status,
-            null !== $region => $this->firstAnswer($mouse, $this->providersIn($region->panes())),
+            null !== $region => $this->firstAnswer($mouse, $this->providersIn([$region->header(), ...$region->panes()])),
             default => $this->mainAt($mouse),
         };
     }

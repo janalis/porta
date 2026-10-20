@@ -11,7 +11,7 @@ use Symfony\Component\Tui\Tui;
 
 /**
  * The Shift+F11/F12 resize nudge for whichever resizable pane holds the
- * focus. Sidebars and the preview split's divider move 2 columns per press,
+ * focus. Sidebars, the preview split's divider and a view split's move 2 columns per press,
  * bottom panels 1 row; a
  * non-resizable focus answers false so the chord falls through to the widget.
  */
@@ -60,6 +60,27 @@ final readonly class PaneResizer
     }
 
     /**
+     * The [view, split key] of the view split on screen, side by side, whose
+     * column holds $focus, or null — a stacked split has no divider to move,
+     * so the chord falls through. A split sits in the content, so it and the
+     * sidebar never both answer.
+     *
+     * @return null|array{string, string}
+     */
+    private function splitOwning(?object $focus): ?array
+    {
+        foreach ($this->regions->all() as $region) {
+            foreach ($region->splits() as $key => $split) {
+                if (null !== $split->rect() && !$split->isNarrow() && null !== $focus && ($focus === $split->lead() || $focus === $split->rest())) {
+                    return [$region->id, $key];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Whether $focus is one half of a preview split on screen: the editor or
      * the pane beside it. The split's area is attached only in Split, so the
      * editor alone — or a lone preview — resizes nothing.
@@ -83,6 +104,7 @@ final readonly class PaneResizer
             $focus === $this->tree => fn () => $this->layout->nudgeSidebar(2 * $direction),
             null !== $focus && $focus === $this->dock->visiblePanel() => fn () => $this->layout->nudgeBottomPanel($direction),
             null !== ($view = $this->viewOwning($focus)) => fn () => $this->layout->nudgeViewSidebar($view, 2 * $direction),
+            null !== ($split = $this->splitOwning($focus)) => fn () => $this->layout->nudgeViewSplit($split[0], $split[1], 2 * $direction),
             $this->inPreviewSplit($focus) => fn () => $this->layout->nudgePreviewSplit(2 * $direction),
             default => null,
         };

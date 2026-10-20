@@ -30,8 +30,10 @@ final class ThemeLockTest extends TestCase
         yield 'added' => [Role::Added, new Style(color: 114)];
         yield 'deleted' => [Role::Deleted, new Style(color: 203)];
         yield 'hunk' => [Role::Hunk, new Style(color: 75)];
-        yield 'add-emphasis-bg' => [Role::AddEmphasisBg, new Style(background: 22)];
-        yield 'del-emphasis-bg' => [Role::DelEmphasisBg, new Style(background: 88)];
+        yield 'add-emphasis-bg' => [Role::AddEmphasisBg, new Style(background: 28)];
+        yield 'del-emphasis-bg' => [Role::DelEmphasisBg, new Style(background: 124)];
+        yield 'added-row-bg' => [Role::AddedRowBg, new Style(background: 22)];
+        yield 'deleted-row-bg' => [Role::DeletedRowBg, new Style(background: 52)];
         yield 'selected-row' => [Role::SelectedRow, new Style(background: 31, color: 231, bold: true)];
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 237)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 236)];
@@ -113,8 +115,10 @@ final class ThemeLockTest extends TestCase
         yield 'added' => [Role::Added, new Style(color: 28)];
         yield 'deleted' => [Role::Deleted, new Style(color: 160)];
         yield 'hunk' => [Role::Hunk, new Style(color: 25)];
-        yield 'add-emphasis-bg' => [Role::AddEmphasisBg, new Style(background: 194)];
-        yield 'del-emphasis-bg' => [Role::DelEmphasisBg, new Style(background: 224)];
+        yield 'add-emphasis-bg' => [Role::AddEmphasisBg, new Style(background: 157)];
+        yield 'del-emphasis-bg' => [Role::DelEmphasisBg, new Style(background: 217)];
+        yield 'added-row-bg' => [Role::AddedRowBg, new Style(background: 194)];
+        yield 'deleted-row-bg' => [Role::DeletedRowBg, new Style(background: 224)];
         yield 'selected-row' => [Role::SelectedRow, new Style(background: 111, color: 16, bold: true)];
         yield 'selected-row-unfocused' => [Role::SelectedRowUnfocused, new Style(background: 253)];
         yield 'row-highlight-bg' => [Role::RowHighlightBg, new Style(background: 253)];

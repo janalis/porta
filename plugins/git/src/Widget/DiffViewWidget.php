@@ -11,31 +11,33 @@ use Porta\GitPlugin\Diff\DiffRowKind;
 use Porta\GitPlugin\Event\GitDiffContextCycleRequested;
 use Porta\GitPlugin\Event\GitDiffCopyRequested;
 use Porta\GitPlugin\Event\GitDiffLayoutToggled;
+use Porta\GitPlugin\Event\GitDiffSettingsRequested;
 use Porta\GitPlugin\Event\GitDiffStagingRequested;
 use Porta\GitPlugin\Event\GitDiffWhitespaceToggleRequested;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
+use Porta\Layout\DiffLayout;
 use Porta\Support\AnsiText;
 use Porta\Support\IntMath;
 use Porta\Ui\ClickZones;
+use Porta\Ui\Glyphs;
 use Porta\Ui\LtrPane;
 use Porta\Ui\Role;
-use Porta\Ui\ScreenDensity;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\ThemeRefreshable;
 use Porta\Ui\Tooltip;
 use Porta\Ui\TooltipProvider;
 use Porta\Widget\PaneNavigationCallbacks;
-use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\MenuOverlayHost;
 use Porta\Widget\Render\MenuOverlayHostTrait;
+use Porta\Widget\Render\Rule;
 use Porta\Widget\Support\FillsPaneTrait;
 use Porta\Widget\Support\InputHook;
-use Porta\Widget\Support\OptionTagState;
 use Porta\Widget\Support\StylesDefault;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
@@ -62,6 +64,12 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     use PaneNavigationCallbacks;
     use StylesDefault;
 
+    /** The diff settings control. Checked narrow: East Asian Neutral, no emoji presentation. */
+    private const string SETTINGS = '⚙';
+
+    /** The columns of a hunk row the expand mark answers on: the space before it, it, and the one after. */
+    private const int EXPAND_COLUMNS = 2;
+
     private ?DiffDocument $document = null;
     private ?string $path = null;
     private string $placeholder = 'No changes selected';
@@ -87,7 +95,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** The toolbar's height in the last render: boxed toggles, their one-row tags, or the title alone. */
     private int $headerRows = 1;
 
-    private readonly ScreenDensity $density;
     private bool $readOnly = false;
     /** Cursor row (index into $rows); staging operates at/around it. */
     private int $cursor = 0;
@@ -111,11 +118,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         private readonly Translator $translator,
         ?Styles $styles = null,
         ?TerminalTheme $syntaxTheme = null,
-        ?ScreenDensity $density = null,
         private readonly ?EventDispatcherInterface $events = null,
     ) {
         $this->initStyles($styles);
-        $this->density = $density ?? new ScreenDensity();
         $this->buttonZones = new ClickZones();
         $theme = $syntaxTheme ?? new DarkTerminalTheme();
         // Diff hunks are non-contiguous lines from different files: always the
@@ -346,7 +351,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     public function handleClick(int $relRow, int $relCol): void
     {
         if ($relRow < $this->headerRows) {
-            $name = $this->buttonZones->at($relCol);
+            $name = 0 === $relRow ? $this->buttonZones->at($relCol) : null;
             if (null !== $name) {
                 $this->fireButton($name);
             }
@@ -354,8 +359,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ([] !== $this->rows) {
+            $index = IntMath::clamp($this->scroll + $relRow - $this->headerRows, 0, \count($this->rows) - 1);
+            // A hunk row's expand mark (its first columns) shows more of the
+            // file around the hunks: the context cycle `c` runs.
+            if (!$this->readOnly && DiffRowKind::Hunk === $this->rows[$index]['kind'] && $relCol <= self::EXPAND_COLUMNS) {
+                $this->requestContextCycle();
+
+                return;
+            }
             $this->anchor = null; // a fresh click starts a new selection
-            $this->cursor = IntMath::clamp($this->scroll + $relRow - $this->headerRows, 0, \count($this->rows) - 1);
+            $this->cursor = $index;
             // Seed a (zero-width) char selection at the press point; a drag
             // extends it, a plain click leaves it degenerate (row-copy rules).
             $side = $this->sideAt($relCol);
@@ -403,14 +416,35 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
     private function fireButton(string $name): void
     {
-        if ('split' === $name) {
-            $this->toggleLayout();
+        if ('settings' === $name) {
+            $this->events?->dispatch(new GitDiffSettingsRequested());
+        }
+    }
 
-            return;
+    /** The settings menu's layout pick: a no-op for the layout already shown. */
+    public function chooseLayout(DiffLayout $layout): void
+    {
+        if ((DiffLayout::Split === $layout) !== $this->split) {
+            $this->toggleLayout();
         }
-        if ('whitespace' === $name) {
-            $this->events?->dispatch(new GitDiffWhitespaceToggleRequested());
-        }
+    }
+
+    public function isWhitespaceHidden(): bool
+    {
+        return $this->whitespaceHidden;
+    }
+
+    /**
+     * The ⚙'s first column and the toolbar's height, from the last render —
+     * where its menu hangs; null when it was not drawn.
+     *
+     * @return array{int, int}|null
+     */
+    public function settingsAnchor(): ?array
+    {
+        $span = $this->buttonZones->span('settings');
+
+        return null === $span ? null : [$span[0], $this->headerRows];
     }
 
     private function moveCursor(int $delta): void
@@ -612,7 +646,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
         $title =
             ' '
-            .($this->path ?? $this->translator->trans('Diff'))
+            .(null === $this->path ? $this->translator->trans('Diff') : $this->pathTitle($this->path))
             .($this->scroll > 0 ? '  '.$this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scroll]) : '')
             .($this->hScroll > 0 ? '  '.$this->translator->trans('[→%count%]', ['%count%' => $this->hScroll]) : '');
         $lines = $this->renderToolbar($title, $width);
@@ -628,7 +662,17 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return $lines;
         }
 
-        $renderer = new DiffViewRenderer($this->document, $this->highlighted, $this->hScroll, $this->cursor, $this->anchor, $this->focused, $this->normalizedCharSel(), $this->styles);
+        $renderer = new DiffViewRenderer(
+            $this->document,
+            $this->highlighted,
+            $this->hScroll,
+            $this->cursor,
+            $this->anchor,
+            $this->focused,
+            $this->normalizedCharSel(),
+            $this->styles,
+            expandable: !$this->readOnly,
+        );
         foreach (\array_slice($this->rows, $this->scroll, \max(0, $rows - $this->headerRows)) as $i => $row) {
             $lines[] = $renderer->row($this->scroll + $i, $row, $width);
         }
@@ -640,61 +684,47 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     }
 
     /**
-     * The title doubles as a toolbar: path + scroll hint on the left,
-     * right-aligned display toggles (spans recorded for the mouse) — boxed
-     * like the find bar's where the screen is roomy, the title then on their
-     * middle row, one-row tags where it is not.
+     * GitHub Desktop's file header: the path — its folder dim, its name not —
+     * and the scroll hints, the ⚙ that drops the display settings at the far
+     * end, on one bar row closed off below. Two rows at every density, level
+     * with the files column's heading beside it in History.
      *
      * @return non-empty-list<string>
      */
     private function renderToolbar(string $title, int $width): array
     {
         $this->buttonZones->clear();
-        // The key-hint dialect: a bare key is written as its own name, like
-        // the Esc/Tab hints elsewhere — never invented shorthand.
-        $tags = [
-            ['name' => 'split', 'caption' => \trim($this->translator->trans(' S split ')), 'on' => $this->split],
-            ['name' => 'whitespace', 'caption' => \trim($this->translator->trans(' W hide-ws ')), 'on' => $this->whitespaceHidden],
+        // GitHub Desktop's gear: one control that drops the display settings,
+        // where two toggle tags used to sit. Their keys, s and w, still work.
+        $gear = ' '.self::SETTINGS.' '.Glyphs::SELECT_ARROW.' ';
+        $gearWidth = AnsiUtils::visibleWidth($gear);
+        $bar = $this->styles->of(Role::HeaderBar);
+        $col = $width - $gearWidth;
+        if ($col < 1) {
+            // Too narrow to seat the gear: the title alone, and no click zone
+            // recorded — a control drawn past the edge is neither visible nor
+            // clickable.
+            return [$bar->apply(AnsiText::truncate($title, $width, pad: true)), Rule::under($width, $this->styles, Role::HeaderBar)];
+        }
+        $this->buttonZones->add('settings', $col, $width);
+        $hover = 'settings' === $this->hoveredButton ? $this->styles->of(Role::BarHoverBg) : null;
+
+        return [
+            $bar->apply(AnsiText::truncate($title, $col, pad: true).($hover?->apply($gear) ?? $gear)),
+            Rule::under($width, $this->styles, Role::HeaderBar),
         ];
-        $bar = $this->styles->of(Role::HeaderBar)->withBold();
-
-        $rows = FieldBox::rowsFor($this->density->current());
-        $col = $width - $this->tagsWidth($tags, $rows);
-        if ($col < 0 && FieldBox::ROWS === $rows) {
-            $rows = 1;
-            $col = $width - $this->tagsWidth($tags, $rows);
-        }
-        if ($col < 0) {
-            // Too narrow to seat the toggles. The title alone, and no click
-            // zones recorded: a tag drawn past the edge is neither visible nor
-            // clickable, and drawing it at all made this row a fixed
-            // twenty-two columns however narrow the pane was — the same clamp
-            // with no floor the row gutter had, and the same crash.
-            return [$bar->apply(AnsiText::truncate($title, $width, pad: true))];
-        }
-        $lines = \array_fill(0, $rows, value: AnsiText::blank($col));
-        $lines[\intdiv($rows, num2: 2)] = AnsiText::truncate($title, $col, pad: true);
-        foreach ($tags as $tag) {
-            $toggle = FieldBox::toggle($tag['caption'], OptionTagState::of($tag['on'], $tag['name'] === $this->hoveredButton), $rows, $this->styles);
-            $tagWidth = FieldBox::toggleWidth($tag['caption'], $rows);
-            $this->buttonZones->add($tag['name'], $col, $col + $tagWidth);
-            foreach ($toggle as $i => $line) {
-                $lines[$i] .= $line.' ';
-            }
-            $col += $tagWidth + 1;
-        }
-
-        return \array_map($bar->apply(...), $lines);
     }
 
-    /**
-     * The toggles' columns at $rows, a gap after each.
-     *
-     * @param list<array{name: string, caption: string, on: bool}> $tags
-     */
-    private function tagsWidth(array $tags, int $rows): int
+    /** ` dir/name`, the folder dim: a path reads by its file name first. */
+    private function pathTitle(string $path): string
     {
-        return \array_sum(\array_map(static fn (array $tag): int => FieldBox::toggleWidth($tag['caption'], $rows) + 1, $tags));
+        // Cleaned first: oneLine() can shorten it, and the cut is an offset into it.
+        $path = AnsiText::oneLine($path);
+        $cut = \strrpos($path, needle: '/');
+
+        return false === $cut
+            ? $this->styles->of(Role::Emphasis)->withBold()->apply($path)
+            : $this->styles->of(Role::Dim)->apply(\substr($path, offset: 0, length: $cut + 1)).$this->styles->of(Role::Emphasis)->withBold()->apply(\substr($path, $cut + 1));
     }
 
     /**
@@ -703,7 +733,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     public function hoverHeader(int $relRow, int $relCol): bool
     {
-        $hovered = $relRow >= 0 && $relRow < $this->headerRows ? $this->buttonZones->at($relCol) : null;
+        $hovered = 0 === $relRow ? $this->buttonZones->at($relCol) : null;
         if ($hovered === $this->hoveredButton) {
             return false;
         }
@@ -720,15 +750,36 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     #[\Override]
     public function tooltipAt(int $row, int $col): ?Tooltip
     {
-        $name = $row >= 0 && $row < $this->headerRows ? $this->buttonZones->at($col) : null;
+        return $this->expandTip($row, $col) ?? $this->buttonTip($row, $col);
+    }
+
+    /** A hunk row's expand mark says what a click on it does. */
+    private function expandTip(int $row, int $col): ?Tooltip
+    {
+        $index = $this->scroll + $row - $this->headerRows;
+        $onMark = !$this->readOnly && $row >= $this->headerRows && $col <= self::EXPAND_COLUMNS && DiffRowKind::Hunk === ($this->rows[$index]['kind'] ?? null);
+
+        return $onMark ? new Tooltip('git:diff:expand', $this->translator->trans('Show more of the file around the changes (c)'), $row, 1, 2) : null;
+    }
+
+    /** The gear says what the diff shows; it answers on every header row, as the hover does. */
+    private function buttonTip(int $row, int $col): ?Tooltip
+    {
+        $name = 0 === $row ? $this->buttonZones->at($col) : null;
         $span = null === $name ? null : $this->buttonZones->span($name);
         if (null === $name || null === $span) {
             return null;
         }
-        [$what, $on] = 'split' === $name ? [$this->translator->trans('Side-by-side diff'), $this->split] : [$this->translator->trans('Hide whitespace-only changes'), $this->whitespaceHidden];
-        $state = $on ? $this->translator->trans('on') : $this->translator->trans('off');
+        $layout = $this->split ? $this->translator->trans('Side-by-side diff') : $this->translator->trans('Unified diff');
+        $whitespace = $this->whitespaceHidden ? $this->translator->trans('whitespace changes hidden') : $this->translator->trans('whitespace changes shown');
 
-        return new Tooltip('git:diff:'.$name, $what.' · '.$state, 0, $span[0], $span[1], $this->headerRows);
+        return new Tooltip(
+            'git:diff:'.$name,
+            $this->translator->trans('Diff settings: %layout%, %whitespace%', ['%layout%' => $layout, '%whitespace%' => $whitespace]),
+            0,
+            $span[0],
+            $span[1],
+        );
     }
 
     /** The pointer left the diff pane: drop the toolbar tint. Returns whether it changed. */

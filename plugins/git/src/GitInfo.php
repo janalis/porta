@@ -72,6 +72,72 @@ final readonly class GitInfo
     }
 
     /**
+     * How far the branch has drifted from its upstream: the commits only here
+     * (ahead) and the ones only there (behind) — null when it has no upstream,
+     * which git reports as a failure.
+     *
+     * @param callable(?Tracking): void $onDone
+     */
+    public function tracking(callable $onDone): void
+    {
+        $this->runner->runStatus(['rev-list', '--left-right', '--count', 'HEAD...@{upstream}'], static function (int $code, string $out) use ($onDone): void {
+            $counts = [];
+            $onDone(0 === $code && 1 === \preg_match('/^(\d+)\s+(\d+)$/', \trim($out), $counts) ? new Tracking((int) $counts[1], (int) $counts[2]) : null);
+        });
+    }
+
+    /**
+     * The remote $branch pushes to and pulls from — `origin`, usually — or
+     * null for a branch never published, or one tracking a LOCAL branch,
+     * which git spells `.`: there is no remote to name.
+     *
+     * @param callable(?string): void $onDone
+     */
+    public function remoteOf(string $branch, callable $onDone): void
+    {
+        $this->runner->runStatus(['config', '--get', 'branch.'.$branch.'.remote'], static function (int $code, string $out) use ($onDone): void {
+            $remote = \trim($out);
+            $onDone(0 === $code && !\in_array($remote, ['', '.'], strict: true) ? $remote : null);
+        });
+    }
+
+    /**
+     * How many lines a commit added and removed, over all its files — the
+     * `+3 −1` beside its header — or null when git could not say.
+     *
+     * @param callable(?DiffStat): void $onDone
+     */
+    public function commitStat(string $sha, callable $onDone): void
+    {
+        $this->runner->runStatus(['show', '--shortstat', '--format=', $sha], static function (int $code, string $out) use ($onDone): void {
+            $added = [];
+            $deleted = [];
+            \preg_match('/(\d+) insertion/', $out, $added);
+            \preg_match('/(\d+) deletion/', $out, $deleted);
+            $onDone(0 === $code ? new DiffStat((int) ($added[1] ?? 0), (int) ($deleted[1] ?? 0)) : null);
+        });
+    }
+
+    /**
+     * Where the repository lives, all absolute: the working tree's top
+     * folder, git's COMMON directory (the main worktree's `.git`, which names
+     * the repository), and this worktree's own FETCH_HEAD — per worktree, so
+     * a linked one's is under `.git/worktrees/<name>/`. All null when git
+     * could not say.
+     *
+     * @param callable(?Locations): void $onDone
+     */
+    public function locations(callable $onDone): void
+    {
+        $this->runner->runStatus(['rev-parse', '--path-format=absolute', '--show-toplevel', '--git-common-dir', '--git-path', 'FETCH_HEAD'], static function (int $code, string $out) use (
+            $onDone,
+        ): void {
+            $lines = \explode("\n", \trim($out));
+            $onDone(0 === $code && 3 === \count($lines) ? new Locations($lines[0], $lines[1], $lines[2]) : null);
+        });
+    }
+
+    /**
      * Compute change marks for a file relative to HEAD.
      *
      * @param callable(array<int, string>): void $onDone 0-based line => 'added'|'modified'|'deleted'

@@ -39,6 +39,9 @@ final readonly class LayoutStore
         if (null !== $prefs->previewSplitPercent) {
             $data['previewSplitPercent'] = $prefs->previewSplitPercent;
         }
+        if ([] !== $prefs->viewSplitPercent) {
+            $data['viewSplitPercent'] = $prefs->viewSplitPercent;
+        }
 
         return JsonFile::write($this->fs, $this->file, $data);
     }
@@ -56,6 +59,7 @@ final readonly class LayoutStore
             bottomPanelHeightPercent: $this->percent($data['bottomPanelHeightPercent'] ?? null),
             viewSidebarWidthPercent: $this->viewWidths($data),
             previewSplitPercent: $this->percent($data['previewSplitPercent'] ?? null),
+            viewSplitPercent: $this->percents($data['viewSplitPercent'] ?? null),
         );
     }
 
@@ -81,17 +85,27 @@ final readonly class LayoutStore
                 $widths[$id] = $percent;
             }
         }
-        /** @var mixed $map */
-        $map = $data['viewSidebarWidthPercent'] ?? null;
+
+        return [...$widths, ...$this->percents($data['viewSidebarWidthPercent'] ?? null)];
+    }
+
+    /**
+     * A hand-editable map of percents, keeping the entries that are one.
+     *
+     * @return array<string, int>
+     */
+    private function percents(mixed $map): array
+    {
+        $percents = [];
         /** @var mixed $value */
-        foreach (\is_array($map) ? $map : [] as $id => $value) {
+        foreach (\is_array($map) ? $map : [] as $key => $value) {
             $percent = $this->percent($value);
-            if (\is_string($id) && null !== $percent) {
-                $widths[$id] = $percent;
+            if (\is_string($key) && null !== $percent) {
+                $percents[$key] = $percent;
             }
         }
 
-        return $widths;
+        return $percents;
     }
 
     private function percent(mixed $value): ?int

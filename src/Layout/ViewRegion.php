@@ -39,13 +39,60 @@ final class ViewRegion
 
     private bool $flushTop = false;
 
+    /** @var array<string, PaneSplit> the splits minted in this region, by key */
+    private array $splits = [];
+
+    /**
+     * @param \Closure(string, NarrowSplit, int, int): PaneSplit $mintSplit builds a split that fits itself before each frame
+     */
     public function __construct(
         public readonly string $id,
         private readonly ContainerWidget $area,
         private readonly ContainerWidget $sidebar,
         private readonly SeparatorWidget $separator,
         private readonly ContainerWidget $content,
+        private readonly \Closure $mintSplit,
+        private readonly ContainerWidget $header = new ContainerWidget(),
     ) {}
+
+    /**
+     * A draggable split for the view to seat in its content: two columns with
+     * a divider between them, resized and persisted by core like the
+     * sidebar's ({@see \Porta\Layout\LayoutController}), under the key
+     * `{region}:{key}`. Idempotent by key.
+     *
+     * @param int $share   the lead column's share before anything was dragged, in thousandths
+     * @param int $minSide the narrowest either column may be dragged to; narrower, the split goes {@see NarrowSplit}
+     */
+    public function split(string $key, NarrowSplit $whenNarrow = NarrowSplit::Stacked, int $share = 500, int $minSide = PaneSplit::MIN_SIDE): PaneSplit
+    {
+        return $this->splits[$key] ??= ($this->mintSplit)($this->id.'-'.$key, $whenNarrow, $share, $minSide);
+    }
+
+    /**
+     * The region's dividers on screen: the sidebar's, then each split's —
+     * what a pass joining rules to dividers ({@see \Porta\Overlay\Presenter\FrameJoins})
+     * walks. A detached one keeps its last rect, and a `│` of text drawn
+     * where it stood would take a join meant for it.
+     *
+     * @return list<SeparatorWidget>
+     */
+    public function separators(): array
+    {
+        $all = [$this->separator, ...\array_values(\array_map(static fn (PaneSplit $split): SeparatorWidget => $split->separator, $this->splits))];
+
+        return \array_values(\array_filter($all, static fn (SeparatorWidget $separator): bool => null !== $separator->getContext()));
+    }
+
+    /**
+     * Every split minted in this region, by key.
+     *
+     * @return array<string, PaneSplit>
+     */
+    public function splits(): array
+    {
+        return $this->splits;
+    }
 
     /** The view declares how its sidebar resizes; without this the column is fixed. */
     public function setSidebarPanes(ResizableSidebar $panes): void
@@ -75,10 +122,25 @@ final class ViewRegion
         }
     }
 
-    /** Whether the window renders this region from its top padding row ({@see flushContentTop()}). */
+    /**
+     * Whether the window renders this region from its top padding row: the
+     * view asked ({@see flushContentTop()}), or a header fills it — a toolbar
+     * across the window reads as the window's own bar, as a pane's does.
+     */
     public function contentFlushTop(): bool
     {
-        return $this->flushTop;
+        return $this->flushTop || [] !== $this->header->all();
+    }
+
+    /**
+     * A full-width row above the sidebar, separator and content, empty unless
+     * the view fills it: the place for a toolbar that belongs to the whole
+     * view rather than to one of its panes. Its height is what its widgets
+     * render; the panes take the rest.
+     */
+    public function header(): ContainerWidget
+    {
+        return $this->header;
     }
 
     /** The horizontal area the view window holds; the view never fills this itself. */

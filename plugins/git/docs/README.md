@@ -47,10 +47,32 @@ resizable, closed by Esc or a click beside it: a changes list + commit box on on
 Status re-reads on every action and polls every 2 s while open. Two tabs:
 **Changes** (`1`) and **History** (`2`); `Tab` cycles panes; `Esc` closes.
 
+### Toolbar
+
+Across the top, as in GitHub Desktop, a cell over each pane below it — the
+first as wide as the sidebar, the next as wide as History's files column — so
+each divider meets the pane's:
+
+| Cell | Shows | A click |
+| --- | --- | --- |
+| ⌂ **Current repository** | the repository's folder (a linked worktree's main one) | drops *Worktrees…* · *New Worktree…* |
+| ◫ **Current worktree** | the worktree open — only once worktrees were added beside the clone; the repository cell is then a plain label | drops *Worktrees…* · *New Worktree…* |
+| ⑂ **Current branch** | the branch, and `#446` when `gh` finds an open pull request for it | drops *Switch* · *New* · *Delete Branch…* |
+| ↻ **Fetch origin** | *Pull origin ⇣2*, *Push origin ⇡1* or *Publish branch* when there is something to move, and when the last fetch was | runs that operation |
+
+While a fetch, pull or push runs — from the toolbar, its keys or the palette —
+the ↻ turns (◜ ◝ ◞ ◟) and the cell says *Fetching origin…*.
+
+The pull request number needs the [GitHub CLI](https://cli.github.com) on the
+`PATH`, logged in; without it the cell simply shows no number. It is asked in
+the background when the branch changes and after a fetch. On a short screen
+the cells share one bar row.
+
 ### Changes
 
-Each row is `[✓] M path` — the checkbox mirrors the staged state, and the
-header's own box stands for them all: `[✓]` every change staged, `[ ]` none,
+Each row is `[✓] folder/name … M` — the folder dimmed, the status letter flush
+right, the checkbox mirroring the staged state. The header's own box stands
+for them all: `[✓]` every change staged, `[ ]` none,
 `[–]` a mix.
 
 | Key | Action |
@@ -63,30 +85,44 @@ header's own box stands for them all: `[✓]` every change staged, `[ ]` none,
 
 ### Diff pane
 
-Unified (dual gutters) or side-by-side.
+Unified (dual gutters) or side-by-side, added rows on a green band and deleted
+ones on a red one, the changed words a shade stronger. Its file header is one
+bar row — the path, its folder dimmed — and the ⚙ ▾ at its end drops the
+display settings: *Hide whitespace changes*, *Unified*, *Split*. The ⇕ before
+a hunk's header shows more of the file around it.
 
 | Key | Action |
 | --- | --- |
 | `v`, then `Space` | Select a line range, then stage just those lines |
 | `Space` | Stage the hunk/selection |
-| `c` | Cycle diff context (git default → ±10 lines → whole file) |
-| `s` | Toggle unified / side-by-side (persisted); the `[S split]` tag is bracketed while on |
-| `w` | Toggle hide-whitespace (`-w`, persisted); `[W hide-ws]` while on |
+| `c` (or click ⇕) | Cycle diff context (git default → ±10 lines → whole file) |
+| `s` | Toggle unified / side-by-side (persisted); the ⚙ menu checks the one shown |
+| `w` | Toggle hide-whitespace (`-w`, persisted); checked in the ⚙ menu while on |
 | `Ctrl+C` | Copy the selected code lines |
 
 ### Commit box
 
 `Ctrl+Enter` commits the staged changes (the button enables only when
-something is staged); `Alt+M` toggles **amend**, prefilling the last
+something is staged, and says what it commits: *Commit 2 files to main*);
+`Alt+M` toggles **amend**, prefilling the last
 commit's message. `Tab` walks the summary, the description and the amend
 checkbox, where `Space` toggles it; `Shift+Tab` walks back. On a branch with no commit yet the
 checkbox is dashed and says *No commit to amend*, and `Tab` passes it by.
 
 ### History
 
-The last 200 commits. Selecting a commit lists its files and shows the
-first file's patch; `Enter` switches between the commit list and the file
-list; the diff pane is read-only here. `1` returns to Changes.
+Three columns, as in GitHub Desktop: the commits, each its subject over
+`author · 5 hours ago` (a hairline between two on a roomy screen); the files
+the selected commit changed; and the diff, read-only here. Over the files and
+the diff, the commit itself: its subject, `author · sha ⧉` (⧉ or `y` copies
+the full sha) and, at the far end, the lines it added and removed. The divider
+between the files and the diff drags (or `Shift+F11`/`F12` from either), and
+the view keeps where you left it. Too narrow for three columns, the files
+stack over the diff, six rows at most.
+
+Selecting a commit shows its first file's patch; `Enter` moves between the
+commits and the files, and `Tab` walks commits → files → diff. `1` returns to
+Changes.
 
 The view covers changes, staging (including line-level), commit/amend and
 history browsing. History loads 200 commits at a time — moving past the last
@@ -108,7 +144,8 @@ The view window `Ctrl+Alt+D` opens; `Tab` cycles panes and `Esc` closes.
 | `Ctrl+C` | Copy the selected diff lines |
 | `Ctrl+Enter` | Commit the staged changes |
 | `Alt+M` | Toggle amend, prefilling the last commit's message |
-| `Enter` | In History, switch between the commit list and its file list |
+| `Enter` | In History, move between the commits and the selected commit's files |
+| `y` | In a commit's files, copy the commit's full sha |
 | `f` / `p` / `Shift+P` | Fetch / pull / push |
 
 ## As git's difftool and mergetool

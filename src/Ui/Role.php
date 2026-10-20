@@ -19,6 +19,10 @@ enum Role
     case Hunk;
     case AddEmphasisBg;
     case DelEmphasisBg;
+    // A whole added or deleted diff row, GitHub's green and red bands; the
+    // emphasis roles above mark the changed span inside one, a step stronger.
+    case AddedRowBg;
+    case DeletedRowBg;
 
     // Shared row highlights (menus, popups, lists, the current editor line).
     // SelectedRow marks the selection in the focused pane; SelectedRowUnfocused

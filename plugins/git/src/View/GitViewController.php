@@ -6,6 +6,7 @@ namespace Porta\GitPlugin\View;
 
 use Porta\Event\GitCommitted;
 use Porta\Event\GitRemoteCompleted;
+use Porta\Event\WorkingTreeChanged;
 use Porta\GitPlugin\ChangeEntry;
 use Porta\GitPlugin\Command\CommitMode;
 use Porta\GitPlugin\Command\GitRemoteCommands;
@@ -16,31 +17,41 @@ use Porta\GitPlugin\Diff\DiffDocument;
 use Porta\GitPlugin\Diff\DiffSide;
 use Porta\GitPlugin\Diff\DirectoryComparison;
 use Porta\GitPlugin\Diff\WhitespaceMode;
+use Porta\GitPlugin\DiffStat;
 use Porta\GitPlugin\Event\GitChangeDiscardRequested;
 use Porta\GitPlugin\Event\GitChangeSelected;
 use Porta\GitPlugin\Event\GitChangeStageToggleRequested;
 use Porta\GitPlugin\Event\GitCommitFileSelected;
+use Porta\GitPlugin\Event\GitCommitHashCopyRequested;
 use Porta\GitPlugin\Event\GitCommitSelected;
 use Porta\GitPlugin\Event\GitDiffContextCycleRequested;
 use Porta\GitPlugin\Event\GitDiffCopyRequested;
 use Porta\GitPlugin\Event\GitDiffLayoutToggled;
+use Porta\GitPlugin\Event\GitDiffSettingsRequested;
 use Porta\GitPlugin\Event\GitDiffStagingRequested;
 use Porta\GitPlugin\Event\GitDiffWhitespaceToggleRequested;
 use Porta\GitPlugin\Event\GitFileHistoryRequested;
 use Porta\GitPlugin\Event\GitHistoryEndReached;
 use Porta\GitPlugin\Event\GitRemoteRequested;
 use Porta\GitPlugin\Event\GitStageAllRequested;
+use Porta\GitPlugin\Event\GitToolbarMenuRequested;
 use Porta\GitPlugin\Event\GitViewModeRequested;
 use Porta\GitPlugin\GitInfo;
 use Porta\GitPlugin\LogEntry;
+use Porta\GitPlugin\RefreshScope;
+use Porta\GitPlugin\RepositoryState;
 use Porta\GitPlugin\Setting\DiffPrefs;
 use Porta\GitPlugin\Setting\GitSettings;
 use Porta\GitPlugin\StagedState;
 use Porta\GitPlugin\Support\Flash;
+use Porta\GitPlugin\Widget\SplitShape;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
+use Porta\Layout\NarrowSplit;
+use Porta\Layout\PaneSplit;
 use Porta\Layout\ViewRegion;
 use Porta\Support\ProjectPaths;
+use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewHost;
@@ -112,10 +123,35 @@ final class GitViewController implements ContributedView
 
     private int $contextStep = 0;
 
+    /** Poll ticks between two toolbar re-reads: about ten seconds at the default interval. */
+    private const int REREAD_TICKS = 5;
+
+    private int $ticks = 0;
+
     /** Runs the index-mutating verbs (stage/unstage/discard/commit) for this view. */
     private readonly GitStagingService $staging;
 
     private readonly ViewRegion $region;
+
+    /**
+     * History's files column beside the diff, the divider between them core's
+     * to drag and keep ({@see ViewRegion::split()}); stacked when the window
+     * is too narrow for the two.
+     */
+    private readonly PaneSplit $split;
+
+    /** The files column's least columns, and its share of the content before any drag. */
+    private const int FILES_MIN = 28;
+    private const int FILES_SHARE = 400;
+
+    /** The sidebar as one resizable unit — and how wide it draws, for the toolbar over it. */
+    private readonly GitSidebar $sidebar;
+
+    /** The timer turning the remote icon while an operation runs; null at rest. */
+    private ?string $spinner = null;
+
+    /** Seconds between two steps of the remote icon's turn. */
+    private const float SPIN_SECONDS = 0.12;
 
     /**
      * Set while the view shows a comparison git difftool asked for: called when
@@ -153,6 +189,7 @@ final class GitViewController implements ContributedView
         private readonly ?GitRemoteCommands $remoteCommands = null,
         private readonly int $historyPageSize = 200,
         private readonly ?GitSettings $gitSettings = null,
+        private readonly ?RepositoryState $repository = null,
     ) {
         // The region arrives already minted, on ViewServices: core mints it for
         // the id this view registered under, BEFORE calling the factory, so
@@ -160,12 +197,28 @@ final class GitViewController implements ContributedView
         // diff pane is fixed, so it goes in once.
         $this->region = $region;
         $this->region->content()->add($this->panes->diffView);
-        // The diff's toolbar sits flush under the window's title bar.
-        $this->region->flushContentTop();
+        // GitHub Desktop's toolbar spans the window, flush under its title bar.
+        $this->region->header()->add($this->panes->toolbar);
+        // The toolbar PULLS from the repository state, so an answer has to
+        // mark it stale itself: a frame alone repaints its cached first,
+        // empty render.
+        $this->repository?->onChange(function (): void {
+            $this->panes->toolbar->invalidate();
+            $this->aimCommit();
+            $this->host->invalidate();
+        });
+        // GitHub Desktop's middle column, in History only: two fifths of the
+        // content to start with, the diff the rest, and a divider to move.
+        $this->split = $this->region->split('columns', NarrowSplit::Stacked, self::FILES_SHARE, self::FILES_MIN);
+        $this->split->onNarrow($this->stack(...));
+        // The branch cell stands over the files column: it moves with the divider.
+        $this->split->onMove($this->panes->toolbar->invalidate(...));
         // How this sidebar resizes. Four stacked widgets each render their own
         // width, so a drag fans the new one out to all of them; core sees a
         // container and cannot know that.
-        $this->region->setSidebarPanes(new GitSidebar($this->panes->tabs, $this->panes->changes, $this->panes->commitBox, $this->panes->history));
+        $this->sidebar = new GitSidebar($this->panes->tabs, $this->panes->changes, $this->panes->commitBox, $this->panes->history, $this->panes->toolbar);
+        $this->region->setSidebarPanes($this->sidebar);
+        $this->panes->toolbar->followPanes($this->columns(...));
         // Seeded for the initial Changes mode. WorkspaceLayout used to stack
         // these three at construction — the one place core layout named a
         // view's contents — and switchMode() only refills on a CHANGE, so
@@ -178,6 +231,11 @@ final class GitViewController implements ContributedView
 
         $this->panes->changes->onFocusNext($next)->onExit($exit);
         $this->panes->history->onFocusNext($next)->onExit($exit);
+        $this->panes
+            ->details
+            ->onFocusNext($next)
+            ->onExit($exit)
+            ->onBack(fn () => $this->host->focus($this->panes->history));
         $this->panes->diffView->onFocusNext($next)->onExit($exit);
         // The mode tabs head the sidebar: their lid is heavy while its lists
         // or the commit box hold the keys.
@@ -189,6 +247,37 @@ final class GitViewController implements ContributedView
             ->onAmendToggle(fn () => $this->amendToggled($this->panes->commitBox->isAmend() ? CommitMode::Amend : CommitMode::Fresh))
             ->onFocusNext($next)
             ->onExit($exit);
+    }
+
+    /**
+     * The panes' widths under a header row $width wide, left to right: the
+     * sidebar, then the content — what the toolbar's cells stand over.
+     *
+     * @return list<int>
+     */
+    private function columns(int $width): array
+    {
+        $sidebar = \min($this->sidebar->width(), \max(1, $width - 2));
+        $content = $width - $sidebar - 1;
+        if (GitViewMode::History !== $this->mode || $this->split->isNarrow()) {
+            return [$sidebar, $content];
+        }
+        $files = $this->split->leadColumns($content);
+
+        return [$sidebar, $files, $content - $files - 1];
+    }
+
+    /**
+     * Too narrow for three columns, History's files go over the diff and the
+     * commit header's rule counts them; with room again, they stand beside it.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- PaneSplit::onNarrow()'s listener: the bool is the one fact it hears.
+    private function stack(bool $narrow): void
+    {
+        $this->panes->details->stack($narrow ? SplitShape::Stacked : SplitShape::Beside);
+        $this->panes->header->nameFiles($narrow ? $this->panes->details->fileCount() : null);
+        $this->panes->toolbar->invalidate();
+        $this->host->invalidate();
     }
 
     public function viewId(): string
@@ -244,6 +333,10 @@ final class GitViewController implements ContributedView
         }
 
         $this->open = true;
+        // The toolbar is the repository's: back after a comparison took it down.
+        if ([] === $this->region->header()->all()) {
+            $this->region->header()->add($this->panes->toolbar);
+        }
         // The (global, full-width) menu bar stays put; just drop any open
         // dropdown so its tracked hit region cannot go stale across the swap.
         $this->host->show($this->region, $this->viewId());
@@ -255,7 +348,9 @@ final class GitViewController implements ContributedView
         $this->contextStep = 0;
         $this->applyPrefs();
         $this->refresh();
+        $this->repository?->refresh();
         $this->armPoll();
+        $this->spinWhileRunning();
         $this->host->invalidate();
     }
 
@@ -283,6 +378,9 @@ final class GitViewController implements ContributedView
         $this->forgetInFlight();
         $this->onComparisonClosed = $onClosed;
         $this->open = true;
+        // Two files, likely outside any repository: no branch, nothing to
+        // fetch or push, so no toolbar offering to.
+        $this->region->header()->clear();
         $this->host->show($this->region, $this->viewId());
         if (GitViewMode::Changes !== $this->mode) {
             $this->switchMode(GitViewMode::Changes);
@@ -361,7 +459,64 @@ final class GitViewController implements ContributedView
             EventLoop::cancel($this->poll);
         }
         $interval = (float) ($this->gitSettings->refreshInterval ?? 2);
-        $this->poll = EventLoop::repeat($interval, fn () => $this->refresh(RefreshMode::Quiet));
+        $this->poll = EventLoop::repeat($interval, function (): void {
+            $this->refresh(RefreshMode::Quiet);
+            $this->ageTimes();
+            // An operation the palette started, with the view already up.
+            $this->spinWhileRunning();
+        });
+    }
+
+    /**
+     * Turn the remote icon while an operation runs, GitHub Desktop's spinning
+     * arrows: a step every {@see SPIN_SECONDS}, until the operation is over —
+     * answered, failed or cancelled — or the view closes.
+     */
+    private function spinWhileRunning(): void
+    {
+        $operation = $this->remoteCommands?->running();
+        if (null !== $this->spinner || null === $operation || !$this->open) {
+            return;
+        }
+        $this->panes->toolbar->spin($operation);
+        $this->host->invalidate();
+        $this->spinner = EventLoop::repeat(self::SPIN_SECONDS, function (): void {
+            $running = $this->remoteCommands?->running();
+            if (null === $running) {
+                $this->stopSpinning();
+
+                return;
+            }
+            $this->panes->toolbar->spin($running);
+            $this->host->invalidate();
+        });
+    }
+
+    private function stopSpinning(): void
+    {
+        if (null !== $this->spinner) {
+            EventLoop::cancel($this->spinner);
+            $this->spinner = null;
+        }
+        $this->panes->toolbar->settle();
+        $this->host->invalidate();
+    }
+
+    /**
+     * "Last fetched 3 minutes ago" and "2 hours ago" are worked out when a
+     * widget paints, and a widget repaints only once marked stale — so the
+     * poll marks the two that say them, or they would read the same all day.
+     */
+    private function ageTimes(): void
+    {
+        // And every few ticks, ask git again: a checkout, a fetch or a push
+        // run in the terminal moves the toolbar without telling the view.
+        if (0 === (++$this->ticks % self::REREAD_TICKS)) {
+            $this->repository?->refresh();
+        }
+        $this->panes->toolbar->invalidate();
+        $this->panes->history->invalidate();
+        $this->host->invalidate();
     }
 
     public function close(): void
@@ -374,6 +529,7 @@ final class GitViewController implements ContributedView
             EventLoop::cancel($this->poll);
             $this->poll = null;
         }
+        $this->stopSpinning();
         $this->host->restore();
         $ended = $this->onComparisonClosed;
         if (null !== $ended) {
@@ -430,6 +586,7 @@ final class GitViewController implements ContributedView
             $this->lastStatusRaw = $raw;
             $this->entries = $entries;
             $this->panes->changes->setEntries($entries);
+            $this->aimCommit();
             if (null !== $this->selectOnLoad) {
                 $this->panes->changes->selectPath($this->selectOnLoad);
                 $this->selectOnLoad = null;
@@ -533,7 +690,9 @@ final class GitViewController implements ContributedView
     /** `c` in the diff pane: reload with the next context size in the cycle. */
     private function cycleContext(): void
     {
-        if (null === $this->shownEntry) {
+        // The working tree's diff only: History's pane shows a commit, and
+        // shownEntry is still the last file Changes opened.
+        if (null === $this->shownEntry || GitViewMode::History === $this->mode) {
             return;
         }
         if (DiffSide::Untracked === $this->shownSide) {
@@ -596,7 +755,15 @@ final class GitViewController implements ContributedView
 
     private function commit(string $message, CommitMode $mode = CommitMode::Fresh): void
     {
-        $this->staging->commit($message, $mode, fn () => $this->dispatcher->dispatch(new GitCommitted()), $this->refresh(...));
+        $this->staging->commit(
+            $message,
+            $mode,
+            function (): void {
+                $this->dispatcher->dispatch(new GitCommitted());
+                $this->repository?->refresh(); // one more commit ahead of the upstream
+            },
+            $this->refresh(...),
+        );
     }
 
     /** Swap the left pane between the Changes and History tabs. */
@@ -607,10 +774,9 @@ final class GitViewController implements ContributedView
         }
         $this->mode = $mode;
         $this->panes->tabs->setActive($mode);
-        $this->region->sidebar()->clear();
-        $this->region->sidebar()->add($this->panes->tabs);
+        $this->arrange($mode);
         if (GitViewMode::History === $mode) {
-            $this->region->sidebar()->add($this->panes->history);
+            $this->showCommit(null);
             $this->panes->diffView->makeReadOnly();
             $this->panes->diffView->setDocument(null, null, 'Select a commit file');
             $this->host->focus($this->panes->history);
@@ -622,12 +788,34 @@ final class GitViewController implements ContributedView
         // Tabbing away drops any file filter — History reopens repo-wide.
         $this->historyPath = null;
         $this->panes->history->setFilterLabel(null);
-        $this->region->sidebar()->add($this->panes->changes);
-        $this->region->sidebar()->add($this->panes->commitBox);
         $this->panes->diffView->makeEditable();
         $this->host->focus($this->panes->changes);
         $this->refresh();
         $this->host->invalidate();
+    }
+
+    /**
+     * Fill both halves for $mode: Changes is the list and the commit box
+     * beside the diff; History is the commits beside the selected commit's
+     * details and its diff, GitHub Desktop's three columns.
+     */
+    private function arrange(GitViewMode $mode): void
+    {
+        $this->region->sidebar()->clear();
+        $this->region->content()->clear();
+        $this->split->release();
+        $this->region->sidebar()->add($this->panes->tabs);
+        // The toolbar's cells stand over these columns, and the columns just changed.
+        $this->panes->toolbar->invalidate();
+        if (GitViewMode::History === $mode) {
+            $this->region->sidebar()->add($this->panes->history);
+            $this->split->mount($this->panes->details, $this->panes->diffView);
+            $this->region->content()->add($this->panes->header)->add($this->split->area);
+
+            return;
+        }
+        $this->region->sidebar()->add($this->panes->changes)->add($this->panes->commitBox);
+        $this->region->content()->add($this->panes->diffView);
     }
 
     /** The repo-relative file the History tab is filtered to, or null for repo-wide. */
@@ -659,6 +847,7 @@ final class GitViewController implements ContributedView
                 // top while the pane kept showing the old commit's diff, with
                 // nothing on screen saying the two no longer went together.
                 $selected = $this->panes->history->selectedCommit();
+                $this->showCommit($selected);
                 if (null === $selected) {
                     // Filtering to a file with no history at all: say so, or
                     // the pane keeps the last patch it was given.
@@ -746,7 +935,23 @@ final class GitViewController implements ContributedView
 
     public function onCommitSelected(GitCommitSelected $event): void
     {
+        // The header says which commit at once; its files follow from git.
+        $this->showCommit($event->commit);
         $this->loadCommitFiles($event->commit);
+    }
+
+    /** Head both History columns with $commit, its stat and files still to come. */
+    private function showCommit(?LogEntry $commit): void
+    {
+        $this->panes->header->setCommit($commit);
+        $this->panes->details->setCommit($commit);
+    }
+
+    /** The commit header's copy button: the full sha, said back by its short one. */
+    public function onCommitHashCopyRequested(GitCommitHashCopyRequested $event): void
+    {
+        ($this->copy)($event->commit->sha);
+        $this->notifier->flash($this->translator->trans('Copied %sha%', ['%sha%' => $event->commit->shortSha]));
     }
 
     public function onCommitFileSelected(GitCommitFileSelected $event): void
@@ -769,6 +974,21 @@ final class GitViewController implements ContributedView
         $this->cycleContext();
     }
 
+    /**
+     * The diff's ⚙: whitespace hidden or shown, and unified or split — each
+     * item runs what its key (w, s) runs, and is checked while it holds.
+     */
+    public function onDiffSettingsRequested(GitDiffSettingsRequested $event): void
+    {
+        $diff = $this->panes->diffView;
+        $this->menus->openDiffSettings([
+            new MenuItem($this->translator->trans('Hide whitespace changes'), 'W', $this->toggleWhitespace(...), isChecked: $diff->isWhitespaceHidden(...)),
+            MenuItem::separator(),
+            new MenuItem($this->translator->trans('Unified'), 'S', static fn () => $diff->chooseLayout(DiffLayout::Unified), isChecked: static fn (): bool => !$diff->isSplit()),
+            new MenuItem($this->translator->trans('Split'), 'S', static fn () => $diff->chooseLayout(DiffLayout::Split), isChecked: $diff->isSplit(...)),
+        ]);
+    }
+
     public function onDiffLayoutToggled(GitDiffLayoutToggled $event): void
     {
         $this->persistDiffPrefs();
@@ -788,6 +1008,7 @@ final class GitViewController implements ContributedView
     public function onRemoteRequested(GitRemoteRequested $event): void
     {
         $this->remoteCommands?->runOperation($event->operation);
+        $this->spinWhileRunning();
     }
 
     /**
@@ -801,9 +1022,29 @@ final class GitViewController implements ContributedView
 
     public function onRemoteCompleted(GitRemoteCompleted $event): void
     {
+        $this->stopSpinning();
+        if ($this->open) {
+            // A fetch moves what the toolbar says: behind, last fetched, and
+            // maybe a pull request opened on the server since.
+            $this->repository?->refresh(RefreshScope::Remote);
+        }
         if ($this->open && GitViewMode::History === $this->mode) {
             $this->reloadHistory(HistoryReload::KeepSelection);
         }
+    }
+
+    /** A branch switch, a stash, a stage: the toolbar's branch and its distance may have moved. */
+    public function onWorkingTreeChanged(WorkingTreeChanged $event): void
+    {
+        if ($this->open) {
+            $this->repository?->refresh();
+        }
+    }
+
+    /** A toolbar cell that drops a menu was pressed: the repository's worktrees or the branch verbs. */
+    public function onToolbarMenuRequested(GitToolbarMenuRequested $event): void
+    {
+        $this->menus->openToolbarMenu($event->cell);
     }
 
     /** Pull the next page of history under the loaded commits. */
@@ -826,11 +1067,23 @@ final class GitViewController implements ContributedView
 
     private function loadCommitFiles(LogEntry $commit): void
     {
+        // Each answer is for the commit still selected, or for none: arrowing
+        // through the list asks per step, and a big commit answering last
+        // would head another's files with its own count.
+        $this->git->commitStat($commit->sha, function (?DiffStat $stat) use ($commit): void {
+            if ($this->showing($commit)) {
+                $this->panes->header->setStat($stat);
+                $this->host->invalidate();
+            }
+        });
         $this->git->commitFiles($commit->sha, function (array $files) use ($commit): void {
-            if (!$this->open || GitViewMode::History !== $this->mode || $commit->sha !== $this->panes->history->selectedCommit()?->sha) {
+            if (!$this->showing($commit)) {
                 return;
             }
-            $this->panes->history->setFiles($files);
+            $this->panes->details->setFiles($files);
+            if ($this->split->isNarrow()) {
+                $this->panes->header->nameFiles(\count($files));
+            }
             if ([] === $files) {
                 $this->panes->diffView->setDocument(null, null, 'No files in this commit');
                 $this->host->invalidate();
@@ -843,15 +1096,24 @@ final class GitViewController implements ContributedView
         });
     }
 
+    /** Whether History is up with $commit the one selected. */
+    private function showing(LogEntry $commit): bool
+    {
+        return $this->open && GitViewMode::History === $this->mode && $commit->sha === $this->panes->history->selectedCommit()?->sha;
+    }
+
     private function loadCommitFileDiff(LogEntry $commit, string $path): void
     {
         $this->shownCommit = $commit;
         $this->shownCommitPath = $path;
+        // The newest ask wins: arrowing through files starts a diff per step,
+        // and a large file answering last would show beside the wrong one.
+        $generation = ++$this->diffGeneration;
         $this->git->commitFileDiff(
             $commit->sha,
             $path,
-            function (string $raw) use ($path): void {
-                if (!$this->open || GitViewMode::History !== $this->mode) {
+            function (string $raw) use ($path, $generation): void {
+                if (!$this->open || GitViewMode::History !== $this->mode || $generation !== $this->diffGeneration) {
                     return;
                 }
                 $document = DiffDocument::parse($raw);
@@ -862,12 +1124,19 @@ final class GitViewController implements ContributedView
         );
     }
 
+    /** Tell the commit button what it would commit, and to which branch. */
+    private function aimCommit(): void
+    {
+        $staged = \array_filter($this->entries, static fn (ChangeEntry $entry): bool => StagedState::None !== $entry->stagedState());
+        $this->panes->commitBox->setCommitTarget($this->repository?->branch(), \count($staged));
+    }
+
     private function hasStagedChanges(): bool
     {
         return \array_any($this->entries, static fn (ChangeEntry $entry): bool => StagedState::None !== $entry->stagedState());
     }
 
-    /** Tab order: changes list → diff → commit box → changes list (history: list ↔ diff). */
+    /** Tab order: changes list → diff → commit box → changes list (history: commits → files → diff). */
     public function focusNext(): void
     {
         $this->cycleFocus(1);
@@ -877,7 +1146,7 @@ final class GitViewController implements ContributedView
     {
         /** @var list<FocusableInterface&AbstractWidget> $order */
         $order = GitViewMode::History === $this->mode
-            ? [$this->panes->history, $this->panes->diffView]
+            ? [$this->panes->history, $this->panes->details, $this->panes->diffView]
             : [$this->panes->changes, $this->panes->diffView, $this->panes->commitBox];
         $count = \count($order);
         $index = \array_search($this->host->focused(), $order, strict: true);

@@ -8,16 +8,26 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\GitPlugin\ChangeEntry;
 use Porta\GitPlugin\Diff\DiffDocument;
+use Porta\GitPlugin\DiffStat;
+use Porta\GitPlugin\GitInfo;
 use Porta\GitPlugin\LogEntry;
+use Porta\GitPlugin\Tests\Support\GitDoubles;
+use Porta\GitPlugin\Tracking;
 use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\GitPlugin\Widget\CommitBoxWidget;
+use Porta\GitPlugin\Widget\CommitDetailsWidget;
+use Porta\GitPlugin\Widget\CommitHeaderWidget;
 use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\GitPlugin\Widget\GitTabsWidget;
+use Porta\GitPlugin\Widget\GitToolbarWidget;
 use Porta\GitPlugin\Widget\HistoryListWidget;
+use Porta\GitPlugin\Widget\SplitShape;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\CompactScreen;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersExactWidth;
+use Porta\Ui\ScreenDensity;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
 /**
@@ -76,10 +86,40 @@ final class NarrowGitPaneRenderTest extends TestCase
         $history = new HistoryListWidget(new Translator('en'));
         $history->setFocused(true);
         $history->setCommits([new LogEntry('full1', 'aaa111', 'Alice', 1_700_000_100, 'Newest work')]);
-        $history->setFiles([['status' => 'M', 'path' => 'src/a.php']]);
         yield 'history list' => [$history];
 
+        $details = new CommitDetailsWidget(new Translator('en'));
+        $details->setFocused(true);
+        $details->setCommit(new LogEntry('full1', 'aaa111', 'Alice', 1_700_000_100, 'Newest work, with a subject long enough to wrap twice and be cut'));
+        $details->setFiles([['status' => 'M', 'path' => 'src/deep/folder/a.php'], ['status' => 'R', 'path' => 'b.php']]);
+        yield 'commit details' => [$details];
+
+        $stacked = new CommitDetailsWidget(new Translator('en'));
+        $stacked->stack(SplitShape::Stacked);
+        $stacked->setCommit(new LogEntry('full1', 'aaa111', 'Alice', 1_700_000_100, 'Newest work'));
+        $stacked->setFiles([['status' => 'M', 'path' => 'src/deep/folder/a.php']]);
+        yield 'commit details (stacked)' => [$stacked];
+
+        // Both shapes: the subject over the author, and one row; with a stat and the stacked legend.
+        foreach (['commit header (roomy)' => new ScreenDensity(), 'commit header (compact)' => CompactScreen::density()] as $name => $density) {
+            $header = new CommitHeaderWidget(new Translator('en'), density: $density);
+            $header->setCommit(new LogEntry('full1', 'aaa111', 'Alice Withalongname', 1_700_000_100, 'Newest work, with a subject long enough to be cut'));
+            $header->setStat(new DiffStat(1234, 56));
+            $header->nameFiles(12);
+            yield $name => [$header];
+        }
+
         yield 'git tabs' => [new GitTabsWidget(new Translator('en'))];
+
+        // Both shapes: three labelled cells over a rule, and one bar row.
+        foreach (['toolbar (roomy)' => new ScreenDensity(), 'toolbar (compact)' => CompactScreen::density()] as $name => $density) {
+            $repository = GitDoubles::repository(new GitInfo(\sys_get_temp_dir()), '/work/porta');
+            Probe::set($repository, 'branch', 'feature/a-branch-name-long-enough-to-cut');
+            Probe::set($repository, 'tracking', new Tracking(1, 2));
+            Probe::set($repository, 'pullRequest', 446);
+            Probe::set($repository, 'lastFetched', 1_700_000_000);
+            yield $name => [new GitToolbarWidget(new Translator('en'), $repository, density: $density)];
+        }
 
         // The commit box is the one that carries a key-hint suffix in its
         // header, which is the piece that overflowed.
@@ -90,16 +130,16 @@ final class NarrowGitPaneRenderTest extends TestCase
         // Three states, because they are three different assemblers: the
         // placeholder path draws only the toolbar, and split builds each row
         // from two halves rather than one gutter.
-        $unified = new DiffViewWidget(new Translator('en'), density: CompactScreen::density());
+        $unified = new DiffViewWidget(new Translator('en'));
         $unified->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
         yield 'diff (unified)' => [$unified];
 
-        $split = new DiffViewWidget(new Translator('en'), density: CompactScreen::density());
+        $split = new DiffViewWidget(new Translator('en'));
         $split->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
         $split->useSplitView();
         yield 'diff (split)' => [$split];
 
-        $empty = new DiffViewWidget(new Translator('en'), density: CompactScreen::density());
+        $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);
         yield 'diff (no selection)' => [$empty];
     }

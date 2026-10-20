@@ -150,8 +150,8 @@ final readonly class HoverRouter
         // for every view): every view's column thickens under the pointer,
         // without the view having to remember to.
         $region = $this->regions->find($view);
-        if (null !== $region) {
-            $this->updateSeparatorHover($mouse, $region->separator());
+        foreach ($region?->separators() ?? [] as $separator) {
+            $this->updateSeparatorHover($mouse, $separator);
         }
         $this->pointers->of($view)->hover($mouse);
     }

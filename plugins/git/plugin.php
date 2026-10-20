@@ -13,6 +13,7 @@ use Porta\Event\WorkingTreeChanged;
 use Porta\GitPlugin\Blame\BlameAnnotations;
 use Porta\GitPlugin\Blame\BlameClient;
 use Porta\GitPlugin\Blame\BlameLine;
+use Porta\GitPlugin\BranchMenu;
 use Porta\GitPlugin\ChangeMarks;
 use Porta\GitPlugin\ChangeView;
 use Porta\GitPlugin\Command\GitCommands;
@@ -28,6 +29,9 @@ use Porta\GitPlugin\GitTools;
 use Porta\GitPlugin\Process\GitProcesses;
 use Porta\GitPlugin\Process\GitProcessRunner;
 use Porta\GitPlugin\Process\GitRemote;
+use Porta\GitPlugin\Process\ProcessLane;
+use Porta\GitPlugin\Process\PullRequestLookup;
+use Porta\GitPlugin\RepositoryState;
 use Porta\GitPlugin\Setting\DiffPrefs;
 use Porta\GitPlugin\Setting\GitSettings;
 use Porta\GitPlugin\Setting\LegacySettings;
@@ -42,8 +46,11 @@ use Porta\GitPlugin\View\GitViewController;
 use Porta\GitPlugin\View\GitWiring;
 use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\GitPlugin\Widget\CommitBoxWidget;
+use Porta\GitPlugin\Widget\CommitDetailsWidget;
+use Porta\GitPlugin\Widget\CommitHeaderWidget;
 use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\GitPlugin\Widget\GitTabsWidget;
+use Porta\GitPlugin\Widget\GitToolbarWidget;
 use Porta\GitPlugin\Widget\HistoryListWidget;
 use Porta\GitPlugin\WorkingTreeStatus;
 use Porta\GitPlugin\Worktree;
@@ -54,6 +61,7 @@ use Porta\Support\ProjectPaths;
 use Porta\Workbench\Menu\MenuSurface;
 use Porta\Workbench\View\ViewServices;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Style\Style;
 
 /**
@@ -272,8 +280,8 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
             viewSafe: GitMenu::viewSafe(),
         );
 
-        $branch = new GitBranchSegment($refresher, $settings, $commands, $trans, $worktrees, Worktree::linkedName($root));
-        $api->registerStatusSegment($branch->statusCell(...));
+        $branchMenu = self::registerBranchCell($api, $refresher, $settings, new BranchMenu($commands, $worktrees, $trans), $trans);
+        $repository = self::repositoryState($git, $root, $processes->general);
 
         // The view is built LATER — its factory runs after plugins have
         // committed — but every listener has to be registered now, because the
@@ -340,7 +348,10 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
             });
         }
         $this->answerComparisons($api, $slot);
-        $api->registerView('git', fn (ViewServices $services): GitViewController => $slot->view = $this->buildView($api, $services, $git, $settings, $events, $flash, $commands, $remote));
+        $api->registerView(
+            'git',
+            fn (ViewServices $services): GitViewController => $slot->view = $this->buildView($api, $services, $git, $settings, $events, $flash, $commands, $remote, $branchMenu, $repository),
+        );
 
         $api->onReady($refresher->refreshBranch(...));
         // A save, a commit, a completed fetch or pull, or anything else that
@@ -364,6 +375,26 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
      * this plugin registered under. That is what `ViewServices` carries, and
      * the reason the DTO exists at all.
      */
+    /**
+     * The status bar's branch cell, a contributed segment carrying its own
+     * menu — the menu the view's toolbar drops too, so it is handed back.
+     */
+    private static function registerBranchCell(PluginApi $api, GitRefresher $refresher, GitSettings $settings, BranchMenu $menu, Translate $trans): BranchMenu
+    {
+        $api->registerStatusSegment(new GitBranchSegment($refresher, $settings, $menu, $trans, Worktree::linkedName($api->projectRoot()))->statusCell(...));
+
+        return $menu;
+    }
+
+    /**
+     * What the view's toolbar reads. `gh` is looked up per ask, so installing
+     * it needs no restart, and a missing one is simply no pull request.
+     */
+    private static function repositoryState(GitInfo $git, string $root, ProcessLane $lane): RepositoryState
+    {
+        return new RepositoryState($git, new PullRequestLookup($root, static fn (): ?string => new ExecutableFinder()->find('gh'), $lane), $root);
+    }
+
     /**
      * The asks this view answers from elsewhere: Porta launched as git's
      * difftool or mergetool, and an agent's proposed change to compare.
@@ -402,23 +433,32 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
         Flash $flash,
         GitCommands $commands,
         GitRemoteCommands $remote,
+        BranchMenu $branchMenu,
+        RepositoryState $repository,
     ): GitViewController {
         $panes = new GitPanes(
             new ChangesListWidget($s->translator, styles: $s->styles, density: $s->density, events: $events),
-            new DiffViewWidget($s->translator, $s->styles, $api->syntaxTheme(), $s->density, $events),
+            new DiffViewWidget($s->translator, $s->styles, $api->syntaxTheme(), $events),
             new CommitBoxWidget($s->translator, styles: $s->styles, cursorStyle: $s->cursorStyle, density: $s->density),
-            new HistoryListWidget($s->translator, styles: $s->styles, events: $events),
+            new HistoryListWidget($s->translator, styles: $s->styles, events: $events, density: $s->density),
             new GitTabsWidget($s->translator, styles: $s->styles, density: $s->density, events: $events),
+            new GitToolbarWidget($s->translator, $repository, $s->styles, $s->density, $events),
+            new CommitDetailsWidget($s->translator, $s->styles, $events),
+            new CommitHeaderWidget($s->translator, $s->styles, $s->density, $events),
         );
         // The ids and flex styles the container used to apply from #[AsWidget].
         // The ids are how the renderer and every rect-reading test name these
         // widgets; the flex values are what makes the diff pane take the slack
         // while the three stacked sidebar widgets keep their rendered height.
         $panes->changes->setId('git-changes')->setStyle(new Style(flex: 0));
+        // Beside History's files the split sizes it; alone in Changes, it takes the column.
         $panes->diffView->setId('git-diff')->setStyle(new Style(flex: 1));
         $panes->commitBox->setId('git-commit');
         $panes->history->setId('git-history');
         $panes->tabs->setId('git-tabs')->setStyle(new Style(flex: 0));
+        $panes->toolbar->setId('git-toolbar');
+        $panes->details->setId('git-commit-details');
+        $panes->header->setId('git-commit-header')->setStyle(new Style(flex: 0));
 
         $controller = new GitViewController(
             $git,
@@ -426,8 +466,8 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
             $panes,
             $s->region,
             $s->host,
-            new GitMouseRouter($s->hit, $s->host, $panes->changes, $panes->diffView, $panes->commitBox, $panes->history, $panes->tabs),
-            new GitContextMenus($s->hit, $s->host, $panes->changes, $panes->history, $commands, $s->translator),
+            new GitMouseRouter($s->hit, $s->host, $panes->changes, $panes->diffView, $panes->commitBox, $panes->history, $panes->tabs, $panes->toolbar, $panes->details, $panes->header),
+            new GitContextMenus($s->hit, $s->host, $panes->changes, $panes->history, $commands, $s->translator, $panes->toolbar, $branchMenu, $panes->diffView),
             $flash,
             $s->translator,
             $events,
@@ -435,6 +475,7 @@ return new class('git') extends AbstractPlugin implements DisposablePlugin {
             $api->copyToClipboard(...),
             $remote,
             gitSettings: $settings,
+            repository: $repository,
         );
         $this->wireViewEvents($events, $controller);
 

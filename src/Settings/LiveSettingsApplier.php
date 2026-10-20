@@ -30,6 +30,8 @@ use Porta\Ui\ThemeRefreshable;
 use Porta\Widget\Support\TabBarPosition;
 use Porta\Widget\TabBarWidget;
 use Psr\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Widget\AbstractWidget;
+use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
  * Applies the live-switchable settings: each method swaps the shared holders
@@ -82,11 +84,7 @@ final readonly class LiveSettingsApplier
         // reason and is reached through its region now, so a contributed view's
         // panes rebake on a theme switch without being listed.
         foreach ($this->regions->all() as $region) {
-            foreach ([...$region->sidebar()->all(), ...$region->content()->all()] as $widget) {
-                if (!$widget instanceof ThemeRefreshable) {
-                    continue;
-                }
-
+            foreach (self::refreshables([...$region->sidebar()->all(), ...$region->content()->all()]) as $widget) {
                 $widget->refreshTheme();
             }
         }
@@ -94,6 +92,26 @@ final readonly class LiveSettingsApplier
             $pane->refreshTheme();
         }
         $this->dispatcher->dispatch(new ThemeChanged(Theme::fromId($theme)));
+    }
+
+    /**
+     * The panes that re-make their lines on a theme switch, looked for inside
+     * containers too: a view's split, a column of stacked panes.
+     *
+     * @param array<AbstractWidget> $widgets
+     *
+     * @return \Generator<ThemeRefreshable>
+     */
+    private static function refreshables(array $widgets): \Generator
+    {
+        foreach ($widgets as $widget) {
+            if ($widget instanceof ThemeRefreshable) {
+                yield $widget;
+            }
+            if ($widget instanceof ContainerWidget) {
+                yield from self::refreshables($widget->all());
+            }
+        }
     }
 
     /** Live formatOnSave enable: the flag holder the save path consults. */

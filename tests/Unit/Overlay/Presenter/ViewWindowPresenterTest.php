@@ -16,8 +16,10 @@ use Porta\Widget\Render\ModalFrame;
 use Porta\Workbench\View\ViewRegistry;
 use Porta\Workbench\View\ViewWindow;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Style\Style;
+use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
@@ -170,5 +172,39 @@ final class ViewWindowPresenterTest extends TestCase
         $this->assertStringContainsString('.', $padding, 'the content is drawn on the padding row');
         $this->assertSame(\str_repeat(' ', $sideRect->columns), \mb_substr($padding, $sideRect->col - $box->col, $sideRect->columns), 'the sidebar is not');
         $this->assertSame(2, \mb_substr_count($padding, needle: '│'), 'nor the separator: the padding row has only the rails');
+    }
+
+    /**
+     * A header row spans the window above the sidebar, separator and content:
+     * it takes the padding row, as a flush pane would, and the panes start
+     * under it with no inset of their own.
+     */
+    public function testAHeaderTakesThePaddingRowAndThePanesStartUnderIt(): void
+    {
+        $leaf = new TestOverlayPane();
+        $side = new TestOverlayPane();
+        $presenter = $this->hosted($leaf, $side);
+        $region = $this->regions->find('demo');
+        $this->assertInstanceOf(ViewRegion::class, $region);
+        $this->assertFalse($region->contentFlushTop(), 'an empty header leaves the padding row to the frame');
+        $toolbar = new class extends AbstractWidget {
+            public function render(RenderContext $context): array
+            {
+                return [\str_repeat('=', $context->getColumns())];
+            }
+        };
+        $region->header()->add($toolbar);
+
+        $presenter->compose();
+        $box = $presenter->box();
+        $this->assertInstanceOf(ModalBox::class, $box);
+        $this->assertTrue($region->contentFlushTop());
+        $toolbarRect = $this->renderer->getWidgetRect($toolbar);
+        $this->assertInstanceOf(WidgetRect::class, $toolbarRect);
+        $this->assertSame($box->startRow + ModalFrame::CHROME_ROWS_TOP - 1, $toolbarRect->row, 'the header is on the padding row');
+        $this->assertSame($box->startRow + ModalFrame::CHROME_ROWS_TOP, $this->renderer->getWidgetRect($leaf)?->row, 'the content starts under it');
+        $this->assertSame($box->startRow + ModalFrame::CHROME_ROWS_TOP, $this->renderer->getWidgetRect($side)?->row, 'and so does the sidebar, with no inset');
+        $padding = AnsiUtils::stripAnsiCodes(\implode('', \array_column(\array_filter($this->pane->windowSpans, static fn (array $span): bool => $span['row'] === ($box->startRow + 1)), 'segment')));
+        $this->assertStringContainsString(\str_repeat('=', $toolbarRect->columns), $padding, 'the header spans the window');
     }
 }

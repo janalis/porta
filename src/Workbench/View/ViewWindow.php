@@ -41,6 +41,9 @@ final class ViewWindow
         }
         if ($region !== $this->region) {
             $this->frame->clear();
+            // The header first: the frame stacks its children, and an empty
+            // header renders no row at all.
+            $this->frame->add($region->header());
             $this->frame->add($region->area());
         }
         $this->region = $region;

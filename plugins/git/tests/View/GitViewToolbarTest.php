@@ -1,0 +1,352 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\GitPlugin\Tests\View;
+
+use PHPUnit\Framework\TestCase;
+use Porta\Event\GitRemoteCompleted;
+use Porta\Event\WorkingTreeChanged;
+use Porta\GitPlugin\Command\GitRemoteOperation;
+use Porta\GitPlugin\Command\HistoryReload;
+use Porta\GitPlugin\Event\GitCommitFileSelected;
+use Porta\GitPlugin\Event\GitCommitHashCopyRequested;
+use Porta\GitPlugin\Event\GitDiffContextCycleRequested;
+use Porta\GitPlugin\Event\GitRemoteRequested;
+use Porta\GitPlugin\Event\GitViewModeRequested;
+use Porta\GitPlugin\LogEntry;
+use Porta\GitPlugin\Tests\Support\GitViewRig;
+use Porta\GitPlugin\View\GitViewMode;
+use Porta\GitPlugin\View\ToolbarCell;
+use Porta\GitPlugin\Widget\SplitShape;
+use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\TempProject;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Render\RenderContext;
+
+/**
+ * The git view's GitHub Desktop half: the toolbar that follows the branch,
+ * its upstream and the clock, and the History panes that must not show a
+ * stale answer.
+ */
+final class GitViewToolbarTest extends TestCase
+{
+    use GitViewRig;
+
+    /**
+     * The toolbar reads git when the view opens and again when the working
+     * tree moves under it — a branch switch from its own menu is one — but a
+     * closed view does not keep asking.
+     */
+    public function testTheToolbarFollowsTheBranchWhileTheViewIsOpen(): void
+    {
+        $controller = $this->controller();
+        $branch = \trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD'));
+        $controller->open();
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), $branch), what: 'the branch');
+
+        $this->project->git('checkout', '-q', '-b', 'feature');
+        $controller->onWorkingTreeChanged(new WorkingTreeChanged());
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), 'feature'), what: 'the switched branch');
+
+        $controller->close();
+        $this->project->git('checkout', '-q', '-b', 'later');
+        $controller->onWorkingTreeChanged(new WorkingTreeChanged());
+        $this->pump(0.3);
+        $this->assertStringContainsString('feature', $this->toolbarText(), 'closed, it asks nothing');
+    }
+
+    /** A fetch moves what the toolbar says; so does a commit, one more ahead of the upstream. */
+    public function testAFetchAndACommitRecountTheUpstream(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), 'Publish branch'), what: 'no upstream yet');
+
+        $this->project->git('branch', 'base');
+        $this->project->git('branch', '--set-upstream-to=base');
+        $controller->onRemoteCompleted(new GitRemoteCompleted('fetch', true));
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), 'Fetch'), what: 'the upstream after the fetch');
+
+        $this->project->write('a.txt', "ahead\ntwo\n");
+        $this->project->git('add', 'a.txt');
+        Probe::invoke($controller, 'commit', 'Ahead');
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), '⇡1'), what: 'one commit ahead');
+        $this->assertStringContainsString('↻ Push', $this->toolbarText(), 'and the remote button offers to push it');
+    }
+
+    /** The commit header's copy button puts the full sha on the clipboard and says the short one. */
+    public function testTheCommitHeaderCopiesTheFullSha(): void
+    {
+        $controller = $this->controller(Presence::Without);
+        $commit = new LogEntry('f00dfacecafebeef0123456789abcdef01234567', 'f00dfac', 'Alice', 1_700_000_000, 'Subject');
+
+        $controller->onCommitHashCopyRequested(new GitCommitHashCopyRequested($commit));
+
+        $this->assertStringContainsString("\x1b]52;c;".\base64_encode($commit->sha), $this->tui->getTerminal()->getOutput());
+        $this->assertStringContainsString('Copied f00dfac', $this->statusRow($this->statusBar));
+    }
+
+    /**
+     * "3 minutes ago" is worked out at paint time, and a widget repaints only
+     * once marked stale: each poll tick marks the toolbar and the commit list,
+     * or their times would never age.
+     */
+    public function testEachPollTickAgesTheRelativeTimes(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->await($controller->isOpen(...));
+        $toolbar = $this->toolbar->getRenderRevision();
+        $history = $this->history->getRenderRevision();
+
+        $this->pump(2.3); // past one tick of the default two-second poll
+
+        $this->assertGreaterThan($toolbar, $this->toolbar->getRenderRevision());
+        $this->assertGreaterThan($history, $this->history->getRenderRevision());
+    }
+
+    /** A comparison is two files, not the repository: no toolbar while it shows, and the view's own comes back. */
+    public function testAComparisonTakesTheToolbarDownAndTheViewPutsItBack(): void
+    {
+        $controller = $this->controller();
+        $left = $this->project->write('.porta/l.txt', "one\n");
+        $right = $this->project->write('.porta/r.txt', "two\n");
+
+        $controller->openComparison($left, $right, static function (): void {});
+        $this->assertSame([], $this->region->header()->all());
+
+        $controller->close();
+        $controller->open();
+        $this->assertSame([$this->toolbar], $this->region->header()->all());
+    }
+
+    /** History shows a commit: a context cycle asked for there must not load the working tree's last file. */
+    public function testAContextCycleInHistoryLeavesTheCommitsPatch(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "changed\ntwo\n");
+        $controller->open();
+        $this->await(fn (): bool => \str_contains($this->diffText(), '+changed'), what: 'the working tree diff');
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        $this->await(fn (): bool => \str_contains($this->diffText(), '+.porta/'), what: "the commit's patch");
+
+        $controller->onDiffContextCycled(new GitDiffContextCycleRequested());
+        $this->pump(0.3);
+
+        $this->assertStringNotContainsString('+changed', $this->diffText());
+        $this->assertStringNotContainsString('Diff context', $this->statusRow($this->statusBar));
+    }
+
+    /** A checkout run in the terminal tells the view nothing: every few poll ticks the toolbar asks git again. */
+    public function testThePollRereadsTheToolbarEveryFewTicks(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $branch = \trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD'));
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), $branch), what: 'the branch');
+        $this->project->git('checkout', '-q', '-b', 'from-the-terminal');
+        Probe::set($controller, 'ticks', 4); // the next tick is a re-read
+
+        $this->await(fn (): bool => \str_contains($this->toolbarText(), 'from-the-terminal'), timeout: 5.0, what: 'the re-read');
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * Arrowing through a commit's files starts a diff per step: an older ask
+     * answering last — a large file — must not show beside the newer one.
+     */
+    public function testAStaleCommitFileDiffCannotReplaceANewerOne(): void
+    {
+        $this->skipWithoutGit();
+        $useShim = false;
+        $shim = null;
+        // By reference: the shim is assigned below and switched on for one call.
+        $controller = $this->controller(gitPath: static function () use (&$useShim, &$shim): ?string {
+            return $useShim ? $shim : null;
+        });
+        $release = $this->gitHoldingItsAnswer($shim);
+        $controller->open();
+        $this->changes->setFocused(true);
+        $this->changes->handleInput('2');
+        $this->await(fn (): bool => \str_contains($this->diffText(), '+.porta/'), what: 'the commit\'s first file');
+        $this->awaitLanes([$this->lane()]);
+        $this->freezeStatusPoll($controller);
+        $commit = $this->history->selectedCommit();
+        $this->assertInstanceOf(LogEntry::class, $commit);
+
+        $useShim = true; // the older ask, held mid-call
+        $controller->onCommitFileSelected(new GitCommitFileSelected($commit, '.gitignore'));
+        $useShim = false;
+        $this->awaitCapture();
+        $controller->onCommitFileSelected(new GitCommitFileSelected($commit, 'a.txt'));
+        $this->await(fn (): bool => \str_contains($this->diffText(), '+two'), what: 'the newer file');
+
+        $release();
+        $this->awaitLanes([$this->lane()]);
+
+        $this->assertStringContainsString('+two', $this->diffText(), 'the older answer was dropped');
+    }
+
+    /**
+     * A remote whose upload-pack waits $seconds before answering, so a fetch
+     * from it is still running while the test looks.
+     */
+    private function slowOrigin(int $seconds = 1): void
+    {
+        $bare = new TempProject([]);
+        \exec('git clone -q --bare '.\escapeshellarg($this->project->dir).' '.\escapeshellarg($bare->dir.'/origin.git'));
+        $this->project->git('remote', 'add', 'origin', $bare->dir.'/origin.git');
+        $this->project->git('config', 'remote.origin.uploadpack', 'sleep '.$seconds.'; git-upload-pack');
+    }
+
+    /** The remote icon in the toolbar's top row: the cell's first column after its space. */
+    private function remoteIcon(): string
+    {
+        $top = \explode("\n", $this->toolbarText())[0];
+        $span = $this->toolbar->span(ToolbarCell::Remote);
+
+        return null === $span ? '' : \mb_substr($top, start: $span[0] + 1, length: 1);
+    }
+
+    /** GitHub Desktop's spinning arrows: the remote icon turns while the fetch runs, and rests when it is over. */
+    public function testTheRemoteIconTurnsWhileAFetchRunsAndRestsAfter(): void
+    {
+        $controller = $this->controller();
+        $this->slowOrigin();
+        $controller->open();
+        $seen = [];
+
+        $controller->onRemoteRequested(new GitRemoteRequested(GitRemoteOperation::Fetch));
+        $this->await(function () use (&$seen): bool {
+            $seen[$this->remoteIcon()] = true;
+
+            return \count(\array_intersect_key($seen, ['◜' => 1, '◝' => 1, '◞' => 1])) >= 2;
+        }, what: 'the icon to turn');
+        $this->assertStringContainsString('Fetching…', $this->toolbarText());
+        $this->await(fn (): bool => '↻' === $this->remoteIcon() && null === Probe::get($controller, 'spinner'), what: 'the icon to rest after the fetch');
+        $this->assertStringNotContainsString('Fetching', $this->toolbarText());
+    }
+
+    /** An operation the palette started, with the view open: the next poll tick sees it and turns the icon. */
+    public function testAnOperationStartedElsewhereIsSeenByThePoll(): void
+    {
+        $controller = $this->controller();
+        $this->slowOrigin(seconds: 3); // past the first two-second tick
+        $controller->open();
+        $this->await($controller->isOpen(...));
+
+        $this->remoteCommands->fetch();
+        $this->await(static fn (): bool => null !== Probe::get($controller, 'spinner'), what: 'the poll to see the fetch'); // the object, re-read each time
+        $this->assertNotSame('↻', $this->remoteIcon());
+
+        $controller->close();
+        $this->assertNull(Probe::get($controller, 'spinner'), 'a closed view turns nothing');
+        $this->assertSame('↻', $this->remoteIcon());
+    }
+
+    /** Opening the view while an operation runs turns the icon at once; a completion stops it at once. */
+    public function testOpeningMidOperationTurnsTheIconAndACompletionStopsIt(): void
+    {
+        $controller = $this->controller();
+        $this->slowOrigin();
+        $this->remoteCommands->fetch();
+
+        $controller->open();
+        $this->assertNotNull(Probe::get($controller, 'spinner'));
+
+        $controller->onRemoteCompleted(new GitRemoteCompleted('fetch', true));
+        $this->assertNull(Probe::get($controller, 'spinner'));
+        $this->assertSame('↻', $this->remoteIcon());
+    }
+
+    /** History is headed by the commit across both columns, with what it added and removed. */
+    public function testHistoryHeadsTheColumnsWithTheCommitAndItsStat(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "one\ntwo\nthree\n");
+        $this->project->commitAll('second');
+        $controller->open();
+        $controller->onViewModeRequested(new GitViewModeRequested(GitViewMode::History));
+
+        $this->await(fn (): bool => \str_contains($this->headerText(), '+1 −0'), what: 'the stat');
+        $this->assertStringContainsString(' second', $this->headerText());
+    }
+
+    /** A stat for a commit no longer selected is not this one's: dropped. */
+    public function testAStatForACommitLeftBehindIsDropped(): void
+    {
+        $controller = $this->controller();
+        $this->project->write('a.txt', "one\ntwo\nthree\n");
+        $this->project->commitAll('second');
+        $controller->open();
+        $controller->onViewModeRequested(new GitViewModeRequested(GitViewMode::History));
+        $this->await(fn (): bool => \str_contains($this->headerText(), '+1 −0'), what: 'the stat');
+        $first = new LogEntry(\trim($this->project->git('rev-parse', 'HEAD~1')), 'x', 'x', 0, 'init');
+
+        Probe::invoke($controller, 'loadCommitFiles', $first);
+        $this->awaitLanes([Probe::get(Probe::get($this->git, 'runner'), 'lane')]);
+
+        $this->assertStringContainsString('+1 −0', $this->headerText(), 'still the selected commit\'s');
+    }
+
+    /** The toolbar's cells stand over the sidebar and, in History, the files column. */
+    public function testTheToolbarIsToldTheColumnsOfTheModeShowing(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $this->assertSame([44, 75], Probe::invoke($controller, 'columns', 120), 'Changes: the sidebar, then the diff');
+
+        $controller->onViewModeRequested(new GitViewModeRequested(GitViewMode::History));
+        $this->assertSame([44, 29, 45], Probe::invoke($controller, 'columns', 120), 'History: the files take two fifths of the rest');
+
+        Probe::set($this->region->split('columns'), 'narrow', true);
+        $this->assertSame([44, 75], Probe::invoke($controller, 'columns', 120), 'stacked, there is one column again');
+    }
+
+    /** Too narrow for three columns: the files stack over the diff and the header's rule counts them. */
+    public function testStackedTheHeaderCountsTheFiles(): void
+    {
+        $controller = $this->controller();
+        $controller->open();
+        $controller->onViewModeRequested(new GitViewModeRequested(GitViewMode::History));
+        $this->await(fn (): bool => 2 === $this->details->fileCount(), what: 'the files: a.txt and .gitignore');
+
+        Probe::set($this->region->split('columns'), 'narrow', true);
+        Probe::invoke($controller, 'stack', true);
+        $this->assertStringContainsString('─ 2 changed files', $this->headerText());
+        $this->assertSame(SplitShape::Stacked, Probe::get($this->details, 'stacked') ? SplitShape::Stacked : SplitShape::Beside);
+
+        $this->project->write('b.txt', "b\n");
+        $this->project->commitAll('third');
+        Probe::invoke($controller, 'reloadHistory', HistoryReload::SelectFirst); // the newest on top, selected
+        $this->await(fn (): bool => \str_contains($this->headerText(), '─ 1 changed file '), what: 'the new commit\'s count');
+
+        Probe::invoke($controller, 'stack', false);
+        $this->assertStringNotContainsString('changed file', $this->headerText(), 'beside the diff, the files column says it');
+    }
+
+    private function headerText(): string
+    {
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->header->render(new RenderContext(80, 3))));
+    }
+
+    /** The commit button follows what is staged and the branch it would go to. */
+    public function testTheCommitButtonNamesTheStagedFilesAndTheBranch(): void
+    {
+        $controller = $this->controller();
+        $branch = \trim($this->project->git('rev-parse', '--abbrev-ref', 'HEAD'));
+        $controller->open();
+        $box = fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $this->commitBox->render(new RenderContext(44, 30))));
+        $this->await(static fn (): bool => \str_contains($box(), 'Commit to '.$branch), what: 'the branch, nothing staged');
+
+        $this->project->write('a.txt', "staged\n");
+        $this->project->git('add', 'a.txt');
+        Probe::invoke($controller, 'refresh');
+
+        $this->await(static fn (): bool => \str_contains($box(), 'Commit 1 file to '.$branch), what: 'the staged file');
+        $this->assertStringNotContainsString('Commit to branch', $box());
+    }
+}

@@ -16,7 +16,6 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlay;
-use Porta\Widget\SeparatorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 
@@ -33,7 +32,10 @@ use Symfony\Component\Tui\Render\Renderer;
  * is drawn and its tee is not mirrored twice.
  *
  * Only an idle divider joins — the hovered `┃` is a grab, not a line — and no
- * cell under a floating surface (a dropdown, a modal, a toast) is touched.
+ * cell under a floating surface (a dropdown, a modal, a toast) is touched. A
+ * view's dividers are drawn IN a floating surface, its window: the window's
+ * own regions are the surface they stand on, not one over them, so only what
+ * floats over the window stops their joins.
  */
 #[AsEager]
 final readonly class FrameJoins
@@ -46,6 +48,7 @@ final readonly class FrameJoins
         private FloatingRegions $floating,
         private Styles $styles,
         RuleHalves $halves,
+        private ?ViewWindowPresenter $window = null,
     ) {
         // The joins, then where a shaded row meets a rule ({@see RuleHalves}).
         $tui->setFrameJoin(fn (array $lines): array => $halves->apply($this->join($lines)));
@@ -59,10 +62,14 @@ final readonly class FrameJoins
     public function join(array $lines): array
     {
         $dividers = [];
-        foreach ([$this->layout->separator, ...\array_map(static fn (ViewRegion $region): SeparatorWidget => $region->separator(), $this->regions->all())] as $separator) {
-            $rect = $this->renderer->getWidgetRect($separator);
-            if (null !== $rect && $rect->rows > 0) {
-                $dividers[] = [$rect->row, $rect->col, $rect->rows];
+        // The workspace's divider, then every view's, drawn in its window.
+        $separators = [[$this->layout->separator], ...\array_map(static fn (ViewRegion $region): array => $region->separators(), $this->regions->all())];
+        foreach ($separators as $surface => $group) {
+            foreach ($group as $separator) {
+                $rect = $this->renderer->getWidgetRect($separator);
+                if (null !== $rect && $rect->rows > 0) {
+                    $dividers[] = [$rect->row, $rect->col, $rect->rows, 0 !== $surface];
+                }
             }
         }
         if ([] === $dividers || [] === $lines) {
@@ -71,7 +78,7 @@ final readonly class FrameJoins
         $rule = $this->styles->of(Role::Rule);
 
         $spans = [];
-        foreach (self::junctions($lines, $dividers, $this->floating->regions()) as [$row, $col, $glyph]) {
+        foreach (self::junctions($lines, $dividers, $this->floating->regions(), $this->window?->regions() ?? []) as [$row, $col, $glyph]) {
             $spans[] = ['row' => $row, 'col' => $col, 'width' => 1, 'segment' => $rule->apply($glyph)];
         }
 
@@ -81,26 +88,30 @@ final readonly class FrameJoins
     /**
      * Where the joins go, read off the painted cells.
      *
-     * @param list<string>                 $lines    the frame as painted
-     * @param list<array{int, int, int}>   $dividers each divider's [row, column, rows] as laid out
-     * @param list<DropdownRegion>         $floating the surfaces over the panes
+     * @param list<string>                                  $lines    the frame as painted
+     * @param list<array{int, int, int}|array{int, int, int, bool}> $dividers each divider's [row, column, rows] as laid out, and whether it stands in the view window
+     * @param list<DropdownRegion>                          $floating the surfaces over the panes
+     * @param list<DropdownRegion>                          $window   the view window's own: the surface its dividers stand on
      *
      * @return list<array{int, int, string}> [row, column, glyph]
      */
-    public static function junctions(array $lines, array $dividers, array $floating): array
+    public static function junctions(array $lines, array $dividers, array $floating, array $window = []): array
     {
+        // Over the window: every floating surface but the window's own.
+        $overWindow = \array_values(\array_filter($floating, static fn (DropdownRegion $region): bool => !\array_any($window, static fn (DropdownRegion $own): bool => self::same($own, $region))));
         $columns = [] === $lines ? 0 : AnsiUtils::visibleWidth($lines[0]);
         // The plain glyph at a cell; nothing off the frame.
         $cell = static fn (int $row, int $col): string => $col < 0 || $col >= $columns || !\array_key_exists($row, $lines)
             ? ''
             : AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($lines[$row], $col, 1));
-        $covered = static fn (int $row, int $col): bool => (
-            [] !== \array_filter($floating, static fn (DropdownRegion $region): bool => $region->coversRow($row) && $col >= $region->col && $col < ($region->col + $region->width))
-        );
-        $rule = static fn (int $row, int $col): bool => Glyphs::FRAME_HORIZONTAL === $cell($row, $col) && !$covered($row, $col);
-
         $joins = [];
-        foreach ($dividers as [$top, $col, $rows]) {
+        foreach ($dividers as $divider) {
+            [$top, $col, $rows] = $divider;
+            $over = $divider[3] ?? false ? $overWindow : $floating;
+            $covered = static fn (int $row, int $col): bool => (
+                [] !== \array_filter($over, static fn (DropdownRegion $region): bool => $region->coversRow($row) && $col >= $region->col && $col < ($region->col + $region->width))
+            );
+            $rule = static fn (int $row, int $col): bool => Glyphs::FRAME_HORIZONTAL === $cell($row, $col) && !$covered($row, $col);
             $col = self::drawnAt($cell, $top, $col, $rows, $columns);
             if (null === $col) {
                 continue;
@@ -128,6 +139,12 @@ final readonly class FrameJoins
         }
 
         return $joins;
+    }
+
+    /** The same rectangle: a window's regions are minted afresh on every ask. */
+    private static function same(DropdownRegion $a, DropdownRegion $b): bool
+    {
+        return [$a->top, $a->col, $a->width, $a->count] === [$b->top, $b->col, $b->width, $b->count];
     }
 
     /**

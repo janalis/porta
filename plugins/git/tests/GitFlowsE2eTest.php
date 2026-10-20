@@ -10,6 +10,7 @@ use Porta\GitPlugin\Widget\ChangesListWidget;
 use Porta\GitPlugin\Widget\CommitBoxWidget;
 use Porta\GitPlugin\Widget\DiffViewWidget;
 use Porta\GitPlugin\Widget\GitTabsWidget;
+use Porta\GitPlugin\Widget\GitToolbarWidget;
 use Porta\Ide;
 use Porta\Overlay\Presenter\ViewWindowPresenter;
 use Porta\Overlay\Region\ModalBox;
@@ -27,10 +28,12 @@ use Porta\Tests\Support\ViewWindowCells;
 use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
+use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Render\Renderer;
+use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -588,7 +591,7 @@ final class GitFlowsE2eTest extends TestCase
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->await(static fn (): bool => \str_contains($screen(), '+$a = 2;'), what: 'the diff pane to show the worktree change');
                     $this->assertStringContainsString('2 changed files', $screen());
-                    $this->assertStringContainsString('[ ] M src/A.php', $screen());
+                    $this->assertStringContainsString('[ ] src/A.php', $screen());
                     $tui->handleInput(' '); // stage src/A.php
                     // Await the app's git barrier, then the on-disk effect —
                     // a blocking porcelain poll would race the async add.
@@ -648,7 +651,7 @@ final class GitFlowsE2eTest extends TestCase
                     $tui->handleInput("\x1b\x04"); // ctrl+alt+d opens the git view
                 },
                 550 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
-                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '[ ] M src/A.php'));
+                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '[ ] src/A.php'));
                     $renderer = Services::resolve($ide, Renderer::class);
                     $rect = Widgets::rect($renderer, $tui->getById('git-changes'));
 
@@ -657,7 +660,7 @@ final class GitFlowsE2eTest extends TestCase
                     // view opens with the changes list already focused, so a
                     // right-press that never moved focus would look identical.
                     $tui->setFocus($tui->getById('git-diff'));
-                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 2)); // right-click the first row
+                    $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 8, $rect->row + 3)); // right-click the first row, under the heading and its rule
                     $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-clicking a changes row opened its menu');
                     // Asserted HERE, not after the menu action: selecting the row
                     // under the pointer and taking focus is part of answering,
@@ -737,7 +740,7 @@ final class GitFlowsE2eTest extends TestCase
                     $this->assertStringContainsString('gamma CHANGED', $project->git('diff'), 'gamma remains a worktree change');
                     // The post-apply refresh repaints the mixed checkbox; await
                     // it here instead of scraping after the loop stopped.
-                    $this->await(static fn (): bool => \str_contains($screen(), '[–] M f.txt'), what: 'partial staging to show the mixed checkbox');
+                    $this->await(static fn (): bool => \str_contains($screen(), '[–] f.txt'), what: 'partial staging to show the mixed checkbox');
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -795,10 +798,10 @@ final class GitFlowsE2eTest extends TestCase
                     $tui->handleInput("\x1b[<0;3;1m");
                     $tui->handleInput("\x1b[<0;3;1M");
                     $tui->handleInput("\x1b[<0;3;1m");
-                    // The changes list: its header, then a.txt. Click the checkbox.
+                    // The changes list: its heading and rule, then a.txt. Click the checkbox.
                     $this->frame($tui);
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 1, 2));
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 1, 2, release: true));
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 2, 2));
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 2, 2, release: true));
                 },
                 550 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     // Staging is a git subprocess, so this waits — but on the
@@ -808,14 +811,14 @@ final class GitFlowsE2eTest extends TestCase
                     // async op". Await the checkbox, then read the disk once.
                     $this->await(
                         static fn (): bool => \str_contains(
-                            AnsiUtils::stripAnsiCodes(Widgets::byId($tui, 'git-changes', ChangesListWidget::class)->render(new RenderContext(44, 4))[1] ?? ''),
+                            AnsiUtils::stripAnsiCodes(Widgets::byId($tui, 'git-changes', ChangesListWidget::class)->render(new RenderContext(44, 5))[2] ?? ''),
                             '[✓]',
                         ),
                         what: 'the changes list to show a.txt staged',
                     );
                     $this->assertContains('M  a.txt', \explode("\n", $project->git('status', '--porcelain')), 'checkbox click staged the file');
                     // Hover b.txt: a tint only — the diff must NOT load.
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 35, 2, 9));
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 35, 3, 9));
                 },
                 650 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // The POSITIVE first: a.txt's diff on screen is what makes
@@ -827,8 +830,8 @@ final class GitFlowsE2eTest extends TestCase
                     // Moving the pointer onto the diff pane clears the tint...
                     $tui->handleInput(self::widgetSgr($ide, 'git-diff', 35, 4, 34));
                     // ...and a CLICK on b.txt selects it and loads its diff.
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 2, 9));
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 2, 9, release: true));
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 3, 9));
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 0, 3, 9, release: true));
                 },
                 750 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, '+new');
@@ -839,11 +842,11 @@ final class GitFlowsE2eTest extends TestCase
                     $this->assertSame(6, Widgets::byId($tui, 'git-diff', DiffViewWidget::class)->hScroll(), 'wheel-right scrolled the diff text');
                     $tui->handleInput(self::widgetSgr($ide, 'git-diff', 68, 4, 34)); // shift+wheel-up = left
                     $this->assertSame(0, Widgets::byId($tui, 'git-diff', DiffViewWidget::class)->hScroll());
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 67, 1, 9)); // over the changes list: ignored
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 67, 2, 9)); // over the changes list: ignored
                     // Wheel over the diff pane scrolls it; over the list it moves
                     // the selection (keyboard-like, so it may load).
                     $tui->handleInput(self::widgetSgr($ide, 'git-diff', 65, 4, 34));
-                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 65, 1, 9));
+                    $tui->handleInput(self::widgetSgr($ide, 'git-changes', 65, 2, 9));
                     // Press mid-text on a diff row and drag ten columns right:
                     // a char-level span arms; ctrl+c copies exactly those chars.
                     $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 4, 14));
@@ -863,21 +866,28 @@ final class GitFlowsE2eTest extends TestCase
                     $this->assertSame('git-commit', $tui->getFocus()?->getId(), 'click focused the commit box');
                     // The diff toolbar tags sit at the right edge of the diff
                     // title row: ' S split ' then ' W hide-ws '. Clicking them
-                    // flips the modes and persists the prefs. The toolbar is
-                    // flush under the window's title bar, where the copy's
-                    // toast floats on this short screen: Alt+D dismisses it.
+                    // flips the modes and persists the prefs. The view's own
+                    // toolbar is flush under the window's title bar, where the
+                    // copy's toast floats on this short screen: Alt+D dismisses
+                    // it. The diff's toolbar starts right under the view's.
                     $box = Services::resolve($ide, ViewWindowPresenter::class)->box();
                     $this->assertInstanceOf(ModalBox::class, $box);
-                    $diffRect = Services::resolve($ide, Renderer::class)->getWidgetRect(Widgets::byId($tui, 'git-diff', DiffViewWidget::class));
-                    $this->assertSame($box->startRow + 1, $diffRect?->row, 'the diff toolbar is flush under the title bar');
+                    $renderer = Services::resolve($ide, Renderer::class);
+                    $toolbarRect = $renderer->getWidgetRect(Widgets::byId($tui, 'git-toolbar', GitToolbarWidget::class));
+                    $diffRect = $renderer->getWidgetRect(Widgets::byId($tui, 'git-diff', DiffViewWidget::class));
+                    $this->assertInstanceOf(WidgetRect::class, $toolbarRect);
+                    $this->assertSame($box->startRow + 1, $toolbarRect->row, 'the view toolbar is flush under the title bar');
+                    $this->assertSame($box->startRow + 1 + $toolbarRect->rows, $diffRect?->row, 'the diff toolbar is right under it');
                     $tui->handleInput("\x1bd");
                     $this->assertSame([], Toasts::all($ide), 'Alt+D dismissed the copy toast');
                     $this->frame($tui); // its click box goes with the next frame
-                    $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 0, -20));
-                    $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 0, -20, release: true));
-                    $this->assertTrue(Widgets::byId($tui, 'git-diff', DiffViewWidget::class)->isSplit(), 'the split tag switched to side-by-side');
-                    $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 0, -10));
-                    $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 0, -10, release: true));
+                    // The gear, the toolbar's last control, drops the display
+                    // settings; each pick flips its own and persists it.
+                    $this->pickFromTheGear($tui, $ide, 'Split');
+                    $this->assertTrue(Widgets::byId($tui, 'git-diff', DiffViewWidget::class)->isSplit(), 'Split switched to side-by-side');
+                    $this->frame($tui);
+                    $this->pickFromTheGear($tui, $ide, 'Hide whitespace changes');
+                    $this->assertTrue(Widgets::byId($tui, 'git-diff', DiffViewWidget::class)->isWhitespaceHidden(), 'and whitespace changes are hidden');
                     $tui->handleInput("\x1b");
                 },
             ],
@@ -891,6 +901,18 @@ final class GitFlowsE2eTest extends TestCase
         $porta = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertTrue($porta['plugins']['git']['diffSplit'], 'the split preference persisted');
         $this->assertTrue($porta['plugins']['git']['diffHideWhitespace'], 'the whitespace preference persisted');
+    }
+
+    /** Press the diff's gear — its toolbar's last control — and pick $label from the menu it drops. */
+    private function pickFromTheGear(Tui $tui, Ide $ide, string $label): void
+    {
+        $menu = Services::resolve($ide, ContextMenu::class);
+        $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 0, -4));
+        $tui->handleInput(self::widgetSgr($ide, 'git-diff', 0, 0, -4, release: true));
+        $this->assertTrue($menu->isOpen(), 'the gear dropped its menu');
+        $labels = \array_map(static fn (MenuItem $item): string => $item->label, Probe::get($menu, 'items'));
+        $this->assertSame(['Hide whitespace changes', '', 'Unified', 'Split'], $labels);
+        $menu->runItem((int) \array_search($label, $labels, strict: true));
     }
 
     public function testGitViewHistoryTabBrowsesCommits(): void
@@ -924,10 +946,11 @@ final class GitFlowsE2eTest extends TestCase
                     // commit's file list. Awaiting the first (History (2))
                     // left the second racing, which failed 2 runs in 30 under
                     // load — so await the LAST effect this step asserts on.
-                    $this->awaitPainted($tui, $terminal, 'M a.txt');
+                    // The commit's files sit beside it now, under a legend
+                    // that counts them.
+                    $this->awaitPainted($tui, $terminal, '1 changed file');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('second commit', $screen);
-                    $this->assertStringContainsString('M a.txt', $screen, 'the newest commit file list loads');
                     // Mouse: hover tints a commit row (no selection change),
                     // wheel over the history list, click the first commit
                     // row (the tab strip and the list's header sit above it).

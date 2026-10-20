@@ -539,8 +539,20 @@ does not know at build time, and the container is built before any plugin PHP
 runs. A region whose content opens on a toolbar calls
 `ViewRegion::flushContentTop()`: `ViewWindowPresenter` then renders the content
 from the window's padding row, right under the title bar, and the sidebar and
-separator keep that row as a top inset. Git's diff pane and the review view's
-call it.
+separator keep that row as a top inset. The review view's diff pane calls it.
+A toolbar across the whole view goes in `ViewRegion::header()` instead: a row
+above the sidebar, separator and content that takes the padding row itself, so
+the panes start under it with no inset. Git's toolbar is the one there. A
+control in either drops its list through `ViewHost::openMenu()`, which is the
+context menu opened by a left press.
+More columns inside the content come from `ViewRegion::split($key)`: a
+`Layout/PaneSplit` (the same flex-weight split the editor's preview uses)
+whose divider `LayoutController` arms, drags, nudges with Shift+F11/F12 and
+persists as `viewSplitPercent["{view}:{key}"]`, and whose `│` `FrameJoins`
+joins to the rules it meets. Too narrow for both sides, a view's split stacks
+its columns into rows (`NarrowSplit::Stacked`) and says so through `onNarrow()`;
+`leadColumns()` gives the lead column's width before the frame lays it out,
+for a header that lines up with it. Git's History is the caller.
 
 A plugin registers one with `PluginApi::registerView($id, $factory)`. The
 factory runs after plugins commit, with the seven-member `ViewServices`; its
