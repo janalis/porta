@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Layout\PaneSplit;
 use Porta\Layout\PreviewSplit;
 use Porta\Tests\Support\TestPane;
 use Porta\Ui\Theme\Styles;
@@ -43,6 +44,12 @@ final class PreviewSplitTest extends TestCase
         $this->frame();
     }
 
+    /** The editor | preview split, the one a pane with no flank is seated in. */
+    private function plain(): PaneSplit
+    {
+        return $this->split->splits()[PreviewSplit::PLAIN];
+    }
+
     private function frame(): void
     {
         $this->tui->requestRender(force: true);
@@ -74,20 +81,20 @@ final class PreviewSplitTest extends TestCase
         $area = $this->split->rect();
         $this->assertInstanceOf(WidgetRect::class, $area);
 
-        $this->split->dragTo(30, $area);
+        $this->plain()->dragTo(30, $area);
         $this->frame();
         $this->assertSame(30, $this->columnsOf($this->editor));
         $this->assertSame(30, $this->split->percent());
 
-        $this->split->dragTo(2, $area);
+        $this->plain()->dragTo(2, $area);
         $this->frame();
         $this->assertSame(PreviewSplit::MIN_SIDE, $this->columnsOf($this->editor), 'the editor keeps its floor');
 
-        $this->split->dragTo(99, $area);
+        $this->plain()->dragTo(99, $area);
         $this->frame();
         $this->assertSame(PreviewSplit::MIN_SIDE, $this->columnsOf($this->pane), 'and so does the preview');
 
-        $this->split->nudge(-10, $area);
+        $this->plain()->nudge(-10, $area);
         $this->frame();
         $this->assertSame(70, $this->columnsOf($this->editor), 'a nudge moves by columns from where it stands');
     }
@@ -98,11 +105,11 @@ final class PreviewSplitTest extends TestCase
         $this->split->setMirrored(true);
         $this->split->setMirrored(true);
         $this->frame();
-        $this->assertSame([$this->pane, $this->editor], [...$this->split->area->all()[0]->all(), ...$this->split->area->all()[2]->all()]);
+        $this->assertSame([$this->pane, $this->editor], [...$this->plain()->area->all()[0]->all(), ...$this->plain()->area->all()[2]->all()]);
 
         $area = $this->split->rect();
         $this->assertInstanceOf(WidgetRect::class, $area);
-        $this->split->dragTo(70, $area);
+        $this->plain()->dragTo(70, $area);
         $this->frame();
         $this->assertSame(30, $this->columnsOf($this->editor), 'the editor runs from the right edge to the pointer');
     }
@@ -146,33 +153,33 @@ final class PreviewSplitTest extends TestCase
         $this->mounted(columns: 40);
         $this->tui->setFocus($this->pane);
 
-        $this->split->fit();
+        $this->plain()->fit();
         $this->frame();
 
-        $this->assertCount(1, $this->split->area->all(), 'the divider and the preview stepped aside');
+        $this->assertCount(1, $this->plain()->area->all(), 'the divider and the preview stepped aside');
         $this->assertNull($this->pane->getContext());
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the keys went where the reader still is');
         $area = $this->split->rect();
         $this->assertInstanceOf(WidgetRect::class, $area);
-        $this->split->dragTo(5, $area);
+        $this->plain()->dragTo(5, $area);
         $this->assertSame(50, $this->split->percent(), 'no divider on screen, nothing to drag');
 
-        $this->split->fit();
-        $this->assertCount(1, $this->split->area->all(), 'still narrow: nothing re-seated');
+        $this->plain()->fit();
+        $this->assertCount(1, $this->plain()->area->all(), 'still narrow: nothing re-seated');
     }
 
     public function testRoomAgainBringsThePreviewBackAndKeepsTheFocusWhereItWas(): void
     {
         $this->mounted(columns: 40);
-        $this->split->fit();
+        $this->plain()->fit();
         $this->frame();
         $this->tui->setFocus($this->editor);
 
         $this->terminal->simulateResize(100, 10);
         $this->frame();
-        $this->split->fit();
+        $this->plain()->fit();
 
-        $this->assertCount(3, $this->split->area->all());
+        $this->assertCount(3, $this->plain()->area->all());
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the editor kept the keys through the re-seat');
     }
 
@@ -181,7 +188,7 @@ final class PreviewSplitTest extends TestCase
         $split = new PreviewSplit(Styles::dark(), renderer: new Renderer(new StyleSheet()));
 
         $this->assertNull($split->rect());
-        $split->fit();
-        $this->assertCount(3, $split->area->all());
+        $split->splits()[PreviewSplit::PLAIN]->fit();
+        $this->assertCount(3, $split->splits()[PreviewSplit::PLAIN]->area->all());
     }
 }

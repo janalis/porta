@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\EditorPanes;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\TestOverlayPane;
+use Porta\Tests\Support\TestPane;
 use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -27,6 +28,18 @@ final class MenuOverlayPanesTest extends TestCase
         // itself would come back — the registered pane must ALSO be included,
         // or a dropdown opened over an image viewer stays painted after it closes.
         $this->assertSame([$editorPane, $registeredPane, $rule], $panes->current());
+    }
+
+    public function testARegisteredPanesFlankJoinsItUnregistered(): void
+    {
+        // Seated beside the editor without being registered: a dropdown
+        // opened over the merge view's ours column composites there too.
+        $flank = new TestPane('ours');
+        $pane = new TestPane('theirs', $flank);
+        $editorPanes = new EditorPanes();
+        $editorPanes->register($pane, static fn (string $path): string => '');
+
+        $this->assertSame([$pane, $flank], new MenuOverlayPanes([], $editorPanes)->current());
     }
 
     public function testNoRegisteredPanesIsJustTheEditorsAndTheChrome(): void

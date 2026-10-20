@@ -12,6 +12,9 @@ enum NarrowSplit
     /** The lead alone: the editor without its preview. */
     case LeadAlone;
 
+    /** The rest alone: the editor without the pane flanking it on its lead side. */
+    case RestAlone;
+
     /** The lead over the rest, the divider gone: a view's columns become rows. */
     case Stacked;
 }

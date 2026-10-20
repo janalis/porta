@@ -22,6 +22,8 @@ final readonly class LayoutPrefs
      * @param array<string, int> $viewSidebarWidthPercent view id => width, for whichever views have been resized
      * @param int|null           $previewSplitPercent     the editor's share of a preview split — one for every previewed file
      * @param array<string, int> $viewSplitPercent        `{view}:{split}` => the lead column's share, for whichever view splits have been dragged
+     * @param int|null           $flankedSplitPercent     a flanked preview's (flank and editor together) share against the pane
+     * @param int|null           $flankSplitPercent       the flank's share against the editor beside it
      */
     public function __construct(
         public ?int $sidebarWidthPercent = null,
@@ -29,5 +31,7 @@ final readonly class LayoutPrefs
         public array $viewSidebarWidthPercent = [],
         public ?int $previewSplitPercent = null,
         public array $viewSplitPercent = [],
+        public ?int $flankedSplitPercent = null,
+        public ?int $flankSplitPercent = null,
     ) {}
 }

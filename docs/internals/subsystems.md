@@ -366,6 +366,12 @@ arranged by its `PreviewMode`: Editor, Split or Preview.
   Preview detaches the editor the way a viewer tab does, so the editor-hosted
   modals (the pickers, the unsaved-changes list) switch the tab back to Split
   before they open (`BufferService::revealEditor()`).
+- **A flank.** A pane whose `flank()` answers is seated in two nested splits —
+  `flanked` (flank and editor | pane) holding `flank` (flank | editor) — with a
+  divider and a kept share each (`flankedSplitPercent`, `flankSplitPercent`).
+  The routers press and scroll whichever of `EditorLayoutPanes::shownPanes()`
+  is under the pointer, a drag stays with the pane it was pressed on, and a
+  narrowing area gives up the flank (`NarrowSplit::RestAlone`) before the pane.
 - **Routing.** A preview claim (`PreviewRoutes`: plugins first, then core's
   markdown) is asked before the viewer claims, and only for a file under the
   2 MB text cap, so a viewer still takes a file too large to edit.

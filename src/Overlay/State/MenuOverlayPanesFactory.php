@@ -47,9 +47,9 @@ final readonly class MenuOverlayPanesFactory
             [
                 $this->tree,
                 $this->layout->separator,
-                // The preview split's divider — detached, and so skipped,
+                // The preview split's dividers — detached, and so skipped,
                 // whenever no previewed file shows in Split.
-                $this->previewSplit->separator,
+                ...$this->previewSplit->separators(),
                 $this->tabBar,
                 $this->editor,
                 $this->breadcrumbs,

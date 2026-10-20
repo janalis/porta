@@ -709,6 +709,13 @@ $api->registerPreview('hex', ['hexdump']);
   the split's proportion is one setting for every previewed file. You do nothing
   for any of it — in Split your pane is simply narrower, and `hide()` is called
   when it leaves the screen, as for any pane.
+- **A pane on both sides of the text.** Override `flank()` to return a second
+  pane, and in Split it sits on the editor's OTHER side — flank | editor | your
+  pane, the merge view's ours, result and theirs — with a divider of its own.
+  The flank is yours alone: never registered, fed nothing by core. Pass on to
+  it what it needs from your own `show()` and `followSource()`. Core seats it,
+  sends a press or a wheel notch over it to it, and puts it in the `Tab` ring;
+  a narrowing editor area steps it aside first.
 
 ### Showing a list of results
 

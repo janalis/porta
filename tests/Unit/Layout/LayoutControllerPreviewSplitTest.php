@@ -157,7 +157,6 @@ final class LayoutControllerPreviewSplitTest extends TestCase
             $this->tui,
             $layout,
             $this->tree,
-            $this->editor,
             TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $this->regions,
             $this->previewSplit,

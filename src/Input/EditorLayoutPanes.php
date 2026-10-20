@@ -43,6 +43,25 @@ final readonly class EditorLayoutPanes
         return $this->editorArea->visiblePane();
     }
 
+    /**
+     * The panes in the editor slot: {@see pane()}, and its flank. What a
+     * press or a notch picks from by the pointer's position.
+     *
+     * @return list<EditorPaneWidget>
+     */
+    public function shownPanes(): array
+    {
+        $pane = $this->pane();
+        $flank = $pane?->flank();
+
+        // A flank stepped aside stays here: detached, it has no rect to be hit.
+        return match (true) {
+            null === $pane => [],
+            null === $flank => [$pane],
+            default => [$pane, $flank],
+        };
+    }
+
     /** The pane above, when it is one the pointer can pan and zoom. */
     public function navigablePane(): ?NavigablePaneWidget
     {

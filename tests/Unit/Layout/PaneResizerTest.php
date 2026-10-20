@@ -15,7 +15,6 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
@@ -73,7 +72,6 @@ final class PaneResizerTest extends TestCase
             $tui,
             $layout,
             new FileTreeWidget($project->dir),
-            new CodeEditorWidget(),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $this->regions,
             new PreviewSplit(Styles::dark()),
@@ -127,7 +125,6 @@ final class PaneResizerTest extends TestCase
             $tui,
             $layout,
             $tree,
-            new CodeEditorWidget(),
             TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
             $regions,
             new PreviewSplit(Styles::dark()),
@@ -170,7 +167,7 @@ final class PaneResizerTest extends TestCase
             new Translator('en'),
             new PreviewSplit(Styles::dark()),
         );
-        $resizer = new PaneResizer($tui, $layout, new FileTreeWidget($project->dir), new CodeEditorWidget(), $dock, $regions, new PreviewSplit(Styles::dark()));
+        $resizer = new PaneResizer($tui, $layout, new FileTreeWidget($project->dir), $dock, $regions, new PreviewSplit(Styles::dark()));
 
         $this->assertSame($debug, $dock->visiblePanel(), 'sanity: the debug panel is the one the dock shows');
         $this->assertTrue($resizer->canResize(), 'the focused widget is the dock\'s own visible panel');

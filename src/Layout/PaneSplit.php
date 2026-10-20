@@ -299,7 +299,7 @@ final class PaneSplit
      * Re-seat the sides. Clearing the area detaches whatever inside it had
      * the keys, and the focus manager hands them to the first focusable it
      * knows — so the focus is put back: on the same widget when it is still
-     * on screen, on the lead when it was the other side that stepped aside.
+     * on screen, on the side left when it was the other one that stepped aside.
      */
     private function arrange(): void
     {
@@ -312,6 +312,7 @@ final class PaneSplit
         $this->applyShare();
         $sides = match (true) {
             $stacked => [$this->leadSide, $this->restSide],
+            $this->narrow && NarrowSplit::RestAlone === $this->whenNarrow => [$this->restSide],
             $this->narrow => [$this->leadSide],
             default => [$this->leadSide, $this->separator, $this->restSide],
         };
@@ -322,6 +323,12 @@ final class PaneSplit
         if (null === $focus || ($focus !== $this->lead && $focus !== $this->rest)) {
             return;
         }
-        $this->tui?->setFocus(null !== $focus->getContext() ? $focus : $this->lead);
+        $this->tui?->setFocus(null !== $focus->getContext() ? $focus : $this->shownAlone());
+    }
+
+    /** The side a narrow area keeps — the lead, unless the split was told to keep the rest. */
+    private function shownAlone(): ?AbstractWidget
+    {
+        return NarrowSplit::RestAlone === $this->whenNarrow ? $this->rest : $this->lead;
     }
 }

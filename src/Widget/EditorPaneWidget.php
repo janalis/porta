@@ -149,6 +149,23 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
      */
     public function textBeside(bool $beside): void {}
 
+    /**
+     * A second pane to seat on the editor's OTHER side while this one is a
+     * preview beside it — flank | editor | this — or null for the usual
+     * editor | this. The merge view's is its "ours" column, the editor holding
+     * the result between it and "theirs".
+     *
+     * The flank is this pane's own: it is not registered, never a viewer tab,
+     * and hears about the text only through this pane — {@see show()},
+     * {@see followSource()} and the rest arrive here, and this pane passes on
+     * what its flank needs. Core only seats it, routes the pointer to it and
+     * puts it in the focus ring.
+     */
+    public function flank(): ?self
+    {
+        return null;
+    }
+
     /** Drop per-path state (a remembered zoom, a cached layout); most panes keep none. */
     public function forget(string $path): void {}
 

@@ -7,6 +7,7 @@ namespace Porta\Input;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Ui\BidiTui;
 use Porta\Widget\ContextMenu;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\NavigablePaneWidget;
 use Porta\Workbench\Dock\BottomDock;
@@ -211,9 +212,9 @@ final readonly class WheelRouter
      */
     private function overSlotPane(MouseEvent $mouse, int $step): bool
     {
-        $pane = $this->panes->pane();
+        $pane = \array_find($this->panes->shownPanes(), fn (EditorPaneWidget $shown): bool => $this->hit->contains($this->hit->rect($shown), $mouse));
         $paneRect = null === $pane ? null : $this->hit->rect($pane);
-        if (null === $pane || null === $paneRect || !$paneRect->contains($mouse->row, $mouse->col)) {
+        if (null === $pane || null === $paneRect) {
             return false;
         }
         $navigable = $pane instanceof NavigablePaneWidget ? $pane : null;

@@ -59,14 +59,22 @@ final class LayoutController
     private int $panelResizeChrome = 0;
     private ?int $bottomPanelHeightPercent = null;
 
-    /** True while a drag on the preview split's divider is armed. */
-    private bool $previewResizing = false;
+    /**
+     * The armed preview divider: which of {@see PreviewSplit::splits()} it
+     * is, and its share at the press, so a press that never moved persists
+     * nothing. Null when no drag is armed.
+     *
+     * @var null|array{PreviewSplit::PLAIN|PreviewSplit::FLANKED|PreviewSplit::FLANK, int}
+     */
+    private ?array $previewDrag = null;
 
-    /** The split's share when the drag was armed, so a press that never moved persists nothing. */
-    private int $previewResizeStart = 0;
-
-    /** The editor's persisted share of a preview split, in percent (null = never dragged). */
-    private ?int $previewSplitPercent = null;
+    /**
+     * Each preview split's persisted share, in percent, by its
+     * {@see PreviewSplit::splits()} key — absent until it is dragged.
+     *
+     * @var array<PreviewSplit::PLAIN|PreviewSplit::FLANKED|PreviewSplit::FLANK, int>
+     */
+    private array $previewSplitPercent = [];
 
     /**
      * Each view split's persisted share, keyed `{view}:{split}` — kept for a
@@ -140,15 +148,22 @@ final class LayoutController
             }
         }
         $this->bottomPanelHeightPercent = $layout->bottomPanelHeightPercent;
-        $this->previewSplitPercent = $layout->previewSplitPercent;
+        $this->previewSplitPercent = \array_filter(
+            [
+                PreviewSplit::PLAIN => $layout->previewSplitPercent,
+                PreviewSplit::FLANKED => $layout->flankedSplitPercent,
+                PreviewSplit::FLANK => $layout->flankSplitPercent,
+            ],
+            static fn (?int $percent): bool => null !== $percent,
+        );
         $this->viewSplitPercent = $layout->viewSplitPercent;
         foreach ($this->regions->all() as $region) {
             $this->restoreSplits($region);
         }
-        if (null !== $this->previewSplitPercent) {
-            // A share, not a width: it holds across a terminal resize by
-            // itself, so there is nothing to recompute here.
-            $this->previewSplit->setPercent($this->previewSplitPercent);
+        // A share, not a width: it holds across a terminal resize by itself,
+        // so there is nothing to recompute here.
+        foreach ($this->previewSplitPercent as $key => $percent) {
+            $this->previewSplit->splits()[$key]->setPercent($percent);
         }
 
         // Plain width fields: safe to set even while a view's widgets are detached.
@@ -319,18 +334,20 @@ final class LayoutController
      */
     private function continuePreviewResize(MouseEvent $mouse): bool
     {
-        if (!$this->previewResizing || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+        if (null === $this->previewDrag || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
             return false;
         }
-        $rect = $this->previewSplit->rect();
+        [$key, $start] = $this->previewDrag;
+        $split = $this->previewSplit->splits()[$key];
+        $rect = $split->rect();
         if (null !== $rect) {
-            $this->previewSplit->dragTo($mouse->col, $rect);
+            $split->dragTo($mouse->col, $rect);
             $this->tui->requestRender();
         }
         if ($mouse->isLeftRelease()) {
-            $this->previewResizing = false;
-            if ($this->previewSplit->percent() !== $this->previewResizeStart) {
-                $this->commitPreviewSplit();
+            $this->previewDrag = null;
+            if ($split->percent() !== $start) {
+                $this->commitPreviewSplit($key, $split);
             }
         }
 
@@ -368,18 +385,20 @@ final class LayoutController
         return null !== $state && $this->arm($state, $separatorRect, $mouse);
     }
 
-    /** Arm a drag when a left-press lands on the preview split's divider, while it is on screen. */
+    /** Arm a drag when a left-press lands on one of the preview's dividers, while it is on screen. */
     public function armPreviewResize(MouseEvent $mouse): bool
     {
-        $separator = $this->previewSplit->separator;
-        $rect = null === $separator->getContext() ? null : $this->renderer->getWidgetRect($separator);
-        if (null === $rect || !$rect->contains($mouse->row, $mouse->col)) {
-            return false;
-        }
-        $this->previewResizeStart = $this->previewSplit->percent();
-        $this->previewResizing = true;
+        foreach ($this->previewSplit->splits() as $key => $split) {
+            $separator = $split->separator;
+            $rect = null === $separator->getContext() ? null : $this->renderer->getWidgetRect($separator);
+            if (null !== $rect && $rect->contains($mouse->row, $mouse->col)) {
+                $this->previewDrag = [$key, $split->percent()];
 
-        return true;
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -454,21 +473,28 @@ final class LayoutController
     /** Keyboard resize of the preview split (Shift+F11/F12 from either half): the editor side by $delta columns. */
     public function nudgePreviewSplit(int $delta): void
     {
-        $rect = $this->previewSplit->rect();
+        // The divider beside what has the keys; the plain one when that is neither half.
+        $key = $this->previewSplit->splitFor($this->tui->getFocus()) ?? PreviewSplit::PLAIN;
+        $split = $this->previewSplit->splits()[$key];
+        $rect = $split->rect();
         if (null === $rect) {
             return;
         }
-        $this->previewSplit->nudge($delta, $rect);
-        $this->commitPreviewSplit();
+        $split->nudge($delta, $rect);
+        $this->commitPreviewSplit($key, $split);
         $this->tui->requestRender();
     }
 
-    /** Persist the split's share when it moved — one global proportion, for every previewed file. */
-    private function commitPreviewSplit(): void
+    /**
+     * Persist $split's share when it moved — one proportion per split, for every previewed file.
+     *
+     * @param PreviewSplit::PLAIN|PreviewSplit::FLANKED|PreviewSplit::FLANK $key
+     */
+    private function commitPreviewSplit(string $key, PaneSplit $split): void
     {
-        $percent = $this->previewSplit->percent();
-        if ($percent !== $this->previewSplitPercent) {
-            $this->previewSplitPercent = $percent;
+        $percent = $split->percent();
+        if ($percent !== ($this->previewSplitPercent[$key] ?? null)) {
+            $this->previewSplitPercent[$key] = $percent;
             $this->persistLayout();
         }
     }
@@ -626,7 +652,7 @@ final class LayoutController
             $state->resizing = ResizeState::Idle;
         }
         $this->panelResizing = false;
-        $this->previewResizing = false;
+        $this->previewDrag = null;
         $this->splitDrag = null;
     }
 
@@ -709,8 +735,10 @@ final class LayoutController
             sidebarWidthPercent: $this->treeResize->widthPercent,
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
             viewSidebarWidthPercent: $this->viewWidths(),
-            previewSplitPercent: $this->previewSplitPercent,
+            previewSplitPercent: $this->previewSplitPercent[PreviewSplit::PLAIN] ?? null,
             viewSplitPercent: $this->viewSplitPercent,
+            flankedSplitPercent: $this->previewSplitPercent[PreviewSplit::FLANKED] ?? null,
+            flankSplitPercent: $this->previewSplitPercent[PreviewSplit::FLANK] ?? null,
         ));
     }
 }

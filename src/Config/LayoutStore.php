@@ -42,6 +42,12 @@ final readonly class LayoutStore
         if ([] !== $prefs->viewSplitPercent) {
             $data['viewSplitPercent'] = $prefs->viewSplitPercent;
         }
+        if (null !== $prefs->flankedSplitPercent) {
+            $data['flankedSplitPercent'] = $prefs->flankedSplitPercent;
+        }
+        if (null !== $prefs->flankSplitPercent) {
+            $data['flankSplitPercent'] = $prefs->flankSplitPercent;
+        }
 
         return JsonFile::write($this->fs, $this->file, $data);
     }
@@ -60,6 +66,8 @@ final readonly class LayoutStore
             viewSidebarWidthPercent: $this->viewWidths($data),
             previewSplitPercent: $this->percent($data['previewSplitPercent'] ?? null),
             viewSplitPercent: $this->percents($data['viewSplitPercent'] ?? null),
+            flankedSplitPercent: $this->percent($data['flankedSplitPercent'] ?? null),
+            flankSplitPercent: $this->percent($data['flankSplitPercent'] ?? null),
         );
     }
 

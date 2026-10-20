@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Editor\EditorPanes;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\Render\MenuOverlayHost;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 
@@ -37,6 +38,10 @@ final readonly class MenuOverlayPanes
      */
     public function current(): array
     {
-        return [...$this->editor, ...($this->panes?->all() ?? []), ...$this->chrome];
+        $panes = $this->panes?->all() ?? [];
+        // A pane's flank is seated beside the editor without being registered.
+        $flanks = \array_filter(\array_map(static fn (EditorPaneWidget $pane): ?EditorPaneWidget => $pane->flank(), $panes));
+
+        return [...$this->editor, ...$panes, ...\array_values($flanks), ...$this->chrome];
     }
 }
