@@ -69,6 +69,17 @@ final class LayoutController
     private ?int $previewSplitPercent = null;
 
     /**
+     * Each view split's persisted share, keyed `{view}:{split}` — kept for a
+     * split not minted yet too, which takes it on its window's next fit.
+     *
+     * @var array<string, int>
+     */
+    private array $viewSplitPercent = [];
+
+    /** @var null|array{string, string, int} the armed view split's region id, split key and share at the press */
+    private ?array $splitDrag = null;
+
+    /**
      * The height to give the bottom panel back when maximise is toggled off —
      * and, being non-null, the fact that it IS maximised. Not persisted: a
      * maximised panel is a thing you are doing right now, like a full-screen
@@ -130,6 +141,10 @@ final class LayoutController
         }
         $this->bottomPanelHeightPercent = $layout->bottomPanelHeightPercent;
         $this->previewSplitPercent = $layout->previewSplitPercent;
+        $this->viewSplitPercent = $layout->viewSplitPercent;
+        foreach ($this->regions->all() as $region) {
+            $this->restoreSplits($region);
+        }
         if (null !== $this->previewSplitPercent) {
             // A share, not a width: it holds across a terminal resize by
             // itself, so there is nothing to recompute here.
@@ -167,9 +182,24 @@ final class LayoutController
     public function fitViewSidebar(string $id, int $innerWidth): void
     {
         $this->viewBasis[$id] = $innerWidth;
+        $region = $this->regions->find($id);
+        if (null !== $region) {
+            $this->restoreSplits($region);
+        }
         $state = $this->viewResize($id);
         if (null !== $state && null !== $state->widthPercent) {
             $this->applyPercent($state->sidebar, $state->widthPercent, $innerWidth);
+        }
+    }
+
+    /** Give each of $region's splits its persisted share, if it has one. */
+    private function restoreSplits(ViewRegion $region): void
+    {
+        foreach ($region->splits() as $key => $split) {
+            $percent = $this->viewSplitPercent[$region->id.':'.$key] ?? null;
+            if (null !== $percent) {
+                $split->setPercent($percent);
+            }
         }
     }
 
@@ -193,7 +223,42 @@ final class LayoutController
             $viewLeftRect,
             $state,
             $this->viewBasis[$id] ?? null,
-        )) || $this->continuePreviewResize($mouse) || $this->continuePanelResize($mouse);
+        )) || $this->continuePreviewResize($mouse) || $this->continueSplitResize($mouse) || $this->continuePanelResize($mouse);
+    }
+
+    /**
+     * Apply an armed drag on a view split's divider, and persist the share on
+     * release — measured against the split's own area, like the preview's.
+     */
+    private function continueSplitResize(MouseEvent $mouse): bool
+    {
+        if (null === $this->splitDrag || !($mouse->isLeftDrag() || $mouse->isLeftRelease())) {
+            return false;
+        }
+        [$id, $key, $start] = $this->splitDrag;
+        $split = $this->regions->find($id)?->splits()[$key] ?? null;
+        $rect = $split?->rect();
+        if (null !== $split && null !== $rect) {
+            $split->dragTo($mouse->col, $rect);
+            $this->tui->requestRender();
+        }
+        if ($mouse->isLeftRelease()) {
+            $this->splitDrag = null;
+            if (null !== $split && $split->percent() !== $start) {
+                $this->commitSplit($id, $key, $split);
+            }
+        }
+
+        return true;
+    }
+
+    /** Persist a view split's share when it moved. */
+    private function commitSplit(string $id, string $key, PaneSplit $split): void
+    {
+        if ($split->percent() !== ($this->viewSplitPercent[$id.':'.$key] ?? null)) {
+            $this->viewSplitPercent[$id.':'.$key] = $split->percent();
+            $this->persistLayout();
+        }
     }
 
     /**
@@ -317,6 +382,22 @@ final class LayoutController
         return true;
     }
 
+    /** Arm a drag when a left-press lands on the divider of one of view $id's splits, while it is on screen. */
+    public function armViewSplitResize(string $id, MouseEvent $mouse): bool
+    {
+        foreach ($this->regions->find($id)?->splits() ?? [] as $key => $split) {
+            $separator = $split->separator;
+            $rect = null === $separator->getContext() ? null : $this->renderer->getWidgetRect($separator);
+            if (null !== $rect && $rect->contains($mouse->row, $mouse->col)) {
+                $this->splitDrag = [$id, $key, $split->percent()];
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     /** The shared arm path: capture the start width, mark the drag active. */
     private function arm(SidebarResizeState $state, ?WidgetRect $separatorRect, MouseEvent $mouse): bool
     {
@@ -377,6 +458,19 @@ final class LayoutController
             $this->previewSplitPercent = $percent;
             $this->persistLayout();
         }
+    }
+
+    /** Keyboard resize of view $id's split $key: its lead column by $delta columns. */
+    public function nudgeViewSplit(string $id, string $key, int $delta): void
+    {
+        $split = $this->regions->find($id)?->splits()[$key] ?? null;
+        $rect = $split?->rect();
+        if (null === $split || null === $rect) {
+            return;
+        }
+        $split->nudge($delta, $rect);
+        $this->commitSplit($id, $key, $split);
+        $this->tui->requestRender();
     }
 
     /** Keyboard resize of a view's sidebar. */
@@ -520,6 +614,7 @@ final class LayoutController
         }
         $this->panelResizing = false;
         $this->previewResizing = false;
+        $this->splitDrag = null;
     }
 
     /** @return list<SidebarResizeState> */
@@ -602,6 +697,7 @@ final class LayoutController
             bottomPanelHeightPercent: $this->bottomPanelHeightPercent,
             viewSidebarWidthPercent: $this->viewWidths(),
             previewSplitPercent: $this->previewSplitPercent,
+            viewSplitPercent: $this->viewSplitPercent,
         ));
     }
 }

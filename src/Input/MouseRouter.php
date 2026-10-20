@@ -226,6 +226,7 @@ final class MouseRouter
             // The editor↔preview divider, while a previewed file shows in Split.
             || $this->layout->armPreviewResize($mouse)
             || (null !== $activeView && $this->layout->armViewSidebarResize($activeView, $viewSepRect, $mouse))
+            || (null !== $activeView && $this->layout->armViewSplitResize($activeView, $mouse))
             // The dock strip is both the tool tabs and the resize grab: a click
             // on a tab wins, a click on its empty tail falls through to resize
             // (which sits on the strip's top row — the dock's top edge).

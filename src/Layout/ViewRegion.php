@@ -39,14 +39,56 @@ final class ViewRegion
 
     private bool $flushTop = false;
 
+    /** @var array<string, PaneSplit> the splits minted in this region, by key */
+    private array $splits = [];
+
+    /**
+     * @param \Closure(string, NarrowSplit, int, int): PaneSplit $mintSplit builds a split that fits itself before each frame
+     */
     public function __construct(
         public readonly string $id,
         private readonly ContainerWidget $area,
         private readonly ContainerWidget $sidebar,
         private readonly SeparatorWidget $separator,
         private readonly ContainerWidget $content,
+        private readonly \Closure $mintSplit,
         private readonly ContainerWidget $header = new ContainerWidget(),
     ) {}
+
+    /**
+     * A draggable split for the view to seat in its content: two columns with
+     * a divider between them, resized and persisted by core like the
+     * sidebar's ({@see \Porta\Layout\LayoutController}), under the key
+     * `{region}:{key}`. Idempotent by key.
+     *
+     * @param int $share   the lead column's share before anything was dragged, in thousandths
+     * @param int $minSide the narrowest either column may be dragged to; narrower, the split goes {@see NarrowSplit}
+     */
+    public function split(string $key, NarrowSplit $whenNarrow = NarrowSplit::Stacked, int $share = 500, int $minSide = PaneSplit::MIN_SIDE): PaneSplit
+    {
+        return $this->splits[$key] ??= ($this->mintSplit)($this->id.'-'.$key, $whenNarrow, $share, $minSide);
+    }
+
+    /**
+     * The region's dividers: the sidebar's, then each split's — what a pass
+     * joining rules to dividers ({@see \Porta\Overlay\Presenter\FrameJoins}) walks.
+     *
+     * @return list<SeparatorWidget>
+     */
+    public function separators(): array
+    {
+        return [$this->separator, ...\array_values(\array_map(static fn (PaneSplit $split): SeparatorWidget => $split->separator, $this->splits))];
+    }
+
+    /**
+     * Every split minted in this region, by key.
+     *
+     * @return array<string, PaneSplit>
+     */
+    public function splits(): array
+    {
+        return $this->splits;
+    }
 
     /** The view declares how its sidebar resizes; without this the column is fixed. */
     public function setSidebarPanes(ResizableSidebar $panes): void

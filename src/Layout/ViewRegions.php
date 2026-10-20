@@ -5,9 +5,12 @@ declare(strict_types=1);
 namespace Porta\Layout;
 
 use Porta\Container\AsIdeService;
+use Porta\Ui\FrameHooks;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Style\Direction;
 use Symfony\Component\Tui\Style\Style;
+use Symfony\Component\Tui\Tui;
 use Symfony\Component\Tui\Widget\ContainerWidget;
 
 /**
@@ -32,6 +35,9 @@ final class ViewRegions
 
     public function __construct(
         private readonly Styles $styles,
+        private readonly ?Renderer $renderer = null,
+        private readonly ?Tui $tui = null,
+        private readonly ?FrameHooks $frames = null,
     ) {}
 
     /** The region for $id, created on first ask. */
@@ -43,8 +49,18 @@ final class ViewRegions
             LayoutWidgets::container($id.'-left', new Style(flex: 0)),
             LayoutWidgets::separator($this->styles, $id.'-separator'),
             LayoutWidgets::container($id.'-content', new Style(flex: 1)),
+            $this->split(...),
             self::header($id),
         );
+    }
+
+    /** A region's split, fitted to its area before each frame like the preview's. */
+    private function split(string $id, NarrowSplit $whenNarrow, int $share, int $minSide): PaneSplit
+    {
+        $split = new PaneSplit($id, $this->styles, $whenNarrow, $this->renderer, $this->tui, $share, $minSide);
+        $this->frames?->onBeforeFrame($split->fit(...));
+
+        return $split;
     }
 
     /** The region's header row: as tall as what it holds, never stretched to the window. */

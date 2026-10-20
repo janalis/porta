@@ -16,7 +16,6 @@ use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\Render\MenuOverlay;
-use Porta\Widget\SeparatorWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
 
@@ -59,7 +58,7 @@ final readonly class FrameJoins
     public function join(array $lines): array
     {
         $dividers = [];
-        foreach ([$this->layout->separator, ...\array_map(static fn (ViewRegion $region): SeparatorWidget => $region->separator(), $this->regions->all())] as $separator) {
+        foreach ([$this->layout->separator, ...\array_merge(...\array_map(static fn (ViewRegion $region): array => $region->separators(), $this->regions->all()))] as $separator) {
             $rect = $this->renderer->getWidgetRect($separator);
             if (null !== $rect && $rect->rows > 0) {
                 $dividers[] = [$rect->row, $rect->col, $rect->rows];

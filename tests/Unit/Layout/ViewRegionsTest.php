@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Layout;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Layout\NarrowSplit;
 use Porta\Layout\ViewRegions;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Style\Direction;
@@ -39,6 +40,21 @@ final class ViewRegionsTest extends TestCase
         $this->assertSame($first, $second);
         $this->assertSame($first->sidebar(), $second->sidebar(), 'and the same containers, not just the same wrapper');
         $this->assertCount(1, $regions->all());
+    }
+
+    public function testASplitIsMintedOncePerKeyAndItsDividerJoinsTheRegions(): void
+    {
+        $regions = $this->regions();
+        $region = $regions->mint('git');
+
+        $split = $region->split('history', NarrowSplit::Stacked, share: 400, minSide: 28);
+
+        $this->assertSame($split, $region->split('history'), 'idempotent by key');
+        $this->assertNotSame($split, $region->split('other'));
+        $this->assertSame(['history' => $split, 'other' => $region->split('other')], $region->splits());
+        $this->assertSame(40, $split->percent());
+        $this->assertSame('git-history', $split->area->getId());
+        $this->assertSame([$region->separator(), $split->separator, $region->split('other')->separator], $region->separators());
     }
 
     public function testAForgottenIdMintsAFreshRegion(): void

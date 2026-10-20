@@ -21,6 +21,7 @@ final class LayoutStoreTest extends TestCase
             bottomPanelHeightPercent: 35,
             viewSidebarWidthPercent: ['git' => 28, 'settings' => 19],
             previewSplitPercent: 62,
+            viewSplitPercent: ['git:history' => 35],
         )));
 
         $loaded = $store->load();
@@ -29,6 +30,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertSame(35, $loaded->bottomPanelHeightPercent);
         $this->assertSame(['git' => 28, 'settings' => 19], $loaded->viewSidebarWidthPercent);
         $this->assertSame(62, $loaded->previewSplitPercent);
+        $this->assertSame(['git:history' => 35], $loaded->viewSplitPercent);
     }
 
     public function testLoadWhenNoFileReturnsNull(): void
@@ -74,6 +76,7 @@ final class LayoutStoreTest extends TestCase
         $this->assertStringContainsString('sidebarWidthPercent', $raw);
         $this->assertStringNotContainsString('bottomPanelHeightPercent', $raw);
         $this->assertStringNotContainsString('viewSidebarWidthPercent', $raw, 'no view resized, no key');
+        $this->assertStringNotContainsString('viewSplitPercent', $raw, 'no split dragged, no key');
         $this->assertSame(20, $store->load()?->sidebarWidthPercent);
         $this->assertNull($store->load()?->bottomPanelHeightPercent);
     }
@@ -150,10 +153,11 @@ final class LayoutStoreTest extends TestCase
         }
         \file_put_contents(
             $project->path('.porta/layout.json'),
-            \json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number']], \JSON_THROW_ON_ERROR),
+            \json_encode(['viewSidebarWidthPercent' => ['5' => 50, 'git' => 'not-a-number'], 'viewSplitPercent' => ['7' => 50, 'git:history' => 'x', 'git:other' => '41']], \JSON_THROW_ON_ERROR),
         );
 
         $this->assertSame([], new LayoutStore($project->dir)->load()?->viewSidebarWidthPercent);
+        $this->assertSame(['git:other' => 41], new LayoutStore($project->dir)->load()?->viewSplitPercent, 'the split map is read the same way');
     }
 
     public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void

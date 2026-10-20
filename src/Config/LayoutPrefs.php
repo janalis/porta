@@ -21,11 +21,13 @@ final readonly class LayoutPrefs
     /**
      * @param array<string, int> $viewSidebarWidthPercent view id => width, for whichever views have been resized
      * @param int|null           $previewSplitPercent     the editor's share of a preview split — one for every previewed file
+     * @param array<string, int> $viewSplitPercent        `{view}:{split}` => the lead column's share, for whichever view splits have been dragged
      */
     public function __construct(
         public ?int $sidebarWidthPercent = null,
         public ?int $bottomPanelHeightPercent = null,
         public array $viewSidebarWidthPercent = [],
         public ?int $previewSplitPercent = null,
+        public array $viewSplitPercent = [],
     ) {}
 }
