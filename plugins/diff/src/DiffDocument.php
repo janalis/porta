@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Diff;
+namespace Porta\DiffPlugin;
 
 /**
  * A single file's unified diff, parsed into hunks with per-line old/new line

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Diff;
+namespace Porta\DiffPlugin;
 
 /**
  * One body line of a unified-diff hunk: its origin marker, the text without

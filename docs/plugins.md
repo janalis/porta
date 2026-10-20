@@ -24,7 +24,8 @@ Others worth reading for a pattern: `image-viewer` and `graph-viewer` each own
 their whole implementation and PROVIDE their pane (`graph-viewer` requires
 `image-viewer`, because a graph is painted with the same rasterizer); `review`
 is the reference use of `setCommentMarks` and `setLineBlocks` (and requires
-`git` for its classes); `chroma` is an external-highlighter example;
+`git` for its classes); `diff` ships only classes — the diff model and pane git
+and review both require; `chroma` is an external-highlighter example;
 `symfony-lsp` downloads and updates its own server binary; `custos` runs a
 supplementary language server beside the primary PHP one; `todo`,
 `local-history` and `git` are core features that moved out, keeping their ids

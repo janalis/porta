@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Tests\Parse;
+namespace Porta\DiffPlugin\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\GitPlugin\Parse\HunkParser;
+use Porta\DiffPlugin\HunkParser;
 
 final class HunkParserTest extends TestCase
 {

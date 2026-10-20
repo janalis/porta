@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Tests\Widget;
+namespace Porta\DiffPlugin\Tests\Widget;
 
 use PHPUnit\Framework\TestCase;
-use Porta\GitPlugin\Widget\DiffColumn;
-use Porta\GitPlugin\Widget\DiffGeometry;
+use Porta\DiffPlugin\Widget\DiffColumn;
+use Porta\DiffPlugin\Widget\DiffGeometry;
 
 final class DiffGeometryTest extends TestCase
 {

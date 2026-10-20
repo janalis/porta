@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Widget;
+namespace Porta\DiffPlugin\Widget;
 
 /**
  * The diff pane's column arithmetic, spelled ONCE: where the split boundary
  * sits and where a row's text begins per column. The mouse path
  * ({@see DiffViewWidget}) and the render path
- * ({@see \Porta\GitPlugin\Widget\DiffViewRenderer}) both read these — they used
+ * ({@see \Porta\DiffPlugin\Widget\DiffViewRenderer}) both read these — they used
  * to carry private copies, and a drift between them would make a drag
  * selection highlight different columns than it selected.
  */

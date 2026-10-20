@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Tests\Diff;
+namespace Porta\DiffPlugin\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Porta\GitPlugin\Diff\DiffDocument;
-use Porta\GitPlugin\Diff\IntralineDiff;
+use Porta\DiffPlugin\DiffDocument;
+use Porta\DiffPlugin\IntralineDiff;
 
 final class IntralineDiffTest extends TestCase
 {

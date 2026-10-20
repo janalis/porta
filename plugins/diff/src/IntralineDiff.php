@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Diff;
+namespace Porta\DiffPlugin;
 
 /**
  * Word-level highlighting for paired diff lines: the i-th deletion of a ±

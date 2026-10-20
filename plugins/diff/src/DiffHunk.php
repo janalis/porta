@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Diff;
+namespace Porta\DiffPlugin;
 
 /**
  * One `@@ -oldStart,oldCount +newStart,newCount @@ heading` hunk with its

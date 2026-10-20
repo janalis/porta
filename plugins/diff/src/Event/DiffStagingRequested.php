@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Event;
+namespace Porta\DiffPlugin\Event;
 
 /**
  * Stage or unstage the selected diff lines.
@@ -13,7 +13,7 @@ namespace Porta\GitPlugin\Event;
  *
  * @phpstan-type Selection array<int, array<int, true>>
  */
-final readonly class GitDiffStagingRequested
+final readonly class DiffStagingRequested
 {
     /** @param array<int, array<int, true>> $selection */
     public function __construct(

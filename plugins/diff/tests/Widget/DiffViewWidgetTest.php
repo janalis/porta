@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Tests\Widget;
+namespace Porta\DiffPlugin\Tests\Widget;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\GitPlugin\Diff\DiffDocument;
-use Porta\GitPlugin\Event\GitDiffSettingsRequested;
-use Porta\GitPlugin\Tests\Support\GitWidgetEvents;
-use Porta\GitPlugin\Widget\DiffViewWidget;
+use Porta\DiffPlugin\DiffDocument;
+use Porta\DiffPlugin\Event\DiffSettingsRequested;
+use Porta\DiffPlugin\Tests\Support\DiffWidgetEvents;
+use Porta\DiffPlugin\Widget\DiffViewWidget;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Tests\Support\Probe;
@@ -163,7 +163,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget($events);
         $widget->setFocused(true);
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput(' '); // cursor starts on hunk 0's header
@@ -177,7 +177,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget($events);
         $widget->setFocused(true);
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput("\x1b[B"); // rows: header, ctx, -old, +new...
@@ -193,7 +193,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget($events);
         $widget->setFocused(true);
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput("\x1b[B");
@@ -218,7 +218,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[A"); // back to the top
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput(' ');
@@ -251,7 +251,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget($events);
         $widget->setFocused(true);
         $fired = 0;
-        GitWidgetEvents::wire($events, onCycleContext: static function () use (&$fired): void {
+        DiffWidgetEvents::wire($events, onCycleContext: static function () use (&$fired): void {
             ++$fired;
         });
 
@@ -300,7 +300,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->makeReadOnly();
         $fired = false;
-        GitWidgetEvents::wire($events, onStageSelection: static function () use (&$fired): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function () use (&$fired): void {
             $fired = true;
         });
         $widget->handleInput('v');
@@ -321,7 +321,7 @@ final class DiffViewWidgetTest extends TestCase
         // Reload the SAME path with a shorter diff: cursor clamps, not resets.
         $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'src/demo.php');
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleInput(' ');
@@ -412,7 +412,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->handleInput('s');
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         // Split rows: header, ctx pair, (-old|+new), (blank|+extra), header, pair.
@@ -433,11 +433,11 @@ final class DiffViewWidgetTest extends TestCase
         $events = new EventDispatcher();
         $widget = $this->widget($events);
         $asked = 0;
-        $events->addListener(GitDiffSettingsRequested::class, static function () use (&$asked): void {
+        $events->addListener(DiffSettingsRequested::class, static function () use (&$asked): void {
             ++$asked;
         });
         $toggles = [];
-        GitWidgetEvents::wire($events, onLayoutToggle: static function () use (&$toggles, $widget): void {
+        DiffWidgetEvents::wire($events, onLayoutToggle: static function () use (&$toggles, $widget): void {
             $toggles[] = $widget->isSplit();
         });
         $plain = AnsiUtils::stripAnsiCodes(self::body($widget->render(new RenderContext(80, 12)))[0]);
@@ -470,7 +470,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
         $widget->setFocused(true);
         $asked = 0;
-        $events->addListener(GitDiffSettingsRequested::class, static function () use (&$asked): void {
+        $events->addListener(DiffSettingsRequested::class, static function () use (&$asked): void {
             ++$asked;
         });
         $raw = $widget->render(new RenderContext(80, 12));
@@ -491,7 +491,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertSame(1, $asked);
 
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleClick(4, 10); // the deletion (hunk 0 line 1), two header rows down
@@ -529,7 +529,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $this->plainLines($widget); // teach the viewport
         $captured = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
         $widget->handleClick(4, 10); // row 3 = the deletion (hunk 0 line 1)
@@ -557,7 +557,7 @@ final class DiffViewWidgetTest extends TestCase
 
         // setSplit applies a preference silently (no hook fire).
         $fired = false;
-        GitWidgetEvents::wire($events, onLayoutToggle: static function () use (&$fired): void {
+        DiffWidgetEvents::wire($events, onLayoutToggle: static function () use (&$fired): void {
             $fired = true;
         });
         $widget->useUnifiedView();
@@ -571,7 +571,7 @@ final class DiffViewWidgetTest extends TestCase
         $events = new EventDispatcher();
         $widget = $this->widget($events);
         $fired = 0;
-        GitWidgetEvents::wire($events, onToggleWhitespace: static function () use (&$fired): void {
+        DiffWidgetEvents::wire($events, onToggleWhitespace: static function () use (&$fired): void {
             ++$fired;
         });
 
@@ -682,7 +682,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget($events);
         $widget->setFocused(true);
         $copies = [];
-        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+        DiffWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
         // Cursor on the hunk header: the whole hunk's plain text.
@@ -712,11 +712,11 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $widget->makeReadOnly(); // history diffs can select + copy...
         $staged = false;
-        GitWidgetEvents::wire($events, onStageSelection: static function () use (&$staged): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function () use (&$staged): void {
             $staged = true;
         });
         $copies = [];
-        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+        DiffWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
         $widget->useSplitView(); // the -old/\-marker rows precede the +new pair
@@ -731,7 +731,7 @@ final class DiffViewWidgetTest extends TestCase
 
         $empty = new DiffViewWidget(new Translator('en'), events: $events);
         $empty->setDocument(null, null);
-        GitWidgetEvents::wire($events, onCopy: static function () use (&$copies): void {
+        DiffWidgetEvents::wire($events, onCopy: static function () use (&$copies): void {
             $copies[] = 'never';
         });
         $empty->handleInput("\x03");
@@ -747,7 +747,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $this->plainLines($widget); // teach the viewport geometry
         $copies = [];
-        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+        DiffWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
         // Press mid '-$old = 2;' (text col 1 = 'old = 2;') and drag to the
@@ -821,7 +821,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         $this->plainLines($widget);
         $copies = [];
-        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+        DiffWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
 
@@ -867,7 +867,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget->setFocused(true);
         self::body($widget->render(new RenderContext(80, 6))); // leftW = 39: right half text starts at col 46
         $copies = [];
-        GitWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
+        DiffWidgetEvents::wire($events, onCopy: static function (string $text) use (&$copies): void {
             $copies[] = $text;
         });
         // Press in the RIGHT half (col 46 = new-side text col 0) and drag down
@@ -890,7 +890,7 @@ final class DiffViewWidgetTest extends TestCase
 
         // Staging Space is unaffected by a char selection (no v anchor armed).
         $staged = null;
-        GitWidgetEvents::wire($events, onStageSelection: static function (array $sel) use (&$staged): void {
+        DiffWidgetEvents::wire($events, onStageSelection: static function (array $sel) use (&$staged): void {
             $staged = $sel;
         });
         $widget->handleClick(3, 6);
@@ -1022,7 +1022,7 @@ final class DiffViewWidgetTest extends TestCase
         $events = new EventDispatcher();
         $widget = $this->widget($events);
         $cycles = 0;
-        GitWidgetEvents::wire($events, onCycleContext: static function () use (&$cycles): void {
+        DiffWidgetEvents::wire($events, onCycleContext: static function () use (&$cycles): void {
             ++$cycles;
         });
         $rows = $this->plainLines($widget, 60, 8);
@@ -1047,7 +1047,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget($events);
         $widget->makeReadOnly();
         $cycles = 0;
-        GitWidgetEvents::wire($events, onCycleContext: static function () use (&$cycles): void {
+        DiffWidgetEvents::wire($events, onCycleContext: static function () use (&$cycles): void {
             ++$cycles;
         });
 

@@ -39,7 +39,7 @@ final class IdeSettingsViewTest extends TestCase
     private function boot(): void
     {
         $this->skipWithoutGit();
-        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => '{"enabledPlugins":["git"]}']);
+        $project = new TempProject(['a.php' => "<?php\n", '.porta.json' => '{"enabledPlugins":["diff","git"]}']);
         $project->initGit();
         $project->commitAll('init');
 

@@ -331,7 +331,7 @@ The IDE writes a `.porta/` directory into the project you open:
 | `.porta/history/` | Local-history snapshots (see below) |
 | `.porta/reviews/` | Local code reviews an agent writes and you answer — see [review.md](../plugins/review/docs/README.md#local-reviews-the-format-an-agent-writes) |
 | `.porta/plugins/` | Installed project-scope plugins |
-| `enabledPlugins` (in `.porta.json`) | Bundled plugins to load. When the key is ABSENT, `image-viewer`, `graph-viewer`, `todo` and `local-history` are on by default; an explicit list (even `[]`) replaces that default entirely, so a list written before one of them existed silently leaves it off — TODO scanning and local-history snapshots are the two that go quiet |
+| `enabledPlugins` (in `.porta.json`) | Bundled plugins to load. When the key is ABSENT, `image-viewer`, `graph-viewer`, `todo`, `local-history`, `diff`, `git`, `ssh` and `ftp` are on by default; an explicit list (even `[]`) replaces that default entirely, so a list written before one of them existed silently leaves it off — TODO scanning and local-history snapshots are the two that go quiet, and a list naming `git` but not `diff` (which git needs since diff moved out of it) skips git with a warning |
 
 Add it to your project's `.gitignore` (keep `plugins/` if you want to
 version your project plugins):

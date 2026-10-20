@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Widget;
+namespace Porta\DiffPlugin\Widget;
 
 /**
  * A character-level selection in the diff pane: the press point (from) and the

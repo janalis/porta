@@ -63,7 +63,7 @@ final class IdeUnimplementedVerbTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n// TODO: something\n",
-            '.porta.json' => \json_encode(['enabledPlugins' => ['git', 'image-viewer', 'graph-viewer', 'local-history']], \JSON_THROW_ON_ERROR),
+            '.porta.json' => \json_encode(['enabledPlugins' => ['diff', 'git', 'image-viewer', 'graph-viewer', 'local-history']], \JSON_THROW_ON_ERROR),
         ]);
 
         $this->pressAlt8($project, function (string $screen): void {

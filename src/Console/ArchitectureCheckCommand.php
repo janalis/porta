@@ -173,6 +173,15 @@ final class ArchitectureCheckCommand extends Command
         // paints with the image viewer's rasterizer, which is why its manifest
         // declares `requires: ["image-viewer"]` — the dependency mechanism's
         // first real use.
+        // The diff plugin (plugins/diff/src): the unified-diff model and the
+        // diff pane, moved out of git so review draws its diffs with the same
+        // pane. A pane reaching for core's toolkits, as the git view's did.
+        'DiffPlugin>Editor', // the diff pane paints and maps columns with the editor's tab stops
+        'DiffPlugin>Highlight',
+        'DiffPlugin>Layout',
+        'DiffPlugin>Support',
+        'DiffPlugin>Ui',
+        'DiffPlugin>Widget',
         // The git plugin owns the whole git feature now: the view and its five
         // widgets, the branch cell, the menu, the palette verbs, the settings.
         // `Porta\Git` no longer exists, and neither does any core edge INTO
@@ -180,9 +189,8 @@ final class ArchitectureCheckCommand extends Command
         // What is left is a plugin reaching for core's toolkits, the allowed
         // direction, and the same set `Help` and `GraphViewer` already reach for.
         'GitPlugin>Config', // an untrusted repository's own config may not name a program git runs (WorkspaceTrust)
-        'GitPlugin>Editor', // the diff view paints and maps columns with the editor's tab stops
+        'GitPlugin>DiffPlugin', // its diffs and the diff pane; the manifest declares `requires: ["diff"]`
         'GitPlugin>Event',
-        'GitPlugin>Highlight',
         'GitPlugin>Input',
         'GitPlugin>Layout',
         'GitPlugin>Overlay',
@@ -318,6 +326,7 @@ final class ArchitectureCheckCommand extends Command
         // is the second cross-plugin edge, declared by `requires: ["git"]`: it
         // borrows the git plugin's process runner and diff model, never its
         // live objects. The rest is a plugin reaching for core's toolkits.
+        'ReviewPlugin>DiffPlugin', // its diffs; the manifest declares `requires: ["diff", "git"]`
         'ReviewPlugin>GitPlugin',
         'ReviewPlugin>Input', // the view's pointer hit-tests its panes, as git's does
         'ReviewPlugin>Layout', // the view's column resizes through core's ResizableSidebar

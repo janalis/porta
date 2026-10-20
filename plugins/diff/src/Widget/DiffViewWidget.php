@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Widget;
+namespace Porta\DiffPlugin\Widget;
 
+use Porta\DiffPlugin\DiffDocument;
+use Porta\DiffPlugin\DiffRowKind;
+use Porta\DiffPlugin\Event\DiffContextCycleRequested;
+use Porta\DiffPlugin\Event\DiffCopyRequested;
+use Porta\DiffPlugin\Event\DiffLayoutToggled;
+use Porta\DiffPlugin\Event\DiffSettingsRequested;
+use Porta\DiffPlugin\Event\DiffStagingRequested;
+use Porta\DiffPlugin\Event\DiffWhitespaceToggleRequested;
 use Porta\Editor\Document;
 use Porta\Editor\TextMetrics;
-use Porta\GitPlugin\Diff\DiffDocument;
-use Porta\GitPlugin\Diff\DiffRowKind;
-use Porta\GitPlugin\Event\GitDiffContextCycleRequested;
-use Porta\GitPlugin\Event\GitDiffCopyRequested;
-use Porta\GitPlugin\Event\GitDiffLayoutToggled;
-use Porta\GitPlugin\Event\GitDiffSettingsRequested;
-use Porta\GitPlugin\Event\GitDiffStagingRequested;
-use Porta\GitPlugin\Event\GitDiffWhitespaceToggleRequested;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\TempestHighlightProvider;
@@ -48,11 +48,16 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 use Tempest\Highlight\TerminalTheme;
 
 /**
- * The git view's diff pane (GitHub Desktop's right column): unified (dual
+ * A diff pane (the git view's right column, GitHub Desktop's): unified (dual
  * old/new gutters) or side-by-side rendering, cyan hunk headers, ± rows
  * colored over syntax highlighting (deleted lines stay plain red — the
  * pre-image no longer matches the file's highlight state). The title row is
  * a toolbar with clickable display toggles. Scrollable; read-only for history.
+ *
+ * What it asks of its host travels as the `Diff*` events in
+ * {@see \Porta\DiffPlugin\Event} on the dispatcher it is handed: staging a
+ * selection, cycling the context, the layout and whitespace toggles, a copy.
+ * The host decides what each means — git stages, a read-only host ignores it.
  */
 final class DiffViewWidget extends AbstractWidget implements FocusableInterface, LtrPane, MenuOverlayHost, ThemeRefreshable, TooltipProvider, VerticallyExpandableInterface
 {
@@ -112,8 +117,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private readonly CodeHighlighter $highlighter;
     private int $highlightVersion = 0;
 
-    /** Outbound hooks into the git view; replaced wholesale by wiring/tests. */
-
     public function __construct(
         private readonly Translator $translator,
         ?Styles $styles = null,
@@ -128,7 +131,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->highlighter = new CodeHighlighter(new TempestHighlightProvider($theme), $theme);
     }
 
-    /** Install the git view's outbound hooks (see {@see DiffViewCallbacks}). */
     /** Reflect the controller's hide-whitespace state on the toolbar tag. */
     public function hideWhitespace(): void
     {
@@ -174,7 +176,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         $this->split = !$this->split;
         $this->rebuildRows();
-        $this->events?->dispatch(new GitDiffLayoutToggled());
+        $this->events?->dispatch(new DiffLayoutToggled());
     }
 
     /** Rebuild the render rows for the current mode, keeping cursor/scroll sane. */
@@ -316,7 +318,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $kb->matches($data, 'stage_selection') => $this->fireStageSelection(),
             $kb->matches($data, 'cycle_context') => $this->requestContextCycle(),
             $kb->matches($data, 'toggle_layout') => $this->toggleLayout(), // display-only: allowed in read-only mode too
-            $kb->matches($data, 'toggle_whitespace') => $this->events?->dispatch(new GitDiffWhitespaceToggleRequested()), // allowed in read-only mode too
+            $kb->matches($data, 'toggle_whitespace') => $this->events?->dispatch(new DiffWhitespaceToggleRequested()), // allowed in read-only mode too
             $kb->matches($data, 'scroll_left') => $this->scrollHBy(-8),
             $kb->matches($data, 'scroll_right') => $this->scrollHBy(8),
             default => null,
@@ -339,7 +341,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function requestContextCycle(): void
     {
         if (!$this->readOnly && [] !== $this->rows) {
-            $this->events?->dispatch(new GitDiffContextCycleRequested());
+            $this->events?->dispatch(new DiffContextCycleRequested());
         }
     }
 
@@ -417,7 +419,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private function fireButton(string $name): void
     {
         if ('settings' === $name) {
-            $this->events?->dispatch(new GitDiffSettingsRequested());
+            $this->events?->dispatch(new DiffSettingsRequested());
         }
     }
 
@@ -475,7 +477,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
 
-        $this->events?->dispatch(new GitDiffStagingRequested($this->collectSelection()));
+        $this->events?->dispatch(new DiffStagingRequested($this->collectSelection()));
     }
 
     /**
@@ -498,7 +500,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $this->charSel = null;
             $this->invalidate();
             if ('' !== $text) {
-                $this->events?->dispatch(new GitDiffCopyRequested($text));
+                $this->events?->dispatch(new DiffCopyRequested($text));
             }
 
             return;
@@ -516,7 +518,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             }
         }
         if ([] !== $texts) {
-            $this->events?->dispatch(new GitDiffCopyRequested(\implode("\n", $texts)."\n"));
+            $this->events?->dispatch(new DiffCopyRequested(\implode("\n", $texts)."\n"));
         }
     }
 
@@ -759,7 +761,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $index = $this->scroll + $row - $this->headerRows;
         $onMark = !$this->readOnly && $row >= $this->headerRows && $col <= self::EXPAND_COLUMNS && DiffRowKind::Hunk === ($this->rows[$index]['kind'] ?? null);
 
-        return $onMark ? new Tooltip('git:diff:expand', $this->translator->trans('Show more of the file around the changes (c)'), $row, 1, 2) : null;
+        return $onMark ? new Tooltip('diff:expand', $this->translator->trans('Show more of the file around the changes (c)'), $row, 1, 2) : null;
     }
 
     /** The gear says what the diff shows; it answers on every header row, as the hover does. */
@@ -774,7 +776,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $whitespace = $this->whitespaceHidden ? $this->translator->trans('whitespace changes hidden') : $this->translator->trans('whitespace changes shown');
 
         return new Tooltip(
-            'git:diff:'.$name,
+            'diff:'.$name,
             $this->translator->trans('Diff settings: %layout%, %whitespace%', ['%layout%' => $layout, '%whitespace%' => $whitespace]),
             0,
             $span[0],

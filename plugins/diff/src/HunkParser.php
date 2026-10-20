@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Parse;
+namespace Porta\DiffPlugin;
 
 /**
  * Parses `git diff --unified=0` hunk headers into the per-line change marks the

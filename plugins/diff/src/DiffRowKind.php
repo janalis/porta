@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Diff;
+namespace Porta\DiffPlugin;
 
 /**
  * The kind of a flat render row emitted by {@see DiffDocument}: a hunk header, a
  * unified body line, or a side-by-side old/new pair. Drives selection collection
- * and per-row rendering in {@see \Porta\GitPlugin\Widget\DiffViewWidget}.
+ * and per-row rendering in {@see \Porta\DiffPlugin\Widget\DiffViewWidget}.
  */
 enum DiffRowKind
 {

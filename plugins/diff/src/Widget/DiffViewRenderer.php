@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Widget;
+namespace Porta\DiffPlugin\Widget;
 
+use Porta\DiffPlugin\DiffDocument;
+use Porta\DiffPlugin\DiffLine;
+use Porta\DiffPlugin\DiffRowKind;
 use Porta\Editor\Document;
 use Porta\Editor\TextMetrics;
-use Porta\GitPlugin\Diff\DiffDocument;
-use Porta\GitPlugin\Diff\DiffLine;
-use Porta\GitPlugin\Diff\DiffRowKind;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -19,7 +19,7 @@ use Porta\Widget\Render\LineDecorator;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
- * Renders one diff body row for {@see \Porta\GitPlugin\Widget\DiffViewWidget}. Built
+ * Renders one diff body row for {@see \Porta\DiffPlugin\Widget\DiffViewWidget}. Built
  * per render() call from the widget's current view state (mirroring how the
  * editor builds {@see EditorRowAssembler}), so the widget keeps the diff model,
  * char-selection and input while the row assembly — gutter, ± marker,

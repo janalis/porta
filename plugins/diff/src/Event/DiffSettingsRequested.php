@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\GitPlugin\Event;
+namespace Porta\DiffPlugin\Event;
 
 /** The diff toolbar's ⚙ was pressed: drop its menu of display settings under it. */
-final readonly class GitDiffSettingsRequested {}
+final readonly class DiffSettingsRequested {}

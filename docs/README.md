@@ -27,6 +27,7 @@ plugin's guide also opens from its page under **Settings → Plugins**.
 | Plugin | Contents |
 | --- | --- |
 | [Git](../plugins/git/docs/README.md) | Gutter markers, palette operations, the Git view (staging, commits, history), difftool and mergetool |
+| [Diff](../plugins/diff/docs/README.md) | The diff pane git and review show changes in, and the model behind it |
 | [Code review](../plugins/review/docs/README.md) | Pull and merge request threads, and local reviews from an agent — in a view, in the diff and in the editor |
 | [Assist](../plugins/assist/docs/README.md) | Work on one project together, live: share it, let others in, edit the same files at once, follow each other |
 | [Agents (MCP)](../plugins/mcp/docs/README.md) | Let an agent such as Claude Code read your buffers and diagnostics, open files and make undoable edits in the running IDE |
