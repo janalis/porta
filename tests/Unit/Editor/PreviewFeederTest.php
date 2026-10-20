@@ -13,6 +13,8 @@ use Porta\Editor\PreviewMode;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\TestPane;
 use Porta\Tests\Support\TestTui;
+use Porta\Widget\CodeEditorWidget;
+use Symfony\Component\Tui\Render\RenderContext;
 
 final class PreviewFeederTest extends TestCase
 {
@@ -20,15 +22,19 @@ final class PreviewFeederTest extends TestCase
     private TestPane $pane;
     private FakeScheduler $scheduler;
     private PreviewFeeder $feeder;
+    private CodeEditorWidget $editor;
+    private TestPane $flank;
 
     protected function setUp(): void
     {
         $this->buffers = new BufferManager();
-        $this->pane = new TestPane('md');
+        $this->flank = new TestPane('ours');
+        $this->pane = new TestPane('md', $this->flank);
         $panes = new EditorPanes();
         $panes->register($this->pane, static fn (string $path): string => '');
         $this->scheduler = new FakeScheduler();
-        $this->feeder = new PreviewFeeder($this->buffers, $panes, $this->scheduler, TestTui::create(80, 24));
+        $this->editor = new CodeEditorWidget();
+        $this->feeder = new PreviewFeeder($this->buffers, $panes, $this->scheduler, TestTui::create(80, 24), $this->editor);
     }
 
     private function open(string $text, PreviewMode $mode = PreviewMode::Split): Buffer
@@ -135,5 +141,22 @@ final class PreviewFeederTest extends TestCase
         $this->feeder->watch();
 
         $this->assertSame([], $this->follows());
+    }
+
+    public function testAnEditorScrollRepaintsThePreviewAndItsFlankOnce(): void
+    {
+        $this->open("# one\n");
+        $this->editor->openFile('README.md', \implode("\n", \range(1, end: 60)));
+        $this->editor->render(new RenderContext(80, 10));
+        $this->feeder->watch();
+        $revisions = static fn (TestPane ...$panes): array => \array_map(static fn (TestPane $pane): int => $pane->getRenderRevision(), $panes);
+        $before = $revisions($this->pane, $this->flank);
+
+        $this->feeder->watch();
+        $this->assertSame($before, $revisions($this->pane, $this->flank), 'a frame with the view where it was repaints nothing');
+
+        $this->editor->scrollBy(5);
+        $this->feeder->watch();
+        $this->assertSame([$before[0] + 1, $before[1] + 1], $revisions($this->pane, $this->flank), 'a scroll repaints both');
     }
 }

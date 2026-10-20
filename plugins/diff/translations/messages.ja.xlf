@@ -34,6 +34,22 @@
         <source>No changes selected</source>
         <target>変更が選択されていません</target>
       </trans-unit>
+      <trans-unit id="9">
+        <source>ours</source>
+        <target>自分側</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>theirs</source>
+        <target>相手側</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>No conflicts left — save the result</source>
+        <target>競合はもうありません — 結果を保存してください</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</source>
+        <target>競合 %current% / %count%  a %side%を採用  b 両方  n/p 次/前</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

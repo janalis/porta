@@ -34,6 +34,22 @@
         <source>No changes selected</source>
         <target>Aucune modification sélectionnée</target>
       </trans-unit>
+      <trans-unit id="9">
+        <source>ours</source>
+        <target>la nôtre</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>theirs</source>
+        <target>la leur</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>No conflicts left — save the result</source>
+        <target>Plus aucun conflit — enregistrez le résultat</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</source>
+        <target>Conflit %current% sur %count%  a garder %side%  b les deux  n/p suivant/précédent</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -1,0 +1,261 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Porta\DiffPlugin\Merge;
+
+use Porta\DiffPlugin\Widget\DiffViewRenderer;
+use Porta\Editor\ConflictMarkers;
+use Porta\Editor\ConflictSide;
+use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
+use Porta\Ui\Role;
+use Porta\Ui\Theme\Styles;
+use Porta\Widget\EditorPaneWidget;
+use Symfony\Component\Tui\Input\Key;
+use Symfony\Component\Tui\Render\RenderContext;
+
+/**
+ * One side of the merge view — ours | result | theirs — beside the editor
+ * that holds the result.
+ *
+ * Built twice: theirs is the registered preview, and ours is its
+ * {@see flank()}, seated on the editor's other side. Both draw
+ * {@see MergeSides}' rows level with the editor's lines, from the editor's own
+ * top line, so the three columns scroll as one. A conflict's first row is its
+ * side's label behind an accept mark (⇥ from ours, ⇤ from theirs): a click on
+ * it, or `a` with the keys here, keeps this side's lines for that conflict;
+ * `b` keeps both. Every accept is one undo step in the editor.
+ *
+ * What the pane needs of the IDE arrives as closures, a plugin class being no
+ * service: the result's current text, the caret and the editor's top line, a
+ * replace of the whole text, a jump and a scroll.
+ */
+final class MergePaneWidget extends EditorPaneWidget
+{
+    /** The theirs pane's routing id; ours, a flank, is never routed to. */
+    public const string PANE_ID = 'merge';
+
+    /** @var list<string> the result as last fed, one entry per line */
+    private array $lines = [];
+
+    /** @var list<MergeRow> */
+    private array $rows = [];
+
+    /**
+     * @param \Closure(): ?string                                    $text    the result as the editor has it now
+     * @param \Closure(): (array{line: int, column: int, top: int}|null) $caret the caret, and the editor's top line
+     * @param \Closure(string): void                                 $replace the result's whole text, as one undo step
+     * @param \Closure(int): void                                    $jump    the caret to the start of a 0-based line
+     * @param \Closure(int): void                                    $scroll  the editor's view by a number of rows, the caret where it is
+     */
+    public function __construct(
+        private readonly ConflictSide $side,
+        private readonly Translator $translator,
+        private readonly \Closure $text,
+        private readonly \Closure $caret,
+        private readonly \Closure $replace,
+        private readonly \Closure $jump,
+        private readonly \Closure $scroll,
+        ?Styles $styles = null,
+        private readonly ?self $ours = null,
+    ) {
+        $this->initStyles($styles);
+    }
+
+    #[\Override]
+    public function paneId(): string
+    {
+        return ConflictSide::Theirs === $this->side ? self::PANE_ID : self::PANE_ID.'-ours';
+    }
+
+    #[\Override]
+    public function flank(): ?self
+    {
+        return $this->ours;
+    }
+
+    #[\Override]
+    public function show(string $path, mixed $payload): void
+    {
+        $this->lines = \explode("\n", \is_string($payload) ? $payload : '');
+        $this->rows = MergeSides::rows($this->lines, $this->side);
+        $this->invalidate();
+        $this->ours?->show($path, $payload);
+    }
+
+    #[\Override]
+    public function clear(): void
+    {
+        $this->lines = [];
+        $this->rows = [];
+        $this->ours?->clear();
+    }
+
+    /** The caret moved to another line: the conflict it is in may be another one. */
+    #[\Override]
+    public function followSource(int $line, int $byteCol): void
+    {
+        $this->invalidate();
+        $this->ours?->followSource($line, $byteCol);
+    }
+
+    /**
+     * Which conflict of how many, and the keys — or, with none left, that the
+     * result only needs saving.
+     */
+    #[\Override]
+    public function statusRight(): string
+    {
+        $count = \count(ConflictMarkers::find($this->lines));
+        if (0 === $count) {
+            return [] === $this->lines ? '' : $this->translator->trans('No conflicts left — save the result');
+        }
+
+        return $this->translator->trans('Conflict %current% of %count%  a keep %side%  b both  n/p next/prev', [
+            '%current%' => (string) ((MergeSides::current($this->lines, $this->caretLine()) ?? 0) + 1),
+            '%count%' => (string) $count,
+            '%side%' => $this->sideName(),
+        ]);
+    }
+
+    /** A click on a conflict's label keeps this side for it. Never a drag. */
+    #[\Override]
+    public function press(int $relRow, int $relCol): bool
+    {
+        $row = $this->rows[$this->top() + $relRow] ?? null;
+        if (MergeRowKind::Header === $row?->kind && null !== $row->region) {
+            $this->accept($row->region, $this->side);
+        }
+
+        return false;
+    }
+
+    /** A notch over a side scrolls the editor, which the three columns follow. */
+    #[\Override]
+    public function wheelBy(int $rows): void
+    {
+        ($this->scroll)($rows);
+    }
+
+    public function handleInput(string $data): void
+    {
+        $kb = $this->getKeybindings();
+        $current = MergeSides::current($this->lines, $this->caretLine());
+        match (true) {
+            $kb->matches($data, 'merge_keep') => null === $current ? null : $this->accept($current, $this->side),
+            $kb->matches($data, 'merge_keep_both') => null === $current ? null : $this->accept($current, ConflictSide::Both),
+            $kb->matches($data, 'merge_next') => $this->step(1),
+            $kb->matches($data, 'merge_prev') => $this->step(-1),
+            // Re-bound to the editor's defaults so tab management keeps working
+            // while this pane has the keys (see EditorKeymap).
+            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
+            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
+            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
+            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
+            $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
+            default => null,
+        };
+    }
+
+    #[\Override]
+    public function render(RenderContext $context): array
+    {
+        $columns = \max(0, $context->getColumns());
+        $height = \max(0, $context->getRows());
+        $top = $this->top();
+        $current = MergeSides::current($this->lines, $this->caretLine());
+        $lines = [];
+        for ($row = 0; $row < $height; ++$row) {
+            $lines[] = $this->renderRow($this->rows[$top + $row] ?? null, $current, $columns);
+        }
+
+        return $this->withMenuOverlay($lines, $columns);
+    }
+
+    private function renderRow(?MergeRow $row, ?int $current, int $columns): string
+    {
+        if (null === $row || 0 === $columns) {
+            return AnsiText::blank($columns);
+        }
+        $text = AnsiText::truncate(' '.DiffViewRenderer::shown($row->text), $columns, pad: true);
+
+        return match ($row->kind) {
+            MergeRowKind::Context => $this->styles->of(Role::Dim)->apply($text),
+            MergeRowKind::Header => $this->header($row, $row->region === $current, $columns),
+            // What this side keeps, on either side: added to the result if accepted.
+            MergeRowKind::Side => $this->styles->of(Role::AddedRowBg)->apply($text),
+            MergeRowKind::Filler => AnsiText::blank($columns),
+        };
+    }
+
+    /** A conflict's label behind its accept mark, emphasised on the conflict the keys act on. */
+    // @mago-expect lint:no-boolean-flag-parameter -- whether this is the conflict the keys act on is the one fact the row's emphasis shows.
+    private function header(MergeRow $row, bool $current, int $columns): string
+    {
+        $mark = ConflictSide::Theirs === $this->side ? '⇤' : '⇥';
+        $label = '' === $row->text ? $this->sideName() : $row->text;
+        $style = $this->styles->of(Role::Hunk);
+
+        return ($current ? $style->withBold() : $style)->apply(AnsiText::truncate(' '.$mark.' '.$label, $columns, pad: true));
+    }
+
+    /** Keep $side's lines for conflict $index in the result, then put the caret where it was. */
+    private function accept(int $index, ConflictSide $side): void
+    {
+        $lines = \explode("\n", ($this->text)() ?? \implode("\n", $this->lines));
+        $start = ConflictMarkers::find($lines)[$index]['start'] ?? null;
+        $resolved = MergeSides::accept($lines, $index, $side);
+        if (null === $start || null === $resolved) {
+            return;
+        }
+        ($this->replace)(\implode("\n", $resolved));
+        ($this->jump)($start);
+    }
+
+    /** The caret to the next ($direction 1) or previous (-1) conflict's first line, wrapping. */
+    private function step(int $direction): void
+    {
+        $starts = \array_column(ConflictMarkers::find($this->lines), 'start');
+        if ([] === $starts) {
+            return;
+        }
+        $line = $this->caretLine();
+        $ahead = $direction > 0 ? $starts : \array_reverse($starts);
+        $target = \array_find($ahead, static fn (int $start): bool => $direction > 0 ? $start > $line : $start < $line) ?? $ahead[0];
+        ($this->jump)($target);
+    }
+
+    private function caretLine(): int
+    {
+        return ($this->caret)()['line'] ?? 0;
+    }
+
+    /** The editor's top line: the row this side starts drawing from. */
+    private function top(): int
+    {
+        return ($this->caret)()['top'] ?? 0;
+    }
+
+    private function sideName(): string
+    {
+        return ConflictSide::Theirs === $this->side ? $this->translator->trans('theirs') : $this->translator->trans('ours');
+    }
+
+    /** @return array<string, string[]> */
+    #[\Override]
+    protected static function getDefaultKeybindings(): array
+    {
+        return [
+            'merge_keep' => ['a', Key::ENTER],
+            'merge_keep_both' => ['b'],
+            'merge_next' => ['n'],
+            'merge_prev' => ['p'],
+            'next_buffer' => ['ctrl+right'],
+            'prev_buffer' => ['ctrl+left'],
+            'close_buffer' => ['ctrl+f4', 'alt+w'],
+            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
+            'save_all' => ['ctrl+alt+s'],
+        ];
+    }
+}

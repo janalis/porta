@@ -8,6 +8,7 @@ use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Support\Scheduler;
 use Porta\Ui\FrameHooks;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -24,7 +25,10 @@ use Symfony\Component\Tui\Tui;
  *
  * It also carries the caret the other way from click-to-source: when the
  * caret reaches another line, the pane is asked to bring what that line
- * wrote into view ({@see EditorPaneWidget::followSource()}).
+ * wrote into view ({@see EditorPaneWidget::followSource()}). And when the
+ * editor scrolls, the pane and its flank are repainted: one that draws level
+ * with the text — the merge view's sides — reads the editor's top line as it
+ * renders, and a render it has cached would not.
  *
  * The pause is trailing and re-armed on every change, so a burst of typing
  * costs one render at its end, not one per keystroke. What that render costs
@@ -46,6 +50,9 @@ final class PreviewFeeder
     private ?string $followedPath = null;
     private int $followedLine = -1;
 
+    /** The editor's top line when the preview was last repainted for it. */
+    private int $paintedTop = -1;
+
     /** The version the armed timer will feed, so a frame that sees it again leaves the timer alone. */
     private ?string $pendingPath = null;
     private int $pendingVersion = -1;
@@ -56,6 +63,7 @@ final class PreviewFeeder
         private readonly EditorPanes $panes,
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
+        private readonly CodeEditorWidget $editor,
         ?FrameHooks $frames = null,
     ) {
         $frames?->onBeforeFrame($this->watch(...));
@@ -87,6 +95,7 @@ final class PreviewFeeder
             return;
         }
         $this->follow($buffer, $pane);
+        $this->repaintOnScroll($pane);
         $version = $buffer->document->version;
         $settled = ($buffer->path === $this->fedPath && $version === $this->fedVersion) || ($buffer->path === $this->pendingPath && $version === $this->pendingVersion);
         if ($settled) {
@@ -116,6 +125,18 @@ final class PreviewFeeder
         $this->followedLine = $document->cursorLine;
         $pane->followSource($document->cursorLine, $document->cursorCol);
         $this->tui->requestRender();
+    }
+
+    /** The editor scrolled since the last repaint: the pane and its flank draw again. */
+    private function repaintOnScroll(EditorPaneWidget $pane): void
+    {
+        $top = $this->editor->viewport()->vScroll;
+        if ($top === $this->paintedTop) {
+            return;
+        }
+        $this->paintedTop = $top;
+        $pane->invalidate();
+        $pane->flank()?->invalidate();
     }
 
     private function cancel(): void

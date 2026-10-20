@@ -34,6 +34,22 @@
         <source>No changes selected</source>
         <target>לא נבחרו שינויים</target>
       </trans-unit>
+      <trans-unit id="9">
+        <source>ours</source>
+        <target>שלנו</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>theirs</source>
+        <target>שלהם</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>No conflicts left — save the result</source>
+        <target>לא נותרו התנגשויות — שמרו את התוצאה</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</source>
+        <target>התנגשות %current% מתוך %count%  a שמירת %side%  b שתיהן  n/p הבאה/הקודמת</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
