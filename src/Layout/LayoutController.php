@@ -382,6 +382,19 @@ final class LayoutController
         return true;
     }
 
+    /**
+     * Arm the divider under a press: with view $view open, its sidebar's or
+     * one of its splits'; with none, the editor↔preview divider. Never the
+     * preview's under a view window — the editor stays mounted behind it,
+     * and its divider keeps a rect under the window's content.
+     */
+    public function armDividerResize(?string $view, ?WidgetRect $viewSeparatorRect, MouseEvent $mouse): bool
+    {
+        return null === $view
+            ? $this->armPreviewResize($mouse)
+            : $this->armViewSidebarResize($view, $viewSeparatorRect, $mouse) || $this->armViewSplitResize($view, $mouse);
+    }
+
     /** Arm a drag when a left-press lands on the divider of one of view $id's splits, while it is on screen. */
     public function armViewSplitResize(string $id, MouseEvent $mouse): bool
     {

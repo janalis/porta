@@ -70,14 +70,18 @@ final class ViewRegion
     }
 
     /**
-     * The region's dividers: the sidebar's, then each split's — what a pass
-     * joining rules to dividers ({@see \Porta\Overlay\Presenter\FrameJoins}) walks.
+     * The region's dividers on screen: the sidebar's, then each split's —
+     * what a pass joining rules to dividers ({@see \Porta\Overlay\Presenter\FrameJoins})
+     * walks. A detached one keeps its last rect, and a `│` of text drawn
+     * where it stood would take a join meant for it.
      *
      * @return list<SeparatorWidget>
      */
     public function separators(): array
     {
-        return [$this->separator, ...\array_values(\array_map(static fn (PaneSplit $split): SeparatorWidget => $split->separator, $this->splits))];
+        $all = [$this->separator, ...\array_values(\array_map(static fn (PaneSplit $split): SeparatorWidget => $split->separator, $this->splits))];
+
+        return \array_values(\array_filter($all, static fn (SeparatorWidget $separator): bool => null !== $separator->getContext()));
     }
 
     /**

@@ -142,6 +142,7 @@ final class PaneSplitTest extends TestCase
         $area = $this->rectOf($split->area);
 
         $split->dragTo(50, $area);
+        $this->assertSame(50, $split->leadColumns(101), 'said at once, before any frame fits it');
         $split->nudge(2, $area);
         $split->setPercent(30);
         $this->assertSame(3, $moves);
@@ -173,5 +174,58 @@ final class PaneSplitTest extends TestCase
         $this->assertTrue($split->isNarrow());
         $this->assertSame(1, $this->rectOf($this->rest)->row);
         $this->assertSame(9, $this->rectOf($this->rest)->rows);
+    }
+
+    /** A share kept from a wider area is clamped like a drag once the area narrows: neither side under its minimum. */
+    public function testAKeptShareIsClampedToTheMinimumsWhenTheAreaNarrows(): void
+    {
+        $split = $this->split(columns: 200, share: 150); // the lead 29: one over its least
+
+        $this->terminal->simulateResize(70, 10);
+        $this->frame();
+        $split->fit();
+        $this->frame();
+
+        $this->assertFalse($split->isNarrow(), '70 columns hold two of 28');
+        $this->assertSame(28, $this->rectOf($this->lead)->columns);
+        $this->assertSame(28, $split->leadColumns(70), 'and said so to whatever lines up with it');
+        $this->assertSame(15, $split->percent(), 'the share kept is still the user\'s');
+
+        $this->terminal->simulateResize(200, 10);
+        $this->frame();
+        $split->fit();
+        $this->frame();
+        $this->assertSame(29, $this->rectOf($this->lead)->columns, 'wide again, the divider is back where it was left');
+    }
+
+    /** At the far end too: the rest keeps its minimum, and the lead gives way. */
+    public function testTheRestKeepsItsMinimumToo(): void
+    {
+        $split = $this->split(columns: 200, share: 900);
+
+        $this->terminal->simulateResize(70, 10);
+        $this->frame();
+        $split->fit();
+        $this->frame();
+
+        $this->assertSame(28, $this->rectOf($this->rest)->columns);
+    }
+
+    /** Fitted frame after frame, a share whose sides are both above their minimums stays where it is. */
+    public function testFittingDoesNotWalkTheDivider(): void
+    {
+        $split = $this->split(columns: 120, share: 400);
+        $moves = 0;
+        $split->onMove(static function () use (&$moves): void {
+            ++$moves;
+        });
+
+        foreach (\range(1, end: 5) as $ignored) {
+            $split->fit();
+            $this->frame();
+        }
+
+        $this->assertSame(0, $moves);
+        $this->assertSame(40, $split->percent());
     }
 }

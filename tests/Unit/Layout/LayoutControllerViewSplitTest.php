@@ -156,4 +156,45 @@ final class LayoutControllerViewSplitTest extends TestCase
         $next->fitViewSidebar('git', 100);
         $this->assertSame(30, $this->split->percent(), 'and its window\'s next fit puts it back');
     }
+
+    /** Stacked, the split has no divider to nudge: the chord falls through to the widget. */
+    public function testStackedTheNudgeChordIsNotTheSplits(): void
+    {
+        $layout = $this->onScreen();
+        $resizer = new PaneResizer(
+            $this->tui,
+            $layout,
+            $this->tree,
+            new CodeEditorWidget(),
+            TestBottomDock::create($this->tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget()),
+            $this->regions,
+            $this->previewSplit,
+        );
+        $this->tui->setFocus($this->lead);
+        $this->assertTrue($resizer->canResize());
+
+        $this->terminal->simulateResize(40, 30);
+        $this->frame();
+        $this->split->fit();
+
+        $this->assertTrue($this->split->isNarrow());
+        $this->assertFalse($resizer->canResize());
+    }
+
+    /**
+     * With a view open, a press arms that view's dividers — never the
+     * editor's preview divider, mounted behind the window, whose rect still
+     * stands under the window's content.
+     */
+    public function testAnOpenViewsPressNeverArmsThePreviewBehindIt(): void
+    {
+        $layout = $this->controller(columns: 101);
+        $this->previewSplit->mount(new CodeEditorWidget(), new TestPane('md'));
+        $this->tui->add($this->previewSplit->area);
+        $this->frame();
+        $onPreviewDivider = self::mouse("\x1b[<0;51;3M");
+
+        $this->assertFalse($layout->armDividerResize('git', null, $onPreviewDivider), 'a view open: the preview is behind it');
+        $this->assertTrue($layout->armDividerResize(null, null, $onPreviewDivider), 'no view: the preview divider is the one under the press');
+    }
 }

@@ -60,9 +60,10 @@ final readonly class PaneResizer
     }
 
     /**
-     * The [view, split key] of the view split on screen whose column holds
-     * $focus, or null. Asked before the sidebar: a split sits in the content,
-     * so the two never both answer.
+     * The [view, split key] of the view split on screen, side by side, whose
+     * column holds $focus, or null — a stacked split has no divider to move,
+     * so the chord falls through. A split sits in the content, so it and the
+     * sidebar never both answer.
      *
      * @return null|array{string, string}
      */
@@ -70,7 +71,7 @@ final readonly class PaneResizer
     {
         foreach ($this->regions->all() as $region) {
             foreach ($region->splits() as $key => $split) {
-                if (null !== $split->rect() && null !== $focus && ($focus === $split->lead() || $focus === $split->rest())) {
+                if (null !== $split->rect() && !$split->isNarrow() && null !== $focus && ($focus === $split->lead() || $focus === $split->rest())) {
                     return [$region->id, $key];
                 }
             }

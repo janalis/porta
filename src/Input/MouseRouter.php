@@ -223,10 +223,8 @@ final class MouseRouter
             // Separator drags: a press on the tree↔editor separator column, or on the top edge
             // of the terminal/results panel, arms a resize (must beat the pane hit-tests below).
             || $this->layout->armSidebarResize($sepRect, $mouse)
-            // The editor↔preview divider, while a previewed file shows in Split.
-            || $this->layout->armPreviewResize($mouse)
-            || (null !== $activeView && $this->layout->armViewSidebarResize($activeView, $viewSepRect, $mouse))
-            || (null !== $activeView && $this->layout->armViewSplitResize($activeView, $mouse))
+            // The open view's dividers, or else the editor↔preview divider.
+            || $this->layout->armDividerResize($activeView, $viewSepRect, $mouse)
             // The dock strip is both the tool tabs and the resize grab: a click
             // on a tab wins, a click on its empty tail falls through to resize
             // (which sits on the strip's top row — the dock's top edge).

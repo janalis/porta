@@ -43,8 +43,16 @@ final class PaneSplit
 
     private readonly ContainerWidget $restSide;
 
-    /** The lead side's share of the columns beside the divider, in thousandths. */
+    /** The lead side's share of the columns beside the divider, in thousandths: the user's, as kept. */
     private int $share;
+
+    /**
+     * The share laid out: the user's, unless the area is too narrow for it to
+     * give each side its minimum — then the nearest that does. Kept apart so
+     * a window passing through a narrow width does not move the divider for
+     * good.
+     */
+    private int $drawn;
 
     private bool $mirrored = false;
 
@@ -75,6 +83,7 @@ final class PaneSplit
         private readonly int $minSide = self::MIN_SIDE,
     ) {
         $this->share = IntMath::clamp($share, 10, 990);
+        $this->drawn = $this->share;
         $this->area = LayoutWidgets::container($id, new Style(direction: Direction::Horizontal, gap: 0, flex: 1));
         $this->leadSide = LayoutWidgets::container($id.'-lead', new Style());
         $this->restSide = LayoutWidgets::container($id.'-rest', new Style());
@@ -140,7 +149,7 @@ final class PaneSplit
      */
     public function leadColumns(int $columns): int
     {
-        return \intdiv(\max(0, $columns - 1) * $this->share, num2: 1000);
+        return \intdiv(\max(0, $columns - 1) * $this->drawn, num2: 1000);
     }
 
     /**
@@ -216,6 +225,12 @@ final class PaneSplit
             return;
         }
         $narrow = $rect->columns < ((2 * $this->minSide) + 1);
+        $drawn = $narrow ? $this->share : $this->fitted($rect->columns);
+        if ($drawn !== $this->drawn) {
+            $this->drawn = $drawn;
+            $this->applyShare();
+            $this->moved();
+        }
         if ($narrow !== $this->narrow) {
             $this->narrow = $narrow;
             $this->arrange();
@@ -234,16 +249,39 @@ final class PaneSplit
         $this->setShare((int) \round((IntMath::clamp($leadCols, $this->minSide, $room - $this->minSide) * 1000) / $room));
     }
 
+    /**
+     * The share that gives each side its minimum in $columns: the user's when
+     * it does. Rounded so the layout's floor of it lands on the minimum, not
+     * a column short.
+     */
+    private function fitted(int $columns): int
+    {
+        $room = \max(1, $columns - 1);
+        $lead = \intdiv($room * $this->share, num2: 1000);
+
+        return match (true) {
+            $lead < $this->minSide => \intdiv(($this->minSide * 1000) + $room - 1, $room),
+            ($room - $lead) < $this->minSide => \intdiv((($room - $this->minSide) * 1000) + $room - 1, $room),
+            default => $this->share,
+        };
+    }
+
+    private function moved(): void
+    {
+        foreach ($this->moveListeners as $listener) {
+            $listener();
+        }
+    }
+
     private function setShare(int $share): void
     {
         if ($share === $this->share) {
             return;
         }
         $this->share = $share;
+        $this->drawn = $share;
         $this->applyShare();
-        foreach ($this->moveListeners as $listener) {
-            $listener();
-        }
+        $this->moved();
     }
 
     /**
@@ -253,8 +291,8 @@ final class PaneSplit
     private function applyShare(): void
     {
         $stacked = $this->narrow && NarrowSplit::Stacked === $this->whenNarrow;
-        $this->leadSide->setStyle(new Style(flex: $stacked ? 0 : $this->share));
-        $this->restSide->setStyle(new Style(flex: $stacked ? 1 : 1000 - $this->share));
+        $this->leadSide->setStyle(new Style(flex: $stacked ? 0 : $this->drawn));
+        $this->restSide->setStyle(new Style(flex: $stacked ? 1 : 1000 - $this->drawn));
     }
 
     /**
