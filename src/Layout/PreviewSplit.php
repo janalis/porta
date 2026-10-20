@@ -89,16 +89,33 @@ final readonly class PreviewSplit
     public function mount(AbstractWidget $editor, AbstractWidget $preview): void
     {
         $flank = $preview instanceof EditorPaneWidget ? $preview->flank() : null;
-        $this->release();
-        if (null === $flank) {
-            $this->split->mount($editor, $preview);
-            $this->area->add($this->split->area);
+        $seat = null === $flank ? $this->plain($editor, $preview) : $this->flanked($flank, $editor, $preview);
+        $this->area->clear();
+        $this->area->add($seat);
+    }
 
-            return;
-        }
+    /**
+     * Editor | preview, leaving the flanked arrangement. Only the one being
+     * left is released: each split skips a mount of what it already holds, so
+     * the same preview again detaches nothing.
+     */
+    private function plain(AbstractWidget $editor, AbstractWidget $preview): ContainerWidget
+    {
+        $this->flanked->release();
+        $this->flank->release();
+        $this->split->mount($editor, $preview);
+
+        return $this->split->area;
+    }
+
+    /** Flank | editor | preview, leaving the plain arrangement. */
+    private function flanked(EditorPaneWidget $flank, AbstractWidget $editor, AbstractWidget $preview): ContainerWidget
+    {
+        $this->split->release();
         $this->flank->mount($flank, $editor);
         $this->flanked->mount($this->flank->area, $preview);
-        $this->area->add($this->flanked->area);
+
+        return $this->flanked->area;
     }
 
     /** Hand the lent widgets back — detached, so the caller can seat them elsewhere. */
