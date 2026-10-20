@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\DiffPlugin\Widget;
 
 use Porta\DiffPlugin\DiffDocument;
+use Porta\DiffPlugin\DiffHighlights;
 use Porta\DiffPlugin\DiffRowKind;
 use Porta\DiffPlugin\Event\DiffContextCycleRequested;
 use Porta\DiffPlugin\Event\DiffCopyRequested;
@@ -14,9 +15,6 @@ use Porta\DiffPlugin\Event\DiffStagingRequested;
 use Porta\DiffPlugin\Event\DiffWhitespaceToggleRequested;
 use Porta\Editor\Document;
 use Porta\Editor\TextMetrics;
-use Porta\Highlight\CodeHighlighter;
-use Porta\Highlight\DarkTerminalTheme;
-use Porta\Highlight\TempestHighlightProvider;
 use Porta\I18n\Translator;
 use Porta\Layout\DiffLayout;
 use Porta\Support\AnsiText;
@@ -114,8 +112,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** Last render width, for mapping click columns to split halves. */
     private int $lastWidth = 80;
 
-    private readonly CodeHighlighter $highlighter;
-    private int $highlightVersion = 0;
+    private readonly DiffHighlights $highlights;
 
     public function __construct(
         private readonly Translator $translator,
@@ -125,10 +122,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     ) {
         $this->initStyles($styles);
         $this->buttonZones = new ClickZones();
-        $theme = $syntaxTheme ?? new DarkTerminalTheme();
-        // Diff hunks are non-contiguous lines from different files: always the
-        // built-in engine, never a plugin's.
-        $this->highlighter = new CodeHighlighter(new TempestHighlightProvider($theme), $theme);
+        $this->highlights = new DiffHighlights($syntaxTheme);
     }
 
     /** Reflect the controller's hide-whitespace state on the toolbar tag. */
@@ -230,36 +224,10 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->highlightRows();
     }
 
-    /**
-     * Syntax-highlight the context/addition texts in one batch (deleted lines
-     * stay plain). The highlighter caches by version, so one bumped counter
-     * per load keeps repeated renders free.
-     */
+    /** Syntax-highlight the shown diff (see {@see DiffHighlights}). */
     private function highlightRows(): void
     {
-        $this->highlighted = [];
-        if (null === $this->document || null === $this->path) {
-            return;
-        }
-        $this->highlighter->setFile($this->path);
-
-        $keys = [];
-        $texts = [];
-        foreach ($this->document->hunks as $h => $hunk) {
-            foreach ($hunk->lines as $l => $line) {
-                if (!('+' === $line->origin || ' ' === $line->origin)) {
-                    continue;
-                }
-
-                $keys[] = $h.':'.$l;
-                $texts[] = DiffViewRenderer::shown($line->text);
-            }
-        }
-
-        $highlighted = $this->highlighter->highlight($texts, ++$this->highlightVersion);
-        foreach ($keys as $n => $key) {
-            $this->highlighted[$key] = $highlighted[$n] ?? '';
-        }
+        $this->highlighted = null === $this->document || null === $this->path ? [] : $this->highlights->of($this->document, $this->path);
     }
 
     /**
@@ -269,7 +237,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
      */
     public function refreshTheme(): void
     {
-        $this->highlighter->refreshTheme();
+        $this->highlights->refreshTheme();
         $this->highlightRows();
         $this->invalidate();
     }
