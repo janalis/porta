@@ -208,4 +208,48 @@ final class EditorScrollTest extends TestCase
         $this->assertSame([30, 0], $this->top());
         $this->assertSame(1, $this->invalidations);
     }
+
+    /**
+     * Scrolled INTO a tall line, then that line takes fewer rows — wrap off,
+     * a wider pane — or a fold takes it in: the rows scrolled away stay inside
+     * the top line, so the walk and the assembler agree on what is drawn.
+     */
+    public function testTheRowsScrolledIntoTheTopLineNeverOutliveIt(): void
+    {
+        $this->settle();
+        $this->scroll->rowsForLine = static fn (int $line): int => 4 === $line ? 4 : 1;
+        $this->scroll->scrollRows(7);
+        $this->assertSame([4, 3], $this->top(), 'four lines, then three rows into line 4');
+
+        $this->scroll->rowsForLine = static fn (int $line): int => 4 === $line ? 2 : 1;
+        $this->settle();
+        $this->assertSame([4, 1], $this->top(), 'a wider pane: its last row now');
+
+        $this->scroll->rowsForLine = null;
+        $this->settle();
+        $this->assertSame([4, 0], $this->top(), 'wrap off: one row, the first');
+
+        $this->scroll->rowsForLine = static fn (int $line): int => \in_array($line, [3, 4], strict: true) ? 4 : 1;
+        $this->scroll->scrollRows(2);
+        $this->foldModel->setRegions([[3, 5]], $this->document->version);
+        $this->document->setCursor(3, 0);
+        $this->foldModel->toggle();
+        $this->document->setCursor(0, 0);
+        $this->settle();
+        $this->assertSame([3, 0], $this->top(), 'folded into line 3: from its first row, not line 4\'s third');
+    }
+
+    /** The same when the caret moves meanwhile: the view re-attaches and still drops the stale rows. */
+    public function testAReattachedViewDropsRowsTheTopLineNoLongerHas(): void
+    {
+        $this->settle();
+        $this->scroll->rowsForLine = static fn (int $line): int => 4 === $line ? 4 : 1;
+        $this->scroll->scrollRows(7);
+        $this->scroll->rowsForLine = null;
+
+        $this->document->setCursor(6, 0); // on screen, below the top
+        $this->settle();
+
+        $this->assertSame([4, 0], $this->top());
+    }
 }

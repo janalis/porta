@@ -190,7 +190,7 @@ final class EditorScroll
             // can change without a version bump; any TEXT change bumps the
             // version and re-attaches below). No revealCaretLine: an offscreen
             // caret must not unfold its region.
-            $this->vScroll = $this->foldModel->snapVisible($this->vScroll);
+            $this->settleTop($this->foldModel->snapVisible($this->vScroll));
 
             return;
         }
@@ -199,7 +199,7 @@ final class EditorScroll
         $this->lastLine = $cursorLine;
         $this->lastCol = $doc->cursorCol;
         $this->foldModel->revealCaretLine();
-        $this->vScroll = $this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1));
+        $this->settleTop($this->foldModel->snapVisible(IntMath::clamp($this->vScroll, 0, $this->document->getLineCount() - 1)));
         for ($iter = 0; $iter <= self::MAX_STICKY_ROWS; ++$iter) {
             $stickyCount = $stickyCountAt($this->vScroll);
             $cursorRow = $this->caretRow($cursorLine);
@@ -225,6 +225,23 @@ final class EditorScroll
             }
             break; // caret already visible below the pinned band
         }
+    }
+
+    /**
+     * Put $top on top, and keep the rows of it scrolled away inside it: a
+     * different line starts from its first row, and the same one may have
+     * fewer rows than when it was scrolled into — wrap turned off, the pane
+     * widened. A segment past the line's last row would have the assembler
+     * draw the line and every walk skip it, one row apart from then on.
+     */
+    private function settleTop(int $top): void
+    {
+        if ($top !== $this->vScroll) {
+            $this->vScroll = $top;
+            $this->vScrollSegment = 0;
+        }
+        $rows = null === $this->rowsForLine ? 1 : ($this->rowsForLine)($this->vScroll);
+        $this->vScrollSegment = \min($this->vScrollSegment, \max(0, $rows - 1));
     }
 
     /**

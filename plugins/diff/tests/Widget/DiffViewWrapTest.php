@@ -221,6 +221,22 @@ final class DiffViewWrapTest extends TestCase
         $this->assertSame(\str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14), $body[3], 'the cursor\'s row shown to its last');
     }
 
+    /** Scrolled into a tall row, then unwrapped: the view starts on that row, not that many rows below it. */
+    public function testUnwrappingScrolledIntoARowStartsOnIt(): void
+    {
+        $widget = $this->widget();
+        $widget->setFocused(true);
+        self::body($widget, rows: 4);
+        foreach (\range(1, end: 3) as $down) {
+            $widget->handleInput("\x1b[B"); // to the n's: the o's second row stays on top
+        }
+        $this->assertSame(\str_repeat(' ', times: 10).'│ oo'.\str_repeat(' ', times: 26), self::body($widget, rows: 4)[0]);
+
+        $widget->useHorizontalScroll();
+
+        $this->assertMatchesRegularExpression('/^\s+2\s+ │-o+/', self::body($widget, rows: 4)[0], 'the o\'s from their one row, the n\'s still below');
+    }
+
     /** A pane scrolled to its bottom, then widened: fewer rows to show, and the scroll comes back to fill it. */
     public function testAWiderPaneScrolledToTheBottomStaysFull(): void
     {

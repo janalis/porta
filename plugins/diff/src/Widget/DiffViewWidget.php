@@ -193,6 +193,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ($this->wrap) {
             $this->wrap = false;
             $this->heights = null;
+            $this->scrollSegment = 0; // every row is one again: nothing of the top one is scrolled away
             $this->revealCursor();
         }
     }
