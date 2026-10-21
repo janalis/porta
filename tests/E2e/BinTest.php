@@ -43,17 +43,17 @@ final class BinTest extends TestCase
         $this->assertStringContainsString('no such file or directory', $text);
     }
 
-    public function testTheToolWordsAreTheToolModes(): void
+    public function testTheToolModesAreOptionsAndTheWordsArePaths(): void
     {
-        // `porta diff` IS `porta --diff`: refused with --diff's own reason,
-        // not opened as a folder called diff.
-        [$exitCode, $text] = $this->porta('diff a.php');
-        $this->assertSame(2, $exitCode, 'a usage error, as --diff a.php is');
+        // One spelling: `--diff` is the mode, as git's config names it;
+        // `diff` is a path like any other.
+        [$exitCode, $text] = $this->porta('--diff a.php');
+        $this->assertSame(2, $exitCode, 'a usage error');
         $this->assertStringContainsString('--diff compares two files', $text);
 
-        [$exitCode, $text] = $this->porta('merge a b c');
-        $this->assertSame(2, $exitCode);
-        $this->assertStringContainsString('--merge takes four files', $text);
+        [$exitCode, $text] = $this->porta('diff');
+        $this->assertSame(1, $exitCode);
+        $this->assertStringContainsString('no such file or directory', $text);
     }
 
     public function testRefusesToLaunchWithoutATty(): void

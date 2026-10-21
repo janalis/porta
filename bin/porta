@@ -38,8 +38,6 @@ if (!$autoloaded) {
 // checkout or a composer install keeps the package constant.
 $built = '@package_version@';
 $version = str_starts_with($built, '@') ? Porta\Ide::VERSION : $built;
-// `porta diff A B` / `porta merge L R B M` are the --diff / --merge modes.
-$argv = Porta\Console\ToolAliases::expand(array_values($argv));
 // `porta <name> …` where a bundled plugin ships a command of that name —
 // `porta review …` is the review plugin's — runs it instead of opening a path.
 $pluginCommand = Porta\Console\PluginCommands::bundled()->find($argv[1] ?? '');
@@ -55,4 +53,4 @@ $command = new Porta\Console\PortaCommand(self: Porta\Install\PortaBinary::path(
 $application = new Symfony\Component\Console\Application('porta', $version);
 $application->addCommand($command);
 $application->setDefaultCommand((string) $command->getName(), true); // single-command app
-$application->run(new Symfony\Component\Console\Input\ArgvInput($argv));
+$application->run();
