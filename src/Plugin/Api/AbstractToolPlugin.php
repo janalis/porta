@@ -8,7 +8,6 @@ use Porta\Config\WorkspaceTrust;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AsyncProcess;
-use Symfony\Component\Process\ExecutableFinder;
 
 /**
  * The base for a plugin that drives an external binary (php-cs-fixer, mago,
@@ -47,24 +46,15 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     }
 
     /**
-     * The tool binary, or null when it cannot be found.
-     *
-     * Deliberately NOT memoized: the setting can change at runtime, and a
-     * cached answer would ignore it until restart (chroma used to). The cost
-     * is two stat calls, on a path that runs per resolution, not per key.
+     * The tool binary, or null when it cannot be found — through the one
+     * resolution every asker shares ({@see PluginApi::toolBinary()}): the
+     * manifest's declaration when the plugin has one for this binary, else the
+     * shape this class always looked for (the `binary` setting, `vendor/bin`
+     * per {@see BinarySearch}, the PATH).
      */
     protected function binary(PluginApi $api): ?string
     {
-        $configured = \trim((string) $api->setting('binary'));
-        if ('' !== $configured) {
-            return $configured;
-        }
-        // A project's vendor/bin is the project's code: only once it is trusted.
-        $local = BinarySearch::VendorBinThenPath === $this->search && $this->trusted($api)
-            ? $api->projectRoot().'/vendor/bin/'.$this->binaryName
-            : null;
-
-        return null !== $local && \is_file($local) && \is_executable($local) ? $local : new ExecutableFinder()->find($this->binaryName);
+        return $api->toolBinary($this->binaryName, 'binary', $this->search);
     }
 
     /**

@@ -289,4 +289,22 @@ final class PluginManifestTest extends TestCase
         \file_put_contents($project->path('plugins/badjson/vendor/composer/installed.json'), data: 'not json at all');
         $this->assertSame([], $withVendor->shadowedPackages(), 'an unreadable installed.json degrades to none, not a crash');
     }
+
+    public function testTheDescriptionAndToolsAreRead(): void
+    {
+        $manifest = $this->composerPlugin(new TempProject(), 'viewer', '{"description": " Renders diagrams ", "extra": {"porta": {"tools": [{"name": "dot"}]}}}');
+
+        $this->assertSame('Renders diagrams', $manifest->description);
+        $this->assertCount(1, $manifest->tools);
+        $this->assertSame('viewer', $manifest->tools[0]->plugin, 'a tool belongs to the directory that declares it');
+        $this->assertSame('dot', $manifest->tools[0]->name);
+    }
+
+    public function testNoDescriptionAndNoToolsByDefault(): void
+    {
+        $manifest = $this->composerPlugin(new TempProject(), 'bare', '{"description": 3}');
+
+        $this->assertSame('', $manifest->description);
+        $this->assertSame([], $manifest->tools);
+    }
 }

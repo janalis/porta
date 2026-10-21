@@ -20,6 +20,7 @@ use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Tool\ToolLocator;
 use Porta\Plugin\Runtime\ToolInstallOffers;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
@@ -289,6 +290,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->set(PluginSettings::class)
         ->factory([PropertyFactory::class, 'read'])
         ->args([service(PluginHost::class), 'settings']);
+    $services
+        ->set(ToolLocator::class)
+        ->factory([PropertyFactory::class, 'read'])
+        ->args([service(PluginHost::class), 'tools']);
 
     // The installers resolve their plugin dirs and git binary from the
     // environment in a static named constructor, self-declared on each class

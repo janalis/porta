@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Api\PortaPlugin;
+use Porta\Plugin\Tool\ToolLocator;
 use Porta\Support\Files;
 use Tempest\Highlight\TerminalTheme;
 
@@ -52,6 +53,9 @@ final readonly class PluginLoader
         private ?Translator $translator = null,
         private bool $trusted = true,
         private ?\Closure $display = null,
+        // Trailing and optional: a direct construction gets one built on the
+        // same settings; PluginHost hands in the one the container shares.
+        private ?ToolLocator $locator = null,
     ) {}
 
     /**
@@ -256,7 +260,7 @@ final readonly class PluginLoader
                 throw new PluginException(\sprintf('duplicate plugin name "%s"', $name));
             }
 
-            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme, $this->display);
+            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme, $this->display, $this->locator, $manifest->tools);
             $plugin->activate($api);
             $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
             if (\is_dir($manifest->directory.'/translations')) {

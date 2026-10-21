@@ -138,8 +138,9 @@ final class AbstractToolPluginTest extends TestCase
 
     public function testBinaryDiscoveryWalksItsThreeTiers(): void
     {
-        $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n"]);
+        $project = new TempProject(['vendor/bin/demo' => "#!/bin/sh\n", 'custom/demo' => "#!/bin/sh\n"]);
         \chmod($project->path('vendor/bin/demo'), permissions: 0o755);
+        \chmod($project->path('custom/demo'), permissions: 0o755);
         $this->project = $project;
         $api = $this->api();
         $plugin = $this->plugin();
@@ -148,9 +149,14 @@ final class AbstractToolPluginTest extends TestCase
         // Tier 2: the project-local shim, since no setting is configured.
         $this->assertSame($project->dir.'/vendor/bin/demo', $plugin->callBinary($api));
 
-        // Tier 1: an explicit setting wins over everything, unchecked.
+        // Tier 1: an explicit setting wins over everything.
+        $api->changeSetting('binary', $project->path('custom/demo'));
+        $this->assertSame($project->path('custom/demo'), $plugin->callBinary($api));
+
+        // …while it names something that runs. A stale path — a teammate's,
+        // riding in on a committed .porta.json — falls through to what works.
         $api->changeSetting('binary', '/opt/custom/demo');
-        $this->assertSame('/opt/custom/demo', $plugin->callBinary($api));
+        $this->assertSame($project->dir.'/vendor/bin/demo', $plugin->callBinary($api), 'a configured path that is not there does not shadow the shim');
 
         // Tier 3: no setting, no shim → PATH (nothing named this exists there).
         $api->changeSetting('binary', '');
@@ -174,8 +180,8 @@ final class AbstractToolPluginTest extends TestCase
         $this->activate($plugin, $api);
 
         $this->assertNull($plugin->callBinary($api));
-        $api->changeSetting('binary', '/opt/custom/demo');
-        $this->assertSame('/opt/custom/demo', $plugin->callBinary($api), 'what the user configured still applies');
+        $api->changeSetting('binary', \PHP_BINARY);
+        $this->assertSame(\PHP_BINARY, $plugin->callBinary($api), 'what the user configured still applies');
     }
 
     /**
@@ -189,15 +195,15 @@ final class AbstractToolPluginTest extends TestCase
         $trusted = $tool();
         $api = $this->api();
         $this->activate($trusted, $api);
-        $api->changeSetting('binary', '/opt/custom/demo');
-        $this->assertSame('/opt/custom/demo', $trusted->callAcquire($api), 'trusted: it runs');
+        $api->changeSetting('binary', \PHP_BINARY);
+        $this->assertSame(\PHP_BINARY, $trusted->callAcquire($api), 'trusted: it runs');
 
         $this->untrustProjects();
         $untrusted = $tool();
         $this->project = new TempProject();
         $api = $this->api();
         $this->activate($untrusted, $api);
-        $api->changeSetting('binary', '/opt/custom/demo');
+        $api->changeSetting('binary', \PHP_BINARY);
         $this->assertNull($untrusted->callAcquire($api));
         $this->assertStringContainsString('demo runs code of the project\'s own: trust the project to use it', $this->flashText($this->status));
     }

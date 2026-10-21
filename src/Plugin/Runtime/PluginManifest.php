@@ -6,6 +6,7 @@ namespace Porta\Plugin\Runtime;
 
 use Composer\InstalledVersions;
 use Composer\Semver\Semver;
+use Porta\Plugin\Tool\ToolRequirement;
 use Porta\Support\JsonFile;
 
 /**
@@ -54,6 +55,8 @@ final readonly class PluginManifest
      * @param array<string, string> $platform the PLATFORM requirements (`php`, `ext-*`, …) — the half {@see packages()} drops
      * @param int|null $api the plugin-API major it targets (`extra.porta.api`); null trusts the current one
      * @param array<string, string> $commands console commands it ships (`extra.porta.commands`): `porta <name>` => the command class
+     * @param string $description composer's own one-liner, shown beside the plugin's name in Settings
+     * @param list<ToolRequirement> $tools the external programs it runs (`extra.porta.tools`)
      */
     public function __construct(
         public string $name,
@@ -65,6 +68,8 @@ final readonly class PluginManifest
         public array $platform = [],
         public ?int $api = null,
         public array $commands = [],
+        public string $description = '',
+        public array $tools = [],
     ) {}
 
     /**
@@ -196,7 +201,7 @@ final readonly class PluginManifest
             return new self($name, $directory);
         }
         $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
-        $facts = self::composerFacts($autoload, $data);
+        $facts = self::composerFacts($name, $autoload, $data);
 
         return new self($name, $directory, self::psr4($autoload), self::requires($data), ...$facts);
     }
@@ -281,10 +286,13 @@ final readonly class PluginManifest
      * @param array<array-key, mixed> $autoload
      * @param array<array-key, mixed> $data
      *
-     * @return array{packages: list<string>, dumpsAutoload: bool, platform: array<string, string>, api: int|null, commands: array<string, string>}
+     * @return array{packages: list<string>, dumpsAutoload: bool, platform: array<string, string>, api: int|null, commands: array<string, string>, description: string, tools: list<ToolRequirement>}
      */
-    private static function composerFacts(array $autoload, array $data): array
+    private static function composerFacts(string $name, array $autoload, array $data): array
     {
+        $extra = \is_array($data['extra'] ?? null) ? $data['extra'] : [];
+        $description = \is_string($data['description'] ?? null) ? \trim($data['description']) : '';
+
         return [
             'packages' => self::packages($data),
             // `classmap` and `files` are dumped, never read from the manifest:
@@ -295,6 +303,8 @@ final readonly class PluginManifest
             'platform' => self::platform($data),
             'api' => self::api($data),
             'commands' => self::commands($data),
+            'description' => $description,
+            'tools' => ToolRequirement::fromManifest($name, \is_array($extra['porta'] ?? null) ? $extra['porta'] : []),
         ];
     }
 

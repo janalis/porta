@@ -133,6 +133,12 @@ before there was one.
   future Porta breaks the `PluginApi` surface it will bump the major, and a
   plugin pinning the old one is declined by name instead of failing somewhere
   inside a render pass. Additive API growth never bumps it.
+- **`extra.porta.tools`** — the external programs your plugin runs, so Porta
+  can say whether each is there, show its version, and install or update it
+  from your plugin's Settings page — before your plugin is even enabled. See
+  [Declaring the tools you run](#declaring-the-tools-you-run).
+- **`description`** is composer's own one-liner, shown beside your plugin's
+  name on **Settings → Plugins**.
 - **`name`** is not read by Porta. A plugin's identity is its **directory name**
   everywhere it matters — `enabledPlugins`, `disabledPlugins`, `requires`, and
   its `plugins.<name>.<key>` settings. Give it one anyway so `composer install`
@@ -160,6 +166,59 @@ re-enabled things you turned off would be a worse surprise than a message.
 > `autoload` become `autoload.psr-4`, and `requires` becomes
 > `extra.porta.requires`. A plugin that still has one loads, with a startup
 > warning naming it — but its classes will not resolve until you move them.
+
+## Declaring the tools you run
+
+A plugin that drives an external program declares it in `extra.porta.tools`:
+
+```json
+"extra": {
+    "porta": {
+        "tools": [
+            {"name": "phpstan", "sources": [["composer", "phpstan/phpstan"]], "setting": "binary"},
+            {"name": "dot", "role": "suggested", "purpose": "renders Graphviz diagrams",
+             "setting": "dotPath", "sources": [["brew", "graphviz"]], "version": ["-V"]}
+        ]
+    }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `name` | What the tool is called on screen, and the name `tool()` / `toolBinary()` take. Required |
+| `binary` | The executable to look for; defaults to `name` |
+| `role` | `required` (default) — your plugin cannot work without it, and enabling it says so when it is missing. `suggested` — one feature goes quiet without it, said only on your page |
+| `purpose` | A few words on what it does for you, shown beside it |
+| `setting` | The key of one of **your** settings that names the binary by hand |
+| `sources` | Where it can be installed from, in order: `["composer", "<vendor/name>"]`, `["brew", "<formula>"]`, `["brew-cask", "<cask>"]`, `["cargo", "<crate>"]`, `["npm", "<package>"]`, `["github", "<owner/repo>", {…asset rules…}]`, or `["self", "<your command id>"]` |
+| `version` | The arguments that make it print its version; defaults to `["--version"]` |
+
+The binary is looked for in one order, everywhere: your `setting` when the user
+filled it (a bare name through the PATH, a path only while it is executable),
+then `<project>/vendor/bin` for a tool with a composer source, in a trusted
+project only, then the PATH, then `~/.porta/bin`, where a GitHub download lands.
+`$api->toolBinary('dot')` returns what that finds, or null — call it each time
+rather than caching it, because the setting can change under you.
+
+A `github` source names how the repository spells its release assets:
+
+```json
+["github", "janalis/custos", {
+    "asset": "custos_{os}_{arch}",
+    "os": {"Darwin": "darwin", "Linux": "linux"},
+    "arch": {"arm64": "arm64", "aarch64": "arm64", "x86_64": "amd64", "amd64": "amd64"}
+}]
+```
+
+`{tag}`, `{version}` (the tag without its `v`), `{os}` and `{arch}` are filled
+in; `os` maps `PHP_OS_FAMILY` and `arch` maps `php_uname('m')` to the
+repository's words. An asset that is a `.tar.gz` names the binary inside it in
+`member`. Every download is checked against the release's `SHA256SUMS` (or the
+file `sums` names) and run once before it replaces anything.
+
+An entry Porta cannot use is dropped with the rest of your manifest intact, and
+a source on a manager it does not know is skipped, so a manifest written for a
+newer Porta still installs through the sources this one understands.
 
 ## Depending on a composer package
 
@@ -1044,6 +1103,7 @@ Registration (during `activate()`):
 | `onFileRewritten(\Closure $hook)` | `$hook(string $path, string $previousText)` when a refactoring rewrote a file that had NO open buffer. The payload is the text the write REPLACED: the new content is on disk already and the old exists nowhere else. Not a save — no `onFileSaved` fires for it |
 | `registerHighlighter(...)` | Provide a syntax-highlighting backend for one or more languages. `$isAvailable` declines a language when e.g. a binary is missing, so the next provider gets it; a backend that faults is dropped for that buffer after three consecutive failures, and the buffer renders as plain text rather than broken |
 | `registerTokenSpans(array\|\Closure $languages, \Closure $classify)` | Classify comment and string regions for project search's token-scope filter ("only in comments/strings", "except in …"). Deliberately separate from `registerHighlighter()`: this runs once per FILE over raw content, where highlighting runs per visible line |
+| `toolBinary(string $name, ?string $setting = null, ?BinarySearch $lookup = null)` | Where the tool your manifest declares as `$name` under `extra.porta.tools` is — your setting, `vendor/bin`, the PATH, `~/.porta/bin` — or null. The answer Settings shows, so the two cannot disagree. An undeclared name is looked up as that binary, read from `$setting` and searched per `$lookup`. Safe during `activate()`, never cached |
 | `registerInstaller(string $tool, \Closure $isAvailable, array $via, ?\Closure $describe = null)` | Declare how to install this plugin's tool binary plus a predicate for whether it is there. When it is not, the plugin's settings page offers a one-click install that tries each `[manager, package]` pair in order, running the first whose manager is on the PATH (`composer`, `brew`, `cargo`). A tool no package manager ships passes `[[PluginApi::INSTALL_SELF, '<your command id>']]` instead and the button runs **your** command — that row does not disappear once the tool is there, it re-reads `Update`, because the plugin that downloads its own tool is what replaces it. `$describe` says what is installed in a few words (a version); it is pulled on every settings render and only while the tool is available. Omit the whole call and no install is offered |
 
 Actions (from handlers/hooks):

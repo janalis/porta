@@ -188,9 +188,11 @@ see [decisions.md](decisions.md). What fills the editor slot is
 `Layout/PreviewSplit`, and the subsystem is in
 [subsystems.md](subsystems.md#the-editor-slot-and-live-previews).
 
-**`Plugin/`** — three tiers, one rule each. `Api/` is the surface a plugin file
+**`Plugin/`** — four tiers, one rule each. `Api/` is the surface a plugin file
 compiles against. `Runtime/` is what the IDE runs. `Lifecycle/` is enabling,
-disabling and acquiring. The tiers are invisible to `composer arch`, whose edge
+disabling and acquiring. `Tool/` is the external programs plugins declare
+(`extra.porta.tools`): finding them (`ToolLocator`), and installing and
+updating them. The tiers are invisible to `composer arch`, whose edge
 key is the first segment after `Porta\`, but they are not cosmetic: the split
 forced the `PluginApi` ↔ `PluginManager` buffer/drain cycle into the open, where
 it is now a pinned SCC. Same-namespace classes need no import, so the class

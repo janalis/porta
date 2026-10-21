@@ -151,7 +151,12 @@ integrations = ["symfony", "phpunit"]
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         93  Plugin/Api/PluginApi: scrollEditor(), so a
+#   too-many-methods         94  Plugin/Api/PluginApi: toolBinary(), the one
+#                                resolution of a declared tool's binary that
+#                                Settings shares — a plugin locating its own
+#                                tool could not otherwise agree with the page
+#                                that offers to install it. 93 before:
+#                                scrollEditor(), so a
 #                                wheel notch over a merge side scrolls the
 #                                editor by screen rows as one over it does —
 #                                jumpTo()'s $top is a LINE and cannot land
@@ -385,7 +390,7 @@ integrations = ["symfony", "phpunit"]
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 143 }
-too-many-methods = { threshold = 93 }
+too-many-methods = { threshold = 94 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 78 }
 excessive-parameter-list = { threshold = 26 }

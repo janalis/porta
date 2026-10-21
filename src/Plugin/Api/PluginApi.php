@@ -24,6 +24,8 @@ use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Tool\ToolLocator;
+use Porta\Plugin\Tool\ToolRequirement;
 use Porta\Settings\SettingsRowKind;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Markup\Markup;
@@ -138,7 +140,13 @@ final class PluginApi
     /** @var array<string, true> ids taken with adoptCommand() — registered BARE, so their menu specs are too */
     private array $adopted = [];
 
-    /** @param (\Closure(): EditorDisplayOptions)|null $display the editor's display options, for {@see softWrap()} */
+    /** Where this plugin's tools are found — shared with Settings, so the two agree. */
+    private readonly ToolLocator $locator;
+
+    /**
+     * @param (\Closure(): EditorDisplayOptions)|null $display the editor's display options, for {@see softWrap()}
+     * @param list<ToolRequirement> $declaredTools what the plugin's manifest declares under `extra.porta.tools`
+     */
     public function __construct(
         private readonly string $pluginName,
         private readonly PluginManager $manager,
@@ -146,7 +154,10 @@ final class PluginApi
         private readonly PluginSettings $settings,
         private readonly ?TerminalTheme $syntaxTheme = null,
         private readonly ?\Closure $display = null,
+        ?ToolLocator $locator = null,
+        private readonly array $declaredTools = [],
     ) {
+        $this->locator = $locator ?? ToolLocator::forProject($rootDir, $settings);
         $this->languageServers = new PluginBuffer();
         $this->installers = new PluginBuffer();
         $this->highlighters = new PluginBuffer();
@@ -921,6 +932,25 @@ final class PluginApi
         }
 
         return SettingsRowKind::from($descriptor['kind'])->coerce($raw, $descriptor['default'], $descriptor['options'] ?? []);
+    }
+
+    /**
+     * Where the tool this plugin's manifest declares as $name
+     * (`extra.porta.tools`) is — its setting, `vendor/bin` (composer tools,
+     * in a trusted project), the PATH, then `~/.porta/bin` — or null when it
+     * is not installed. The same answer the Settings page shows, so a menu
+     * entry this greys and a Tools row that says "missing" cannot disagree.
+     *
+     * An undeclared $name is looked for as that binary, read from the
+     * $setting given and searched per $lookup — the shape a tool built in code
+     * has. Not cached: the setting can change at runtime. Safe during
+     * activate().
+     */
+    public function toolBinary(string $name, ?string $setting = null, ?BinarySearch $lookup = null): ?string
+    {
+        $declared = \array_find($this->declaredTools, static fn (ToolRequirement $tool): bool => $name === $tool->name);
+
+        return $this->locator->locate($declared ?? new ToolRequirement($this->pluginName, $name, $name, setting: $setting, lookup: $lookup));
     }
 
     /**

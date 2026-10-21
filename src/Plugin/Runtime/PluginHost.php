@@ -11,6 +11,7 @@ use Porta\Container\AsIdeService;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\I18n\Translator;
+use Porta\Plugin\Tool\ToolLocator;
 use Porta\Settings\SettingsScope;
 use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -18,7 +19,7 @@ use Tempest\Highlight\TerminalTheme;
 
 /**
  * Owns the plugin subsystem's construction and one-time boot load. The
- * settings/manager/loader triple can't autowire individually (their scalar
+ * settings/manager/loader/tool-locator set can't autowire individually (their scalar
  * arguments come out of IdeConfig and the PORTA_HOME/PORTA_EMBEDDED_PLUGINS
  * environment at instantiation time), so this host builds them together and
  * hands out the instances. ensureLoaded() is idempotent: the first caller —
@@ -35,6 +36,8 @@ final class PluginHost
     public readonly PluginManager $manager;
 
     public readonly PluginLoader $loader;
+
+    public readonly ToolLocator $tools;
 
     /** @param (\Closure(): EditorDisplayOptions)|null $display */
     public function __construct(
@@ -53,6 +56,7 @@ final class PluginHost
     ) {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer, $scope);
         $this->manager = new PluginManager($events, $this->settings, $markdownFences ?? new MarkdownFenceRegistry());
+        $this->tools = ToolLocator::forProject($rootDir, $this->settings);
         $this->loader = new PluginLoader(
             $rootDir,
             PortaHome::base(),
@@ -64,6 +68,7 @@ final class PluginHost
             $translator,
             $config->trusted,
             $display,
+            $this->tools,
         );
     }
 
