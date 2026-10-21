@@ -1683,7 +1683,9 @@ final class IdeLspFeaturesTest extends TestCase
                     $tui->handleInput("\x1b[24~");
                     // The opener shim is an independent OS process — await its write.
                     $this->await(static fn (): bool => \str_contains((string) (\is_file($captureFile) ? \file_get_contents($captureFile) : false), 'mozilla.org'));
-                    $this->assertStringContainsString('Opened https://developer.mozilla.org', \implode("\n", Toasts::all($ide)));
+                    // The toast lands when the IDE sees the opener exit — a
+                    // loop turn after the shim wrote its file: await it too.
+                    $this->await(static fn (): bool => \str_contains(\implode("\n", Toasts::all($ide)), 'Opened https://developer.mozilla.org'), what: 'the toast saying what opened');
                 },
             ],
         );
