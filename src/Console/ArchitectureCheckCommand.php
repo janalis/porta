@@ -329,6 +329,7 @@ final class ArchitectureCheckCommand extends Command
         // live objects. The rest is a plugin reaching for core's toolkits.
         'ReviewPlugin>DiffPlugin', // its diffs; the manifest declares `requires: ["diff", "git"]`
         'ReviewPlugin>GitPlugin',
+        'ReviewPlugin>Editor', // a file's code wraps with the editor's own formula, as the diff pane's does
         'ReviewPlugin>Input', // the view's pointer hit-tests its panes, as git's does
         'ReviewPlugin>Layout', // the view's column resizes through core's ResizableSidebar
         'ReviewPlugin>Overlay',

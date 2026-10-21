@@ -584,7 +584,7 @@ text reflow as they arrived — they clip at the row edge as they already do.
 Diffs follow the same setting. The diff pane wraps each side of a change, its
 gutters blank on the continuation rows, and in the merge view the ours and
 theirs columns give each line exactly as many rows as the editor between them
-does, so the three stay level.
+does, so the three stay level. The Review view's file pane wraps its code too.
 
 ## Code vision
 
