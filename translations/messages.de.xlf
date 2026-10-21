@@ -3163,8 +3163,8 @@
         <target>Wieder mit %host% verbunden</target>
       </trans-unit>
       <trans-unit id="1118">
-        <source>%name% not found</source>
-        <target>%name% nicht gefunden</target>
+        <source>%name% not found (install it in Settings)</source>
+        <target>%name% nicht gefunden (in den Einstellungen installieren)</target>
       </trans-unit>
       <trans-unit id="1119">
         <source>The debug adapter stopped unexpectedly</source>

@@ -11,12 +11,13 @@ use Porta\Plugin\Api\ServerNotFound;
  * phpantom (github.com/PHPantom-dev/phpantom_lsp) as the default PHP language
  * server plus its CLI. Registers the native `phpantom_lsp` binary (no
  * subcommand — it speaks LSP over stdio) for PHP; the binary resolves from the
- * plugin's `binary` setting, then `phpantom_lsp` on the PATH — a Rust binary,
- * so {@see BinarySearch::PathOnly}: composer never puts one in vendor/bin.
- * When no binary is found the LSP resolver returns null (PHP is unserved) and
- * the Settings page offers to install it via Homebrew
- * (`brew install phpantom-lsp`) or cargo (`cargo install phpantom_lsp
- * --locked`). The CLI drives "Fix Current File" / "Fix Project"
+ * plugin's `binary` setting, then `phpantom_lsp` on the PATH, then
+ * `~/.porta/bin` — a Rust binary, so {@see BinarySearch::PathOnly}: composer
+ * never puts one in vendor/bin. When no binary is found the resolver answers
+ * {@see ServerNotFound}: PHP is unserved, the status bar says "phpantom_lsp
+ * not found (install it in Settings)", and the plugin's Settings page installs
+ * it through Homebrew (`phpantom-lsp`) or cargo (`phpantom_lsp`), as its
+ * manifest declares. The CLI drives "Fix Current File" / "Fix Project"
  * (`phpantom_lsp fix`, in place; the single-file fix is applied into the buffer,
  * where "Fix Project" leaves its many files to the filesystem poller)
  * with a persisted "Fix on save" setting, and "Generate Config"

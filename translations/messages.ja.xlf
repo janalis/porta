@@ -3163,8 +3163,8 @@
         <target>%host% と再接続しました</target>
       </trans-unit>
       <trans-unit id="1118">
-        <source>%name% not found</source>
-        <target>%name% が見つかりません</target>
+        <source>%name% not found (install it in Settings)</source>
+        <target>%name% が見つかりません (設定でインストール)</target>
       </trans-unit>
       <trans-unit id="1119">
         <source>The debug adapter stopped unexpectedly</source>

@@ -10,8 +10,9 @@ use Porta\Plugin\Api\ServerNotFound;
  * phpactor as a PHP language server. Registers `phpactor language-server` for
  * PHP; the binary resolves from the plugin's `binary` setting, then
  * vendor/bin/phpactor, then the PATH ({@see AbstractToolPlugin}). When no
- * binary is found the resolver returns null, so PHP is simply unserved (and
- * the "install" hint shows) rather than launching a broken process. Bundled
+ * binary is found the resolver answers {@see ServerNotFound}, so PHP is
+ * unserved — the status bar saying where to install it — rather than
+ * launching a broken process. Bundled
  * but disabled by default — phpantom is the suggested PHP server; enable this
  * to use phpactor instead.
  */

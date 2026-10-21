@@ -279,8 +279,9 @@ final class LspSessionPool
         $absent = $this->missing[$language][0] ?? null;
 
         return match (true) {
-            // Enabled, and its binary not there: say that, not "enable one".
-            null !== $absent => $this->translator->trans('%name% not found', ['%name%' => $absent]),
+            // Enabled, and its binary not there: say that, not "enable one" —
+            // and where the button is that installs it.
+            null !== $absent => $this->translator->trans('%name% not found (install it in Settings)', ['%name%' => $absent]),
             null !== $path && 'php' === $language => $this->translator->trans('none (enable a PHP server in Settings)'),
             default => $this->translator->trans('no server'),
         };

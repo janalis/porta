@@ -8,6 +8,9 @@ the event-loop scheduling around them.
 Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
 it as a [live preview](../../../docs/editor.md#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
+The plugin's Settings page lists the three tools it can use — `dot`, `mmdc` and
+`plantuml`, each optional — with an **Install** button that runs Homebrew (npm
+for `mmdc` when it is there), and **Update** once Porta manages the copy.
 Zoom with `=`/`-`, `0`/`f` fit, `1` actual size, a click on the status bar's
 `+`, `-` or `0 fit`, or `Ctrl+wheel` at the pointer — including the trackpad's Ctrl+two-finger-scroll, which glides (see
 [the image viewer](../../image-viewer/docs/README.md) for why that is as close to a pinch as a terminal

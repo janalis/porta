@@ -599,9 +599,9 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('no server', $pool->statusFor(null));
 
         $pool->missing(['php' => ['phpactor'], 'typescript' => ['ts-ls']]);
-        $this->assertSame('phpactor not found', $pool->statusFor('/tmp/proj/a.php'), 'enabled, its binary not there: not "enable one"');
-        $this->assertSame('ts-ls not found', $pool->statusFor('/tmp/proj/b.ts'));
-        $this->assertSame('phpactor not found', $pool->statusFor(null), 'no file open: PHP\'s, as ever');
+        $this->assertSame('phpactor not found (install it in Settings)', $pool->statusFor('/tmp/proj/a.php'), 'enabled, its binary not there: not "enable one"');
+        $this->assertSame('ts-ls not found (install it in Settings)', $pool->statusFor('/tmp/proj/b.ts'));
+        $this->assertSame('phpactor not found (install it in Settings)', $pool->statusFor(null), 'no file open: PHP\'s, as ever');
     }
 
     public function testDisabledAndUnconfiguredStates(): void
