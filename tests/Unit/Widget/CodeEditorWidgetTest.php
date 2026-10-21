@@ -352,6 +352,27 @@ final class CodeEditorWidgetTest extends TestCase
         self::assertExactWidth($rows, 50);
     }
 
+    /**
+     * A wheel notch between a wrap toggle and the next render steps through
+     * the lines as they are NOW: never through segments that are gone, nor
+     * past ones that just appeared.
+     */
+    public function testTheWheelRightAfterAWrapToggleStepsTheRowsAsTheyAreNow(): void
+    {
+        $editor = $this->editor("a\n".\str_repeat('x', times: 100)."\nb\nc\nd\n", 'toggled.php');
+        $editor->display->setSoftWrap(true);
+        $editor->render(new RenderContext(50, 12));
+
+        $editor->display->setSoftWrap(false);
+        $editor->scrollRows(2);
+        $this->assertSame([2, 0], [$editor->viewport()->vScroll, $editor->viewport()->vScrollSegment], 'unwrapped: two notches are two lines');
+
+        $editor->scrollRows(-2);
+        $editor->display->setSoftWrap(true);
+        $editor->scrollRows(2);
+        $this->assertSame([1, 1], [$editor->viewport()->vScroll, $editor->viewport()->vScrollSegment], 'wrapped again: a and then into the long line');
+    }
+
     public function testAPinnedHeadersGutterHasTheSameCOLUMNSAsAnOrdinaryRow(): void
     {
         // `renderStickyRow()` builds its own gutter and its comment claims the

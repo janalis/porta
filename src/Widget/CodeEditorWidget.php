@@ -830,8 +830,31 @@ final class CodeEditorWidget extends AbstractWidget implements
     #[\Override]
     public function scrollRows(int $rows): void
     {
+        // Measured now, not at the last render: a wrap toggle or a lens
+        // arriving since would have the wheel step through rows that are gone.
+        $this->measureRows();
         $this->scroll->scrollRows($rows);
         $this->callbacks->completion?->viewportScrolled();
+    }
+
+    /**
+     * Tell the scroll how many rows each line takes at the content width the
+     * last render measured: its lens rows, its text's rows — several under
+     * soft wrap — and its block rows; null while every line is one row, which
+     * keeps the plain line arithmetic. The wrap layout it measured with, for
+     * the rows to be drawn by; null unwrapped.
+     */
+    private function measureRows(): ?WrapLayout
+    {
+        $width = $this->scroll->contentWidth;
+        $wrapLayout = $this->display->softWrap ? new WrapLayout($this->document) : null;
+        $extraRows = null !== $wrapLayout || $this->decorations->hasExtraRows();
+        $this->scroll->rowsForLine = $extraRows
+            ? fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $width) ?? 1) + \count($this->decorations->lineBlocksAt($line))
+            : null; // one row per line, and the old arithmetic exactly
+        $this->scroll->rowsBelowLine = $extraRows ? fn (int $line): int => \count($this->decorations->lineBlocksAt($line)) : null;
+
+        return $wrapLayout;
     }
 
     /**
@@ -1387,12 +1410,7 @@ final class CodeEditorWidget extends AbstractWidget implements
             // them afterwards left the clamp a frame behind — the caret could
             // sit off screen for one paint after every Down.
             $this->scroll->setContentWidth($geo->contentWidth);
-            $wrapLayout = $this->display->softWrap ? new WrapLayout($doc) : null;
-            $extraRows = null !== $wrapLayout || $this->decorations->hasExtraRows();
-            $this->scroll->rowsForLine = $extraRows
-                ? fn (int $line): int => \count($this->decorations->codeLensesAt($line)) + ($wrapLayout?->rowsFor($line, $geo->contentWidth) ?? 1) + \count($this->decorations->lineBlocksAt($line))
-                : null; // one row per line, and the old arithmetic exactly
-            $this->scroll->rowsBelowLine = $extraRows ? fn (int $line): int => \count($this->decorations->lineBlocksAt($line)) : null;
+            $wrapLayout = $this->measureRows();
 
             // Clamp scroll to cursor: the caret must stay visible below whatever
             // sticky-scroll band the settled scroll position pins at the top.
