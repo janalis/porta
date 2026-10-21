@@ -173,6 +173,35 @@ final class ToolJobs
 
     private function finish(ToolRequirement $tool, ?string $path, ToolResult $result): void
     {
+        // What the copy named before, then ask it again: a package manager
+        // reports no version of its own, and only the binary says whether an
+        // "update" moved anything.
+        $before = null === $path ? '' : $this->versions->known($path);
+        if (null !== $path) {
+            $this->versions->forget($path);
+        }
+        $this->catalog->probe([$tool->plugin], function () use ($tool, $path, $result, $before): void {
+            $this->report($tool, $path, $this->asProbed($tool, $result, $before));
+        });
+    }
+
+    /**
+     * $result with the version the binary names now. An update that left it
+     * where it was is said as such — `composer update` within a constraint
+     * that allows nothing newer still exits 0.
+     */
+    private function asProbed(ToolRequirement $tool, ToolResult $result, string $before): ToolResult
+    {
+        $now = $this->catalog->status($tool)->version;
+        if (!$result->succeeded() || '' !== $result->version || '' === $now) {
+            return $result;
+        }
+
+        return new ToolResult(ToolOutcome::Updated === $result->outcome && $now === $before ? ToolOutcome::UpToDate : $result->outcome, $now);
+    }
+
+    private function report(ToolRequirement $tool, ?string $path, ToolResult $result): void
+    {
         $this->running = null;
         $name = ['%tool%' => $tool->name, '%version%' => $result->version, '%why%' => $result->why];
         match ($result->outcome) {
@@ -181,14 +210,9 @@ final class ToolJobs
             ToolOutcome::UpToDate => $this->notifier->flash($this->translator->trans('%tool% is already up to date (%version%)', $name), 4.0, self::SLOT),
             ToolOutcome::Failed => $this->notifier->error($this->translator->trans(null === $path ? 'Could not install %tool%: %why%' : 'Could not update %tool%: %why%', $name), 6.0, self::SLOT),
         };
-        if (null !== $path) {
-            // Whatever happened, the next question is asked of the binary again.
-            $this->versions->forget($path);
-        }
-        // Whatever the outcome, the open Settings page re-reads itself — its
-        // button read "Working…" until now — once the copy there has been
-        // asked its version (at once, when nothing needs asking).
-        $this->catalog->probe([$tool->plugin], $this->lifecycle->refreshView(...));
+        // Whatever the outcome, the open Settings page re-reads itself: its
+        // button read "Working…" until now.
+        $this->lifecycle->refreshView();
         if (ToolOutcome::Installed === $result->outcome || ToolOutcome::Updated === $result->outcome) {
             // A binary appeared or was replaced: relaunch the plugin's server.
             $this->lifecycle->onServerBinaryReplaced($tool->plugin);

@@ -223,7 +223,30 @@ final class ToolJobsTest extends TestCase
         $this->assertStringContainsString('Updating x…', $this->toast());
         $this->assertSame(['/bin/brew upgrade x'], $this->ran);
         $this->release();
-        $this->assertStringContainsString('Updated x', $this->toast());
+        $this->assertStringContainsString('Updating x…', $this->toast(), 'brew names no version: the binary is asked first');
+        $this->assertSame([$cellar.' --version'], \array_slice($this->ran, offset: 1));
+        $this->release(0, "x 2.0.0\n");
+        $this->assertStringContainsString('Updated x to 2.0.0', $this->toast());
+        $this->assertSame(['p'], $this->lifecycle->serverBinaryReplaced);
+    }
+
+    /** `composer update` within a constraint that allows nothing newer still exits 0: the binary says nothing moved. */
+    public function testAnUpdateThatMovedNothingSaysItIsUpToDate(): void
+    {
+        $this->plugin([['name' => 'x', 'sources' => [['brew', 'x']]]]);
+        $cellar = $this->project->write('Cellar/x/1.0/bin/x', "#!/bin/sh\n");
+        \chmod($cellar, permissions: 0o755);
+        $this->path['x'] = $cellar;
+        $tools = $this->tools();
+        $tools->versions->remember($cellar, '1.0.0');
+
+        $tools->jobs->update(self::tool($tools, 'x'));
+        $this->release();
+        $this->release(0, "x 1.0.0\n");
+
+        $this->assertStringContainsString('x is already up to date (1.0.0)', $this->toast());
+        $this->assertSame([], $this->lifecycle->serverBinaryReplaced, 'nothing was replaced, nothing relaunches');
+        $this->assertSame(1, $this->lifecycle->refreshed);
     }
 
     public function testUpdatingWhatPortaDoesNotManageIsRefused(): void
