@@ -1376,11 +1376,12 @@ final class PluginApi
     }
 
     /**
-     * How many screen rows the editor gives $line (0-based) of the active text
-     * file: one, or under soft wrap as many as the line breaks into at the
-     * editor's width — for a pane drawn level with the editor, row for row.
-     * One with no text file active. An action method: it throws during
-     * `activate()`.
+     * How many screen rows the text of $line (0-based) of the active text
+     * file takes in the editor: one, or under soft wrap as many as the line
+     * breaks into at the editor's width — for a pane drawn level with the
+     * editor, row for row. Code-lens rows above a line and line-block rows
+     * under it are not counted. One with no text file active. An action
+     * method: it throws during `activate()`.
      */
     public function editorRows(int $line): int
     {

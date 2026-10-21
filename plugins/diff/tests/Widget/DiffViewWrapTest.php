@@ -96,6 +96,18 @@ final class DiffViewWrapTest extends TestCase
         $this->assertSame(\str_repeat(' ', times: 61), $body[5]);
     }
 
+    /** A wide glyph across a break leaves its far half blank: the row below starts at its own column, not one early. */
+    public function testAWideGlyphAcrossABreakNeverShiftsTheRowBelow(): void
+    {
+        $widget = new DiffViewWidget(new Translator('en'));
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-x\n+".\str_repeat('a', times: 27)."中b\n"), 'a.txt');
+        $widget->useSoftWrap();
+
+        $body = self::body($widget, rows: 4);
+        $this->assertSame('        1 │+'.\str_repeat('a', times: 27).' ', $body[2], 'the glyph does not fit the first row');
+        $this->assertSame(\str_repeat(' ', times: 10).'│  b'.\str_repeat(' ', times: 26), $body[3], 'b where its column is');
+    }
+
     public function testNothingScrollsSidewaysWhileWrapped(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
@@ -160,12 +172,65 @@ final class DiffViewWrapTest extends TestCase
         $widget->handleInput("\x1b[6~"); // PgDn: hunk, keep and the o's fill four rows — a page is two rows on
         $widget->handleInput("\x1b[B");
         $body = self::body($widget, rows: 4);
-        $this->assertSame(\str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14), $body[2], 'the n\'s all shown, from their first row');
-        $this->assertStringContainsString('[scrolled +3]', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(40, 6))[0]));
+        $this->assertSame(\str_repeat(' ', times: 10).'│ oo'.\str_repeat(' ', times: 26), $body[0], 'scrolled down just enough: the o\'s last row above');
+        $this->assertSame(\str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14), $body[3], 'the n\'s all shown, to their last row');
+        $this->assertStringContainsString('[scrolled +2]', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(40, 6))[0]));
 
         $widget->scrollBy(-10);
         $widget->scrollBy(10);
-        $this->assertStringContainsString('[scrolled +3]', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(40, 6))[0]), 'the wheel reaches the last row and stops there');
+        $this->assertSame($body, self::body($widget, rows: 4), 'the wheel reaches the last row and stops there');
+    }
+
+    /** A row taller than the pane: the wheel scrolls through it, one screen row a notch, to its last. */
+    public function testTheWheelReachesTheEndOfARowTallerThanThePane(): void
+    {
+        $widget = $this->widget();
+        self::body($widget, rows: 2);
+
+        $widget->scrollBy(5); // past the hunk, keep and the o's two, and the n's first
+        $this->assertSame(
+            [
+                \str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 28),
+                \str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14),
+            ],
+            self::body($widget, rows: 2),
+            'the n\'s second and last rows',
+        );
+
+        $widget->scrollBy(9);
+        $this->assertSame(\str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14), self::body($widget, rows: 2)[1], 'and no further');
+
+        $widget->scrollBy(-1);
+        $this->assertMatchesRegularExpression('/^\s+2 │\+n{28}$/', self::body($widget, rows: 2)[0], 'a notch back: its first row on top');
+    }
+
+    /** Turning wrap on makes the rows above the cursor taller: the pane follows it down rather than lose it. */
+    public function testWrappingKeepsTheCursorInView(): void
+    {
+        $widget = new DiffViewWidget(new Translator('en'));
+        $widget->setDocument(DiffDocument::parse(self::RAW), 'a.txt');
+        $widget->setFocused(true);
+        $widget->render(new RenderContext(40, 4 + self::HEADER));
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\x1b[B"); // the n's, the last of four one-row rows
+
+        $widget->useSoftWrap();
+
+        $body = self::body($widget, rows: 4);
+        $this->assertSame(\str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14), $body[3], 'the cursor\'s row shown to its last');
+    }
+
+    /** A pane scrolled to its bottom, then widened: fewer rows to show, and the scroll comes back to fill it. */
+    public function testAWiderPaneScrolledToTheBottomStaysFull(): void
+    {
+        $widget = $this->widget();
+        self::body($widget, rows: 4);
+        $widget->scrollBy(10);
+
+        $body = self::body($widget, cols: 100, rows: 4);
+        $this->assertStringContainsString('keep', $body[1], 'every row one again at 100 columns: the four fill the pane');
+        $this->assertMatchesRegularExpression('/^\s+2 │\+n{70}/', $body[3]);
     }
 
     public function testAWiderPaneReWraps(): void

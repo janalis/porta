@@ -153,6 +153,17 @@ final class MergePaneWidgetTest extends TestCase
         $this->assertSame(Styles::dark()->of(Role::AddedRowBg)->apply(AnsiText::blank(11)), $raw[3], 'its band on the rows it does not fill');
     }
 
+    /** A wide glyph across a break leaves its far half blank: the row below starts at its own column, not one early. */
+    public function testAWideGlyphAcrossABreakNeverShiftsTheRowBelow(): void
+    {
+        $this->editorText = \str_repeat('a', times: 9)."中b\n";
+        $this->editorRows = [0 => 2];
+        $pane = $this->pane(ConflictSide::Ours);
+        $pane->show('/p/m.php', $this->editorText);
+
+        $this->assertSame([' '.\str_repeat('a', times: 9), '  b'], self::plain($pane, rows: 2, cols: 11));
+    }
+
     /** Scrolled INTO a tall line, the side starts on the same row of it as the editor. */
     public function testTheTopLineScrolledPartwayStartsAtTheSameRow(): void
     {

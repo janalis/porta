@@ -33,9 +33,9 @@ ours first, then theirs, and keeps the result.
 
 Under soft wrap a long line takes several rows in the editor, and as many on
 each side: a side's own text wraps at its column's width, blank rows below it
-when it is shorter, its last row cut with `…` when it is longer. Code-lens rows
-and folds in the result are not followed, and a wheel notch over a side scrolls
-by lines.
+when it is shorter, its last row cut with `…` when it is longer. Code-lens rows,
+line blocks and folds in the result are not followed, and a wheel notch over a
+side scrolls by lines.
 
 ## The diff pane
 
@@ -50,7 +50,8 @@ A line longer than the pane scrolls sideways with `←` / `→` — or, with cor
 soft wrap on (`Alt+Z`, the `softWrap` setting), continues on the rows below:
 its line numbers and ± marker on the first row only, and side by side the
 shorter half blank, still banded, until the taller one ends. Nothing scrolls
-sideways while it wraps.
+sideways while it wraps; the wheel scrolls a screen row at a time instead, so
+the end of a line taller than the pane is in reach.
 
 ## Settings
 

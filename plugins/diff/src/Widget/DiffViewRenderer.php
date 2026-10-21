@@ -362,7 +362,8 @@ final readonly class DiffViewRenderer
     private function scrolledText(string $text, int $inner, int $segment): string
     {
         return match (true) {
-            $this->wrap => AnsiText::truncate(AnsiUtils::sliceByColumn($text, $this->offset($segment, $inner), $inner), $inner, pad: true),
+            // Column-exact: a wide glyph across the break leaves a blank, never shifts the row.
+            $this->wrap => AnsiText::truncate(AnsiText::columnsFrom($text, $this->offset($segment, $inner), $inner), $inner, pad: true),
             $this->hScroll <= 0 => AnsiText::truncate($text, $inner, pad: true),
             // A LEADING mark: the cut is at the head, so the row reads as scrolled.
             default => Glyphs::ELLIPSIS.AnsiText::truncate(AnsiUtils::sliceByColumn($text, $this->hScroll, $inner), \max(1, $inner - 1), pad: true),

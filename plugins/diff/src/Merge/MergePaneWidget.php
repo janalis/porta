@@ -12,7 +12,6 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EditorPaneWidget;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -200,10 +199,9 @@ final class MergePaneWidget extends EditorPaneWidget
         }
         $inner = $columns - 1; // the one-column indent
         $shown = DiffViewRenderer::shown($row->text);
-        $rest = AnsiUtils::sliceByColumn($shown, $segment * $inner, \max(0, DiffViewRenderer::columns($shown) - ($segment * $inner)));
-        $text = $segment < ($of - 1)
-            ? AnsiText::truncate(' '.AnsiUtils::sliceByColumn($rest, 0, $inner), $columns, pad: true)
-            : AnsiText::truncate(' '.$rest, $columns, pad: true);
+        // Column-exact, as the diff pane slices: a wide glyph across a break leaves a blank, never shifts the row.
+        $from = $segment * $inner;
+        $text = AnsiText::truncate(' '.AnsiText::columnsFrom($shown, $from, $segment < ($of - 1) ? $inner : \max(0, DiffViewRenderer::columns($shown) - $from)), $columns, pad: true);
 
         return match ($row->kind) {
             MergeRowKind::Context => $this->styles->of(Role::Dim)->apply($text),

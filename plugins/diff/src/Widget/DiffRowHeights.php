@@ -16,8 +16,9 @@ use Porta\Editor\WrapLayout;
  * Every height is one until soft wrap breaks a long line, and with all of them
  * one each walk is the plain arithmetic the pane did before wrap existed — one
  * code path for both, so the unwrapped pane cannot drift from the wrapped one.
- * Scrolling stays in whole diff rows: a row taller than the pane shows its
- * first screenful.
+ * The pane's scroll is a diff row and how many of its screen rows are
+ * scrolled away, as the editor's is under wrap: a row taller than the pane
+ * scrolls through, and none of its text is out of reach.
  *
  * @phpstan-import-type Row from DiffViewRenderer
  */
@@ -69,58 +70,73 @@ final readonly class DiffRowHeights
 
     /**
      * The diff row and which of its screen rows the pane's $visual-th body row
-     * shows, scrolled to $scroll; null past the last row.
+     * shows, scrolled to $segment rows into row $scroll; null past the last row.
      *
      * @return array{int, int}|null
      */
-    public function at(int $scroll, int $visual): ?array
+    public function at(int $scroll, int $segment, int $visual): ?array
     {
-        $at = null;
-        $count = \count($this->heights);
-        for ($row = $scroll; null === $at && $visual >= 0 && $row < $count; ++$row) {
-            if ($visual < $this->heights[$row]) {
-                $at = [$row, $visual];
-            }
-            $visual -= $this->heights[$row];
-        }
+        $offset = $this->offset($scroll) + $segment + $visual;
 
-        return $at;
+        return $visual >= 0 && $offset < \array_sum($this->heights) ? $this->position($offset) : null;
     }
 
     /**
      * The scroll that shows $cursor in $visible rows, moving as little from
-     * $scroll as it can: up to it when it is above, down until it fits when it
-     * is below. A row taller than the pane is shown from its top.
+     * $scroll/$segment as it can: up to its top when it starts above, down
+     * until its last row shows when it ends below. A row taller than the pane
+     * is shown from its top.
+     *
+     * @return array{int, int} the diff row on top, and its screen rows scrolled away
      */
-    public function reveal(int $scroll, int $cursor, int $visible): int
+    public function reveal(int $scroll, int $segment, int $cursor, int $visible): array
     {
-        if ($cursor < $scroll) {
-            return $cursor;
-        }
-        $used = \array_sum(\array_slice($this->heights, $scroll, $cursor - $scroll + 1));
-        while ($scroll < $cursor && $used > $visible) {
-            $used -= $this->heights[$scroll];
-            ++$scroll;
-        }
+        $top = $this->offset($scroll) + $segment;
+        $cursorTop = $this->offset($cursor);
+        $cursorBottom = $cursorTop + $this->height($cursor);
 
-        return $scroll;
+        return $this->position(match (true) {
+            $cursorTop < $top => $cursorTop,
+            $cursorBottom > ($top + $visible) => \min($cursorTop, $cursorBottom - $visible),
+            default => $top,
+        });
     }
 
     /**
-     * The furthest scroll that still fills $visible rows: the last rows, as
-     * many as fit — or the last row alone, from its top, when it is taller.
+     * $scroll/$segment moved $by screen rows, held between the top and the
+     * furthest scroll that still fills $visible rows — so the last row's last
+     * screen row is reachable however tall it is.
+     *
+     * @return array{int, int} the diff row on top, and its screen rows scrolled away
      */
-    public function maxScroll(int $visible): int
+    public function scrolled(int $scroll, int $segment, int $by, int $visible): array
     {
+        $total = \array_sum($this->heights);
+
+        return $this->position(\max(0, \min($this->offset($scroll) + $segment + $by, $total - $visible)));
+    }
+
+    /** The screen rows above diff row $row. */
+    private function offset(int $row): int
+    {
+        return \array_sum(\array_slice($this->heights, offset: 0, length: \max(0, $row)));
+    }
+
+    /**
+     * The diff row screen row $offset falls in, and how far into it.
+     *
+     * @return array{int, int}
+     */
+    private function position(int $offset): array
+    {
+        $row = 0;
         $count = \count($this->heights);
-        $scroll = $count;
-        $used = 0;
-        while ($scroll > 0 && ($used + $this->heights[$scroll - 1]) <= $visible) {
-            --$scroll;
-            $used += $this->heights[$scroll];
+        while ($row < ($count - 1) && $offset >= $this->heights[$row]) {
+            $offset -= $this->heights[$row];
+            ++$row;
         }
 
-        return \min($scroll, \max(0, $count - 1));
+        return [$row, \min($offset, $this->height($row) - 1)];
     }
 
     /**

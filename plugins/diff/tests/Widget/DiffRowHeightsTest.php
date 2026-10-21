@@ -51,9 +51,9 @@ final class DiffRowHeightsTest extends TestCase
         $document = DiffDocument::parse(self::RAW);
         $unwrapped = DiffRowHeights::of($document, $document->rows(), 40, false);
         $this->assertSame(1, $unwrapped->height(3));
-        $this->assertSame([3, 0], $unwrapped->at(0, 3));
+        $this->assertSame([3, 0], $unwrapped->at(0, 0, 3));
 
-        $this->assertNull(DiffRowHeights::of(null, [], 40, true)->at(0, 0), 'nothing to show');
+        $this->assertNull(DiffRowHeights::of(null, [], 40, true)->at(0, 0, 0), 'nothing to show');
     }
 
     /**
@@ -71,33 +71,37 @@ final class DiffRowHeightsTest extends TestCase
     {
         $heights = self::wrapped();
 
-        $this->assertSame([0, 0], $heights->at(0, 0));
-        $this->assertSame([2, 1], $heights->at(0, 3), 'the o\'s second row');
-        $this->assertSame([3, 2], $heights->at(0, 6), 'the n\'s last row');
-        $this->assertSame([3, 0], $heights->at(2, 2), 'scrolled two rows down');
-        $this->assertNull($heights->at(0, 7), 'past the last row');
-        $this->assertNull($heights->at(0, -1), 'above the first');
+        $this->assertSame([0, 0], $heights->at(0, 0, 0));
+        $this->assertSame([2, 1], $heights->at(0, 0, 3), 'the o\'s second row');
+        $this->assertSame([3, 2], $heights->at(0, 0, 6), 'the n\'s last row');
+        $this->assertSame([3, 0], $heights->at(2, 0, 2), 'scrolled two rows down');
+        $this->assertSame([3, 1], $heights->at(3, 1, 0), 'scrolled one row into the n\'s');
+        $this->assertNull($heights->at(3, 1, 2), 'past the last row, counted from inside one');
+        $this->assertNull($heights->at(0, 0, 7), 'past the last row');
+        $this->assertNull($heights->at(0, 0, -1), 'above the first');
     }
 
     public function testRevealMovesAsLittleAsShowsTheCursor(): void
     {
         $heights = self::wrapped();
 
-        $this->assertSame(1, $heights->reveal(3, 1, 4), 'above: scroll up to it');
-        $this->assertSame(0, $heights->reveal(0, 2, 4), 'rows 0–2 take four: already shown');
-        $this->assertSame(3, $heights->reveal(0, 3, 4), 'the n\'s need three: only they fit');
-        $this->assertSame(3, $heights->reveal(0, 3, 2), 'a row taller than the pane is shown from its top');
+        $this->assertSame([1, 0], $heights->reveal(3, 0, 1, 4), 'above: scroll up to it');
+        $this->assertSame([0, 0], $heights->reveal(0, 0, 2, 4), 'rows 0–2 take four: already shown');
+        $this->assertSame([2, 1], $heights->reveal(0, 0, 3, 4), 'the n\'s need three: down until their last row shows, the o\'s second above');
+        $this->assertSame([3, 0], $heights->reveal(0, 0, 3, 2), 'a row taller than the pane is shown from its top');
+        $this->assertSame([3, 0], $heights->reveal(3, 2, 3, 4), 'scrolled into the cursor\'s row: back to its top');
     }
 
-    public function testMaxScrollKeepsTheLastRowsInView(): void
+    public function testScrolledMovesByScreenRowsAndStopsWhereThePaneIsFull(): void
     {
         $heights = self::wrapped();
 
-        $this->assertSame(3, $heights->maxScroll(4), 'the n\'s three rows fill four; the o\'s two more would not');
-        $this->assertSame(2, $heights->maxScroll(5));
-        $this->assertSame(0, $heights->maxScroll(7), 'it all fits');
-        $this->assertSame(3, $heights->maxScroll(2), 'not even the last row fits: it, from its top, never past it');
-        $this->assertSame(0, DiffRowHeights::of(null, [], 40, true)->maxScroll(4), 'nothing shown: nothing to scroll');
+        $this->assertSame([2, 1], $heights->scrolled(0, 0, 10, 4), 'the n\'s three rows and the o\'s last fill four');
+        $this->assertSame([3, 1], $heights->scrolled(0, 0, 10, 2), 'a row taller than the pane scrolls through to its last screen row');
+        $this->assertSame([3, 0], $heights->scrolled(3, 1, -1, 2), 'one row up, inside the n\'s');
+        $this->assertSame([0, 0], $heights->scrolled(2, 1, -9, 4), 'never above the top');
+        $this->assertSame([0, 0], $heights->scrolled(0, 0, 5, 7), 'it all fits');
+        $this->assertSame([0, 0], DiffRowHeights::of(null, [], 40, true)->scrolled(0, 0, 3, 4), 'nothing shown: nothing to scroll');
     }
 
     public function testFittingCountsAPage(): void
