@@ -17,7 +17,9 @@ use Porta\Ui\BidiTui;
 use Porta\Ui\ClickIntent;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\DockTabsWidget;
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\MenuBarWidget;
+use Porta\Widget\NavigablePaneWidget;
 use Porta\Widget\SeparatorWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockTab;
@@ -62,7 +64,7 @@ final class MouseRouter
     /** @var array{tab: ?DockTab, index: int}|null the dock-strip tab being drag-reordered */
     private ?array $dockTabDrag = null;
 
-    /** @var array{row: int, col: int, moved: bool}|null a left-drag panning the graph viewer (release without motion = select) */
+    /** @var array{pane: NavigablePaneWidget, row: int, col: int, moved: bool}|null a left-drag panning the pane it was pressed on (release without motion = select) */
     private ?array $paneDrag = null;
 
     private ?string $tabDragPath = null;
@@ -271,15 +273,16 @@ final class MouseRouter
      */
     private function continuePaneDrag(MouseEvent $mouse): bool
     {
-        $pane = $this->panes->navigablePane();
-        if (null === $this->paneDrag || null === $pane || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
+        if (null === $this->paneDrag || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
+        // The pane the press landed on — a preview's flank as much as the pane itself.
+        $pane = $this->paneDrag['pane'];
         $dCols = $mouse->col - $this->paneDrag['col'];
         $dRows = $mouse->row - $this->paneDrag['row'];
         if (0 !== $dCols || 0 !== $dRows) {
             $pane->scrollBy(-$dCols, -2 * $dRows);
-            $this->paneDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => true];
+            $this->paneDrag = ['pane' => $pane, 'row' => $mouse->row, 'col' => $mouse->col, 'moved' => true];
         }
         if ($mouse->isLeftRelease()) {
             if (!$this->paneDrag['moved']) {
@@ -532,15 +535,15 @@ final class MouseRouter
      */
     private function pressPane(MouseEvent $mouse): bool
     {
-        $pane = $this->panes->pane();
+        $pane = \array_find($this->panes->shownPanes(), fn (EditorPaneWidget $shown): bool => $this->hit->contains($this->hit->rect($shown), $mouse));
         $paneRect = null === $pane ? null : $this->hit->rect($pane);
-        if (null === $pane || null === $paneRect || !$paneRect->contains($mouse->row, $mouse->col)) {
+        if (null === $pane || null === $paneRect) {
             return false;
         }
         $this->tui->setFocus($pane);
         $rel = $paneRect->toRelative($mouse->row, $mouse->col);
-        if ($pane->press($rel['row'], $rel['col'])) {
-            $this->paneDrag = ['row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
+        if ($pane->press($rel['row'], $rel['col']) && $pane instanceof NavigablePaneWidget) {
+            $this->paneDrag = ['pane' => $pane, 'row' => $mouse->row, 'col' => $mouse->col, 'moved' => false];
         }
 
         return $this->rendered();

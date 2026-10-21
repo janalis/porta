@@ -127,7 +127,10 @@ final class IdePluginPaneTest extends TestCase
                     $pane->calls = [];
 
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row)); // press arms a drag
+                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $col + 2, $row)); // motion with no button held is no drag
+                    $this->assertSame(['press:2,5'], $pane->calls, 'a hover pans nothing');
                     $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $col + 4, $row + 1)); // drag: the world moves with the pointer
+                    $this->assertSame(['press:2,5', 'scroll:-4,-2'], $pane->calls, 'as it moves, not at the release');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col + 4, $row + 1)); // a release after motion selects nothing
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $col, $row)); // a release that never moved is a click

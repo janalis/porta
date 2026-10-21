@@ -30,13 +30,14 @@ final class KeymapFollowersTest extends TestCase
         $list = new KeybindingsListWidget(new Translator('en'));
         new KeymapFollowers($keys, $editor, $panes, $list)->wire();
         // Registered after the wiring, as a plugin's pane is: the next rebuild still reaches it.
-        $panes->register($pane = new TestPane('demo'), static fn (): string => '');
+        $panes->register($pane = new TestPane('demo', $flank = new TestPane('flank')), static fn (): string => '');
         $this->assertSame(['ctrl+d'], $editor->getKeybindings()->getBindings('duplicate_line'), 'nothing handed over before a rebuild');
 
         $keys->usePlatform('macos');
 
         $this->assertSame(['f12'], $editor->getKeybindings()->getBindings('duplicate_line'), "the user's rebind, live in the editor");
         $this->assertSame(['f11'], $pane->getKeybindings()->getBindings('goto_file'), 'and in a pane, over its own default');
+        $this->assertSame(['f11'], $flank->getKeybindings()->getBindings('goto_file'), 'and in its flank, which is not registered');
         $this->assertSame(['backspace', 'delete'], $list->getKeybindings()->getBindings('reset_binding'), "and the keymap list resets with the Mac's delete key");
     }
 }

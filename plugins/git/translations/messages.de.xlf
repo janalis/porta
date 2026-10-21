@@ -86,10 +86,6 @@
         <source>Untracked: stage the whole file with Space in the changes list</source>
         <target>Nicht verfolgt: ganze Datei mit Leertaste in der Änderungsliste vormerken</target>
       </trans-unit>
-      <trans-unit id="26">
-        <source>[→%count%]</source>
-        <target>[→%count%]</target>
-      </trans-unit>
       <trans-unit id="27">
         <source>git apply refused the partial patch</source>
         <target>git apply hat den Teil-Patch abgelehnt</target>
@@ -109,10 +105,6 @@
       <trans-unit id="31">
         <source>±10 lines</source>
         <target>±10 Zeilen</target>
-      </trans-unit>
-      <trans-unit id="32">
-        <source>No changes selected</source>
-        <target>Keine Änderungen ausgewählt</target>
       </trans-unit>
       <trans-unit id="33">
         <source>Working tree clean</source>
@@ -450,10 +442,6 @@
         <source>Stage everything</source>
         <target>Alles vormerken</target>
       </trans-unit>
-      <trans-unit id="117">
-        <source>Side-by-side diff</source>
-        <target>Diff nebeneinander</target>
-      </trans-unit>
       <trans-unit id="119">
         <source>Write a summary first</source>
         <target>Zuerst eine Zusammenfassung schreiben</target>
@@ -463,8 +451,8 @@
         <target>Zuerst eine Änderung vormerken</target>
       </trans-unit>
       <trans-unit id="121">
-        <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
-        <target>Esc zum Bearbeiten · F7 nächster Konflikt · Alt+M auflösen · Strg+S, dann Strg+Q — verbleibende Konflikte lassen den Merge scheitern</target>
+        <source>Ours | result | theirs — a keeps a side, b both · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
+        <target>Unsere | Ergebnis | ihre — a behält eine Seite, b beide · Strg+S, dann Strg+Q — verbleibende Konflikte lassen den Merge scheitern</target>
       </trans-unit>
       <trans-unit id="122">
         <source>%name% has changes. Delete it anyway, and them?</source>
@@ -738,33 +726,13 @@
         <source>Copy the full commit hash</source>
         <target>Den vollständigen Commit-Hash kopieren</target>
       </trans-unit>
-      <trans-unit id="190">
-        <source>Diff settings: %layout%, %whitespace%</source>
-        <target>Diff-Einstellungen: %layout%, %whitespace%</target>
-      </trans-unit>
       <trans-unit id="191">
         <source>Hide whitespace changes</source>
         <target>Leerzeichenänderungen ausblenden</target>
       </trans-unit>
-      <trans-unit id="192">
-        <source>Show more of the file around the changes (c)</source>
-        <target>Mehr von der Datei um die Änderungen zeigen (c)</target>
-      </trans-unit>
       <trans-unit id="193">
         <source>Unified</source>
         <target>Einheitlich</target>
-      </trans-unit>
-      <trans-unit id="194">
-        <source>Unified diff</source>
-        <target>Einheitlicher Diff</target>
-      </trans-unit>
-      <trans-unit id="195">
-        <source>whitespace changes hidden</source>
-        <target>Leerzeichenänderungen ausgeblendet</target>
-      </trans-unit>
-      <trans-unit id="196">
-        <source>whitespace changes shown</source>
-        <target>Leerzeichenänderungen sichtbar</target>
       </trans-unit>
       <trans-unit id="197">
         <source>Fetch</source>
@@ -825,6 +793,114 @@
       <trans-unit id="212">
         <source>Commit %count% file to %branch%|Commit %count% files to %branch%</source>
         <target>%count% Datei auf %branch% committen|%count% Dateien auf %branch% committen</target>
+      </trans-unit>
+      <trans-unit id="213">
+        <source>Git: Continue Merge or Rebase</source>
+        <target>Git: Merge oder Rebase fortsetzen</target>
+      </trans-unit>
+      <trans-unit id="214">
+        <source>Git: Skip This Step</source>
+        <target>Git: Diesen Schritt überspringen</target>
+      </trans-unit>
+      <trans-unit id="215">
+        <source>Git: Abort Merge or Rebase…</source>
+        <target>Git: Merge oder Rebase abbrechen…</target>
+      </trans-unit>
+      <trans-unit id="216">
+        <source>Resolve the conflicted files first: %count% left</source>
+        <target>Zuerst die Dateien mit Konflikt lösen: noch %count%</target>
+      </trans-unit>
+      <trans-unit id="217">
+        <source>A merge has no step to skip: continue or abort it</source>
+        <target>Ein Merge hat keinen Schritt zum Überspringen: fortsetzen oder abbrechen</target>
+      </trans-unit>
+      <trans-unit id="218">
+        <source>Abort the %operation%? What you resolved is lost</source>
+        <target>%operation% abbrechen? Was du gelöst hast, geht verloren</target>
+      </trans-unit>
+      <trans-unit id="219">
+        <source>Abort</source>
+        <target>Abbrechen</target>
+      </trans-unit>
+      <trans-unit id="220">
+        <source>merge</source>
+        <target>Merge</target>
+      </trans-unit>
+      <trans-unit id="221">
+        <source>rebase</source>
+        <target>Rebase</target>
+      </trans-unit>
+      <trans-unit id="222">
+        <source>cherry-pick</source>
+        <target>Cherry-Pick</target>
+      </trans-unit>
+      <trans-unit id="223">
+        <source>revert</source>
+        <target>Revert</target>
+      </trans-unit>
+      <trans-unit id="224">
+        <source>No merge or rebase in progress</source>
+        <target>Kein Merge oder Rebase im Gange</target>
+      </trans-unit>
+      <trans-unit id="225">
+        <source>Continued the %operation%</source>
+        <target>%operation% fortgesetzt</target>
+      </trans-unit>
+      <trans-unit id="226">
+        <source>Skipped the step and continued the %operation%</source>
+        <target>Schritt übersprungen, %operation% fortgesetzt</target>
+      </trans-unit>
+      <trans-unit id="227">
+        <source>Aborted the %operation%</source>
+        <target>%operation% abgebrochen</target>
+      </trans-unit>
+      <trans-unit id="228">
+        <source>git refused</source>
+        <target>git hat abgelehnt</target>
+      </trans-unit>
+      <trans-unit id="229">
+        <source>Continue %operation%</source>
+        <target>%operation% fortsetzen</target>
+      </trans-unit>
+      <trans-unit id="230">
+        <source>Skip This Step</source>
+        <target>Diesen Schritt überspringen</target>
+      </trans-unit>
+      <trans-unit id="231">
+        <source>Abort %operation%…</source>
+        <target>%operation% abbrechen…</target>
+      </trans-unit>
+      <trans-unit id="232">
+        <source>merging</source>
+        <target>Merge läuft</target>
+      </trans-unit>
+      <trans-unit id="233">
+        <source>rebasing</source>
+        <target>Rebase läuft</target>
+      </trans-unit>
+      <trans-unit id="234">
+        <source>cherry-picking</source>
+        <target>Cherry-Pick läuft</target>
+      </trans-unit>
+      <trans-unit id="235">
+        <source>reverting</source>
+        <target>Revert läuft</target>
+      </trans-unit>
+      <trans-unit id="236">
+        <source>%count% conflicted file|%count% conflicted files</source>
+        <target>%count% Datei mit Konflikt|%count% Dateien mit Konflikt</target>
+      </trans-unit>
+      <trans-unit id="237">
+        <source>Resolved — click to continue or abort</source>
+        <target>Gelöst — klicken zum Fortsetzen oder Abbrechen</target>
+      </trans-unit>
+      <trans-unit id="238">
+        <source>Resolve the conflicts, then click to continue — or skip or abort</source>
+        <target>Konflikte lösen, dann klicken zum Fortsetzen — oder überspringen oder abbrechen</target>
+      </trans-unit>
+      <trans-unit id="239">
+        <source>%file% still has conflict markers: resolve them first</source>
+        <target>%file% enthält noch Konfliktmarker: zuerst lösen</target>
       </trans-unit>
     </body>
   </file>

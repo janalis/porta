@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Widget\EditorPaneWidget;
 use Porta\Widget\NavigablePaneWidget;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -21,9 +22,16 @@ final class TestPane extends NavigablePaneWidget
     public ?string $shownPath = null;
     public mixed $shownPayload = null;
 
+    /** @param EditorPaneWidget|null $flankPane what {@see flank()} seats on the editor's other side */
     public function __construct(
         private readonly string $id = 'test-pane',
+        private readonly ?EditorPaneWidget $flankPane = null,
     ) {}
+
+    public function flank(): ?EditorPaneWidget
+    {
+        return $this->flankPane;
+    }
 
     /**
      * A pane binds its own keys, which is exactly what the keymap page has to

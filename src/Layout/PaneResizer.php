@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Porta\Layout;
 
-use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Symfony\Component\Tui\Tui;
@@ -21,7 +20,6 @@ final readonly class PaneResizer
         private Tui $tui,
         private LayoutController $layout,
         private FileTreeWidget $tree,
-        private CodeEditorWidget $editor,
         private BottomDock $dock,
         private ViewRegions $regions,
         private PreviewSplit $previewSplit,
@@ -81,19 +79,13 @@ final readonly class PaneResizer
     }
 
     /**
-     * Whether $focus is one half of a preview split on screen: the editor or
-     * the pane beside it. The split's area is attached only in Split, so the
-     * editor alone — or a lone preview — resizes nothing.
+     * Whether $focus is one side of a preview split on screen: the editor,
+     * the pane beside it or the pane's flank. The split's area is attached
+     * only in Split, so the editor alone — or a lone preview — resizes nothing.
      */
     private function inPreviewSplit(?object $focus): bool
     {
-        $pane = $this->previewSplit->preview();
-
-        if (null === $pane || null === $this->previewSplit->area->getContext()) {
-            return false;
-        }
-
-        return null !== $focus && ($focus === $pane || $focus === $this->editor);
+        return null !== $this->previewSplit->splitFor($focus);
     }
 
     private function resizer(int $direction): ?\Closure

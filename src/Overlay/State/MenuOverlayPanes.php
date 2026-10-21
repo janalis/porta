@@ -37,6 +37,6 @@ final readonly class MenuOverlayPanes
      */
     public function current(): array
     {
-        return [...$this->editor, ...($this->panes?->all() ?? []), ...$this->chrome];
+        return [...$this->editor, ...($this->panes?->seated() ?? []), ...$this->chrome];
     }
 }

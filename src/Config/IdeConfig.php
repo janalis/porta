@@ -115,7 +115,7 @@ final readonly class IdeConfig
      * {@see PortaJsonWriter} materializes it before editing so a disable from
      * the default state persists "the default minus that name".
      */
-    public const array DEFAULT_ENABLED_PLUGINS = ['image-viewer', 'graph-viewer', 'todo', 'local-history', 'git', 'ssh', 'ftp'];
+    public const array DEFAULT_ENABLED_PLUGINS = ['image-viewer', 'graph-viewer', 'todo', 'local-history', 'diff', 'git', 'ssh', 'ftp'];
 
     /**
      * The closed value sets of the choice settings, mirrored here as literals

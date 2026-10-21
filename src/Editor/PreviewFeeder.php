@@ -8,6 +8,7 @@ use Porta\Container\AsEager;
 use Porta\Container\AsIdeService;
 use Porta\Support\Scheduler;
 use Porta\Ui\FrameHooks;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorPaneWidget;
 use Symfony\Component\Tui\Tui;
 
@@ -24,7 +25,10 @@ use Symfony\Component\Tui\Tui;
  *
  * It also carries the caret the other way from click-to-source: when the
  * caret reaches another line, the pane is asked to bring what that line
- * wrote into view ({@see EditorPaneWidget::followSource()}).
+ * wrote into view ({@see EditorPaneWidget::followSource()}). And when the
+ * editor scrolls, the pane and its flank are repainted: one that draws level
+ * with the text — the merge view's sides — reads the editor's top line as it
+ * renders, and a render it has cached would not.
  *
  * The pause is trailing and re-armed on every change, so a burst of typing
  * costs one render at its end, not one per keystroke. What that render costs
@@ -46,6 +50,9 @@ final class PreviewFeeder
     private ?string $followedPath = null;
     private int $followedLine = -1;
 
+    /** The editor's view — its top line and pinned headers — when the preview was last repainted for it. */
+    private string $paintedView = '';
+
     /** The version the armed timer will feed, so a frame that sees it again leaves the timer alone. */
     private ?string $pendingPath = null;
     private int $pendingVersion = -1;
@@ -56,6 +63,7 @@ final class PreviewFeeder
         private readonly EditorPanes $panes,
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
+        private readonly CodeEditorWidget $editor,
         ?FrameHooks $frames = null,
     ) {
         $frames?->onBeforeFrame($this->watch(...));
@@ -87,6 +95,7 @@ final class PreviewFeeder
             return;
         }
         $this->follow($buffer, $pane);
+        $this->repaintOnScroll($pane);
         $version = $buffer->document->version;
         $settled = ($buffer->path === $this->fedPath && $version === $this->fedVersion) || ($buffer->path === $this->pendingPath && $version === $this->pendingVersion);
         if ($settled) {
@@ -115,6 +124,26 @@ final class PreviewFeeder
         $this->followedPath = $buffer->path;
         $this->followedLine = $document->cursorLine;
         $pane->followSource($document->cursorLine, $document->cursorCol);
+        $this->tui->requestRender();
+    }
+
+    /**
+     * The editor's view moved since the last repaint: the pane and its flank
+     * draw again — and once more on the next frame. The pinned sticky-scroll
+     * headers settle while the editor renders, AFTER a flank seated before it
+     * has drawn this frame from the last ones; the frame asked for here is the
+     * one that sees them settled, and stops when the view stays put.
+     */
+    private function repaintOnScroll(EditorPaneWidget $pane): void
+    {
+        $viewport = $this->editor->viewport();
+        $view = $viewport->vScroll.':'.\implode(',', $viewport->stickyLines);
+        if ($view === $this->paintedView) {
+            return;
+        }
+        $this->paintedView = $view;
+        $pane->invalidate();
+        $pane->flank()?->invalidate();
         $this->tui->requestRender();
     }
 

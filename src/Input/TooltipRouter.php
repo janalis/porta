@@ -234,7 +234,7 @@ final class TooltipRouter
             // A hidden panel keeps its last rect, so it answers only while shown.
             ...(($panel = $this->dock->visiblePanel()) instanceof TooltipProvider ? [$panel] : []),
             $this->separator,
-            $this->previewSplit->separator,
+            ...$this->previewSplit->separators(),
         ];
     }
 }

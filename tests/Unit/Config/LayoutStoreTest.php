@@ -22,6 +22,8 @@ final class LayoutStoreTest extends TestCase
             viewSidebarWidthPercent: ['git' => 28, 'settings' => 19],
             previewSplitPercent: 62,
             viewSplitPercent: ['git:history' => 35],
+            flankedSplitPercent: 70,
+            flankSplitPercent: 45,
         )));
 
         $loaded = $store->load();
@@ -31,6 +33,8 @@ final class LayoutStoreTest extends TestCase
         $this->assertSame(['git' => 28, 'settings' => 19], $loaded->viewSidebarWidthPercent);
         $this->assertSame(62, $loaded->previewSplitPercent);
         $this->assertSame(['git:history' => 35], $loaded->viewSplitPercent);
+        $this->assertSame(70, $loaded->flankedSplitPercent);
+        $this->assertSame(45, $loaded->flankSplitPercent);
     }
 
     public function testLoadWhenNoFileReturnsNull(): void

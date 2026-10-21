@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="he" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>[→%count%]</source>
+        <target>[→%count%]</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Diff settings: %layout%, %whitespace%</source>
+        <target>הגדרות diff: %layout%, %whitespace%</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Show more of the file around the changes (c)</source>
+        <target>להציג עוד מהקובץ סביב השינויים (c)</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Side-by-side diff</source>
+        <target>השוואה זה לצד זה</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Unified diff</source>
+        <target>diff מאוחד</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>whitespace changes hidden</source>
+        <target>שינויי רווחים מוסתרים</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>whitespace changes shown</source>
+        <target>שינויי רווחים מוצגים</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>No changes selected</source>
+        <target>לא נבחרו שינויים</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>ours</source>
+        <target>שלנו</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>theirs</source>
+        <target>שלהם</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>No conflicts left — save the result</source>
+        <target>לא נותרו התנגשויות — שמרו את התוצאה</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</source>
+        <target>התנגשות %current% מתוך %count%  a שמירת %side%  b שתיהן  n/p הבאה/הקודמת</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

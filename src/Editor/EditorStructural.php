@@ -183,9 +183,9 @@ final class EditorStructural
      * moving forward, the last region before it when moving back, wrapping to
      * the far end when the caret sits outside every region in that direction.
      *
-     * @param list<array{start: int, sep: int, end: int}> $regions non-empty
+     * @param list<array{start: int, base: int|null, sep: int, end: int}> $regions non-empty
      *
-     * @return array{start: int, sep: int, end: int}
+     * @return array{start: int, base: int|null, sep: int, end: int}
      */
     private function conflictTarget(array $regions, int $cursor, int $dir): array
     {
@@ -217,7 +217,7 @@ final class EditorStructural
     /**
      * Replace a conflict region with the chosen side as a single edit.
      *
-     * @param array{start: int, sep: int, end: int} $region
+     * @param array{start: int, base: int|null, sep: int, end: int} $region
      */
     private function resolveConflict(array $region, ConflictSide $which): void
     {

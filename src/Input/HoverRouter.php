@@ -300,7 +300,9 @@ final readonly class HoverRouter
         $this->updateStripHover($mouse);
         $this->updateListHover($mouse);
         $this->updateSeparatorHover($mouse, $this->separator);
-        $this->updateSeparatorHover($mouse, $this->previewSplit->separator);
+        foreach ($this->previewSplit->separators() as $separator) {
+            $this->updateSeparatorHover($mouse, $separator);
+        }
 
         if ($this->handleMenuHover($mouse)) {
             return;

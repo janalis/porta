@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="de" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>[→%count%]</source>
+        <target>[→%count%]</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Diff settings: %layout%, %whitespace%</source>
+        <target>Diff-Einstellungen: %layout%, %whitespace%</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Show more of the file around the changes (c)</source>
+        <target>Mehr von der Datei um die Änderungen zeigen (c)</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Side-by-side diff</source>
+        <target>Diff nebeneinander</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Unified diff</source>
+        <target>Einheitlicher Diff</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>whitespace changes hidden</source>
+        <target>Leerzeichenänderungen ausgeblendet</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>whitespace changes shown</source>
+        <target>Leerzeichenänderungen sichtbar</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>No changes selected</source>
+        <target>Keine Änderungen ausgewählt</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>ours</source>
+        <target>unsere</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>theirs</source>
+        <target>ihre</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>No conflicts left — save the result</source>
+        <target>Keine Konflikte mehr — Ergebnis speichern</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</source>
+        <target>Konflikt %current% von %count%  a %side% behalten  b beide  n/p nächster/vorheriger</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

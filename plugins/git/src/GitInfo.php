@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\GitPlugin;
 
+use Porta\DiffPlugin\HunkParser;
+use Porta\Editor\ConflictMarkers;
 use Porta\GitPlugin\Command\CommitMode;
 use Porta\GitPlugin\Diff\WhitespaceMode;
 use Porta\GitPlugin\Parse\BranchParser;
-use Porta\GitPlugin\Parse\HunkParser;
 use Porta\GitPlugin\Parse\LogParser;
+use Porta\GitPlugin\Parse\OperationReader;
 use Porta\GitPlugin\Parse\StatusParser;
 use Porta\GitPlugin\Parse\WorktreeParser;
 use Porta\GitPlugin\Process\GitProcesses;
@@ -29,6 +31,8 @@ final readonly class GitInfo
 {
     private GitProcessRunner $runner;
 
+    private string $rootDir;
+
     /**
      * $lane is optional and TRAILING so direct construction keeps working;
      * `plugin.php` passes {@see GitProcesses::$general}, which is what puts
@@ -42,6 +46,7 @@ final readonly class GitInfo
         ?ProcessLane $lane = null,
     ) {
         $this->runner = new GitProcessRunner($rootDir, $gitPath, $lane);
+        $this->rootDir = $rootDir;
     }
 
     /** The resolved `git` binary ({@see GitProcessRunner::binary()}), or null when none was found. */
@@ -135,6 +140,67 @@ final readonly class GitInfo
             $lines = \explode("\n", \trim($out));
             $onDone(0 === $code && 3 === \count($lines) ? new Locations($lines[0], $lines[1], $lines[2]) : null);
         });
+    }
+
+    /**
+     * Where git keeps the files that say an operation is in progress — this
+     * worktree's own, which `--git-path` resolves for a linked one — absolute,
+     * by name. Asked once: they do not move while the IDE runs, and
+     * {@see OperationReader} needs no process to read them.
+     *
+     * @param callable(array<string, string>|null): void $onDone each of {@see OperationReader::FILES} => its path, or null
+     */
+    public function operationPaths(callable $onDone): void
+    {
+        $args = ['rev-parse', '--path-format=absolute'];
+        foreach (OperationReader::FILES as $file) {
+            $args[] = '--git-path';
+            $args[] = $file;
+        }
+        $this->runner->runStatus($args, static function (int $code, string $out) use ($onDone): void {
+            $paths = \explode("\n", \trim($out));
+            $onDone(0 === $code && \count($paths) === \count(OperationReader::FILES) ? \array_combine(OperationReader::FILES, $paths) : null);
+        });
+    }
+
+    /**
+     * How many paths are still conflicted.
+     *
+     * @param callable(int): void $onDone
+     */
+    public function conflictCount(callable $onDone): void
+    {
+        $this->runner->run(['diff', '--name-only', '--diff-filter=U', '-z'], static fn (string $out) => $onDone(\count(\array_filter(\explode("\0", $out)))));
+    }
+
+    /**
+     * The conflicted files under the project that still hold a conflict
+     * marker, project-relative: what staging them — marking them resolved —
+     * would carry into the commit.
+     *
+     * @param callable(list<string>): void $onDone
+     */
+    public function conflictsLeft(callable $onDone): void
+    {
+        $root = $this->rootDir;
+        $this->runner->run(['diff', '--name-only', '--relative', '--diff-filter=U', '-z'], static function (string $out) use ($onDone, $root): void {
+            $paths = \array_filter(
+                \explode("\0", $out),
+                static fn (string $path): bool => '' !== $path && \is_file($root.'/'.$path) && ConflictMarkers::unresolved(\explode("\n", (string) \file_get_contents($root.'/'.$path))),
+            );
+            $onDone(\array_values($paths));
+        });
+    }
+
+    /**
+     * Continue, skip or abort $operation. Unattended: git takes its own
+     * message where it would open an editor, as nobody is at one.
+     *
+     * @param callable(Outcome, string): void $onDone (ok, first stderr line on failure)
+     */
+    public function resumeOperation(GitOperation $operation, OperationStep $step, callable $onDone): void
+    {
+        $this->runner->runUnattended([$operation->command(), '--'.$step->value], $onDone);
     }
 
     /**

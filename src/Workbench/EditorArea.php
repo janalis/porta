@@ -36,13 +36,16 @@ final readonly class EditorArea
 
     /**
      * The editor-pane's focusable content: the active tab's viewer or lone
-     * preview, else the editor — or, in Split, whichever half has the keys.
+     * preview, else the editor — or, in Split, whichever side has the keys:
+     * the editor, the preview, or the preview's flank.
      */
     public function widget(): AbstractWidget
     {
         $preview = $this->preview($this->buffers->active());
+        $focus = $this->tui->getFocus();
+        $beside = null !== $preview && null !== $focus && ($focus === $preview || $focus === $preview->flank());
 
-        return null !== $preview && $this->tui->getFocus() === $preview ? $preview : $this->entry();
+        return $beside ? $focus : $this->entry();
     }
 
     /**
@@ -77,7 +80,8 @@ final readonly class EditorArea
 
     /**
      * The focus ring's stops in the editor area: the editor then its preview
-     * in Split, else the one {@see widget()}.
+     * in Split — a preview's flank first, as it sits — else the one
+     * {@see widget()}.
      *
      * @return list<AbstractWidget>
      */
@@ -85,8 +89,12 @@ final readonly class EditorArea
     {
         $active = $this->buffers->active();
         $preview = $this->preview($active);
+        if (null === $preview || PreviewMode::Split !== $active?->previewArrangement()) {
+            return [$this->widget()];
+        }
+        $flank = $preview->flank();
 
-        return null !== $preview && PreviewMode::Split === $active?->previewArrangement() ? [$this->editor, $preview] : [$this->widget()];
+        return null === $flank ? [$this->editor, $preview] : [$flank, $this->editor, $preview];
     }
 
     /** Focus the editor area's current content widget and repaint. */

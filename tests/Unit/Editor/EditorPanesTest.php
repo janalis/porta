@@ -117,4 +117,14 @@ final class EditorPanesTest extends TestCase
         $this->assertNull($panes->paneFor('mine'), 'a match after a non-match must still be dropped');
         $this->assertSame($theirs, $panes->paneFor('theirs'));
     }
+
+    public function testTheSeatedPanesAreEachPaneThenItsFlank(): void
+    {
+        $panes = new EditorPanes();
+        $panes->register($plain = new TestPane('plain'), static fn (string $path): string => '');
+        $panes->register($flanked = new TestPane('theirs', $flank = new TestPane('ours')), static fn (string $path): string => '');
+
+        $this->assertSame([$plain, $flanked, $flank], $panes->seated());
+        $this->assertSame([$plain, $flanked], $panes->all(), 'the flank is not registered');
+    }
 }

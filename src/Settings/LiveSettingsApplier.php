@@ -88,7 +88,7 @@ final readonly class LiveSettingsApplier
                 $widget->refreshTheme();
             }
         }
-        foreach ($this->panes->all() as $pane) {
+        foreach ($this->panes->seated() as $pane) {
             $pane->refreshTheme();
         }
         $this->dispatcher->dispatch(new ThemeChanged(Theme::fromId($theme)));

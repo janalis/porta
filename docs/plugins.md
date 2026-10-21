@@ -24,7 +24,8 @@ Others worth reading for a pattern: `image-viewer` and `graph-viewer` each own
 their whole implementation and PROVIDE their pane (`graph-viewer` requires
 `image-viewer`, because a graph is painted with the same rasterizer); `review`
 is the reference use of `setCommentMarks` and `setLineBlocks` (and requires
-`git` for its classes); `chroma` is an external-highlighter example;
+`git` for its classes); `diff` ships only classes — the diff model and pane git
+and review both require; `chroma` is an external-highlighter example;
 `symfony-lsp` downloads and updates its own server binary; `custos` runs a
 supplementary language server beside the primary PHP one; `todo`,
 `local-history` and `git` are core features that moved out, keeping their ids
@@ -708,6 +709,13 @@ $api->registerPreview('hex', ['hexdump']);
   the split's proportion is one setting for every previewed file. You do nothing
   for any of it — in Split your pane is simply narrower, and `hide()` is called
   when it leaves the screen, as for any pane.
+- **A pane on both sides of the text.** Override `flank()` to return a second
+  pane, and in Split it sits on the editor's OTHER side — flank | editor | your
+  pane, the merge view's ours, result and theirs — with a divider of its own.
+  The flank is yours alone: never registered, fed nothing by core. Pass on to
+  it what it needs from your own `show()` and `followSource()`. Core seats it,
+  sends a press or a wheel notch over it to it, and puts it in the `Tab` ring;
+  a narrowing editor area steps it aside first.
 
 ### Showing a list of results
 
@@ -1060,7 +1068,7 @@ Actions (from handlers/hooks):
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
-| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …]` (0-based); `top` is the first line the editor shows |
+| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …, 'sticky' => […]]` (0-based); `top` is the first line the editor scrolls to, `sticky` the lines sticky scroll pins over the view above it, one per row — so the editor's first row shows `sticky[0]` when any is pinned, else `top` |
 | `openBuffers(): OpenBuffers` | The open buffers — which are open and edited, their text, saving one; see [Working with open buffers](#working-with-open-buffers) |
 | `participants(): PluginParticipants` | Your plugin's people in core's participant roster: `set(array $people)` (id ⇒ name, replacing the last list whole; `[]` takes them out), `outOfTouch()` (the link is lost: they stay as last seen for a minute, then go unless `set()` comes first), `yourName()` (the user's name as the others see it — the `displayName` setting, else the login name). Removing your plugin takes its people out |
 | `runs(): Runs` | The Run menu's tasks and the terminal runs a plugin starts; see [Running a task](#running-a-task) |

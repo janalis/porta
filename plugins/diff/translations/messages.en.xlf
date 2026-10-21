@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>[→%count%]</source>
+        <target>[→%count%]</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Diff settings: %layout%, %whitespace%</source>
+        <target>Diff settings: %layout%, %whitespace%</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Show more of the file around the changes (c)</source>
+        <target>Show more of the file around the changes (c)</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Side-by-side diff</source>
+        <target>Side-by-side diff</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Unified diff</source>
+        <target>Unified diff</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>whitespace changes hidden</source>
+        <target>whitespace changes hidden</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>whitespace changes shown</source>
+        <target>whitespace changes shown</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>No changes selected</source>
+        <target>No changes selected</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>ours</source>
+        <target>ours</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>theirs</source>
+        <target>theirs</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>No conflicts left — save the result</source>
+        <target>No conflicts left — save the result</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</source>
+        <target>Conflict %current% of %count%  a keep %side%  b both  n/p next/prev</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

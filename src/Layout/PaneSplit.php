@@ -70,8 +70,9 @@ final class PaneSplit
     private array $moveListeners = [];
 
     /**
-     * @param int $share   the lead side's share before anything was dragged, in thousandths
-     * @param int $minSide the narrowest either side may be dragged to
+     * @param int                                $share    the lead side's share before anything was dragged, in thousandths
+     * @param int                                $minSide  the narrowest either side may be dragged to
+     * @param (\Closure(): ?AbstractWidget)|null $keysTo   who takes the keys when the side holding them steps aside, when the side left is no widget to take them — a split nested in it
      */
     public function __construct(
         string $id,
@@ -81,6 +82,7 @@ final class PaneSplit
         private readonly ?Tui $tui = null,
         int $share = 500,
         private readonly int $minSide = self::MIN_SIDE,
+        private readonly ?\Closure $keysTo = null,
     ) {
         $this->share = IntMath::clamp($share, 10, 990);
         $this->drawn = $this->share;
@@ -299,7 +301,7 @@ final class PaneSplit
      * Re-seat the sides. Clearing the area detaches whatever inside it had
      * the keys, and the focus manager hands them to the first focusable it
      * knows — so the focus is put back: on the same widget when it is still
-     * on screen, on the lead when it was the other side that stepped aside.
+     * on screen, on the side left when it was the other one that stepped aside.
      */
     private function arrange(): void
     {
@@ -312,6 +314,7 @@ final class PaneSplit
         $this->applyShare();
         $sides = match (true) {
             $stacked => [$this->leadSide, $this->restSide],
+            $this->narrow && NarrowSplit::RestAlone === $this->whenNarrow => [$this->restSide],
             $this->narrow => [$this->leadSide],
             default => [$this->leadSide, $this->separator, $this->restSide],
         };
@@ -322,6 +325,16 @@ final class PaneSplit
         if (null === $focus || ($focus !== $this->lead && $focus !== $this->rest)) {
             return;
         }
-        $this->tui?->setFocus(null !== $focus->getContext() ? $focus : $this->lead);
+        $this->tui?->setFocus(null !== $focus->getContext() ? $focus : $this->shownAlone());
+    }
+
+    /** Who takes the keys in a narrow area: the side it keeps — the lead, unless told to keep the rest — or whom that side names. */
+    private function shownAlone(): ?AbstractWidget
+    {
+        return match (true) {
+            null !== $this->keysTo => ($this->keysTo)(),
+            NarrowSplit::RestAlone === $this->whenNarrow => $this->rest,
+            default => $this->lead,
+        };
     }
 }

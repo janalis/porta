@@ -109,6 +109,28 @@ final class EditorPanes
     }
 
     /**
+     * Every registered pane and every pane's flank: what may be on screen in
+     * the editor slot, for the sweeps that reach each one — a rebuilt keymap,
+     * a theme switch, the overlay hosts. A flank is seated without being
+     * registered, so {@see all()} alone would miss it.
+     *
+     * @return list<EditorPaneWidget>
+     */
+    public function seated(): array
+    {
+        $seated = [];
+        foreach ($this->panes as $pane) {
+            $seated[] = $pane;
+            $flank = $pane->flank();
+            if (null !== $flank) {
+                $seated[] = $flank;
+            }
+        }
+
+        return $seated;
+    }
+
+    /**
      * Drop everything $plugin registered — the deactivate half of the
      * commit/deactivate symmetry every extension point here keeps, and what
      * makes a disabled viewer plugin's pane genuinely stop answering.

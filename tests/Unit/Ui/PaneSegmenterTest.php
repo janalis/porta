@@ -243,7 +243,7 @@ final class PaneSegmenterTest extends TestCase
             EditorPaneWidget::class,
             ResultsPanelWidget::class,
             TerminalPanelWidget::class,
-            'Porta\\GitPlugin\\Widget\\DiffViewWidget',
+            'Porta\\DiffPlugin\\Widget\\DiffViewWidget',
         ];
         \sort($expected);
 

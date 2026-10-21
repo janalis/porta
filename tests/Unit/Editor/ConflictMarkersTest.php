@@ -23,7 +23,7 @@ final class ConflictMarkersTest extends TestCase
         );
 
         $this->assertSame(
-            [['start' => 1, 'sep' => 3, 'end' => 5]],
+            [['start' => 1, 'base' => null, 'sep' => 3, 'end' => 5]],
             ConflictMarkers::find($lines),
         );
     }
@@ -36,8 +36,8 @@ final class ConflictMarkersTest extends TestCase
 
         $regions = ConflictMarkers::find($lines);
         $this->assertCount(2, $regions);
-        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], $regions[0]);
-        $this->assertSame(['start' => 6, 'sep' => 8, 'end' => 10], $regions[1]);
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], $regions[0]);
+        $this->assertSame(['start' => 6, 'base' => null, 'sep' => 8, 'end' => 10], $regions[1]);
     }
 
     public function testIgnoresIncompleteMarkers(): void
@@ -52,7 +52,7 @@ final class ConflictMarkersTest extends TestCase
         // A second opener before any separator discards the first opener.
         $lines = $this->lines("<<<<<<< a\nfoo\n<<<<<<< b\nbar\n=======\nbaz\n>>>>>>> c");
         $this->assertSame(
-            [['start' => 2, 'sep' => 4, 'end' => 6]],
+            [['start' => 2, 'base' => null, 'sep' => 4, 'end' => 6]],
             ConflictMarkers::find($lines),
         );
     }
@@ -60,9 +60,9 @@ final class ConflictMarkersTest extends TestCase
     public function testRegionAt(): void
     {
         $lines = $this->lines("<<<<<<< a\nx\n=======\ny\n>>>>>>> b\ntail");
-        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 0), 'the opener line itself is inside the region');
-        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 1));
-        $this->assertSame(['start' => 0, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 4));
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 0), 'the opener line itself is inside the region');
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 1));
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 4));
         $this->assertNull(ConflictMarkers::regionAt($lines, 5), 'tail line is outside the region');
     }
 
@@ -72,7 +72,7 @@ final class ConflictMarkersTest extends TestCase
         // overwrite it — it belongs to "theirs" content, not a new boundary.
         $lines = $this->lines("<<<<<<< a\nours\n=======\nmid\n=======\ntheirs\n>>>>>>> b");
         $this->assertSame(
-            [['start' => 0, 'sep' => 2, 'end' => 6]],
+            [['start' => 0, 'base' => null, 'sep' => 2, 'end' => 6]],
             ConflictMarkers::find($lines),
         );
     }
@@ -119,5 +119,82 @@ final class ConflictMarkersTest extends TestCase
         $region = ConflictMarkers::find($lines)[0];
 
         $this->assertSame(['o1', 't1', 't2', 't3'], ConflictMarkers::resolution($lines, $region, ConflictSide::Both));
+    }
+
+    public function testADiff3BaseSectionIsRecordedApartFromOurs(): void
+    {
+        $lines = $this->lines("pre\n<<<<<<< HEAD\no1\n||||||| base\nb1\n=======\nt1\n>>>>>>> topic");
+
+        $this->assertSame([['start' => 1, 'base' => 3, 'sep' => 5, 'end' => 7]], ConflictMarkers::find($lines));
+    }
+
+    public function testNoResolutionKeepsTheBaseSection(): void
+    {
+        // git's diff3 and zdiff3 styles: the base sits between ours and the separator.
+        $lines = $this->lines("pre\n<<<<<<< HEAD\no1\no2\n||||||| merged common ancestors\nb1\n=======\nt1\n>>>>>>> topic");
+        $region = ConflictMarkers::find($lines)[0];
+
+        $this->assertSame(['o1', 'o2'], ConflictMarkers::resolution($lines, $region, ConflictSide::Ours));
+        $this->assertSame(['t1'], ConflictMarkers::resolution($lines, $region, ConflictSide::Theirs));
+        $this->assertSame(['o1', 'o2', 't1'], ConflictMarkers::resolution($lines, $region, ConflictSide::Both));
+    }
+
+    public function testOnlyTheFirstBaseMarkerCounts(): void
+    {
+        $lines = $this->lines("<<<<<<< a\no1\n||||||| b\nb1\n||||||| b\nb2\n=======\nt1\n>>>>>>> c");
+
+        $this->assertSame(2, ConflictMarkers::find($lines)[0]['base']);
+    }
+
+    public function testABaseMarkerAfterTheSeparatorIsTheirsContent(): void
+    {
+        $lines = $this->lines("<<<<<<< a\no1\n=======\n||||||| t\n>>>>>>> c");
+        $region = ConflictMarkers::find($lines)[0];
+
+        $this->assertNull($region['base']);
+        $this->assertSame(['||||||| t'], ConflictMarkers::resolution($lines, $region, ConflictSide::Theirs));
+    }
+
+    public function testANewOpenerForgetsAPendingBase(): void
+    {
+        $lines = $this->lines("<<<<<<< a\n||||||| b\n<<<<<<< c\no1\n=======\nt1\n>>>>>>> d");
+
+        $this->assertSame([['start' => 2, 'base' => null, 'sep' => 4, 'end' => 6]], ConflictMarkers::find($lines));
+    }
+
+    public function testABaseIsForgottenOnceItsRegionCloses(): void
+    {
+        $lines = $this->lines("<<<<<<< a\no\n||||||| b\n=======\nt\n>>>>>>> c\n<<<<<<< d\no\n=======\nt\n>>>>>>> e");
+
+        $this->assertNull(ConflictMarkers::find($lines)[1]['base']);
+    }
+
+    public function testCleanTextIsResolved(): void
+    {
+        $this->assertFalse(ConflictMarkers::unresolved($this->lines("<?php\necho 1;\nTitle\n=======\n")), 'a lone separator is an underline');
+    }
+
+    public function testAWholeRegionIsUnresolved(): void
+    {
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines("a\n<<<<<<< HEAD\no\n=======\nt\n>>>>>>> topic")));
+    }
+
+    public function testAStrayMarkerLeftByAHandResolutionIsUnresolved(): void
+    {
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines("o\n>>>>>>> topic")), 'a closer');
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines("<<<<<<< HEAD\no")), 'an opener');
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines("o\n||||||| base\nb")), 'a base');
+    }
+
+    public function testAMarkerMidLineIsNotOne(): void
+    {
+        $this->assertFalse(ConflictMarkers::unresolved($this->lines(" <<<<<<< x\n// >>>>>>> y")));
+    }
+
+    public function testAMarkerIsSevenThenASpaceOrTheEnd(): void
+    {
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines('>>>>>>>')), 'a bare closer');
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines('|||||||')), 'a bare base');
+        $this->assertFalse(ConflictMarkers::unresolved($this->lines(">>>>>>>> an eight-deep quote\n<<<<<<<<\n>>>>>>>x")), 'none of these');
     }
 }

@@ -317,6 +317,15 @@ recommending are exactly the ones that are OFF, so they have not loaded and
 cannot announce themselves. The only cards such a seam could produce are ones
 already ticked.
 
+**`EditorPaneWidget::flank()` — kept, one caller by the user's choice.** The
+merge view is ours | result | theirs, and the result must be the one real
+editor (splits stay declined), so a pane has to sit on the editor's other
+side. Its one caller is the diff plugin's merge pane, against the rule on
+one-consumer roles; the user chose the layout over the rule (2026-10-21). The
+alternative kept on file is result | ours ‖ theirs — one pane drawing both
+sides, no core change. *Re-opens on:* the merge view moving to that layout,
+which makes the seam dead code to remove.
+
 **Unifying the five plain-array extension buffers — rejected.** It needs five
 variance axes for four conforming cases. Each array says at its declaration why
 it is not a `PluginBuffer`.

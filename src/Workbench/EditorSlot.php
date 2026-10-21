@@ -55,10 +55,11 @@ final readonly class EditorSlot
         $pane->textBeside(false);
     }
 
-    /** The editor with $preview beside it, the divider between them. */
+    /** The editor with $preview beside it, the divider between them — and its flank, if any, on the editor's other side. */
     public function showBeside(EditorPaneWidget $preview): void
     {
-        $this->seat($this->split->area, [$this->editor, $preview]);
+        $flank = $preview->flank();
+        $this->seat($this->split->area, null === $flank ? [$this->editor, $preview] : [$this->editor, $preview, $flank]);
         $preview->textBeside(true);
     }
 
@@ -73,7 +74,8 @@ final readonly class EditorSlot
             return;
         }
         $focused = $this->tui->getFocus();
-        $hadFocus = $focused === $this->editor || \in_array($focused, $this->panes->all(), strict: true);
+        // A preview's flank is in the slot without being registered.
+        $hadFocus = $focused === $this->editor || $focused === $this->split->flankPane() || \in_array($focused, $this->panes->all(), strict: true);
         $this->editorBody->remove($this->split->area);
         $this->split->release();
         $this->editorBody->remove($this->editor);

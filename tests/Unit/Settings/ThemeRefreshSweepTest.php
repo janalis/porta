@@ -18,6 +18,7 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestLiveKeybindings;
+use Porta\Tests\Support\TestPane;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\CursorStyle;
@@ -74,7 +75,7 @@ final class ThemeRefreshSweepTest extends TestCase
         };
     }
 
-    private function applier(ViewRegions $regions): LiveSettingsApplier
+    private function applier(ViewRegions $regions, EditorPanes $panes = new EditorPanes()): LiveSettingsApplier
     {
         return new LiveSettingsApplier(
             Themes::createSwitchable(ColorMode::Ansi, 'dark'),
@@ -83,7 +84,7 @@ final class ThemeRefreshSweepTest extends TestCase
             new CursorStyle(),
             new Translator('en'),
             $regions,
-            new EditorPanes(),
+            $panes,
             new TabBarWidget(),
             TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
             new EventDispatcher(),
@@ -317,26 +318,19 @@ final class ThemeRefreshSweepTest extends TestCase
             static fn (string $path): mixed => null,
         );
 
-        $applier = new LiveSettingsApplier(
-            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
-            new StyleSheetThemer(new Renderer(new StyleSheet())),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
-            new CursorStyle(),
-            new Translator('en'),
-            new ViewRegions(Styles::dark()),
-            $panes,
-            new TabBarWidget(),
-            TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir()),
-            new EventDispatcher(),
-            self::formatOnSave(),
-            TestCompletionController::idle(),
-            PixelGraphics::ratio(),
-            TestLiveKeybindings::create(),
-            true,
-        );
-
+        $applier = $this->applier(new ViewRegions(Styles::dark()), $panes);
         $applier->applyTheme('light');
 
         $this->assertTrue($refreshed, 'a registered editor pane is swept alongside the view regions');
+    }
+
+    public function testAPanesFlankIsRefreshedThoughItIsNotRegistered(): void
+    {
+        $panes = new EditorPanes();
+        $panes->register(new TestPane('theirs', $flank = new TestPane('ours')), static fn (string $path): mixed => null);
+
+        $this->applier(new ViewRegions(Styles::dark()), $panes)->applyTheme('light');
+
+        $this->assertContains('theme', $flank->calls, 'its cached rows re-made in the new palette');
     }
 }

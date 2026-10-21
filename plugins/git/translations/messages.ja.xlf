@@ -86,10 +86,6 @@
         <source>Untracked: stage the whole file with Space in the changes list</source>
         <target>追跡外: 変更リストで Space を押してファイル全体をステージします</target>
       </trans-unit>
-      <trans-unit id="26">
-        <source>[→%count%]</source>
-        <target>[→%count%]</target>
-      </trans-unit>
       <trans-unit id="27">
         <source>git apply refused the partial patch</source>
         <target>git apply が部分パッチを拒否しました</target>
@@ -109,10 +105,6 @@
       <trans-unit id="31">
         <source>±10 lines</source>
         <target>±10 行</target>
-      </trans-unit>
-      <trans-unit id="32">
-        <source>No changes selected</source>
-        <target>変更が選択されていません</target>
       </trans-unit>
       <trans-unit id="33">
         <source>Working tree clean</source>
@@ -450,10 +442,6 @@
         <source>Stage everything</source>
         <target>すべてステージ</target>
       </trans-unit>
-      <trans-unit id="117">
-        <source>Side-by-side diff</source>
-        <target>左右に並べた差分</target>
-      </trans-unit>
       <trans-unit id="119">
         <source>Write a summary first</source>
         <target>まず概要を入力してください</target>
@@ -463,8 +451,8 @@
         <target>まず変更をステージしてください</target>
       </trans-unit>
       <trans-unit id="121">
-        <source>Esc to edit the file · F7 next conflict · Alt+M resolve · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
-        <target>Esc でファイルを編集 · F7 次の競合 · Alt+M 解決 · Ctrl+S の後 Ctrl+Q — 競合が残るとマージは失敗します</target>
+        <source>Ours | result | theirs — a keeps a side, b both · Ctrl+S, then Ctrl+Q — conflicts left mean the merge fails</source>
+        <target>自分側 | 結果 | 相手側 — a で片側を採用、b で両方 · Ctrl+S の後 Ctrl+Q — 競合が残るとマージは失敗します</target>
       </trans-unit>
       <trans-unit id="122">
         <source>%name% has changes. Delete it anyway, and them?</source>
@@ -738,33 +726,13 @@
         <source>Copy the full commit hash</source>
         <target>コミットハッシュ全体をコピー</target>
       </trans-unit>
-      <trans-unit id="190">
-        <source>Diff settings: %layout%, %whitespace%</source>
-        <target>差分の設定: %layout%、%whitespace%</target>
-      </trans-unit>
       <trans-unit id="191">
         <source>Hide whitespace changes</source>
         <target>空白の変更を隠す</target>
       </trans-unit>
-      <trans-unit id="192">
-        <source>Show more of the file around the changes (c)</source>
-        <target>変更の周囲をさらに表示 (c)</target>
-      </trans-unit>
       <trans-unit id="193">
         <source>Unified</source>
         <target>統合</target>
-      </trans-unit>
-      <trans-unit id="194">
-        <source>Unified diff</source>
-        <target>統合差分</target>
-      </trans-unit>
-      <trans-unit id="195">
-        <source>whitespace changes hidden</source>
-        <target>空白の変更を非表示</target>
-      </trans-unit>
-      <trans-unit id="196">
-        <source>whitespace changes shown</source>
-        <target>空白の変更を表示</target>
       </trans-unit>
       <trans-unit id="197">
         <source>Fetch</source>
@@ -825,6 +793,114 @@
       <trans-unit id="212">
         <source>Commit %count% file to %branch%|Commit %count% files to %branch%</source>
         <target>%count% 個のファイルを %branch% にコミット|%count% 個のファイルを %branch% にコミット</target>
+      </trans-unit>
+      <trans-unit id="213">
+        <source>Git: Continue Merge or Rebase</source>
+        <target>Git: マージまたはリベースを続行</target>
+      </trans-unit>
+      <trans-unit id="214">
+        <source>Git: Skip This Step</source>
+        <target>Git: このステップをスキップ</target>
+      </trans-unit>
+      <trans-unit id="215">
+        <source>Git: Abort Merge or Rebase…</source>
+        <target>Git: マージまたはリベースを中止…</target>
+      </trans-unit>
+      <trans-unit id="216">
+        <source>Resolve the conflicted files first: %count% left</source>
+        <target>先に競合ファイルを解決してください: 残り %count%</target>
+      </trans-unit>
+      <trans-unit id="217">
+        <source>A merge has no step to skip: continue or abort it</source>
+        <target>マージにはスキップするステップがありません: 続行するか中止してください</target>
+      </trans-unit>
+      <trans-unit id="218">
+        <source>Abort the %operation%? What you resolved is lost</source>
+        <target>%operation% を中止しますか? 解決した内容は失われます</target>
+      </trans-unit>
+      <trans-unit id="219">
+        <source>Abort</source>
+        <target>中止</target>
+      </trans-unit>
+      <trans-unit id="220">
+        <source>merge</source>
+        <target>マージ</target>
+      </trans-unit>
+      <trans-unit id="221">
+        <source>rebase</source>
+        <target>リベース</target>
+      </trans-unit>
+      <trans-unit id="222">
+        <source>cherry-pick</source>
+        <target>チェリーピック</target>
+      </trans-unit>
+      <trans-unit id="223">
+        <source>revert</source>
+        <target>リバート</target>
+      </trans-unit>
+      <trans-unit id="224">
+        <source>No merge or rebase in progress</source>
+        <target>進行中のマージやリベースはありません</target>
+      </trans-unit>
+      <trans-unit id="225">
+        <source>Continued the %operation%</source>
+        <target>%operation% を続行しました</target>
+      </trans-unit>
+      <trans-unit id="226">
+        <source>Skipped the step and continued the %operation%</source>
+        <target>ステップをスキップして %operation% を続行しました</target>
+      </trans-unit>
+      <trans-unit id="227">
+        <source>Aborted the %operation%</source>
+        <target>%operation% を中止しました</target>
+      </trans-unit>
+      <trans-unit id="228">
+        <source>git refused</source>
+        <target>git が拒否しました</target>
+      </trans-unit>
+      <trans-unit id="229">
+        <source>Continue %operation%</source>
+        <target>%operation% を続行</target>
+      </trans-unit>
+      <trans-unit id="230">
+        <source>Skip This Step</source>
+        <target>このステップをスキップ</target>
+      </trans-unit>
+      <trans-unit id="231">
+        <source>Abort %operation%…</source>
+        <target>%operation% を中止…</target>
+      </trans-unit>
+      <trans-unit id="232">
+        <source>merging</source>
+        <target>マージ中</target>
+      </trans-unit>
+      <trans-unit id="233">
+        <source>rebasing</source>
+        <target>リベース中</target>
+      </trans-unit>
+      <trans-unit id="234">
+        <source>cherry-picking</source>
+        <target>チェリーピック中</target>
+      </trans-unit>
+      <trans-unit id="235">
+        <source>reverting</source>
+        <target>リバート中</target>
+      </trans-unit>
+      <trans-unit id="236">
+        <source>%count% conflicted file|%count% conflicted files</source>
+        <target>競合ファイル %count% 件|競合ファイル %count% 件</target>
+      </trans-unit>
+      <trans-unit id="237">
+        <source>Resolved — click to continue or abort</source>
+        <target>解決済み — クリックして続行または中止</target>
+      </trans-unit>
+      <trans-unit id="238">
+        <source>Resolve the conflicts, then click to continue — or skip or abort</source>
+        <target>競合を解決してからクリックで続行 — またはスキップ、中止</target>
+      </trans-unit>
+      <trans-unit id="239">
+        <source>%file% still has conflict markers: resolve them first</source>
+        <target>%file% にはまだ競合マーカーがあります: 先に解決してください</target>
       </trans-unit>
     </body>
   </file>

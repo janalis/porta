@@ -724,12 +724,13 @@ final class IdeConfigTest extends TestCase
         // Disabling from the default state writes "the default minus that name".
         $project = new TempProject(['.porta.json' => '{}']);
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'image-viewer'));
-        $this->assertSame(['graph-viewer', 'todo', 'local-history', 'git', 'ssh', 'ftp'], IdeConfig::load($project->dir)->enabledPlugins);
+        $this->assertSame(['graph-viewer', 'todo', 'local-history', 'diff', 'git', 'ssh', 'ftp'], IdeConfig::load($project->dir)->enabledPlugins);
 
         // Disabling the last one must persist an explicit [] — an unset key would flip the default back on.
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'graph-viewer'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'todo'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'local-history'));
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'diff'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'git'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'ssh'));
         $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistBundledDisabled(ConfigScope::Project, 'ftp'));
