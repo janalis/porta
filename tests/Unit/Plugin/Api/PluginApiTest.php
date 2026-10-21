@@ -578,34 +578,60 @@ final class PluginApiTest extends TestCase
      * one, until soft wrap breaks a long line at the editor's width — and the
      * top line can then be scrolled partway, which `segment` says.
      */
-    public function testEditorRowsAndTheCaretSegmentFollowSoftWrap(): void
+    public function testEditorScreenSaysWhatEachRowShowsAndTheCaretSegmentFollowsSoftWrap(): void
     {
         $api = $this->api();
-        $this->assertSame(1, $api->editorRows(0), 'no text file: one row');
+        $this->assertSame([], $api->editorScreen(3), 'no text file: no screen');
 
         $long = \str_repeat('x', times: 100);
         $this->editor->showDocument('/p/a.php', new Document("{$long}\nshort\n"));
         $this->editor->display->setSoftWrap(true);
         $this->editor->render(new RenderContext(60, 10));
-        $this->assertSame(1, $api->editorRows(0), 'no text FILE active, though the editor wraps a long line: one row');
+        $this->assertSame([], $api->editorScreen(3), 'no text FILE active, though the editor shows one: no screen');
 
         $this->buffers->open('/p/a.php', "{$long}\nshort\n");
         $this->editor->display->setSoftWrap(false);
         $this->editor->render(new RenderContext(60, 10));
-        $this->assertSame(1, $api->editorRows(0), 'wrap off: a long line is still one row');
+        $this->assertSame(
+            [
+                ['line' => 0, 'segment' => 0, 'of' => 1],
+                ['line' => 1, 'segment' => 0, 'of' => 1],
+                ['line' => 2, 'segment' => 0, 'of' => 1],
+                ['line' => null, 'segment' => null, 'of' => 1],
+            ],
+            $api->editorScreen(4),
+            'wrap off: a row a line, nothing past the last',
+        );
 
         $this->editor->display->setSoftWrap(true);
+        $this->editor->decorations->setCodeLenses([1 => [['title' => '2 usages', 'command' => 'x', 'arguments' => [], 'owner' => 'php']]]);
         $this->editor->render(new RenderContext(60, 10));
         $width = $this->editor->viewport()->wrapWidth;
         $this->assertNotNull($width);
-        $this->assertSame((int) \ceil(100 / $width), $api->editorRows(0), 'wrapped at the editor\'s own width');
-        $this->assertGreaterThan(1, $api->editorRows(0));
-        $this->assertSame(1, $api->editorRows(1));
+        $of = (int) \ceil(100 / $width);
+        $this->assertGreaterThan(1, $of);
+        $screen = $api->editorScreen($of + 2);
+        $this->assertSame(['line' => 0, 'segment' => $of - 1, 'of' => $of], $screen[$of - 1], 'wrapped at the editor\'s own width');
+        $this->assertSame(['line' => 1, 'segment' => null, 'of' => 1], $screen[$of], 'the lens above short: no text');
+        $this->assertSame(['line' => 1, 'segment' => 0, 'of' => 1], $screen[$of + 1]);
 
         $this->editor->getDocument()->setCursor(0, 100);
         $this->editor->render(new RenderContext(60, 1));
         $this->assertSame($this->editor->viewport()->vScrollSegment, $api->caretPosition()['segment'] ?? null);
         $this->assertGreaterThan(0, $api->caretPosition()['segment'] ?? 0, 'a one-row pane scrolled into the line to show the caret');
+        $this->assertSame([['line' => 0, 'segment' => $of - 1, 'of' => $of]], $api->editorScreen(1), 'and the screen starts there');
+    }
+
+    /** Sticky headers come first, one row each, and are never more rows than asked. */
+    public function testEditorScreenPutsThePinnedHeadersOnTop(): void
+    {
+        $api = $this->api();
+        $this->buffers->open('/p/a.php', "a\nb\nc\n");
+        Probe::set($this->editor, 'stickyLines', [0, 1]);
+
+        $this->assertSame([['line' => 0, 'segment' => 0, 'of' => 1]], $api->editorScreen(1));
+        $this->assertSame(['line' => 1, 'segment' => 0, 'of' => 1], $api->editorScreen(3)[1]);
+        $this->assertCount(3, $api->editorScreen(3));
     }
 
     /** @var list<string> the roots a switch asked the IDE to reopen on */

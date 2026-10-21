@@ -32,6 +32,8 @@ use Porta\Editor\EditorIndentTarget;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\EditorKeymapProvider;
 use Porta\Editor\EditorMouse;
+use Porta\Editor\EditorRow;
+use Porta\Editor\EditorRowWalk;
 use Porta\Editor\EditorScroll;
 use Porta\Editor\EditorStructural;
 use Porta\Editor\EditorTextAccess;
@@ -772,6 +774,18 @@ final class CodeEditorWidget extends AbstractWidget implements
     public function extendColumnSelectionTo(int $relRow, int $relCol): void
     {
         $this->mouse->extendColumnSelectionTo($relRow, $relCol, $this->viewport());
+    }
+
+    /**
+     * The first $count content rows below the sticky headers, as the last
+     * render laid them out: the line each shows and which of its rows.
+     *
+     * @return list<?EditorRow>
+     */
+    #[\Override]
+    public function screenRows(int $count): array
+    {
+        return new EditorRowWalk($this->document, $this->foldModel, $this->decorations)->rows($count, $this->viewport());
     }
 
     /** The last-render viewport geometry: {@see EditorMouse} maps click cells through it, the LSP inlay-hint range is derived from it. */

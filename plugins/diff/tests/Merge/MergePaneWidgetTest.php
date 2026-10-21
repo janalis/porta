@@ -39,6 +39,9 @@ final class MergePaneWidgetTest extends TestCase
     /** @var array<int, int> rows the editor gives a line, where soft wrap made it more than one */
     private array $editorRows = [];
 
+    /** @var array<int, int> code-lens rows the editor draws above a line */
+    private array $lenses = [];
+
     /** @var list<int> the lines sticky scroll pins over the view */
     private array $sticky = [];
 
@@ -55,7 +58,7 @@ final class MergePaneWidgetTest extends TestCase
             new Translator('en'),
             fn (): ?string => $this->editorText,
             fn (): ?array => $this->viewed ? ['line' => $this->caretLine, 'column' => 0, 'top' => $this->top, 'segment' => $this->segment, 'sticky' => $this->sticky] : null,
-            fn (int $line): int => $this->editorRows[$line] ?? 1,
+            $this->screen(...),
             function (string $text): void {
                 $this->calls[] = 'replace';
                 $this->editorText = $text;
@@ -73,6 +76,33 @@ final class MergePaneWidgetTest extends TestCase
             Styles::dark(),
             $ours,
         );
+    }
+
+    /**
+     * The editor's screen as the plugin API describes it: the pinned lines,
+     * then from the top line's row on, each line's lens rows (no segment) and
+     * its text's rows.
+     *
+     * @return list<array{line: ?int, segment: ?int, of: int}>
+     */
+    private function screen(int $rows): array
+    {
+        if (!$this->viewed) {
+            return [];
+        }
+        $screen = \array_map(static fn (int $line): array => ['line' => $line, 'segment' => 0, 'of' => 1], \array_slice($this->sticky, offset: 0, length: $rows));
+        $count = \count(\explode("\n", $this->editorText ?? self::RESULT));
+        $inLine = $this->segment;
+        for ($line = $this->top; \count($screen) < $rows; ++$line) {
+            $lenses = $this->lenses[$line] ?? 0;
+            $of = $this->editorRows[$line] ?? 1;
+            for (; $inLine < ($lenses + $of) && \count($screen) < $rows; ++$inLine) {
+                $screen[] = $line < $count ? ['line' => $line, 'segment' => $inLine < $lenses ? null : $inLine - $lenses, 'of' => $of] : ['line' => null, 'segment' => null, 'of' => 1];
+            }
+            $inLine = 0;
+        }
+
+        return $screen;
     }
 
     private function shown(ConflictSide $side): MergePaneWidget
@@ -120,6 +150,18 @@ final class MergePaneWidgetTest extends TestCase
         $this->editorRows = [0 => 3];
 
         $this->assertSame([' a', '', '', ' ⇥ HEAD', ' ours'], self::plain($this->shown(ConflictSide::Ours), rows: 5));
+    }
+
+    /**
+     * A code lens above a line in the editor, or a block under one, is a row
+     * of the editor's that shows no text: blank on the side, every line below
+     * still level.
+     */
+    public function testARowOfTheEditorsWithNoTextIsBlankOnTheSide(): void
+    {
+        $this->lenses = [0 => 1, 2 => 2];
+
+        $this->assertSame(['', ' a', ' ⇥ HEAD', '', '', ' ours'], self::plain($this->shown(ConflictSide::Ours), rows: 6), 'over a line of context and over this side\'s own');
     }
 
     private function long(ConflictSide $side): MergePaneWidget
@@ -338,9 +380,10 @@ final class MergePaneWidgetTest extends TestCase
     public function testAConflictGoneSinceTheFeedIsLeftAlone(): void
     {
         $pane = $this->shown(ConflictSide::Theirs);
-        $this->editorText = 'resolved meanwhile';
+        // The second conflict resolved by hand since the feed, the file as long as it was.
+        $this->editorText = "a\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\nb\no2\n\n\n\n";
 
-        $pane->press(7, 3);
+        $pane->press(7, 3); // its label, as the side still draws it
 
         $this->assertSame([], $this->calls);
     }

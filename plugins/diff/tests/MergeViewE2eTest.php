@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\DiffPlugin\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Config\CommandRegistry;
 use Porta\DiffPlugin\Merge\MergePaneWidget;
 use Porta\Editor\EditorPanes;
 use Porta\Ide;
@@ -236,6 +237,30 @@ final class MergeViewE2eTest extends TestCase
      * the editor, and the sides give it as many — the conflict's lines stay
      * level. Then the toggle, which re-breaks every line: still level.
      */
+    /**
+     * Once the merge view is up: whether `$y = 'ours';` sits on the same
+     * screen row in the ours column as in the editor.
+     *
+     * @return \Closure(): bool
+     */
+    private function oursLineLevel(Tui $tui, VirtualTerminal $terminal, Ide $ide): \Closure
+    {
+        $this->await(static fn (): bool => null !== self::ours($ide)->getContext(), what: 'the merge view');
+        $ours = self::rect($ide, self::ours($ide));
+        $edit = self::rect($ide, Services::resolve($ide, CodeEditorWidget::class));
+
+        return function () use ($tui, $terminal, $ours, $edit): bool {
+            $grid = $this->screenGrid($tui, $terminal);
+            foreach (\range($edit->row, $edit->row + $edit->rows - 1) as $row) {
+                if (\str_contains(\mb_substr($grid[$row], $edit->col, $edit->columns), "\$y = 'ours';")) {
+                    return \str_contains(\mb_substr($grid[$row], $ours->col, $ours->columns), "\$y = 'ours';");
+                }
+            }
+
+            return false;
+        };
+    }
+
     public function testUnderSoftWrapEachLineSitsOnTheSameRowAsInTheEditor(): void
     {
         \putenv('PATH=/nonexistent');
@@ -248,20 +273,8 @@ final class MergeViewE2eTest extends TestCase
             $project->path('m.php'),
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->await(static fn (): bool => null !== self::ours($ide)->getContext(), what: 'the merge view');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $ours = self::rect($ide, self::ours($ide));
-                    $edit = self::rect($ide, $editor);
-                    $level = function () use ($tui, $terminal, $ours, $edit): bool {
-                        $grid = $this->screenGrid($tui, $terminal);
-                        foreach (\range($edit->row, $edit->row + $edit->rows - 1) as $row) {
-                            if (\str_contains(\mb_substr($grid[$row], $edit->col, $edit->columns), "\$y = 'ours';")) {
-                                return \str_contains(\mb_substr($grid[$row], $ours->col, $ours->columns), "\$y = 'ours';");
-                            }
-                        }
-
-                        return false;
-                    };
+                    $level = $this->oursLineLevel($tui, $terminal, $ide);
 
                     $this->await($level, what: 'the ours line on the same row in ours as in the editor, below a wrapped line');
                     $this->assertNotNull($editor->viewport()->wrapWidth, 'the editor wraps, or this proves nothing');
@@ -270,6 +283,37 @@ final class MergeViewE2eTest extends TestCase
                     $editor->display->setSoftWrap(false);
                     $tui->requestRender();
                     $this->await(static fn (): bool => null === $editor->viewport()->wrapWidth && $level(), what: 'still level, one row a line');
+                },
+            ],
+        );
+    }
+
+    /**
+     * Rows of the editor's that hold no text — a code lens over a line, a
+     * block under one — and the lines a fold hides: the sides follow them all,
+     * so the conflict stays on the same row in all three.
+     */
+    public function testUnderLensesBlocksAndFoldsEachLineSitsOnTheSameRowAsInTheEditor(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $file = "<?php\nfunction f()\n{\n    \$a = 1;\n    \$b = 2;\n}\n<<<<<<< HEAD\n\$y = 'ours';\n=======\n\$y = 'theirs';\n>>>>>>> topic\n";
+        $project = new TempProject(['m.php' => $file, '.porta.json' => '{"enabledPlugins":["diff"]}']);
+
+        $this->runIde(
+            $project,
+            $project->path('m.php'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $level = $this->oursLineLevel($tui, $terminal, $ide);
+                    $this->await($level, what: 'level to begin with');
+
+                    $editor->decorations->setCodeLenses([1 => [['title' => '1 usage', 'command' => 'x', 'arguments' => [], 'owner' => 'php']]]);
+                    $editor->decorations->setLineBlocks([0 => ['a note', 'and another']]);
+                    $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '1 usage') && $level(), what: 'level under a lens and two block rows');
+
+                    Services::resolve($ide, CommandRegistry::class)->run('fold_all');
+                    $this->await(fn (): bool => !\str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '$a = 1;') && $level(), what: 'level with the function folded');
                 },
             ],
         );

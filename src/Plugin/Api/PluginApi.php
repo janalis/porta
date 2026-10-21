@@ -9,7 +9,6 @@ use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\OpenFocus;
-use Porta\Editor\WrapLayout;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
@@ -1376,21 +1375,31 @@ final class PluginApi
     }
 
     /**
-     * How many screen rows the text of $line (0-based) of the active text
-     * file takes in the editor: one, or under soft wrap as many as the line
-     * breaks into at the editor's width — for a pane drawn level with the
-     * editor, row for row. Code-lens rows above a line and line-block rows
-     * under it are not counted. One with no text file active. An action
-     * method: it throws during `activate()`.
+     * What the editor showed on each of its first $rows screen rows at its
+     * last paint, for a pane drawn level with it, row for row: the lines
+     * sticky scroll pins at the top, then the lines from the one scrolled
+     * to, folded ones skipped, each taking a row per code lens above it, a
+     * row per wrapped segment of its text, and a row per line block under
+     * it. Each row names its 0-based `line` (null past the last), the
+     * `segment` of the line's text it shows (null on a lens or block row)
+     * and how many segments the text takes (`of`). Empty with no text file
+     * active. An action method: it throws during `activate()`.
+     *
+     * @return list<array{line: ?int, segment: ?int, of: int}>
      */
-    public function editorRows(int $line): int
+    public function editorScreen(int $rows): array
     {
-        $runtime = $this->manager->runtime();
         if (null === $this->activeFile()) {
-            return 1;
+            return [];
+        }
+        $editor = $this->manager->runtime()->editor;
+        $sticky = \array_slice($editor->viewport()->stickyLines, offset: 0, length: \max(0, $rows));
+        $screen = \array_map(static fn (int $line): array => ['line' => $line, 'segment' => 0, 'of' => 1], $sticky);
+        foreach ($editor->screenRows($rows - \count($sticky)) as $row) {
+            $screen[] = null === $row ? ['line' => null, 'segment' => null, 'of' => 1] : ['line' => $row->line, 'segment' => $row->segment(), 'of' => $row->segments];
         }
 
-        return WrapLayout::rowsForWidth($runtime->editor->getDocument()->lineDisplayWidth($line), $runtime->editor->viewport()->wrapWidth ?? 0);
+        return $screen;
     }
 
     /**

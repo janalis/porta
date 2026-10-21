@@ -205,7 +205,7 @@ final class WrapClickMappingTest extends TestCase
 
         // Wrapped, a block row is the line's LAST segment, never a segment past it.
         $this->store->setLineBlocks([0 => ['note']]);
-        $this->assertSame(0, $this->clickAt($mouse, 3, 3, self::WIDTH)[0], 'the block under the three segments');
+        $this->assertSame([0, 43], $this->clickAt($mouse, 3, 3, self::WIDTH), 'the block under the three segments: the last one\'s column 3, never a fourth\'s');
         $this->assertSame(1, $this->clickAt($mouse, 4, 3, self::WIDTH)[0], 'then second');
     }
 }

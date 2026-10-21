@@ -33,9 +33,11 @@ ours first, then theirs, and keeps the result.
 
 Under soft wrap a long line takes several rows in the editor, and as many on
 each side: a side's own text wraps at its column's width, blank rows below it
-when it is shorter, its last row cut with `…` when it is longer. Code-lens rows,
-line blocks and folds in the result are not followed, and a wheel notch over a
-side scrolls by lines.
+when it is shorter, its last row cut with `…` when it is longer. A row of the
+result's that holds no text — a code lens above a line, a block under one — is
+blank on each side, and a folded stretch is folded on the sides too, so the
+three columns stay level whatever the editor draws. A wheel notch over a side
+scrolls by lines.
 
 ## The diff pane
 

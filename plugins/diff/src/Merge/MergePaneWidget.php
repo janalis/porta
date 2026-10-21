@@ -51,8 +51,8 @@ final class MergePaneWidget extends EditorPaneWidget
 
     /**
      * @param \Closure(): ?string                                    $text    the result as the editor has it now
-     * @param \Closure(): (array{line: int, column: int, top: int, segment: int, sticky: list<int>}|null) $caret the caret, the editor's top line, how many of its rows are scrolled above the view, and the lines sticky scroll pins over it
-     * @param \Closure(int): int                                    $editorRows how many screen rows the editor gives a 0-based line: more than one only under soft wrap
+     * @param \Closure(): (array{line: int, column: int, top: int, segment: int, sticky: list<int>}|null) $caret the caret, whose conflict the keys act on
+     * @param \Closure(int): list<array{line: ?int, segment: ?int, of: int}> $screen what the editor shows on each of its first rows: a line's text segment of how many, null on a lens or block row, no line past the end
      * @param \Closure(string): void                                 $replace the result's whole text, as one undo step
      * @param \Closure(int): void                                    $jump    the caret to the start of a 0-based line
      * @param \Closure(int): void                                    $scroll  the editor's view by a number of rows, the caret where it is
@@ -63,7 +63,7 @@ final class MergePaneWidget extends EditorPaneWidget
         private readonly Translator $translator,
         private readonly \Closure $text,
         private readonly \Closure $caret,
-        private readonly \Closure $editorRows,
+        private readonly \Closure $screen,
         private readonly \Closure $replace,
         private readonly \Closure $jump,
         private readonly \Closure $scroll,
@@ -188,13 +188,14 @@ final class MergePaneWidget extends EditorPaneWidget
     }
 
     /**
-     * Row $segment of the $of the editor gives this line: the side's text from
-     * where the rows above left it, the last of them cut with … if there is
-     * more — at one row each, the whole line cut as it always was.
+     * Row $segment of the $of the editor gives this line's text: the side's
+     * text from where the rows above left it, the last of them cut with … if
+     * there is more — at one row each, the whole line cut as it always was. A
+     * null $segment is a code lens or a line block in the editor: blank here.
      */
-    private function renderRow(?MergeRow $row, int $segment, int $of, ?int $current, int $columns): string
+    private function renderRow(?MergeRow $row, ?int $segment, int $of, ?int $current, int $columns): string
     {
-        if (null === $row || 0 === $columns) {
+        if (null === $row || null === $segment || 0 === $columns) {
             return AnsiText::blank($columns);
         }
         $inner = $columns - 1; // the one-column indent
@@ -257,33 +258,21 @@ final class MergePaneWidget extends EditorPaneWidget
     }
 
     /**
-     * What each of the first $height rows is level with in the editor: the
-     * pinned headers over the view, one row each, then the lines from the one
-     * scrolled to — from the row of it the view starts at — each for as many
-     * rows as the editor gives it. With no view from the editor, nothing.
+     * What each of the first $height rows is level with in the editor, as the
+     * editor says it draws them: its pinned headers, then its lines from the
+     * row the view starts at, past folds, each for its lens rows, its text's
+     * rows and its block rows. With no view from the editor, nothing.
      *
-     * @return list<array{row: ?MergeRow, segment: int, of: int}>
+     * @return list<array{row: ?MergeRow, segment: ?int, of: int}>
      */
     private function screenRows(int $height): array
     {
-        $caret = ($this->caret)();
         $screen = [];
-        if (null === $caret) {
-            return \array_fill(0, \max(0, $height), value: ['row' => null, 'segment' => 0, 'of' => 1]);
-        }
-        foreach (\array_slice($caret['sticky'], offset: 0, length: \max(0, $height)) as $line) {
-            $screen[] = ['row' => $this->rows[$line] ?? null, 'segment' => 0, 'of' => 1];
-        }
-        $segment = $caret['segment'];
-        for ($line = $caret['top']; \count($screen) < $height; ++$line) {
-            $of = \max(1, ($this->editorRows)($line));
-            for (; $segment < $of && \count($screen) < $height; ++$segment) {
-                $screen[] = ['row' => $this->rows[$line] ?? null, 'segment' => $segment, 'of' => $of];
-            }
-            $segment = 0;
+        foreach (($this->screen)($height) as $at) {
+            $screen[] = ['row' => null === $at['line'] ? null : $this->rows[$at['line']] ?? null, 'segment' => $at['segment'], 'of' => $at['of']];
         }
 
-        return $screen;
+        return \array_pad($screen, \max(0, $height), value: ['row' => null, 'segment' => 0, 'of' => 1]);
     }
 
     /** The caret to the next ($direction 1) or previous (-1) conflict's first line, wrapping. */

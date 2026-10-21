@@ -31,6 +31,14 @@ interface EditorTextAccess extends ActiveDocumentProvider
     /** What the view shows: the first line, above all. */
     public function viewport(): EditorViewport;
 
+    /**
+     * What each of the first $count rows below the pinned headers shows: a
+     * line, and which of its rows — lens, text segment or block.
+     *
+     * @return list<?EditorRow>
+     */
+    public function screenRows(int $count): array;
+
     /** Scroll the view by $delta lines without moving the caret. */
     public function scrollBy(int $delta): void;
 }

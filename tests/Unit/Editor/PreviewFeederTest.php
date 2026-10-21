@@ -195,4 +195,27 @@ final class PreviewFeederTest extends TestCase
         $this->feeder->watch();
         $this->assertSame($before + 2, $revisions(), 'a scroll within the line repaints it too');
     }
+
+    /** A code lens or a line block moves every line below it, the top line unmoved: the flank draws again. */
+    public function testALensOrABlockArrivingRepaintsTheFlank(): void
+    {
+        $this->open("# one\n");
+        $this->editor->openFile('README.md', \implode("\n", \range(1, end: 60)));
+        $this->editor->render(new RenderContext(80, 10));
+        $this->feeder->watch();
+        $before = $this->flank->getRenderRevision();
+
+        $this->editor->decorations->setCodeLenses([2 => [['title' => '1 usage', 'command' => 'x', 'arguments' => [], 'owner' => 'php']]]);
+        $this->editor->render(new RenderContext(80, 10));
+        $this->feeder->watch();
+        $this->assertSame($before + 1, $this->flank->getRenderRevision(), 'the lens');
+
+        $this->editor->decorations->setLineBlocks([0 => ['a note']]);
+        $this->editor->render(new RenderContext(80, 10));
+        $this->feeder->watch();
+        $this->assertSame($before + 2, $this->flank->getRenderRevision(), 'the block');
+
+        $this->feeder->watch();
+        $this->assertSame($before + 2, $this->flank->getRenderRevision(), 'nothing new: nothing drawn');
+    }
 }

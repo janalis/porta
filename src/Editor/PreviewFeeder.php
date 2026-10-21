@@ -137,9 +137,15 @@ final class PreviewFeeder
     private function repaintOnScroll(EditorPaneWidget $pane): void
     {
         $viewport = $this->editor->viewport();
-        // Under soft wrap the view also moves WITHIN a tall top line, and a
-        // toggle or a resize re-breaks every line the sides draw level with.
-        $view = $viewport->vScroll.':'.$viewport->vScrollSegment.':'.($viewport->wrapWidth ?? 0).':'.\implode(',', $viewport->stickyLines);
+        // What each row shows, not only where the view starts: under soft
+        // wrap the view moves WITHIN a tall top line and a toggle or a resize
+        // re-breaks every line, and a code lens, a line block or a fold moves
+        // every line below it without the top line moving at all.
+        $rows = \array_map(
+            static fn (?EditorRow $row): string => null === $row ? '-' : $row->line.'.'.$row->inLine.'/'.$row->segments,
+            $this->editor->screenRows($viewport->renderRows - \count($viewport->stickyLines)),
+        );
+        $view = \implode(',', $viewport->stickyLines).'|'.\implode(' ', $rows);
         if ($view === $this->paintedView) {
             return;
         }

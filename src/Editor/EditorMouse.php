@@ -277,7 +277,6 @@ final class EditorMouse
      */
     private function lineAtRow(int $contentRow, EditorViewport $vp): ?array
     {
-        $lastLine = $this->document->getLineCount() - 1;
         // No wrapping and no lenses: rows and lines run one to one, which is
         // the fold model's own arithmetic.
         if (null === $vp->wrapWidth && !$this->lenses->hasExtraRows()) {
@@ -286,39 +285,14 @@ final class EditorMouse
             return null === $line ? null : [$line, 0];
         }
 
-        $layout = new WrapLayout($this->document);
-        $line = $vp->vScroll;
-        // Negative: the top line's hidden rows are "above" the first row shown.
-        $row = -$vp->vScrollSegment;
-        // Bounded by the line count rather than by trusting nextVisibleLine()
-        // to advance: a walk that cannot terminate structurally would need a
-        // guard branch nothing can reach to test.
-        $found = null;
-        for ($step = 0; $line <= $lastLine && $step <= $lastLine; ++$step) {
-            $lensRows = \count($this->lenses->codeLensesAt($line));
-            $segments = null === $vp->wrapWidth ? 1 : $layout->rowsFor($line, $vp->wrapWidth);
-            $rows = $lensRows + $segments + \count($this->lenses->lineBlocksAt($line));
-            if ($contentRow < ($row + $rows)) {
-                // A NEGATIVE segment says "this row is a lens", and WHICH one:
-                // -1 is the first lens above the line, -2 the second. The
-                // caller turns that into column 0, because a lens shows none
-                // of the line's own columns, and into the index to run.
-                $inLine = $contentRow - $row;
+        $row = new EditorRowWalk($this->document, $this->foldModel, $this->lenses)->rows($contentRow + 1, $vp)[$contentRow] ?? null;
 
-                // Content rows are their segment; a LENS row is encoded as
-                // -(index + 1), so -1 is the first lens above the line and the
-                // caller recovers the index without knowing how many there are.
-                // A BLOCK row under the line is its last segment: a click
-                // there puts the caret on the line the block is about.
-                $found = [$line, $inLine < $lensRows ? -($inLine + 1) : \min($inLine - $lensRows, $segments - 1)];
-
-                break;
-            }
-            $row += $rows;
-            $line = $this->foldModel->nextVisibleLine($line);
-        }
-
-        return $found;
+        // Content rows are their segment; a LENS row is encoded as
+        // -(index + 1), so -1 is the first lens above the line and the
+        // caller recovers the index without knowing how many there are.
+        // A BLOCK row under the line is its last segment: a click there
+        // puts the caret on the line the block is about.
+        return null === $row ? null : [$row->line, $row->inLine < $row->lensRows ? -($row->inLine + 1) : \min($row->inLine - $row->lensRows, $row->segments - 1)];
     }
 
     /** Jump the caret to the file position a click at screen row $relRow in the error stripe maps to. */
