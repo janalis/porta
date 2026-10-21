@@ -48,7 +48,7 @@ return new class('diff') extends AbstractPlugin {
                         $api->openBuffers()->save($path);
                     }
                 };
-                $sides = [$services->translator, $api->documentText(...), $api->caretPosition(...), $api->replaceDocument(...), $jump, $scroll, $save, $services->styles];
+                $sides = [$services->translator, $api->documentText(...), $api->caretPosition(...), $api->editorRows(...), $api->replaceDocument(...), $jump, $scroll, $save, $services->styles];
                 $ours = new MergePaneWidget(ConflictSide::Ours, ...$sides);
 
                 return new MergePaneWidget(ConflictSide::Theirs, ...$sides, ours: $ours);

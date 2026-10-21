@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Settings;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorPanes;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
@@ -92,6 +93,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
             TestLiveKeybindings::create(),
+            new EditorDisplayOptions(static function (): void {}),
             true,
         );
     }
@@ -201,6 +203,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
             TestLiveKeybindings::create(),
+            new EditorDisplayOptions(static function (): void {}),
             true,
         );
 
@@ -241,6 +244,7 @@ final class ThemeRefreshSweepTest extends TestCase
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
             TestLiveKeybindings::create(),
+            new EditorDisplayOptions(static function (): void {}),
             false, // ansi disabled
         );
 

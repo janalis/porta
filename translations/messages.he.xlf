@@ -3430,6 +3430,10 @@
         <source>Cannot display diagram PNG</source>
         <target>לא ניתן להציג את תרשים ה־PNG</target>
       </trans-unit>
+      <trans-unit id="1179">
+        <source>Soft wrap</source>
+        <target>גלישת שורות</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

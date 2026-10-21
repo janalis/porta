@@ -338,6 +338,7 @@ never firing.
 | `ActiveBufferChanged` | `string $path` — the editor is showing a different file |
 | `ThemeChanged` | `string $theme` |
 | `LocaleChanged` | `string $locale` |
+| `SoftWrapChanged` | `bool $on` — the `softWrap` setting was switched; read the current value with `softWrap()` |
 | `GitCommitted` | — a commit was made from the git view |
 | `GitRemoteCompleted` | `string $operation` (`fetch`/`pull`/`push`, or `cancelled` when the user stopped one), `bool $ok` |
 | `WorkingTreeChanged` | — the working tree moved: a stage, stash, commit, reset or pull, or one of the file tree's own verbs (new file, new folder, move, copy, delete). It is defined by what a listener owes it — "recompute" — not by who moved the tree |
@@ -1060,6 +1061,7 @@ Actions (from handlers/hooks):
 | `setCommentMarks(string $path, array $marks)` | Mark the lines a conversation hangs on — a review thread: `0-based line => one-line summary`. Each gets `✎` in the gutter's marker column and on the scrollbar stripe, and the pointer over it reads the summary. Scoped to your plugin like `setDiagnostics`, kept across tab switches; `[]` clears |
 | `copyToClipboard(string $text)` | Put text on the system clipboard — for a view that copies a commit hash or a path and has no business injecting a service to do it |
 | `syntaxTheme()` | The `TerminalTheme` core is currently painting with, for a backend that bakes colours into its own output. Safe during `activate()`; pair it with `onThemeChanged()`, since a theme switch has no other hook |
+| `softWrap(): bool` | Whether the core `softWrap` setting is on, for a pane that draws long lines of its own and should break them as the editor does. Read live, safe during `activate()`; pair it with `SoftWrapChanged` |
 | `updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished)` | Replace its rows in place; a no-op once the user ✖'d the tab |
 | `replaceDocument(string $text)` | Replace the active text buffer's whole content as ONE undoable edit; no-op on an identical text, a viewer tab, or nothing open |
 | `trans(string $id, array $params = [])` | Translate through the IDE's catalogs and your own — see [Translating your strings](#translating-your-strings); an unknown string passes through |
@@ -1068,7 +1070,8 @@ Actions (from handlers/hooks):
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
-| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …, 'sticky' => […]]` (0-based); `top` is the first line the editor scrolls to, `sticky` the lines sticky scroll pins over the view above it, one per row — so the editor's first row shows `sticky[0]` when any is pinned, else `top` |
+| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …, 'segment' => …, 'sticky' => […]]` (0-based); `top` is the first line the editor scrolls to, `segment` how many of its rows are scrolled above the view (0 unless soft wrap broke it into several), `sticky` the lines sticky scroll pins over the view above it, one per row — so the editor's first row shows `sticky[0]` when any is pinned, else `top` |
+| `editorRows(int $line): int` | How many screen rows the editor gives that 0-based line of the active file: 1, or under soft wrap as many as it breaks into. For a pane drawn level with the editor, row for row |
 | `openBuffers(): OpenBuffers` | The open buffers — which are open and edited, their text, saving one; see [Working with open buffers](#working-with-open-buffers) |
 | `participants(): PluginParticipants` | Your plugin's people in core's participant roster: `set(array $people)` (id ⇒ name, replacing the last list whole; `[]` takes them out), `outOfTouch()` (the link is lost: they stay as last seen for a minute, then go unless `set()` comes first), `yourName()` (the user's name as the others see it — the `displayName` setting, else the login name). Removing your plugin takes its people out |
 | `runs(): Runs` | The Run menu's tasks and the terminal runs a plugin starts; see [Running a task](#running-a-task) |

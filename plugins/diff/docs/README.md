@@ -31,14 +31,11 @@ outside the conflicts is in the result already, on both sides alike. Drag the
 dividers to resize the columns; each keeps its width. A narrow window drops
 ours first, then theirs, and keeps the result.
 
-## The diff pane
-
-Unified (dual gutters) or side-by-side, added rows on a green band and deleted
-ones on a red one, the changed words a shade stronger. Its file header is one
-bar row — the path, its folder dimmed — and the ⚙ ▾ at its end drops the
-display settings. What a key does beyond moving and copying is up to the view
-the pane is in: in the Git view `Space` stages, in a read-only comparison it
-does nothing.
+Under soft wrap a long line takes several rows in the editor, and as many on
+each side: a side's own text wraps at its column's width, blank rows below it
+when it is shorter, its last row cut with `…` when it is longer. Code-lens rows
+and folds in the result are not followed, and a wheel notch over a side scrolls
+by lines.
 
 ## The diff pane
 
@@ -48,6 +45,12 @@ bar row — the path, its folder dimmed — and the ⚙ ▾ at its end drops the
 display settings. What a key does beyond moving and copying is up to the view
 the pane is in: in the Git view `Space` stages, in a read-only comparison it
 does nothing.
+
+A line longer than the pane scrolls sideways with `←` / `→` — or, with core's
+soft wrap on (`Alt+Z`, the `softWrap` setting), continues on the rows below:
+its line numbers and ± marker on the first row only, and side by side the
+shorter half blank, still banded, until the taller one ends. Nothing scrolls
+sideways while it wraps.
 
 ## Settings
 

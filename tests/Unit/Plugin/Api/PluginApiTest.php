@@ -14,6 +14,7 @@ use Porta\Editor\BufferSaver;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\SelectionMode;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\AgentEditing;
@@ -81,6 +82,7 @@ use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Widget\AbstractWidget;
 use Symfony\Component\Tui\Widget\FocusableInterface;
 
@@ -557,18 +559,53 @@ final class PluginApiTest extends TestCase
         $this->editor->getDocument()->setCursor(1, 2);
         $this->assertSame('/p/a.php', $api->activeFile());
         $this->assertSame("hello\nworld\n", $api->documentText());
-        $this->assertSame(['line' => 1, 'column' => 2, 'top' => 0, 'sticky' => []], $api->caretPosition());
+        $this->assertSame(['line' => 1, 'column' => 2, 'top' => 0, 'segment' => 0, 'sticky' => []], $api->caretPosition());
 
         $api->insertAtCaret('XY');
         $this->assertSame("hello\nwoXYrld\n", $this->editor->getDocument()->getText());
 
         $api->jumpTo(0, 1);
-        $this->assertSame(['line' => 0, 'column' => 1, 'top' => 0, 'sticky' => []], $api->caretPosition());
+        $this->assertSame(['line' => 0, 'column' => 1, 'top' => 0, 'segment' => 0, 'sticky' => []], $api->caretPosition());
         $api->jumpTo(0, 1, top: 1);
-        $this->assertSame(['line' => 0, 'column' => 1, 'top' => 1, 'sticky' => []], $api->caretPosition(), 'the view shows line 1 first, the caret where it was put');
+        $this->assertSame(['line' => 0, 'column' => 1, 'top' => 1, 'segment' => 0, 'sticky' => []], $api->caretPosition(), 'the view shows line 1 first, the caret where it was put');
 
         $api->openFile('/p/b.php');
         $this->assertSame([['path' => '/p/b.php', 'focus' => true]], $this->files->opened);
+    }
+
+    /**
+     * A pane drawn level with the editor asks how many rows each line takes:
+     * one, until soft wrap breaks a long line at the editor's width — and the
+     * top line can then be scrolled partway, which `segment` says.
+     */
+    public function testEditorRowsAndTheCaretSegmentFollowSoftWrap(): void
+    {
+        $api = $this->api();
+        $this->assertSame(1, $api->editorRows(0), 'no text file: one row');
+
+        $long = \str_repeat('x', times: 100);
+        $this->editor->showDocument('/p/a.php', new Document("{$long}\nshort\n"));
+        $this->editor->display->setSoftWrap(true);
+        $this->editor->render(new RenderContext(60, 10));
+        $this->assertSame(1, $api->editorRows(0), 'no text FILE active, though the editor wraps a long line: one row');
+
+        $this->buffers->open('/p/a.php', "{$long}\nshort\n");
+        $this->editor->display->setSoftWrap(false);
+        $this->editor->render(new RenderContext(60, 10));
+        $this->assertSame(1, $api->editorRows(0), 'wrap off: a long line is still one row');
+
+        $this->editor->display->setSoftWrap(true);
+        $this->editor->render(new RenderContext(60, 10));
+        $width = $this->editor->viewport()->wrapWidth;
+        $this->assertNotNull($width);
+        $this->assertSame((int) \ceil(100 / $width), $api->editorRows(0), 'wrapped at the editor\'s own width');
+        $this->assertGreaterThan(1, $api->editorRows(0));
+        $this->assertSame(1, $api->editorRows(1));
+
+        $this->editor->getDocument()->setCursor(0, 100);
+        $this->editor->render(new RenderContext(60, 1));
+        $this->assertSame($this->editor->viewport()->vScrollSegment, $api->caretPosition()['segment'] ?? null);
+        $this->assertGreaterThan(0, $api->caretPosition()['segment'] ?? 0, 'a one-row pane scrolled into the line to show the caret');
     }
 
     /** @var list<string> the roots a switch asked the IDE to reopen on */
@@ -1341,6 +1378,19 @@ final class PluginApiTest extends TestCase
         $theme = new DarkTerminalTheme();
         $withTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')), $theme);
         $this->assertSame($theme, $withTheme->syntaxTheme(), 'a given theme is returned as-is, not wrapped');
+    }
+
+    public function testSoftWrapReadsTheEditorsOptionsLiveOrIsOffWithoutThem(): void
+    {
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $settings = new PluginSettings('/p', [], null, self::projectScope('/p'));
+        $this->assertFalse(new PluginApi('demo', $manager, '/p', $settings)->softWrap(), 'no options given: off');
+
+        $display = new EditorDisplayOptions(static function (): void {});
+        $api = new PluginApi('demo', $manager, '/p', $settings, null, static fn (): EditorDisplayOptions => $display);
+        $this->assertFalse($api->softWrap());
+        $display->setSoftWrap(true);
+        $this->assertTrue($api->softWrap(), 'read per call, so a switch is seen at once');
     }
 
     public function testAdoptCommandTakesACoreAdoptableIdBareWithCoreLabelAndValidates(): void

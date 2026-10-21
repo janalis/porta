@@ -39,7 +39,7 @@ final class NarrowDiffPaneRenderTest extends TestCase
     /**
      * Three states, because they are three different assemblers: the
      * placeholder path draws only the toolbar, and split builds each row from
-     * two halves rather than one gutter.
+     * two halves rather than one gutter — and the two with rows, wrapped.
      *
      * @return iterable<string, array{AbstractWidget}>
      */
@@ -53,6 +53,19 @@ final class NarrowDiffPaneRenderTest extends TestCase
         $split->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
         $split->useSplitView();
         yield 'diff (split)' => [$split];
+
+        // Wrapped, each row is several segments cut at a body width that a
+        // narrow pane takes below one: the same gutters, more rows of them.
+        $wrapped = new DiffViewWidget(new Translator('en'));
+        $wrapped->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $wrapped->useSoftWrap();
+        yield 'diff (unified, wrapped)' => [$wrapped];
+
+        $splitWrapped = new DiffViewWidget(new Translator('en'));
+        $splitWrapped->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $splitWrapped->useSplitView();
+        $splitWrapped->useSoftWrap();
+        yield 'diff (split, wrapped)' => [$splitWrapped];
 
         $empty = new DiffViewWidget(new Translator('en'));
         $empty->setDocument(null, null);

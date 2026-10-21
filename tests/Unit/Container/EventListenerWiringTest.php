@@ -305,6 +305,10 @@ final class EventListenerWiringTest extends TestCase
             // hearing itself: these are for plugins, through on().
             'ParticipantJoined',
             'ParticipantLeft',
+            // The soft-wrap setting switched. Core's own editor re-wraps
+            // through its options before this is sent; it is for the panes a
+            // plugin draws — the git view's diff — through on().
+            'SoftWrapChanged',
         ];
 
         $dispatcher = $this->dispatcher();

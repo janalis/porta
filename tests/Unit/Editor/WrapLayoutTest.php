@@ -28,6 +28,7 @@ final class WrapLayoutTest extends TestCase
         $layout = new WrapLayout(new Document(\str_repeat('x', times: $length)."\n"));
 
         $this->assertSame($rows, $layout->rowsFor(0, $width));
+        $this->assertSame($rows, WrapLayout::rowsForWidth($length, $width), 'the formula a diff pane shares, from a width alone');
     }
 
     /** A pane squeezed to nothing has no width to wrap into; every line is one row. */
@@ -37,6 +38,8 @@ final class WrapLayoutTest extends TestCase
 
         $this->assertSame(1, $layout->rowsFor(0, 0));
         $this->assertSame(1, $layout->rowsFor(0, -5));
+        $this->assertSame(1, WrapLayout::rowsForWidth(50, 0));
+        $this->assertSame(1, WrapLayout::rowsForWidth(50, -5));
     }
 
     /**

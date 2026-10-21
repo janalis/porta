@@ -6,7 +6,7 @@ namespace Porta\DiffPlugin\Widget;
 
 /**
  * The diff pane's column arithmetic, spelled ONCE: where the split boundary
- * sits and where a row's text begins per column. The mouse path
+ * sits, where a row's text begins per column and how wide it runs. The mouse path
  * ({@see DiffViewWidget}) and the render path
  * ({@see \Porta\DiffPlugin\Widget\DiffViewRenderer}) both read these — they used
  * to carry private copies, and a drift between them would make a drag
@@ -31,6 +31,20 @@ final class DiffGeometry
             null => 12,
             DiffColumn::Old => 6,
             DiffColumn::New => self::splitBoundary($width) + 7,
+        };
+    }
+
+    /**
+     * The columns of line text a row shows per column, past the gutter and the
+     * ± marker: the width a soft-wrapped line breaks at. Below one, a pane too
+     * narrow to seat any text.
+     */
+    public static function bodyWidth(?DiffColumn $column, int $width): int
+    {
+        return match ($column) {
+            null => $width - 12,
+            DiffColumn::Old => self::splitBoundary($width) - 6,
+            DiffColumn::New => $width - self::textStart(DiffColumn::New, $width),
         };
     }
 }

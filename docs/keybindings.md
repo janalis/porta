@@ -94,7 +94,7 @@ settings.
 | `Ctrl+Shift+L` | Cycle the line-number mode (absolute → relative → off) |
 | `Alt+PageDown` / `Alt+PageUp` | Next / previous panel on the bottom dock |
 | `Ctrl+Shift+F4` | Close the bottom dock's tab on display — a results tab, or a terminal session (its process stops) |
-| `Alt+Z` | Toggle soft wrap (off by default; horizontal scroll is disabled while it is on) |
+| `Alt+Z` | Toggle soft wrap — the `softWrap` setting, so it is saved (off by default; horizontal scroll is disabled while it is on, in the editor and the diffs alike) |
 | `Alt+V` | Toggle code vision — the server's "3 usages" lines above declarations (off by default) |
 | `Ctrl+Alt+V` | Step a previewed file (Markdown, SVG, a Graphviz or PlantUML diagram) through the text alone, the text beside its live preview, and the preview alone — the same as the `Editor` `Split` `Preview` toggles at the right of the breadcrumbs bar |
 | `F10` | Arm the application menu: File is lit, `←`/`→` move along the titles, `↓`/`Enter`/`Space` or a title's underlined letter opens one; `F10` or `Esc` again lets go |

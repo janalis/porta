@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Config\ConfigWarning;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
@@ -38,6 +39,7 @@ final readonly class PluginLoader
      * @param list<string> $disabled plugin names skipped at boot (.porta.json `disabledPlugins`)
      * @param list<string> $enabled  bundled (embedded) plugin names opted in (.porta.json `enabledPlugins`); embedded plugins are off unless listed
      * @param bool         $trusted  whether the project's own `.porta/plugins` may load — see {@see \Porta\Config\WorkspaceTrust}
+     * @param (\Closure(): EditorDisplayOptions)|null $display the editor's display options, for {@see PluginApi::softWrap()}
      */
     public function __construct(
         private string $rootDir,
@@ -49,6 +51,7 @@ final readonly class PluginLoader
         private ?TerminalTheme $syntaxTheme = null,
         private ?Translator $translator = null,
         private bool $trusted = true,
+        private ?\Closure $display = null,
     ) {}
 
     /**
@@ -253,7 +256,7 @@ final readonly class PluginLoader
                 throw new PluginException(\sprintf('duplicate plugin name "%s"', $name));
             }
 
-            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme);
+            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme, $this->display);
             $plugin->activate($api);
             $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
             if (\is_dir($manifest->directory.'/translations')) {

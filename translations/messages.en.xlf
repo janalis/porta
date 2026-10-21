@@ -3430,6 +3430,10 @@
         <source>Cannot display diagram PNG</source>
         <target>Cannot display diagram PNG</target>
       </trans-unit>
+      <trans-unit id="1179">
+        <source>Soft wrap</source>
+        <target>Soft wrap</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

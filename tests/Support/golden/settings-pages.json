@@ -24,7 +24,7 @@
         " ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings"
     ],
     "interface": [
-        " Settings › Interface                                                                             18 settings",
+        " Settings › Interface                                                                             19 settings",
         "──────────────────────────────────────────────────────────────────────────────────────────────────────────────",
         "                        ┏━━━━━━━━━━━━━━━━━━━━━━━━┓",
         "  Save changes to       ┃ .porta.json          ▾ ┃ · for this session",

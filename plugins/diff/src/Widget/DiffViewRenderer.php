@@ -9,6 +9,7 @@ use Porta\DiffPlugin\DiffLine;
 use Porta\DiffPlugin\DiffRowKind;
 use Porta\Editor\Document;
 use Porta\Editor\TextMetrics;
+use Porta\Editor\WrapLayout;
 use Porta\Support\AnsiText;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -25,6 +26,11 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * char-selection and input while the row assembly — gutter, ± marker,
  * horizontal-scroll slicing, intraline emphasis, selection/cursor tints — lives
  * here and is unit-testable without driving the whole widget.
+ *
+ * Under soft wrap a row is several SEGMENTS, each the same slice horizontal
+ * scroll would take, at a fixed offset — the editor's "one knob read two
+ * ways" ({@see \Porta\Editor\WrapLayout}). Only the first carries the line
+ * numbers and the ± marker; the band, the cursor and the selection run on all.
  *
  * @phpstan-type Row array{kind: DiffRowKind, hunk: int, line?: int, left?: int, right?: int}
  */
@@ -48,6 +54,8 @@ final readonly class DiffViewRenderer
         private Styles $styles,
         // A read-only diff — a commit's, a comparison's — has no context to cycle, so no mark to offer it.
         private bool $expandable = true,
+        // Soft wrap: a long line continues on the rows below instead of scrolling sideways.
+        private bool $wrap = false,
     ) {}
 
     /**
@@ -57,12 +65,36 @@ final readonly class DiffViewRenderer
      */
     public function row(int $rowIndex, array $row, int $width): string
     {
+        return $this->segment($rowIndex, $row, $width, 0);
+    }
+
+    /**
+     * The $height screen rows of a wrapped body row ({@see DiffRowHeights}),
+     * each decorated as {@see row()} decorates the one.
+     *
+     * @param Row $row
+     *
+     * @return list<string>
+     */
+    public function segments(int $rowIndex, array $row, int $width, int $height): array
+    {
+        $lines = [];
+        for ($segment = 0; $segment < $height; ++$segment) {
+            $lines[] = $this->segment($rowIndex, $row, $width, $segment);
+        }
+
+        return $lines;
+    }
+
+    /** @param Row $row */
+    private function segment(int $rowIndex, array $row, int $width, int $segment): string
+    {
         // GitHub's green and red bands — but a row the cursor, a range or a
         // mouse selection is on keeps that shade alone, or the band would
         // paint over what says where the user is.
         $banded = (!$this->focused || $rowIndex !== $this->cursor) && !$this->inRange($rowIndex) && !$this->inCharSelection($rowIndex);
 
-        return $this->decorateRowLine($rowIndex, $this->applyCharSelectionTint($rowIndex, $row, $this->renderRow($row, $width, $banded), $width));
+        return $this->decorateRowLine($rowIndex, $this->applyCharSelectionTint($rowIndex, $row, $this->renderRow($row, $width, $banded, $segment), $width, $segment));
     }
 
     private function inCharSelection(int $rowIndex): bool
@@ -137,7 +169,7 @@ final readonly class DiffViewRenderer
      *
      * @param Row $row
      */
-    private function applyCharSelectionTint(int $rowIndex, array $row, string $line, int $width): string
+    private function applyCharSelectionTint(int $rowIndex, array $row, string $line, int $width, int $segment): string
     {
         $sel = $this->charSel;
         if (null === $sel || $rowIndex < $sel->fromRow || $rowIndex > $sel->toRow) {
@@ -145,18 +177,21 @@ final readonly class DiffViewRenderer
         }
         $target = self::lineAtRow($this->document, $row, $sel->side);
 
-        return null === $target ? $line : $this->tintSelectedSpan($sel, $target, $rowIndex, $line, $width);
+        return null === $target ? $line : $this->tintSelectedSpan($sel, $target, $rowIndex, $line, $width, $this->offset($segment, DiffGeometry::bodyWidth($sel->side, $width)));
     }
 
-    /** applyCharSelectionTint() for a row inside $sel whose selected side shows $target. */
-    private function tintSelectedSpan(DiffCharSelection $sel, DiffLine $target, int $rowIndex, string $line, int $width): string
+    /**
+     * applyCharSelectionTint() for a row inside $sel whose selected side shows
+     * $target, its text shown from display column $offset.
+     */
+    private function tintSelectedSpan(DiffCharSelection $sel, DiffLine $target, int $rowIndex, string $line, int $width, int $offset): string
     {
         $textStart = DiffGeometry::textStart($sel->side, $width);
         $segEnd = DiffColumn::Old === $sel->side ? DiffGeometry::splitBoundary($width) : $width;
         $fromCol = $rowIndex === $sel->fromRow ? $sel->fromCol : 0;
         $toCol = $rowIndex === $sel->toRow ? $sel->toCol : self::columns($target->text);
-        $start = \max($textStart, $textStart + $fromCol - $this->hScroll);
-        $end = \min($segEnd, $textStart + $toCol - $this->hScroll);
+        $start = \max($textStart, $textStart + $fromCol - $offset);
+        $end = \min($segEnd, $textStart + $toCol - $offset);
 
         // Re-apply the bg after any reset inside the span (syntax SGR resets,
         // truncateToWidth's pad boundary) — without it the highlight dies
@@ -186,35 +221,53 @@ final readonly class DiffViewRenderer
         return LineDecorator::apply($rendered, $startCol, $endCol, $bg, Sgr::DEFAULT_BG, $bg);
     }
 
+    /**
+     * The display column a row's text shows from: the horizontal scroll, or
+     * under soft wrap where segment $segment of a $body-wide text starts.
+     */
+    private function offset(int $segment, int $body): int
+    {
+        return $this->wrap ? WrapLayout::offsetOf($segment, $body) : $this->hScroll;
+    }
+
     /** @param Row $row */
-    private function renderRow(array $row, int $width, bool $banded): string
+    private function renderRow(array $row, int $width, bool $banded, int $segment): string
     {
         $hunk = $this->document->hunks[$row['hunk']];
 
         return match ($row['kind']) {
             // The expand mark first: a click on it shows more of the file around the hunk.
             DiffRowKind::Hunk => $this->styles->of(Role::Hunk)->apply(AnsiText::truncate(' '.($this->expandable ? self::EXPAND.' ' : '').$hunk->header(), $width, pad: true)),
-            DiffRowKind::Pair => $this->renderPair($row, $width, $banded),
-            DiffRowKind::Line => $this->renderLine($hunk->lines[$row['line'] ?? -1], $row['hunk'].':'.($row['line'] ?? -1), $width, $banded),
+            DiffRowKind::Pair => $this->renderPair($row, $width, $banded, $segment),
+            DiffRowKind::Line => $this->renderLine($hunk->lines[$row['line'] ?? -1], $row['hunk'].':'.($row['line'] ?? -1), $width, $banded, $segment),
         };
     }
 
-    /** @param Row $row */
-    private function renderPair(array $row, int $width, bool $banded): string
+    /**
+     * A side-by-side row. Wrapped, the shorter half runs out of text first and
+     * shows blank rows — banded still, so a change reads as one block.
+     *
+     * @param Row $row
+     */
+    private function renderPair(array $row, int $width, bool $banded, int $segment): string
     {
         $leftW = DiffGeometry::splitBoundary($width);
         $rightW = $width - 1 - $leftW;
 
         return (
-            $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffColumn::Old, $banded)
+            $this->renderHalf($row['hunk'], $row['left'] ?? -1, $leftW, DiffColumn::Old, $banded, $segment)
             .$this->styles->of(Role::Gutter)->apply(Glyphs::DIFF_COLUMN)
-            .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffColumn::New, $banded)
+            .$this->renderHalf($row['hunk'], $row['right'] ?? -1, $rightW, DiffColumn::New, $banded, $segment)
             .Sgr::RESET
         );
     }
 
-    /** A unified body row: both line numbers, the marker and the scrolled text, keyed "hunk:line" for its highlight. */
-    private function renderLine(DiffLine $line, string $key, int $width, bool $banded): string
+    /**
+     * A unified body row: both line numbers, the marker and the scrolled text,
+     * keyed "hunk:line" for its highlight. A wrapped line's later segments
+     * leave the numbers blank, so they still count lines rather than rows.
+     */
+    private function renderLine(DiffLine $line, string $key, int $width, bool $banded, int $segment): string
     {
         // Built plain and measured, then styled: the gutter is eleven fixed
         // columns and the marker one more, so a pane narrower than thirteen
@@ -223,9 +276,9 @@ final readonly class DiffViewRenderer
         // thirteen columns wide however narrow the pane was, and a row wider
         // than its pane throws RenderException out of the render loop.
         $gutter =
-            \str_pad(null === $line->oldNo ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
+            \str_pad(null === $line->oldNo || $segment > 0 ? '' : (string) $line->oldNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' '
-            .\str_pad(null === $line->newNo ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
+            .\str_pad(null === $line->newNo || $segment > 0 ? '' : (string) $line->newNo, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT)
             .' '
             .Glyphs::DIFF_COLUMN;
         $body = $width - AnsiUtils::visibleWidth($gutter) - 1;
@@ -234,15 +287,28 @@ final readonly class DiffViewRenderer
         // styled string cuts escape sequences in half.
         return $body < 1
             ? $this->styles->of(Role::Gutter)->apply(AnsiText::truncate($gutter, $width, pad: true)).Sgr::RESET
-            : $this->banded($this->styles->of(Role::Gutter)->apply($gutter).$this->markedText($line, $key, $body), $line, $width, $banded).Sgr::RESET;
+            : $this->banded($this->styles->of(Role::Gutter)->apply($gutter).$this->markedText($line, $key, $body, $segment), $line, $width, $banded).Sgr::RESET;
     }
 
     /** The ± marker and the scrolled styled text of $line, $inner columns of text. */
-    private function markedText(DiffLine $line, string $key, int $inner): string
+    private function markedText(DiffLine $line, string $key, int $inner, int $segment): string
     {
         [$marker, $text] = $this->lineBody($line, $key);
 
-        return $marker.$this->scrolledText($text, $inner);
+        return ($segment > 0 ? $this->continuationMarker($line) : $marker).$this->scrolledText($text, $inner, $segment);
+    }
+
+    /**
+     * The marker column on a wrapped line's later rows: blank, but a deletion's
+     * still opens its red, which the whole row inherits as the first row's does.
+     */
+    private function continuationMarker(DiffLine $line): string
+    {
+        return match ($line->origin) {
+            '-' => $this->styles->of(Role::Deleted)->getAnsiRestore().' ',
+            '\\' => $this->styles->of(Role::Dim)->getAnsiRestore().' ',
+            default => ' ',
+        };
     }
 
     /**
@@ -290,17 +356,17 @@ final readonly class DiffViewRenderer
      * The visible window of a styled line text: sliced by the horizontal
      * scroll (ANSI-aware, so syntax/emphasis SGR survives) with a leading …
      * marking cut-off text, right-truncated and padded to $inner columns.
+     * Wrapped, segment $segment's slice with no mark: the text continues from
+     * the row above rather than being cut.
      */
-    private function scrolledText(string $text, int $inner): string
+    private function scrolledText(string $text, int $inner, int $segment): string
     {
-        if ($this->hScroll <= 0) {
-            return AnsiText::truncate($text, $inner, pad: true);
-        }
-
-        $slice = AnsiUtils::sliceByColumn($text, $this->hScroll, $inner);
-
-        // A LEADING mark: the cut is at the head, so the row reads as scrolled.
-        return Glyphs::ELLIPSIS.AnsiText::truncate($slice, \max(1, $inner - 1), pad: true);
+        return match (true) {
+            $this->wrap => AnsiText::truncate(AnsiUtils::sliceByColumn($text, $this->offset($segment, $inner), $inner), $inner, pad: true),
+            $this->hScroll <= 0 => AnsiText::truncate($text, $inner, pad: true),
+            // A LEADING mark: the cut is at the head, so the row reads as scrolled.
+            default => Glyphs::ELLIPSIS.AnsiText::truncate(AnsiUtils::sliceByColumn($text, $this->hScroll, $inner), \max(1, $inner - 1), pad: true),
+        };
     }
 
     /**
@@ -308,7 +374,7 @@ final readonly class DiffViewRenderer
      * $width columns; -1 (no line on this side) renders blank. Colors reset
      * to the default foreground at the end so nothing bleeds past the divider.
      */
-    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffColumn $side, bool $banded): string
+    private function renderHalf(int $hunkIndex, int $lineIndex, int $width, DiffColumn $side, bool $banded, int $segment): string
     {
         if ($lineIndex < 0) {
             return AnsiText::blank($width);
@@ -317,11 +383,11 @@ final readonly class DiffViewRenderer
         $no = $side->lineNo($line);
         // The same five-column gutter plus a marker, and the same floor: half
         // of a split pane is half as wide, so this side reaches the case first.
-        $gutter = \str_pad(null === $no ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ';
+        $gutter = \str_pad(null === $no || $segment > 0 ? '' : (string) $no, length: 4, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ';
         $body = $width - AnsiUtils::visibleWidth($gutter) - 1;
 
         return $body < 1
             ? $this->styles->of(Role::Gutter)->apply(AnsiText::truncate($gutter, $width, pad: true)).Sgr::DEFAULT_FG
-            : $this->banded($this->styles->of(Role::Gutter)->apply($gutter).$this->markedText($line, $hunkIndex.':'.$lineIndex, $body), $line, $width, $banded).Sgr::DEFAULT_FG;
+            : $this->banded($this->styles->of(Role::Gutter)->apply($gutter).$this->markedText($line, $hunkIndex.':'.$lineIndex, $body, $segment), $line, $width, $banded).Sgr::DEFAULT_FG;
     }
 }

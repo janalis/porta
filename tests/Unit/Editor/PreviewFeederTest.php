@@ -166,4 +166,33 @@ final class PreviewFeederTest extends TestCase
         $this->assertSame([$before[0] + 1, $before[1] + 1], $revisions($this->pane, $this->flank), 'a scroll repaints both');
         $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'and asks for the frame that sees the headers the editor pins as it renders');
     }
+
+    /**
+     * Under soft wrap the view moves without its top LINE moving: a toggle
+     * re-breaks every line, and a notch scrolls within a tall one. The merge
+     * view's sides draw level with those rows, so each repaints them.
+     */
+    public function testASoftWrapToggleAndAScrollWithinAWrappedLineRepaintTheFlank(): void
+    {
+        $this->open("# one\n");
+        $this->editor->openFile('README.md', \str_repeat('x', times: 400)."\n".\implode("\n", \range(1, end: 60)));
+        $this->editor->render(new RenderContext(80, 10));
+        $this->feeder->watch();
+        $revisions = fn (): int => $this->flank->getRenderRevision();
+        $before = $revisions();
+
+        $this->editor->display->setSoftWrap(true);
+        $this->editor->render(new RenderContext(80, 10));
+        $this->feeder->watch();
+        $this->assertSame($before + 1, $revisions(), 'the toggle repaints the flank');
+
+        // The caret at the long line's end, in a pane shorter than the line:
+        // the view scrolls INTO it, its top line unmoved.
+        $this->editor->getDocument()->setCursor(0, 400);
+        $this->editor->render(new RenderContext(80, 3));
+        $this->assertSame(0, $this->editor->viewport()->vScroll, 'still the long line on top');
+        $this->assertGreaterThan(0, $this->editor->viewport()->vScrollSegment, 'some of its rows scrolled away');
+        $this->feeder->watch();
+        $this->assertSame($before + 2, $revisions(), 'a scroll within the line repaints it too');
+    }
 }

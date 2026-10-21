@@ -8,9 +8,11 @@ use Porta\Config\IdeConfig;
 use Porta\Config\PortaHome;
 use Porta\Config\PortaJsonWriter;
 use Porta\Container\AsIdeService;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsScope;
+use Symfony\Component\DependencyInjection\Attribute\AutowireServiceClosure;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Tempest\Highlight\TerminalTheme;
 
@@ -34,6 +36,7 @@ final class PluginHost
 
     public readonly PluginLoader $loader;
 
+    /** @param (\Closure(): EditorDisplayOptions)|null $display */
     public function __construct(
         IdeConfig $config,
         EventDispatcherInterface $events,
@@ -43,6 +46,10 @@ final class PluginHost
         ?SettingsScope $scope = null,
         ?Translator $translator = null,
         ?MarkdownFenceRegistry $markdownFences = null,
+        // A closure: the host is built before the Tui synthetic is set, and the
+        // editor that owns these options needs it — resolved on first read.
+        #[AutowireServiceClosure(EditorDisplayOptions::class)]
+        ?\Closure $display = null,
     ) {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer, $scope);
         $this->manager = new PluginManager($events, $this->settings, $markdownFences ?? new MarkdownFenceRegistry());
@@ -56,6 +63,7 @@ final class PluginHost
             $syntaxTheme,
             $translator,
             $config->trusted,
+            $display,
         );
     }
 

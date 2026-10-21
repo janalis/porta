@@ -157,6 +157,14 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setMethodSeparators((bool) $v),
             ],
+            'softWrap' => [
+                'label' => 'Soft wrap',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'interface',
+                'fieldset' => 'Editor',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $applier->applySoftWrap((bool) $v),
+            ],
             'diagnosticMessages' => [
                 'label' => 'Diagnostic messages',
                 'kind' => SettingsRowKind::Choice,

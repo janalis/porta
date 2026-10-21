@@ -182,6 +182,7 @@ catalog validation and bind if the plugin loads.
 | `indentGuides` | `true` | Vertical rules at each indent level |
 | `methodSeparators` | `false` | A rule between members of a class |
 | `showWhitespace` | `false` | Render spaces and tabs as glyphs |
+| `softWrap` | `false` | Continue a line longer than the pane on the next rows instead of scrolling sideways — in the editor, the diff pane and the merge view's sides. `Alt+Z` toggles it and saves the choice |
 | `tabBarPosition` | `"top"` | Where the editor tab strip sits: `top`, `bottom`, `left` or `right` |
 | `keymapPlatform` | `"auto"` | Whose shortcut conventions the default keymap follows: `auto` (the platform you type on — macOS, Windows, including WSL and Windows Terminal, or Linux), `macos` (adds the `Cmd` chords — see [Keybindings](keybindings.md#macos-cmd-keys)), `windows` or `linux` (each adds keys for the chords its terminals keep — see [Keybindings](keybindings.md#windows-and-linux-keys-the-terminal-keeps)). Set it when the IDE runs somewhere other than your keyboard, as over SSH. Your own `keymap` entries always win |
 | `searchIncludeVendor` | `false` | Let Find in Files and Go to File descend into `vendor/` |
@@ -195,7 +196,7 @@ catalog validation and bind if the plugin loads.
 
 All of these apply live when changed from the Settings view or the palette
 commands (`Cycle Diagnostic Messages`, `Cycle Inlay Hints`,
-`Cycle Line Numbers`, `Toggle Auto-Pairs`).
+`Cycle Line Numbers`, `Toggle Auto-Pairs`, `Soft-Wrap`).
 
 `relativeLineNumbers` and `inlineDiagnostics` are the two keys here that are
 no longer current: a `.porta.json` still carrying one is read without

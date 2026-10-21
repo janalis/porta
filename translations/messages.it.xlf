@@ -3430,6 +3430,10 @@
         <source>Cannot display diagram PNG</source>
         <target>Impossibile visualizzare il PNG del diagramma</target>
       </trans-unit>
+      <trans-unit id="1179">
+        <source>Soft wrap</source>
+        <target>A capo automatico</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

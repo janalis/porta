@@ -41,6 +41,7 @@ final class PluginObservableContractTest extends TestCase
         'ParticipantJoined',
         'ParticipantLeft',
         'QuitRequested',
+        'SoftWrapChanged',
         'ThemeChanged',
         'ToolsChanged',
         'WorkingTreeChanged',

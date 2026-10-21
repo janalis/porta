@@ -82,6 +82,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     private array $highlighted = [];
     /** Side-by-side rendering instead of unified. */
     private bool $split = false;
+    /** Soft wrap: a long line continues on the rows below, and nothing scrolls sideways. */
+    private bool $wrap = false;
+    /** Screen rows per diff row, for {@see $heightsWidth}; null once the rows or the wrap change. */
+    private ?DiffRowHeights $heights = null;
+    private int $heightsWidth = -1;
     /** Mirror of the controller's hide-whitespace state, for the toolbar tag. */
     private bool $whitespaceHidden = false;
     /** Clickable toolbar tag spans from the last render. */
@@ -166,6 +171,63 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $this->split;
     }
 
+    /**
+     * Break long lines onto the rows below, as the editor's soft wrap does —
+     * the horizontal scroll goes back to the start and stays there.
+     */
+    public function useSoftWrap(): void
+    {
+        if (!$this->wrap) {
+            $this->wrap = true;
+            $this->hScroll = 0;
+            $this->heights = null;
+            $this->invalidate();
+        }
+    }
+
+    /** Back to one row per line, a long one scrolled sideways. */
+    public function useHorizontalScroll(): void
+    {
+        if ($this->wrap) {
+            $this->wrap = false;
+            $this->heights = null;
+            $this->invalidate();
+        }
+    }
+
+    public function isWrapped(): bool
+    {
+        return $this->wrap;
+    }
+
+    /** The screen rows each diff row takes at the last width, memoised until the rows, the width or the wrap change. */
+    private function heights(): DiffRowHeights
+    {
+        if (null === $this->heights || $this->heightsWidth !== $this->lastWidth) {
+            $this->heights = DiffRowHeights::of($this->document, $this->rows, $this->lastWidth, $this->wrap);
+            $this->heightsWidth = $this->lastWidth;
+        }
+
+        return $this->heights;
+    }
+
+    /** The body rows below the toolbar, from the last render. */
+    private function visibleRows(): int
+    {
+        return \max(1, $this->lastRows - $this->headerRows);
+    }
+
+    /**
+     * The diff row and its screen row under body row $relRow (widget-relative,
+     * toolbar included); past the last row, the last row's first.
+     *
+     * @return array{int, int}
+     */
+    private function rowAt(int $relRow): array
+    {
+        return $this->heights()->at($this->scroll, \max(0, $relRow - $this->headerRows)) ?? [\count($this->rows) - 1, 0];
+    }
+
     private function toggleLayout(): void
     {
         $this->split = !$this->split;
@@ -185,6 +247,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->scroll = \min($this->scroll, $maxRow);
         $this->anchor = null;
         $this->charSel = null;
+        $this->heights = null;
         $this->invalidate();
     }
 
@@ -245,19 +308,21 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** A page of diff rows, one kept in view: what the last render showed below the toolbar. */
     private function page(): int
     {
-        return \max(1, $this->lastRows - $this->headerRows - 1);
+        return \max(1, $this->heights()->fitting($this->scroll, $this->visibleRows()) - 1);
     }
 
     public function scrollBy(int $lines): void
     {
-        $max = \max(0, \count($this->rows) - \max(1, $this->lastRows - $this->headerRows));
-        $this->scroll = IntMath::clamp($this->scroll + $lines, 0, $max);
+        $this->scroll = IntMath::clamp($this->scroll + $lines, 0, $this->heights()->maxScroll($this->visibleRows()));
         $this->invalidate();
     }
 
-    /** Scroll the line texts horizontally; gutters and ± markers stay pinned. */
+    /** Scroll the line texts horizontally; gutters and ± markers stay pinned. Wrapped, there is nothing to the side. */
     public function scrollHBy(int $cols): void
     {
+        if ($this->wrap) {
+            return;
+        }
         $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, \max(0, $this->maxLineWidth - 20));
         $this->invalidate();
     }
@@ -329,7 +394,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             return;
         }
         if ([] !== $this->rows) {
-            $index = IntMath::clamp($this->scroll + $relRow - $this->headerRows, 0, \count($this->rows) - 1);
+            [$index, $segment] = $this->rowAt($relRow);
             // A hunk row's expand mark (its first columns) shows more of the
             // file around the hunks: the context cycle `c` runs.
             if (!$this->readOnly && DiffRowKind::Hunk === $this->rows[$index]['kind'] && $relCol <= self::EXPAND_COLUMNS) {
@@ -342,7 +407,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             // Seed a (zero-width) char selection at the press point; a drag
             // extends it, a plain click leaves it degenerate (row-copy rules).
             $side = $this->sideAt($relCol);
-            $col = $this->pointCol($relCol, $side);
+            $col = $this->pointCol($relCol, $side, $segment);
             $this->charSel = new DiffCharSelection($this->cursor, $col, $this->cursor, $col, $side);
             $this->invalidate();
         }
@@ -359,8 +424,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ([] === $this->rows || null === $sel) {
             return;
         }
-        $row = IntMath::clamp($this->scroll + $relRow - $this->headerRows, 0, \count($this->rows) - 1);
-        $this->charSel = new DiffCharSelection($sel->fromRow, $sel->fromCol, $row, $this->pointCol($relCol, $sel->side), $sel->side);
+        [$row, $segment] = $this->rowAt($relRow);
+        $this->charSel = new DiffCharSelection($sel->fromRow, $sel->fromCol, $row, $this->pointCol($relCol, $sel->side, $segment), $sel->side);
         $this->cursor = $row;
         $this->invalidate();
     }
@@ -377,11 +442,16 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
     /**
      * A widget column as a display column into the (side's) line text,
-     * accounting for gutters, the ± marker and the horizontal scroll.
+     * accounting for gutters, the ± marker and the horizontal scroll — or,
+     * wrapped, for which segment of the line the row shows. A click on a
+     * continuation row's blank gutter lands at that segment's start, never in
+     * the tail of the one above.
      */
-    private function pointCol(int $relCol, ?DiffColumn $side): int
+    private function pointCol(int $relCol, ?DiffColumn $side, int $segment): int
     {
-        return \max(0, $relCol - DiffGeometry::textStart($side, $this->lastWidth) + $this->hScroll);
+        $offset = $this->wrap ? $segment * DiffGeometry::bodyWidth($side, $this->lastWidth) : $this->hScroll;
+
+        return $offset + \max(0, $relCol - DiffGeometry::textStart($side, $this->lastWidth));
     }
 
     private function fireButton(string $name): void
@@ -424,13 +494,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
         $this->cursor = IntMath::clamp($this->cursor + $delta, 0, \count($this->rows) - 1);
         // Keep the cursor inside the visible window, below the header.
-        $visible = \max(1, $this->lastRows - $this->headerRows);
-        if ($this->cursor < $this->scroll) {
-            $this->scroll = $this->cursor;
-        }
-        if ($this->cursor > ($this->scroll + $visible - 1)) {
-            $this->scroll = $this->cursor - $visible + 1;
-        }
+        $this->scroll = $this->heights()->reveal($this->scroll, $this->cursor, $this->visibleRows());
         $this->invalidate();
     }
 
@@ -642,9 +706,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             $this->normalizedCharSel(),
             $this->styles,
             expandable: !$this->readOnly,
+            wrap: $this->wrap,
         );
-        foreach (\array_slice($this->rows, $this->scroll, \max(0, $rows - $this->headerRows)) as $i => $row) {
-            $lines[] = $renderer->row($this->scroll + $i, $row, $width);
+        $heights = $this->heights();
+        for ($i = $this->scroll, $count = \count($this->rows); $i < $count && \count($lines) < $rows; ++$i) {
+            // A row taller than what is left of the pane shows its first rows.
+            foreach (\array_slice($renderer->segments($i, $this->rows[$i], $width, $heights->height($i)), offset: 0, length: $rows - \count($lines)) as $segment) {
+                $lines[] = $segment;
+            }
         }
         while (\count($lines) < $rows) {
             $lines[] = AnsiText::blank($width);
@@ -726,8 +795,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** A hunk row's expand mark says what a click on it does. */
     private function expandTip(int $row, int $col): ?Tooltip
     {
-        $index = $this->scroll + $row - $this->headerRows;
-        $onMark = !$this->readOnly && $row >= $this->headerRows && $col <= self::EXPAND_COLUMNS && DiffRowKind::Hunk === ($this->rows[$index]['kind'] ?? null);
+        $at = $row >= $this->headerRows ? $this->heights()->at($this->scroll, $row - $this->headerRows) : null;
+        $onMark = !$this->readOnly && null !== $at && $col <= self::EXPAND_COLUMNS && DiffRowKind::Hunk === $this->rows[$at[0]]['kind'];
 
         return $onMark ? new Tooltip('diff:expand', $this->translator->trans('Show more of the file around the changes (c)'), $row, 1, 2) : null;
     }

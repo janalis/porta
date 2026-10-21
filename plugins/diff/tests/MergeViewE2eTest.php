@@ -230,4 +230,48 @@ final class MergeViewE2eTest extends TestCase
             ],
         );
     }
+
+    /**
+     * Soft wrap on: the long line above the conflict takes several rows in
+     * the editor, and the sides give it as many — the conflict's lines stay
+     * level. Then the toggle, which re-breaks every line: still level.
+     */
+    public function testUnderSoftWrapEachLineSitsOnTheSameRowAsInTheEditor(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $long = \str_repeat('z', times: 300);
+        $file = "<?php\n\$long = '{$long}';\n<<<<<<< HEAD\n\$y = 'ours';\n=======\n\$y = 'theirs';\n>>>>>>> topic\n";
+        $project = new TempProject(['m.php' => $file, '.porta.json' => '{"enabledPlugins":["diff"],"settings":{"softWrap":true}}']);
+
+        $this->runIde(
+            $project,
+            $project->path('m.php'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->await(static fn (): bool => null !== self::ours($ide)->getContext(), what: 'the merge view');
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $ours = self::rect($ide, self::ours($ide));
+                    $edit = self::rect($ide, $editor);
+                    $level = function () use ($tui, $terminal, $ours, $edit): bool {
+                        $grid = $this->screenGrid($tui, $terminal);
+                        foreach (\range($edit->row, $edit->row + $edit->rows - 1) as $row) {
+                            if (\str_contains(\mb_substr($grid[$row], $edit->col, $edit->columns), "\$y = 'ours';")) {
+                                return \str_contains(\mb_substr($grid[$row], $ours->col, $ours->columns), "\$y = 'ours';");
+                            }
+                        }
+
+                        return false;
+                    };
+
+                    $this->await($level, what: 'the ours line on the same row in ours as in the editor, below a wrapped line');
+                    $this->assertNotNull($editor->viewport()->wrapWidth, 'the editor wraps, or this proves nothing');
+                    $this->assertGreaterThan(1, (int) \ceil(300 / (int) $editor->viewport()->wrapWidth), 'and the long line takes several rows');
+
+                    $editor->display->setSoftWrap(false);
+                    $tui->requestRender();
+                    $this->await(static fn (): bool => null === $editor->viewport()->wrapWidth && $level(), what: 'still level, one row a line');
+                },
+            ],
+        );
+    }
 }

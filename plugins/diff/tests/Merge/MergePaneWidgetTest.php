@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\DiffPlugin\Merge\MergePaneWidget;
 use Porta\Editor\ConflictSide;
 use Porta\I18n\Translator;
+use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\ViewerTabHandler;
@@ -21,6 +22,9 @@ use Symfony\Component\Tui\Render\RenderContext;
  */
 final class MergePaneWidgetTest extends TestCase
 {
+    /** A conflict whose ours line is thirty columns long. */
+    private const string LONG = "x\n<<<<<<< HEAD\noooooooooooooooooooooooooooooo\n=======\nt\n>>>>>>> topic";
+
     private const string RESULT = "a\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\nb\n<<<<<<< HEAD\no2\n=======\nt2\n>>>>>>> topic";
 
     /** What the editor holds — the closures read and write it. */
@@ -28,6 +32,12 @@ final class MergePaneWidgetTest extends TestCase
 
     private int $caretLine = 0;
     private int $top = 0;
+
+    /** Rows of the top line scrolled above the view: soft wrap's, 0 otherwise. */
+    private int $segment = 0;
+
+    /** @var array<int, int> rows the editor gives a line, where soft wrap made it more than one */
+    private array $editorRows = [];
 
     /** @var list<int> the lines sticky scroll pins over the view */
     private array $sticky = [];
@@ -44,7 +54,8 @@ final class MergePaneWidgetTest extends TestCase
             $side,
             new Translator('en'),
             fn (): ?string => $this->editorText,
-            fn (): ?array => $this->viewed ? ['line' => $this->caretLine, 'column' => 0, 'top' => $this->top, 'sticky' => $this->sticky] : null,
+            fn (): ?array => $this->viewed ? ['line' => $this->caretLine, 'column' => 0, 'top' => $this->top, 'segment' => $this->segment, 'sticky' => $this->sticky] : null,
+            fn (int $line): int => $this->editorRows[$line] ?? 1,
             function (string $text): void {
                 $this->calls[] = 'replace';
                 $this->editorText = $text;
@@ -98,6 +109,82 @@ final class MergePaneWidgetTest extends TestCase
         $this->top = 7;
 
         $this->assertSame([' a', ' ⇥ HEAD', ' o2', '', ''], self::plain($this->shown(ConflictSide::Ours), rows: 5));
+    }
+
+    /**
+     * Under soft wrap the editor gives a long line several rows: the side
+     * gives it as many, so every line below stays level.
+     */
+    public function testALineTheEditorWrapsTakesAsManyRowsOnTheSide(): void
+    {
+        $this->editorRows = [0 => 3];
+
+        $this->assertSame([' a', '', '', ' ⇥ HEAD', ' ours'], self::plain($this->shown(ConflictSide::Ours), rows: 5));
+    }
+
+    private function long(ConflictSide $side): MergePaneWidget
+    {
+        $this->editorText = self::LONG;
+        $pane = $this->pane($side);
+        $pane->show('/p/m.php', self::LONG);
+
+        return $pane;
+    }
+
+    /**
+     * The side's own text wraps at its own width over the rows it has: padded
+     * when it is shorter than the editor's line, cut with … on its last row
+     * when it is longer — and a side's band runs on every one.
+     */
+    public function testASideWrapsItsOwnTextIntoTheRowsTheEditorGives(): void
+    {
+        // Eleven columns: ten of text after the indent; thirty o's.
+        $this->editorRows = [2 => 2];
+        $ours = $this->long(ConflictSide::Ours);
+        $this->assertSame([' x', ' ⇥ HEAD', ' oooooooooo', ' ooooooooo…'], self::plain($ours, rows: 4, cols: 11), 'more than fits: the last row says so');
+
+        $this->editorRows = [2 => 4];
+        $this->assertSame([' oooooooooo', ' oooooooooo', ' oooooooooo', ''], \array_slice(self::plain($ours, rows: 6, cols: 11), offset: 2), 'fewer: blank rows after');
+
+        $theirs = $this->long(ConflictSide::Theirs);
+        $raw = $theirs->render(new RenderContext(11, 6));
+        $this->assertSame(' t', \rtrim(AnsiUtils::stripAnsiCodes($raw[2])));
+        $this->assertSame('', \rtrim(AnsiUtils::stripAnsiCodes($raw[3])));
+        $this->assertSame(Styles::dark()->of(Role::AddedRowBg)->apply(AnsiText::blank(11)), $raw[3], 'its band on the rows it does not fill');
+    }
+
+    /** Scrolled INTO a tall line, the side starts on the same row of it as the editor. */
+    public function testTheTopLineScrolledPartwayStartsAtTheSameRow(): void
+    {
+        $this->editorRows = [2 => 3];
+        $this->top = 2;
+        $this->segment = 1;
+
+        // The o's last two rows, then the conflict's filler: from its first row, the third would hold o's too.
+        $this->assertSame([' oooooooooo', ' oooooooooo', '', ''], self::plain($this->long(ConflictSide::Ours), rows: 4, cols: 11));
+    }
+
+    /** A label the editor's line wraps under keeps to its first row, and only there does a click accept. */
+    public function testAWrappedLabelAnswersOnItsFirstRowOnly(): void
+    {
+        $this->editorRows = [1 => 2];
+        $pane = $this->shown(ConflictSide::Theirs);
+        $this->assertSame([' a', ' ⇤ topic', '', ' theirs'], self::plain($pane, rows: 4));
+
+        $pane->press(2, 3);
+        $this->assertSame(self::RESULT, $this->editorText, 'the row under the label is not the label');
+        $pane->press(1, 3);
+        $this->assertStringStartsWith("a\ntheirs\nb", (string) $this->editorText);
+    }
+
+    /** Pinned headers take one row each, as the editor pins them; the lines below wrap. */
+    public function testPinnedHeadersAreOneRowEachAboveWrappedLines(): void
+    {
+        $this->sticky = [0];
+        $this->top = 7;
+        $this->editorRows = [0 => 3, 7 => 2];
+
+        $this->assertSame([' a', ' ⇥ HEAD', '', ' o2'], self::plain($this->shown(ConflictSide::Ours), rows: 4));
     }
 
     public function testASecondClickRightAfterTheFirstFindsTheConflictsAsTheyAreNow(): void

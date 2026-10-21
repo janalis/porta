@@ -219,6 +219,7 @@ final class SettingsViewControllerTest extends TestCase
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
             TestLiveKeybindings::create(),
+            $editor->display,
             true,
         );
         $settings = new SettingsController(

@@ -3430,6 +3430,10 @@
         <source>Cannot display diagram PNG</source>
         <target>図の PNG を表示できません</target>
       </trans-unit>
+      <trans-unit id="1179">
+        <source>Soft wrap</source>
+        <target>折り返し</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

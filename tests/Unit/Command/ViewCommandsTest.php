@@ -51,6 +51,15 @@ final class ViewCommandsTest extends TestCase
         return $state();
     }
 
+    /** @return array<string, mixed> the `settings` block the project's .porta.json holds now */
+    private static function savedSettings(TempProject $project): array
+    {
+        /** @var array{settings?: array<string, mixed>} $json */
+        $json = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+
+        return $json['settings'] ?? [];
+    }
+
     private function closeIde(Ide $ide): void
     {
         Services::resolve($ide, ViewRegistry::class)->closeAll();
@@ -207,24 +216,30 @@ final class ViewCommandsTest extends TestCase
      * nothing appears until the next save, which reads as a dead key — and
      * clears the rows when turned off, so they go with the setting.
      */
-    public function testTheSoftWrapAndCodeVisionTogglesFlipTheirOptions(): void
+    public function testTheSoftWrapAndCodeVisionTogglesFlipTheirOptionsAndSoftWrapPersists(): void
     {
         $project = new TempProject(['a.php' => "<?php\nclass A {}\n"]);
         new OnboardingState($project->dir)->markWelcomeSeen();
         $ide = new Ide($project->dir, $project->path('a.php'), new VirtualTerminal(columns: 100, rows: 30));
 
         try {
+            // Soft wrap is a setting: into the project, never the committed fixture home.
+            Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Project);
             $commands = Services::resolve($ide, CommandRegistry::class);
             $editor = Services::resolve($ide, CodeEditorWidget::class);
             $display = $editor->display;
 
             $this->assertFalse($display->softWrap, 'both are off by default');
             $this->assertFalse($display->codeLenses);
+            $this->assertFalse(self::ticked($commands, 'toggle_soft_wrap'));
 
             $commands->run('toggle_soft_wrap');
             $this->assertTrue($display->softWrap);
+            $this->assertTrue(self::ticked($commands, 'toggle_soft_wrap'));
+            $this->assertTrue(self::savedSettings($project)['softWrap'] ?? null, 'the key persists it, so the next launch wraps too');
             $commands->run('toggle_soft_wrap');
             $this->assertFalse($display->softWrap, 'and the same key turns it back off');
+            $this->assertFalse(self::savedSettings($project)['softWrap'] ?? null);
 
             // Lenses on with no language server: the option flips, the request
             // is simply never sent, and nothing is painted.

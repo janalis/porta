@@ -7,7 +7,9 @@ namespace Porta\Plugin\Api;
 use Porta\Config\ActionCatalog;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\DiagnosticSeverity;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\WrapLayout;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferReloaded;
@@ -137,12 +139,14 @@ final class PluginApi
     /** @var array<string, true> ids taken with adoptCommand() — registered BARE, so their menu specs are too */
     private array $adopted = [];
 
+    /** @param (\Closure(): EditorDisplayOptions)|null $display the editor's display options, for {@see softWrap()} */
     public function __construct(
         private readonly string $pluginName,
         private readonly PluginManager $manager,
         private readonly string $rootDir,
         private readonly PluginSettings $settings,
         private readonly ?TerminalTheme $syntaxTheme = null,
+        private readonly ?\Closure $display = null,
     ) {
         $this->languageServers = new PluginBuffer();
         $this->installers = new PluginBuffer();
@@ -173,6 +177,17 @@ final class PluginApi
     public function syntaxTheme(): TerminalTheme
     {
         return $this->syntaxTheme ?? new DarkTerminalTheme();
+    }
+
+    /**
+     * Whether soft wrap is on — the core `softWrap` setting, for a pane that
+     * draws long lines of its own (a diff) and should break them as the editor
+     * does. Read live, and safe during activate(); pair it with
+     * {@see \Porta\Event\SoftWrapChanged} to follow a switch.
+     */
+    public function softWrap(): bool
+    {
+        return null !== $this->display && ($this->display)()->softWrap;
     }
 
     /**
@@ -1341,9 +1356,11 @@ final class PluginApi
     /**
      * The caret position in the active text file (0-based line and byte
      * column), and the first line the editor shows of it — where the user is
-     * looking, which the caret alone does not say.
+     * looking, which the caret alone does not say. Under soft wrap the top
+     * line can be scrolled partway: `segment` is how many of its rows are
+     * above the view (0 otherwise).
      *
-     * @return array{line: int, column: int, top: int, sticky: list<int>}|null
+     * @return array{line: int, column: int, top: int, segment: int, sticky: list<int>}|null
      */
     public function caretPosition(): ?array
     {
@@ -1355,7 +1372,24 @@ final class PluginApi
 
         $viewport = $runtime->editor->viewport();
 
-        return ['line' => $document->cursorLine, 'column' => $document->cursorCol, 'top' => $viewport->vScroll, 'sticky' => $viewport->stickyLines];
+        return ['line' => $document->cursorLine, 'column' => $document->cursorCol, 'top' => $viewport->vScroll, 'segment' => $viewport->vScrollSegment, 'sticky' => $viewport->stickyLines];
+    }
+
+    /**
+     * How many screen rows the editor gives $line (0-based) of the active text
+     * file: one, or under soft wrap as many as the line breaks into at the
+     * editor's width — for a pane drawn level with the editor, row for row.
+     * One with no text file active. An action method: it throws during
+     * `activate()`.
+     */
+    public function editorRows(int $line): int
+    {
+        $runtime = $this->manager->runtime();
+        if (null === $this->activeFile()) {
+            return 1;
+        }
+
+        return WrapLayout::rowsForWidth($runtime->editor->getDocument()->lineDisplayWidth($line), $runtime->editor->viewport()->wrapWidth ?? 0);
     }
 
     /**

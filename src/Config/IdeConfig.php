@@ -41,6 +41,7 @@ final readonly class IdeConfig
         'indentGuides' => true,
         'methodSeparators' => false,
         'showWhitespace' => false,
+        'softWrap' => false,
         'breadcrumbs' => true,
         'autoPairs' => true,
         'formatOnSave' => false,

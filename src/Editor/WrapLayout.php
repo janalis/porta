@@ -53,8 +53,18 @@ final class WrapLayout
         }
         $this->refresh($width);
 
+        return $this->rows[$line] ??= self::rowsForWidth($this->document->lineDisplayWidth($line), $width);
+    }
+
+    /**
+     * Rows a text $displayWidth columns wide needs at $width — the one formula
+     * every wrapped pane uses (the editor, a diff, the merge view's sides), so
+     * they break a line alike. A width of zero or less is one row, as above.
+     */
+    public static function rowsForWidth(int $displayWidth, int $width): int
+    {
         // A line no wider than $width (an empty one too) is one row.
-        return $this->rows[$line] ??= \max(1, (int) \ceil($this->document->lineDisplayWidth($line) / $width));
+        return $width <= 0 ? 1 : \max(1, (int) \ceil($displayWidth / $width));
     }
 
     /**

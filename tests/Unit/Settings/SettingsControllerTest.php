@@ -144,6 +144,7 @@ final class SettingsControllerTest extends TestCase
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
             $this->keys = TestLiveKeybindings::create($rootDir),
+            $editor->display,
             true,
         );
 
@@ -240,6 +241,7 @@ final class SettingsControllerTest extends TestCase
                 'indentGuides',
                 'showWhitespace',
                 'methodSeparators',
+                'softWrap',
                 'diagnosticMessages',
                 'inlayHints',
                 'inlayParameterHints',
@@ -502,6 +504,8 @@ final class SettingsControllerTest extends TestCase
         $this->assertTrue($editor->display->methodSeparators);
         $controller->changeSetting('showWhitespace', true);
         $this->assertTrue($editor->display->showWhitespace);
+        $controller->changeSetting('softWrap', true);
+        $this->assertTrue($editor->display->softWrap);
 
         $controller->changeSetting('stickyScroll', true);
         $this->assertTrue($editor->display->stickyScroll);
@@ -511,6 +515,8 @@ final class SettingsControllerTest extends TestCase
         $this->assertFalse($editor->display->methodSeparators);
         $controller->changeSetting('showWhitespace', false);
         $this->assertFalse($editor->display->showWhitespace);
+        $controller->changeSetting('softWrap', false);
+        $this->assertFalse($editor->display->softWrap);
     }
 
     /**

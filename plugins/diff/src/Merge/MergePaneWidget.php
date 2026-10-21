@@ -12,6 +12,7 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\EditorPaneWidget;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Render\RenderContext;
 
@@ -23,14 +24,18 @@ use Symfony\Component\Tui\Render\RenderContext;
  * {@see flank()}, seated on the editor's other side. Both draw
  * {@see MergeSides}' rows level with the editor's lines — each row the line
  * the editor shows on that row, its pinned sticky-scroll headers included —
- * so the three columns scroll as one. A fold in the result is not followed. A conflict's first row is its
+ * so the three columns scroll as one. Under soft wrap a line takes as many
+ * rows here as the editor gives it: this side's text wraps at its own width,
+ * padded when shorter, its last row cut with … when longer. A fold in the
+ * result is not followed, nor a code lens's row. A conflict's first row is its
  * side's label behind an accept mark (⇥ from ours, ⇤ from theirs): a click on
  * it, or `a` with the keys here, keeps this side's lines for that conflict;
  * `b` keeps both. Every accept is one undo step in the editor.
  *
  * What the pane needs of the IDE arrives as closures, a plugin class being no
- * service: the result's current text, the caret and the editor's view, a
- * replace of the whole text, a jump, a scroll and a save.
+ * service: the result's current text, the caret and the editor's view, how
+ * many rows the editor gives a line, a replace of the whole text, a jump, a
+ * scroll and a save.
  */
 final class MergePaneWidget extends EditorPaneWidget
 {
@@ -47,7 +52,8 @@ final class MergePaneWidget extends EditorPaneWidget
 
     /**
      * @param \Closure(): ?string                                    $text    the result as the editor has it now
-     * @param \Closure(): (array{line: int, column: int, top: int, sticky: list<int>}|null) $caret the caret, the editor's top line and the lines sticky scroll pins over it
+     * @param \Closure(): (array{line: int, column: int, top: int, segment: int, sticky: list<int>}|null) $caret the caret, the editor's top line, how many of its rows are scrolled above the view, and the lines sticky scroll pins over it
+     * @param \Closure(int): int                                    $editorRows how many screen rows the editor gives a 0-based line: more than one only under soft wrap
      * @param \Closure(string): void                                 $replace the result's whole text, as one undo step
      * @param \Closure(int): void                                    $jump    the caret to the start of a 0-based line
      * @param \Closure(int): void                                    $scroll  the editor's view by a number of rows, the caret where it is
@@ -58,6 +64,7 @@ final class MergePaneWidget extends EditorPaneWidget
         private readonly Translator $translator,
         private readonly \Closure $text,
         private readonly \Closure $caret,
+        private readonly \Closure $editorRows,
         private readonly \Closure $replace,
         private readonly \Closure $jump,
         private readonly \Closure $scroll,
@@ -129,7 +136,8 @@ final class MergePaneWidget extends EditorPaneWidget
     #[\Override]
     public function press(int $relRow, int $relCol): bool
     {
-        $row = $this->rowAt($relRow);
+        $at = $this->screenRows($relRow + 1)[$relRow] ?? null;
+        $row = null !== $at && 0 === $at['segment'] ? $at['row'] : null;
         if (MergeRowKind::Header === $row?->kind && null !== $row->region) {
             $this->accept($row->region, $this->side);
         }
@@ -173,23 +181,34 @@ final class MergePaneWidget extends EditorPaneWidget
         $height = \max(0, $context->getRows());
         $current = MergeSides::current($this->lines, $this->caretLine());
         $lines = [];
-        for ($row = 0; $row < $height; ++$row) {
-            $lines[] = $this->renderRow($this->rowAt($row), $current, $columns);
+        foreach ($this->screenRows($height) as $at) {
+            $lines[] = $this->renderRow($at['row'], $at['segment'], $at['of'], $current, $columns);
         }
 
         return $this->withMenuOverlay($lines, $columns);
     }
 
-    private function renderRow(?MergeRow $row, ?int $current, int $columns): string
+    /**
+     * Row $segment of the $of the editor gives this line: the side's text from
+     * where the rows above left it, the last of them cut with … if there is
+     * more — at one row each, the whole line cut as it always was.
+     */
+    private function renderRow(?MergeRow $row, int $segment, int $of, ?int $current, int $columns): string
     {
         if (null === $row || 0 === $columns) {
             return AnsiText::blank($columns);
         }
-        $text = AnsiText::truncate(' '.DiffViewRenderer::shown($row->text), $columns, pad: true);
+        $inner = $columns - 1; // the one-column indent
+        $shown = DiffViewRenderer::shown($row->text);
+        $rest = AnsiUtils::sliceByColumn($shown, $segment * $inner, \max(0, DiffViewRenderer::columns($shown) - ($segment * $inner)));
+        $text = $segment < ($of - 1)
+            ? AnsiText::truncate(' '.AnsiUtils::sliceByColumn($rest, 0, $inner), $columns, pad: true)
+            : AnsiText::truncate(' '.$rest, $columns, pad: true);
 
         return match ($row->kind) {
             MergeRowKind::Context => $this->styles->of(Role::Dim)->apply($text),
-            MergeRowKind::Header => $this->header($row, $row->region === $current, $columns),
+            // The label on the conflict's first row; the rest of its rows the header's colour, empty.
+            MergeRowKind::Header => 0 === $segment ? $this->header($row, $row->region === $current, $columns) : $this->styles->of(Role::Hunk)->apply(AnsiText::blank($columns)),
             // What this side keeps, on either side: added to the result if accepted.
             MergeRowKind::Side => $this->styles->of(Role::AddedRowBg)->apply($text),
             MergeRowKind::Filler => AnsiText::blank($columns),
@@ -240,18 +259,33 @@ final class MergePaneWidget extends EditorPaneWidget
     }
 
     /**
-     * The row drawn level with editor row $row: the line the editor shows
-     * there — a pinned header over the view, else the line scrolled to.
+     * What each of the first $height rows is level with in the editor: the
+     * pinned headers over the view, one row each, then the lines from the one
+     * scrolled to — from the row of it the view starts at — each for as many
+     * rows as the editor gives it. With no view from the editor, nothing.
+     *
+     * @return list<array{row: ?MergeRow, segment: int, of: int}>
      */
-    private function rowAt(int $row): ?MergeRow
+    private function screenRows(int $height): array
     {
         $caret = ($this->caret)();
+        $screen = [];
         if (null === $caret) {
-            return null;
+            return \array_fill(0, \max(0, $height), value: ['row' => null, 'segment' => 0, 'of' => 1]);
         }
-        $sticky = $caret['sticky'];
+        foreach (\array_slice($caret['sticky'], offset: 0, length: \max(0, $height)) as $line) {
+            $screen[] = ['row' => $this->rows[$line] ?? null, 'segment' => 0, 'of' => 1];
+        }
+        $segment = $caret['segment'];
+        for ($line = $caret['top']; \count($screen) < $height; ++$line) {
+            $of = \max(1, ($this->editorRows)($line));
+            for (; $segment < $of && \count($screen) < $height; ++$segment) {
+                $screen[] = ['row' => $this->rows[$line] ?? null, 'segment' => $segment, 'of' => $of];
+            }
+            $segment = 0;
+        }
 
-        return $this->rows[$sticky[$row] ?? ($caret['top'] + $row - \count($sticky))] ?? null;
+        return $screen;
     }
 
     /** The caret to the next ($direction 1) or previous (-1) conflict's first line, wrapping. */

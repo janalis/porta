@@ -561,7 +561,8 @@ have no body to close, and get none.
 
 ## Soft wrap
 
-`Alt+Z`, off by default. A line longer than the pane continues on the next row
+`Alt+Z`, off by default (Settings → Interface, or `softWrap` in `.porta.json`;
+the key saves what it sets). A line longer than the pane continues on the next row
 or rows instead of running off the right edge. Continuation rows carry no line
 number and no gutter marks, so the numbers still count lines rather than rows.
 
@@ -579,6 +580,11 @@ the only way to reach a caret near the end of one.
 Wrapping is measured on the line's own text, not on its decorations. Inlay
 hints and inline diagnostics ride in the same row and would otherwise make the
 text reflow as they arrived — they clip at the row edge as they already do.
+
+Diffs follow the same setting. The diff pane wraps each side of a change, its
+gutters blank on the continuation rows, and in the merge view the ours and
+theirs columns give each line exactly as many rows as the editor between them
+does, so the three stay level.
 
 ## Code vision
 

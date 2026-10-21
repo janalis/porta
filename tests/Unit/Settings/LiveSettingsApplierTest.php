@@ -7,10 +7,12 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\KeymapPlatform;
 use Porta\Config\LiveKeybindings;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
 use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
+use Porta\Event\SoftWrapChanged;
 use Porta\Highlight\ColorMode;
 use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
@@ -41,7 +43,7 @@ use Symfony\Component\Tui\Style\StyleSheet;
 
 /**
  * The small live-switch pass-throughs {@see ThemeRefreshSweepTest} doesn't
- * cover: format-on-save, locale, cursor shape, tab-bar position.
+ * cover: format-on-save, locale, cursor shape, tab-bar position, soft wrap.
  */
 final class LiveSettingsApplierTest extends TestCase
 {
@@ -72,6 +74,7 @@ final class LiveSettingsApplierTest extends TestCase
             TestCompletionController::idle($editor),
             PixelGraphics::ratio(),
             $keys ?? TestLiveKeybindings::create(),
+            $editor->display,
             true,
         );
     }
@@ -124,6 +127,29 @@ final class LiveSettingsApplierTest extends TestCase
 
         $this->assertSame(['backspace', 'delete'], $keys->getBindings('reset_binding'));
         $this->assertSame([KeymapPlatform::MacOs], $changes, 'the menus rebuild their labels on this');
+    }
+
+    public function testApplySoftWrapWrapsTheEditorAndSaysSoOnlyOnARealChange(): void
+    {
+        $dispatcher = new EventDispatcher();
+        $changes = [];
+        $dispatcher->addListener(SoftWrapChanged::class, static function (SoftWrapChanged $event) use (&$changes): void {
+            $changes[] = $event->on;
+        });
+        $editor = new CodeEditorWidget();
+        $applier = $this->applier(editor: $editor, dispatcher: $dispatcher);
+
+        $applier->applySoftWrap(false);
+        $this->assertSame([], $changes, 'a boot at the default says nothing');
+
+        $applier->applySoftWrap(true);
+        $applier->applySoftWrap(true);
+        $this->assertTrue($editor->display->softWrap);
+        $this->assertSame([true], $changes, 'the diff panes re-wrap on this, once');
+
+        $applier->applySoftWrap(false);
+        $this->assertFalse($editor->display->softWrap);
+        $this->assertSame([true, false], $changes);
     }
 
     public function testApplyInlayHintsSwitchesTheEditorsMode(): void
@@ -198,6 +224,7 @@ final class LiveSettingsApplierTest extends TestCase
             TestCompletionController::idle(),
             PixelGraphics::ratio(),
             TestLiveKeybindings::create(),
+            new EditorDisplayOptions(static function (): void {}),
             true,
         );
         $editorPane = Probe::get($workspaceLayout, 'editorPane');

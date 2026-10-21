@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Porta\Settings;
 
 use Porta\Config\LiveKeybindings;
+use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\EditorPanes;
 use Porta\Editor\InlayHintMode;
 use Porta\Event\CursorShapeChanged;
 use Porta\Event\KeymapChanged;
 use Porta\Event\LocaleChanged;
+use Porta\Event\SoftWrapChanged;
 use Porta\Event\TabBarPositionChanged;
 use Porta\Event\ThemeChanged;
 use Porta\Highlight\ColorMode;
@@ -56,6 +58,7 @@ final readonly class LiveSettingsApplier
         private CompletionController $completion,
         private PixelRatio $pixelRatio,
         private LiveKeybindings $keys,
+        private EditorDisplayOptions $display,
         private bool $ansi,
     ) {}
 
@@ -146,6 +149,19 @@ final readonly class LiveSettingsApplier
     public function applyPixelRatio(string $ratio): void
     {
         $this->pixelRatio->apply($ratio);
+    }
+
+    /**
+     * Live soft-wrap switch: the editor re-wraps through its own options, and
+     * the panes a plugin draws (a diff, the merge view's sides) hear it.
+     * Announced only on a real change, so a boot at the default says nothing.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- $on is the setting's value, the desired state, not a mode switch.
+    public function applySoftWrap(bool $on): void
+    {
+        if ($this->display->setSoftWrap($on)) {
+            $this->dispatcher->dispatch(new SoftWrapChanged($on));
+        }
     }
 
     public function applyCursorShape(string $shape): void
