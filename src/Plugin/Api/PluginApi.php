@@ -25,6 +25,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Plugin\Tool\ToolLocator;
+use Porta\Plugin\Tool\ToolManager;
 use Porta\Plugin\Tool\ToolRequirement;
 use Porta\Settings\SettingsRowKind;
 use Porta\Support\ProjectPaths;
@@ -892,8 +893,13 @@ final class PluginApi
             throw new PluginException('An installer needs at least one [manager, package] candidate');
         }
         foreach ($via as [$manager, $package]) {
-            if (!\in_array($manager, ['composer', 'brew', 'cargo', self::INSTALL_SELF], strict: true)) {
-                throw new PluginException(\sprintf('Unknown install manager "%s" (expected composer, brew, cargo or %s)', $manager, self::INSTALL_SELF));
+            $known = ToolManager::tryFrom($manager);
+            if (null === $known || ToolManager::Github === $known) {
+                throw new PluginException(\sprintf(
+                    'Unknown install manager "%s" (expected composer, brew, brew-cask, cargo, npm or %s; a GitHub release is declared in the manifest)',
+                    $manager,
+                    self::INSTALL_SELF,
+                ));
             }
             if ('' === \trim($package)) {
                 throw new PluginException('An installer candidate needs a non-empty package name');

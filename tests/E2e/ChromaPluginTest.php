@@ -53,16 +53,17 @@ final class ChromaPluginTest extends TestCase
         $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/chroma/plugin.php');
         $project = new TempProject([
             '.porta/plugins/chroma/plugin.php' => $plugin,
-            // Claim rust and drop the debounce so the test does not wait on it.
-            '.porta.json' => '{"plugins":{"chroma":{"languages":"rust","debounce":0}}}',
             'a.rs' => $source,
         ]);
-
-        if (!\is_dir($project->path('vendor/bin'))) {
-            \mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
-        }
-        \file_put_contents($project->path('vendor/bin/chroma'), '#!'.\PHP_BINARY.' -n'."\n<?php\n".$stubBody);
-        \chmod($project->path('vendor/bin/chroma'), permissions: 0o755);
+        // Named by its setting: chroma is a system tool, never looked for in
+        // vendor/bin, and the PATH is not this test's to change. Two levels
+        // under the project, where the stub's sentinel expects to be.
+        \mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
+        $stub = $project->path('vendor/bin/chroma');
+        \file_put_contents($stub, '#!'.\PHP_BINARY.' -n'."\n<?php\n".$stubBody);
+        \chmod($stub, permissions: 0o755);
+        // Claim rust and drop the debounce so the test does not wait on it.
+        \file_put_contents($project->path('.porta.json'), \json_encode(['plugins' => ['chroma' => ['languages' => 'rust', 'debounce' => 0, 'binary' => $stub]]], \JSON_THROW_ON_ERROR));
 
         return $project;
     }

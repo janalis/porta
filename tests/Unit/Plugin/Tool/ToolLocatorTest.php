@@ -88,8 +88,8 @@ final class ToolLocatorTest extends TestCase
         $this->configured = '/home/teammate/bin/phpstan';
         $this->assertSame('/usr/bin/phpstan', $locator->locate($tool), 'a path that is not here falls through');
 
-        $this->configured = $this->project->write('not-executable', 'x');
-        $this->assertSame('/usr/bin/phpstan', $locator->locate($tool), 'nor does one that does not run');
+        $this->configured = $this->project->write('plantuml.jar', 'x');
+        $this->assertSame($this->configured, $locator->locate($tool), 'a file that is there counts, run or not: a .jar is the plugin\'s to run');
 
         $this->configured = '  phpstan-wrapper ';
         $this->assertSame('/opt/bin/phpstan-wrapper', $locator->locate($tool), 'a bare name goes through the PATH');

@@ -194,7 +194,7 @@ A plugin that drives an external program declares it in `extra.porta.tools`:
 | `version` | The arguments that make it print its version; defaults to `["--version"]` |
 
 The binary is looked for in one order, everywhere: your `setting` when the user
-filled it (a bare name through the PATH, a path only while it is executable),
+filled it (a bare name through the PATH, a path only while the file is there),
 then `<project>/vendor/bin` for a tool with a composer source, in a trusted
 project only, then the PATH, then `~/.porta/bin`, where a GitHub download lands.
 `$api->toolBinary('dot')` returns what that finds, or null — call it each time
@@ -1104,7 +1104,7 @@ Registration (during `activate()`):
 | `registerHighlighter(...)` | Provide a syntax-highlighting backend for one or more languages. `$isAvailable` declines a language when e.g. a binary is missing, so the next provider gets it; a backend that faults is dropped for that buffer after three consecutive failures, and the buffer renders as plain text rather than broken |
 | `registerTokenSpans(array\|\Closure $languages, \Closure $classify)` | Classify comment and string regions for project search's token-scope filter ("only in comments/strings", "except in …"). Deliberately separate from `registerHighlighter()`: this runs once per FILE over raw content, where highlighting runs per visible line |
 | `toolBinary(string $name, ?string $setting = null, ?BinarySearch $lookup = null)` | Where the tool your manifest declares as `$name` under `extra.porta.tools` is — your setting, `vendor/bin`, the PATH, `~/.porta/bin` — or null. The answer Settings shows, so the two cannot disagree. An undeclared name is looked up as that binary, read from `$setting` and searched per `$lookup`. Safe during `activate()`, never cached |
-| `registerInstaller(string $tool, \Closure $isAvailable, array $via, ?\Closure $describe = null)` | Declare how to install this plugin's tool binary plus a predicate for whether it is there. When it is not, the plugin's settings page offers a one-click install that tries each `[manager, package]` pair in order, running the first whose manager is on the PATH (`composer`, `brew`, `cargo`). A tool no package manager ships passes `[[PluginApi::INSTALL_SELF, '<your command id>']]` instead and the button runs **your** command — that row does not disappear once the tool is there, it re-reads `Update`, because the plugin that downloads its own tool is what replaces it. `$describe` says what is installed in a few words (a version); it is pulled on every settings render and only while the tool is available. Omit the whole call and no install is offered |
+| `registerInstaller(string $tool, \Closure $isAvailable, array $via, ?\Closure $describe = null)` | The in-code form of a [tool declaration](#declaring-the-tools-you-run), for a tool whose presence only your code can judge. Prefer the manifest: what it declares is listed, installed and updated before your plugin is even enabled, while this exists only once it is. `$via` is the ordered `[manager, package]` sources (`composer`, `brew`, `brew-cask`, `cargo`, `npm`), or `[[PluginApi::INSTALL_SELF, '<your command id>']]` to have the button run **your** command — that row re-reads `Update` once the tool is there, because the plugin that downloads its own tool is what replaces it. `$describe` says what is installed in a few words (a version); it is pulled on every settings render and only while the tool is available |
 
 Actions (from handlers/hooks):
 

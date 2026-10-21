@@ -21,6 +21,53 @@
         "porta": {
             "requires": [
                 "image-viewer"
+            ],
+            "tools": [
+                {
+                    "name": "dot",
+                    "role": "suggested",
+                    "purpose": "renders Graphviz diagrams",
+                    "setting": "dotPath",
+                    "sources": [
+                        [
+                            "brew",
+                            "graphviz"
+                        ]
+                    ],
+                    "version": [
+                        "-V"
+                    ]
+                },
+                {
+                    "name": "mmdc",
+                    "role": "suggested",
+                    "purpose": "renders Mermaid diagrams as images",
+                    "setting": "mermaidPath",
+                    "sources": [
+                        [
+                            "npm",
+                            "@mermaid-js/mermaid-cli"
+                        ],
+                        [
+                            "brew",
+                            "mermaid-cli"
+                        ]
+                    ]
+                },
+                {
+                    "name": "plantuml",
+                    "role": "suggested",
+                    "purpose": "renders PlantUML diagrams",
+                    "sources": [
+                        [
+                            "brew",
+                            "plantuml"
+                        ]
+                    ],
+                    "version": [
+                        "-version"
+                    ]
+                }
             ]
         }
     }

@@ -4,18 +4,19 @@ declare(strict_types=1);
 
 namespace Porta\Settings;
 
-use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
+use Porta\Config\PortaHome;
 use Porta\Event\HelpPageRequested;
 use Porta\I18n\Translator;
-use Porta\Plugin\Api\PluginApi;
-use Porta\Plugin\Lifecycle\InstallOutcome;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
-use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginSettings;
-use Porta\Plugin\Runtime\ToolInstallOffers;
+use Porta\Plugin\Tool\ToolCatalog;
+use Porta\Plugin\Tool\ToolJobs;
+use Porta\Plugin\Tool\ToolRole;
+use Porta\Plugin\Tool\ToolStatus;
+use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -28,16 +29,18 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
  * its commands, menu entries AND default keybindings land immediately (the
  * lifecycle rebuilds the live keymap). Removal deletes the directory AND
  * deactivates the plugin live (menu, palette, keys, hooks). Removal is guarded
- * by a two-press confirm ($armed). Each active plugin also gets its own
- * settings page ({@see pluginRows}) fed by {@see PluginSettings}.
+ * by a two-press confirm ($armed). Each plugin also gets its own settings
+ * page ({@see pluginRows}): its Enabled toggle, its own settings
+ * ({@see PluginSettings}, an enabled plugin's only) and the tools it runs
+ * ({@see ToolCatalog}), each with its Install or Update button.
  */
 final class SettingsPluginsController
 {
     /** Prefix marking a row that belongs to the plugin's own descriptors. */
     private const string SETTING_PREFIX = 'pluginSetting:';
 
-    /** The one toast a tool install owns: "Installing…", then its outcome in place. */
-    private const string INSTALL_SLOT = 'tool.install';
+    /** Prefix marking a row for one of the plugin's tools; the rest of the key is the tool's name. */
+    private const string TOOL_PREFIX = 'pluginTool:';
 
     /**
      * The config key a BUNDLED plugin's Enabled toggle writes.
@@ -57,17 +60,16 @@ final class SettingsPluginsController
         private readonly Notifier $notifier,
         private readonly Translator $translator,
         private readonly PluginLifecycleOps $lifecycle,
-        private readonly ToolInstallOffers $plugins,
-        private readonly ToolInstaller $installerTool,
+        private readonly ToolCatalog $tools,
+        private readonly ToolJobs $jobs,
+        private readonly ToolUpdates $updates,
         private readonly SettingsScopeRow $scopeRow,
         private readonly SettingsScope $scope,
         private readonly SettingsProvenance $provenance,
         // Trailing and nullable so the positional constructions in the
-        // settings tests stand; the container always autowires it. Only a
-        // SELF-installing plugin reaches for it.
-        private readonly ?CommandRegistry $commands = null,
-        // Trailing for the same reason: the Documentation row asks the help
-        // window for the plugin's page through it.
+        // settings tests stand; the container always autowires it. The
+        // Documentation row asks the help window for the plugin's page
+        // through it.
         private readonly ?EventDispatcherInterface $events = null,
     ) {}
 
@@ -181,36 +183,67 @@ final class SettingsPluginsController
             ...$this->pluginSettings->rows($name),
         ];
 
-        // When an enabled plugin's declared tool binary isn't installed, offer
-        // a one-click install through its package manager(s).
-        //
-        // A SELF-installer keeps its row once the tool is there, captioned
-        // "Update": the plugin that downloads its own tool is the same thing
-        // that replaces it, and a row that vanished on success would take the
-        // update affordance with it. A package-manager offer still
-        // disappears — `composer require` is not an upgrade path, and
-        // pretending otherwise would run the wrong command.
-        $offer = $this->plugins->installOffer($name);
-        if (null !== $offer && (!$offer['available'] || self::isSelfInstalled($offer['via']))) {
-            $rows[] = new SettingsRow(
-                key: 'pluginInstallBinary',
-                // The same wording either way, so a self-installer's row is
-                // not a special shape on a page full of ordinary ones.
-                label: $this->translator->trans($offer['available'] ? 'Update %tool%' : 'Install %tool%', ['%tool%' => $offer['tool']]),
-                kind: SettingsRowKind::Action,
-                // A caption, not `false`: an Action's value IS the text on its
-                // button, and false stringifies to '' — the row rendered as
-                // `Install phpstan  []`, a button with nothing written on it.
-                value: $this->translator->trans($offer['available'] ? 'Update' : 'Install'),
-                restart: false,
-                hint: '' === $offer['describe'] ? null : $offer['describe'],
-            );
+        // What the plugin runs, and a button to install or update each —
+        // shown for a DISABLED plugin too: what it needs is worth knowing
+        // before switching it on.
+        $rows = [...$rows, ...\array_map($this->toolRow(...), $this->tools->statuses($name))];
+        // Their versions are asked the first time the page is shown, never
+        // before: the page re-reads itself once they are in.
+        if ($this->tools->unprobed($name)) {
+            $this->tools->probe([$name], $this->lifecycle->refreshView(...));
         }
 
         // A plugin that ships its own docs offers them last, after its knobs
         // and buttons — a disabled one too, which is when reading what it
         // does is most useful.
         return [...$rows, ...$this->docsRow($name)];
+    }
+
+    /**
+     * One tool's row: what it is for, how it stands, and the one button that
+     * applies — Install while it is missing, Update while Porta manages the
+     * copy. A button that cannot do anything here is drawn disabled, with the
+     * hint saying why, rather than left off: a missing row would read as
+     * "nothing is needed".
+     */
+    private function toolRow(ToolStatus $status): SettingsRow
+    {
+        $tool = $status->tool;
+        $pending = $this->jobs->pending($tool);
+        $installable = $status->available ? null !== $status->manager : $this->jobs->installable($tool);
+
+        return new SettingsRow(
+            key: self::TOOL_PREFIX.$tool->name,
+            label: '' === $tool->purpose ? $tool->name : $tool->name.' — '.$this->translator->trans($tool->purpose),
+            kind: SettingsRowKind::Action,
+            value: $this->translator->trans(match (true) {
+                $pending => 'Working…',
+                $status->available => 'Update',
+                default => 'Install',
+            }),
+            restart: false,
+            hint: $this->toolHint($status),
+            fieldset: $this->translator->trans('Tools'),
+            disabled: $pending || !$installable,
+        );
+    }
+
+    /** Where the tool stands, in a few words: its version and place, or what its absence costs. */
+    private function toolHint(ToolStatus $status): string
+    {
+        if (!$status->available) {
+            $missing = ToolRole::Required === $status->tool->role ? $this->translator->trans('missing') : $this->translator->trans('optional, missing');
+
+            return $this->jobs->installable($status->tool) ? $missing : $missing.' · '.$this->translator->trans('install it yourself, or set its path above');
+        }
+        $newer = $this->updates->newer($status);
+        $version = null === $newer ? $status->version : $this->translator->trans('%from% → %to% available', ['%from%' => $status->version, '%to%' => $newer]);
+        $parts = \array_values(\array_filter([$version, null === $status->path ? '' : PortaHome::tilde($status->path)], static fn (string $part): bool => '' !== $part));
+        if (null === $status->manager) {
+            $parts[] = $this->translator->trans('managed outside Porta');
+        }
+
+        return [] === $parts ? $this->translator->trans('installed') : \implode(' · ', $parts);
     }
 
     /** @return list<SettingsRow> the Documentation row, when $name ships a guide */
@@ -265,7 +298,7 @@ final class SettingsPluginsController
     {
         match (true) {
             'pluginEnabled' === $key => $this->toggle($name, $value),
-            'pluginInstallBinary' === $key => $this->installBinary($name),
+            \str_starts_with($key, self::TOOL_PREFIX) => $this->toolPressed($name, \substr($key, offset: \strlen(self::TOOL_PREFIX))),
             'pluginDocs' === $key => $this->openDocs($name),
             \str_starts_with($key, self::SETTING_PREFIX) => $this->changeSetting($name, \substr($key, offset: \strlen(self::SETTING_PREFIX)), $value),
             default => null,
@@ -293,55 +326,17 @@ final class SettingsPluginsController
         $this->lifecycle->onPluginSettingChanged($name, $setting, $value);
     }
 
-    /**
-     * Whether $via says the plugin installs (and updates) the tool itself.
-     *
-     * @param list<array{0: string, 1: string}> $via
-     */
-    private static function isSelfInstalled(array $via): bool
-    {
-        return null !== \array_find($via, static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
-    }
-
-    /** Install the (enabled) plugin's declared tool binary through its package manager(s). */
-    private function installBinary(string $name): void
+    /** Install the tool when it is missing, update it when it is there. */
+    private function toolPressed(string $name, string $tool): void
     {
         $this->armed = null;
-        $offer = $this->plugins->installOffer($name);
-        if (null === $offer) {
-            return;
+        $status = \array_find($this->tools->statuses($name), static fn (ToolStatus $status): bool => $tool === $status->tool->name);
+        if (null === $status) {
+            return; // not a row pluginRows() built
         }
-        // A self-installer runs its OWN command: it reports, relaunches and
-        // sweeps on its own terms, and ToolInstaller has no manager to hand it
-        // to. Nothing is refreshed from here because nothing has happened yet
-        // — the row re-derives when the binary actually lands, off
-        // onServerBinaryReplaced().
-        $self = \array_find($offer['via'], static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
-        if (null !== $self) {
-            $this->commands?->run($name.':'.$self[1]);
-
-            return;
-        }
-        $tool = $offer['tool'];
-        // @mago-expect lint:no-boolean-flag-parameter -- $ok is the install-result callback (succeeded/failed), not a mode switch
-        $outcome = $this->installerTool->install($offer['via'], function (bool $ok) use ($name, $tool): void {
-            // The outcome takes over the "Installing…" card still showing.
-            $ok
-                ? $this->notifier->success($this->translator->trans('Installed %tool%', ['%tool%' => $tool]), 5.0, self::INSTALL_SLOT)
-                : $this->notifier->error($this->translator->trans('Could not install %tool%', ['%tool%' => $tool]), 5.0, self::INSTALL_SLOT);
-            if ($ok) {
-                $this->lifecycle->onProviderSettingChanged($name); // relaunch an LSP provider now its binary exists
-            }
-            $this->lifecycle->refreshView(); // the install row drops once the binary is available
-        });
-        match ($outcome) {
-            // Up for as long as the install runs: its outcome replaces it.
-            InstallOutcome::Started => $this->notifier->flash($this->translator->trans('Installing %tool%…', ['%tool%' => $tool]), 600.0, self::INSTALL_SLOT),
-            InstallOutcome::Busy => $this->notifier->warn($this->translator->trans('An install is already running')),
-            InstallOutcome::NoManager => $this->notifier->error($this->translator->trans('No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH', [
-                '%tool%' => $tool,
-            ]), 5.0),
-        };
+        $status->available ? $this->jobs->update($status->tool) : $this->jobs->install($status->tool);
+        // The button reads "Working…" from now until the job's outcome re-reads the page.
+        $this->lifecycle->refreshView();
     }
 
     /** Route a settings edit/actuation for one of this section's keys. */

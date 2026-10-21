@@ -21,7 +21,6 @@ use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Plugin\Tool\ToolLocator;
-use Porta\Plugin\Runtime\ToolInstallOffers;
 use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Search\Everywhere\SearchEverywhereFactory;
 use Porta\Settings\SettingsSearchSource;
@@ -278,10 +277,6 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->set(PluginManager::class)
         ->factory([PropertyFactory::class, 'read'])
         ->args([service(PluginHost::class), 'manager']);
-    // The offer slice the settings page and the welcome flow take, instead of
-    // the whole manager: it is built by a factory, so autoconfiguration never
-    // sees the interface to alias it.
-    $services->alias(ToolInstallOffers::class, PluginManager::class);
     $services
         ->set(PluginLoader::class)
         ->factory([PropertyFactory::class, 'read'])

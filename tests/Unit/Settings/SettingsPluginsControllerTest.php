@@ -12,20 +12,21 @@ use Porta\Event\HelpPageRequested;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginInstaller;
-use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Tool\ProcessRunner;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsProvenance;
+use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\FakePluginLifecycle;
-use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
@@ -46,9 +47,13 @@ final class SettingsPluginsControllerTest extends TestCase
     private ?string $composerBinary = null;
     /** @var array<string, string|null> manager name => fake binary path */
     private array $managerBinaries = [];
+    /** @var array<string, string> binary name => where the fake PATH has it */
+    private array $toolPath = [];
+    /** @var list<string> the binaries asked their version */
+    private array $probed = [];
     private PluginSettings $pluginSettings;
     private PluginManager $plugins;
-    private ToolInstaller $installerTool;
+    private TestTools $tools;
     private CommandRegistry $commands;
     /** @var list<string> plugin command ids the self-install button ran */
     private array $commandsRun = [];
@@ -73,7 +78,6 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $this->pluginSettings = new PluginSettings($this->project->dir, [], null, $scope);
         $this->plugins = new PluginManager(new EventDispatcher(), $this->pluginSettings);
-        $this->installerTool = new ToolInstaller($this->project->dir, $this->managerBinaries);
         $this->commands = new CommandRegistry();
         $this->commandsRun = [];
         $this->helpPages = [];
@@ -82,18 +86,44 @@ final class SettingsPluginsControllerTest extends TestCase
             $this->helpPages[] = $event->path;
         });
 
+        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, $this->composerBinary);
+        $notifier = new Notifier($this->status, $tui);
+        $real = ProcessRunner::default();
+        $this->tools = new TestTools(
+            $this->project->dir,
+            $installer,
+            $this->plugins,
+            $notifier,
+            $this->lifecycle,
+            $this->managerBinaries,
+            path: $this->toolPath,
+            // A version probe answers at once; every other command (the fake
+            // managers) runs for real.
+            run: function (array $argv, string $cwd, \Closure $onExit, ?\Closure $onChunk = null) use ($real): void {
+                if (['--version'] === \array_slice($argv, offset: 1)) {
+                    $this->probed[] = $argv[0];
+                    $answer = 'dot - graphviz version 2.3.4';
+                    $onExit(0, $answer);
+
+                    return;
+                }
+                $real($argv, $cwd, $onExit, $onChunk);
+            },
+            commands: $this->commands,
+        );
+
         return new SettingsPluginsController(
-            new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, $this->composerBinary),
+            $installer,
             $this->pluginSettings,
-            new Notifier($this->status, $tui),
+            $notifier,
             new Translator('en'),
             $this->lifecycle,
-            $this->plugins,
-            $this->installerTool,
+            $this->tools->catalog,
+            $this->tools->jobs,
+            $this->tools->updates,
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
             new SettingsProvenance($files),
-            $this->commands,
             $events,
         );
     }
@@ -405,38 +435,52 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/one', 'the first armed row was never confirmed');
     }
 
-    public function testInstallRowAppearsOnlyWhenAnEnabledPluginsBinaryIsMissing(): void
+    public function testAMissingToolGetsAnInstallRowItsPageCannotPressWithNoManager(): void
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
         $this->declareInstaller('demo', 'phpstan', available: false);
-        $rows = $controller->pluginRows('demo');
-        $install = \array_last($rows);
-        $this->assertSame('pluginInstallBinary', $install->key);
-        $this->assertSame(SettingsRowKind::Action, $install->kind);
-        $this->assertSame('Install phpstan', $install->label);
+        $row = \array_last($controller->pluginRows('demo'));
+        $this->assertSame('pluginTool:phpstan', $row->key);
+        $this->assertSame(SettingsRowKind::Action, $row->kind);
+        $this->assertSame('phpstan', $row->label);
+        $this->assertSame('Tools', $row->fieldset);
+        $this->assertSame('Install', $row->value, 'an Action row\'s value IS its button caption');
+        $this->assertTrue($row->disabled, 'no composer here: the button cannot do anything');
+        $this->assertSame('missing · install it yourself, or set its path above', $row->hint);
     }
 
-    public function testNoInstallRowWhenTheBinaryIsAvailable(): void
+    public function testAMissingToolWithAManagerHereCanBeInstalled(): void
+    {
+        $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0)];
+        $controller = $this->controller();
+        $this->lifecycle->names = ['demo'];
+
+        $this->declareInstaller('demo', 'phpstan', available: false);
+        $row = \array_last($controller->pluginRows('demo'));
+        $this->assertFalse($row->disabled);
+        $this->assertSame('missing', $row->hint);
+    }
+
+    /**
+     * A tool someone else installed stays on the page, with an Update it
+     * cannot press: replacing what a package manager Porta did not run put
+     * there would fight it.
+     */
+    public function testAnAvailableToolPortaDidNotInstallIsManagedOutside(): void
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
         $this->declareInstaller('demo', 'phpstan', available: true);
-        $this->assertSame(['pluginEnabled'], \array_column($controller->pluginRows('demo'), 'key'), 'an available binary offers no install');
+        $row = \array_last($controller->pluginRows('demo'));
+        $this->assertSame('Update', $row->value);
+        $this->assertTrue($row->disabled);
+        $this->assertSame('managed outside Porta', $row->hint);
     }
 
-    /**
-     * A SELF-installer keeps its row once the tool is there, captioned
-     * "Update".
-     *
-     * `composer require` is not an upgrade path, so a package-manager row
-     * still disappears on success — but the plugin that downloads its own tool
-     * is the same thing that replaces it, and a row that vanished would take
-     * the update affordance with it. That is the exact complaint symfony-lsp's
-     * menu entry was added to answer, one surface over.
-     */
+    /** The plugin that downloads its own tool is the same thing that replaces it. */
     public function testASelfInstallerKeepsItsRowAsAnUpdateButton(): void
     {
         $controller = $this->controller();
@@ -445,9 +489,9 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->declareInstaller('demo', 'symfony-lsp', available: true, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
 
         $row = \array_last($controller->pluginRows('demo'));
-        $this->assertSame('pluginInstallBinary', $row->key);
-        $this->assertSame('Update symfony-lsp', $row->label);
-        $this->assertSame('Update', $row->value, 'an Action row\'s value IS its button caption');
+        $this->assertSame('pluginTool:symfony-lsp', $row->key);
+        $this->assertSame('Update', $row->value);
+        $this->assertFalse($row->disabled);
         $this->assertSame('0.21.0', $row->hint, 'what is installed, beside the button');
     }
 
@@ -460,62 +504,106 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->declareInstaller('demo', 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
 
         $row = \array_last($controller->pluginRows('demo'));
-        $this->assertSame('Install symfony-lsp', $row->label);
         $this->assertSame('Install', $row->value);
-        $this->assertNull($row->hint, 'a describer answers "what have I got?" — with nothing there, it is not asked');
+        $this->assertSame('missing', $row->hint, 'a describer answers "what have I got?" — with nothing there, it is not asked');
     }
 
-    /**
-     * The button runs the PLUGIN's command, not a package manager.
-     *
-     * ToolInstaller has no manager to hand a GitHub release to, and the plugin
-     * reports, relaunches and sweeps on its own terms.
-     */
+    /** The button runs the PLUGIN's command: it reports, relaunches and sweeps on its own terms. */
     public function testPressingASelfInstallRowRunsThePluginsOwnCommand(): void
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         $this->declareInstaller('demo', 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']]);
 
-        $controller->changePlugin('demo', 'pluginInstallBinary', 'Install');
+        $controller->changePlugin('demo', 'pluginTool:symfony-lsp', 'Install');
 
         $this->assertSame(['demo:install'], $this->commandsRun);
         $this->assertSame('', \trim($this->statusRow($this->status, 120)), 'no flash from here — the plugin does its own reporting');
     }
 
-    public function testInstallingTheBinaryRunsTheManagerAndReconfiguresOnSuccess(): void
+    /** What a manifest declares is on the page while the plugin is still off: that is when it is worth knowing. */
+    public function testADisabledPluginsManifestToolsAreListed(): void
+    {
+        $controller = $this->controller();
+        $this->seedPlugin($this->project, 'viewer');
+        \file_put_contents(
+            $this->project->dir.'/.porta/plugins/viewer/composer.json',
+            data: (string) \json_encode(
+                [
+                    'extra' => [
+                        'porta' => [
+                            'tools' => [
+                                ['name' => 'dot', 'role' => 'suggested', 'purpose' => 'renders Graphviz diagrams', 'sources' => [['brew', 'graphviz']]],
+                            ],
+                        ],
+                    ],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
+        );
+        $this->lifecycle->names = ['viewer'];
+        $this->lifecycle->disabledNames = ['viewer'];
+
+        $row = \array_find($controller->pluginRows('viewer'), static fn ($row): bool => 'pluginTool:dot' === $row->key);
+        $this->assertInstanceOf(SettingsRow::class, $row);
+        $this->assertSame('dot — renders Graphviz diagrams', $row->label);
+        $this->assertSame('optional, missing · install it yourself, or set its path above', $row->hint, 'suggested, and no brew here');
+    }
+
+    /** A tool's version is asked the first time its page shows, once, and the page re-reads itself with it. */
+    public function testAToolsVersionIsAskedWhenItsPageFirstShows(): void
+    {
+        $this->toolPath = ['dot' => '/opt/bin/dot'];
+        $controller = $this->controller();
+        $this->seedPlugin($this->project, 'viewer');
+        \file_put_contents(
+            $this->project->dir.'/.porta/plugins/viewer/composer.json',
+            data: (string) \json_encode(['extra' => ['porta' => ['tools' => [['name' => 'dot', 'sources' => [['brew', 'graphviz']]]]]]], \JSON_THROW_ON_ERROR),
+        );
+        $this->lifecycle->names = ['viewer'];
+
+        $controller->pluginRows('viewer');
+        $this->assertSame(['/opt/bin/dot'], $this->probed);
+        $this->assertSame(1, $this->lifecycle->refreshed, 'the page re-reads itself once the version is in');
+
+        $row = \array_find($controller->pluginRows('viewer'), static fn ($row): bool => 'pluginTool:dot' === $row->key);
+        $this->assertInstanceOf(SettingsRow::class, $row);
+        $this->assertSame('2.3.4 · /opt/bin/dot · managed outside Porta', $row->hint);
+        $this->assertSame(['/opt/bin/dot'], $this->probed, 'asked once, not per render');
+        $this->assertSame(1, $this->lifecycle->refreshed);
+    }
+
+    public function testInstallingTheToolRunsTheManagerAndRelaunchesOnSuccess(): void
     {
         $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         $this->declareInstaller('demo', 'phpstan', available: false);
 
-        $controller->changePlugin('demo', 'pluginInstallBinary', false);
+        $controller->changePlugin('demo', 'pluginTool:phpstan', false);
         $this->assertStringContainsString('Installing phpstan', $this->statusRow($this->status, 120));
+        $this->assertSame('Working…', \array_last($controller->pluginRows('demo'))->value, 'the button says the job is running');
 
-        $this->await(fn (): bool => 0 < $this->lifecycle->refreshed);
+        $this->await(fn (): bool => [] !== $this->lifecycle->serverBinaryReplaced, what: 'the install to finish');
         $this->assertStringContainsString('Installed phpstan', $this->statusRow($this->status, 120));
-        $this->assertSame(['demo'], $this->lifecycle->providerSettingChanged, 'a successful install relaunches the provider');
-        $this->assertSame(1, $this->lifecycle->refreshed);
+        $this->assertSame(['demo'], $this->lifecycle->serverBinaryReplaced, 'a successful install relaunches the provider');
     }
 
-    public function testInstallingTheBinaryFlashesFailureWhenTheManagerExitsNonZero(): void
+    public function testAFailedInstallSaysWhyAndRelaunchesNothing(): void
     {
         $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 1)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         $this->declareInstaller('demo', 'phpstan', available: false);
 
-        $controller->changePlugin('demo', 'pluginInstallBinary', false);
-        $this->await(fn (): bool => 0 < $this->lifecycle->refreshed);
-        $this->assertStringContainsString('Could not install phpstan', $this->statusRow($this->status, 120));
-        $this->assertSame([], $this->lifecycle->providerSettingChanged, 'a failed install reconfigures nothing');
-        $this->assertSame(1, $this->lifecycle->refreshed, 'the page still refreshes so the row state is current');
+        $controller->changePlugin('demo', 'pluginTool:phpstan', false);
+        $this->await(fn (): bool => \str_contains($this->statusRow($this->status, 120), 'Could not install'), what: 'the failure');
+        $this->assertStringContainsString('Could not install phpstan: composer exited with code 1', $this->statusRow($this->status, 120));
+        $this->assertSame([], $this->lifecycle->serverBinaryReplaced, 'a failed install relaunches nothing');
     }
 
-    public function testInstallFlashesGuidanceWhenNoManagerIsAvailable(): void
+    public function testInstallNamesTheManagersItWouldNeed(): void
     {
-        $this->managerBinaries = ['brew' => null, 'cargo' => null];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         $this->declareInstaller('demo', 'phpantom', available: false, via: [
@@ -523,36 +611,33 @@ final class SettingsPluginsControllerTest extends TestCase
             ['cargo', 'phpantom_lsp'],
         ]);
 
-        $controller->changePlugin('demo', 'pluginInstallBinary', false);
-        $this->assertStringContainsString('No installer found for phpantom', $this->statusRow($this->status, 120));
-        $this->assertSame(0, $this->lifecycle->refreshed, 'nothing ran, so no reconfigure');
+        $controller->changePlugin('demo', 'pluginTool:phpantom', false);
+        $this->assertStringContainsString('No way to install phpantom here (needs brew, cargo)', $this->statusRow($this->status, 120));
+        $this->assertSame([], $this->lifecycle->serverBinaryReplaced, 'nothing ran');
     }
 
-    public function testASecondInstallWhileOneRunsIsRejected(): void
+    public function testASecondPressWhileItRunsIsNotASecondInstall(): void
     {
         $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0, sleepSeconds: 1)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         $this->declareInstaller('demo', 'phpstan', available: false);
 
-        $controller->changePlugin('demo', 'pluginInstallBinary', false); // starts, stays running
-        $controller->changePlugin('demo', 'pluginInstallBinary', false); // rejected
-        $this->assertStringContainsString('An install is already running', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', 'pluginTool:phpstan', false); // starts, stays running
+        $controller->changePlugin('demo', 'pluginTool:phpstan', false); // already queued
+        $this->assertStringContainsString('phpstan is already queued', $this->statusRow($this->status, 120));
 
-        // The state DURING the install is the point, but leaving mid-flight
-        // leaves a watcher on a stream the reaped child is about to close.
-        // src carries no test-only isRunning(); the barrier reads the
-        // installer's in-flight slot through the blessed Probe, like awaitGit.
-        $installer = $this->installerTool;
-        $this->await(static fn (): bool => null === Probe::get($installer, 'running'), what: 'the in-flight install to finish');
+        // Leaving mid-flight would leave a watcher on a stream the reaped
+        // child is about to close.
+        $this->await(fn (): bool => [] !== $this->lifecycle->serverBinaryReplaced, what: 'the in-flight install to finish');
     }
 
-    public function testInstallingWithoutADeclaredOfferIsANoOp(): void
+    public function testPressingARowNoToolOwnsIsANoOp(): void
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $controller->changePlugin('demo', 'pluginInstallBinary', false);
+        $controller->changePlugin('demo', 'pluginTool:phpstan', false);
         $this->assertSame(0, $this->lifecycle->refreshed, 'no declaration → nothing to install');
     }
 

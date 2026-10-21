@@ -2,35 +2,48 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp\Tests;
+namespace Porta\Tests\Unit\Plugin\Tool;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\SymfonyLsp\Release;
+use Porta\Plugin\Tool\GithubAsset;
+use Porta\Plugin\Tool\GithubRelease;
+use Porta\Plugin\Tool\VersionText;
 
-final class ReleaseTest extends TestCase
+/** One repository's release naming, URLs and checksum file — symfony/language-tools' here. */
+final class GithubReleaseTest extends TestCase
 {
+    public static function symfony(): GithubRelease
+    {
+        return new GithubRelease('symfony/language-tools', new GithubAsset(
+            'symfony-lsp-{tag}-{os}-{arch}.tar.gz',
+            ['Darwin' => 'macos', 'Linux' => 'linux'],
+            ['arm64' => 'arm64', 'aarch64' => 'arm64', 'x86_64' => 'x64', 'amd64' => 'x64'],
+            'symfony-lsp-{tag}-{os}-{arch}/symfony-lsp',
+        ));
+    }
+
     /** @return iterable<string, array{string, string, string|null}> */
     public static function hosts(): iterable
     {
-        yield 'mac arm' => ['Darwin', 'arm64', 'macos-arm64'];
-        yield 'mac intel' => ['Darwin', 'x86_64', 'macos-x64'];
-        yield 'linux arm' => ['Linux', 'aarch64', 'linux-arm64'];
-        yield 'linux x64' => ['Linux', 'x86_64', 'linux-x64'];
-        yield 'linux amd64 alias' => ['Linux', 'amd64', 'linux-x64'];
+        yield 'mac arm' => ['Darwin', 'arm64', 'symfony-lsp-v1-macos-arm64.tar.gz'];
+        yield 'mac intel' => ['Darwin', 'x86_64', 'symfony-lsp-v1-macos-x64.tar.gz'];
+        yield 'linux arm' => ['Linux', 'aarch64', 'symfony-lsp-v1-linux-arm64.tar.gz'];
+        yield 'linux x64' => ['Linux', 'x86_64', 'symfony-lsp-v1-linux-x64.tar.gz'];
+        yield 'linux amd64 alias' => ['Linux', 'amd64', 'symfony-lsp-v1-linux-x64.tar.gz'];
         yield 'windows has its own zip, not handled' => ['Windows', 'x86_64', null];
         yield 'exotic arch' => ['Linux', 'riscv64', null];
     }
 
     #[DataProvider('hosts')]
-    public function testPlatformMapsOsAndMachine(string $os, string $machine, ?string $platform): void
+    public function testTheAssetMapsOsAndMachine(string $os, string $machine, ?string $asset): void
     {
-        $this->assertSame($platform, new Release()->platform($os, $machine));
+        $this->assertSame($asset, self::symfony()->asset->assetFor('v1', $os, $machine));
     }
 
     public function testLatestTagReadsTheReleaseJsonDefensively(): void
     {
-        $release = new Release();
+        $release = self::symfony();
 
         $this->assertSame('v0.16.0', $release->latestTag('{"tag_name":"v0.16.0","name":"x"}'));
         $this->assertSame('v1.0.0-rc.1', $release->latestTag('{"tag_name":"v1.0.0-rc.1"}'), 'pre-release tags are still tags');
@@ -44,20 +57,22 @@ final class ReleaseTest extends TestCase
 
     public function testUrlsAndAssetNamesComposeFromTagAndPlatform(): void
     {
-        $release = new Release();
+        $release = self::symfony();
 
         $this->assertSame('https://api.github.com/repos/symfony/language-tools/releases/latest', $release->apiUrl());
-        $this->assertSame('symfony-lsp-v0.16.0-macos-arm64.tar.gz', $release->asset('v0.16.0', 'macos-arm64'));
+        $this->assertSame('https://github.com/symfony/language-tools/releases/latest', $release->latestUrl());
         $this->assertSame('https://github.com/symfony/language-tools/releases/download/v0.16.0/symfony-lsp-v0.16.0-macos-arm64.tar.gz', $release->assetUrl(
             'v0.16.0',
             'symfony-lsp-v0.16.0-macos-arm64.tar.gz',
         ));
         $this->assertSame('https://github.com/symfony/language-tools/releases/download/v0.16.0/SHA256SUMS', $release->sumsUrl('v0.16.0'));
+        $custom = new GithubRelease('o/r', new GithubAsset('x', ['Linux' => 'linux'], ['x86_64' => 'amd64'], sums: 'checksums.txt'));
+        $this->assertSame('https://github.com/o/r/releases/download/v1/checksums.txt', $custom->sumsUrl('v1'), 'the checksum file is the repository\'s own');
     }
 
     public function testExpectedShaFindsTheAssetLineAndRejectsTheRest(): void
     {
-        $release = new Release();
+        $release = self::symfony();
         $sha = \str_repeat('ab', times: 32);
         $sums = "{$sha}  one.tar.gz\n".\str_repeat('cd', times: 32)."  *two.tar.gz\nnot a sums line\nshort0  three.tar.gz\n";
 
@@ -73,15 +88,13 @@ final class ReleaseTest extends TestCase
      * no sidecar file and no setting, because either would be a second source
      * of truth that desyncs when someone swaps the binary by hand.
      */
-    public function testVersionFromReadsWhatTheBinaryCallsItself(): void
+    public function testVersionTextReadsWhatTheBinaryCallsItself(): void
     {
-        $release = new Release();
-
-        $this->assertSame('0.21.0', $release->versionFrom("Symfony Language Tools 0.21.0\n"));
-        $this->assertSame('1.0.0-beta.2', $release->versionFrom('Symfony Language Tools 1.0.0-beta.2'), 'a pre-release still names itself');
-        $this->assertNull($release->versionFrom('Symfony Language Tools'), 'a line with no version is not a version');
-        $this->assertNull($release->versionFrom(''), 'a binary that printed nothing leaves the version unknown');
-        $this->assertNull($release->versionFrom('v9.9.9'), 'a TAG is not a --version line; versionOfTag() is that direction');
+        $this->assertSame('0.21.0', VersionText::of("Symfony Language Tools 0.21.0\n"));
+        $this->assertSame('1.0.0-beta.2', VersionText::of('Symfony Language Tools 1.0.0-beta.2'), 'a pre-release still names itself');
+        $this->assertNull(VersionText::of('Symfony Language Tools'), 'a line with no version is not a version');
+        $this->assertNull(VersionText::of(''), 'a binary that printed nothing leaves the version unknown');
+        $this->assertNull(VersionText::of('v9.9.9'), 'a TAG is not a --version line; versionOfTag() is that direction');
     }
 
     /**
@@ -90,7 +103,7 @@ final class ReleaseTest extends TestCase
      */
     public function testVersionOfTagStripsTheTagSpelling(): void
     {
-        $release = new Release();
+        $release = self::symfony();
 
         $this->assertSame('0.21.0', $release->versionOfTag('v0.21.0'));
         $this->assertSame('1.0.0-rc.1', $release->versionOfTag('v1.0.0-rc.1'));

@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp\Tests;
+namespace Porta\Tests\Unit\Plugin\Tool;
 
 use PHPUnit\Framework\TestCase;
-use Porta\SymfonyLsp\Runner;
-use Porta\SymfonyLsp\Runs;
+use Porta\Plugin\Tool\ProcessRunner;
+use Porta\Plugin\Tool\RunningProcesses;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 
 /** What an install has running is kept while it runs, and stopped on demand — never to call back. */
-final class RunsTest extends TestCase
+final class RunningProcessesTest extends TestCase
 {
     use PumpsLoop;
 
     public function testWhatRunsIsKeptUntilItEnds(): void
     {
-        $runs = new Runs();
-        $run = Runner::default(runs: $runs);
+        $runs = new RunningProcesses();
+        $run = ProcessRunner::default(runs: $runs);
         $out = null;
 
         $run([\PHP_BINARY, '-r', 'echo "done";'], \sys_get_temp_dir(), static function (int $code, string $stdout) use (&$out): void {
@@ -35,8 +35,8 @@ final class RunsTest extends TestCase
 
     public function testStoppedItNeverCallsBack(): void
     {
-        $runs = new Runs();
-        $run = Runner::default(runs: $runs);
+        $runs = new RunningProcesses();
+        $run = ProcessRunner::default(runs: $runs);
         $called = false;
         $run([\PHP_BINARY, '-r', 'sleep(5);'], \sys_get_temp_dir(), static function () use (&$called): void {
             $called = true;
@@ -45,7 +45,7 @@ final class RunsTest extends TestCase
         $runs->cancel();
         $this->pump(0.3);
 
-        $this->assertFalse($called, 'a plugin disabled mid-install hears nothing back');
+        $this->assertFalse($called, 'an install stopped mid-way hears nothing back');
         $this->assertSame([], Probe::get($runs, 'running'));
     }
 }

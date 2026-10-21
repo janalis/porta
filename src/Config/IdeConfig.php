@@ -53,6 +53,7 @@ final readonly class IdeConfig
         'tooltipDelay' => 500,
         'displayName' => '',
         'sharePresence' => true,
+        'toolUpdateCheck' => 'daily',
     ];
 
     /**
@@ -138,6 +139,7 @@ final readonly class IdeConfig
         'cursorShape' => ['bar', 'block', 'underline'],
         'pixelRatio' => ['auto', '1', '1.25', '1.5', '2', '3'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
+        'toolUpdateCheck' => ['off', 'daily', 'weekly'],
     ];
 
     /** An empty `highlight` block: no global default, no per-language overrides. */

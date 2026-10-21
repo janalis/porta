@@ -1678,10 +1678,6 @@
         <source>(Tab · Alt+A)</source>
         <target>(Tab · Alt+A)</target>
       </trans-unit>
-      <trans-unit id="489">
-        <source>Install %tool%</source>
-        <target>התקן %tool%</target>
-      </trans-unit>
       <trans-unit id="490">
         <source>Installing %tool%…</source>
         <target>מתקין %tool%…</target>
@@ -1689,18 +1685,6 @@
       <trans-unit id="491">
         <source>Installed %tool%</source>
         <target>%tool% הותקן</target>
-      </trans-unit>
-      <trans-unit id="492">
-        <source>Could not install %tool%</source>
-        <target>לא ניתן להתקין את %tool%</target>
-      </trans-unit>
-      <trans-unit id="493">
-        <source>An install is already running</source>
-        <target>התקנה כבר פועלת</target>
-      </trans-unit>
-      <trans-unit id="494">
-        <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
-        <target>לא נמצא מתקין עבור %tool% — התקינו אותו באמצעות Homebrew או cargo, או הניחו את הקובץ הבינארי שלו ב-PATH</target>
       </trans-unit>
       <trans-unit id="495">
         <source>Run/debug command</source>
@@ -2169,10 +2153,6 @@
       <trans-unit id="659">
         <source>%tool%: fixed %file%</source>
         <target>%tool%: %file% תוקן</target>
-      </trans-unit>
-      <trans-unit id="891">
-        <source>Update %tool%</source>
-        <target>עדכון %tool%</target>
       </trans-unit>
       <trans-unit id="892">
         <source>Update</source>
@@ -3433,6 +3413,162 @@
       <trans-unit id="1179">
         <source>Soft wrap</source>
         <target>גלישת שורות</target>
+      </trans-unit>
+      <trans-unit id="1180">
+        <source>%from% → %to% available</source>
+        <target>%from% → %to% זמין</target>
+      </trans-unit>
+      <trans-unit id="1181">
+        <source>%tool% is already queued</source>
+        <target>%tool% כבר ממתין בתור</target>
+      </trans-unit>
+      <trans-unit id="1182">
+        <source>%tool% is already up to date (%version%)</source>
+        <target>%tool% כבר מעודכן (%version%)</target>
+      </trans-unit>
+      <trans-unit id="1183">
+        <source>%tool% is managed outside Porta — update it the way it was installed</source>
+        <target>%tool% מנוהל מחוץ ל-Porta — עדכנו אותו כפי שהותקן</target>
+      </trans-unit>
+      <trans-unit id="1184">
+        <source>%tool% will install next</source>
+        <target>%tool% יותקן בהמשך</target>
+      </trans-unit>
+      <trans-unit id="1185">
+        <source>Check tools for updates</source>
+        <target>בדיקת עדכונים לכלים</target>
+      </trans-unit>
+      <trans-unit id="1186">
+        <source>Could not install %tool%: %why%</source>
+        <target>לא ניתן להתקין את %tool%: %why%</target>
+      </trans-unit>
+      <trans-unit id="1187">
+        <source>Could not update %tool%: %why%</source>
+        <target>לא ניתן לעדכן את %tool%: %why%</target>
+      </trans-unit>
+      <trans-unit id="1188">
+        <source>Installed %tool% %version%</source>
+        <target>%tool% %version% הותקן</target>
+      </trans-unit>
+      <trans-unit id="1189">
+        <source>No way to install %tool% here (needs %managers%) — put it on your PATH, or set its path in the plugin's settings</source>
+        <target>אין דרך להתקין כאן את %tool% (נדרש %managers%) — הוסיפו אותו ל-PATH, או הגדירו את הנתיב שלו בהגדרות התוסף</target>
+      </trans-unit>
+      <trans-unit id="1190">
+        <source>Porta cannot install %tool% — put it on your PATH, or set its path in the plugin's settings</source>
+        <target>Porta לא יכול להתקין את %tool% — הוסיפו אותו ל-PATH, או הגדירו את הנתיב שלו בהגדרות התוסף</target>
+      </trans-unit>
+      <trans-unit id="1191">
+        <source>Tools</source>
+        <target>כלים</target>
+      </trans-unit>
+      <trans-unit id="1192">
+        <source>Updated %tool%</source>
+        <target>%tool% עודכן</target>
+      </trans-unit>
+      <trans-unit id="1193">
+        <source>Updated %tool% to %version%</source>
+        <target>%tool% עודכן לגרסה %version%</target>
+      </trans-unit>
+      <trans-unit id="1194">
+        <source>Updates available: %tools% — run &quot;Plugins: Update Tools&quot;</source>
+        <target>עדכונים זמינים: %tools% — הריצו את ‏„Plugins: Update Tools”</target>
+      </trans-unit>
+      <trans-unit id="1195">
+        <source>Updating %tool%…</source>
+        <target>מעדכן את %tool%…</target>
+      </trans-unit>
+      <trans-unit id="1196">
+        <source>install it yourself, or set its path above</source>
+        <target>התקינו אותו בעצמכם, או הגדירו את הנתיב שלו למעלה</target>
+      </trans-unit>
+      <trans-unit id="1197">
+        <source>installed</source>
+        <target>מותקן</target>
+      </trans-unit>
+      <trans-unit id="1198">
+        <source>managed outside Porta</source>
+        <target>מנוהל מחוץ ל-Porta</target>
+      </trans-unit>
+      <trans-unit id="1199">
+        <source>missing</source>
+        <target>חסר</target>
+      </trans-unit>
+      <trans-unit id="1200">
+        <source>optional, missing</source>
+        <target>אופציונלי, חסר</target>
+      </trans-unit>
+      <trans-unit id="1201">
+        <source>Working…</source>
+        <target>בתהליך…</target>
+      </trans-unit>
+      <trans-unit id="1202">
+        <source>%tool%: resolving…</source>
+        <target>%tool%: מאתר…</target>
+      </trans-unit>
+      <trans-unit id="1203">
+        <source>%tool%: downloading…</source>
+        <target>%tool%: מוריד…</target>
+      </trans-unit>
+      <trans-unit id="1204">
+        <source>%tool%: downloading %percent%%</source>
+        <target>%tool%: מוריד %percent%%</target>
+      </trans-unit>
+      <trans-unit id="1205">
+        <source>%tool%: verifying…</source>
+        <target>%tool%: מאמת…</target>
+      </trans-unit>
+      <trans-unit id="1206">
+        <source>%tool%: extracting…</source>
+        <target>%tool%: מחלץ…</target>
+      </trans-unit>
+      <trans-unit id="1207">
+        <source>%tool%: checking the binary…</source>
+        <target>%tool%: בודק את קובץ ההרצה…</target>
+      </trans-unit>
+      <trans-unit id="1208">
+        <source>Plugins: Enable…</source>
+        <target>תוספים: הפעלה…</target>
+      </trans-unit>
+      <trans-unit id="1209">
+        <source>Plugins: Disable…</source>
+        <target>תוספים: השבתה…</target>
+      </trans-unit>
+      <trans-unit id="1210">
+        <source>Plugins: Install Missing Tools</source>
+        <target>תוספים: התקנת הכלים החסרים</target>
+      </trans-unit>
+      <trans-unit id="1211">
+        <source>Plugins: Update Tools</source>
+        <target>תוספים: עדכון הכלים</target>
+      </trans-unit>
+      <trans-unit id="1212">
+        <source>Every plugin is enabled</source>
+        <target>כל התוספים מופעלים</target>
+      </trans-unit>
+      <trans-unit id="1213">
+        <source>No plugin is enabled</source>
+        <target>אף תוסף אינו מופעל</target>
+      </trans-unit>
+      <trans-unit id="1214">
+        <source>Enable plugin</source>
+        <target>הפעלת תוסף</target>
+      </trans-unit>
+      <trans-unit id="1215">
+        <source>Disable plugin</source>
+        <target>השבתת תוסף</target>
+      </trans-unit>
+      <trans-unit id="1216">
+        <source>Nothing to install: every enabled plugin has the tools it requires</source>
+        <target>אין מה להתקין: לכל תוסף מופעל יש את הכלים שהוא דורש</target>
+      </trans-unit>
+      <trans-unit id="1217">
+        <source>Nothing to update: Porta manages none of the installed tools</source>
+        <target>אין מה לעדכן: Porta אינו מנהל אף אחד מהכלים המותקנים</target>
+      </trans-unit>
+      <trans-unit id="1218">
+        <source>Plugin &quot;%name%&quot; enabled, but it needs %tools% — install it from its Settings page, or run &quot;Plugins: Install Missing Tools&quot;</source>
+        <target>התוסף „%name%” הופעל, אך הוא זקוק ל-%tools% — התקינו מדף ההגדרות שלו, או הריצו ‏„Plugins: Install Missing Tools”</target>
       </trans-unit>
     </body>
   </file>

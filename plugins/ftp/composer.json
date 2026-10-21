@@ -18,7 +18,14 @@
             "api": 1,
             "commands": {
                 "ftp": "Porta\\FtpPlugin\\Console\\OpenCommand"
-            }
+            },
+            "tools": [
+                {
+                    "name": "curl",
+                    "purpose": "talks to the server",
+                    "setting": "binary"
+                }
+            ]
         }
     }
 }

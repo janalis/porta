@@ -136,17 +136,21 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     }
 
     /**
-     * The `binary` setting row plus the install offer, wired to the shared
-     * availability predicate.
+     * The `binary` setting row — and, for a plugin whose manifest does not
+     * declare its tool, an install offer from $via in code. A bundled plugin
+     * declares it in `extra.porta.tools` instead, so its install button is
+     * there before the plugin is even enabled.
      *
-     * @param list<array{0: string, 1: string}> $via ordered [manager, package] install candidates
+     * @param list<array{0: string, 1: string}> $via ordered [manager, package] install candidates; [] offers none
      *
      * @throws PluginException
      */
-    protected function registerBinarySetting(PluginApi $api, array $via, ?string $hint = null): void
+    protected function registerBinarySetting(PluginApi $api, array $via = [], ?string $hint = null): void
     {
         $api->registerSetting('binary', $this->binaryName.' binary', 'text', '', hint: $hint ?? $this->binaryHint());
-        $api->registerInstaller($this->binaryName, $this->binaryAvailable($api), $via);
+        if ([] !== $via) {
+            $api->registerInstaller($this->binaryName, $this->binaryAvailable($api), $via);
+        }
     }
 
     /**

@@ -27,7 +27,7 @@ return new class('psalm', 'psalm') extends AbstractAnalyzerPlugin {
 
     public function activate(PluginApi $api): void
     {
-        $this->registerBinarySetting($api, [['composer', 'vimeo/psalm']]);
+        $this->registerBinarySetting($api);
         $this->registerAnalysis($api, 'Psalm', ['ctrl+alt+p']);
     }
 

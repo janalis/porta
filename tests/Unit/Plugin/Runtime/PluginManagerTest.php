@@ -475,7 +475,7 @@ final class PluginManagerTest extends TestCase
         $this->assertArrayNotHasKey('php', $manager->languageServers());
     }
 
-    public function testInstallOfferReportsToolAndLiveAvailabilityAndDropsOnDeactivate(): void
+    public function testRegisteredInstallersAreHandedOverAndDropOnDeactivate(): void
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
@@ -492,64 +492,16 @@ final class PluginManagerTest extends TestCase
         );
         $manager->commit($plugin);
 
-        $this->assertNull($manager->installOffer('other'), 'a plugin that declared none has no offer');
+        $this->assertSame([], $manager->registeredInstallers('other'), 'a plugin that declared none has none');
 
-        $offer = $manager->installOffer('linter');
-        $this->assertNotNull($offer);
-        $this->assertSame('phpstan', $offer['tool']);
-        $this->assertSame([['composer', 'phpstan/phpstan']], $offer['via']);
-        $this->assertFalse($offer['available'], 'the predicate is evaluated live');
-
-        $available = true;
-        $this->assertTrue($manager->installOffer('linter')['available'], 'flipping the predicate is reflected');
+        $installers = $manager->registeredInstallers('linter');
+        $this->assertCount(1, $installers);
+        $this->assertSame('phpstan', $installers[0]['tool']);
+        $this->assertSame([['composer', 'phpstan/phpstan']], $installers[0]['via']);
+        $this->assertFalse($installers[0]['available'](), 'the predicate is handed over, to be asked live');
 
         $manager->deactivate('linter', $registry);
-        $this->assertNull($manager->installOffer('linter'), 'a deactivated plugin drops its offer');
-    }
-
-    /**
-     * The describer answers "what have I got?", so it is only asked while
-     * there IS something — and it is pulled on every settings render, which is
-     * the other half of why an absent tool must not reach it.
-     */
-    public function testTheDescriberIsOnlyAskedWhileTheToolIsAvailable(): void
-    {
-        $manager = $this->wiredManager(new EventDispatcher());
-        $available = false;
-        $asked = 0;
-        $plugin = new PluginApi('server', $manager, '/p', new PluginSettings('/p', []));
-        $plugin->registerCommand('install', 'Install Server', static function (): void {});
-        $plugin->registerInstaller(
-            'symfony-lsp',
-            static function () use (&$available): bool {
-                return $available;
-            },
-            [[PluginApi::INSTALL_SELF, 'install']],
-            static function () use (&$asked): string {
-                ++$asked;
-
-                return '0.21.0';
-            },
-        );
-        $manager->commit($plugin);
-
-        $this->assertSame('', $manager->installOffer('server')['describe'], 'nothing installed, nothing to describe');
-        $this->assertSame(0, $asked);
-
-        $available = true;
-        $this->assertSame('0.21.0', $manager->installOffer('server')['describe']);
-        $this->assertSame(1, $asked);
-    }
-
-    /** A plugin that declared no describer says nothing, rather than crashing. */
-    public function testAnOfferWithoutADescriberDescribesNothing(): void
-    {
-        $manager = $this->wiredManager(new EventDispatcher());
-        $plugin = new PluginApi('linter', $manager, '/p', new PluginSettings('/p', []));
-        $plugin->registerInstaller('phpstan', static fn (): bool => true, [['composer', 'phpstan/phpstan']]);
-        $manager->commit($plugin);
-
-        $this->assertSame('', $manager->installOffer('linter')['describe']);
+        $this->assertSame([], $manager->registeredInstallers('linter'), 'a deactivated plugin drops its installer');
     }
 
     public function testAThrowingMenuWhenClosureReadsDisabledAndReportsOnce(): void

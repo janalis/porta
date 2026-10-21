@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp;
+namespace Porta\Plugin\Tool;
 
 /**
  * Where an install has got to, so the UI can say something between the
@@ -13,17 +13,17 @@ namespace Porta\SymfonyLsp;
  * four seconds, leaving nothing on screen for the rest of the operation.
  *
  * The cases are what happens, not what to print: the wording and its catalog
- * entries belong to the plugin, which is the half that owns a Translator.
+ * entries belong to whoever shows it, which is the half that owns a Translator.
  */
 enum InstallStep
 {
     /** Asking GitHub which release is the latest one. */
     case Resolving;
 
-    /** Fetching the platform archive — the only step that carries a percentage. */
+    /** Fetching the platform asset — the only step that carries a percentage. */
     case Downloading;
 
-    /** Fetching SHA256SUMS and hashing the archive against it. */
+    /** Fetching the checksum file and hashing the asset against it. */
     case Verifying;
 
     case Extracting;

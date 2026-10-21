@@ -39,6 +39,12 @@ foreach (['config.json', 'trusted-projects.json'] as $portaLeaked) {
     unlink(__DIR__.'/Support/fixtures/home/.porta/'.$portaLeaked);
 }
 
+// Every booted Ide starts the background tool-update check, which is due on a
+// home that never ran it — and running it is a request to Packagist, GitHub,
+// crates.io and npm from the middle of the suite. A note saying "checked just
+// now" keeps it quiet for the run; the check's own tests use a home of their own.
+file_put_contents(__DIR__.'/Support/fixtures/home/.porta/tool-updates.json', json_encode(['checkedAt' => time(), 'latest' => []], JSON_THROW_ON_ERROR));
+
 // Every TempProject lives under the temp dir, and nearly every scenario writes
 // a `.porta.json` that enables a plugin or names a server: all of them are the
 // suite's own, so all of them are trusted. A test of the untrusted path builds

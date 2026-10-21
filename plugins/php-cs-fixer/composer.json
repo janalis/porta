@@ -1,0 +1,26 @@
+{
+    "name": "porta/php-cs-fixer",
+    "description": "Runs php-cs-fixer on the current file, or on save",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "php-cs-fixer",
+                    "purpose": "the formatter",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "composer",
+                            "friendsofphp/php-cs-fixer"
+                        ]
+                    ]
+                }
+            ]
+        }
+    }
+}

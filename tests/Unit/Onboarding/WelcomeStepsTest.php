@@ -17,9 +17,17 @@ use Porta\Onboarding\MagoDetector;
 use Porta\Onboarding\SymfonyDetector;
 use Porta\Onboarding\WelcomeStep;
 use Porta\Onboarding\WelcomeSteps;
+use Porta\Plugin\Api\PluginApi;
+use Porta\Plugin\Lifecycle\PluginInstaller;
+use Porta\Plugin\Runtime\PluginManager;
+use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\FakePluginLifecycle;
-use Porta\Tests\Support\FakeToolInstallOffers;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTools;
+use Porta\Tests\Support\TestTui;
+use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Notifier;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
  * The setup steps: what they report as done, and that running one delegates to
@@ -29,7 +37,10 @@ final class WelcomeStepsTest extends TestCase
 {
     private FakePluginLifecycle $lifecycle;
     private CommandRegistry $commands;
-    private FakeToolInstallOffers $offers;
+    private PluginManager $plugins;
+
+    /** Whether the declared tool is there, read live by its availability predicate. */
+    private bool $available = false;
 
     /** The project the detector probes — mago-less by default, so every pre-mago expectation holds unchanged. */
     private TempProject $project;
@@ -40,8 +51,8 @@ final class WelcomeStepsTest extends TestCase
     protected function setUp(): void
     {
         $this->lifecycle = new FakePluginLifecycle();
-        $this->offers = new FakeToolInstallOffers();
         $this->project = new TempProject();
+        $this->plugins = new PluginManager(new EventDispatcher(), new PluginSettings($this->project->dir, []));
         $this->commands = new CommandRegistry();
         $this->commands->add(
             'ide_help',
@@ -64,7 +75,42 @@ final class WelcomeStepsTest extends TestCase
 
     private function build(SyntaxHighlightProviderSource $source): WelcomeSteps
     {
-        return new WelcomeSteps(new Translator('en'), $source, $this->lifecycle, $this->commands, new MagoDetector($this->project->path()), new SymfonyDetector($this->project->path()), $this->offers);
+        $tools = new TestTools(
+            $this->project->dir,
+            new PluginInstaller($this->project->dir, null, new Translator('en'), null),
+            $this->plugins,
+            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            $this->lifecycle,
+            commands: $this->commands,
+        );
+
+        return new WelcomeSteps(
+            new Translator('en'),
+            $source,
+            $this->lifecycle,
+            $this->commands,
+            new MagoDetector($this->project->path()),
+            new SymfonyDetector($this->project->path()),
+            $tools->catalog,
+            $tools->jobs,
+        );
+    }
+
+    /**
+     * $plugin, enabled, registering the tool it needs from $via — a plugin
+     * command of its own (`self`) that records its run, by default.
+     *
+     * @param list<array{0: string, 1: string}> $via
+     */
+    private function declare(string $plugin, array $via = [[PluginApi::INSTALL_SELF, 'install']]): void
+    {
+        $api = new PluginApi($plugin, $this->plugins, $this->project->dir, new PluginSettings($this->project->dir, []));
+        $api->registerCommand('install', 'Install it', function () use ($plugin): void {
+            $this->commandsRun[] = $plugin.':install';
+        });
+        $api->registerInstaller('symfony-lsp', fn (): bool => $this->available, $via);
+        $this->plugins->commit($api);
+        $this->plugins->registerCommands($this->commands);
     }
 
     /** Make the project a Symfony application, adding the symfony-lsp card. */
@@ -143,11 +189,11 @@ final class WelcomeStepsTest extends TestCase
     {
         $this->withSymfony();
         $this->lifecycle->names[] = RecommendedPlugin::SymfonyLanguageServer->value;
-        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: false);
+        $this->declare(RecommendedPlugin::SymfonyLanguageServer->value);
 
         $this->assertFalse($this->steps()->all()[2]->isDone(), 'enabled, but there is no server to talk to');
 
-        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: true);
+        $this->available = true;
         $this->assertTrue($this->steps()->all()[2]->isDone());
     }
 
@@ -155,33 +201,20 @@ final class WelcomeStepsTest extends TestCase
     public function testRunningTheSymfonyCardAlsoInstallsTheServer(): void
     {
         $this->withSymfony();
-        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: false, package: 'install');
-        $this->commands->add(
-            'symfony-lsp:install',
-            function (): void {
-                $this->commandsRun[] = 'symfony-lsp:install';
-            },
-            label: 'Symfony LSP: Install Server',
-        );
+        $this->declare(RecommendedPlugin::SymfonyLanguageServer->value);
 
         $this->steps()->all()[2]->run();
 
         $this->assertSame([[RecommendedPlugin::SymfonyLanguageServer->value, true]], $this->lifecycle->toggled);
-        $this->assertSame(['symfony-lsp:install'], $this->commandsRun, 'the plugin\'s own installer, not a package manager');
+        $this->assertSame(['symfony-lsp:install'], $this->commandsRun, 'the install the tool declares');
     }
 
     /** A server already there is not downloaded again by an onboarding card. */
     public function testRunningTheSymfonyCardDoesNotReinstallAServerThatIsThere(): void
     {
         $this->withSymfony();
-        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: true);
-        $this->commands->add(
-            'symfony-lsp:install',
-            function (): void {
-                $this->commandsRun[] = 'symfony-lsp:install';
-            },
-            label: 'Symfony LSP: Install Server',
-        );
+        $this->available = true;
+        $this->declare(RecommendedPlugin::SymfonyLanguageServer->value);
 
         $this->steps()->all()[2]->run();
 
@@ -197,14 +230,7 @@ final class WelcomeStepsTest extends TestCase
     public function testAPackageManagerOfferIsNotRunFromTheCard(): void
     {
         $this->withSymfony();
-        $this->offers->declare(RecommendedPlugin::SymfonyLanguageServer->value, 'symfony-lsp', available: false, manager: 'composer', package: 'acme/thing');
-        $this->commands->add(
-            'symfony-lsp:install',
-            function (): void {
-                $this->commandsRun[] = 'symfony-lsp:install';
-            },
-            label: 'Symfony LSP: Install Server',
-        );
+        $this->declare(RecommendedPlugin::SymfonyLanguageServer->value, [['composer', 'acme/thing']]);
 
         $this->steps()->all()[2]->run();
 

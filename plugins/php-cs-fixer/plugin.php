@@ -26,7 +26,7 @@ return new class('php-cs-fixer', 'php-cs-fixer') extends AbstractToolPlugin {
 
     public function activate(PluginApi $api): void
     {
-        $this->registerBinarySetting($api, [['composer', 'friendsofphp/php-cs-fixer']]);
+        $this->registerBinarySetting($api);
         $api->registerSetting('args', 'Extra fix arguments', 'text', '', hint: 'appended to the fix command');
         $api->registerSetting('autoFormat', 'Format on save', 'bool', false);
 

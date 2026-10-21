@@ -193,6 +193,7 @@ catalog validation and bind if the plugin loads.
 | `tooltipDelay` | `500` | How long the pointer rests before a tooltip shows, in milliseconds (0–2000; the next one shows at once while a card is up) |
 | `displayName` | `""` | Your name, as the others at work on the project see it — beside your caret and in their roster. Empty uses your login name (`$USER`), else `anonymous`. Control characters are dropped and it is cut to 40 characters. The assist plugin uses it too (it replaces that plugin's own `displayName`) |
 | `sharePresence` | `true` | Tell other Porta instances on the same project where you are: your name, your open file and your caret, in `.porta/presence/` — this folder's, or the server's for a remote project. Off, you still see them; they no longer see you (see [Participants](editor.md#participants)) |
+| `toolUpdateCheck` | `"daily"` | How often Porta looks, in the background, for newer versions of the tools your enabled plugins run — `daily`, `weekly` or `off`. Only tools Porta installed and can update are asked about; what it finds is said once, in one toast, and shown beside each tool on its plugin's Settings page. A failed lookup says nothing |
 
 All of these apply live when changed from the Settings view or the palette
 commands (`Cycle Diagnostic Messages`, `Cycle Inlay Hints`,

@@ -46,7 +46,11 @@ final class IdePhpLspPluginsTest extends TestCase
     /** An embedded dir holding only the real phpantom plugin (loads its actual code). */
     private function embeddedPhpantom(): TempProject
     {
-        return new TempProject(['phpantom/plugin.php' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/plugin.php')]);
+        // The manifest too: the tool the Settings page offers is declared there.
+        return new TempProject([
+            'phpantom/plugin.php' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/plugin.php'),
+            'phpantom/composer.json' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/composer.json'),
+        ]);
     }
 
     public function testPhpantomProvidesThePhpServerAndTogglingItReconfiguresLive(): void
@@ -144,8 +148,12 @@ final class IdePhpLspPluginsTest extends TestCase
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // phpantom sub-item
-                    $this->awaitPainted($tui, $terminal, 'Install phpantom');
-                    $this->assertStringContainsString('Install phpantom', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the missing binary offers an install');
+                    $this->awaitPainted($tui, $terminal, 'phpantom_lsp — the PHP language server');
+                    $this->assertMatchesRegularExpression(
+                        '/phpantom_lsp — the PHP language server\s+[│┆]\s+Install\s+[│┆]/u',
+                        AnsiUtils::stripAnsiCodes($terminal->getOutput()),
+                        'the missing binary offers an install',
+                    );
                 },
             ],
         );

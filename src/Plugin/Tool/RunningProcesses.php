@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp;
+namespace Porta\Plugin\Tool;
 
 use Porta\Support\AsyncProcess;
 
 /**
- * The programs an install has running — curl, tar, the new binary asked its
- * version — so a plugin disabled mid-install stops them, rather than have
- * a download finish into a plugin that is gone.
+ * The programs the installs have running — curl, tar, the new binary asked
+ * its version — so the IDE going down stops them, rather than have a
+ * download finish into nothing.
  */
-final class Runs
+final class RunningProcesses
 {
     /** @var array<int, AsyncProcess> by object id */
     private array $running = [];

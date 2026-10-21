@@ -44,6 +44,7 @@ use Porta\Lsp\WatchedFiles;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Presence\PresenceSync;
 use Porta\Run\RunController;
 use Porta\Search\SearchUiWiring;
@@ -555,6 +556,11 @@ final class Ide
                 return;
             }
 
+            // The plugins' tools: their versions for the Settings page, and
+            // the background check for newer ones. Not for a git tool run,
+            // which is not the user opening their project.
+            $this->service(ToolUpdates::class)->start();
+
             $openedInitial = false;
             if (null !== $this->initialFile) {
                 $this->openFile($this->initialFile);
@@ -588,6 +594,7 @@ final class Ide
                 $this->writeLastFrame();
                 $this->watchdog->stop();
                 $this->perf->stop();
+                $this->service(ToolUpdates::class)->stop();
                 EventLoop::cancel($watcher);
                 EventLoop::cancel($watchedFiles);
                 EventLoop::cancel($refresher);

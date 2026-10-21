@@ -10,5 +10,39 @@
         "psr-4": {
             "Porta\\Custos\\": "src/"
         }
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "custos",
+                    "purpose": "the inspector and fixer",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "github",
+                            "janalis/custos",
+                            {
+                                "asset": "custos_{os}_{arch}",
+                                "os": {
+                                    "Darwin": "darwin",
+                                    "Linux": "linux"
+                                },
+                                "arch": {
+                                    "arm64": "arm64",
+                                    "aarch64": "arm64",
+                                    "x86_64": "amd64",
+                                    "amd64": "amd64"
+                                }
+                            }
+                        ],
+                        [
+                            "brew-cask",
+                            "janalis/tap/custos"
+                        ]
+                    ]
+                }
+            ]
+        }
     }
 }

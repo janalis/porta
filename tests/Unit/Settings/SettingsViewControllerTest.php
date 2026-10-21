@@ -34,7 +34,6 @@ use Porta\Overlay\State\MenuOverlayController;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginInstaller;
-use Porta\Plugin\Lifecycle\ToolInstaller;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -73,6 +72,7 @@ use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestLiveKeybindings;
+use Porta\Tests\Support\TestTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Ui\BidiTui;
@@ -235,6 +235,7 @@ final class SettingsViewControllerTest extends TestCase
             new FileIndex($this->project->dir),
             new TooltipCenter(new FakeScheduler(), $this->tui),
             new Identity(),
+            TestTools::bare($this->project->dir)->updates,
         );
         $bootKeys = new Keybindings([]);
         $keysHost = new PluginHost(IdeConfig::load($this->project->dir), new EventDispatcher(), $this->project->dir);
@@ -312,14 +313,16 @@ final class SettingsViewControllerTest extends TestCase
         );
         $this->pluginSettings = new PluginSettings($this->project->dir, [], null, $scope);
         $this->lifecycle = new FakePluginLifecycle();
+        $tools = TestTools::bare($this->project->dir, $this->pluginSettings);
         $plugins = new SettingsPluginsController(
             new PluginInstaller($this->project->dir, null, new Translator('en'), null),
             $this->pluginSettings,
             $notifier,
             new Translator('en'),
             $this->lifecycle,
-            new PluginManager(new EventDispatcher(), $this->pluginSettings),
-            new ToolInstaller($this->project->dir, []),
+            $tools->catalog,
+            $tools->jobs,
+            $tools->updates,
             $scopeRow,
             $scope,
             new SettingsProvenance($files),

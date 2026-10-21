@@ -2,38 +2,22 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp;
+namespace Porta\Plugin\Tool;
 
 /**
- * Pure knowledge about symfony/language-tools' GitHub releases: which asset
- * fits this machine, where it downloads from, and how its checksum is read
- * out of the release's SHA256SUMS. No I/O — {@see Installer} does the doing,
- * which is what keeps every naming and parsing rule unit-testable.
+ * Pure knowledge about one repository's GitHub releases: which asset fits
+ * this machine ({@see GithubAsset}), where it downloads from, and how its
+ * checksum is read out of the release's checksum file. No I/O —
+ * {@see GithubInstaller} does the doing, which is what keeps every naming and
+ * parsing rule unit-testable.
  */
-final class Release
+final readonly class GithubRelease
 {
-    private const string REPO = 'symfony/language-tools';
-
-    /**
-     * The release platform token for a host, or null when no prebuilt binary
-     * exists for it. $osFamily is PHP_OS_FAMILY, $machine is php_uname('m')
-     * (macOS says arm64 where Linux says aarch64).
-     */
-    public function platform(string $osFamily, string $machine): ?string
-    {
-        $os = match ($osFamily) {
-            'Darwin' => 'macos',
-            'Linux' => 'linux',
-            default => null,
-        };
-        $arch = match ($machine) {
-            'arm64', 'aarch64' => 'arm64',
-            'x86_64', 'amd64' => 'x64',
-            default => null,
-        };
-
-        return null === $os || null === $arch ? null : $os.'-'.$arch;
-    }
+    /** @param string $repo `owner/repo`, already checked to be nothing else ({@see ToolRequirement}) */
+    public function __construct(
+        public string $repo,
+        public GithubAsset $asset,
+    ) {}
 
     /**
      * The latest release tag out of GitHub's releases/latest JSON, or null
@@ -75,18 +59,18 @@ final class Release
      *
      * Deliberately NOT `api.github.com`: that is 60 requests per hour per IP
      * unauthenticated, and spending the whole budget on a tag lookup is what
-     * made "Install Server" fail with `could not resolve the latest
-     * symfony-lsp release` while nothing was wrong. This is ordinary release
+     * made symfony-lsp's "Install Server" fail with `could not resolve the
+     * latest release` while nothing was wrong. This is ordinary release
      * traffic on the host {@see assetUrl()} and {@see sumsUrl()} already use.
      */
     public function latestUrl(): string
     {
-        return 'https://github.com/'.self::REPO.'/releases/latest';
+        return 'https://github.com/'.$this->repo.'/releases/latest';
     }
 
     public function apiUrl(): string
     {
-        return 'https://api.github.com/repos/'.self::REPO.'/releases/latest';
+        return 'https://api.github.com/repos/'.$this->repo.'/releases/latest';
     }
 
     /**
@@ -102,22 +86,6 @@ final class Release
     }
 
     /**
-     * The version the binary reports for itself, from its `--version` line
-     * (`Symfony Language Tools 0.21.0` -> `0.21.0`), or null when the output
-     * is not that shape.
-     *
-     * Bare, without the tag's leading `v`: this is what the BINARY says, and a
-     * tag says `v0.21.0`. Comparisons normalise on the way in rather than
-     * pretending the two spellings are the same string.
-     */
-    public function versionFrom(string $output): ?string
-    {
-        $matches = [];
-
-        return 1 === \preg_match('/\b(\d+\.\d+\.\d+[0-9A-Za-z.\-]*)/', $output, $matches) ? $matches[1] : null;
-    }
-
-    /**
      * $tag as a bare version, so a tag and a `--version` line compare as one
      * spelling. A tag that is not shaped like one answers null rather than a
      * value that would silently never match.
@@ -129,23 +97,18 @@ final class Release
         return null === $version || '' === $version ? null : $version;
     }
 
-    public function asset(string $tag, string $platform): string
-    {
-        return 'symfony-lsp-'.$tag.'-'.$platform.'.tar.gz';
-    }
-
     public function assetUrl(string $tag, string $asset): string
     {
-        return 'https://github.com/'.self::REPO.'/releases/download/'.$tag.'/'.$asset;
+        return 'https://github.com/'.$this->repo.'/releases/download/'.$tag.'/'.$asset;
     }
 
     public function sumsUrl(string $tag): string
     {
-        return $this->assetUrl($tag, 'SHA256SUMS');
+        return $this->assetUrl($tag, $this->asset->sums);
     }
 
     /**
-     * The sha256 SHA256SUMS declares for $asset, or null when the file does
+     * The sha256 the checksum file declares for $asset, or null when the file does
      * not mention it. Lines are the coreutils shape: `<hex><spaces><name>`.
      */
     public function expectedSha(string $sums, string $asset): ?string

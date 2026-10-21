@@ -25,11 +25,11 @@ use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Tests\Support\CompactScreen;
 use Porta\Tests\Support\FakePluginLifecycle;
-use Porta\Tests\Support\FakeToolInstallOffers;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersRoot;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestOverlayPane;
+use Porta\Tests\Support\TestTools;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Theme\Theme;
@@ -101,7 +101,8 @@ final class WelcomeModalControllerTest extends TestCase
                 new CommandRegistry(),
                 new MagoDetector('/nonexistent'),
                 new SymfonyDetector('/nonexistent'),
-                new FakeToolInstallOffers(),
+                TestTools::bare(\sys_get_temp_dir())->catalog,
+                TestTools::bare(\sys_get_temp_dir())->jobs,
             ),
             $this->menuBar,
             $this->editArea,
@@ -589,7 +590,8 @@ final class WelcomeModalControllerTest extends TestCase
                 new CommandRegistry(),
                 new MagoDetector('/nonexistent'),
                 new SymfonyDetector('/nonexistent'),
-                new FakeToolInstallOffers(),
+                TestTools::bare(\sys_get_temp_dir())->catalog,
+                TestTools::bare(\sys_get_temp_dir())->jobs,
             ),
             new MenuBarWidget(),
             $editArea,
@@ -627,7 +629,8 @@ final class WelcomeModalControllerTest extends TestCase
                 new CommandRegistry(),
                 new MagoDetector($project->dir),
                 new SymfonyDetector($project->dir),
-                new FakeToolInstallOffers(),
+                TestTools::bare(\sys_get_temp_dir())->catalog,
+                TestTools::bare(\sys_get_temp_dir())->jobs,
             ),
             new MenuBarWidget(),
             $editArea,

@@ -2,13 +2,12 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp\Tests;
+namespace Porta\Tests\Unit\Plugin\Tool;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Porta\SymfonyLsp\Installer;
-use Porta\SymfonyLsp\InstallStep;
-use Porta\SymfonyLsp\Release;
+use Porta\Plugin\Tool\GithubInstaller;
+use Porta\Plugin\Tool\InstallStep;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -20,7 +19,7 @@ use Porta\Tests\Support\TempProject;
  * ask for; the fake produces (or refuses) the on-disk effect a real curl/tar
  * would have had.
  */
-final class InstallerTest extends TestCase
+final class GithubInstallerTest extends TestCase
 {
     use PreservesPath;
     use PumpsLoop;
@@ -166,7 +165,7 @@ final class InstallerTest extends TestCase
         );
     }
 
-    private function installer(TempProject $scratch, string $breakAt = '', string $binDir = '', string $workDir = '', #[\SensitiveParameter] string $token = ''): Installer
+    private function installer(TempProject $scratch, string $breakAt = '', string $binDir = '', string $workDir = '', #[\SensitiveParameter] string $token = ''): GithubInstaller
     {
         $this->ran = [];
         $this->installed = null;
@@ -174,8 +173,9 @@ final class InstallerTest extends TestCase
         $this->version = null;
         $this->steps = [];
 
-        return new Installer(
-            new Release(),
+        return new GithubInstaller(
+            GithubReleaseTest::symfony(),
+            'symfony-lsp',
             '' === $binDir ? $scratch->path('bin') : $binDir,
             '' === $workDir ? $scratch->path('work') : $workDir,
             $this->scriptedRunner($breakAt),
@@ -292,7 +292,7 @@ final class InstallerTest extends TestCase
         $scratch = new TempProject();
         $this->ran = [];
         $this->failure = null;
-        $installer = new Installer(new Release(), $scratch->path('bin'), $scratch->path('work'), $this->scriptedRunner());
+        $installer = new GithubInstaller(GithubReleaseTest::symfony(), 'symfony-lsp', $scratch->path('bin'), $scratch->path('work'), $this->scriptedRunner());
 
         $installer->install(
             'Windows',
@@ -415,7 +415,7 @@ final class InstallerTest extends TestCase
         // must shrug, not warn: it runs inside a process-exit callback where
         // a throw would wedge the chain.
         $scratch = new TempProject();
-        $installer = new Installer(new Release(), $scratch->path('bin'), $scratch->path('work'), $this->scriptedRunner());
+        $installer = new GithubInstaller(GithubReleaseTest::symfony(), 'symfony-lsp', $scratch->path('bin'), $scratch->path('work'), $this->scriptedRunner());
 
         Probe::invoke($installer, 'removeTree', $scratch->path('never-created'));
 
@@ -432,8 +432,9 @@ final class InstallerTest extends TestCase
         \putenv('PATH=/nonexistent');
         $scratch = new TempProject();
         $failure = null;
-        $installer = new Installer(
-            new Release(),
+        $installer = new GithubInstaller(
+            GithubReleaseTest::symfony(),
+            'symfony-lsp',
             $scratch->path('bin'),
             $scratch->path('work'),
             findTool: static fn (string $tool): string => '/nonexistent/'.$tool,
@@ -466,8 +467,9 @@ final class InstallerTest extends TestCase
     public function testAMissingToolIsNamedBeforeAnythingIsDownloaded(string $absent, string $expected): void
     {
         $scratch = new TempProject();
-        $installer = new Installer(
-            new Release(),
+        $installer = new GithubInstaller(
+            GithubReleaseTest::symfony(),
+            'symfony-lsp',
             $scratch->path('bin'),
             $scratch->path('work'),
             $this->scriptedRunner(),
@@ -508,8 +510,8 @@ final class InstallerTest extends TestCase
     {
         $scratch = new TempProject();
         $tmp = $scratch->path('tmp');
-        $abandoned = $tmp.'/'.Installer::SCRATCH_PREFIX.'404';
-        $live = $tmp.'/'.Installer::SCRATCH_PREFIX.'405';
+        $abandoned = $tmp.'/'.GithubInstaller::SCRATCH_PREFIX.'404';
+        $live = $tmp.'/'.GithubInstaller::SCRATCH_PREFIX.'405';
         $unrelated = $tmp.'/someone-elses-cache';
         foreach ([$abandoned, $live, $unrelated] as $dir) {
             \mkdir($dir, permissions: 0o755, recursive: true);
@@ -521,7 +523,7 @@ final class InstallerTest extends TestCase
         \touch($unrelated.'/symfony-lsp-v9.9.9-macos-arm64.tar.gz', $longAgo);
         \touch($unrelated, $longAgo);
 
-        $this->install($scratch, workDir: $tmp.'/'.Installer::SCRATCH_PREFIX.'406');
+        $this->install($scratch, workDir: $tmp.'/'.GithubInstaller::SCRATCH_PREFIX.'406');
 
         $this->assertNull($this->failure);
         $this->assertDirectoryDoesNotExist($abandoned, 'the interrupted install is reaped');
@@ -533,7 +535,7 @@ final class InstallerTest extends TestCase
     public function testAScratchDirectoryLeftByARecycledPidIsNotReused(): void
     {
         $scratch = new TempProject();
-        $workDir = $scratch->path('tmp').'/'.Installer::SCRATCH_PREFIX.'404';
+        $workDir = $scratch->path('tmp').'/'.GithubInstaller::SCRATCH_PREFIX.'404';
         \mkdir($workDir.'/symfony-lsp-v9.9.9-macos-arm64', permissions: 0o755, recursive: true);
         $leftover = $workDir.'/symfony-lsp-v9.9.9-macos-arm64/symfony-lsp';
         \file_put_contents($leftover, data: 'a half-extracted binary from the last life of this pid');
@@ -598,8 +600,9 @@ final class InstallerTest extends TestCase
         $scratch = new TempProject();
         $tag = 'unset';
         $why = null;
-        $installer = new Installer(
-            new Release(),
+        $installer = new GithubInstaller(
+            GithubReleaseTest::symfony(),
+            'symfony-lsp',
             $scratch->path('bin'),
             $scratch->path('work'),
             $this->scriptedRunner(),
@@ -683,6 +686,6 @@ final class InstallerTest extends TestCase
     #[DataProvider('meters')]
     public function testThePercentageIsReadFromCurlsMeter(string $chunk, int $percent): void
     {
-        $this->assertSame($percent, Probe::invoke(new Installer(new Release(), '/bin', '/work'), 'percentOf', $chunk));
+        $this->assertSame($percent, Probe::invoke(new GithubInstaller(GithubReleaseTest::symfony(), 'symfony-lsp', '/bin', '/work'), 'percentOf', $chunk));
     }
 }

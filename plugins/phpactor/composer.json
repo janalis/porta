@@ -1,0 +1,26 @@
+{
+    "name": "porta/phpactor",
+    "description": "phpactor as the PHP language server",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "phpactor",
+                    "purpose": "the PHP language server",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "composer",
+                            "phpactor/phpactor"
+                        ]
+                    ]
+                }
+            ]
+        }
+    }
+}

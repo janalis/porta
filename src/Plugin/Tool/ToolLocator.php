@@ -23,7 +23,7 @@ use Symfony\Component\Process\ExecutableFinder;
  * The order:
  *
  *   1. the plugin's setting, when the user named a binary by hand — a bare
- *      name through the PATH, a path only when it is executable, so a
+ *      name through the PATH, a path only when the file is there, so a
  *      teammate's absolute path riding in on a committed `.porta.json` falls
  *      through to what works here instead of shadowing it;
  *   2. `<project>/vendor/bin`, for a tool composer installs, and only in a
@@ -115,14 +115,19 @@ final class ToolLocator
         return null === $manager ? $tool->source(ToolManager::Plugin) : $tool->source($manager);
     }
 
-    /** A hand-named binary: through the PATH when bare, as given when it runs. */
+    /**
+     * A hand-named binary: through the PATH when bare, as given while the file
+     * is there. Not "while it is executable": a setting may name what the
+     * plugin hands to an interpreter — PlantUML's `.jar` — and only the plugin
+     * knows how it runs.
+     */
     private function named(string $configured): ?string
     {
         if (!\str_contains($configured, needle: '/')) {
             return ($this->find)($configured);
         }
 
-        return \is_file($configured) && \is_executable($configured) ? $configured : null;
+        return \is_file($configured) ? $configured : null;
     }
 
     private function vendored(ToolRequirement $tool): ?string
@@ -132,7 +137,8 @@ final class ToolLocator
         return BinarySearch::VendorBinThenPath === $tool->search() && $this->trusted() && \is_file($local) && \is_executable($local) ? $local : null;
     }
 
-    private function trusted(): bool
+    /** Whether the project may run code of its own — asked once, for the session. */
+    public function trusted(): bool
     {
         return $this->trusted ??= ($this->trust)();
     }

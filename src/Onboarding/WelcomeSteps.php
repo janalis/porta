@@ -8,9 +8,11 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\RecommendedPlugin;
 use Porta\Highlight\SyntaxHighlightProviderSource;
 use Porta\I18n\Translator;
-use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginEnablement;
-use Porta\Plugin\Runtime\ToolInstallOffers;
+use Porta\Plugin\Tool\ToolCatalog;
+use Porta\Plugin\Tool\ToolJobs;
+use Porta\Plugin\Tool\ToolManager;
+use Porta\Plugin\Tool\ToolStatus;
 
 /**
  * The setup steps the Welcome screen offers.
@@ -23,6 +25,11 @@ use Porta\Plugin\Runtime\ToolInstallOffers;
  *
  * Steps are rebuilt on each open, so a project that is already configured shows
  * them all done rather than prompting again.
+ *
+ * A plugin card is done when the plugin is enabled AND the tools it requires
+ * are there: an enabled formatter with no formatter is a ticked step the user
+ * cannot use. Pressing one enables the plugin and queues those tools' install
+ * — the machine-wide ones; composer's is the Settings page's.
  */
 final readonly class WelcomeSteps
 {
@@ -33,7 +40,8 @@ final readonly class WelcomeSteps
         private CommandRegistry $commands,
         private MagoDetector $mago,
         private SymfonyDetector $symfony,
-        private ToolInstallOffers $offers,
+        private ToolCatalog $tools,
+        private ToolJobs $jobs,
     ) {}
 
     /** @return list<WelcomeStep> */
@@ -66,9 +74,9 @@ final readonly class WelcomeSteps
                 $this->translator->trans('PHP language server'),
                 $this->translator->trans('Completion, go-to-definition and diagnostics'),
                 $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugin::LanguageServer->value]),
-                fn (): bool => $this->isEnabled(RecommendedPlugin::LanguageServer),
+                fn (): bool => $this->isReady(RecommendedPlugin::LanguageServer),
                 function (): void {
-                    $this->lifecycle->enable(RecommendedPlugin::LanguageServer->value);
+                    $this->enable(RecommendedPlugin::LanguageServer);
                 },
             ),
             // Only on a project that IS a Symfony application — the card would
@@ -80,15 +88,9 @@ final readonly class WelcomeSteps
                         $this->translator->trans('Symfony language tools'),
                         $this->translator->trans('Routes, services, Twig and config completion for this Symfony app'),
                         $this->translator->trans('Enable %name%', ['%name%' => RecommendedPlugin::SymfonyLanguageServer->value]),
-                        // Enabled is NOT done here, unlike every other card.
-                        // This server ships only as a GitHub release, so an
-                        // enabled plugin with no binary is a ticked step and a
-                        // status bar reading `LSP:none` — the card claiming
-                        // credit for something the user cannot yet use.
-                        fn (): bool => $this->isEnabled(RecommendedPlugin::SymfonyLanguageServer) && $this->toolReady(RecommendedPlugin::SymfonyLanguageServer),
+                        fn (): bool => $this->isReady(RecommendedPlugin::SymfonyLanguageServer),
                         function (): void {
-                            $this->lifecycle->enable(RecommendedPlugin::SymfonyLanguageServer->value);
-                            $this->installServerFor(RecommendedPlugin::SymfonyLanguageServer);
+                            $this->enable(RecommendedPlugin::SymfonyLanguageServer);
                         },
                     )] : []
             ),
@@ -99,18 +101,18 @@ final readonly class WelcomeSteps
                 $this->translator->trans('Code style fixer'),
                 $this->translator->trans('%name% fixes formatting on demand; format-on-save lives in its settings', ['%name%' => $fixer->value]),
                 $this->translator->trans('Enable %name%', ['%name%' => $fixer->value]),
-                fn (): bool => $this->isEnabled($fixer),
+                fn (): bool => $this->isReady($fixer),
                 function () use ($fixer): void {
-                    $this->lifecycle->enable($fixer->value);
+                    $this->enable($fixer);
                 },
             ),
             new WelcomeStep(
                 $this->translator->trans('Static analysis'),
                 $this->translator->trans('%name% finds bugs without running the code; analyse-on-save in its settings', ['%name%' => $analyzer->value]),
                 $this->translator->trans('Enable %name%', ['%name%' => $analyzer->value]),
-                fn (): bool => $this->isEnabled($analyzer),
+                fn (): bool => $this->isReady($analyzer),
                 function () use ($analyzer): void {
-                    $this->lifecycle->enable($analyzer->value);
+                    $this->enable($analyzer);
                 },
             ),
             // A link step (null predicate): `ide_help` already closes every
@@ -137,41 +139,27 @@ final readonly class WelcomeSteps
         return \in_array($plugin->value, $this->lifecycle->listedNames(), strict: true) && !$this->lifecycle->isDisabled($plugin->value);
     }
 
-    /**
-     * Whether $plugin's external tool is there.
-     *
-     * A disabled plugin has not loaded and declares no offer, which reads as
-     * "not ready" — correct, and the reason this is only ever ANDed with
-     * {@see isEnabled()} rather than replacing it. A plugin that declares no
-     * offer at all has no tool to wait for, so it is ready by default.
-     */
-    private function toolReady(RecommendedPlugin $plugin): bool
+    /** Enabled, and nothing it requires is missing. */
+    private function isReady(RecommendedPlugin $plugin): bool
     {
-        $offer = $this->offers->installOffer($plugin->value);
-
-        return null === $offer || $offer['available'];
+        return $this->isEnabled($plugin) && [] === $this->blocking($plugin);
     }
 
     /**
-     * Run $plugin's own install command, if it has one and its tool is not
-     * already there.
-     *
-     * Reached straight after `enable()`, which activates the plugin — and
-     * therefore registers its commands — synchronously, unless the plugin
-     * needs a composer install first. When it does, activation finishes later
-     * in a subprocess callback and there is no command to run yet; the card
-     * simply stays unticked, and pressing it again installs. Silently doing
-     * nothing is the right answer there, and guessing is not.
+     * Enable $plugin, then queue whatever it requires that is missing — but
+     * never through composer: `composer require` edits the PROJECT, and a
+     * card whose button says "Enable" must not do that behind it. That
+     * install lives on the plugin's Settings page, where composer is named.
      */
-    private function installServerFor(RecommendedPlugin $plugin): void
+    private function enable(RecommendedPlugin $plugin): void
     {
-        $offer = $this->offers->installOffer($plugin->value);
-        if (null === $offer || $offer['available']) {
-            return;
-        }
-        $self = \array_find($offer['via'], static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0]);
-        if (null !== $self) {
-            $this->commands->run($plugin->value.':'.$self[1]);
-        }
+        $this->lifecycle->enable($plugin->value);
+        $this->jobs->installMissing([$plugin->value], ToolManager::Composer);
+    }
+
+    /** @return list<ToolStatus> the required tools of $plugin that are not there */
+    private function blocking(RecommendedPlugin $plugin): array
+    {
+        return \array_values(\array_filter($this->tools->statuses($plugin->value), static fn (ToolStatus $status): bool => $status->blocks()));
     }
 }

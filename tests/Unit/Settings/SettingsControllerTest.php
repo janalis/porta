@@ -47,6 +47,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestLiveKeybindings;
+use Porta\Tests\Support\TestTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Tests\Support\TestWorkspaceLayout;
 use Porta\Tests\Support\Toasts;
@@ -166,6 +167,7 @@ final class SettingsControllerTest extends TestCase
             $this->files = new FileIndex($rootDir),
             $this->tooltips = new TooltipCenter(new FakeScheduler(), $tui),
             $this->identity = new Identity(),
+            TestTools::bare($rootDir)->updates,
         );
     }
 
@@ -211,7 +213,7 @@ final class SettingsControllerTest extends TestCase
         $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['autoPairs', 'formatOnSave', 'keymapPlatform', 'searchIncludeVendor', 'displayName', 'sharePresence'],
+            ['autoPairs', 'formatOnSave', 'keymapPlatform', 'searchIncludeVendor', 'displayName', 'sharePresence', 'toolUpdateCheck'],
             \array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );

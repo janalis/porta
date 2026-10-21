@@ -26,7 +26,7 @@ return new class('phpstan', 'phpstan') extends AbstractAnalyzerPlugin {
 
     public function activate(PluginApi $api): void
     {
-        $this->registerBinarySetting($api, [['composer', 'phpstan/phpstan']]);
+        $this->registerBinarySetting($api);
         $this->registerAnalysis($api, 'PHPStan', ['ctrl+alt+a']);
     }
 

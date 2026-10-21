@@ -9,8 +9,6 @@ use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginInstaller;
-use Porta\Plugin\Lifecycle\ToolInstaller;
-use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\Section\PluginsSection;
 use Porta\Settings\SettingsPluginsController;
@@ -19,10 +17,10 @@ use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestTools;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class PluginsSectionTest extends TestCase
 {
@@ -36,14 +34,16 @@ final class PluginsSectionTest extends TestCase
         $scope->set(ConfigScope::Project);
         $lifecycle = new FakePluginLifecycle();
         $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
+        $tools = TestTools::bare($project->dir, $pluginSettings);
         $plugins = new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),
             $lifecycle,
-            new PluginManager(new EventDispatcher(), $pluginSettings),
-            new ToolInstaller($project->dir, []),
+            $tools->catalog,
+            $tools->jobs,
+            $tools->updates,
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
             new SettingsProvenance($files),
@@ -76,14 +76,16 @@ final class PluginsSectionTest extends TestCase
         $pluginSettings->registerFor('demo', [
             ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '/stock', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
+        $tools = TestTools::bare($project->dir, $pluginSettings);
         $section = new PluginsSection(new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),
             $lifecycle,
-            new PluginManager(new EventDispatcher(), $pluginSettings),
-            new ToolInstaller($project->dir, []),
+            $tools->catalog,
+            $tools->jobs,
+            $tools->updates,
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
             new SettingsProvenance($files),
@@ -112,14 +114,16 @@ final class PluginsSectionTest extends TestCase
         $lifecycle = new FakePluginLifecycle();
         $lifecycle->names = ['git', 'todo'];
         $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
+        $tools = TestTools::bare($project->dir, $pluginSettings);
         $section = new PluginsSection(new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
             new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
             new Translator('en'),
             $lifecycle,
-            new PluginManager(new EventDispatcher(), $pluginSettings),
-            new ToolInstaller($project->dir, []),
+            $tools->catalog,
+            $tools->jobs,
+            $tools->updates,
             new SettingsScopeRow($scope, $files, new Translator('en')),
             $scope,
             new SettingsProvenance($files),

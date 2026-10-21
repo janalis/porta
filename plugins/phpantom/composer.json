@@ -1,0 +1,30 @@
+{
+    "name": "porta/phpantom",
+    "description": "phpantom as the PHP language server, plus its fixer",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "phpantom_lsp",
+                    "purpose": "the PHP language server",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "brew",
+                            "phpantom-lsp"
+                        ],
+                        [
+                            "cargo",
+                            "phpantom_lsp"
+                        ]
+                    ]
+                }
+            ]
+        }
+    }
+}

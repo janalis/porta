@@ -18,7 +18,7 @@ use Porta\Plugin\Api\ServerNotFound;
 return new class('phpactor', 'phpactor') extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
-        $this->registerBinarySetting($api, [['composer', 'phpactor/phpactor']]);
+        $this->registerBinarySetting($api);
         $api->registerLanguageServer('php', 'phpactor', function () use ($api): array|ServerNotFound {
             $binary = $this->binary($api);
 

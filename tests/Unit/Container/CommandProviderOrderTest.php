@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Container;
 use Porta\Command\DebugCommands;
 use Porta\Command\FileCommands;
 use Porta\Command\PluginCommandProvider;
+use Porta\Command\PluginCommands;
 use Porta\Command\SearchCommands;
 use Porta\Command\TreeCommands;
 use Porta\Command\ViewCommands;
@@ -46,6 +47,7 @@ final class CommandProviderOrderTest extends ContainerTestCase
             PluginCommandProvider::class, // 500 — core (above) wins key collisions over plugins
             FileCommands::class, // 400
             SearchCommands::class, // 300
+            PluginCommands::class, // 250 — the palette's "Plugins: …" verbs; no keys
             ViewCommands::class, // 200
             // 150 — last of the core providers. Its three ids are gated on the
             // tree holding focus, so their chords must lose every collision

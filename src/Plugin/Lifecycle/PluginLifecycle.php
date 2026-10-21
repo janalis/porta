@@ -20,6 +20,7 @@ use Porta\Lsp\LspReconfigurer;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
+use Porta\Plugin\Tool\ToolCatalog;
 use Porta\Settings\SettingsScope;
 use Porta\Workbench\Menu\MenuRebuilder;
 use Porta\Workbench\Menu\MenuRegistrar;
@@ -71,6 +72,10 @@ final class PluginLifecycle implements PluginLifecycleOps
         array $disabledPlugins,
         #[Autowire('%env(json:PORTA_ENABLED_PLUGINS)%')]
         array $enabledPlugins,
+        // Trailing and nullable so the direct constructions in the lifecycle
+        // tests stand: what a just-enabled plugin still needs is said only
+        // when there is a catalog to ask.
+        private readonly ?ToolCatalog $tools = null,
     ) {
         $this->disabled = \array_fill_keys($disabledPlugins, value: true);
         $this->enabled = \array_fill_keys($enabledPlugins, value: true);
@@ -346,9 +351,20 @@ final class PluginLifecycle implements PluginLifecycleOps
             !$progress->reported => 'Plugin "%name%" is not installed',
             default => null, // an error, or the warning below, already named the reason
         };
-        if (null !== $message) {
-            $this->notifier->flash($this->translator->trans($message, ['%name%' => $name]));
-        }
+        $missing = null === $message || null !== $blockedBy ? [] : $this->missingTools($name);
+        match (true) {
+            // Enabled, and unable to do its job: the one line on screen says
+            // both, and where the fix is.
+            [] !== $missing => $this->notifier->warn(
+                $this->translator->trans('Plugin "%name%" enabled, but it needs %tools% — install it from its Settings page, or run "Plugins: Install Missing Tools"', [
+                    '%name%' => $name,
+                    '%tools%' => \implode(', ', $missing),
+                ]),
+                6.0,
+            ),
+            null !== $message => $this->notifier->flash($this->translator->trans($message, ['%name%' => $name])),
+            default => null,
+        };
         if (null !== $blockedBy) {
             // Notifier::notify() already requests a render.
             $this->notifier->warn($this->translator->trans('%plugin% stays off — %file% disables it', [
@@ -358,6 +374,20 @@ final class PluginLifecycle implements PluginLifecycleOps
         }
         $this->flashCompanions('Also enabled: %names%', $required);
         $this->afterToggle();
+    }
+
+    /** @return list<string> the names of $name's required tools that are not there */
+    private function missingTools(string $name): array
+    {
+        $missing = [];
+        foreach ($this->tools?->statuses($name) ?? [] as $status) {
+            if (!$status->blocks()) {
+                continue;
+            }
+            $missing[] = $status->tool->name;
+        }
+
+        return $missing;
     }
 
     /**

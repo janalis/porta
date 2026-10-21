@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-namespace Porta\SymfonyLsp;
+namespace Porta\Plugin\Tool;
 
 use Porta\Support\AsyncProcess;
 
 /**
- * The one way this plugin spawns anything: argv, cwd, and a callback that
- * fires exactly once with the exit code and whatever the child wrote to
+ * The one way the tool installers spawn anything: argv, cwd, and a callback
+ * that fires exactly once with the exit code and whatever the child wrote to
  * stdout.
  *
- * It exists so {@see Installer} and {@see InstalledVersion} cannot end up with
+ * It exists so {@see GithubInstaller} and {@see ToolVersions} cannot end up with
  * two subtly different notions of "run a program" — in particular of what a
  * REFUSED spawn means. `AsyncProcess::start()` returns false when nothing was
  * spawned at all (PHP resolves the program itself for the array form), and no
@@ -19,7 +19,7 @@ use Porta\Support\AsyncProcess;
  * single-flight flag. Mapping that to `onExit(-1, '')` is the whole reason
  * this is shared rather than written twice.
  */
-final class Runner
+final class ProcessRunner
 {
     /**
      * How long a `--version` question may take before the answer is never
@@ -41,11 +41,11 @@ final class Runner
      * @param float|null $timeout seconds before the child is cancelled and reported as exit -1;
      *        null takes {@see \Porta\Support\AsyncProcess::EXTERNAL_TOOL_TIMEOUT}, the
      *        network-bound default
-     * @param Runs|null  $runs    where what runs is kept while it does, for whoever may stop it
+     * @param RunningProcesses|null $runs    where what runs is kept while it does, for whoever may stop it
      *
      * @return \Closure(list<string>, string, \Closure(int, string): void, (\Closure(string): void)|null): void
      */
-    public static function default(?float $timeout = null, ?Runs $runs = null): \Closure
+    public static function default(?float $timeout = null, ?RunningProcesses $runs = null): \Closure
     {
         $timeout ??= AsyncProcess::EXTERNAL_TOOL_TIMEOUT;
 

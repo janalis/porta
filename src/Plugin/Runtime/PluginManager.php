@@ -64,7 +64,6 @@ final class PluginManager implements
     RebindableActionSource,
     StatusSegmentSource,
     SyntaxHighlightProviderSource,
-    ToolInstallOffers,
     TokenSpanProvider,
     ViewerProviderSource
 {
@@ -259,41 +258,16 @@ final class PluginManager implements
     }
 
     /**
-     * The install offer $plugin declared for its tool binary — the tool name,
-     * whether that binary is available now, the ordered [manager, package]
-     * candidates, and what is installed right now in a few words — or null
-     * when the plugin declared none. The Settings page offers to install while
-     * the binary is unavailable, and for a self-installer
-     * ({@see PluginApi::INSTALL_SELF}) it offers to UPDATE once it is there,
-     * because a plugin that installs its own tool is also what updates it.
+     * The tools $plugin registered IN CODE ({@see PluginApi::registerInstaller()})
+     * — the third-party shape, beside what manifests declare under
+     * `extra.porta.tools`, which {@see \Porta\Plugin\Tool\ToolCatalog} reads.
+     * Only an enabled plugin has any: the registration ran in its activate().
      *
-     * `describe` is only meaningful while `available` holds, and is '' when
-     * the plugin declared no describer or has nothing to say.
-     *
-     * @return array{tool: string, available: bool, via: list<array{0: string, 1: string}>, describe: string}|null
+     * @return list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}>
      */
-    #[\Override]
-    public function installOffer(string $plugin): ?array
+    public function registeredInstallers(string $plugin): array
     {
-        foreach ($this->installers as $installer) {
-            if ($plugin !== $installer['plugin']) {
-                continue;
-            }
-            $available = $installer['available']();
-            $describe = $installer['describe'];
-
-            return [
-                'tool' => $installer['tool'],
-                'available' => $available,
-                'via' => $installer['via'],
-                // Not asked while the tool is absent: a describer written for
-                // "what have I got?" has nothing to answer, and this is pulled
-                // on every settings render.
-                'describe' => $available && null !== $describe ? $describe() : '',
-            ];
-        }
-
-        return null;
+        return \array_values(\array_filter($this->installers, static fn (array $installer): bool => $plugin === $installer['plugin']));
     }
 
     /**

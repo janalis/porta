@@ -25,10 +25,7 @@ use Porta\Plugin\Api\ServerNotFound;
 return new class('phpantom', 'phpantom_lsp', BinarySearch::PathOnly) extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
-        $this->registerBinarySetting($api, [
-            ['brew',  'phpantom-lsp'],
-            ['cargo', 'phpantom_lsp'],
-        ]);
+        $this->registerBinarySetting($api);
         $api->registerSetting('autoFix', 'Fix on save', 'bool', false);
 
         $api->registerLanguageServer('php', 'phpantom', function () use ($api): array|ServerNotFound {

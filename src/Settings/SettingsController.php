@@ -13,6 +13,7 @@ use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\TooltipCenter;
+use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Presence\Identity;
 use Porta\Search\FileIndex;
 use Porta\Ui\Graphics\PixelRatio;
@@ -60,6 +61,7 @@ final class SettingsController
         FileIndex $files,
         TooltipCenter $tooltips,
         Identity $identity,
+        ToolUpdates $updates,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -270,6 +272,17 @@ final class SettingsController
                 'fieldset' => 'Participants',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $identity->share((bool) $v),
+            ],
+            // How often the plugins' tools are checked for a newer version,
+            // in the background; their Settings rows then say what is out.
+            'toolUpdateCheck' => [
+                'label' => 'Check tools for updates',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'general',
+                'fieldset' => 'Tools',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $updates->setCadence((string) $v),
+                'options' => \array_keys(ToolUpdates::CADENCES),
             ],
         ];
     }

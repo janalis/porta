@@ -1678,10 +1678,6 @@
         <source>(Tab · Alt+A)</source>
         <target>(Tab · Alt+A)</target>
       </trans-unit>
-      <trans-unit id="489">
-        <source>Install %tool%</source>
-        <target>Installa %tool%</target>
-      </trans-unit>
       <trans-unit id="490">
         <source>Installing %tool%…</source>
         <target>Installazione di %tool%…</target>
@@ -1689,18 +1685,6 @@
       <trans-unit id="491">
         <source>Installed %tool%</source>
         <target>%tool% installato</target>
-      </trans-unit>
-      <trans-unit id="492">
-        <source>Could not install %tool%</source>
-        <target>Impossibile installare %tool%</target>
-      </trans-unit>
-      <trans-unit id="493">
-        <source>An install is already running</source>
-        <target>Un’installazione è già in corso</target>
-      </trans-unit>
-      <trans-unit id="494">
-        <source>No installer found for %tool% — install it via Homebrew or cargo, or put its binary on your PATH</source>
-        <target>Nessun installatore trovato per %tool% — installalo con Homebrew o cargo, oppure metti il suo binario nel tuo PATH</target>
       </trans-unit>
       <trans-unit id="495">
         <source>Run/debug command</source>
@@ -2169,10 +2153,6 @@
       <trans-unit id="659">
         <source>%tool%: fixed %file%</source>
         <target>%tool%: %file% corretto</target>
-      </trans-unit>
-      <trans-unit id="891">
-        <source>Update %tool%</source>
-        <target>Aggiorna %tool%</target>
       </trans-unit>
       <trans-unit id="892">
         <source>Update</source>
@@ -3433,6 +3413,162 @@
       <trans-unit id="1179">
         <source>Soft wrap</source>
         <target>A capo automatico</target>
+      </trans-unit>
+      <trans-unit id="1180">
+        <source>%from% → %to% available</source>
+        <target>%from% → %to% disponibile</target>
+      </trans-unit>
+      <trans-unit id="1181">
+        <source>%tool% is already queued</source>
+        <target>%tool% è già in coda</target>
+      </trans-unit>
+      <trans-unit id="1182">
+        <source>%tool% is already up to date (%version%)</source>
+        <target>%tool% è già aggiornato (%version%)</target>
+      </trans-unit>
+      <trans-unit id="1183">
+        <source>%tool% is managed outside Porta — update it the way it was installed</source>
+        <target>%tool% è gestito fuori da Porta: aggiornalo come è stato installato</target>
+      </trans-unit>
+      <trans-unit id="1184">
+        <source>%tool% will install next</source>
+        <target>%tool% verrà installato subito dopo</target>
+      </trans-unit>
+      <trans-unit id="1185">
+        <source>Check tools for updates</source>
+        <target>Cerca aggiornamenti degli strumenti</target>
+      </trans-unit>
+      <trans-unit id="1186">
+        <source>Could not install %tool%: %why%</source>
+        <target>Impossibile installare %tool%: %why%</target>
+      </trans-unit>
+      <trans-unit id="1187">
+        <source>Could not update %tool%: %why%</source>
+        <target>Impossibile aggiornare %tool%: %why%</target>
+      </trans-unit>
+      <trans-unit id="1188">
+        <source>Installed %tool% %version%</source>
+        <target>%tool% %version% installato</target>
+      </trans-unit>
+      <trans-unit id="1189">
+        <source>No way to install %tool% here (needs %managers%) — put it on your PATH, or set its path in the plugin's settings</source>
+        <target>Impossibile installare %tool% qui (richiede %managers%): mettilo nel PATH o indicane il percorso nelle impostazioni del plugin</target>
+      </trans-unit>
+      <trans-unit id="1190">
+        <source>Porta cannot install %tool% — put it on your PATH, or set its path in the plugin's settings</source>
+        <target>Porta non può installare %tool%: mettilo nel PATH o indicane il percorso nelle impostazioni del plugin</target>
+      </trans-unit>
+      <trans-unit id="1191">
+        <source>Tools</source>
+        <target>Strumenti</target>
+      </trans-unit>
+      <trans-unit id="1192">
+        <source>Updated %tool%</source>
+        <target>%tool% aggiornato</target>
+      </trans-unit>
+      <trans-unit id="1193">
+        <source>Updated %tool% to %version%</source>
+        <target>%tool% aggiornato a %version%</target>
+      </trans-unit>
+      <trans-unit id="1194">
+        <source>Updates available: %tools% — run &quot;Plugins: Update Tools&quot;</source>
+        <target>Aggiornamenti disponibili: %tools% — esegui «Plugins: Update Tools»</target>
+      </trans-unit>
+      <trans-unit id="1195">
+        <source>Updating %tool%…</source>
+        <target>Aggiornamento di %tool%…</target>
+      </trans-unit>
+      <trans-unit id="1196">
+        <source>install it yourself, or set its path above</source>
+        <target>installalo tu o indicane il percorso qui sopra</target>
+      </trans-unit>
+      <trans-unit id="1197">
+        <source>installed</source>
+        <target>installato</target>
+      </trans-unit>
+      <trans-unit id="1198">
+        <source>managed outside Porta</source>
+        <target>gestito fuori da Porta</target>
+      </trans-unit>
+      <trans-unit id="1199">
+        <source>missing</source>
+        <target>mancante</target>
+      </trans-unit>
+      <trans-unit id="1200">
+        <source>optional, missing</source>
+        <target>facoltativo, mancante</target>
+      </trans-unit>
+      <trans-unit id="1201">
+        <source>Working…</source>
+        <target>In corso…</target>
+      </trans-unit>
+      <trans-unit id="1202">
+        <source>%tool%: resolving…</source>
+        <target>%tool%: risoluzione…</target>
+      </trans-unit>
+      <trans-unit id="1203">
+        <source>%tool%: downloading…</source>
+        <target>%tool%: download…</target>
+      </trans-unit>
+      <trans-unit id="1204">
+        <source>%tool%: downloading %percent%%</source>
+        <target>%tool%: download %percent% %</target>
+      </trans-unit>
+      <trans-unit id="1205">
+        <source>%tool%: verifying…</source>
+        <target>%tool%: verifica…</target>
+      </trans-unit>
+      <trans-unit id="1206">
+        <source>%tool%: extracting…</source>
+        <target>%tool%: estrazione…</target>
+      </trans-unit>
+      <trans-unit id="1207">
+        <source>%tool%: checking the binary…</source>
+        <target>%tool%: controllo dell'eseguibile…</target>
+      </trans-unit>
+      <trans-unit id="1208">
+        <source>Plugins: Enable…</source>
+        <target>Plugin: Attiva…</target>
+      </trans-unit>
+      <trans-unit id="1209">
+        <source>Plugins: Disable…</source>
+        <target>Plugin: Disattiva…</target>
+      </trans-unit>
+      <trans-unit id="1210">
+        <source>Plugins: Install Missing Tools</source>
+        <target>Plugin: Installa gli strumenti mancanti</target>
+      </trans-unit>
+      <trans-unit id="1211">
+        <source>Plugins: Update Tools</source>
+        <target>Plugin: Aggiorna gli strumenti</target>
+      </trans-unit>
+      <trans-unit id="1212">
+        <source>Every plugin is enabled</source>
+        <target>Tutti i plugin sono attivi</target>
+      </trans-unit>
+      <trans-unit id="1213">
+        <source>No plugin is enabled</source>
+        <target>Nessun plugin è attivo</target>
+      </trans-unit>
+      <trans-unit id="1214">
+        <source>Enable plugin</source>
+        <target>Attiva un plugin</target>
+      </trans-unit>
+      <trans-unit id="1215">
+        <source>Disable plugin</source>
+        <target>Disattiva un plugin</target>
+      </trans-unit>
+      <trans-unit id="1216">
+        <source>Nothing to install: every enabled plugin has the tools it requires</source>
+        <target>Niente da installare: ogni plugin attivo ha gli strumenti che richiede</target>
+      </trans-unit>
+      <trans-unit id="1217">
+        <source>Nothing to update: Porta manages none of the installed tools</source>
+        <target>Niente da aggiornare: Porta non gestisce nessuno degli strumenti installati</target>
+      </trans-unit>
+      <trans-unit id="1218">
+        <source>Plugin &quot;%name%&quot; enabled, but it needs %tools% — install it from its Settings page, or run &quot;Plugins: Install Missing Tools&quot;</source>
+        <target>Plugin «%name%» attivato, ma richiede %tools%: installalo dalla sua pagina di impostazioni o esegui «Plugins: Install Missing Tools»</target>
       </trans-unit>
     </body>
   </file>

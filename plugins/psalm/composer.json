@@ -1,0 +1,26 @@
+{
+    "name": "porta/psalm",
+    "description": "Psalm analysis of the current file, or on save, as diagnostics",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "psalm",
+                    "purpose": "the analyser",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "composer",
+                            "vimeo/psalm"
+                        ]
+                    ]
+                }
+            ]
+        }
+    }
+}
