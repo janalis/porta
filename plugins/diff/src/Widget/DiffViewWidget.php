@@ -214,6 +214,19 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         return $this->heights;
     }
 
+    /**
+     * Re-wrapped at a new width: keep the rows scrolled away inside the top
+     * row — a wider pane gives it fewer, and the rest would run on into the
+     * rows below it, skipping them — then hold the scroll where it still
+     * fills the pane, the toolbar being as tall as last time.
+     */
+    private function settleScroll(int $rows): void
+    {
+        $heights = $this->heights();
+        $this->scrollSegment = \min($this->scrollSegment, \max(0, $heights->height($this->scroll) - 1));
+        [$this->scroll, $this->scrollSegment] = $heights->scrolled($this->scroll, $this->scrollSegment, 0, $rows - $this->headerRows);
+    }
+
     /** The body rows below the toolbar, from the last render. */
     private function visibleRows(): int
     {
@@ -689,7 +702,9 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->lastWidth = $width;
 
         // Before anything asks for the heights, which re-measures them at this width.
-        $resized = $this->heightsWidth !== $width;
+        if ($this->heightsWidth !== $width && $this->wrap) {
+            $this->settleScroll($rows);
+        }
         // Screen rows above the view, as the wheel steps: a row per diff row unwrapped.
         $scrolled = null === $this->document ? 0 : $this->heights()->offset($this->scroll) + $this->scrollSegment;
         $title =
@@ -723,10 +738,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             wrap: $this->wrap,
         );
         $heights = $this->heights();
-        if ($resized && $this->wrap) {
-            // Re-wrapped at the new width: the old scroll may now run past the end.
-            [$this->scroll, $this->scrollSegment] = $heights->scrolled($this->scroll, $this->scrollSegment, 0, $rows - $this->headerRows);
-        }
         for ($i = $this->scroll, $count = \count($this->rows); $i < $count && \count($lines) < $rows; ++$i) {
             // The top row from the screen rows not scrolled away; a row taller than what is left of the pane shows its first rows.
             $skip = $i === $this->scroll ? $this->scrollSegment : 0;

@@ -122,6 +122,9 @@ final class EditorScroll
 
             return;
         }
+        // The rows may have changed since the last render — wrap turned off
+        // with a lens on screen — so the top line's own rows first.
+        $this->settleTop($this->vScroll);
         // Each step moves one row or, at either end, nothing; |$rows| steps at most.
         $step = 0;
         while ($step < \abs($rows) && ($rows > 0 ? $this->rowDown() : $this->rowUp())) {

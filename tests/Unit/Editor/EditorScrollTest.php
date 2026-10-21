@@ -252,4 +252,18 @@ final class EditorScrollTest extends TestCase
 
         $this->assertSame([4, 0], $this->top());
     }
+
+    /** A notch before the next render, the top line now shorter (wrap off, its lens still there): a real row up, not one that is gone. */
+    public function testAWheelNotchBeforeTheRenderStepsFromWhereTheTopLineNowEnds(): void
+    {
+        $this->settle();
+        $this->scroll->rowsForLine = static fn (int $line): int => 4 === $line ? 4 : 1; // a lens and three wrapped rows
+        $this->scroll->scrollRows(7);
+        $this->assertSame([4, 3], $this->top());
+
+        $this->scroll->rowsForLine = static fn (int $line): int => 4 === $line ? 2 : 1; // the lens and one
+        $this->scroll->scrollRows(-1);
+
+        $this->assertSame([4, 0], $this->top(), 'from its last row now, one up: the lens');
+    }
 }

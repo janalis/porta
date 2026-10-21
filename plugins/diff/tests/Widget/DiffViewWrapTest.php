@@ -198,6 +198,22 @@ final class DiffViewWrapTest extends TestCase
         $this->assertSame(3, Probe::get($widget, 'cursor'), 'a page of two: b and c were on screen with the a\'s last row');
     }
 
+    /** Scrolled into a tall row, then widened so it takes fewer: the rows below it stay, and the count says so at once. */
+    public function testWideningInsideATallRowSkipsNothingBelowIt(): void
+    {
+        $widget = new DiffViewWidget(new Translator('en'));
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,4 +1,4 @@\n ".\str_repeat('a', times: 70)."\n b\n c\n d\n"), 'a.txt');
+        $widget->useSoftWrap();
+        self::body($widget, rows: 3);
+        $widget->scrollBy(3); // two rows into the a's
+
+        $frame = \array_map(AnsiUtils::stripAnsiCodes(...), $widget->render(new RenderContext(120, 3 + self::HEADER)));
+
+        $this->assertStringContainsString(\str_repeat('a', times: 70), $frame[self::HEADER], 'one row now, from its start');
+        $this->assertMatchesRegularExpression('/│ b\s*$/', $frame[self::HEADER + 1], 'and b under it, not skipped');
+        $this->assertStringContainsString('[scrolled +1]', $frame[0], 'the count on this very frame');
+    }
+
     /** A row taller than the pane: the wheel scrolls through it, one screen row a notch, to its last. */
     public function testTheWheelReachesTheEndOfARowTallerThanThePane(): void
     {
