@@ -208,6 +208,10 @@ final class SettingsViewController implements ContributedView
             $this->region->content()->add($this->form);
         }
         if (\str_starts_with($id, 'plugin:')) {
+            // A plugin page starts on its Enabled row: the row index carried
+            // over from the last page lands, as often as not, on its last row
+            // — Remove. A re-read of the page (refresh()) keeps its place.
+            $this->form->selectKey('pluginEnabled');
             $this->plugins->pageShown(\substr($id, offset: 7));
         }
         if ($followFocus) {

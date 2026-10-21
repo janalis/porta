@@ -841,6 +841,33 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['demo'], $this->lifecycle->deactivated);
     }
 
+    /** A plugin page starts on Enabled, whatever row the page before had reached — never on its Remove. */
+    public function testArrivingOnAPluginPageSelectsItsEnabledRow(): void
+    {
+        $controller = $this->controller();
+        foreach (['one', 'two'] as $name) {
+            \mkdir($this->project->dir.'/.porta/plugins/'.$name, permissions: 0o777, recursive: true);
+            \file_put_contents($this->project->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
+        }
+        $this->lifecycle->names = ['one', 'two'];
+        $this->nav->setPluginEntries(['one', 'two']);
+        $controller->open();
+        $this->selectSettingsSection($this->nav, 'plugins');
+        for ($row = 0; $row < 10; ++$row) {
+            $this->form->handleInput("\x1b[B"); // to the index's last row
+        }
+
+        $this->selectSettingsSection($this->nav, 'plugin:one');
+        $this->assertSame(0, Probe::object($this->form, 'list')->selected(), 'Enabled, not the carried-over index: Remove');
+
+        $this->form->handleInput("\x1b[B");
+        $controller->refresh(); // the same page re-reading itself keeps its place
+        $this->assertSame(1, Probe::object($this->form, 'list')->selected());
+
+        $this->selectSettingsSection($this->nav, 'plugin:two');
+        $this->assertSame(0, Probe::object($this->form, 'list')->selected(), 'a plugin page to another: Enabled again');
+    }
+
     public function testRefreshOnlyActsWhileOpenOnThePluginsSection(): void
     {
         $controller = $this->controller();

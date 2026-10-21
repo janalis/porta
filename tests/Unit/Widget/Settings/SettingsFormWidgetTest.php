@@ -623,12 +623,44 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame([['other', 'a']], $changes);
     }
 
-    public function testSetRowsCancelsEditing(): void
+    public function testAnotherPageCancelsEditing(): void
     {
         $widget = $this->textWidget();
         $widget->handleInput("\r");
         $this->assertNotNull(Probe::get($widget, 'editing'));
-        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'x', restart: false)]);
+        // The same key on another page — plugin pages share theirs — is not
+        // the row being edited: the edit must not follow it there.
+        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'x', restart: false)], 'Another page');
+        $this->assertNull(Probe::get($widget, 'editing'));
+    }
+
+    /** The same page re-reading itself — a version landing — keeps the edit and what was typed. */
+    public function testTheSamePageReReadingItselfKeepsTheEdit(): void
+    {
+        $widget = $this->textWidget($changes);
+        $widget->handleInput("\x1b[B"); // the second row
+        $widget->handleInput("\r");
+        $widget->handleInput('Z');
+        $widget->setRows([
+            new SettingsRow(key: 'new', label: 'New', kind: SettingsRowKind::Text, value: '', restart: false),
+            new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
+            new SettingsRow(key: 'other', label: 'Other', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'auto: none 1.2.3'),
+        ]);
+
+        $this->assertSame(2, Probe::get($widget, 'editing'), 'the edit follows its row to where it is now');
+        $this->assertSame(2, Probe::object($widget, 'list')->selected());
+        $widget->handleInput("\r");
+        $this->assertSame([['other', 'Z']], $changes, 'what was typed is what commits, to the row it was typed in');
+    }
+
+    /** The same page without the row being edited: nothing to keep editing. */
+    public function testTheSamePageWithoutTheEditedRowCancelsTheEdit(): void
+    {
+        $widget = $this->textWidget();
+        $widget->handleInput("\x1b[B");
+        $widget->handleInput("\r");
+        $widget->setRows([new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false)]);
+
         $this->assertNull(Probe::get($widget, 'editing'));
     }
 
@@ -694,7 +726,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->setRows([
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
             new SettingsRow(key: 'other', label: 'Other', kind: SettingsRowKind::Text, value: '', restart: false),
-        ]);
+        ], 'Another page');
 
         $widget->handleInput("\x1b[B"); // must navigate, not type into the stale editor
 
@@ -711,7 +743,7 @@ final class SettingsFormWidgetTest extends TestCase
         $widget->handleInput('Z'); // mutate the (soon-to-be-stale) TextField
         $widget->setRows([
             new SettingsRow(key: 'lspServer', label: 'LSP server', kind: SettingsRowKind::Text, value: 'phpactor', restart: false),
-        ]);
+        ], 'Another page');
 
         $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(60, 6))[3]);
 

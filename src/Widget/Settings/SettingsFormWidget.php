@@ -127,6 +127,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     private int $drawnWidth = 0;
     /** The page's trail, drawn as the title row. */
     private readonly CrumbHeader $header;
+
+    /** @var list<array{label: string, id: ?string}> the trail last set: which page the rows are */
+    private array $trail = [];
     /** The row index whose text field is being edited inline, or null. */
     private ?int $editing = null;
     private ?TextField $editField = null;
@@ -197,14 +200,26 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      */
     public function setRows(array $rows, array|string $title = ''): void
     {
-        $this->rows = $rows;
-        $this->header->set(match (true) {
+        $trail = match (true) {
             \is_array($title) => $title,
             '' === $title => [],
             default => [['label' => $title, 'id' => null]],
-        });
+        };
+        // An edit in progress survives the SAME page re-reading itself — a
+        // tool's version landing a moment after it opened, an install
+        // finishing — while its row is still there. Another page cancels
+        // it: plugin pages share row keys, and an edit that followed its key
+        // across would save into a different plugin.
+        $editedKey = null === $this->editing || $trail !== $this->trail ? null : $this->rows[$this->editing]->key;
+        $kept = null === $editedKey ? null : \array_find_key($rows, static fn (SettingsRow $row): bool => $editedKey === $row->key);
+        $this->rows = $rows;
+        $this->trail = $trail;
+        $this->header->set($trail);
         $this->list->clamp(\count($rows));
-        $this->editing = null;
+        $this->editing = $kept;
+        if (null !== $kept) {
+            $this->list->select($kept);
+        }
         $this->invalidate();
     }
 
