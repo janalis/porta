@@ -326,6 +326,7 @@ final class SettingsViewControllerTest extends TestCase
             $scopeRow,
             $scope,
             new SettingsProvenance($files),
+            $this->sectionEvents,
         );
         $editorArea = new EditorArea(
             new BufferManager(),
@@ -811,6 +812,8 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         \mkdir($this->project->dir.'/.porta/plugins/demo', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
+        $this->lifecycle->names = ['demo'];
+        $this->nav->setPluginEntries(['demo']);
         $controller->open();
 
         $this->selectSettingsSection($this->nav, 'plugins');
@@ -820,17 +823,22 @@ final class SettingsViewControllerTest extends TestCase
         $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
         $this->assertStringContainsString('Save changes to', $screen);
         $this->assertStringContainsString('Install plugin', $screen);
-        $this->assertMatchesRegularExpression('/demo \(project\)\s+│\s+Remove\s+│/u', $screen);
+        $this->assertMatchesRegularExpression('/demo\s+│\s+Open\s+│/u', $screen);
 
-        // Actuating the Remove row twice (two-press confirm) routes to the
-        // plugins controller and the refreshed rows drop the plugin.
+        // Open routes to the plugin's own page, where Remove is; actuating it
+        // twice (two-press confirm) removes the plugin.
         $this->form->handleInput("\x1b[B");
+        $this->form->handleInput("\x1b[B");
+        $this->form->handleInput("\r");
+        $this->assertSame('plugin:demo', $this->nav->selectedId());
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
+        $this->assertMatchesRegularExpression('/Installed in this project\s+[│┃]\s+Remove\s+[│┃]/u', $screen);
+
         $this->form->handleInput("\x1b[B");
         $this->form->handleInput("\r");
         $this->form->handleInput("\r");
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
-        $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
-        $this->assertStringNotContainsString('demo (project)', $screen);
+        $this->assertSame(['demo'], $this->lifecycle->deactivated);
     }
 
     public function testRefreshOnlyActsWhileOpenOnThePluginsSection(): void
@@ -846,9 +854,10 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'plugins');
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        $this->lifecycle->names = ['late'];
         $controller->refresh(); // re-reads the rows: the late plugin appears
         $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
-        $this->assertMatchesRegularExpression('/late \(project\)\s+│\s+Remove\s+│/u', $screen);
+        $this->assertMatchesRegularExpression('/late\s+│\s+Open\s+│/u', $screen);
     }
 
     public function testPluginPageRoutesRowsAndChangesAndFallsBackWhenRemoved(): void
@@ -1076,13 +1085,14 @@ final class SettingsViewControllerTest extends TestCase
         $this->selectSettingsSection($this->nav, 'plugins');
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
         \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        $this->lifecycle->names = ['late'];
         Probe::set($this->tui, 'renderRequested', false);
 
         $controller->refresh();
 
         $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() on the plugins section must request a render');
         $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
-        $this->assertMatchesRegularExpression('/late \(project\)\s+│\s+Remove\s+│/u', $screen);
+        $this->assertMatchesRegularExpression('/late\s+│\s+Open\s+│/u', $screen);
     }
 
     /**

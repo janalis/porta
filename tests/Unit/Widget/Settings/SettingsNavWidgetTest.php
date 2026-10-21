@@ -171,6 +171,32 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('plugin:phpstan', $widget->selectedId());
     }
 
+    /** A disabled plugin keeps its page — it is where it is switched back on — drawn dim, until it is the selection. */
+    public function testADisabledPluginsPageIsDrawnDim(): void
+    {
+        $widget = $this->widget();
+        $widget->setPluginEntries(['phpstan', 'mago'], ['mago']);
+        $dim = "\x1b[38;5;245m";
+
+        $lines = $widget->render(new RenderContext(24, 24));
+        $mago = \array_find($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), 'mago'));
+        $phpstan = \array_find($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), 'phpstan'));
+        $this->assertStringContainsString($dim, (string) $mago, 'off: dim');
+        $this->assertStringNotContainsString($dim, (string) $phpstan, 'on: as any page');
+
+        $widget->setActive('plugin:mago');
+        $widget->invalidate();
+        $lines = $widget->render(new RenderContext(24, 24));
+        $mago = \array_find($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), 'mago'));
+        $this->assertStringNotContainsString($dim, (string) $mago, 'the selection shade reads over everything');
+
+        $widget->setPluginEntries(['phpstan', 'mago']);
+        $widget->setActive('general');
+        $lines = $widget->render(new RenderContext(24, 24));
+        $mago = \array_find($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), 'mago'));
+        $this->assertStringNotContainsString($dim, (string) $mago, 'switched back on, drawn as any page');
+    }
+
     public function testSetActiveHighlightsAnEntry(): void
     {
         $widget = $this->widget();

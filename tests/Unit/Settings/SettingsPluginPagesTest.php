@@ -21,13 +21,13 @@ final class SettingsPluginPagesTest extends TestCase
         $nav = new SettingsNavWidget(new Translator('en'));
         $pages = new SettingsPluginPages($nav);
 
-        $pages->refresh(['phpstan', 'mago']);
+        $pages->refresh(['phpstan', 'mago'], []);
 
         $screen = $this->plain($nav->render(new RenderContext(24, 24)));
         $this->assertStringContainsString('   phpstan', $screen);
         $this->assertStringContainsString('   mago', $screen);
 
-        $pages->refresh(['phpstan']);
+        $pages->refresh(['phpstan'], []);
         $screen = $this->plain($nav->render(new RenderContext(24, 24)));
         $this->assertStringNotContainsString('mago', $screen, 'a removed plugin loses its page');
     }

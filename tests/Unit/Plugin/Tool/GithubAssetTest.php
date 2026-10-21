@@ -57,4 +57,19 @@ final class GithubAssetTest extends TestCase
         $this->assertSame(['Darwin' => 'darwin'], $kept?->os, 'unusable map entries go alone');
         $this->assertNull($kept?->member, 'an empty member is the bare shape');
     }
+
+    /** Every name becomes a path under the download's scratch directory, so none may climb out of it. */
+    public function testNamesThatWouldLeaveTheScratchDirectoryAreRefused(): void
+    {
+        $rules = ['asset' => 'x_{os}_{arch}.tar.gz', 'os' => ['Darwin' => 'darwin'], 'arch' => ['arm64' => 'arm64']];
+
+        $this->assertInstanceOf(GithubAsset::class, GithubAsset::fromManifest([...$rules, 'member' => 'x-{tag}/bin/x']));
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'asset' => '../x']), 'an asset is a file name');
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'asset' => 'dir/x']));
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'sums' => '../../SUMS']), 'so is the checksum file');
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'member' => '../x']), 'a member stays inside the archive');
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'member' => '/etc/x']));
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'member' => 'a//x']));
+        $this->assertNull(GithubAsset::fromManifest([...$rules, 'os' => ['Darwin' => '../..', 'Linux' => 'a/b']]), 'a platform token is spliced into the name: with none usable, no asset');
+    }
 }

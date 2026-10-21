@@ -7,11 +7,13 @@ namespace Porta\Tests\E2e;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Ide;
+use Porta\Plugin\Tool\RunningProcesses;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -129,12 +131,12 @@ final class IdePluginInstallTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     // The toast is the MODEL saying so; the re-listed section is
                     // a later paint, and a bare tick() is not a frame.
-                    $this->awaitPainted($tui, $terminal, 'installee (project)');
+                    $this->awaitPainted($tui, $terminal, '· on · project');
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
-                    $this->assertMatchesRegularExpression('/installee \(project\)\s+[│┃]\s+Remove\s+[│┃]/u', $screen, 'the new plugin lists with a Remove button');
+                    $this->assertMatchesRegularExpression('/installee\s+[│┃]\s+Open\s+[│┃] · on · project/u', $screen, 'the new plugin lists, on, with a button to its page');
 
                     // Live activation: the command is in the registry and the palette.
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -174,7 +176,10 @@ final class IdePluginInstallTest extends TestCase
                     }
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\x1b[B"); // installee sub-item
-                    $tui->handleInput("\t"); // nav → form (Enabled row)
+                    $tui->handleInput("\t"); // nav → form
+                    for ($i = 0; $i < 10; ++$i) {
+                        $tui->handleInput("\x1b[A"); // clamp to the Enabled row: the page ends in Remove
+                    }
                     $tui->handleInput("\r"); // toggle off
                     $this->awaitPainted($tui, $terminal, 'Plugin "installee" disabled');
                     $this->assertStringContainsString('Plugin "installee" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -211,7 +216,11 @@ final class IdePluginInstallTest extends TestCase
 
                     $this->openPluginsSection($tui, $ide);
                     $tui->handleInput("\x1b[B"); // install row
-                    $tui->handleInput("\x1b[B"); // demo's Remove row
+                    $tui->handleInput("\x1b[B"); // demo's row
+                    $tui->handleInput("\r"); // Open: demo's own page
+                    for ($row = 0; $row < 10; ++$row) {
+                        $tui->handleInput("\x1b[B"); // clamps on the last row, Remove
+                    }
                     $tui->handleInput("\r"); // arm
                     $tui->tick();
                     $this->assertStringContainsString('Press Enter again to remove "demo"', Toasts::last($ide));
@@ -286,11 +295,11 @@ final class IdePluginInstallTest extends TestCase
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
-                    $this->awaitPainted($tui, $terminal, 'cloned (project)');
+                    $this->awaitPainted($tui, $terminal, '· on · project');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
-                    $this->assertMatchesRegularExpression('/cloned \(project\)\s+[│┃]\s+Remove\s+[│┃]/u', $screen, 'the async refresh re-listed the section');
+                    $this->assertMatchesRegularExpression('/cloned\s+[│┃]\s+Open\s+[│┃] · on · project/u', $screen, 'the async refresh re-listed the section');
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
@@ -331,15 +340,50 @@ final class IdePluginInstallTest extends TestCase
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
-                    $this->awaitPainted($tui, $terminal, 'worldwide (global)');
+                    $this->awaitPainted($tui, $terminal, '· on · global');
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
-                    $this->assertMatchesRegularExpression('/worldwide \(global\)\s+[│┃]\s+Remove\s+[│┃]/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertMatchesRegularExpression('/worldwide\s+[│┃]\s+Open\s+[│┃] · on · global/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );
 
         $this->addToAssertionCount(1);
+    }
+
+    /**
+     * A tool install still running when the IDE quits is stopped with it —
+     * not left to finish into nothing, writing under ~/.porta. The manager
+     * here is a script that would leave a mark a second after it starts.
+     */
+    public function testQuittingStopsAToolInstallStillRunning(): void
+    {
+        $project = new TempProject([
+            'a.php' => "<?php\n",
+            '.porta/plugins/needy/plugin.php' => $this->pluginSource('needy'),
+            '.porta/plugins/needy/composer.json' => (string) \json_encode(['extra' => ['porta' => ['tools' => [['name' => 'x', 'sources' => [['brew', 'x']]]]]]], \JSON_THROW_ON_ERROR),
+        ]);
+        $mark = $project->path('installed.mark');
+        $brew = $project->path('bin/brew');
+        \mkdir(\dirname($brew));
+        \file_put_contents($brew, "#!/bin/sh\nsleep 1\ntouch '{$mark}'\n");
+        \chmod($brew, permissions: 0o755);
+        // Before the IDE starts: the installer finds its managers on the PATH once.
+        \putenv('PATH='.\dirname($brew).':/usr/bin:/bin');
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function ($tui, $terminal, Ide $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('plugins_install_tools');
+                    $this->assertNotSame([], Probe::get(Services::resolve($ide, RunningProcesses::class), 'running'), 'the manager runs, kept where quitting can reach it');
+                },
+            ],
+        );
+
+        \usleep(1_500_000);
+        $this->assertFileDoesNotExist($mark, 'quitting stopped it before it finished');
     }
 }

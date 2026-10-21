@@ -15,6 +15,7 @@ use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UntrustsProjects;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Filesystem\Filesystem;
@@ -37,6 +38,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class PluginLifecycleTest extends TestCase
 {
+    use UntrustsProjects;
+
     private TempProject $project;
     private ?Ide $ide = null;
 
@@ -62,6 +65,7 @@ final class PluginLifecycleTest extends TestCase
     /** These tests build an Ide but never run() it — arm the same cleanup its own finally would. */
     protected function tearDown(): void
     {
+        \putenv('PORTA_EMBEDDED_PLUGINS=/nonexistent');
         if (null !== $this->ide) {
             Services::resolve($this->ide, ViewRegistry::class)->closeAll();
             Services::resolve($this->ide, Notifier::class)->dismissAll();
@@ -108,6 +112,55 @@ final class PluginLifecycleTest extends TestCase
     private function hasCommand(Ide $ide, string $id): bool
     {
         return Services::resolve($ide, CommandRegistry::class)->has($id);
+    }
+
+    /**
+     * An untrusted project's own plugin never loads at boot, and the lifecycle
+     * sees it the same way: not listed, so no toggle offers it — and enabling
+     * it by name runs nothing of it.
+     */
+    public function testAnUntrustedProjectsOwnPluginIsNotListedAndEnablingItRunsNothing(): void
+    {
+        $this->untrustProjects();
+        $ide = $this->boot();
+        $this->writePlugin('acme');
+        $lifecycle = $this->lifecycle($ide);
+
+        $this->assertNotContains('acme', $lifecycle->listedNames());
+        $lifecycle->enable('acme');
+        $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'the project\'s code never ran');
+    }
+
+    /**
+     * Boot skips every copy of a name `disabledPlugins` lists, a bundled one
+     * included — so its toggle must read off, and enabling it must take it
+     * out of that list too, or the write changes nothing.
+     */
+    public function testABundledPluginThatDisabledPluginsListsIsOffUntilEnabled(): void
+    {
+        $embedded = new TempProject(['kit/plugin.php' => <<<'PHP'
+                <?php
+                return new class implements Porta\Plugin\Api\PortaPlugin {
+                    public function name(): string { return 'kit'; }
+                    public function activate(Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerCommand('go', 'kit: go', static fn () => null);
+                    }
+                };
+                PHP]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $ide = $this->boot(['enabledPlugins' => ['kit'], 'disabledPlugins' => ['kit']]);
+        $lifecycle = $this->lifecycle($ide);
+        $this->assertFalse($this->hasCommand($ide, 'kit:go'), 'boot skipped it');
+        $this->assertTrue($lifecycle->isDisabled('kit'), 'and its toggle says so');
+
+        $lifecycle->enable('kit');
+
+        $this->assertFalse($lifecycle->isDisabled('kit'));
+        $this->assertTrue($this->hasCommand($ide, 'kit:go'));
+        $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertNotContains('kit', $onDisk['disabledPlugins'] ?? [], 'the next boot loads it too');
+        $this->assertContains('kit', $onDisk['enabledPlugins'] ?? []);
     }
 
     public function testEnableActivatesAProjectPluginAndPersistsTheChoice(): void

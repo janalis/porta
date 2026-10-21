@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Tool;
 
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+
 /**
  * What version of each tool is on this machine — asked of the BINARY, cached
  * in memory by its path, never written to disk.
@@ -17,6 +19,7 @@ namespace Porta\Plugin\Tool;
  * cache and never spawns. {@see probe()} is what fills it, and must be reached
  * from an action or a ready hook.
  */
+#[Autoconfigure(constructor: 'create')]
 final class ToolVersions
 {
     /** `--version` prints one line and exits; there is nothing to watch arrive. */
@@ -38,6 +41,12 @@ final class ToolVersions
     public function __construct(?\Closure $run = null)
     {
         $this->run = $run ?? ProcessRunner::default(ProcessRunner::PROBE_TIMEOUT);
+    }
+
+    /** Production wiring: real processes, kept in $runs so quitting stops them. */
+    public static function create(RunningProcesses $runs): self
+    {
+        return new self(ProcessRunner::default(ProcessRunner::PROBE_TIMEOUT, $runs));
     }
 
     /**

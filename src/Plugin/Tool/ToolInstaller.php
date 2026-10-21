@@ -49,8 +49,11 @@ final readonly class ToolInstaller
         $this->run = $run ?? ProcessRunner::default();
     }
 
-    /** Production wiring: every manager resolved from the PATH, and the token from the environment. */
-    public static function create(string $rootDir, ToolLocator $locator, ToolVersions $versions): self
+    /**
+     * Production wiring: every manager resolved from the PATH, the token from
+     * the environment, and what runs kept in $runs, so quitting stops it.
+     */
+    public static function create(string $rootDir, ToolLocator $locator, ToolVersions $versions, RunningProcesses $runs): self
     {
         $finder = new ExecutableFinder();
         $executables = [];
@@ -61,7 +64,7 @@ final readonly class ToolInstaller
             }
         }
 
-        return new self($rootDir, $executables, $locator, $versions, token: GithubInstaller::tokenFromEnvironment(), machine: \php_uname('m'));
+        return new self($rootDir, $executables, $locator, $versions, ProcessRunner::default(runs: $runs), GithubInstaller::tokenFromEnvironment(), machine: \php_uname('m'));
     }
 
     /** The source an install of $tool would use, or null when none is usable here. */

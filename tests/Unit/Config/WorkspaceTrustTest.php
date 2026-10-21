@@ -213,6 +213,37 @@ final class WorkspaceTrustTest extends TestCase
         $this->assertTrue($load(true)->hasPlugin('mine'));
     }
 
+    /**
+     * Enabling it later, or installing it, goes through loadFile() — which
+     * used to load whatever file it was handed. Untrusted, it refuses the
+     * project's own copy and says why; a global copy, or a bundled set that
+     * happens to live there (a Porta checkout), still loads.
+     */
+    public function testAnUntrustedProjectsPluginIsNotLoadedLiveEither(): void
+    {
+        $plugin =
+            static fn (string $name): string => "<?php\nreturn new class('{$name}') extends Porta\\Plugin\\Api\\AbstractPlugin { public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {} };";
+        $project = new TempProject(['.porta/plugins/mine/plugin.php' => $plugin('mine')]);
+        $global = new TempProject(['.porta/plugins/theirs/plugin.php' => $plugin('theirs')]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings($project->dir, []));
+        $untrusted = new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), trusted: false);
+
+        $refused = $untrusted->loadFile($project->path('.porta/plugins/mine/plugin.php'), $manager);
+        $this->assertSame('Plugin "%name%" is in an untrusted project — not loaded', $refused?->key);
+        $this->assertSame(['%name%' => 'mine'], $refused->params);
+        $this->assertFalse($manager->hasPlugin('mine'), 'nothing of it ran');
+        $this->assertFalse($untrusted->mayLoad($project->path('.porta/plugins/mine')));
+
+        $this->assertNull($untrusted->loadFile($global->path('.porta/plugins/theirs/plugin.php'), $manager));
+        $this->assertTrue($manager->hasPlugin('theirs'), 'a global copy is the user\'s own');
+
+        $checkout = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), embeddedDir: $project->path('.porta/plugins'), trusted: false);
+        $this->assertTrue($checkout->mayLoad($project->path('.porta/plugins/mine')), 'the bundled set is Porta\'s, wherever it sits');
+        $this->assertTrue(new PluginLoader($project->dir, null, new PluginSettings($project->dir, []))->mayLoad($project->path('.porta/plugins/mine')), 'trusted, it is the project\'s to run');
+        $home = new PluginLoader($project->dir, $project->dir, new PluginSettings($project->dir, []), trusted: false);
+        $this->assertTrue($home->mayLoad($project->path('.porta/plugins/mine')), 'a project opened at ~: its plugins dir IS the global one, which boot loads too');
+    }
+
     public function testAnUntrustedProjectsPrePluginKeysAreNotAdopted(): void
     {
         $this->untrustProjects();

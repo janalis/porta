@@ -26,6 +26,9 @@ use Porta\Plugin\Api\BinarySearch;
  */
 final readonly class ToolRequirement
 {
+    /** What a binary may be called: one file name, not a path, not hidden. */
+    private const string BINARY = '/^[A-Za-z0-9][A-Za-z0-9._+-]*$/';
+
     /**
      * @param string $plugin the declaring plugin's name
      * @param string $name what the tool is called on screen — usually its binary
@@ -96,7 +99,9 @@ final readonly class ToolRequirement
         $setting = self::text($entry['setting'] ?? null);
         $version = self::strings($entry['version'] ?? null);
 
-        return '' === $name
+        // A bare file name, never a path: it is looked up on the PATH, in
+        // vendor/bin and in ~/.porta/bin, and a download lands under it.
+        return '' === $name || 1 !== \preg_match(self::BINARY, '' === $binary ? $name : $binary)
             ? null
             : new self(
                 $plugin,
@@ -133,7 +138,9 @@ final readonly class ToolRequirement
         $asset = \is_array($candidate[2] ?? null) ? GithubAsset::fromManifest($candidate[2]) : null;
 
         return match (true) {
-            null === $manager || '' === $package => null,
+            // Handed to the manager as one argument: never one it would read
+            // as an option of its own.
+            null === $manager || 1 !== \preg_match('/^[^\s-]\S*$/', $package) => null,
             ToolManager::Github !== $manager => new ToolSource($manager, $package),
             // owner/repo and nothing else: it is spliced into github.com URLs.
             null !== $asset && 1 === \preg_match('~^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$~', $package) => new ToolSource($manager, $package, $asset),

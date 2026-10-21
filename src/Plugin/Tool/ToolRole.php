@@ -17,4 +17,10 @@ enum ToolRole: string
 {
     case Required = 'required';
     case Suggested = 'suggested';
+
+    /** Whether a missing tool of this role stops its plugin doing its job. */
+    public function blocksWhenMissing(): bool
+    {
+        return self::Required === $this;
+    }
 }

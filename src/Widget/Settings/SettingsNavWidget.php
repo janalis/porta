@@ -99,6 +99,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      */
     private const int WIDEST_MINIMUM = 26;
 
+    /** @var array<string, true> the plugins whose pages are drawn dim: they are off */
+    private array $disabledPlugins = [];
+
     /** @var list<Entry> */
     private array $entries;
 
@@ -149,7 +152,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
 
     /**
      * The nav rows: the top-level pages, the Plugins folder with one page per
-     * active plugin, then the Languages folder and its pages.
+     * installed plugin (a disabled one too, to switch it back on from), then
+     * the Languages folder and its pages.
      *
      * @param list<string> $pluginNames
      *
@@ -231,12 +235,15 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     /**
      * Rebuild the per-plugin pages (a plugin was installed or removed),
      * keeping the selection on the same id — or falling back to the Plugins
-     * page when the selected plugin just vanished.
+     * page when the selected plugin just vanished. The $disabled ones are
+     * drawn dim: still a page to open, but one whose plugin is off.
      *
      * @param list<string> $names
+     * @param list<string> $disabled
      */
-    public function setPluginEntries(array $names): void
+    public function setPluginEntries(array $names, array $disabled = []): void
     {
+        $this->disabledPlugins = \array_fill_keys($disabled, value: true);
         $selected = $this->selectedId();
         $this->entries = $this->buildEntries($names);
         $this->visible = [];
@@ -583,6 +590,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $text = AnsiText::truncate($this->rowText($entry, SelectionBar::sidebar($selected)), $width, pad: true);
         if (NavEntryKind::Folder === $entry['kind'] && !$selected) {
             $text = $this->styles->of(Role::TabAccent)->apply($text);
+        }
+        if (NavEntryKind::Plugin === $entry['kind'] && !$selected && \array_key_exists($entry['label'], $this->disabledPlugins)) {
+            $text = $this->styles->of(Role::Dim)->apply($text);
         }
 
         return $this->shadeRow($text, $selected, $position === $this->hoveredIndex);

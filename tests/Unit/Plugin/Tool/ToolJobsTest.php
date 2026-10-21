@@ -180,6 +180,7 @@ final class ToolJobsTest extends TestCase
 
         $this->assertStringContainsString('Could not install dot: Error: no formula', $this->toast());
         $this->assertSame([], $this->lifecycle->serverBinaryReplaced);
+        $this->assertSame(1, $this->lifecycle->refreshed, 'the page re-reads: its button no longer says "Working…"');
     }
 
     public function testWithNoUsableSourceItSaysWhatWouldBeNeeded(): void

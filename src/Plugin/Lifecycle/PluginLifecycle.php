@@ -82,6 +82,19 @@ final class PluginLifecycle implements PluginLifecycleOps
     }
 
     /**
+     * Every installed copy this session may load, in precedence order — the
+     * installer's list without an untrusted project's own, which the loader
+     * never runs. Seen through this, such a plugin is not here at all, and a
+     * global or bundled copy of the same name is the one that counts.
+     *
+     * @return list<array{name: string, scope: InstallScope, dir: string}>
+     */
+    private function copies(): array
+    {
+        return \array_values(\array_filter($this->installer->installed(), fn (array $copy): bool => $this->loader->mayLoad($copy['dir'])));
+    }
+
+    /**
      * Whether $name is a bundled (embedded-source) plugin — those are off by
      * default and opt into `enabledPlugins`; project/global plugins are on by
      * default and opt out via `disabledPlugins`. The effective (highest-precedence)
@@ -90,7 +103,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     private function isBundled(string $name): bool
     {
         $scope = null;
-        foreach ($this->installer->installed() as $plugin) {
+        foreach ($this->copies() as $plugin) {
             if ($plugin['name'] !== $name) {
                 continue;
             }
@@ -143,7 +156,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->panes->forget($name);
         $this->retractContributionsOf($name);
         if ($wasActive) {
-            foreach ($this->installer->installed() as $candidate) {
+            foreach ($this->copies() as $candidate) {
                 if ($candidate['name'] !== $name) {
                     continue;
                 }
@@ -491,7 +504,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     /** The highest-precedence installed copy of $name, or null when there is none. */
     private function installedDir(string $name): ?string
     {
-        foreach ($this->installer->installed() as $candidate) {
+        foreach ($this->copies() as $candidate) {
             if ($candidate['name'] === $name) {
                 return $candidate['dir'];
             }
@@ -576,7 +589,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     private function dependentsOf(string $name): array
     {
         $dependents = [];
-        foreach ($this->installer->installed() as $plugin) {
+        foreach ($this->copies() as $plugin) {
             $candidate = $plugin['name'];
             if ($this->isDisabled($candidate) || \in_array($candidate, $dependents, strict: true)) {
                 continue;
@@ -678,6 +691,12 @@ final class PluginLifecycle implements PluginLifecycleOps
         if ($this->isBundled($name)) {
             $this->enabled[$name] = true;
             $this->writer->persistBundledEnabled($this->scope->current(), $name);
+            // `disabledPlugins` holds a bundled plugin back too: an enable
+            // that left it there would write and change nothing.
+            if (\array_key_exists($name, $this->disabled)) {
+                unset($this->disabled[$name]);
+                $this->writer->persistPluginEnabled($this->scope->current(), $name);
+            }
 
             return;
         }
@@ -697,7 +716,9 @@ final class PluginLifecycle implements PluginLifecycleOps
      * fails.
      *
      * Asked of the EFFECTIVE config rather than of a file, so it answers what
-     * the merge actually decided instead of re-deriving the merge.
+     * the merge actually decided instead of re-deriving the merge. It is the
+     * other file because the enable just took $name out of this one's
+     * `disabledPlugins` — a bundled plugin's too ({@see persistEnabledChoice()}).
      */
     private function layerStillDisabling(string $name): ?ConfigScope
     {
@@ -734,9 +755,9 @@ final class PluginLifecycle implements PluginLifecycleOps
     #[\Override]
     public function isDisabled(string $name): bool
     {
-        return $this->isBundled($name)
-            ? !\array_key_exists($name, $this->enabled)
-            : \array_key_exists($name, $this->disabled);
+        // `disabledPlugins` wins for a bundled plugin too: boot skips every
+        // copy of a name it lists, so a toggle drawn on would be a lie.
+        return \array_key_exists($name, $this->disabled) || ($this->isBundled($name) && !\array_key_exists($name, $this->enabled));
     }
 
     /**
@@ -750,7 +771,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     public function listedNames(): array
     {
         $names = [];
-        foreach ($this->installer->installed() as $plugin) {
+        foreach ($this->copies() as $plugin) {
             // Kept as the value: a name in digits would come back from
             // array_keys() as an int, which is not the list<string> promised.
             $names[$plugin['name']] ??= $plugin['name'];
@@ -759,10 +780,11 @@ final class PluginLifecycle implements PluginLifecycleOps
         return \array_values($names);
     }
 
-    /** Sync the per-plugin settings pages with the installed set. */
+    /** Sync the per-plugin settings pages with the installed set, and which of them are off. */
     public function refreshNav(): void
     {
-        $this->pages->refresh($this->listedNames());
+        $names = $this->listedNames();
+        $this->pages->refresh($names, \array_values(\array_filter($names, $this->isDisabled(...))));
     }
 
     #[\Override]

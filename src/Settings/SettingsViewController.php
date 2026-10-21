@@ -207,6 +207,9 @@ final class SettingsViewController implements ContributedView
             $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
             $this->region->content()->add($this->form);
         }
+        if (\str_starts_with($id, 'plugin:')) {
+            $this->plugins->pageShown(\substr($id, offset: 7));
+        }
         if ($followFocus) {
             $this->host->focus('keybindings' === $id ? $this->keymapList : $this->form);
         }

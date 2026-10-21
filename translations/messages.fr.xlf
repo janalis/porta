@@ -1270,10 +1270,6 @@
         <source>built-in</source>
         <target>intégrée</target>
       </trans-unit>
-      <trans-unit id="346">
-        <source>Built-in</source>
-        <target>Intégrée</target>
-      </trans-unit>
       <trans-unit id="348">
         <source>Enabled</source>
         <target>Activée</target>
@@ -3569,6 +3565,22 @@
       <trans-unit id="1218">
         <source>Plugin &quot;%name%&quot; enabled, but it needs %tools% — install it from its Settings page, or run &quot;Plugins: Install Missing Tools&quot;</source>
         <target>Plugin « %name% » activé, mais il lui faut %tools% — installez-le depuis sa page de réglages, ou lancez « Plugins: Install Missing Tools »</target>
+      </trans-unit>
+      <trans-unit id="1219">
+        <source>Installed in this project</source>
+        <target>Installé dans ce projet</target>
+      </trans-unit>
+      <trans-unit id="1220">
+        <source>Installed for every project</source>
+        <target>Installé pour tous les projets</target>
+      </trans-unit>
+      <trans-unit id="1221">
+        <source>needs %tools%</source>
+        <target>requiert %tools%</target>
+      </trans-unit>
+      <trans-unit id="1222">
+        <source>Plugin "%name%" is in an untrusted project — not loaded</source>
+        <target>L'extension « %name% » appartient à un projet non approuvé — non chargée</target>
       </trans-unit>
     </body>
   </file>

@@ -94,19 +94,16 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'), 'the embedded plugin activated');
 
-                    // The manage screen lists it as built-in; actuating is inert.
+                    // The manage screen lists it as built-in and on, with a
+                    // button to its page.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
                     $tui->handleInput("\t"); // nav → form
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertMatchesRegularExpression('/bundled \(built-in\)\s+┆\s+Built-in\s+┆/u', $screen, 'no Remove button for embedded plugins: a disabled, dashed Built-in one');
-                    $tui->handleInput("\x1b[B");
-                    $tui->handleInput("\x1b[B"); // the built-in row
-                    $tui->handleInput("\r"); // inert
-                    $this->frame($tui);
-                    $this->assertDirectoryExists($embedded->path('bundled'), 'nothing was removed');
+                    $this->assertMatchesRegularExpression('/bundled\s+│\s+Open\s+│ · on · built-in/u', $screen);
+                    $this->assertDirectoryExists($embedded->path('bundled'));
                 },
                 150 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // The plugin's settings page: set the binary → the menu entry enables.
@@ -114,6 +111,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $tui->handleInput("\x1b[B"); // → the bundled sub-item
                     $this->awaitPainted($tui, $terminal, '   bundled');
                     $this->assertStringContainsString('   bundled', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the nav lists the plugin as an indented sub-item');
+                    $this->assertStringNotContainsString('Remove', \implode("\n", $this->screenGrid($tui, $terminal)), 'a bundled plugin is switched off, never removed');
                     $tui->handleInput("\t"); // nav → form (Enabled row)
                     $tui->handleInput("\x1b[B"); // → Tool binary
                     $tui->handleInput("\r");
@@ -187,6 +185,21 @@ final class IdeEmbeddedPluginsTest extends TestCase
             PHP;
     }
 
+    /** From the form or the nav: $name's page, then its last row — the Remove button — pressed twice. */
+    private function removeFromItsPage(Tui $tui, string $name): void
+    {
+        if (!$this->settingsNav($tui)->isFocused()) {
+            $tui->handleInput("\t"); // form → nav
+        }
+        $this->selectSettingsSection($this->settingsNav($tui), 'plugin:'.$name);
+        $tui->handleInput("\t"); // nav → form
+        for ($row = 0; $row < 10; ++$row) {
+            $tui->handleInput("\x1b[B"); // clamps on the last row
+        }
+        $tui->handleInput("\r");
+        $tui->handleInput("\r");
+    }
+
     public function testRemovingAShadowingCopyFallsBackToTheEmbeddedOneAndErrorsFlash(): void
     {
         $embedded = new TempProject([
@@ -212,23 +225,17 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $this->assertContains('Project Run', $labels, 'the project copy shadows the embedded one');
                     $this->assertNotContains('Bundled Run', $labels);
 
-                    // Remove the project override: the embedded copy reactivates live.
+                    // Remove the project override from its page: the embedded
+                    // copy reactivates live.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $tui->handleInput("\t");
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\t"); // → form
-                    $tui->handleInput("\x1b[B"); // install row
-                    $tui->handleInput("\x1b[B"); // bundled (project) Remove
-                    $tui->handleInput("\r");
-                    $tui->handleInput("\r");
+                    $this->removeFromItsPage($tui, 'bundled');
                     $this->frame($tui);
                     $labels = \array_column($commands->paletteCommands(), 'label');
                     $this->assertNotContains('Project Run', $labels, 'the override died');
                     $this->assertContains('Bundled Run', $labels, 'the shadowed embedded copy took over live');
 
                     // Removing a plugin whose fallback copy is broken flashes the loader error.
-                    $tui->handleInput("\r"); // the shadowfail Remove row slid into the selection
-                    $tui->handleInput("\r");
+                    $this->removeFromItsPage($tui, 'shadowfail');
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin "shadowfail" failed to load', $screen);
@@ -236,10 +243,8 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
                 150 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Enabling a disabled plugin whose file is broken flashes too.
-                    $tui->handleInput("\t"); // form → nav (on Plugins)
-                    $tui->handleInput("\x1b[B"); // bundled
-                    $tui->handleInput("\x1b[B"); // shadowfail
-                    $tui->handleInput("\x1b[B"); // sleeper
+                    $tui->handleInput("\t"); // form → nav
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:sleeper');
                     $tui->handleInput("\t"); // → form
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
                     $tui->handleInput("\x1b[A");

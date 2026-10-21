@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Tool;
 
+use Porta\Container\AsIdeService;
 use Porta\Support\AsyncProcess;
 
 /**
@@ -11,6 +12,7 @@ use Porta\Support\AsyncProcess;
  * its version — so the IDE going down stops them, rather than have a
  * download finish into nothing.
  */
+#[AsIdeService]
 final class RunningProcesses
 {
     /** @var array<int, AsyncProcess> by object id */

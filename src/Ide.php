@@ -44,6 +44,7 @@ use Porta\Lsp\WatchedFiles;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Plugin\Tool\RunningProcesses;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Presence\PresenceSync;
 use Porta\Run\RunController;
@@ -595,6 +596,9 @@ final class Ide
                 $this->watchdog->stop();
                 $this->perf->stop();
                 $this->service(ToolUpdates::class)->stop();
+                // A download, an update check or a version probe still out
+                // would outlive the IDE writing into ~/.porta.
+                $this->service(RunningProcesses::class)->cancel();
                 EventLoop::cancel($watcher);
                 EventLoop::cancel($watchedFiles);
                 EventLoop::cancel($refresher);

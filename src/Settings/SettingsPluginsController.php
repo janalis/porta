@@ -7,14 +7,15 @@ namespace Porta\Settings;
 use Porta\Config\ConfigScope;
 use Porta\Config\PortaHome;
 use Porta\Event\HelpPageRequested;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
+use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Plugin\Tool\ToolCatalog;
 use Porta\Plugin\Tool\ToolJobs;
-use Porta\Plugin\Tool\ToolRole;
 use Porta\Plugin\Tool\ToolStatus;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Workbench\Notifier;
@@ -41,6 +42,12 @@ final class SettingsPluginsController
 
     /** Prefix marking a row for one of the plugin's tools; the rest of the key is the tool's name. */
     private const string TOOL_PREFIX = 'pluginTool:';
+
+    /** Prefix marking an index row; the rest of the key is the plugin whose page it opens. */
+    private const string OPEN_PREFIX = 'pluginOpen:';
+
+    /** Prefix marking a Remove button; the rest is `<install scope>:<plugin>`. */
+    private const string REMOVE_PREFIX = 'pluginRemove:';
 
     /**
      * The config key a BUNDLED plugin's Enabled toggle writes.
@@ -71,6 +78,9 @@ final class SettingsPluginsController
         // Documentation row asks the help window for the plugin's page
         // through it.
         private readonly ?EventDispatcherInterface $events = null,
+        // Trailing for the same reason: what may load here, so an untrusted
+        // project's own copy is not the one described.
+        private readonly ?PluginLoader $loader = null,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -88,29 +98,87 @@ final class SettingsPluginsController
             ),
         ]);
         $installed = $this->translator->trans('Installed');
+        foreach ($this->lifecycle->listedNames() as $name) {
+            $rows[] = $this->indexRow($name, $installed);
+        }
+
+        return $rows;
+    }
+
+    /**
+     * One plugin on the index: what it is, whether it is on, where it comes
+     * from and what it still needs — and the button that opens its page,
+     * where everything about it is done.
+     */
+    private function indexRow(string $name, string $fieldset): SettingsRow
+    {
+        $description = $this->tools->manifest($name)->description ?? '';
+        $missing = \array_map(
+            static fn (ToolStatus $status): string => $status->tool->name,
+            \array_values(\array_filter($this->tools->statuses($name), static fn (ToolStatus $status): bool => $status->blocks())),
+        );
+        $scope = $this->scopeOf($name);
+        $hint = [$this->translator->trans($this->lifecycle->isDisabled($name) ? 'off' : 'on')];
+        if (null !== $scope) {
+            $hint[] = $this->translator->trans(InstallScope::Embedded === $scope ? 'built-in' : $scope->value);
+        }
+        if ([] !== $missing) {
+            $hint[] = $this->translator->trans('needs %tools%', ['%tools%' => \implode(', ', $missing)]);
+        }
+
+        return new SettingsRow(
+            key: self::OPEN_PREFIX.$name,
+            label: '' === $description ? $name : $name.' — '.$description,
+            kind: SettingsRowKind::Action,
+            value: $this->translator->trans('Open'),
+            restart: false,
+            hint: \implode(' · ', $hint),
+            fieldset: $fieldset,
+        );
+    }
+
+    /**
+     * The installed copies that may load here — never an untrusted project's
+     * own, which the lifecycle does not see either: a plugin it shadows is
+     * described by the copy that actually runs.
+     *
+     * @return list<array{name: string, scope: InstallScope, dir: string}>
+     */
+    private function loading(): array
+    {
+        return \array_values(\array_filter($this->installer->installed(), fn (array $copy): bool => $this->loader?->mayLoad($copy['dir']) ?? true));
+    }
+
+    /** Where the copy of $name that loads comes from, or null when none is installed. */
+    private function scopeOf(string $name): ?InstallScope
+    {
+        return \array_find($this->loading(), static fn (array $plugin): bool => $name === $plugin['name'])['scope'] ?? null;
+    }
+
+    /**
+     * $name's Remove buttons, one per copy that can go — none for a bundled
+     * plugin, which is switched off instead. Each is the two-press confirm,
+     * its armed half drawn as danger.
+     *
+     * @return list<SettingsRow>
+     */
+    private function removeRows(string $name): array
+    {
+        $rows = [];
         foreach ($this->installer->installed() as $plugin) {
-            $rows[] = InstallScope::Embedded === $plugin['scope']
-                ? new SettingsRow(
-                    key: 'pluginInfo:'.$plugin['name'],
-                    label: $plugin['name'].' ('.$this->translator->trans('built-in').')',
-                    kind: SettingsRowKind::Action,
-                    value: $this->translator->trans('Built-in'),
-                    restart: false,
-                    fieldset: $installed,
-                    // A bundled plugin cannot be removed; the button says so
-                    // by its dashed border instead of doing nothing on press.
-                    disabled: true,
-                )
-                : new SettingsRow(
-                    key: 'pluginRemove:'.$plugin['scope']->value.':'.$plugin['name'],
-                    label: $plugin['name'].' ('.$this->translator->trans($plugin['scope']->value).')',
-                    kind: SettingsRowKind::Action,
-                    value: $this->translator->trans('Remove'),
-                    restart: false,
-                    // The armed half of the two-press confirm reads as danger.
-                    danger: $this->armed === 'pluginRemove:'.$plugin['scope']->value.':'.$plugin['name'],
-                    fieldset: $installed,
-                );
+            if ($name !== $plugin['name'] || InstallScope::Embedded === $plugin['scope']) {
+                continue;
+            }
+            $key = self::REMOVE_PREFIX.$plugin['scope']->value.':'.$name;
+            $rows[] = new SettingsRow(
+                key: $key,
+                label: $this->translator->trans(InstallScope::Project === $plugin['scope'] ? 'Installed in this project' : 'Installed for every project'),
+                kind: SettingsRowKind::Action,
+                value: $this->translator->trans('Remove'),
+                restart: false,
+                danger: $this->armed === $key,
+                fieldset: $this->translator->trans('Installed'),
+            );
         }
 
         return $rows;
@@ -141,13 +209,27 @@ final class SettingsPluginsController
     /** {@see BUNDLED_KEY} when $name is bundled with Porta, else null. */
     private function bundledKey(string $name): ?string
     {
-        foreach ($this->installer->installed() as $plugin) {
+        foreach ($this->loading() as $plugin) {
             if ($plugin['name'] === $name) {
                 return InstallScope::Embedded === $plugin['scope'] ? self::BUNDLED_KEY : null;
             }
         }
 
         return null;
+    }
+
+    /**
+     * $name's page came on screen: its tools are asked their versions the
+     * first time, and the page re-reads itself once they are in.
+     *
+     * Not from {@see pluginRows()}: the settings search builds every page's
+     * rows, and a search must not run every plugin's binaries.
+     */
+    public function pageShown(string $name): void
+    {
+        if ($this->tools->unprobed($name)) {
+            $this->tools->probe([$name], $this->lifecycle->refreshView(...));
+        }
     }
 
     /** Whether a plugin is installed (its settings page is reachable — disabled ones too). */
@@ -187,16 +269,11 @@ final class SettingsPluginsController
         // shown for a DISABLED plugin too: what it needs is worth knowing
         // before switching it on.
         $rows = [...$rows, ...\array_map($this->toolRow(...), $this->tools->statuses($name))];
-        // Their versions are asked the first time the page is shown, never
-        // before: the page re-reads itself once they are in.
-        if ($this->tools->unprobed($name)) {
-            $this->tools->probe([$name], $this->lifecycle->refreshView(...));
-        }
 
         // A plugin that ships its own docs offers them last, after its knobs
         // and buttons — a disabled one too, which is when reading what it
         // does is most useful.
-        return [...$rows, ...$this->docsRow($name)];
+        return [...$rows, ...$this->docsRow($name), ...$this->removeRows($name)];
     }
 
     /**
@@ -232,7 +309,7 @@ final class SettingsPluginsController
     private function toolHint(ToolStatus $status): string
     {
         if (!$status->available) {
-            $missing = ToolRole::Required === $status->tool->role ? $this->translator->trans('missing') : $this->translator->trans('optional, missing');
+            $missing = $status->tool->role->blocksWhenMissing() ? $this->translator->trans('missing') : $this->translator->trans('optional, missing');
 
             return $this->jobs->installable($status->tool) ? $missing : $missing.' · '.$this->translator->trans('install it yourself, or set its path above');
         }
@@ -300,6 +377,7 @@ final class SettingsPluginsController
             'pluginEnabled' === $key => $this->toggle($name, $value),
             \str_starts_with($key, self::TOOL_PREFIX) => $this->toolPressed($name, \substr($key, offset: \strlen(self::TOOL_PREFIX))),
             'pluginDocs' === $key => $this->openDocs($name),
+            \str_starts_with($key, self::REMOVE_PREFIX) => $this->removalPressed($key),
             \str_starts_with($key, self::SETTING_PREFIX) => $this->changeSetting($name, \substr($key, offset: \strlen(self::SETTING_PREFIX)), $value),
             default => null,
         };
@@ -345,9 +423,20 @@ final class SettingsPluginsController
         match (true) {
             $this->scopeRow->owns($key) => $this->changeScope($value),
             'pluginInstall' === $key => $this->install(\trim($value)),
-            \str_starts_with($key, 'pluginInfo:') => null, // a built-in marker / placeholder row — nothing to actuate
-            default => $this->removalPressed($key),
+            \str_starts_with($key, self::OPEN_PREFIX) => $this->open(\substr($key, offset: \strlen(self::OPEN_PREFIX))),
+            default => null,
         };
+    }
+
+    /**
+     * The index row's Open: the plugin's own page, the keyboard staying on the
+     * form — on its Enabled row, not on whatever row index the index page had
+     * reached, which on a plugin page is as likely as not Remove.
+     */
+    private function open(string $name): void
+    {
+        $this->armed = null;
+        $this->events?->dispatch(new SettingsSectionRequested('plugin:'.$name, 'pluginEnabled'));
     }
 
     private function changeScope(string $value): void

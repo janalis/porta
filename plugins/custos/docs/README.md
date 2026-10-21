@@ -8,9 +8,12 @@ with Porta and off by default — turn it on under **Settings → Plugins →
 custos**.
 
 The plugin runs `custos` from its **custos binary** setting when you set one,
-otherwise from your `PATH`. custos is one native binary that no package
-manager ships, so there is no install button: build it (`make build` in its
-repository) and put `bin/custos` on your `PATH`, or point the setting at it.
+otherwise from your `PATH`, then from `~/.porta/bin`. Its Settings page
+installs it for you: the **custos** row under **Tools** downloads the release
+built for your machine from GitHub (`janalis/custos`), checks it against the
+release's checksums and puts it in `~/.porta/bin` — or, where there is no
+such build, installs the Homebrew cask `janalis/tap/custos`. The same row
+updates it later.
 
 ## In the editor
 
@@ -50,7 +53,7 @@ follows the same rules as the quick-fixes.
 
 | Setting | Default | What it does |
 | --- | --- | --- |
-| custos binary | empty | The executable to run; empty finds `custos` on the `PATH` |
+| custos binary | empty | The executable to run; empty finds `custos` on the `PATH`, then in `~/.porta/bin` |
 | Target PHP version | empty | Overrides the project's target PHP version; empty leaves it to `custos.json` / `composer.json` |
 | Comparison style | `project` | `regular` or `yoda` overrides the project's comparison style; `project` leaves it to the project config |
 

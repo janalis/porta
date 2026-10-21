@@ -9,8 +9,8 @@ A set of plugins ships **bundled with Porta** (`plugins/` in the
 package), each documented in its own directory — the
 [Bundled plugins](README.md#bundled-plugins) table lists them. Bundled plugins
 are governed by the `enabledPlugins` list; when your `.porta.json` has no such
-key, a small default set (the two viewers plus `todo`, `local-history` and
-`git`) is enabled — an explicit list (even an empty one) replaces that default.
+key, a small default set (the two viewers plus `todo`, `local-history`,
+`diff`, `git`, `ssh` and `ftp`) is enabled — an explicit list (even an empty one) replaces that default.
 Four of them are the documented reference patterns:
 
 | Plugin | What it shows |
@@ -215,6 +215,20 @@ in; `os` maps `PHP_OS_FAMILY` and `arch` maps `php_uname('m')` to the
 repository's words. An asset that is a `.tar.gz` names the binary inside it in
 `member`. Every download is checked against the release's `SHA256SUMS` (or the
 file `sums` names) and run once before it replaces anything.
+
+Your plugin's Settings page lists each tool — a disabled plugin's too —
+with what it is for, its version and where it is, and one button: **Install**
+while it is missing, **Update** while Porta manages the copy. An update goes
+through whatever put it there (`vendor/bin`, the brew Cellar, `~/.cargo`,
+`node_modules`, `~/.porta/bin`); a copy nothing manages — a path set by hand,
+a system binary — has its Update drawn disabled. The `toolUpdateCheck` setting
+looks for newer versions of managed tools in the background — all but
+composer's, whose update keeps to the project's version constraint.
+
+Names are held to what they are used as: `binary` is a plain file name, a
+package never starts with `-`, and a GitHub `asset`, `sums` and platform
+token are file names while `member` is a relative path that stays inside the
+archive.
 
 An entry Porta cannot use is dropped with the rest of your manifest intact, and
 a source on a manager it does not know is skipped, so a manifest written for a
@@ -454,13 +468,29 @@ Open **Settings → Plugins** and use the form:
   actually installed the package. The directory name is the package's own
   `composer.json` — it must declare `"name": "vendor/name"` and
   `"type": "porta-plugin"`, or the install is refused.
-- Each installed plugin lists with a **Remove** button — press Enter twice
-  (the first press arms it: its border turns double, and a confirm flash
-  arrives). A composer-managed entry
-  runs `composer remove` in the driving project first, then unlinks the
-  symlink — the real installed copy under `.porta/vendor/` is untouched by
-  anything else that references it. Bundled plugins list as **(built-in)**
-  beside a disabled (dashed) button, and cannot be removed.
+- **Installed** lists every plugin once: its name and description, whether
+  it is on or off, where it comes from (project, global or built-in), and
+  any required tool it is missing (`needs dot`). **Open** goes to its page.
+
+Each plugin's own page has its **Enabled** toggle, its settings, the
+**Tools** it runs ([Declaring the tools you run](#declaring-the-tools-you-run)), its documentation, and — for a project or
+global copy — a **Remove** button per copy: press Enter twice (the first
+press arms it: its border turns double, and a confirm flash arrives). A
+composer-managed entry runs `composer remove` in the driving project first,
+then unlinks the symlink — the real installed copy under `.porta/vendor/` is
+untouched by anything else that references it. A bundled plugin has no
+Remove: it is switched off instead. In the settings sidebar, a disabled
+plugin's page is drawn dim.
+
+The palette does the same without opening Settings: **Plugins: Enable…** and
+**Plugins: Disable…** pick a plugin from a list, **Plugins: Install Missing
+Tools** installs every required tool the enabled plugins lack, and
+**Plugins: Update Tools** updates every tool Porta manages.
+
+A plugin in an untrusted project's own `.porta/plugins` is not listed at
+all: it never loads, enabling it by name runs nothing of it, and nothing its
+manifest declares is probed or installed. A global or bundled copy of the
+same name is the one that counts.
 
 A successful install **activates the plugin immediately**: its commands
 appear in the command palette and the Plugins menu (between Code and Run)
@@ -474,8 +504,10 @@ name, that copy reactivates in its place.
 Every plugin — bundled ones included — also has an **Enabled** toggle at the
 top of its settings page (each installed plugin appears as a sub-item under
 Plugins in the settings sidebar). Disabling deactivates it live and persists
-as a `disabledPlugins` list in `.porta.json`, so it stays off across
-restarts until re-enabled.
+in `.porta.json`, so it stays off across restarts until re-enabled: a project
+or global plugin joins `disabledPlugins`, a bundled one leaves
+`enabledPlugins`. `disabledPlugins` holds a bundled plugin back too, so
+enabling one also takes it out of that list.
 
 **Nothing about a toggle needs a restart**, including the surfaces that used
 to: a plugin enabled for the first time in a session gets its panes built,

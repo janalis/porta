@@ -47,10 +47,10 @@ final readonly class LatestVersions
         $this->run = $run ?? ProcessRunner::default();
     }
 
-    /** Production wiring: real processes, and the environment's GitHub token. */
-    public static function create(): self
+    /** Production wiring: real processes, kept in $runs so quitting stops them, and the environment's GitHub token. */
+    public static function create(RunningProcesses $runs): self
     {
-        return new self(token: GithubInstaller::tokenFromEnvironment());
+        return new self(ProcessRunner::default(runs: $runs), GithubInstaller::tokenFromEnvironment());
     }
 
     /**
@@ -63,11 +63,6 @@ final readonly class LatestVersions
         $package = $source->package;
         match ($source->manager) {
             ToolManager::Github => $this->github($tool, $source, $onVersion),
-            ToolManager::Composer => $this->fetch(
-                [...self::CURL, 'https://repo.packagist.org/p2/'.$package.'.json'],
-                static fn (string $json): ?string => self::packagist($json, $package),
-                $onVersion,
-            ),
             ToolManager::Brew => $this->fetch(['brew', 'info', '--json=v2', '--formula', $package], self::brew(...), $onVersion),
             ToolManager::BrewCask => $this->fetch(['brew', 'info', '--json=v2', '--cask', $package], self::brew(...), $onVersion),
             // crates.io refuses a request with no User-Agent.
@@ -77,7 +72,11 @@ final readonly class LatestVersions
                 $onVersion,
             ),
             ToolManager::Npm => $this->fetch([...self::CURL, 'https://registry.npmjs.org/'.\str_replace('/', replace: '%2F', subject: $package).'/latest'], self::npm(...), $onVersion),
-            ToolManager::Plugin => $onVersion(null),
+            // A composer tool's update is `composer update`, which keeps to the
+            // project's constraint: Packagist's newest is often out of its
+            // reach, and offering it would promise what Update cannot do.
+            // A plugin's own installer is the only judge of its own tool.
+            ToolManager::Composer, ToolManager::Plugin => $onVersion(null),
         };
     }
 
@@ -85,12 +84,6 @@ final readonly class LatestVersions
     public static function newer(string $installed, ?string $latest): bool
     {
         return null !== $latest && '' !== $installed && '' !== $latest && \version_compare(\ltrim($latest, characters: 'v'), \ltrim($installed, characters: 'v'), operator: '>');
-    }
-
-    /** Packagist's p2 answer: the first (newest) version of $package. */
-    public static function packagist(string $json, string $package): ?string
-    {
-        return self::at($json, 'packages', $package, 0, 'version');
     }
 
     /** `brew info --json=v2`: a formula's stable version, or a cask's version. */

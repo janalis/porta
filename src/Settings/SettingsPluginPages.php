@@ -20,8 +20,8 @@ final readonly class SettingsPluginPages implements PluginPagesSync
     ) {}
 
     #[\Override]
-    public function refresh(array $names): void
+    public function refresh(array $names, array $disabled): void
     {
-        $this->nav->setPluginEntries($names);
+        $this->nav->setPluginEntries($names, $disabled);
     }
 }

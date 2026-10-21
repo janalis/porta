@@ -9,9 +9,11 @@ use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
 use Porta\Event\HelpPageRequested;
+use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Lifecycle\PluginInstaller;
+use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Plugin\Tool\ProcessRunner;
@@ -47,6 +49,8 @@ final class SettingsPluginsControllerTest extends TestCase
     private ?string $composerBinary = null;
     /** @var array<string, string|null> manager name => fake binary path */
     private array $managerBinaries = [];
+    private EventDispatcher $events;
+    private bool $trusted = true;
     /** @var array<string, string> binary name => where the fake PATH has it */
     private array $toolPath = [];
     /** @var list<string> the binaries asked their version */
@@ -82,6 +86,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->commandsRun = [];
         $this->helpPages = [];
         $events = new EventDispatcher();
+        $this->events = $events;
         $events->addListener(HelpPageRequested::class, function (HelpPageRequested $event): void {
             $this->helpPages[] = $event->path;
         });
@@ -125,6 +130,7 @@ final class SettingsPluginsControllerTest extends TestCase
             $scope,
             new SettingsProvenance($files),
             $events,
+            new PluginLoader($this->project->dir, $this->global->dir, $this->pluginSettings, trusted: $this->trusted),
         );
     }
 
@@ -171,39 +177,90 @@ final class SettingsPluginsControllerTest extends TestCase
         return FakeComposer::write(\sys_get_temp_dir().'/porta-fakebin-'.\bin2hex(\random_bytes(4)), $exitCode);
     }
 
-    public function testRowsShapeScopeChoiceInstallFieldAndRemoveButtons(): void
+    public function testTheIndexListsEachPluginWithWhatItIsAndAButtonToItsPage(): void
     {
         $controller = $this->controller();
         $this->seedPlugin($this->project, 'local');
+        \file_put_contents(
+            $this->project->dir.'/.porta/plugins/local/composer.json',
+            data: (string) \json_encode(
+                ['description' => 'Does local things', 'extra' => ['porta' => ['tools' => [['name' => 'nowhere-tool'], ['name' => 'nice-to-have', 'role' => 'suggested']]]]],
+                \JSON_THROW_ON_ERROR,
+            ),
+        );
         $this->seedPlugin($this->global, 'shared');
+        $this->lifecycle->names = ['local', 'shared'];
+        $this->lifecycle->disabledNames = ['shared'];
 
         $rows = $controller->rows();
-        $this->assertSame(['configScope', 'pluginInstall', 'pluginRemove:project:local', 'pluginRemove:global:shared'], \array_column($rows, 'key'));
+        $this->assertSame(['configScope', 'pluginInstall', 'pluginOpen:local', 'pluginOpen:shared'], \array_column($rows, 'key'));
         $this->assertSame([SettingsRowKind::Choice, SettingsRowKind::Text, SettingsRowKind::Action, SettingsRowKind::Action], \array_column($rows, 'kind'));
         $this->assertSame('project', $rows[0]->value);
         $this->assertSame(['global', 'project'], $rows[0]->options);
         $this->assertSame('.porta.json', $rows[0]->optionLabels['project'] ?? null);
         $this->assertSame('git URL, local path, or vendor/name package', $rows[1]->hint);
-        $this->assertSame('local (project)', $rows[2]->label);
-        $this->assertSame('shared (global)', $rows[3]->label);
-        $this->assertSame('Remove', $rows[3]->value);
+        $this->assertSame('local — Does local things', $rows[2]->label);
+        $this->assertSame('on · project · needs nowhere-tool', $rows[2]->hint, 'a missing required tool is named; a suggested one is not');
+        $this->assertSame('shared', $rows[3]->label, 'no description, just the name');
+        $this->assertSame('off · global', $rows[3]->hint);
+        $this->assertSame('Open', $rows[3]->value);
+        $this->assertSame('Installed', $rows[3]->fieldset);
     }
 
-    public function testEmbeddedPluginsListAsBuiltInWithoutARemoveButton(): void
+    /** In an untrusted project its own copy never loads, so the copy described is the one that does. */
+    public function testAnUntrustedProjectsShadowingCopyIsNotTheOneDescribed(): void
+    {
+        $this->trusted = false;
+        $controller = $this->controller();
+        $this->seedPlugin($this->project, 'dup');
+        $this->seedPlugin($this->global, 'dup');
+        $this->lifecycle->names = ['dup'];
+
+        $this->assertSame('on · global', $controller->rows()[2]->hint);
+    }
+
+    public function testOpenShowsThePluginsPage(): void
+    {
+        $controller = $this->controller();
+        $requested = [];
+        $this->events->addListener(SettingsSectionRequested::class, static function (SettingsSectionRequested $event) use (&$requested): void {
+            $requested[] = [$event->section, $event->row];
+        });
+
+        $controller->change('pluginOpen:local', 'Open');
+
+        $this->assertSame([['plugin:local', 'pluginEnabled']], $requested, 'its page, on its first own row');
+    }
+
+    public function testABundledPluginIsBuiltInAndHasNoRemoveButton(): void
     {
         $embedded = new TempProject(['bundled/plugin.php' => "<?php\n"]);
         $this->embeddedDir = $embedded->dir;
         $controller = $this->controller();
+        $this->lifecycle->names = ['bundled'];
 
-        $rows = $controller->rows();
-        $this->assertSame('pluginInfo:bundled', $rows[2]->key);
-        $this->assertSame('bundled (built-in)', $rows[2]->label);
-        $this->assertSame('Built-in', $rows[2]->value);
-
-        $controller->change('pluginInfo:bundled', 'Built-in'); // inert
-        $this->assertSame([], $this->lifecycle->deactivated);
-        $this->assertDirectoryExists($embedded->dir.'/bundled');
+        $this->assertSame('on · built-in', $controller->rows()[2]->hint);
+        $this->assertSame([], \array_filter(\array_column($controller->pluginRows('bundled'), 'key'), static fn (string $key): bool => \str_starts_with($key, 'pluginRemove:')));
         $this->embeddedDir = null;
+    }
+
+    /** Remove lives on the plugin's own page, one button per copy that can go, each saying which. */
+    public function testRemoveIsOnThePluginsPageOncePerCopy(): void
+    {
+        $controller = $this->controller();
+        $this->seedPlugin($this->project, 'twice');
+        $this->seedPlugin($this->global, 'twice');
+        $this->lifecycle->names = ['twice'];
+
+        $removes = \array_values(\array_filter($controller->pluginRows('twice'), static fn (SettingsRow $row): bool => \str_starts_with($row->key, 'pluginRemove:')));
+        $this->assertSame(['pluginRemove:project:twice', 'pluginRemove:global:twice'], \array_column($removes, 'key'));
+        $this->assertSame(['Installed in this project', 'Installed for every project'], \array_column($removes, 'label'));
+        $this->assertSame(['Remove', 'Remove'], \array_column($removes, 'value'));
+        $this->assertFalse($removes[0]->danger);
+
+        $controller->changePlugin('twice', 'pluginRemove:project:twice', 'Remove');
+        $armed = \array_find($controller->pluginRows('twice'), static fn (SettingsRow $row): bool => 'pluginRemove:project:twice' === $row->key);
+        $this->assertTrue($armed?->danger, 'the armed half of the confirm reads as danger');
     }
 
     /**
@@ -244,8 +301,8 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->seedPlugin($this->project, 'demo');
 
-        $controller->change('pluginRemove:project:demo', 'Remove');
-        $controller->change('pluginRemove:project:demo', 'Remove');
+        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
+        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
         $this->assertSame(['demo'], $this->lifecycle->deactivated, 'a successful removal deactivates the plugin live');
     }
 
@@ -256,8 +313,8 @@ final class SettingsPluginsControllerTest extends TestCase
 
         // rows() never builds such a key; a stray one must neither arm a
         // confirm nor fall through to a removal under some default scope.
-        $controller->change('pluginRemove:nowhere:demo', 'Remove');
-        $controller->change('pluginRemove:nowhere:demo', 'Remove');
+        $controller->changePlugin('demo', 'pluginRemove:nowhere:demo', 'Remove');
+        $controller->changePlugin('demo', 'pluginRemove:nowhere:demo', 'Remove');
         $this->assertStringNotContainsString('Press Enter again', $this->statusRow($this->status, 120));
         $this->assertSame([], $this->lifecycle->deactivated);
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
@@ -404,16 +461,16 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->seedPlugin($this->project, 'demo');
 
-        $controller->change('pluginRemove:project:demo', 'Remove');
+        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
         $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
         $controller->change('configScope', 'global'); // anything else disarms
-        $controller->change('pluginRemove:project:demo', 'Remove');
+        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
         $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
-        $controller->change('pluginRemove:project:demo', 'Remove'); // the confirming press
+        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove'); // the confirming press
         $this->assertStringContainsString('Plugin "demo" removed', $this->statusRow($this->status, 120));
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
     }
@@ -424,13 +481,13 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->seedPlugin($this->project, 'one');
         $this->seedPlugin($this->project, 'two');
 
-        $controller->change('pluginRemove:project:one', 'Remove');
-        $controller->change('pluginRemove:project:two', 'Remove'); // re-arms onto "two"
+        $controller->changePlugin('one', 'pluginRemove:project:one', 'Remove');
+        $controller->changePlugin('two', 'pluginRemove:project:two', 'Remove'); // re-arms onto "two"
         $this->assertStringContainsString('Press Enter again to remove "two"', $this->statusRow($this->status, 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/one');
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/two');
 
-        $controller->change('pluginRemove:project:two', 'Remove');
+        $controller->changePlugin('two', 'pluginRemove:project:two', 'Remove');
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/two');
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/one', 'the first armed row was never confirmed');
     }
@@ -563,13 +620,17 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->lifecycle->names = ['viewer'];
 
         $controller->pluginRows('viewer');
+        $this->assertSame([], $this->probed, 'building the rows runs nothing: the settings search builds every page');
+
+        $controller->pageShown('viewer');
         $this->assertSame(['/opt/bin/dot'], $this->probed);
         $this->assertSame(1, $this->lifecycle->refreshed, 'the page re-reads itself once the version is in');
 
         $row = \array_find($controller->pluginRows('viewer'), static fn ($row): bool => 'pluginTool:dot' === $row->key);
         $this->assertInstanceOf(SettingsRow::class, $row);
         $this->assertSame('2.3.4 · /opt/bin/dot · managed outside Porta', $row->hint);
-        $this->assertSame(['/opt/bin/dot'], $this->probed, 'asked once, not per render');
+        $controller->pageShown('viewer');
+        $this->assertSame(['/opt/bin/dot'], $this->probed, 'asked once, not per showing');
         $this->assertSame(1, $this->lifecycle->refreshed);
     }
 

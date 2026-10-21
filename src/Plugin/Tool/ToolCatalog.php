@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Tool;
 
+use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
@@ -41,7 +42,10 @@ final class ToolCatalog
      */
     public function manifest(string $plugin): ?PluginManifest
     {
-        $copy = \array_find($this->installer->installed(), static fn (array $installed): bool => $plugin === $installed['name']);
+        // The copy that loads: an untrusted project's own is never run, so
+        // nothing it declares is probed, installed or updated either.
+        $trusted = $this->locator->trusted();
+        $copy = \array_find($this->installer->installed(), static fn (array $installed): bool => $plugin === $installed['name'] && ($trusted || InstallScope::Project !== $installed['scope']));
         if (null === $copy) {
             return null;
         }

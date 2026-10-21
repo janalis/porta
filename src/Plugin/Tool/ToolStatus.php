@@ -28,6 +28,6 @@ final readonly class ToolStatus
     /** Whether a missing tool costs its plugin its job, rather than one feature. */
     public function blocks(): bool
     {
-        return !$this->available && ToolRole::Required === $this->tool->role;
+        return !$this->available && $this->tool->role->blocksWhenMissing();
     }
 }

@@ -24,6 +24,9 @@ namespace Porta\Plugin\Lifecycle;
  */
 interface PluginPagesSync
 {
-    /** @param list<string> $names every installed plugin, in precedence order */
-    public function refresh(array $names): void;
+    /**
+     * @param list<string> $names    every installed plugin, in precedence order
+     * @param list<string> $disabled those of $names that are switched off
+     */
+    public function refresh(array $names, array $disabled): void;
 }

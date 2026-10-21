@@ -232,6 +232,20 @@ final readonly class PluginLoader
     }
 
     /**
+     * Whether the plugin in $dir may run here: anything but a copy in an
+     * untrusted project's own `.porta/plugins` — unless that directory is
+     * also the user's global one (a project opened at `~`) or the bundled
+     * set (a Porta checkout), which load whatever the project is.
+     */
+    public function mayLoad(string $dir): bool
+    {
+        $projectPlugins = \realpath($this->rootDir.'/.porta/plugins');
+        $sharedWith = \array_map(\realpath(...), \array_filter([$this->embeddedDir, null === $this->globalBase ? null : $this->globalBase.'/.porta/plugins']));
+
+        return $this->trusted || false === $projectPlugins || \realpath(\dirname($dir)) !== $projectPlugins || \in_array($projectPlugins, $sharedWith, strict: true);
+    }
+
+    /**
      * Load, activate and commit one plugin entry file (also used for a plugin
      * installed after boot). Returns the failure, or null on success.
      */
@@ -239,10 +253,15 @@ final readonly class PluginLoader
     {
         // The live path too (a just-installed or re-enabled plugin never went
         // through loadInto's pre-pass) — including the compatibility check.
+        // And the trust check: the boot pass never looks in an untrusted
+        // project's own plugins, and switching one on must not run its code
+        // either. Reading the manifest runs nothing.
         $manifest = PluginManifest::beside($file);
-        $unmet = $this->unmet($manifest);
-        if (null !== $unmet) {
-            return $unmet;
+        $refusal = $this->mayLoad(\dirname($file))
+            ? $this->unmet($manifest)
+            : new ConfigWarning('Plugin "%name%" is in an untrusted project — not loaded', ['%name%' => \basename(\dirname($file))]);
+        if (null !== $refusal) {
+            return $refusal;
         }
         $failure = null;
         try {

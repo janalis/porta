@@ -185,10 +185,12 @@ final class ToolJobs
             // Whatever happened, the next question is asked of the binary again.
             $this->versions->forget($path);
         }
+        // Whatever the outcome, the open Settings page re-reads itself — its
+        // button read "Working…" until now — once the copy there has been
+        // asked its version (at once, when nothing needs asking).
+        $this->catalog->probe([$tool->plugin], $this->lifecycle->refreshView(...));
         if (ToolOutcome::Installed === $result->outcome || ToolOutcome::Updated === $result->outcome) {
-            // A binary appeared or was replaced: relaunch the plugin's server,
-            // re-read the open Settings page, and ask the new copy its version.
-            $this->catalog->probe([$tool->plugin], $this->lifecycle->refreshView(...));
+            // A binary appeared or was replaced: relaunch the plugin's server.
             $this->lifecycle->onServerBinaryReplaced($tool->plugin);
         }
         $this->next();

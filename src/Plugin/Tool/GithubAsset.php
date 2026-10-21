@@ -76,8 +76,23 @@ final readonly class GithubAsset
         $sums = self::text($data['sums'] ?? 'SHA256SUMS');
         $os = self::map($data['os'] ?? null);
         $arch = self::map($data['arch'] ?? null);
+        // Each becomes a path under the download's scratch directory: a file
+        // name, or for the member a relative path that never climbs out.
+        $safe = self::isName($asset) && self::isName($sums) && ('' === $member || self::isRelative($member));
 
-        return '' === $asset || [] === $os || [] === $arch || '' === $sums ? null : new self($asset, $os, $arch, '' === $member ? null : $member, $sums);
+        return !$safe || [] === $os || [] === $arch ? null : new self($asset, $os, $arch, '' === $member ? null : $member, $sums);
+    }
+
+    /** One file name: no directory, not `.` or `..`. */
+    private static function isName(string $name): bool
+    {
+        return 1 === \preg_match('/^[A-Za-z0-9_{}+-][A-Za-z0-9_.{}+-]*$/', $name) && !\str_contains($name, needle: '..');
+    }
+
+    /** A path of file names below the directory it is joined to. */
+    private static function isRelative(string $path): bool
+    {
+        return [] === \array_filter(\explode('/', $path), static fn (string $part): bool => !self::isName($part));
     }
 
     /** A string field, or '' for anything else. */
@@ -92,7 +107,8 @@ final readonly class GithubAsset
         $map = [];
         /** @var mixed $token */
         foreach (\is_array($value) ? $value : [] as $key => $token) {
-            if (!\is_string($key) || !\is_string($token) || '' === $token) {
+            // Spliced into the asset's name, so a file name's characters only.
+            if (!\is_string($key) || !\is_string($token) || !self::isName($token)) {
                 continue;
             }
             $map[$key] = $token;

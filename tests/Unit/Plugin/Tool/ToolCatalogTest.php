@@ -39,7 +39,7 @@ final class ToolCatalogTest extends TestCase
     }
 
     /** @param array<string, string> $path */
-    private function tools(array $path = []): TestTools
+    private function tools(array $path = [], bool $trusted = true): TestTools
     {
         return new TestTools(
             $this->project->dir,
@@ -53,6 +53,7 @@ final class ToolCatalogTest extends TestCase
                 $answer = 'x 3.2.1';
                 $onExit(0, $answer);
             },
+            trusted: $trusted,
         );
     }
 
@@ -163,5 +164,23 @@ final class ToolCatalogTest extends TestCase
         $this->assertSame(ToolManager::Plugin, $srv->manager?->manager, 'the plugin that installs it updates it');
         $this->assertNull($other->manager, 'no installer of its own: managed outside Porta');
         $this->assertSame('', $other->version, 'no describer, nothing to say');
+    }
+
+    /**
+     * An untrusted project's own plugins never load, so what they declare is
+     * never run either: not asked its version, not offered to install. A
+     * manifest is a project file, and its tool's name and arguments would be
+     * the project's choice of command.
+     */
+    public function testAnUntrustedProjectsOwnPluginDeclaresNothing(): void
+    {
+        $this->plugin('p', ['description' => 'Mine', 'extra' => ['porta' => ['tools' => [['name' => 'sh', 'version' => ['-c', 'touch pwned']]]]]]);
+        $tools = $this->tools(['sh' => '/bin/sh'], trusted: false);
+
+        $this->assertNull($tools->catalog->manifest('p'));
+        $this->assertSame([], $tools->catalog->statuses('p'));
+        $tools->catalog->probe(['p']);
+        $this->assertSame([], $this->probed, 'nothing ran');
+        $this->assertCount(1, $this->tools(['sh' => '/bin/sh'])->catalog->declared('p'), 'trusted, the same copy declares its tool');
     }
 }

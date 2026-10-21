@@ -145,4 +145,32 @@ final class ToolRequirementTest extends TestCase
         $this->assertSame('b', $tool->source(ToolManager::Cargo)?->package);
         $this->assertNull($tool->source(ToolManager::Npm));
     }
+
+    /** A binary is a file name looked up, never a path a manifest picks. */
+    public function testABinaryThatIsNotAPlainFileNameDropsTheEntry(): void
+    {
+        foreach (['../../bin/sh', '/bin/sh', '.hidden', 'a b'] as $binary) {
+            $this->assertSame([], ToolRequirement::fromManifest('p', ['tools' => [['name' => 'x', 'binary' => $binary]]]), $binary);
+        }
+        $this->assertSame([], ToolRequirement::fromManifest('p', ['tools' => [['name' => '../x']]]), 'the name stands in for a missing binary, and is held to the same');
+        $this->assertCount(1, ToolRequirement::fromManifest('p', ['tools' => [['name' => 'x', 'binary' => 'php-cs-fixer.phar']]]));
+    }
+
+    /** A package is one argument to the manager, never an option it would read. */
+    public function testAPackageThatReadsAsAnOptionIsSkipped(): void
+    {
+        $tool = ToolRequirement::fromManifest('p', [
+            'tools' => [[
+                'name' => 'x',
+                'sources' => [
+                    ['brew', '--force'],
+                    ['brew', 'a b'],
+                    ['npm',  '@scope/pkg'],
+                    ['brew', 'janalis/tap/x'],
+                ],
+            ]],
+        ])[0];
+
+        $this->assertSame(['@scope/pkg', 'janalis/tap/x'], \array_map(static fn (ToolSource $source): string => $source->package, $tool->sources));
+    }
 }

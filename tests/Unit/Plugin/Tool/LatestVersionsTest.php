@@ -38,24 +38,18 @@ final class LatestVersionsTest extends TestCase
 
     public function testEachSourceAsksItsOwnIndex(): void
     {
-        $this->assertSame('2.1.17', $this->latest(
-            $this->versions(0, '{"packages":{"phpstan/phpstan":[{"version":"2.1.17"},{"version":"2.1.16"}]}}'),
-            new ToolSource(ToolManager::Composer, 'phpstan/phpstan'),
-        ));
-        $this->assertStringEndsWith('https://repo.packagist.org/p2/phpstan/phpstan.json', \implode(' ', $this->ran[0]));
-
         $this->assertSame('16.1.0', $this->latest($this->versions(0, '{"formulae":[{"versions":{"stable":"16.1.0"}}],"casks":[]}'), new ToolSource(ToolManager::Brew, 'graphviz')));
-        $this->assertSame(['brew', 'info', '--json=v2', '--formula', 'graphviz'], $this->ran[1]);
+        $this->assertSame(['brew', 'info', '--json=v2', '--formula', 'graphviz'], $this->ran[0]);
 
         $this->assertSame('0.1.7', $this->latest($this->versions(0, '{"formulae":[],"casks":[{"version":"0.1.7"}]}'), new ToolSource(ToolManager::BrewCask, 'janalis/tap/custos')));
-        $this->assertSame(['brew', 'info', '--json=v2', '--cask', 'janalis/tap/custos'], $this->ran[2]);
+        $this->assertSame(['brew', 'info', '--json=v2', '--cask', 'janalis/tap/custos'], $this->ran[1]);
 
         $this->assertSame('0.5.0', $this->latest($this->versions(0, '{"crate":{"max_stable_version":"0.5.0","max_version":"0.6.0-rc.1"}}'), new ToolSource(ToolManager::Cargo, 'phpantom_lsp')));
-        $this->assertContains('-A', $this->ran[3], 'crates.io refuses a request without a User-Agent');
-        $this->assertStringEndsWith('https://crates.io/api/v1/crates/phpantom_lsp', \implode(' ', $this->ran[3]));
+        $this->assertContains('-A', $this->ran[2], 'crates.io refuses a request without a User-Agent');
+        $this->assertStringEndsWith('https://crates.io/api/v1/crates/phpantom_lsp', \implode(' ', $this->ran[2]));
 
         $this->assertSame('11.4.0', $this->latest($this->versions(0, '{"version":"v11.4.0"}'), new ToolSource(ToolManager::Npm, '@mermaid-js/mermaid-cli')));
-        $this->assertStringEndsWith('https://registry.npmjs.org/@mermaid-js%2Fmermaid-cli/latest', \implode(' ', $this->ran[4]), 'a scoped name keeps its scope in one segment');
+        $this->assertStringEndsWith('https://registry.npmjs.org/@mermaid-js%2Fmermaid-cli/latest', \implode(' ', $this->ran[3]), 'a scoped name keeps its scope in one segment');
     }
 
     public function testAGithubSourceReadsTheReleaseRedirect(): void
@@ -67,14 +61,25 @@ final class LatestVersionsTest extends TestCase
 
     public function testAFailureOrAnUnusableAnswerIsNull(): void
     {
-        $composer = new ToolSource(ToolManager::Composer, 'a/b');
+        $npm = new ToolSource(ToolManager::Npm, 'a');
 
-        $this->assertNull($this->latest($this->versions(6, '{"packages":{"a/b":[{"version":"1.0.0"}]}}'), $composer), 'the network was not there');
-        $this->assertNull($this->latest($this->versions(0, 'not json'), $composer));
-        $this->assertNull($this->latest($this->versions(0, '{"packages":{"a/b":[]}}'), $composer));
-        $this->assertNull($this->latest($this->versions(0, '{"packages":{"a/b":[{"version":"dev-main"}]}}'), $composer), 'not a version');
+        $this->assertNull($this->latest($this->versions(6, '{"version":"1.0.0"}'), $npm), 'the network was not there');
+        $this->assertNull($this->latest($this->versions(0, 'not json'), $npm));
+        $this->assertNull($this->latest($this->versions(0, '{}'), $npm));
+        $this->assertNull($this->latest($this->versions(0, '{"version":"dev-main"}'), $npm), 'not a version');
         $this->assertNull($this->latest($this->versions(0, ''), new ToolSource(ToolManager::Plugin, 'install')), 'a plugin\'s own installer has no index');
-        $this->assertSame([], \array_slice($this->ran, offset: 5), 'and asks nothing');
+        $this->assertSame([], \array_slice($this->ran, offset: 4), 'and asks nothing');
+    }
+
+    /**
+     * A composer tool updates through `composer update`, which keeps to the
+     * project's constraint — so Packagist's newest is not offered: Update
+     * could not deliver it, and the toast would come back every day.
+     */
+    public function testAComposerToolIsNeverSaidToBeOutdated(): void
+    {
+        $this->assertNull($this->latest($this->versions(0, '{"packages":{"a/b":[{"version":"9.0.0"}]}}'), new ToolSource(ToolManager::Composer, 'a/b')));
+        $this->assertSame([], $this->ran, 'nothing is asked');
     }
 
     public function testNewerComparesVersionsNotStrings(): void
