@@ -72,7 +72,9 @@ final readonly class PreviewSplit
         // Three equal columns until dragged: the pair takes two of them and
         // its own divider — a shade over two thirds, so the floors the layout
         // takes land the three even — and the flank half of the pair.
-        $this->flanked = new PaneSplit('preview-flanked', $styles, NarrowSplit::LeadAlone, $renderer, $tui, share: 672);
+        // Its lead is the flank's split: when the pane steps aside with the
+        // keys, the editor in it takes them, never the container.
+        $this->flanked = new PaneSplit('preview-flanked', $styles, NarrowSplit::LeadAlone, $renderer, $tui, share: 672, keysTo: fn (): ?AbstractWidget => $this->flank->rest());
         $this->flank = new PaneSplit('preview-flank', $styles, NarrowSplit::RestAlone, $renderer, $tui);
         $this->area = LayoutWidgets::container('preview-host', new Style(flex: 1));
         $this->separator = $this->split->separator;

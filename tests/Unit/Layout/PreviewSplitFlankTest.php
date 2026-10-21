@@ -180,6 +180,22 @@ final class PreviewSplitFlankTest extends TestCase
         $this->assertInstanceOf(WidgetContext::class, $this->pane->getContext());
     }
 
+    public function testThePaneSteppingAsideWithTheKeysHandsThemToTheEditor(): void
+    {
+        $this->mounted();
+        $this->tui->setFocus($this->pane);
+
+        $this->terminal->simulateResize(50, 10);
+        $this->frame();
+        $this->fit();
+        $this->terminal->simulateResize(30, 10);
+        $this->frame();
+        $this->fit();
+
+        $this->assertNull($this->pane->getContext());
+        $this->assertSame($this->editor, $this->tui->getFocus(), 'the editor, not the container it sits in');
+    }
+
     public function testAMirroredWorkspaceReversesTheColumns(): void
     {
         $this->mounted();

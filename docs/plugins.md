@@ -1068,7 +1068,7 @@ Actions (from handlers/hooks):
 | `activeFile(): ?string` | Absolute path of the focused buffer |
 | `selectedFiles(): list<string>` | The files selected in the project tree, in tree order, directories left out. One is the ordinary case — the tree always has its cursor row selected — so a command that acts on a set checks the count and says what it wanted |
 | `documentText(): ?string` | Full text of the focused buffer |
-| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …]` (0-based); `top` is the first line the editor shows |
+| `caretPosition(): ?array` | `['line' => …, 'column' => …, 'top' => …, 'sticky' => […]]` (0-based); `top` is the first line the editor scrolls to, `sticky` the lines sticky scroll pins over the view above it, one per row — so the editor's first row shows `sticky[0]` when any is pinned, else `top` |
 | `openBuffers(): OpenBuffers` | The open buffers — which are open and edited, their text, saving one; see [Working with open buffers](#working-with-open-buffers) |
 | `participants(): PluginParticipants` | Your plugin's people in core's participant roster: `set(array $people)` (id ⇒ name, replacing the last list whole; `[]` takes them out), `outOfTouch()` (the link is lost: they stay as last seen for a minute, then go unless `set()` comes first), `yourName()` (the user's name as the others see it — the `displayName` setting, else the login name). Removing your plugin takes its people out |
 | `runs(): Runs` | The Run menu's tasks and the terminal runs a plugin starts; see [Running a task](#running-a-task) |

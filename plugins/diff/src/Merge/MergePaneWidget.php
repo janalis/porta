@@ -21,20 +21,23 @@ use Symfony\Component\Tui\Render\RenderContext;
  *
  * Built twice: theirs is the registered preview, and ours is its
  * {@see flank()}, seated on the editor's other side. Both draw
- * {@see MergeSides}' rows level with the editor's lines, from the editor's own
- * top line, so the three columns scroll as one. A conflict's first row is its
+ * {@see MergeSides}' rows level with the editor's lines — each row the line
+ * the editor shows on that row, its pinned sticky-scroll headers included —
+ * so the three columns scroll as one. A fold in the result is not followed. A conflict's first row is its
  * side's label behind an accept mark (⇥ from ours, ⇤ from theirs): a click on
  * it, or `a` with the keys here, keeps this side's lines for that conflict;
  * `b` keeps both. Every accept is one undo step in the editor.
  *
  * What the pane needs of the IDE arrives as closures, a plugin class being no
- * service: the result's current text, the caret and the editor's top line, a
+ * service: the result's current text, the caret and the editor's view, a
  * replace of the whole text, a jump, a scroll and a save.
  */
 final class MergePaneWidget extends EditorPaneWidget
 {
     /** The theirs pane's routing id; ours, a flank, is never routed to. */
     public const string PANE_ID = 'merge';
+
+    private string $path = '';
 
     /** @var list<string> the result as last fed, one entry per line */
     private array $lines = [];
@@ -44,7 +47,7 @@ final class MergePaneWidget extends EditorPaneWidget
 
     /**
      * @param \Closure(): ?string                                    $text    the result as the editor has it now
-     * @param \Closure(): (array{line: int, column: int, top: int}|null) $caret the caret, and the editor's top line
+     * @param \Closure(): (array{line: int, column: int, top: int, sticky: list<int>}|null) $caret the caret, the editor's top line and the lines sticky scroll pins over it
      * @param \Closure(string): void                                 $replace the result's whole text, as one undo step
      * @param \Closure(int): void                                    $jump    the caret to the start of a 0-based line
      * @param \Closure(int): void                                    $scroll  the editor's view by a number of rows, the caret where it is
@@ -80,6 +83,7 @@ final class MergePaneWidget extends EditorPaneWidget
     #[\Override]
     public function show(string $path, mixed $payload): void
     {
+        $this->path = $path;
         $this->lines = \explode("\n", \is_string($payload) ? $payload : '');
         $this->rows = MergeSides::rows($this->lines, $this->side);
         $this->invalidate();
@@ -125,7 +129,7 @@ final class MergePaneWidget extends EditorPaneWidget
     #[\Override]
     public function press(int $relRow, int $relCol): bool
     {
-        $row = $this->rows[$this->top() + $relRow] ?? null;
+        $row = $this->rowAt($relRow);
         if (MergeRowKind::Header === $row?->kind && null !== $row->region) {
             $this->accept($row->region, $this->side);
         }
@@ -143,7 +147,7 @@ final class MergePaneWidget extends EditorPaneWidget
     public function handleInput(string $data): void
     {
         $kb = $this->getKeybindings();
-        $current = MergeSides::current($this->lines, $this->caretLine());
+        $current = MergeSides::current($this->result(), $this->caretLine());
         match (true) {
             $kb->matches($data, 'merge_keep') => null === $current ? null : $this->accept($current, $this->side),
             $kb->matches($data, 'merge_keep_both') => null === $current ? null : $this->accept($current, ConflictSide::Both),
@@ -167,11 +171,10 @@ final class MergePaneWidget extends EditorPaneWidget
     {
         $columns = \max(0, $context->getColumns());
         $height = \max(0, $context->getRows());
-        $top = $this->top();
         $current = MergeSides::current($this->lines, $this->caretLine());
         $lines = [];
         for ($row = 0; $row < $height; ++$row) {
-            $lines[] = $this->renderRow($this->rows[$top + $row] ?? null, $current, $columns);
+            $lines[] = $this->renderRow($this->rowAt($row), $current, $columns);
         }
 
         return $this->withMenuOverlay($lines, $columns);
@@ -204,23 +207,57 @@ final class MergePaneWidget extends EditorPaneWidget
         return ($current ? $style->withBold() : $style)->apply(AnsiText::truncate(' '.$mark.' '.$label, $columns, pad: true));
     }
 
-    /** Keep $side's lines for conflict $index in the result, then put the caret where it was. */
+    /**
+     * Keep $side's lines for conflict $index in the result, then put the
+     * caret where it was — and draw the resolved result at once, both sides:
+     * a second accept before the feed catches up must find the conflicts as
+     * they are now.
+     */
     private function accept(int $index, ConflictSide $side): void
     {
-        $lines = \explode("\n", ($this->text)() ?? \implode("\n", $this->lines));
+        $lines = $this->result();
         $start = ConflictMarkers::find($lines)[$index]['start'] ?? null;
         $resolved = MergeSides::accept($lines, $index, $side);
         if (null === $start || null === $resolved) {
             return;
         }
-        ($this->replace)(\implode("\n", $resolved));
+        $text = \implode("\n", $resolved);
+        ($this->replace)($text);
+        $this->show($this->path, $text);
         ($this->jump)($start);
+    }
+
+    /**
+     * The result as the editor has it now, else as last fed.
+     *
+     * @return list<string>
+     */
+    private function result(): array
+    {
+        $text = ($this->text)();
+
+        return null === $text ? $this->lines : \explode("\n", $text);
+    }
+
+    /**
+     * The row drawn level with editor row $row: the line the editor shows
+     * there — a pinned header over the view, else the line scrolled to.
+     */
+    private function rowAt(int $row): ?MergeRow
+    {
+        $caret = ($this->caret)();
+        if (null === $caret) {
+            return null;
+        }
+        $sticky = $caret['sticky'];
+
+        return $this->rows[$sticky[$row] ?? ($caret['top'] + $row - \count($sticky))] ?? null;
     }
 
     /** The caret to the next ($direction 1) or previous (-1) conflict's first line, wrapping. */
     private function step(int $direction): void
     {
-        $starts = \array_column(ConflictMarkers::find($this->lines), 'start');
+        $starts = \array_column(ConflictMarkers::find($this->result()), 'start');
         if ([] === $starts) {
             return;
         }
@@ -233,12 +270,6 @@ final class MergePaneWidget extends EditorPaneWidget
     private function caretLine(): int
     {
         return ($this->caret)()['line'] ?? 0;
-    }
-
-    /** The editor's top line: the row this side starts drawing from. */
-    private function top(): int
-    {
-        return ($this->caret)()['top'] ?? 0;
     }
 
     private function sideName(): string

@@ -37,7 +37,7 @@ final readonly class KeymapFollowers
         $this->keys->onRebuild(function (Keybindings $keys): void {
             $this->editor->setKeybindings($keys);
             $this->keymapList->setKeybindings($keys);
-            foreach ($this->panes->all() as $pane) {
+            foreach ($this->panes->seated() as $pane) {
                 $pane->setKeybindings($keys);
             }
         });

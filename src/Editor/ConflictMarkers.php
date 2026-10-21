@@ -104,13 +104,15 @@ final class ConflictMarkers
      * region {@see find()} reports opens on such a line, so it needs no
      * separate check.
      *
-     * A lone `=======` is not counted: it is a Markdown or RST underline as
-     * often as a separator, and without an opener or closer it marks nothing.
+     * A marker is one as git writes it: seven of `<`, `|` or `>`, then a space
+     * or the end of the line — an eight-deep Markdown quote is none. A lone
+     * `=======` is not counted: it is a Markdown or RST underline as often as
+     * a separator, and without an opener or closer it marks nothing.
      *
      * @param list<string> $lines
      */
     public static function unresolved(array $lines): bool
     {
-        return null !== \array_find($lines, static fn (string $line): bool => \str_starts_with($line, '<<<<<<<') || \str_starts_with($line, '|||||||') || \str_starts_with($line, '>>>>>>>'));
+        return null !== \array_find($lines, static fn (string $line): bool => 1 === \preg_match('/^(?:<{7}|\|{7}|>{7})(?: |$)/', $line));
     }
 }

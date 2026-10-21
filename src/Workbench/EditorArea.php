@@ -36,13 +36,16 @@ final readonly class EditorArea
 
     /**
      * The editor-pane's focusable content: the active tab's viewer or lone
-     * preview, else the editor — or, in Split, whichever half has the keys.
+     * preview, else the editor — or, in Split, whichever side has the keys:
+     * the editor, the preview, or the preview's flank.
      */
     public function widget(): AbstractWidget
     {
         $preview = $this->preview($this->buffers->active());
+        $focus = $this->tui->getFocus();
+        $beside = null !== $preview && null !== $focus && ($focus === $preview || $focus === $preview->flank());
 
-        return null !== $preview && $this->tui->getFocus() === $preview ? $preview : $this->entry();
+        return $beside ? $focus : $this->entry();
     }
 
     /**

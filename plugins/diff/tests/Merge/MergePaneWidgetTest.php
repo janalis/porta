@@ -29,6 +29,12 @@ final class MergePaneWidgetTest extends TestCase
     private int $caretLine = 0;
     private int $top = 0;
 
+    /** @var list<int> the lines sticky scroll pins over the view */
+    private array $sticky = [];
+
+    /** Whether the editor has a view to give — none with no text file active. */
+    private bool $viewed = true;
+
     /** @var list<string> */
     private array $calls = [];
 
@@ -38,7 +44,7 @@ final class MergePaneWidgetTest extends TestCase
             $side,
             new Translator('en'),
             fn (): ?string => $this->editorText,
-            fn (): ?array => null === $this->editorText ? null : ['line' => $this->caretLine, 'column' => 0, 'top' => $this->top],
+            fn (): ?array => $this->viewed ? ['line' => $this->caretLine, 'column' => 0, 'top' => $this->top, 'sticky' => $this->sticky] : null,
             function (string $text): void {
                 $this->calls[] = 'replace';
                 $this->editorText = $text;
@@ -82,6 +88,37 @@ final class MergePaneWidgetTest extends TestCase
             [' a', ' ⇤ topic', ' theirs', '', '', '', ' b', ' ⇤ topic', ' t2', '', '', '', '', ''],
             self::plain($this->shown(ConflictSide::Theirs)),
         );
+    }
+
+    public function testEachRowIsTheLineTheEditorShowsThere(): void
+    {
+        // A sticky-scroll header pinned over the view: the editor's first row
+        // is line 0, the next ones lines 7 on — and so are the side's.
+        $this->sticky = [0];
+        $this->top = 7;
+
+        $this->assertSame([' a', ' ⇥ HEAD', ' o2', '', ''], self::plain($this->shown(ConflictSide::Ours), rows: 5));
+    }
+
+    public function testASecondClickRightAfterTheFirstFindsTheConflictsAsTheyAreNow(): void
+    {
+        // Before the feed catches up: the first accept is drawn at once, so
+        // the second conflict's label is already where the click lands.
+        $pane = $this->shown(ConflictSide::Theirs);
+
+        $pane->press(1, 3);
+        $this->assertSame(' ⇤ topic', self::plain($pane, rows: 4)[3], 'the second label moved up');
+        $pane->press(3, 3);
+
+        $this->assertSame("a\ntheirs\nb\nt2", $this->editorText);
+    }
+
+    public function testNoViewFromTheEditorDrawsNothing(): void
+    {
+        $pane = $this->shown(ConflictSide::Ours);
+        $this->viewed = false;
+
+        $this->assertSame(['', ''], self::plain($pane, rows: 2));
     }
 
     public function testItStartsFromTheEditorsTopLine(): void
@@ -177,6 +214,19 @@ final class MergePaneWidgetTest extends TestCase
         $this->assertStringStartsWith("x\na\ntheirs\nb\n", (string) $this->editorText);
     }
 
+    public function testAKeyFindsTheConflictInTheTextAsTypedNotAsLastFed(): void
+    {
+        // The first conflict resolved by hand, the feed not caught up yet:
+        // line 6 is inside the remaining conflict now, between two in the feed.
+        $pane = $this->shown(ConflictSide::Ours);
+        $this->editorText = "a\ntheirs\nb\n<<<<<<< HEAD\no2\n=======\nt2\n>>>>>>> topic";
+        $this->caretLine = 6;
+
+        $pane->handleInput('b');
+
+        $this->assertSame("a\ntheirs\nb\no2\nt2", $this->editorText);
+    }
+
     public function testWithNoTextFromTheEditorTheFedOneIsResolved(): void
     {
         $pane = $this->shown(ConflictSide::Theirs);
@@ -210,6 +260,7 @@ final class MergePaneWidgetTest extends TestCase
 
     public function testWithNoConflictTheKeysDoNothing(): void
     {
+        $this->editorText = 'clean';
         $pane = $this->pane(ConflictSide::Ours);
         $pane->show('/p/m.php', 'clean');
 

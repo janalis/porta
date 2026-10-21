@@ -190,4 +190,11 @@ final class ConflictMarkersTest extends TestCase
     {
         $this->assertFalse(ConflictMarkers::unresolved($this->lines(" <<<<<<< x\n// >>>>>>> y")));
     }
+
+    public function testAMarkerIsSevenThenASpaceOrTheEnd(): void
+    {
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines('>>>>>>>')), 'a bare closer');
+        $this->assertTrue(ConflictMarkers::unresolved($this->lines('|||||||')), 'a bare base');
+        $this->assertFalse(ConflictMarkers::unresolved($this->lines(">>>>>>>> an eight-deep quote\n<<<<<<<<\n>>>>>>>x")), 'none of these');
+    }
 }

@@ -50,8 +50,8 @@ final class PreviewFeeder
     private ?string $followedPath = null;
     private int $followedLine = -1;
 
-    /** The editor's top line when the preview was last repainted for it. */
-    private int $paintedTop = -1;
+    /** The editor's view — its top line and pinned headers — when the preview was last repainted for it. */
+    private string $paintedView = '';
 
     /** The version the armed timer will feed, so a frame that sees it again leaves the timer alone. */
     private ?string $pendingPath = null;
@@ -127,16 +127,24 @@ final class PreviewFeeder
         $this->tui->requestRender();
     }
 
-    /** The editor scrolled since the last repaint: the pane and its flank draw again. */
+    /**
+     * The editor's view moved since the last repaint: the pane and its flank
+     * draw again — and once more on the next frame. The pinned sticky-scroll
+     * headers settle while the editor renders, AFTER a flank seated before it
+     * has drawn this frame from the last ones; the frame asked for here is the
+     * one that sees them settled, and stops when the view stays put.
+     */
     private function repaintOnScroll(EditorPaneWidget $pane): void
     {
-        $top = $this->editor->viewport()->vScroll;
-        if ($top === $this->paintedTop) {
+        $viewport = $this->editor->viewport();
+        $view = $viewport->vScroll.':'.\implode(',', $viewport->stickyLines);
+        if ($view === $this->paintedView) {
             return;
         }
-        $this->paintedTop = $top;
+        $this->paintedView = $view;
         $pane->invalidate();
         $pane->flank()?->invalidate();
+        $this->tui->requestRender();
     }
 
     private function cancel(): void

@@ -121,6 +121,7 @@ final class IdePreviewFlankTest extends TestCase
                         'a notch and a press over the flank are the flank\'s',
                     );
                     $this->assertSame($flank, $tui->getFocus(), 'and the press gave it the keys');
+                    $this->assertSame($flank, Services::resolve($ide, EditorArea::class)->widget(), 'so it is the side the status bar and the tab lid speak for');
                     $this->assertSame(
                         [],
                         \array_values(\array_filter($pane->calls, static fn (string $call): bool => \str_starts_with($call, 'press') || \str_starts_with($call, 'scroll'))),

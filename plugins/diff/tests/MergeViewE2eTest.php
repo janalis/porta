@@ -193,4 +193,41 @@ final class MergeViewE2eTest extends TestCase
             ],
         );
     }
+
+    public function testUnderPinnedHeadersEachLineSitsOnTheSameRowAsInTheEditor(): void
+    {
+        // Inside a class method, scrolled: sticky scroll pins the class and
+        // the method over the view, so the editor's first row is not its top line.
+        \putenv('PATH=/nonexistent');
+        $body = \implode("\n", \array_map(static fn (int $n): string => \sprintf('        $x%d = %d;', $n, $n), \range(1, end: 40)));
+        $file = "<?php\n\nclass A\n{\n    public function f(): void\n    {\n{$body}\n<<<<<<< HEAD\n        \$y = 'ours';\n=======\n        \$y = 'theirs';\n>>>>>>> topic\n    }\n}\n";
+        $project = new TempProject(['m.php' => $file, '.porta.json' => '{"enabledPlugins":["diff"]}']);
+
+        $this->runIde(
+            $project,
+            $project->path('m.php'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->await(static fn (): bool => null !== self::ours($ide)->getContext(), what: 'the merge view');
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $editor->scrollBy(20);
+                    $tui->requestRender();
+                    $ours = self::rect($ide, self::ours($ide));
+                    $edit = self::rect($ide, $editor);
+
+                    $this->await(function () use ($tui, $terminal, $ours, $edit): bool {
+                        $grid = $this->screenGrid($tui, $terminal);
+                        foreach (\range($edit->row, $edit->row + $edit->rows - 1) as $row) {
+                            if (\str_contains(\mb_substr($grid[$row], $edit->col, $edit->columns), '$x30 = 30;')) {
+                                return \str_contains(\mb_substr($grid[$row], $ours->col, $ours->columns), '$x30 = 30;');
+                            }
+                        }
+
+                        return false;
+                    }, what: 'line 30 on the same row in ours as in the editor');
+                    $this->assertNotSame([], $editor->viewport()->stickyLines, 'headers were pinned, or this proves nothing');
+                },
+            ],
+        );
+    }
 }

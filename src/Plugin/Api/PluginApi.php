@@ -1343,7 +1343,7 @@ final class PluginApi
      * column), and the first line the editor shows of it — where the user is
      * looking, which the caret alone does not say.
      *
-     * @return array{line: int, column: int, top: int}|null
+     * @return array{line: int, column: int, top: int, sticky: list<int>}|null
      */
     public function caretPosition(): ?array
     {
@@ -1353,7 +1353,9 @@ final class PluginApi
         }
         $document = $runtime->editor->getDocument();
 
-        return ['line' => $document->cursorLine, 'column' => $document->cursorCol, 'top' => $runtime->editor->viewport()->vScroll];
+        $viewport = $runtime->editor->viewport();
+
+        return ['line' => $document->cursorLine, 'column' => $document->cursorCol, 'top' => $viewport->vScroll, 'sticky' => $viewport->stickyLines];
     }
 
     /**
