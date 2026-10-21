@@ -208,6 +208,31 @@ final class IdeMousePrimitivesTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
+    /** Under soft wrap the wheel scrolls rows: a notch goes INTO a tall line rather than past it. */
+    public function testUnderSoftWrapAWheelNotchScrollsIntoATallLine(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject([
+            'A.php' => "<?php\n// ".\str_repeat('word ', times: 120)."\n// after\n",
+            '.porta.json' => '{"settings":{"softWrap":true}}',
+        ]);
+
+        $this->runIde(
+            $project,
+            $project->path('A.php'),
+            [
+                300 => function (Tui $tui): void {
+                    $this->frame($tui);
+                    $tui->handleInput("\x1b[<65;45;7M"); // one notch down over the editor
+                    $scroll = EditorState::scroll(Widgets::editor($tui));
+                    $this->assertSame(1, $scroll->vScroll, 'onto the long line');
+                    $this->assertGreaterThan(0, $scroll->vScrollSegment, 'and into it, not past it');
+                    $this->assertSame(0, Widgets::editor($tui)->getDocument()->cursorLine, 'the caret stayed put');
+                },
+            ],
+        );
+    }
+
     /**
      * A wheel inside a floating surface moves THAT surface and nothing under it.
      *

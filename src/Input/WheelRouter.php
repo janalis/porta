@@ -187,7 +187,7 @@ final readonly class WheelRouter
             // scrolling away underneath it.
             $this->hit->contains($editorRect, $mouse) => function () use ($step): void {
                 if (!$this->panes->editor->movePopupSelection($step)) {
-                    $this->panes->editor->scrollBy($step);
+                    $this->panes->editor->scrollRows($step);
                 }
             },
             default => null,

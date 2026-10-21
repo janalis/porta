@@ -634,6 +634,21 @@ final class PluginApiTest extends TestCase
         $this->assertCount(3, $api->editorScreen(3));
     }
 
+    /** The wheel's own scroll: by screen rows, so under soft wrap INTO a tall line; the caret stays. */
+    public function testScrollEditorScrollsByRowsAsTheWheelDoes(): void
+    {
+        $api = $this->api();
+        $this->editor->showDocument('/p/a.php', new Document("a\n".\str_repeat('x', times: 300)."\nb\n"));
+        $this->editor->display->setSoftWrap(true);
+        $this->editor->render(new RenderContext(60, 10));
+
+        $api->scrollEditor(2);
+
+        $viewport = $this->editor->viewport();
+        $this->assertSame([1, 1], [$viewport->vScroll, $viewport->vScrollSegment], 'past a, then one row into the long line');
+        $this->assertSame(0, $this->editor->getDocument()->cursorLine);
+    }
+
     /** @var list<string> the roots a switch asked the IDE to reopen on */
     private array $reopened = [];
 

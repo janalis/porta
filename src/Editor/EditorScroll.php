@@ -109,6 +109,68 @@ final class EditorScroll
     }
 
     /**
+     * Scroll the view by $rows SCREEN rows without moving the caret: the
+     * wheel. While lines take more than one row each — soft wrap, code
+     * lenses, line blocks — the view steps through a tall line a row at a
+     * time, so all of it is in reach; otherwise rows are lines, and this is
+     * {@see scrollBy()}.
+     */
+    public function scrollRows(int $rows): void
+    {
+        if (null === $this->rowsForLine) {
+            $this->scrollBy($rows);
+
+            return;
+        }
+        // Each step moves one row or, at either end, nothing; |$rows| steps at most.
+        $step = 0;
+        while ($step < \abs($rows) && ($rows > 0 ? $this->rowDown() : $this->rowUp())) {
+            ++$step;
+        }
+        $this->detached = true;
+        ($this->invalidate)();
+    }
+
+    /** One row further down, unless the view already starts on the last row of the last line. */
+    private function rowDown(): bool
+    {
+        $rowsFor = $this->rowsForLine;
+        \assert(null !== $rowsFor, description: 'only stepped while lines are taller than one row');
+        if (($this->vScrollSegment + 1) < $rowsFor($this->vScroll)) {
+            ++$this->vScrollSegment;
+
+            return true;
+        }
+        $next = $this->foldModel->nextVisibleLine($this->vScroll);
+        $moved = $next < $this->document->getLineCount();
+        if ($moved) {
+            $this->vScroll = $next;
+            $this->vScrollSegment = 0;
+        }
+
+        return $moved;
+    }
+
+    /** One row further up, unless the view already starts at the top. */
+    private function rowUp(): bool
+    {
+        $rowsFor = $this->rowsForLine;
+        \assert(null !== $rowsFor, description: 'only stepped while lines are taller than one row');
+        if ($this->vScrollSegment > 0) {
+            --$this->vScrollSegment;
+
+            return true;
+        }
+        $moved = $this->vScroll > 0;
+        if ($moved) {
+            $this->vScroll = $this->foldModel->visibleLineAbove($this->vScroll, 1);
+            $this->vScrollSegment = $rowsFor($this->vScroll) - 1;
+        }
+
+        return $moved;
+    }
+
+    /**
      * Clamp the vertical scroll so the caret stays visible below the pinned
      * sticky-scroll band. Scrolling can change how many headers are pinned, so
      * iterate to a fixpoint (bounded — each pass adds at most one more sticky

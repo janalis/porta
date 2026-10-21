@@ -37,7 +37,7 @@ when it is shorter, its last row cut with `…` when it is longer. A row of the
 result's that holds no text — a code lens above a line, a block under one — is
 blank on each side, and a folded stretch is folded on the sides too, so the
 three columns stay level whatever the editor draws. A wheel notch over a side
-scrolls by lines.
+scrolls the editor as one over it does, a row at a time.
 
 ## The diff pane
 

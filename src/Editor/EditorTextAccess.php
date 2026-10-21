@@ -41,4 +41,7 @@ interface EditorTextAccess extends ActiveDocumentProvider
 
     /** Scroll the view by $delta lines without moving the caret. */
     public function scrollBy(int $delta): void;
+
+    /** Scroll the view by $rows screen rows without moving the caret, as the wheel does. */
+    public function scrollRows(int $rows): void;
 }

@@ -151,13 +151,18 @@ integrations = ["symfony", "phpunit"]
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         92  Plugin/Api/PluginApi: softWrap() and
-#                                editorRows(), so a diff wraps as the editor
-#                                does and the merge view's sides stay level
-#                                with its wrapped rows. Not one handle: the
-#                                first is safe during activate() (the git view
-#                                is built before the runtime is wired), the
-#                                second an action method. 90 before:
+#   too-many-methods         93  Plugin/Api/PluginApi: scrollEditor(), so a
+#                                wheel notch over a merge side scrolls the
+#                                editor by screen rows as one over it does —
+#                                jumpTo()'s $top is a LINE and cannot land
+#                                inside a wrapped one. 92 before: softWrap()
+#                                and editorScreen() (first editorRows()), so a
+#                                diff wraps as the editor does and the merge
+#                                view's sides stay level with its rows. Not
+#                                one handle: the first is safe during
+#                                activate() (the git view is built before the
+#                                runtime is wired), the second an action
+#                                method. 90 before:
 #                                registerMarkdownFence() and
 #                                its buffered drain add the Markdown rendering
 #                                extension point requested by the Mermaid plan.
@@ -380,7 +385,7 @@ integrations = ["symfony", "phpunit"]
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 143 }
-too-many-methods = { threshold = 92 }
+too-many-methods = { threshold = 93 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 78 }
 excessive-parameter-list = { threshold = 26 }

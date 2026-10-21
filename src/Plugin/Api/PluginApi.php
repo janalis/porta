@@ -1542,6 +1542,20 @@ final class PluginApi
     }
 
     /**
+     * Scroll the editor's view by $rows screen rows, the caret where it is,
+     * as the wheel over the editor does: under soft wrap a tall line a row at
+     * a time, a code lens or a line block a row like any other. The view
+     * snaps back to the caret the next time the caret moves. An action
+     * method: it throws during `activate()`.
+     */
+    public function scrollEditor(int $rows): void
+    {
+        $runtime = $this->manager->runtime();
+        $runtime->editor->scrollRows($rows);
+        $runtime->tui->requestRender();
+    }
+
+    /**
      * Move the caret (0-based line, UTF-16 column) in the active file and
      * scroll it into view — or, given $top, scroll so the editor shows that
      * line first: where someone else is looking, say. The view snaps back to

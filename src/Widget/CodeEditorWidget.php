@@ -826,6 +826,14 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->callbacks->completion?->viewportScrolled();
     }
 
+    /** Scroll the view by $rows screen rows without moving the caret, as the wheel does: through a tall wrapped line a row at a time. */
+    #[\Override]
+    public function scrollRows(int $rows): void
+    {
+        $this->scroll->scrollRows($rows);
+        $this->callbacks->completion?->viewportScrolled();
+    }
+
     /**
      * Scroll the view horizontally without moving the caret (horizontal wheel
      * or shift+wheel), clamped so the widest visible line stays reachable.

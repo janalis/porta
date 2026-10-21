@@ -35,12 +35,9 @@ return new class('diff') extends AbstractPlugin {
                 $jump = static function (int $line) use ($api): void {
                     $api->jumpTo($line);
                 };
-                // The view moves, the caret stays: the three columns follow the editor's top line.
+                // The view moves, the caret stays: the three columns follow the editor, a row a notch as over it.
                 $scroll = static function (int $rows) use ($api): void {
-                    $caret = $api->caretPosition();
-                    if (null !== $caret) {
-                        $api->jumpTo($caret['line'], $caret['column'], \max(0, $caret['top'] + $rows));
-                    }
+                    $api->scrollEditor($rows);
                 };
                 $save = static function () use ($api): void {
                     $path = $api->activeFile();

@@ -156,4 +156,56 @@ final class EditorScrollTest extends TestCase
 
         $this->assertSame(26, $this->scroll->vScroll);
     }
+
+    /** @return array{int, int} the top line and how many of its rows are scrolled away */
+    private function top(): array
+    {
+        return [$this->scroll->vScroll, $this->scroll->vScrollSegment];
+    }
+
+    /** The wheel under soft wrap: a tall line is scrolled through a row at a time, never jumped over. */
+    public function testScrollRowsStepsThroughATallLineARowAtATime(): void
+    {
+        $this->scroll->rowsForLine = static fn (int $line): int => 1 === $line ? 3 : 1;
+
+        $this->scroll->scrollRows(2);
+        $this->assertSame([1, 1], $this->top(), 'line 0, then into line 1');
+        $this->scroll->scrollRows(2);
+        $this->assertSame([2, 0], $this->top(), 'its last row, then on');
+        $this->scroll->scrollRows(-1);
+        $this->assertSame([1, 2], $this->top(), 'back up onto its LAST row');
+        $this->scroll->scrollRows(-9);
+        $this->assertSame([0, 0], $this->top(), 'and no further than the top');
+        $this->assertSame(0, $this->document->cursorLine, 'the caret never moved');
+
+        $this->settle();
+        $this->scroll->scrollRows(2);
+        $this->settle();
+        $this->assertSame([1, 1], $this->top(), 'detached: the render clamp leaves it there');
+    }
+
+    public function testScrollRowsSkipsAFoldAndStopsOnTheLastRow(): void
+    {
+        $this->scroll->rowsForLine = static fn (int $line): int => 99 === $line ? 2 : 1;
+        $this->foldModel->setRegions([[3, 5]], $this->document->version);
+        $this->document->setCursor(3, 0);
+        $this->foldModel->toggle();
+        $this->document->setCursor(0, 0);
+
+        $this->scroll->scrollRows(4);
+        $this->assertSame([6, 0], $this->top(), '0, 1, 2, 3 — then past the folded 4 and 5');
+        $this->scroll->scrollRows(-1);
+        $this->assertSame([3, 0], $this->top(), 'and back onto the fold start');
+
+        $this->scroll->scrollRows(500);
+        $this->assertSame([99, 1], $this->top(), 'the last line\'s last row, and no further');
+    }
+
+    public function testWithEveryLineOneRowScrollRowsIsScrollBy(): void
+    {
+        $this->scroll->scrollRows(30);
+
+        $this->assertSame([30, 0], $this->top());
+        $this->assertSame(1, $this->invalidations);
+    }
 }

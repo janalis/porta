@@ -318,4 +318,33 @@ final class MergeViewE2eTest extends TestCase
             ],
         );
     }
+
+    /** Under soft wrap a notch over a side scrolls the editor by rows: INTO a tall line, the three still level. */
+    public function testUnderSoftWrapANotchOverASideScrollsIntoATallLine(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $long = \str_repeat('z', times: 300);
+        $file = "<?php\n\$long = '{$long}';\n<<<<<<< HEAD\n\$y = 'ours';\n=======\n\$y = 'theirs';\n>>>>>>> topic\n";
+        $project = new TempProject(['m.php' => $file, '.porta.json' => '{"enabledPlugins":["diff"],"settings":{"softWrap":true}}']);
+
+        $this->runIde(
+            $project,
+            $project->path('m.php'),
+            [
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $editor = Services::resolve($ide, CodeEditorWidget::class);
+                    $level = $this->oursLineLevel($tui, $terminal, $ide);
+                    $this->await($level, what: 'level to begin with');
+                    $ours = self::rect($ide, self::ours($ide));
+
+                    $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $ours->col + 3, $ours->row + 3));
+
+                    $this->assertSame(1, $editor->viewport()->vScroll, 'onto the long line');
+                    $this->assertGreaterThan(0, $editor->viewport()->vScrollSegment, 'and into it, not past it');
+                    $this->assertSame(0, $editor->getDocument()->cursorLine, 'the caret did not move');
+                    $this->await($level, what: 'still level, scrolled into the long line');
+                },
+            ],
+        );
+    }
 }

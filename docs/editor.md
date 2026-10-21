@@ -574,8 +574,10 @@ a moving one.
 Everything follows the visual rows, not the document lines. `↑`/`↓` step
 through a wrapped line's segments before leaving it, arriving in the first
 segment from above and the last from below; clicking lands on the row you
-clicked; and the viewport scrolls INTO a line taller than the pane, which is
-the only way to reach a caret near the end of one.
+clicked; and the viewport scrolls INTO a line taller than the pane — to follow
+the caret near the end of one, and under the wheel, which steps a screen row at
+a time (a code-lens or block row counting as one), so the middle of a line
+taller than the pane is in reach without moving the caret.
 
 Wrapping is measured on the line's own text, not on its decorations. Inlay
 hints and inline diagnostics ride in the same row and would otherwise make the
