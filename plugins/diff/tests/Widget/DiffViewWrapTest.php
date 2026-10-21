@@ -9,6 +9,7 @@ use Porta\DiffPlugin\DiffDocument;
 use Porta\DiffPlugin\Tests\Support\DiffWidgetEvents;
 use Porta\DiffPlugin\Widget\DiffViewWidget;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\Probe;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Tooltip;
@@ -174,11 +175,27 @@ final class DiffViewWrapTest extends TestCase
         $body = self::body($widget, rows: 4);
         $this->assertSame(\str_repeat(' ', times: 10).'│ oo'.\str_repeat(' ', times: 26), $body[0], 'scrolled down just enough: the o\'s last row above');
         $this->assertSame(\str_repeat(' ', times: 10).'│ '.\str_repeat('n', times: 14).\str_repeat(' ', times: 14), $body[3], 'the n\'s all shown, to their last row');
-        $this->assertStringContainsString('[scrolled +2]', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(40, 6))[0]));
+        $this->assertStringContainsString('[scrolled +3]', AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(40, 6))[0]), 'screen rows above: the hunk, keep and the o\'s first');
 
         $widget->scrollBy(-10);
         $widget->scrollBy(10);
         $this->assertSame($body, self::body($widget, rows: 4), 'the wheel reaches the last row and stops there');
+    }
+
+    /** Scrolled into a tall row, a page counts only what is on screen: its rows scrolled away take none of the room. */
+    public function testAPageFromInsideATallRowCountsWhatIsShown(): void
+    {
+        $widget = new DiffViewWidget(new Translator('en'));
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,4 +1,4 @@\n ".\str_repeat('a', times: 70)."\n b\n c\n d\n"), 'a.txt');
+        $widget->useSoftWrap();
+        $widget->setFocused(true);
+        self::body($widget, rows: 3);
+        $widget->handleInput("\x1b[B"); // the a's, three rows, filling the pane
+        $widget->scrollBy(2); // their last row on top, then b and c
+
+        $widget->handleInput("\x1b[6~");
+
+        $this->assertSame(3, Probe::get($widget, 'cursor'), 'a page of two: b and c were on screen with the a\'s last row');
     }
 
     /** A row taller than the pane: the wheel scrolls through it, one screen row a notch, to its last. */

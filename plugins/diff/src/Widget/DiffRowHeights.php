@@ -117,7 +117,7 @@ final readonly class DiffRowHeights
     }
 
     /** The screen rows above diff row $row. */
-    private function offset(int $row): int
+    public function offset(int $row): int
     {
         return \array_sum(\array_slice($this->heights, offset: 0, length: \max(0, $row)));
     }

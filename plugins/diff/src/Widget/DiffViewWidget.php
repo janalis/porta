@@ -312,7 +312,8 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     /** A page of diff rows, one kept in view: what the last render showed below the toolbar. */
     private function page(): int
     {
-        return \max(1, $this->heights()->fitting($this->scroll, $this->visibleRows()) - 1);
+        // The top row's rows scrolled away are not on screen, so they do not take the page's room.
+        return \max(1, $this->heights()->fitting($this->scroll, $this->visibleRows() + $this->scrollSegment) - 1);
     }
 
     public function scrollBy(int $lines): void
@@ -687,10 +688,14 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $this->lastRows = $rows;
         $this->lastWidth = $width;
 
+        // Before anything asks for the heights, which re-measures them at this width.
+        $resized = $this->heightsWidth !== $width;
+        // Screen rows above the view, as the wheel steps: a row per diff row unwrapped.
+        $scrolled = null === $this->document ? 0 : $this->heights()->offset($this->scroll) + $this->scrollSegment;
         $title =
             ' '
             .(null === $this->path ? $this->translator->trans('Diff') : $this->pathTitle($this->path))
-            .($this->scroll > 0 ? '  '.$this->translator->trans('[scrolled +%count%]', ['%count%' => $this->scroll]) : '')
+            .($scrolled > 0 ? '  '.$this->translator->trans('[scrolled +%count%]', ['%count%' => $scrolled]) : '')
             .($this->hScroll > 0 ? '  '.$this->translator->trans('[→%count%]', ['%count%' => $this->hScroll]) : '');
         $lines = $this->renderToolbar($title, $width);
         $this->headerRows = \count($lines);
@@ -717,7 +722,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
             expandable: !$this->readOnly,
             wrap: $this->wrap,
         );
-        $resized = $this->heightsWidth !== $width;
         $heights = $this->heights();
         if ($resized && $this->wrap) {
             // Re-wrapped at the new width: the old scroll may now run past the end.
