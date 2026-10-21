@@ -3582,6 +3582,10 @@
         <source>Plugin "%name%" is in an untrusted project — not loaded</source>
         <target>Plugin "%name%" is in an untrusted project — not loaded</target>
       </trans-unit>
+      <trans-unit id="1223">
+        <source>install it yourself</source>
+        <target>install it yourself</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -199,10 +199,10 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame(['global', 'project'], $rows[0]->options);
         $this->assertSame('.porta.json', $rows[0]->optionLabels['project'] ?? null);
         $this->assertSame('git URL, local path, or vendor/name package', $rows[1]->hint);
-        $this->assertSame('local — Does local things', $rows[2]->label);
-        $this->assertSame('on · project · needs nowhere-tool', $rows[2]->hint, 'a missing required tool is named; a suggested one is not');
-        $this->assertSame('shared', $rows[3]->label, 'no description, just the name');
-        $this->assertSame('off · global', $rows[3]->hint);
+        $this->assertSame('local', $rows[2]->label, 'the name alone: a description would size the label column');
+        $this->assertSame('on · project · needs nowhere-tool · Does local things', $rows[2]->hint, 'a missing required tool is named, a suggested one is not; the description goes last');
+        $this->assertSame('shared', $rows[3]->label);
+        $this->assertSame('off · global', $rows[3]->hint, 'no description, nothing after');
         $this->assertSame('Open', $rows[3]->value);
         $this->assertSame('Installed', $rows[3]->fieldset);
     }
@@ -505,7 +505,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame('Tools', $row->fieldset);
         $this->assertSame('Install', $row->value, 'an Action row\'s value IS its button caption');
         $this->assertTrue($row->disabled, 'no composer here: the button cannot do anything');
-        $this->assertSame('missing · install it yourself, or set its path above', $row->hint);
+        $this->assertSame('missing · install it yourself', $row->hint);
     }
 
     public function testAMissingToolWithAManagerHereCanBeInstalled(): void
@@ -590,7 +590,7 @@ final class SettingsPluginsControllerTest extends TestCase
                     'extra' => [
                         'porta' => [
                             'tools' => [
-                                ['name' => 'dot', 'role' => 'suggested', 'purpose' => 'renders Graphviz diagrams', 'sources' => [['brew', 'graphviz']]],
+                                ['name' => 'dot', 'role' => 'suggested', 'purpose' => 'renders Graphviz diagrams', 'setting' => 'dotPath', 'sources' => [['brew', 'graphviz']]],
                             ],
                         ],
                     ],
@@ -604,7 +604,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $row = \array_find($controller->pluginRows('viewer'), static fn ($row): bool => 'pluginTool:dot' === $row->key);
         $this->assertInstanceOf(SettingsRow::class, $row);
         $this->assertSame('dot — renders Graphviz diagrams', $row->label);
-        $this->assertSame('optional, missing · install it yourself, or set its path above', $row->hint, 'suggested, and no brew here');
+        $this->assertSame('optional, missing · install it yourself, or set its path above', $row->hint, 'suggested, no brew here, and a setting to name it in');
     }
 
     /** A tool's version is asked the first time its page shows, once, and the page re-reads itself with it. */

@@ -3582,6 +3582,10 @@
         <source>Plugin "%name%" is in an untrusted project — not loaded</source>
         <target>El plugin "%name%" está en un proyecto no confiable — no se carga</target>
       </trans-unit>
+      <trans-unit id="1223">
+        <source>install it yourself</source>
+        <target>instálelo usted mismo</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -65,7 +65,7 @@ final class SettingsPagesGoldenTest extends TestCase
     private const string GOLDEN = __DIR__.'/../Support/golden/settings-pages.json';
 
     /** Every page a controller composes rows for. */
-    private const array PAGES = ['general', 'interface', 'highlighting', 'commandLine', 'lang:php', 'plugins'];
+    private const array PAGES = ['general', 'interface', 'highlighting', 'commandLine', 'lang:php', 'plugins', 'plugin:viewer'];
 
     /**
      * Which page above stands for which section class.
@@ -168,13 +168,33 @@ final class SettingsPagesGoldenTest extends TestCase
             '.porta.json' => \json_encode(
                 [
                     // Overrides the global theme — the only way a row can say
-                    // "overrides global". The empty plugin list keeps the Plugins
-                    // page to its fixed rows rather than whatever is bundled today.
+                    // "overrides global". The empty bundled list keeps the
+                    // Plugins page to the project's own two rather than
+                    // whatever is bundled today; one of them is off.
                     'settings' => ['theme' => 'dark'],
                     'enabledPlugins' => [],
+                    'disabledPlugins' => ['quiet'],
                 ],
                 \JSON_THROW_ON_ERROR,
             ),
+            // One plugin as the index and its own page show it: described,
+            // on, one required tool missing and one suggested, removable.
+            '.porta/plugins/viewer/plugin.php' => self::plugin('viewer'),
+            '.porta/plugins/viewer/composer.json' => \json_encode(
+                [
+                    'description' => 'Shows diagrams',
+                    'extra' => [
+                        'porta' => [
+                            'tools' => [
+                                ['name' => 'renderer', 'purpose' => 'draws them', 'sources' => [['brew', 'renderer']]],
+                                ['name' => 'dot', 'role' => 'suggested', 'purpose' => 'renders Graphviz', 'sources' => [['brew', 'graphviz']]],
+                            ],
+                        ],
+                    ],
+                ],
+                \JSON_THROW_ON_ERROR,
+            ),
+            '.porta/plugins/quiet/plugin.php' => self::plugin('quiet'),
         ]);
         \putenv('PORTA_HOME='.$this->home->dir);
         // The Command line page names ~/.local/bin/porta: a fixed home keeps
@@ -213,6 +233,15 @@ final class SettingsPagesGoldenTest extends TestCase
             ],
             columns: 120,
             rows: 30, // the boxed pages; SettingsRowLayoutTest pins the compact form
+        );
+    }
+
+    private static function plugin(string $name): string
+    {
+        return (
+            "<?php\nreturn new class implements Porta\\Plugin\\Api\\PortaPlugin {\n"
+            ."    public function name(): string { return '{$name}'; }\n"
+            ."    public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {}\n};\n"
         );
     }
 

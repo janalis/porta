@@ -90,6 +90,29 @@ final class PickerLayoutTest extends TestCase
         );
     }
 
+    /** The label is what is picked: a sentence-long hint is cut to what it leaves, never the name. */
+    public function testALongHintNeverTakesTheLabel(): void
+    {
+        $out = PickerLayout::layoutList(
+            [0, 0, 24, 60],
+            [
+                'title' => 'Disable plugin',
+                'items' => [['label' => 'graph-viewer', 'hint' => \str_repeat('Renders diagrams in the editor and in Markdown ', times: 4), 'value' => 'g']],
+                'selected' => 0,
+                'hovered' => null,
+                'filter' => new TextField(),
+                'onPick' => static fn (): null => null,
+            ],
+            $this->styles(),
+            frame: new WindowFrame(),
+        );
+        $row = \array_first(\array_filter(\array_map(AnsiUtils::stripAnsiCodes(...), $out['rows']), static fn (string $r): bool => \str_contains($r, 'Renders')));
+
+        $this->assertStringContainsString('graph-viewer', (string) $row, 'the name whole');
+        $this->assertStringContainsString('Renders diagrams', (string) $row, 'and as much of the hint as is left');
+        $this->assertStringContainsString('…', (string) $row);
+    }
+
     /**
      * A filter longer than its box shows what you just typed, not what you
      * typed first.

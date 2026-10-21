@@ -3582,6 +3582,10 @@
         <source>Plugin "%name%" is in an untrusted project — not loaded</source>
         <target>התוסף "%name%" נמצא בפרויקט לא מהימן — לא נטען</target>
       </trans-unit>
+      <trans-unit id="1223">
+        <source>install it yourself</source>
+        <target>התקינו אותו בעצמכם</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

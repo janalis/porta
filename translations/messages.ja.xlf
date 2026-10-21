@@ -3582,6 +3582,10 @@
         <source>Plugin "%name%" is in an untrusted project — not loaded</source>
         <target>プラグイン「%name%」は信頼されていないプロジェクトにあります — 読み込みません</target>
       </trans-unit>
+      <trans-unit id="1223">
+        <source>install it yourself</source>
+        <target>ご自身でインストールしてください</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

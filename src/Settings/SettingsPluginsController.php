@@ -125,10 +125,16 @@ final class SettingsPluginsController
         if ([] !== $missing) {
             $hint[] = $this->translator->trans('needs %tools%', ['%tools%' => \implode(', ', $missing)]);
         }
+        // Last, where the hint's truncation costs least: in the label, a
+        // sentence-long description sized the label column and pushed every
+        // row's button and state off the screen.
+        if ('' !== $description) {
+            $hint[] = $description;
+        }
 
         return new SettingsRow(
             key: self::OPEN_PREFIX.$name,
-            label: '' === $description ? $name : $name.' — '.$description,
+            label: $name,
             kind: SettingsRowKind::Action,
             value: $this->translator->trans('Open'),
             restart: false,
@@ -311,7 +317,10 @@ final class SettingsPluginsController
         if (!$status->available) {
             $missing = $status->tool->role->blocksWhenMissing() ? $this->translator->trans('missing') : $this->translator->trans('optional, missing');
 
-            return $this->jobs->installable($status->tool) ? $missing : $missing.' · '.$this->translator->trans('install it yourself, or set its path above');
+            // "Set its path" only where there is a setting to set it in.
+            $yourself = null === $status->tool->setting ? 'install it yourself' : 'install it yourself, or set its path above';
+
+            return $this->jobs->installable($status->tool) ? $missing : $missing.' · '.$this->translator->trans($yourself);
         }
         $newer = $this->updates->newer($status);
         $version = null === $newer ? $status->version : $this->translator->trans('%from% → %to% available', ['%from%' => $status->version, '%to%' => $newer]);

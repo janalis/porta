@@ -115,7 +115,12 @@ final class PickerLayout
         foreach ($visible as $i => $item) {
             $row = RowSelection::of(($windowStart + $i) === $selected, ($windowStart + $i) === $overlay['hovered']);
             $style = $styles->of(ModalRowStyle::role($row));
-            $hintWidth = AnsiUtils::visibleWidth($item['hint']);
+            // The label is what is picked, so it keeps half the row (or all it
+            // needs, when less) and a long hint is cut to what is left: given
+            // the room first, a sentence-long hint drew the row with no name.
+            $labelRoom = \min(AnsiUtils::visibleWidth($item['label']), \intdiv($width, num2: 2));
+            $hint = AnsiText::truncate($item['hint'], \max(0, $width - 3 - self::boxWidth($item) - $labelRoom));
+            $hintWidth = AnsiUtils::visibleWidth($hint);
             // A checklist's box leads its label, as a browser's does, and is
             // not part of it: the filter matches the words alone.
             $box = \array_key_exists('checked', $item) ? FieldBox::checkbox($item['checked'], tint: RowSelection::Selected === $row ? null : $styles).' ' : '';
@@ -133,7 +138,7 @@ final class PickerLayout
             }
             // The first column is the selection's shape, the ▌ every list in
             // the IDE draws, so the row reads as chosen without its shade.
-            $content[] = $style->apply(SelectionBar::of($selectedRow, focused: true)->value.$box.self::withHint($label, $styles->of(Role::CompletionHint)->apply($item['hint']), $direction).' ');
+            $content[] = $style->apply(SelectionBar::of($selectedRow, focused: true)->value.$box.self::withHint($label, $styles->of(Role::CompletionHint)->apply($hint), $direction).' ');
         }
         if ([] === $visible) {
             $content[] = $styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$emptyMessage, $width, pad: true, ellipsis: ''));
