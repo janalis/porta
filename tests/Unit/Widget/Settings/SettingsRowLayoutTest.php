@@ -9,6 +9,7 @@ use Porta\I18n\BaseDirection;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Ui\Density;
+use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Settings\SettingsRowLayout;
 
 /** The label column every row on a page aligns its control against. */
@@ -38,10 +39,55 @@ final class SettingsRowLayoutTest extends TestCase
     public function testAPathologicalLabelIsCappedAtAThirdOfThePane(): void
     {
         $label = $this->row(\str_repeat('word ', times: 40));
+        $text = new SettingsRow('t', 'Binary', SettingsRowKind::Text, '', false);
+        $bool = new SettingsRow('b', 'Flag', SettingsRowKind::Bool, true, false);
 
-        $this->assertSame(40, SettingsRowLayout::measure([$label], 120, Density::Roomy)->label, 'a third');
-        $this->assertSame(28, SettingsRowLayout::measure([$label], 60, Density::Roomy)->label, 'a comfortable label, past a third');
+        // Each hint exactly fills what a third (a comfortable label) leaves
+        // it, so one column more for the label would cost it a line.
+        $this->assertSame(40, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy, details: ['', \str_repeat('x', times: 49)])->label, 'a third');
+        $this->assertSame(28, SettingsRowLayout::measure([$label, $bool], 60, Density::Roomy, details: ['', \str_repeat('x', times: 20)])->label, 'a comfortable label, past a third');
         $this->assertSame(20, SettingsRowLayout::measure([$label], 40, Density::Roomy)->label, 'never past half');
+        $this->assertSame(60, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy)->label, 'no hint to pay for it: half');
+    }
+
+    /**
+     * Past a third, the column widens toward its longest label for as long
+     * as no hint pays a line for it, and no further.
+     */
+    public function testTheColumnWidensWhileNoHintPaysForIt(): void
+    {
+        $label = $this->row('phpantom_lsp — the PHP language server');
+        $text = new SettingsRow('t', 'Binary', SettingsRowKind::Text, '', false);
+
+        $this->assertSame(
+            38,
+            SettingsRowLayout::measure([$label, $text], 101, Density::Roomy, details: ['', 'missing · install it yourself, or set its path above'])->label,
+            'two lines of hint either way',
+        );
+        $this->assertSame(36, SettingsRowLayout::measure([$label, $text], 101, Density::Roomy, details: ['', \str_repeat('x', times: 32).' y'])->label, 'thirty-four columns of hint kept on one line');
+
+        $button = new SettingsRow('a', 'Go', SettingsRowKind::Action, \str_repeat('caption ', times: 6), false);
+        $boxes = SettingsRowLayout::measure([$this->row(\str_repeat('word ', times: 10)), $button], 70, Density::Roomy);
+        $this->assertSame([34, FieldBox::MAX_WIDTH], [$boxes->label, $boxes->control], 'no further than the boxes keep their width');
+    }
+
+    /**
+     * The comfortable width gives way to a third of the pane when that lets a
+     * hint wrap rather than be cut — and only then.
+     */
+    public function testTheComfortableColumnGivesWayToAHint(): void
+    {
+        $label = $this->row(\str_repeat('word ', times: 10));
+        $text = new SettingsRow('t', 'Binary', SettingsRowKind::Text, '', false);
+        $hint = ['', \str_repeat('x', times: 13)];
+
+        $squeezed = SettingsRowLayout::measure([$label, $text], 66, Density::Roomy, details: $hint);
+        $this->assertSame(22, $squeezed->label, 'a third: thirteen columns beside the field, where seven cut it');
+        $this->assertSame([\str_repeat('x', times: 13)], $squeezed->details[1]);
+        $this->assertSame(21, SettingsRowLayout::measure([$label, $text], 64, Density::Roomy, details: $hint)->label, 'twelve columns are enough');
+        $cut = SettingsRowLayout::measure([$label, $text], 63, Density::Roomy, details: $hint);
+        $this->assertNull($cut->details[1], 'a third would cut it too');
+        $this->assertSame(28, $cut->label, 'and widening would take the columns its cut row keeps');
     }
 
     /** A narrow pane still leaves a usable column rather than collapsing to nothing. */

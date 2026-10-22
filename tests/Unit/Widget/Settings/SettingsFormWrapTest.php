@@ -150,12 +150,12 @@ final class SettingsFormWrapTest extends TestCase
 
         $this->assertSame(
             [
-                '                                 ┏━━━┓    לע ךמוס) הציר ןמזב סקודניא',
-                '    לש PHP-ה דוק תא ליעפמ תרשה · ┃ ✓ ┃    תא ץירמ תרשה :הדובעה תביבס',
-                '       ותוא סקדנאל ידכ טקיורפה   ┗━━━┛                    (הלש PHP-ה',
-                '                                 ╭───╮',
-                '                                 │ ✓ │                           רצק',
-                '                                 ╰───╯',
+                '                             ┏━━━┓',
+                'לש PHP-ה דוק תא ליעפמ תרשה · ┃ ✓ ┃  תביבס לע ךמוס) הציר ןמזב סקודניא',
+                '   ותוא סקדנאל ידכ טקיורפה   ┗━━━┛   (הלש PHP-ה תא ץירמ תרשה :הדובעה',
+                '                             ╭───╮',
+                '                             │ ✓ │                               רצק',
+                '                             ╰───╯',
             ],
             \array_map(\rtrim(...), \array_slice($rows, offset: 2, length: 6)),
         );
@@ -177,5 +177,35 @@ final class SettingsFormWrapTest extends TestCase
         );
 
         $this->assertSame('   טקיורפה לש PHP 8.5   ╰───╯', $rows[4]);
+    }
+
+    /**
+     * A plugin's untranslated hint, wrapped in a mirrored form, keeps every
+     * line's punctuation where its Latin puts it: each break is an edge, and
+     * the edge's `~/.` or bracket took the form's direction — the drive drew
+     * `porta/bin./~` and `install it under)` over `(Tools below`.
+     */
+    public function testAMirroredFormKeepsALatinHintsPunctuationOnEveryLine(): void
+    {
+        $widget = new SettingsFormWidget(new Translator('he'));
+        $widget->setRows([new SettingsRow('bin', 'בינארי', SettingsRowKind::Text, '', false, hint: 'empty = PATH, then ~/.porta/bin (install it under Tools below)')], 'T');
+
+        $rows = \array_map(
+            static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
+            $widget->render(new RenderContext(60, 8)),
+        );
+
+        $this->assertSame(
+            ['     empty = PATH, then · │                      │  יראניב', '  ~/.porta/bin (install   ╰──────────────────────╯', '  it under Tools below)'],
+            \array_slice($rows, offset: 3, length: 3),
+        );
+
+        $widget->setRows([new SettingsRow('rt', 'Runtime indexing (trusts the workspace: the server executes its PHP)', SettingsRowKind::Bool, true, false)], 'T');
+        $label = \array_map(
+            static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
+            $widget->render(new RenderContext(44, 8)),
+        );
+
+        $this->assertSame('             │ ✓ │  (trusts the workspace:', $label[3], 'a label\'s lines too');
     }
 }

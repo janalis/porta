@@ -25,7 +25,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * the two halves of a mixed page disagreed about which column meant what.
  *
  * Measured per page rather than per row: the label column is capped at a
- * third of the pane (a comfortable label's width while half allows) so one
+ * third of the pane (a comfortable label's width while half allows, and
+ * while that leaves the hints room to wrap), widening toward half for as
+ * long as no hint pays a line for it, so one
  * pathological label cannot push every value off the right edge, and every
  * boxed control on the page shares ONE width, the way a form's
  * inputs line up — sized for the widest control, capped at a browser input's
@@ -142,13 +144,28 @@ final readonly class SettingsRowLayout
         // longest word, short of two thirds of the pane, so wrapping breaks
         // between words: `Auto-pairs` in nine columns was `Auto-pair` over a
         // lone `s`.
-        $share = \min(\intdiv($width, num2: 2), \max(\intdiv($width, num2: 3), self::COMFORTABLE_LABEL));
-        $label = \min($longest, \max(self::MIN_LABEL, $share, \min($word, \intdiv($width * 2, num2: 3))));
-        $room = \max(0, $width - self::LABEL_CHROME - $label);
-        $boxed = FieldBox::ROWS === FieldBox::rowsFor($density, $room);
-
-        $control = \min($needed, FieldBox::MAX_WIDTH, $room);
-        $layout = new self($label, $control, $boxed, [], [], [], []);
+        $third = \min($longest, \max(self::MIN_LABEL, \intdiv($width, num2: 3), \min($word, \intdiv($width * 2, num2: 3))));
+        $label = \min($longest, \max($third, \min(\intdiv($width, num2: 2), self::COMFORTABLE_LABEL)));
+        // The comfortable width gives way to a third when that is what lets
+        // the hints wrap: a 62-column form cut every hint to `· e…` beside a
+        // 28-column label column.
+        $cost = self::cost($rows, $details, $width, $label, $density, $needed);
+        $thirdCost = self::cost($rows, $details, $width, $third, $density, $needed);
+        if ($thirdCost[0] < $cost[0]) {
+            [$label, $cost] = [$third, $thirdCost];
+        }
+        // And widens toward the longest label, up to half the pane, for as
+        // long as no hint pays a line for it: `phpantom_lsp — the PHP
+        // language server` wrapped in a third of a 101-column form while its
+        // hint beside it took two lines either way.
+        for ($wider = \min($longest, \intdiv($width, num2: 2)); $wider > $label; --$wider) {
+            if (self::cost($rows, $details, $width, $wider, $density, $needed) !== $cost) {
+                continue;
+            }
+            $label = $wider;
+            break;
+        }
+        $layout = self::columns($label, $width, $density, $needed);
 
         $heights = [];
         $legends = [];
@@ -162,25 +179,74 @@ final readonly class SettingsRowLayout
             // A button whose caption fell back to its own label leaves the
             // label column blank rather than saying it twice.
             $text = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : self::label($row->label, $direction);
-            $lines = self::wrap($text, $label);
+            $lines = self::anchored(self::wrap($text, $label), $direction);
             $labels[] = $lines;
             $detail = $details[$index] ?? '';
-            $beside = $width - self::LABEL_CHROME - $label - self::controlWidth($row, $control, $boxed) - self::DETAIL_LEAD;
+            $beside = self::beside($row, $width, $layout);
             $detailLines = match (true) {
                 '' === $detail => [],
                 $beside < self::MIN_DETAIL => null,
-                default => self::wrap($detail, $beside),
+                default => self::anchored(self::wrap($detail, $beside), $direction),
             };
             $wrapped[] = $detailLines;
             $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS)
             + \max(
-                $boxed ? FieldBox::ROWS : 1,
+                $layout->boxed ? FieldBox::ROWS : 1,
                 $layout->top(\count($lines)) + \count($lines),
                 null === $detailLines ? 0 : $layout->top(1) + \count($detailLines),
             );
         }
 
-        return new self($label, $control, $boxed, $heights, $legends, $labels, $wrapped);
+        return new self($label, $layout->control, $layout->boxed, $heights, $legends, $labels, $wrapped);
+    }
+
+    /** The columns a label column of $label leaves the controls, as a layout with no items yet. */
+    private static function columns(int $label, int $width, Density $density, int $needed): self
+    {
+        $room = \max(0, $width - self::LABEL_CHROME - $label);
+
+        return new self($label, \min($needed, FieldBox::MAX_WIDTH, $room), FieldBox::ROWS === FieldBox::rowsFor($density, $room), [], [], [], []);
+    }
+
+    /**
+     * What a label column of $label costs the hints: how many it leaves too
+     * little room to wrap in and the columns their cut row keeps, how many
+     * lines the rest wrap to, and the controls' width. A wider label must not
+     * narrow the boxes, nor take a cut hint's last columns: at 110 columns
+     * every `· e…` went.
+     *
+     * @param list<SettingsRow> $rows
+     * @param list<string> $details
+     *
+     * @return array{int, int, int, int}
+     */
+    private static function cost(array $rows, array $details, int $width, int $label, Density $density, int $needed): array
+    {
+        $layout = self::columns($label, $width, $density, $needed);
+        $squeezed = 0;
+        $kept = 0;
+        $lines = 0;
+        foreach ($rows as $index => $row) {
+            $detail = $details[$index] ?? '';
+            $beside = self::beside($row, $width, $layout);
+            if ('' === $detail) {
+                continue;
+            }
+            if ($beside < self::MIN_DETAIL) {
+                ++$squeezed;
+                $kept += $beside;
+                continue;
+            }
+            $lines += \count(self::wrap($detail, $beside));
+        }
+
+        return [$squeezed, $kept, $lines, $layout->control];
+    }
+
+    /** The columns one row's detail has beside its control, its ` · ` taken out. */
+    private static function beside(SettingsRow $row, int $width, self $layout): int
+    {
+        return $width - self::LABEL_CHROME - $layout->label - self::controlWidth($row, $layout->control, $layout->boxed) - self::DETAIL_LEAD;
     }
 
     /**
@@ -211,6 +277,35 @@ final readonly class SettingsRowLayout
         }
 
         return AnsiText::wrap(\implode(' ', $words), $width);
+    }
+
+    /**
+     * Each wrapped line of a mirrored form with a left-to-right mark on an
+     * edge its Latin reaches: a line is its own run, so the punctuation a
+     * break leaves at its edge took the form's direction and left for the
+     * far side — `~/.porta/bin` drew as `porta/bin./~`, and a bracket split
+     * across two lines mirrored on both. {@see self::label()} marks a whole
+     * label's end; a wrap makes an edge of every line break.
+     *
+     * @param non-empty-list<string> $lines
+     *
+     * @return non-empty-list<string>
+     */
+    private static function anchored(array $lines, BaseDirection $direction): array
+    {
+        if (BaseDirection::Rtl !== $direction) {
+            return $lines;
+        }
+
+        return \array_map(static function (string $line): string {
+            $first = [];
+            $last = [];
+            $latin = '/^[^\p{Hebrew}\p{Arabic}]$/u';
+            $start = 1 === \preg_match('/\p{L}/u', $line, $first) && 1 === \preg_match($latin, $first[0]) ? Bidi::LTR_MARK : '';
+            $end = 1 === \preg_match('/.*(\p{L})/us', $line, $last) && 1 === \preg_match($latin, $last[1]) ? Bidi::LTR_MARK : '';
+
+            return $start.$line.$end;
+        }, $lines);
     }
 
     /** The columns one row's control is drawn in: a checkbox its own, every other kind the page's. */
