@@ -96,7 +96,7 @@ final class SettingsFormWrapTest extends TestCase
         $form = new SettingsFormWidget(new Translator('en'));
         $form->setRows($rows);
         $form->selectKey('k2');
-        $tui = TestTui::create(160, 16);
+        $tui = TestTui::create(220, 16);
         $terminal = $tui->getTerminal();
         $this->assertInstanceOf(VirtualTerminal::class, $terminal, 'the test rig\'s terminal');
         $tui->add(new ContainerWidget()->add($form));
@@ -110,7 +110,7 @@ final class SettingsFormWrapTest extends TestCase
             return \array_map(AnsiUtils::stripAnsiCodes(...), $lines->toArray());
         };
 
-        $wide = $frame(160);
+        $wide = $frame(220);
         $this->assertCount(1, \array_filter($wide, static fn (string $l): bool => \str_contains($l, $long)), 'whole on one row');
 
         $narrow = $frame(40);
@@ -119,7 +119,7 @@ final class SettingsFormWrapTest extends TestCase
         $this->assertSame([], \array_filter($narrow, static fn (string $l): bool => \str_contains($l, 'Runtime')), 'scrolled past the item that grew');
         $this->assertSame([40], \array_unique(\array_map(AnsiUtils::visibleWidth(...), $narrow)));
 
-        $this->assertSame($wide, $frame(160), 'widened back: the first item scrolls back in, whole');
+        $this->assertSame($wide, $frame(220), 'widened back: the first item scrolls back in, whole');
     }
 
     /**
@@ -150,12 +150,12 @@ final class SettingsFormWrapTest extends TestCase
 
         $this->assertSame(
             [
-                '                          ┏━━━┓',
-                'PHP-ה דוק תא ליעפמ תרשה · ┃ ✓ ┃     תביבס לע ךמוס) הציר ןמזב סקודניא',
-                '  סקדנאל ידכ טקיורפה לש   ┗━━━┛      (הלש PHP-ה תא ץירמ תרשה :הדובעה',
-                '                   ותוא',
-                '                          ╭───╮',
-                '                          │ ✓ │                                  רצק',
+                '                                 ┏━━━┓    לע ךמוס) הציר ןמזב סקודניא',
+                '    לש PHP-ה דוק תא ליעפמ תרשה · ┃ ✓ ┃    תא ץירמ תרשה :הדובעה תביבס',
+                '       ותוא סקדנאל ידכ טקיורפה   ┗━━━┛                    (הלש PHP-ה',
+                '                                 ╭───╮',
+                '                                 │ ✓ │                           רצק',
+                '                                 ╰───╯',
             ],
             \array_map(\rtrim(...), \array_slice($rows, offset: 2, length: 6)),
         );

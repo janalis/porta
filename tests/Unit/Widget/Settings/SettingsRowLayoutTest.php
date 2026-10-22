@@ -30,14 +30,18 @@ final class SettingsRowLayoutTest extends TestCase
     }
 
     /**
-     * One pathological label must not push every value off the right edge, so
-     * the column stops at half the pane and the label wraps inside it.
+     * One pathological label must not push every value off the right edge:
+     * the column stops at a third of the pane and the label wraps inside it,
+     * leaving the control and its detail the rest. A comfortable label's 28
+     * columns are kept whole while half the pane allows.
      */
-    public function testAPathologicalLabelIsCappedAtHalfThePane(): void
+    public function testAPathologicalLabelIsCappedAtAThirdOfThePane(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('word ', times: 40))], 60, Density::Roomy);
+        $label = $this->row(\str_repeat('word ', times: 40));
 
-        $this->assertSame(30, $layout->label);
+        $this->assertSame(40, SettingsRowLayout::measure([$label], 120, Density::Roomy)->label, 'a third');
+        $this->assertSame(28, SettingsRowLayout::measure([$label], 60, Density::Roomy)->label, 'a comfortable label, past a third');
+        $this->assertSame(20, SettingsRowLayout::measure([$label], 40, Density::Roomy)->label, 'never past half');
     }
 
     /** A narrow pane still leaves a usable column rather than collapsing to nothing. */
@@ -151,6 +155,29 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame(10, SettingsRowLayout::measure([$this->row('Auto-pairs on')], 18, Density::Roomy)->label, 'half of 18 is nine; the word is ten');
         $this->assertSame([['Auto-pairs', 'on']], SettingsRowLayout::measure([$this->row('Auto-pairs on')], 18, Density::Roomy)->labels);
         $this->assertSame(12, SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 20).' y')], 18, Density::Roomy)->label, 'never past two thirds');
+    }
+
+    /**
+     * A word wider than its line breaks after its last hyphen or slash that
+     * fits, not at whatever letter the width lands on — and only a word with
+     * no such break is cut mid-letter.
+     */
+    public function testAnOverWideWordBreaksAtAHyphenOrSlash(): void
+    {
+        $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
+        $wrap = static fn (string $detail): ?array => SettingsRowLayout::measure([$text], 50, Density::Roomy, details: [$detail])->details[0];
+
+        // 50 less the chrome, the six-column label, the field and ` · `: thirteen.
+        $this->assertSame(['comma-', 'separated; *'], $wrap('comma-separated; *'));
+        $this->assertSame(['~/.porta/bin/', 'symfony-lsp'], $wrap('~/.porta/bin/symfony-lsp'), 'the last break that fits');
+        $this->assertSame(['~/.porta/', 'binaries'], $wrap('~/.porta/binaries'), 'a slash breaks too');
+        $this->assertSame(['abcdefghijklm', 'nop'], $wrap('abcdefghijklmnop'), 'nowhere to break: cut');
+        $this->assertSame(['-abcdefghijkl', 'mnop'], $wrap('-abcdefghijklmnop'), 'a leading hyphen leaves nothing before it to keep');
+        $this->assertSame(
+            [['abc-', 'defghijklmno', 'p']],
+            SettingsRowLayout::measure([$this->row('abc-defghijklmnop')], 18, Density::Roomy)->labels,
+            'a label too: its column stops at two thirds of the pane',
+        );
     }
 
     public function testWrappedTextCentresOnTheValueRow(): void

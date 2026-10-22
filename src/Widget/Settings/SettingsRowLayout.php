@@ -24,9 +24,10 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * checkbox BEFORE the label while every other kind put its control after, so
  * the two halves of a mixed page disagreed about which column meant what.
  *
- * Measured per page rather than per row: the label column is capped at half
- * the pane so one pathological label cannot push every value off the right
- * edge, and every boxed control on the page shares ONE width, the way a form's
+ * Measured per page rather than per row: the label column is capped at a
+ * third of the pane (a comfortable label's width while half allows) so one
+ * pathological label cannot push every value off the right edge, and every
+ * boxed control on the page shares ONE width, the way a form's
  * inputs line up — sized for the widest control, capped at a browser input's
  * size rather than the pane's.
  *
@@ -48,6 +49,13 @@ final readonly class SettingsRowLayout
 {
     /** A label column narrower than this is not worth aligning to. */
     private const int MIN_LABEL = 8;
+
+    /**
+     * The column a label keeps whole before a third of the pane would wrap
+     * it, while half the pane allows: `Relative line numbers` is not a label
+     * that should wrap in a sixty-column form.
+     */
+    private const int COMFORTABLE_LABEL = 28;
 
     /** A text field's width, value or not: a field, not a label that grows. */
     private const int TEXT_FIELD = 24;
@@ -127,11 +135,15 @@ final readonly class SettingsRowLayout
             $word = \max($word, ...\array_map(AnsiUtils::visibleWidth(...), \explode(' ', $row->label)));
             $needed = \max($needed, self::needs($row));
         }
-        // A narrow pane widens the column to the longest word, short of two
-        // thirds of the pane, so wrapping breaks between words: `Auto-pairs`
-        // in nine columns was `Auto-pair` over a lone `s`.
-        // @mago-expect lint:literal-named-argument -- intdiv's parameter is called `num2`; `intdiv($width, num2: 2)` names the divisor after nothing anyone thinks in
-        $label = \min($longest, \max(self::MIN_LABEL, \intdiv($width, 2), \min($word, \intdiv($width * 2, num2: 3))));
+        // A third of the pane, or a comfortable label's width while half the
+        // pane allows: a longer label wraps, and the rest is the control's and
+        // its detail's — half left a hint fourteen columns to wrap in beside
+        // one long label's column. A narrow pane widens the column to the
+        // longest word, short of two thirds of the pane, so wrapping breaks
+        // between words: `Auto-pairs` in nine columns was `Auto-pair` over a
+        // lone `s`.
+        $share = \min(\intdiv($width, num2: 2), \max(\intdiv($width, num2: 3), self::COMFORTABLE_LABEL));
+        $label = \min($longest, \max(self::MIN_LABEL, $share, \min($word, \intdiv($width * 2, num2: 3))));
         $room = \max(0, $width - self::LABEL_CHROME - $label);
         $boxed = FieldBox::ROWS === FieldBox::rowsFor($density, $room);
 
@@ -150,14 +162,14 @@ final readonly class SettingsRowLayout
             // A button whose caption fell back to its own label leaves the
             // label column blank rather than saying it twice.
             $text = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : self::label($row->label, $direction);
-            $lines = AnsiText::wrap($text, $label);
+            $lines = self::wrap($text, $label);
             $labels[] = $lines;
             $detail = $details[$index] ?? '';
             $beside = $width - self::LABEL_CHROME - $label - self::controlWidth($row, $control, $boxed) - self::DETAIL_LEAD;
             $detailLines = match (true) {
                 '' === $detail => [],
                 $beside < self::MIN_DETAIL => null,
-                default => AnsiText::wrap($detail, $beside),
+                default => self::wrap($detail, $beside),
             };
             $wrapped[] = $detailLines;
             $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS)
@@ -169,6 +181,36 @@ final readonly class SettingsRowLayout
         }
 
         return new self($label, $control, $boxed, $heights, $legends, $labels, $wrapped);
+    }
+
+    /**
+     * {@see AnsiText::wrap()}, but a word wider than the line breaks after its
+     * last `-` or `/` that fits rather than at whatever letter the width
+     * lands on: `comma-separated;` in fourteen columns was `comma-separat`
+     * over `ed;`. Only a word with no such break left is cut mid-letter.
+     *
+     * The break is a space put after the hyphen or slash, which never shows:
+     * the two halves were wider than the line together, so wrap never puts
+     * them back on one.
+     *
+     * @return non-empty-list<string>
+     */
+    private static function wrap(string $text, int $width): array
+    {
+        $words = [];
+        foreach (\explode(' ', $text) as $word) {
+            while (AnsiUtils::visibleWidth($word) > $width) {
+                $head = [];
+                if (1 !== \preg_match('/^(.+[-\/])/us', AnsiUtils::sliceByColumn($word, startCol: 0, length: $width), $head)) {
+                    break; // nowhere to break: wrap cuts it
+                }
+                $words[] = $head[1];
+                $word = \substr($word, \strlen($head[1]));
+            }
+            $words[] = $word;
+        }
+
+        return AnsiText::wrap(\implode(' ', $words), $width);
     }
 
     /** The columns one row's control is drawn in: a checkbox its own, every other kind the page's. */
