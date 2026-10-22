@@ -38,8 +38,9 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * one pushed its control off the column every other row keeps, and the detail
  * was cut to one line whose rest only a tooltip could say. A wrapped label is
  * centred on the control's value row; a wrapped detail starts ON that row, so
- * its ` · ` stays beside the label, and spills downward. The item grows to
- * hold either. Measured from the width each frame offers, so a window resized
+ * its ` · ` stays beside the label, and spills downward — or, with too
+ * little room beside the control, starts on the row under it, in the
+ * control's column. The item grows to hold either. Measured from the width each frame offers, so a window resized
  * by its edge or its splitter re-wraps on the next frame.
  *
  * Items are {@see FieldBox::ROWS} tall when boxed, a checkbox too, and the
@@ -93,8 +94,10 @@ final readonly class SettingsRowLayout
         public array $legends,
         /** @var list<non-empty-list<string>> each item's label, wrapped to the label column */
         public array $labels,
-        /** @var list<list<string>|null> each item's detail, wrapped beside its control; null where there is too little room to */
+        /** @var list<list<string>|null> each item's detail, wrapped beside its control or under it; null where there is too little room for either */
         public array $details,
+        /** @var list<bool> whether each item's detail wraps under its control, there being too little room beside it */
+        public array $under,
     ) {}
 
     /**
@@ -146,12 +149,13 @@ final readonly class SettingsRowLayout
         // lone `s`.
         $third = \min($longest, \max(self::MIN_LABEL, \intdiv($width, num2: 3), \min($word, \intdiv($width * 2, num2: 3))));
         $label = \min($longest, \max($third, \min(\intdiv($width, num2: 2), self::COMFORTABLE_LABEL)));
-        // The comfortable width gives way to a third when that is what lets
-        // the hints wrap: a 62-column form cut every hint to `· e…` beside a
-        // 28-column label column.
+        // The comfortable width gives way to a third when that is what keeps
+        // the hints beside their controls rather than under them, or cut: a
+        // 62-column form cut every hint to `· e…` beside a 28-column label
+        // column.
         $cost = self::cost($rows, $details, $width, $label, $density, $needed);
         $thirdCost = self::cost($rows, $details, $width, $third, $density, $needed);
-        if ($thirdCost[0] < $cost[0]) {
+        if ([$thirdCost[0], $thirdCost[1]] < [$cost[0], $cost[1]]) {
             [$label, $cost] = [$third, $thirdCost];
         }
         // And widens toward the longest label, up to half the pane, for as
@@ -171,6 +175,7 @@ final readonly class SettingsRowLayout
         $legends = [];
         $labels = [];
         $wrapped = [];
+        $under = [];
         $previous = null;
         foreach ($rows as $index => $row) {
             $legend = null !== $row->fieldset && $row->fieldset !== $previous ? $row->fieldset : null;
@@ -182,22 +187,24 @@ final readonly class SettingsRowLayout
             $lines = self::anchored(self::wrap($text, $label), $direction);
             $labels[] = $lines;
             $detail = $details[$index] ?? '';
-            $beside = self::beside($row, $width, $layout);
+            [$room, $below] = self::room($row, $width, $layout);
             $detailLines = match (true) {
                 '' === $detail => [],
-                $beside < self::MIN_DETAIL => null,
-                default => self::anchored(self::wrap($detail, $beside), $direction),
+                $room < self::MIN_DETAIL => null,
+                default => self::anchored(self::wrap($detail, $room), $direction),
             };
             $wrapped[] = $detailLines;
+            $under[] = $below;
+            $controlRows = $layout->boxed ? FieldBox::ROWS : 1;
             $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS)
             + \max(
-                $layout->boxed ? FieldBox::ROWS : 1,
+                $controlRows,
                 $layout->top(\count($lines)) + \count($lines),
-                null === $detailLines ? 0 : $layout->top(1) + \count($detailLines),
+                null === $detailLines ? 0 : ($below ? $controlRows : $layout->top(1)) + \count($detailLines),
             );
         }
 
-        return new self($label, $layout->control, $layout->boxed, $heights, $legends, $labels, $wrapped);
+        return new self($label, $layout->control, $layout->boxed, $heights, $legends, $labels, $wrapped, $under);
     }
 
     /** The columns a label column of $label leaves the controls, as a layout with no items yet. */
@@ -205,15 +212,14 @@ final readonly class SettingsRowLayout
     {
         $room = \max(0, $width - self::LABEL_CHROME - $label);
 
-        return new self($label, \min($needed, FieldBox::MAX_WIDTH, $room), FieldBox::ROWS === FieldBox::rowsFor($density, $room), [], [], [], []);
+        return new self($label, \min($needed, FieldBox::MAX_WIDTH, $room), FieldBox::ROWS === FieldBox::rowsFor($density, $room), [], [], [], [], []);
     }
 
     /**
      * What a label column of $label costs the hints: how many it leaves too
-     * little room to wrap in and the columns their cut row keeps, how many
-     * lines the rest wrap to, and the controls' width. A wider label must not
-     * narrow the boxes, nor take a cut hint's last columns: at 110 columns
-     * every `· e…` went.
+     * little room to wrap in, how many it sends under their control, how many
+     * lines they wrap to, and the controls' width — a wider label must not
+     * narrow the boxes either.
      *
      * @param list<SettingsRow> $rows
      * @param list<string> $details
@@ -223,24 +229,45 @@ final readonly class SettingsRowLayout
     private static function cost(array $rows, array $details, int $width, int $label, Density $density, int $needed): array
     {
         $layout = self::columns($label, $width, $density, $needed);
-        $squeezed = 0;
-        $kept = 0;
+        $cut = 0;
+        $under = 0;
         $lines = 0;
         foreach ($rows as $index => $row) {
             $detail = $details[$index] ?? '';
-            $beside = self::beside($row, $width, $layout);
+            [$room, $below] = self::room($row, $width, $layout);
             if ('' === $detail) {
                 continue;
             }
-            if ($beside < self::MIN_DETAIL) {
-                ++$squeezed;
-                $kept += $beside;
+            if ($room < self::MIN_DETAIL) {
+                ++$cut;
                 continue;
             }
-            $lines += \count(self::wrap($detail, $beside));
+            $under += (int) $below;
+            $lines += \count(self::wrap($detail, $room));
         }
 
-        return [$squeezed, $kept, $lines, $layout->control];
+        return [$cut, $under, $lines, $layout->control];
+    }
+
+    /**
+     * The columns one row's detail wraps in, its ` · ` taken out, and whether
+     * under its control: beside it while {@see self::MIN_DETAIL} columns are
+     * left there, else on the rows under the control, from its column to the
+     * pane's edge — a 62-column form cut every hint to `· e…`. Under
+     * {@see self::MIN_DETAIL} there too, the room beside it, where it is cut.
+     *
+     * @return array{int, bool}
+     */
+    private static function room(SettingsRow $row, int $width, self $layout): array
+    {
+        $beside = self::beside($row, $width, $layout);
+        $under = $width - self::LABEL_CHROME - $layout->label - self::DETAIL_LEAD;
+
+        return match (true) {
+            $beside >= self::MIN_DETAIL => [$beside, false],
+            $under >= self::MIN_DETAIL => [$under, true],
+            default => [$beside, false],
+        };
     }
 
     /** The columns one row's detail has beside its control, its ` · ` taken out. */

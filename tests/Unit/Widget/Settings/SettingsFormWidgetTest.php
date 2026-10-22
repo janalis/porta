@@ -131,13 +131,14 @@ final class SettingsFormWidgetTest extends TestCase
     public function testARowSaysWhatItCouldNotShow(): void
     {
         $widget = $this->longHintWidget();
-        // 40 columns leave the hint too little room to wrap in: it is cut on one row.
-        $rows = \explode("\n", $this->plain($widget->render(new RenderContext(40, 20))));
+        // 24 columns leave the hint too little room to wrap in, beside the
+        // field or under it: it is cut on one row.
+        $rows = \explode("\n", $this->plain($widget->render(new RenderContext(24, 20))));
         $rowOf = static fn (string $needle): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $needle)));
 
         $this->assertNull($widget->tooltipAt($rowOf('Plain'), 3));
         $long = $widget->tooltipAt($rowOf('Long'), 3);
-        $this->assertSame(['settings:long', 'a hint far too long to fit beside the field in a narrow pane', 0, 40], [$long?->key, $long?->text, $long?->colStart, $long?->colEnd]);
+        $this->assertSame(['settings:long', 'a hint far too long to fit beside the field in a narrow pane', 0, 24], [$long?->key, $long?->text, $long?->colStart, $long?->colEnd]);
         $this->assertSame('Changed from its default — r puts it back', $widget->tooltipAt($rowOf('Changed'), 3)?->text);
         $this->assertNull($widget->tooltipAt(0, 3), 'the title is nobody\'s');
         $this->assertNull($widget->tooltipAt(\count($rows) - 1, 3), 'nor the footer');

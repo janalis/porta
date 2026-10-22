@@ -505,7 +505,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * One item's screen rows, each paired with its owner: the legend rule
      * between two blank rows if the item opens a fieldset (all nobody's), then
      * the control's rows with the label wrapped and centred on the control's
-     * value row, the detail wrapped from that row down, and the modified
+     * value row, the detail wrapped from that row down (or under the control,
+     * in its column, when there is no room beside it), and the modified
      * marker on the label's first line. Text longer than the control grows the item.
      *
      * @return list<array{string, int|null}>
@@ -533,7 +534,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         $labelTop = $layout->top(\count($labels));
         $detail = SettingsRowDetail::of($row, $this->translator);
         $details = $layout->details[$index] ?? null;
-        $detailTop = $layout->top(1); // the detail starts beside the label's row, and only spills down
+        $under = $layout->under[$index] ?? false;
+        // The detail starts beside the label's row and only spills down; with
+        // no room there, on the row under the control, in its column.
+        $detailTop = $under ? \count($control) : $layout->top(1);
         $height = ($layout->heights[$index] ?? 0) - \count($out);
         $editing = $index === $this->editing && null !== $this->editField;
         for ($i = 0; $i < $height; ++$i) {
@@ -541,7 +545,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             $text = null === $label
                 ? AnsiText::blank(2 + $layout->label)
                 : ($i === $labelTop ? $this->marker($row) : '  ').AnsiText::padRight($label, $layout->label);
-            $text .= $this->gap().($control[$i] ?? AnsiText::blank($controlWidth)).$this->valueEnd();
+            $line = null === $details ? null : $details[$i - $detailTop] ?? null;
+            $text .= $this->gap().($under && null !== $line ? '' : ($control[$i] ?? AnsiText::blank($controlWidth)).$this->valueEnd());
             $cut = '';
             if (null === $details && $i === $middle) {
                 // Too little room to wrap in: the detail takes what the control
@@ -554,7 +559,6 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
                 }
                 $cut = AnsiUtils::visibleWidth($this->detailLead().$detail) > $room ? $detail : '';
             }
-            $line = null === $details ? null : $details[$i - $detailTop] ?? null;
             if (null !== $line) {
                 $text .= $this->styles->of(Role::Dim)->apply(($i === $detailTop ? $this->detailLead() : $this->detailIndent()).$line);
             }

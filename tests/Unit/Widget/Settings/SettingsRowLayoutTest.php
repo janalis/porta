@@ -85,9 +85,9 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame(22, $squeezed->label, 'a third: thirteen columns beside the field, where seven cut it');
         $this->assertSame([\str_repeat('x', times: 13)], $squeezed->details[1]);
         $this->assertSame(21, SettingsRowLayout::measure([$label, $text], 64, Density::Roomy, details: $hint)->label, 'twelve columns are enough');
-        $cut = SettingsRowLayout::measure([$label, $text], 63, Density::Roomy, details: $hint);
-        $this->assertNull($cut->details[1], 'a third would cut it too');
-        $this->assertSame(28, $cut->label, 'and widening would take the columns its cut row keeps');
+        $under = SettingsRowLayout::measure([$label, $text], 63, Density::Roomy, details: $hint);
+        $this->assertSame([false, true], $under->under, 'a third would not keep it beside the field either: under it');
+        $this->assertSame([\str_repeat('x', times: 13)], $under->details[1]);
     }
 
     /** A narrow pane still leaves a usable column rather than collapsing to nothing. */
@@ -253,15 +253,31 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame([[]], SettingsRowLayout::measure([$text], 80, Density::Roomy)->details, 'no detail, no lines');
     }
 
-    /** Under {@see SettingsRowLayout::MIN_DETAIL} columns a wrapped detail is a tower: it keeps one cut row instead. */
-    public function testADetailTooNarrowToWrapIsLeftToBeCut(): void
+    /**
+     * Under {@see SettingsRowLayout::MIN_DETAIL} columns beside its control a
+     * wrapped detail is a tower: it wraps under the control instead, from the
+     * control's column to the edge — and where even that is too narrow, keeps
+     * one cut row.
+     */
+    public function testADetailWithNoRoomBesideWrapsUnderItsControl(): void
     {
         $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
         $detail = 'a hint far too long to fit';
 
-        $this->assertNull(SettingsRowLayout::measure([$text], 48, Density::Roomy, details: [$detail])->details[0]);
-        $this->assertSame([3], SettingsRowLayout::measure([$text], 48, Density::Roomy, details: [$detail])->heights);
-        $this->assertSame(['a hint far', 'too long to', 'fit'], SettingsRowLayout::measure([$text], 49, Density::Roomy, details: [$detail])->details[0]);
+        $under = SettingsRowLayout::measure([$text], 48, Density::Roomy, details: [$detail]);
+        $this->assertSame([['a hint far too long to fit']], $under->details, 'eleven columns beside it, thirty-five under it');
+        $this->assertSame([true], $under->under);
+        $this->assertSame([4], $under->heights, 'the box, then the line under it');
+        $beside = SettingsRowLayout::measure([$text], 49, Density::Roomy, details: [$detail]);
+        $this->assertSame([['a hint far', 'too long to', 'fit']], $beside->details, 'twelve beside it are enough');
+        $this->assertSame([false], $beside->under);
+        $this->assertSame([4], $beside->heights, 'three lines from the value row');
+
+        $cut = SettingsRowLayout::measure([$text], 24, Density::Roomy, details: [$detail]);
+        $this->assertSame([null], $cut->details, 'eleven columns under it: cut');
+        $this->assertSame([false], $cut->under);
+        $this->assertSame([3], $cut->heights);
+        $this->assertSame([['a hint far', 'too long to', 'fit']], SettingsRowLayout::measure([$text], 25, Density::Roomy, details: [$detail])->details, 'twelve under it');
     }
 
     /** A checkbox leaves the detail what IT is drawn in, not the page's control width. */

@@ -180,6 +180,57 @@ final class SettingsFormWrapTest extends TestCase
     }
 
     /**
+     * With too little room beside its field, a hint wraps on the rows under
+     * it, in its column, rather than being cut to `· e…` — a checkbox's hint,
+     * with room beside its narrow box, stays there. Mirrored, it opens at the
+     * box's start edge and flows away from it.
+     */
+    public function testAHintWithNoRoomBesideItsFieldWrapsUnderIt(): void
+    {
+        $rows = [
+            new SettingsRow('en', 'Enabled', SettingsRowKind::Bool, true, false, hint: 'from global'),
+            new SettingsRow('bin', 'symfony-lsp binary', SettingsRowKind::Text, '', false, hint: 'empty = PATH, then ~/.porta/bin (install it under Tools below)'),
+            new SettingsRow('lang', 'Languages', SettingsRowKind::Text, 'php', false),
+            new SettingsRow('rt', 'Runtime indexing (trusts the workspace: the server executes its PHP)', SettingsRowKind::Bool, false, false),
+        ];
+        $widget = new SettingsFormWidget(new Translator('en'));
+        $widget->setRows($rows, 'T');
+        $screen = \array_map(static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes($line)), $widget->render(new RenderContext(62, 20)));
+
+        $this->assertSame(
+            [
+                '  Enabled                          │ ✓ │ · from global',
+                '                                   ╰───╯',
+                '                                   ╭──────────────────────╮',
+                '  symfony-lsp binary               │                      │',
+                '                                   ╰──────────────────────╯',
+                '                                    · empty = PATH, then',
+                '                                      ~/.porta/bin (install it',
+                '                                      under Tools below)',
+                '                                   ╭──────────────────────╮',
+            ],
+            \array_slice($screen, offset: 3, length: 9),
+        );
+        $this->assertNull($widget->tooltipAt(6, 3), 'drawn whole, so nothing to say');
+
+        $mirrored = new SettingsFormWidget(new Translator('he'));
+        $mirrored->setRows($rows, 'T');
+        $screen = \array_map(
+            static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl))),
+            $mirrored->render(new RenderContext(62, 20)),
+        );
+        $this->assertSame(['      empty = PATH, then ·', '~/.porta/bin (install it', '      under Tools below)'], \array_slice($screen, offset: 8, length: 3));
+
+        // Narrower still, under the field is no wider than beside it: the
+        // hint is cut beside its checkbox, and its tooltip says the rest.
+        $narrow = new SettingsFormWidget(new Translator('en'));
+        $narrow->setRows([new SettingsRow('flag', 'Flag', SettingsRowKind::Bool, true, false, hint: 'a hint far too long to fit')], 'T');
+        $screen = \array_map(static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes($line)), $narrow->render(new RenderContext(20, 8)));
+        $this->assertSame('  Flag  │ ✓ │ · a h…', $screen[3]);
+        $this->assertSame('a hint far too long to fit', $narrow->tooltipAt(3, 3)?->text);
+    }
+
+    /**
      * A plugin's untranslated hint, wrapped in a mirrored form, keeps every
      * line's punctuation where its Latin puts it: each break is an edge, and
      * the edge's `~/.` or bracket took the form's direction — the drive drew
