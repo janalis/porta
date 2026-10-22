@@ -217,6 +217,49 @@ final class IdeViewWindowTest extends TestCase
         );
     }
 
+    /**
+     * The form re-wraps to the window it is in: dragged narrow, a label too
+     * long for its column wraps inside it, and dragged back it is one row
+     * again — the edge drives the wrap, frame by frame, with no keypress.
+     */
+    public function testANarrowedWindowWrapsItsSettingsAndAWidenedOneUnwrapsThem(): void
+    {
+        $this->runIde(
+            $this->project(),
+            null,
+            [
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $presenter = Services::resolve($ide, ViewWindowPresenter::class);
+                    $box = $this->openSettings($tui, $terminal, $ide);
+                    $whole = fn (): bool => [] !== \array_filter($this->screenGrid($tui, $terminal), static fn (string $row): bool => \str_contains($row, 'Format on save (LSP)'));
+                    $split = static fn (array $grid): bool => [] !== \array_filter($grid, static fn (string $row): bool => 1 === \preg_match('/  Auto-pair +[[│┃]/u', $row));
+                    $this->await($whole, what: 'the label on one row');
+
+                    $right = $box->col + $box->width - 1;
+                    self::drag($tui, $box->startRow + 5, $right, $box->startRow + 5, $right - 50);
+                    $this->await(
+                        function () use ($tui, $terminal): bool {
+                            $grid = $this->screenGrid($tui, $terminal);
+                            $at = \array_key_first(\array_filter($grid, static fn (string $row): bool => 1 === \preg_match('/  Format on\b/u', $row)));
+
+                            return null !== $at && !\str_contains($grid[$at], 'Format on save (LSP)') && \str_contains($grid[$at + 1] ?? '', 'save');
+                        },
+                        what: 'the label wrapped in the narrowed window',
+                    );
+                    $this->assertFalse($split($this->screenGrid($tui, $terminal)), 'a word is never split across rows');
+
+                    $narrow = $presenter->box();
+                    $this->assertInstanceOf(ModalBox::class, $narrow);
+                    $edge = $narrow->col + $narrow->width - 1;
+                    self::drag($tui, $narrow->startRow + 5, $edge, $narrow->startRow + 5, $edge + 50);
+                    $this->await($whole, what: 'one row again once widened');
+                },
+            ],
+            columns: 120,
+            rows: 36,
+        );
+    }
+
     public function testAMenuCommandClosesTheWindowAndOneOfTheViewsOwnKeepsIt(): void
     {
         $this->runIde(

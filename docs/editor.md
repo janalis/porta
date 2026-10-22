@@ -936,7 +936,7 @@ a click or the wheel puts it away.
 - **Completion popup:** abbreviated kinds spelled out (`iface` → Interface).
 - **Dock strip and pane dividers:** a stopped session's `○`, a status cut to
   fit, and the resize grabs.
-- **Settings:** a detail cut to fit, and what the `●` of a changed value means.
+- **Settings:** a detail cut to fit (a long label or detail wraps onto more rows instead; it is cut only where the pane leaves it too little room to wrap in), and what the `●` of a changed value means.
 - **Git view:** status letters (`R` renamed from…, untracked files shown as `A`),
   the stage boxes, the diff toggles, a history row in full, and why Commit is
   disabled.

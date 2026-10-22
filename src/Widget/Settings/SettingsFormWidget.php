@@ -460,7 +460,13 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
         // The window the items get: the pane less the title, the rule under
         // it and the footer.
         $window = \max(1, $rows - 3);
-        $layout = SettingsRowLayout::measure($this->rows, $width, $this->density->current(), $this->direction());
+        $layout = SettingsRowLayout::measure(
+            $this->rows,
+            $width,
+            $this->density->current(),
+            $this->direction(),
+            \array_map(fn (SettingsRow $row): string => SettingsRowDetail::of($row, $this->translator), $this->rows),
+        );
         $scroll = $this->list->followHeights($layout->heights, $window);
         $this->lastPage = $this->list->countFitting($layout->heights, $scroll, $window);
 
@@ -498,8 +504,9 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
     /**
      * One item's screen rows, each paired with its owner: the legend rule
      * between two blank rows if the item opens a fieldset (all nobody's), then
-     * the control's rows with the label, the modified marker and the detail on
-     * the control's middle row.
+     * the control's rows with the label wrapped and centred on the control's
+     * value row, the detail wrapped from that row down, and the modified
+     * marker on the label's first line. Text longer than the control grows the item.
      *
      * @return list<array{string, int|null}>
      */
@@ -514,32 +521,45 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
             $out[] = [AnsiText::blank($width), null];
         }
         $control = $this->control($row, $index, $layout);
-        $middle = \intdiv(\count($control), num2: 2); // the label sits on the value row
+        $middle = \intdiv(\count($control), num2: 2); // the control's value row
+        $controlWidth = AnsiUtils::visibleWidth($control[0]);
         $this->controls[$index] = [
             'row' => $top + \count($out),
             'col' => SettingsRowLayout::LABEL_CHROME + $layout->label,
-            'width' => SettingsRowKind::Bool === $row->kind ? AnsiUtils::visibleWidth($control[0]) : $layout->control, // a checkbox is as wide as it is drawn, boxed or not
+            'width' => SettingsRowKind::Bool === $row->kind ? $controlWidth : $layout->control, // a checkbox is as wide as it is drawn, boxed or not
             'height' => \count($control),
         ];
-        // A button whose caption fell back to its own label leaves the label
-        // column blank rather than saying it twice.
-        $label = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : $row->label;
+        $labels = $layout->labels[$index] ?? [''];
+        $labelTop = $layout->top(\count($labels));
         $detail = SettingsRowDetail::of($row, $this->translator);
+        $details = $layout->details[$index] ?? null;
+        $detailTop = $layout->top(1); // the detail starts beside the label's row, and only spills down
+        $height = ($layout->heights[$index] ?? 0) - \count($out);
         $editing = $index === $this->editing && null !== $this->editField;
-        foreach ($control as $i => $part) {
-            $text = $i === $middle
-                ? $this->marker($row).AnsiText::padRight(SettingsRowLayout::label($label, $this->direction()), $layout->label)
-                : AnsiText::blank(2 + $layout->label);
-            $text .= $this->gap().$part.$this->valueEnd();
-            // The detail takes what the control leaves and is cut on its own:
-            // truncating the whole row spent its ellipsis on the control's
-            // closing rail whenever the detail overflowed.
-            $room = $width - AnsiUtils::visibleWidth($text);
-            if ($i === $middle && '' !== $detail && $room > 3) {
-                $text .= $this->styles->of(Role::Dim)->apply(AnsiText::truncate($this->detailSeparator().$detail, $room));
+        for ($i = 0; $i < $height; ++$i) {
+            $label = $labels[$i - $labelTop] ?? null;
+            $text = null === $label
+                ? AnsiText::blank(2 + $layout->label)
+                : ($i === $labelTop ? $this->marker($row) : '  ').AnsiText::padRight($label, $layout->label);
+            $text .= $this->gap().($control[$i] ?? AnsiText::blank($controlWidth)).$this->valueEnd();
+            $cut = '';
+            if (null === $details && $i === $middle) {
+                // Too little room to wrap in: the detail takes what the control
+                // leaves on the value row and is cut on its own — truncating
+                // the whole row spent its ellipsis on the control's closing
+                // rail whenever the detail overflowed.
+                $room = $width - AnsiUtils::visibleWidth($text);
+                if ('' !== $detail && $room > 3) {
+                    $text .= $this->styles->of(Role::Dim)->apply(AnsiText::truncate($this->detailLead().$detail, $room));
+                }
+                $cut = AnsiUtils::visibleWidth($this->detailLead().$detail) > $room ? $detail : '';
+            }
+            $line = null === $details ? null : $details[$i - $detailTop] ?? null;
+            if (null !== $line) {
+                $text .= $this->styles->of(Role::Dim)->apply(($i === $detailTop ? $this->detailLead() : $this->detailIndent()).$line);
             }
             if ($i === $middle) {
-                $this->recordTip($index, $row, AnsiUtils::visibleWidth($this->detailSeparator().$detail) > $room ? $detail : '');
+                $this->recordTip($index, $row, $cut);
             }
             // An overflowing value being edited must keep its caret on screen:
             // scroll the assembled row to the marker instead of a hard clip
@@ -636,7 +656,8 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
 
     /**
      * What opens the detail clause after the control: ` · `, led in a
-     * mirrored form by a right-to-left mark.
+     * mirrored form by a right-to-left mark — and, as wide but blank, what
+     * opens each row the clause wraps onto, so its prose stays in one column.
      *
      * The detail is prose and belongs mirrored, but a range opens with
      * digits, and digits after {@see valueEnd()}'s left-to-right mark resolve
@@ -644,9 +665,20 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * the control and its label, shoving the box off the column its border
      * rows keep. The mark hands the clause back to the paragraph.
      */
-    private function detailSeparator(): string
+    private function detailLead(): string
     {
-        return ($this->translator->isRtl() ? Bidi::RTL_MARK : '').' · ';
+        return $this->detailMark().' · ';
+    }
+
+    /** What opens each row the detail wraps onto: the lead's width, blank. */
+    private function detailIndent(): string
+    {
+        return $this->detailMark().AnsiText::blank(SettingsRowLayout::DETAIL_LEAD);
+    }
+
+    private function detailMark(): string
+    {
+        return $this->translator->isRtl() ? Bidi::RTL_MARK : '';
     }
 
     /**

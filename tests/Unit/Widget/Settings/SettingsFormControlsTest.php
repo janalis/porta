@@ -219,11 +219,12 @@ final class SettingsFormControlsTest extends TestCase
 
         // 60 columns less the 4 of chrome and a 30-column label cap leaves
         // room for a box; 20 columns does not.
-        $narrow = \array_map(AnsiUtils::stripAnsiCodes(...), $this->form()->render(new RenderContext(20, 11)));
+        $narrow = \array_map(AnsiUtils::stripAnsiCodes(...), $this->form()->render(new RenderContext(20, 12)));
         $this->assertStringContainsString('┏', $screen[5], 'boxed where it fits');
         $this->assertStringNotContainsString('┏', \implode("\n", $narrow), 'no border rows when it does not');
         $this->assertMatchesRegularExpression('/Theme\s+┃ \S* *▾ ┃/u', $narrow[5], 'the select, on its label row');
-        $this->assertMatchesRegularExpression('/Sticky scroll\s+\[✓\]/u', $narrow[9], 'and a checkbox falls back to its one-row form, as every control does');
+        $this->assertMatchesRegularExpression('/Sticky\s+\[✓\]/u', $narrow[9], 'and a checkbox falls back to its one-row form, as every control does');
+        $this->assertMatchesRegularExpression('/^  scroll\s+$/u', $narrow[10], 'its label wrapped under it in the narrow column');
     }
 
     public function testEveryRowIsExactlyThePaneWide(): void

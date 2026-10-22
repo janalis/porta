@@ -31,11 +31,11 @@ final class SettingsRowLayoutTest extends TestCase
 
     /**
      * One pathological label must not push every value off the right edge, so
-     * the column stops at half the pane and the label truncates instead.
+     * the column stops at half the pane and the label wraps inside it.
      */
     public function testAPathologicalLabelIsCappedAtHalfThePane(): void
     {
-        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 200))], 60, Density::Roomy);
+        $layout = SettingsRowLayout::measure([$this->row(\str_repeat('word ', times: 40))], 60, Density::Roomy);
 
         $this->assertSame(30, $layout->label);
     }
@@ -127,6 +127,86 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame('demo (project)', SettingsRowLayout::label('demo (project)', BaseDirection::Ltr), 'unmirrored, never');
         $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy, BaseDirection::Rtl)->label);
         $this->assertSame(14, SettingsRowLayout::measure([$this->row('demo (project)')], 80, Density::Roomy)->label);
+    }
+
+    /**
+     * A label longer than its column wraps inside it, centred on the control's
+     * value row — one or two lines sit where an unwrapped label did, longer
+     * ones start on the item's first row — and the item grows to hold it.
+     */
+    public function testALongLabelWrapsInItsColumnAndGrowsItsItem(): void
+    {
+        $layout = SettingsRowLayout::measure([$this->row('Runtime indexing (trusts the workspace: the server executes its PHP)'), $this->row('Short')], 40, Density::Roomy);
+
+        $this->assertTrue($layout->boxed);
+        $this->assertSame(20, $layout->label);
+        $this->assertSame(['Runtime indexing', '(trusts the', 'workspace: the', 'server executes its', 'PHP)'], $layout->labels[0]);
+        $this->assertSame(['Short'], $layout->labels[1]);
+        $this->assertSame([5, 3], $layout->heights, 'five lines from the item\'s first row; a label that fits keeps the box\'s three');
+    }
+
+    /** A narrow column widens to its longest word, so a wrap never splits one — up to two thirds of the pane. */
+    public function testANarrowColumnWidensToItsLongestWord(): void
+    {
+        $this->assertSame(10, SettingsRowLayout::measure([$this->row('Auto-pairs on')], 18, Density::Roomy)->label, 'half of 18 is nine; the word is ten');
+        $this->assertSame([['Auto-pairs', 'on']], SettingsRowLayout::measure([$this->row('Auto-pairs on')], 18, Density::Roomy)->labels);
+        $this->assertSame(12, SettingsRowLayout::measure([$this->row(\str_repeat('x', times: 20).' y')], 18, Density::Roomy)->label, 'never past two thirds');
+    }
+
+    public function testWrappedTextCentresOnTheValueRow(): void
+    {
+        $boxed = SettingsRowLayout::measure([$this->row('A')], 80, Density::Roomy);
+        $this->assertSame([1, 1, 0, 0], [$boxed->top(1), $boxed->top(2), $boxed->top(3), $boxed->top(5)]);
+        $this->assertSame([3], SettingsRowLayout::measure([$this->row('Fits on two lines here')], 34, Density::Roomy)->heights, 'two lines from the value row still fit the box');
+
+        $oneRow = SettingsRowLayout::measure([$this->row('Wraps onto three lines')], 80, Density::Compact);
+        $this->assertSame([0, 0], [$oneRow->top(1), $oneRow->top(3)]);
+        $this->assertSame([1], $oneRow->heights);
+        $this->assertSame([3], SettingsRowLayout::measure([$this->row('Wraps onto three lines')], 20, Density::Compact)->heights, 'the one-row form grows too');
+    }
+
+    /** The detail wraps in what its control leaves, and the item grows to hold it. */
+    public function testADetailWrapsBesideItsControl(): void
+    {
+        $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
+        $detail = \implode(' ', \array_fill(0, count: 30, value: 'word'));
+
+        $layout = SettingsRowLayout::measure([$text], 80, Density::Roomy, details: [$detail]);
+
+        // 80 less the chrome, the six-column label, the 24-column field and ` · `.
+        $this->assertSame([\implode(' ', \array_fill(0, count: 8, value: 'word'))], \array_unique(\array_slice($layout->details[0] ?? [], offset: 0, length: 3)));
+        $this->assertCount(4, $layout->details[0] ?? []);
+        $this->assertSame([5], $layout->heights, 'four lines from the value row, the box\'s second');
+        $this->assertSame([[]], SettingsRowLayout::measure([$text], 80, Density::Roomy)->details, 'no detail, no lines');
+    }
+
+    /** Under {@see SettingsRowLayout::MIN_DETAIL} columns a wrapped detail is a tower: it keeps one cut row instead. */
+    public function testADetailTooNarrowToWrapIsLeftToBeCut(): void
+    {
+        $text = new SettingsRow('k', 'Binary', SettingsRowKind::Text, '', false);
+        $detail = 'a hint far too long to fit';
+
+        $this->assertNull(SettingsRowLayout::measure([$text], 48, Density::Roomy, details: [$detail])->details[0]);
+        $this->assertSame([3], SettingsRowLayout::measure([$text], 48, Density::Roomy, details: [$detail])->heights);
+        $this->assertSame(['a hint far', 'too long to', 'fit'], SettingsRowLayout::measure([$text], 49, Density::Roomy, details: [$detail])->details[0]);
+    }
+
+    /** A checkbox leaves the detail what IT is drawn in, not the page's control width. */
+    public function testACheckboxLeavesItsDetailTheRestOfTheRow(): void
+    {
+        $bool = $this->row('Binary');
+        $detail = \str_repeat('x', times: 22).' y';
+
+        $this->assertSame([\str_repeat('x', times: 22), 'y'], SettingsRowLayout::measure([$bool], 40, Density::Roomy, details: [$detail])->details[0], 'boxed: five columns');
+        $this->assertSame([\str_repeat('x', times: 22).' y'], SettingsRowLayout::measure([$bool], 40, Density::Compact, details: [$detail])->details[0], 'one row: three');
+    }
+
+    /** A button whose caption is its own label leaves the label column blank. */
+    public function testAButtonCaptionedWithItsLabelLeavesTheColumnBlank(): void
+    {
+        $layout = SettingsRowLayout::measure([new SettingsRow('k', 'Install phpstan', SettingsRowKind::Action, false, false)], 80, Density::Roomy);
+
+        $this->assertSame([['']], $layout->labels);
     }
 
     private function row(string $label): SettingsRow

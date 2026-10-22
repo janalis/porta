@@ -127,7 +127,8 @@ final class ListSelection
      * the selected item fits within $availableRows, where $heights[$i] is item
      * $i's rendered row count. Walks back from the selection accumulating
      * heights, so as many items above it as fit stay visible; a selection
-     * taller than the viewport pins the window to itself. Returns the new
+     * taller than the viewport pins the window to itself, and a window with
+     * room under its last item scrolls back to fill it. Returns the new
      * scroll offset. Called at render time.
      *
      * @param list<int> $heights
@@ -136,8 +137,6 @@ final class ListSelection
     {
         if ($this->selected < $this->scroll) {
             $this->scroll = $this->selected;
-
-            return $this->scroll;
         }
         $sum = 0;
         for ($i = $this->selected; $i >= $this->scroll; --$i) {
@@ -146,6 +145,12 @@ final class ListSelection
                 $this->scroll = \min($i + 1, $this->selected);
                 break;
             }
+        }
+        // A window that grew, or items that got shorter — a settings page
+        // re-wrapped wider — would leave blank rows under the last item while
+        // items above the window stay hidden: pull them back in while all fit.
+        while ($this->scroll > 0 && \array_sum(\array_slice($heights, $this->scroll - 1)) <= $availableRows) {
+            --$this->scroll;
         }
 
         return $this->scroll;

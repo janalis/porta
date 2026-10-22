@@ -8,6 +8,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
+use Porta\Support\AnsiText;
 use Porta\Ui\Density;
 use Porta\Ui\Glyphs;
 use Porta\Widget\Render\FieldBox;
@@ -29,6 +30,15 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * inputs line up — sized for the widest control, capped at a browser input's
  * size rather than the pane's.
  *
+ * A label longer than its column wraps inside it, and so does the detail in
+ * what the control leaves: the label used to be padded, never cut, so a long
+ * one pushed its control off the column every other row keeps, and the detail
+ * was cut to one line whose rest only a tooltip could say. A wrapped label is
+ * centred on the control's value row; a wrapped detail starts ON that row, so
+ * its ` · ` stays beside the label, and spills downward. The item grows to
+ * hold either. Measured from the width each frame offers, so a window resized
+ * by its edge or its splitter re-wraps on the next frame.
+ *
  * Items are {@see FieldBox::ROWS} tall when boxed, a checkbox too, and the
  * first item of each fieldset carries its legend row too: scrolling to that
  * item scrolls its legend into view with it. When the pane cannot seat a
@@ -41,6 +51,15 @@ final readonly class SettingsRowLayout
 
     /** A text field's width, value or not: a field, not a label that grows. */
     private const int TEXT_FIELD = 24;
+
+    /**
+     * The narrowest a detail wraps in. Below it a wrapped hint is a tower of
+     * one word a row, so the detail keeps one cut row and the tooltip says it.
+     */
+    public const int MIN_DETAIL = 12;
+
+    /** What opens the detail beside its control, ` · `, and indents its next rows. */
+    public const int DETAIL_LEAD = 3;
 
     /**
      * A section heading's rows: a blank row, the legend rule, a blank row —
@@ -62,7 +81,21 @@ final readonly class SettingsRowLayout
         public array $heights,
         /** @var list<string|null> the legend drawn above each item, if it opens a fieldset */
         public array $legends,
+        /** @var list<non-empty-list<string>> each item's label, wrapped to the label column */
+        public array $labels,
+        /** @var list<list<string>|null> each item's detail, wrapped beside its control; null where there is too little room to */
+        public array $details,
     ) {}
+
+    /**
+     * The item row $lines of wrapped text start on: centred on the control's
+     * value row, so one line sits exactly where an unwrapped label did, and
+     * never above the item's first row — what does not fit spills downward.
+     */
+    public function top(int $lines): int
+    {
+        return \max(0, \intdiv($this->boxed ? FieldBox::ROWS : 1, num2: 2) - \intdiv($lines - 1, num2: 2));
+    }
 
     /**
      * A label as a row draws it, measured here so the column fits it whole.
@@ -82,31 +115,70 @@ final readonly class SettingsRowLayout
 
     /**
      * @param list<SettingsRow> $rows
+     * @param list<string> $details each row's detail ({@see SettingsRowDetail::of()}), '' or absent for none
      */
-    public static function measure(array $rows, int $width, Density $density, BaseDirection $direction = BaseDirection::Ltr): self
+    public static function measure(array $rows, int $width, Density $density, BaseDirection $direction = BaseDirection::Ltr, array $details = []): self
     {
         $longest = 0;
+        $word = 0;
         $needed = FieldBox::MIN_BOXED;
         foreach ($rows as $row) {
             $longest = \max($longest, AnsiUtils::visibleWidth(self::label($row->label, $direction)));
+            $word = \max($word, ...\array_map(AnsiUtils::visibleWidth(...), \explode(' ', $row->label)));
             $needed = \max($needed, self::needs($row));
         }
+        // A narrow pane widens the column to the longest word, short of two
+        // thirds of the pane, so wrapping breaks between words: `Auto-pairs`
+        // in nine columns was `Auto-pair` over a lone `s`.
         // @mago-expect lint:literal-named-argument -- intdiv's parameter is called `num2`; `intdiv($width, num2: 2)` names the divisor after nothing anyone thinks in
-        $label = \min($longest, \max(self::MIN_LABEL, \intdiv($width, 2)));
+        $label = \min($longest, \max(self::MIN_LABEL, \intdiv($width, 2), \min($word, \intdiv($width * 2, num2: 3))));
         $room = \max(0, $width - self::LABEL_CHROME - $label);
         $boxed = FieldBox::ROWS === FieldBox::rowsFor($density, $room);
 
+        $control = \min($needed, FieldBox::MAX_WIDTH, $room);
+        $layout = new self($label, $control, $boxed, [], [], [], []);
+
         $heights = [];
         $legends = [];
+        $labels = [];
+        $wrapped = [];
         $previous = null;
-        foreach ($rows as $row) {
+        foreach ($rows as $index => $row) {
             $legend = null !== $row->fieldset && $row->fieldset !== $previous ? $row->fieldset : null;
             $previous = $row->fieldset;
             $legends[] = $legend;
-            $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS) + ($boxed ? FieldBox::ROWS : 1);
+            // A button whose caption fell back to its own label leaves the
+            // label column blank rather than saying it twice.
+            $text = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : self::label($row->label, $direction);
+            $lines = AnsiText::wrap($text, $label);
+            $labels[] = $lines;
+            $detail = $details[$index] ?? '';
+            $beside = $width - self::LABEL_CHROME - $label - self::controlWidth($row, $control, $boxed) - self::DETAIL_LEAD;
+            $detailLines = match (true) {
+                '' === $detail => [],
+                $beside < self::MIN_DETAIL => null,
+                default => AnsiText::wrap($detail, $beside),
+            };
+            $wrapped[] = $detailLines;
+            $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS)
+            + \max(
+                $boxed ? FieldBox::ROWS : 1,
+                $layout->top(\count($lines)) + \count($lines),
+                null === $detailLines ? 0 : $layout->top(1) + \count($detailLines),
+            );
         }
 
-        return new self($label, \min($needed, FieldBox::MAX_WIDTH, $room), $boxed, $heights, $legends);
+        return new self($label, $control, $boxed, $heights, $legends, $labels, $wrapped);
+    }
+
+    /** The columns one row's control is drawn in: a checkbox its own, every other kind the page's. */
+    private static function controlWidth(SettingsRow $row, int $control, bool $boxed): int
+    {
+        return match (true) {
+            SettingsRowKind::Bool !== $row->kind => $control,
+            $boxed => FieldBox::CHECKBOX_BOX_WIDTH,
+            default => FieldBox::CHECKBOX_WIDTH,
+        };
     }
 
     /** The width one row's control asks for; a checkbox asks for none. */

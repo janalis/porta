@@ -130,21 +130,29 @@ final class SettingsFormWidgetTest extends TestCase
     /** A row whose detail was cut says it whole; a changed row says what its ● means; a plain row says nothing. */
     public function testARowSaysWhatItCouldNotShow(): void
     {
+        $widget = $this->longHintWidget();
+        // 40 columns leave the hint too little room to wrap in: it is cut on one row.
+        $rows = \explode("\n", $this->plain($widget->render(new RenderContext(40, 20))));
+        $rowOf = static fn (string $needle): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $needle)));
+
+        $this->assertNull($widget->tooltipAt($rowOf('Plain'), 3));
+        $long = $widget->tooltipAt($rowOf('Long'), 3);
+        $this->assertSame(['settings:long', 'a hint far too long to fit beside the field in a narrow pane', 0, 40], [$long?->key, $long?->text, $long?->colStart, $long?->colEnd]);
+        $this->assertSame('Changed from its default — r puts it back', $widget->tooltipAt($rowOf('Changed'), 3)?->text);
+        $this->assertNull($widget->tooltipAt(0, 3), 'the title is nobody\'s');
+        $this->assertNull($widget->tooltipAt(\count($rows) - 1, 3), 'nor the footer');
+    }
+
+    private function longHintWidget(): SettingsFormWidget
+    {
         $widget = new SettingsFormWidget(new Translator('en'));
         $widget->setRows([
             new SettingsRow(key: 'plain', label: 'Plain', kind: SettingsRowKind::Bool, value: true, restart: false, default: true),
             new SettingsRow(key: 'long', label: 'Long', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'a hint far too long to fit beside the field in a narrow pane'),
             new SettingsRow(key: 'changed', label: 'Changed', kind: SettingsRowKind::Bool, value: false, restart: false, default: true),
         ]);
-        $rows = \explode("\n", $this->plain($widget->render(new RenderContext(50, 20))));
-        $rowOf = static fn (string $needle): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $needle)));
 
-        $this->assertNull($widget->tooltipAt($rowOf('Plain'), 3));
-        $long = $widget->tooltipAt($rowOf('Long'), 3);
-        $this->assertSame(['settings:long', 'a hint far too long to fit beside the field in a narrow pane', 0, 50], [$long?->key, $long?->text, $long?->colStart, $long?->colEnd]);
-        $this->assertSame('Changed from its default — r puts it back', $widget->tooltipAt($rowOf('Changed'), 3)?->text);
-        $this->assertNull($widget->tooltipAt(0, 3), 'the title is nobody\'s');
-        $this->assertNull($widget->tooltipAt(\count($rows) - 1, 3), 'nor the footer');
+        return $widget;
     }
 
     public function testActionRowRendersABoxedButtonAndActuatesForwardOnly(): void
@@ -1102,16 +1110,6 @@ final class SettingsFormWidgetTest extends TestCase
         // keeps the caret (the tail of the value) in view instead.
         $this->assertStringNotContainsString('A very long label', $screen);
         $this->assertStringContainsString('x', $screen);
-    }
-
-    public function testANonEditedOverflowingRowTruncatesRatherThanScrolling(): void
-    {
-        $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows([new SettingsRow(key: 'k', label: 'A very long label that will not fit at all', kind: SettingsRowKind::Bool, value: true, restart: false)]);
-
-        $screen = AnsiUtils::stripAnsiCodes($widget->render(new RenderContext(20, 4))[2]);
-
-        $this->assertStringStartsWith('  A very long', $screen, 'not being edited: the left edge (marker column, then label) is kept, not scrolled');
     }
 
     public function testShortRowsArePaddedToTheFullColumnWidth(): void

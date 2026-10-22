@@ -87,10 +87,13 @@
         "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  Run/debug command  \u001b[38;5;110m┃\u001b[39m\u001b[38;5;231m frankenphp php-cli   \u001b[38;5;110m┃\u001b[39m\u001b[38;5;231m\u001b[38;5;245m · applies on restart\u001b[39m\u001b[38;5;231m      \u001b[22m\u001b[49m\u001b[39m",
         "\u001b[38;5;245m\u001b[48;5;235m ⏎ edit · ←/→ change · r reset · Ctrl+F find · Tab panes · 2 keybindings\u001b[49m\u001b[39m"
     ],
-    "truncating-long-label": [
+    "wrapping-long-label": [
         "\u001b[48;5;235m\u001b[38;5;231m\u001b[48;5;238m\u001b[1m General \u001b[22m\u001b[49m\u001b[48;5;235m\u001b[39m           \u001b[38;5;246m1 setting \u001b[39m\u001b[49m",
         "\u001b[38;5;238m──────────────────────────────\u001b[39m",
-        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  A very long setting label t\u001b[0m\u001b[48;5;31m…\u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  A very long      ┃✓┃        \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  setting label               \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  that runs past              \u001b[22m\u001b[49m\u001b[39m",
+        "\u001b[38;5;231m\u001b[48;5;31m\u001b[1m  the pane edge               \u001b[22m\u001b[49m\u001b[39m",
         "                              ",
         "\u001b[38;5;245m\u001b[48;5;235m Space toggle · r reset · Ctr\u001b[0m\u001b[48;5;235m…\u001b[49m\u001b[39m"
     ],

@@ -135,6 +135,24 @@ final class ListSelectionTest extends TestCase
     }
 
     /**
+     * A window that grew, or items that got shorter — a settings page re-wrapped
+     * wider — scrolls back to fill the rows under the last item, rather than
+     * leaving them blank while the items above stay hidden.
+     */
+    public function testFollowHeightsFillsAWindowThatGrew(): void
+    {
+        $list = new ListSelection();
+        $list->select(3);
+        $this->assertSame(2, $list->followHeights([3, 3, 3, 3], 7));
+
+        $this->assertSame(1, $list->followHeights([3, 3, 3, 3], 9), 'three items fit nine rows');
+        $this->assertSame(0, $list->followHeights([1, 1, 1, 1], 7), 'and all four once they are shorter');
+
+        $this->assertSame(2, $list->followHeights([3, 3, 3, 3], 7));
+        $this->assertSame(0, $list->followHeights([1, 1, 1, 1], 4), 'items exactly as tall as the window all fit');
+    }
+
+    /**
      * `countFitting()` is `followHeights()`'s question from the other end: how
      * many entries a window holds, which is what a page is for a list measured
      * in entries and drawn in rows.

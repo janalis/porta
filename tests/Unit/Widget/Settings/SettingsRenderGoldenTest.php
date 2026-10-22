@@ -195,7 +195,7 @@ final class SettingsRenderGoldenTest extends TestCase
                 5,
             ],
 
-            'truncating-long-label' => [
+            'wrapping-long-label' => [
                 static function (SettingsFormWidget $w): void {
                     $w->setFocused(true);
                     $w->setRows([
@@ -203,7 +203,7 @@ final class SettingsRenderGoldenTest extends TestCase
                     ], 'General');
                 },
                 30,
-                5,
+                8,
             ],
 
             'editing-a-text-row' => [
