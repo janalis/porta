@@ -579,7 +579,7 @@ final class EditorRenderer
         $body = [];
         foreach (\explode("\n", $text) as $paragraph) {
             // Padded a column either side, as every box pads its content.
-            foreach (AnsiText::wrap($paragraph, PopupMetrics::COMPLETION_DOC_INNER - 2) as $wrapped) {
+            foreach (AnsiText::wrapProse($paragraph, PopupMetrics::COMPLETION_DOC_INNER - 2) as $wrapped) {
                 $body[] = $wrapped;
             }
         }

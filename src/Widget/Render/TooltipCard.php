@@ -65,7 +65,7 @@ final class TooltipCard
                 continue;
             }
             $lead = $line->lead;
-            foreach (AnsiText::wrap($line->text, \max(1, $maxText - $leadWidth)) as $wrapped) {
+            foreach (AnsiText::wrapProse($line->text, \max(1, $maxText - $leadWidth)) as $wrapped) {
                 $rows[] = new TooltipLine($wrapped, '', $line->role, $lead, $line->leadRole);
                 // Under its first row, a line's lead is only its indent.
                 $lead = \str_repeat(' ', \max(0, $leadWidth));

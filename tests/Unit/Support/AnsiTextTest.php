@@ -281,6 +281,19 @@ final class AnsiTextTest extends TestCase
         $this->assertSame(['a', 'b'], AnsiText::wrap('a b', 0));
     }
 
+    /** Prose breaks an over-wide word after its last hyphen or slash that fits, and only then mid-letter. */
+    public function testWrapProseBreaksAWordAtAHyphenOrSlash(): void
+    {
+        $this->assertSame(['comma-', 'separated; *'], AnsiText::wrapProse('comma-separated; *', 13));
+        $this->assertSame(['~/.porta/bin/', 'symfony-lsp'], AnsiText::wrapProse('~/.porta/bin/symfony-lsp', 13));
+        $this->assertSame(['see ~/.porta/', 'binaries'], AnsiText::wrapProse('see ~/.porta/binaries', 13), 'the head joins the line before it');
+        $this->assertSame(['abc-', 'defghijklmno', 'p'], AnsiText::wrapProse('abc-defghijklmnop', 12), 'no break left in the rest: cut');
+        $this->assertSame(['abcdefghijkl', 'mnop'], AnsiText::wrapProse('abcdefghijklmnop', 12));
+        $this->assertSame(['-abcdefghijk', 'lmnop'], AnsiText::wrapProse('-abcdefghijklmnop', 12), 'a leading hyphen is no break');
+        $this->assertSame(['a-b'], AnsiText::wrapProse('a-b', 3), 'a word that fits is left alone');
+        $this->assertSame(['a', 'b'], AnsiText::wrapProse('a b', 0), 'a non-positive width clamps, as wrap does');
+    }
+
     public function testDimWrapsAPlainLine(): void
     {
         $this->assertSame("\x1b[2mplain\x1b[22m", AnsiText::dim('plain'));

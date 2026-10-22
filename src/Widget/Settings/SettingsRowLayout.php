@@ -184,14 +184,14 @@ final readonly class SettingsRowLayout
             // A button whose caption fell back to its own label leaves the
             // label column blank rather than saying it twice.
             $text = SettingsRowKind::Action === $row->kind && '' === (string) $row->value ? '' : self::label($row->label, $direction);
-            $lines = self::anchored(self::wrap($text, $label), $direction);
+            $lines = self::anchored(AnsiText::wrapProse($text, $label), $direction);
             $labels[] = $lines;
             $detail = $details[$index] ?? '';
             [$room, $below] = self::room($row, $width, $layout);
             $detailLines = match (true) {
                 '' === $detail => [],
                 $room < self::MIN_DETAIL => null,
-                default => self::anchored(self::wrap($detail, $room), $direction),
+                default => self::anchored(AnsiText::wrapProse($detail, $room), $direction),
             };
             $wrapped[] = $detailLines;
             $under[] = $below;
@@ -243,7 +243,7 @@ final readonly class SettingsRowLayout
                 continue;
             }
             $under += (int) $below;
-            $lines += \count(self::wrap($detail, $room));
+            $lines += \count(AnsiText::wrapProse($detail, $room));
         }
 
         return [$cut, $under, $lines, $layout->control];
@@ -274,36 +274,6 @@ final readonly class SettingsRowLayout
     private static function beside(SettingsRow $row, int $width, self $layout): int
     {
         return $width - self::LABEL_CHROME - $layout->label - self::controlWidth($row, $layout->control, $layout->boxed) - self::DETAIL_LEAD;
-    }
-
-    /**
-     * {@see AnsiText::wrap()}, but a word wider than the line breaks after its
-     * last `-` or `/` that fits rather than at whatever letter the width
-     * lands on: `comma-separated;` in fourteen columns was `comma-separat`
-     * over `ed;`. Only a word with no such break left is cut mid-letter.
-     *
-     * The break is a space put after the hyphen or slash, which never shows:
-     * the two halves were wider than the line together, so wrap never puts
-     * them back on one.
-     *
-     * @return non-empty-list<string>
-     */
-    private static function wrap(string $text, int $width): array
-    {
-        $words = [];
-        foreach (\explode(' ', $text) as $word) {
-            while (AnsiUtils::visibleWidth($word) > $width) {
-                $head = [];
-                if (1 !== \preg_match('/^(.+[-\/])/us', AnsiUtils::sliceByColumn($word, startCol: 0, length: $width), $head)) {
-                    break; // nowhere to break: wrap cuts it
-                }
-                $words[] = $head[1];
-                $word = \substr($word, \strlen($head[1]));
-            }
-            $words[] = $word;
-        }
-
-        return AnsiText::wrap(\implode(' ', $words), $width);
     }
 
     /**

@@ -50,7 +50,7 @@ final readonly class MarkupNode
     }
 
     /**
-     * The runs word-wrapped to $width columns ({@see AnsiText::wrap()} over the
+     * The runs word-wrapped to $width columns ({@see AnsiText::wrapProse()} over the
      * plain text), one list per line — so a styled span a break falls inside
      * is styled on both lines rather than left open across the break.
      *
@@ -62,9 +62,9 @@ final readonly class MarkupNode
         $plain = $this->plain();
         $lines = [];
         $cursor = 0;
-        foreach (AnsiText::wrap($plain, $width) as $row => $line) {
+        foreach (AnsiText::wrapProse($plain, $width) as $row => $line) {
             if ($row > 0 && ' ' === ($plain[$cursor] ?? '')) {
-                ++$cursor; // the space a word break consumed; a hard break inside a word consumes none
+                ++$cursor; // the space a word break consumed; a break inside a word, hard or after its hyphen, consumes none
             }
             $lines[] = MarkupRun::slice($runs, $cursor, \strlen($line));
             $cursor += \strlen($line);

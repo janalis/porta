@@ -71,6 +71,22 @@ final class ToastCardTest extends TestCase
         $this->assertStringContainsString($error->apply('beta'), $rows[2]);
     }
 
+    /**
+     * A styled word wider than the card breaks after its hyphen, styled on
+     * both lines, and the words after it keep their own style: the break
+     * consumes no character, so the spans stay in step with the text.
+     */
+    public function testAStyledWordBrokenAtItsHyphenStaysInStep(): void
+    {
+        $styles = Styles::dark();
+        $rows = ToastCard::render(new Toast(1, Markup::of('<error>comma-separated</> list'), ToastSeverity::Error), 12, $styles);
+
+        $error = $styles->of(Role::StatusError);
+        $this->assertStringContainsString($error->apply('comma-'), $rows[1]);
+        $this->assertStringContainsString($error->apply('separated'), $rows[2]);
+        $this->assertStringContainsString($styles->of(Role::Bright)->apply('list'), $rows[3]);
+    }
+
     /** The frame says the severity by shape: double for an error, heavy for a warning, rounded for the rest. */
     public function testTheFrameShapeFollowsTheSeverity(): void
     {

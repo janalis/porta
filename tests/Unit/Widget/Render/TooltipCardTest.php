@@ -60,6 +60,14 @@ final class TooltipCardTest extends TestCase
         $this->assertEquals([new TooltipLine('one two'), new TooltipLine('three'), new TooltipLine('four')], $lines);
     }
 
+    /** A path longer than the card breaks after a slash, not mid-name. */
+    public function testALongPathWrapsAtItsSlashes(): void
+    {
+        $lines = TooltipCard::lines('installed at ~/.porta/bin/symfony-lsp', 16);
+
+        $this->assertEquals([new TooltipLine('installed at'), new TooltipLine('~/.porta/bin/'), new TooltipLine('symfony-lsp')], $lines);
+    }
+
     /** A line carrying a key is cut, never wrapped: the key must stay on its row. */
     public function testALineWithAKeyIsCutToKeepTheKey(): void
     {

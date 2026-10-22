@@ -857,6 +857,34 @@ final class EditorRendererTest extends TestCase
         $this->assertNull(CaretPopupRenderer::docPopup($lines, columns: 9, rows: 3, cursorScreenRow: 1, anchorCol: 4, text: $text, scroll: 0, styles: $this->styles()), 'nor any width');
     }
 
+    /** A link longer than either doc popup breaks after a slash, never mid-word. */
+    public function testADocLinkWrapsAtItsSlashes(): void
+    {
+        $text = 'See https://symfony.com/doc/7.4/reference/configuration/framework.html';
+        $lines = \array_fill(start_index: 0, count: 14, value: \str_pad('', length: 60));
+        CaretPopupRenderer::docPopup($lines, columns: 60, rows: 14, cursorScreenRow: 1, anchorCol: 4, text: $text, scroll: 0, styles: $this->styles());
+        $this->assertSame(
+            ['│ See https://symfony.com/doc/7.4/reference/ │', '│ configuration/framework.html               │'],
+            \array_map(static fn (string $l): string => \trim(AnsiUtils::stripAnsiCodes($l)), \array_slice($lines, offset: 3, length: 2)),
+        );
+
+        $lines = \array_fill(start_index: 0, count: 14, value: \str_pad('', length: 100));
+        EditorRenderer::completionPopup(
+            $lines,
+            columns: 100,
+            rows: 14,
+            cursorScreenRow: 0,
+            anchorCol: 2,
+            items: [new CompletionItem('a', 'a', 'var', '', documentation: $text)],
+            selected: 0,
+            hovered: null,
+            styles: $this->styles(),
+        );
+        $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $lines));
+        $this->assertStringContainsString('https://symfony.com/doc/7.4/reference/ │', $screen);
+        $this->assertStringContainsString('│ configuration/framework.html ', $screen);
+    }
+
     /** A list pushed partly off the pane leaves its docblock no row: no panel, not an empty frame. */
     public function testADocblockWithNoRowDrawsNothing(): void
     {

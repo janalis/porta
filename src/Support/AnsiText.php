@@ -122,6 +122,10 @@ final class AnsiText
      * can never straddle a break. Empty input yields one empty line, keeping
      * "at least one row" a guarantee rather than a caller special case.
      *
+     * Prose wants {@see wrapProse()}. This one cuts exactly where janalis/viz's
+     * `DisplayWidth::wrap()` does, which sizes the graph viewer's node boxes
+     * around the labels drawn with it.
+     *
      * @return non-empty-list<string>
      */
     public static function wrap(string $text, int $width): array
@@ -152,6 +156,39 @@ final class AnsiText
         $lines[] = $line;
 
         return $lines;
+    }
+
+    /**
+     * {@see wrap()}, but a word wider than the line breaks after its last `-`
+     * or `/` that fits rather than at whatever letter the width lands on:
+     * `comma-separated;` in fourteen columns was `comma-separat` over `ed;`,
+     * and `~/.porta/bin/symfony-lsp` lost its name mid-word. Only a word with
+     * no such break left is cut mid-letter.
+     *
+     * The break is a space put after the hyphen or slash, which never shows:
+     * the two halves were wider than the line together, so wrap never puts
+     * them back on one — and, like a hard break, it consumes no character of
+     * $text, so a caller mapping lines back onto it ({@see
+     * \Porta\Ui\Markup\MarkupNode::lines()}) stays in step.
+     *
+     * @return non-empty-list<string>
+     */
+    public static function wrapProse(string $text, int $width): array
+    {
+        $words = [];
+        foreach (\explode(' ', $text) as $word) {
+            while (AnsiUtils::visibleWidth($word) > $width) {
+                $head = [];
+                if (1 !== \preg_match('/^(.+[-\/])/us', AnsiUtils::sliceByColumn($word, startCol: 0, length: \max(0, $width)), $head)) {
+                    break; // nowhere to break: wrap cuts it
+                }
+                $words[] = $head[1];
+                $word = \substr($word, \strlen($head[1]));
+            }
+            $words[] = $word;
+        }
+
+        return self::wrap(\implode(' ', $words), $width);
     }
 
     /**

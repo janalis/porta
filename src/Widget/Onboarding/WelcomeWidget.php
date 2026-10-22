@@ -322,7 +322,7 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         $lines = [$prefix.($selected ? $this->styles->of(Role::Bright)->withBold()->apply($title) : $title)];
         $indent = AnsiText::blank(AnsiUtils::visibleWidth($prefix));
         $dim = $this->styles->of(Role::Dim);
-        foreach (AnsiText::wrap($step->detail, \max(1, $text - AnsiUtils::visibleWidth($prefix))) as $chunk) {
+        foreach (AnsiText::wrapProse($step->detail, \max(1, $text - AnsiUtils::visibleWidth($prefix))) as $chunk) {
             $lines[] = $indent.$dim->apply($chunk);
         }
 

@@ -171,6 +171,14 @@ final class WelcomeWidgetTest extends TestCase
         return $this->rows($widget->render(new RenderContext($columns, $rows)));
     }
 
+    /** A path longer than the card's text column breaks after a slash or hyphen, never mid-name. */
+    public function testADetailsPathWrapsAtItsSlashes(): void
+    {
+        $lines = $this->rendered($this->widget($this->step('Fixer', detail: 'installs ~/.porta/bin/php-cs-fixer')), columns: 40);
+
+        $this->assertSame(['▌      installs', '▌      ~/.porta/bin/php-', '▌      cs-fixer'], \array_map(rtrim(...), \array_slice($lines, offset: self::FIRST_STEP_ROW + 1, length: 3)));
+    }
+
     public function testRendersAHeroThenACardPerStep(): void
     {
         $lines = $this->rendered($this->widget($this->step('Syntax highlighting'), $this->step('Language server')));

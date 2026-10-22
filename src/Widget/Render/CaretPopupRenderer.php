@@ -218,7 +218,7 @@ final class CaretPopupRenderer
             // Two columns narrower than the frame: every box pads its content
             // a column either side, and a docblock hard against the rail
             // reads as part of it.
-            foreach (AnsiText::wrap($paragraph, $width - 2) as $wrapped) {
+            foreach (AnsiText::wrapProse($paragraph, $width - 2) as $wrapped) {
                 $body[] = $plain->apply(AnsiText::truncate(' '.$wrapped, $width, pad: true));
             }
         }
