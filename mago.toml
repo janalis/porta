@@ -138,8 +138,13 @@ integrations = ["symfony", "phpunit"]
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
 # all nine re-bisected again under mago 1.45, where exactly one moved):
 #
-#   cyclomatic-complexity   145  Input/MouseRouter — still on top (see the
-#                                Rector round below for 147 → 145). It gained the
+#   cyclomatic-complexity   143  Editor/Document and the graph viewer's
+#                                GraphViewerWidget, tied (re-probed 2026-10-23;
+#                                both measured and left alone in
+#                                decisions.md — one state component each,
+#                                complexity spread thin). MouseRouter, which
+#                                held it until then, sits below; its history:
+#                                147 → 145 in the Rector round below. It gained the
 #                                file-tree drag: one entry in route()'s `||`
 #                                chain and one `ctrl || shift` in the arm, +2.
 #                                The drag ITSELF is Tree/TreeDragRouter, which
@@ -216,8 +221,9 @@ integrations = ["symfony", "phpunit"]
 #                                (Was 208 when a test file last held the floor;
 #                                106 until mago 1.45 recounted the same
 #                                unchanged class as 97.)
-#   too-many-properties      31  Widget/CodeEditorWidget and
-#                                Overlay/State/FindInFilesModal, both at 30
+#   too-many-properties      31  Widget/CodeEditorWidget alone (re-probed
+#                                2026-10-23: FindInFilesModal has dropped
+#                                below). Before: both at 30
 #                                (round 8’s StylesDefault trait absorbed the
 #                                editor’s $styles field; the modal reabsorbed
 #                                the round-5 VOs as plain fields). This line
@@ -290,16 +296,25 @@ integrations = ["symfony", "phpunit"]
 #                                26 dropped it 25 → 22: the pin had drifted
 #                                above the real maximum, which is the exact
 #                                failure mode this re-bisection exists to catch
-#   kan-defect                8  plugins/git/src/Widget/DiffViewWidget and
-#                                Overlay/State/FindInFilesModal (was 14, the
-#                                E2e monolith). Unmoved by the git extraction
-#                                because `plugins` is a linted path: the class
-#                                changed address, not shape
-#   halstead effort       19275  Widget/Render/EditorRowAssembler::assemble (was 21435,
-#                                Help/MarkdownRenderer::render, until the preview
-#                                round split its block dispatch, 2026-09-30)
-#   halstead difficulty      30  Overlay/Presenter/WelcomeModalController::open
-#   halstead volume        3236  tests/E2e/IdeTest::testFullScenario — one
+#   kan-defect                8  nine classes at 8, re-probed 2026-10-23:
+#                                GuestSession, HostSession, BufferService,
+#                                RemoteFilesystem, LspSessionPool, PluginManager,
+#                                FindBarWidget, MarkdownPageWidget and
+#                                KeybindingsDocTest — measured and left alone in
+#                                decisions.md (it counts a class's ifs and
+#                                loops; at this size it is the class's size).
+#                                DiffViewWidget and FindInFilesModal, which set
+#                                it before, are below (was 14, the E2e monolith)
+#   halstead effort       18673  Editor/BreadcrumbScanner's scanner (re-probed
+#                                2026-10-23; EditorRowAssembler::assemble held
+#                                it at 19275 before, and
+#                                Help/MarkdownRenderer::render at 21435 until the
+#                                preview round split its block dispatch,
+#                                2026-09-30)
+#   halstead difficulty      26  Markdown/Inline/InlineItem (re-probed
+#                                2026-10-23; WelcomeModalController::open held
+#                                it at 30 before)
+#   halstead volume        3163  tests/E2e/IdeTest::testFullScenario — one
 #                                continuous scripted session, deliberately
 #                                NOT split: its stages assert on state earlier
 #                                stages created, and that continuity IS the

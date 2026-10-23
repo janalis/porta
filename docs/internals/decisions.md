@@ -628,6 +628,11 @@ Rejected, each for the reason the extraction audit already established:
   (`CodeEditorWidget`), no existing VO groups any subset of `$columns`,
   `$rows`, `$cursorScreenRow`, `$anchorCol`, `$items`, `$selected`,
   `$hovered`.
+- `Plugin/Runtime/PluginRuntime`'s constructor (26, the parameter-list pin;
+  measured 2026-10-23) — a value object the container fills, read by one
+  consumer, `PluginApi`. Grouping its four decoration sinks would be a
+  single-consumer VO inside a single-consumer VO; the pin moves, nothing reads
+  better.
 - `Workbench\Menu\MenuModel::item()` (8 params) — a private helper called only
   by `items()`, which already owns every one of those params itself; wrapping
   them travels the same data through a new object with no consumer outside
