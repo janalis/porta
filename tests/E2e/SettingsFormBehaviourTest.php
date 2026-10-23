@@ -84,8 +84,6 @@ final class SettingsFormBehaviourTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAPageTallerThanThePaneScrollsToItsLastRow(): void

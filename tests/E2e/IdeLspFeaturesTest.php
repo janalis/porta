@@ -125,10 +125,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        // Each hop is awaited above, so reaching here IS the assertion: an
-        // await that never becomes true throws rather than falling through.
-        $this->addToAssertionCount(1);
     }
 
     public function testGoToTestFlashesWhenNothingIsFound(): void
@@ -165,8 +161,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGoToTestOffersChooserForMultipleCandidates(): void
@@ -201,8 +195,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testUnspawnableServerReportsFailed(): void
@@ -242,8 +234,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         ); // > 400ms + 300ms debounce
-
-        $this->addToAssertionCount(1); // reaching here without an exception is the assertion
     }
 
     public function testCompletionWithNullResultIsIgnored(): void
@@ -652,8 +642,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSemanticTokensReachTheBufferInTheRunningIde(): void
@@ -745,7 +733,6 @@ final class IdeLspFeaturesTest extends TestCase
         // no card by that title is on screen, and it reads a FORCED frame
         // rather than the accumulated output — which this line was reading, and
         // which screenGrid() drains.
-        $this->addToAssertionCount(1);
     }
 
     public function testFileStructureEmptyResult(): void
@@ -771,8 +758,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGoToSymbolInProject(): void
@@ -821,8 +806,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testReformatFile(): void
@@ -854,8 +837,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testPeekDefinitionShowsContextAndJumps(): void
@@ -900,8 +881,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testPeekWithNoDefinition(): void
@@ -936,8 +915,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testJumpStackIsCapped(): void
@@ -1069,8 +1046,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1); // the throwing awaits above are the assertions
     }
 
     public function testGotoDeclarationOnNativePhpFunctionOpensDocs(): void
@@ -1465,8 +1440,6 @@ final class IdeLspFeaturesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testCallHierarchyFoldAllAndMatchingBracket(): void

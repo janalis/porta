@@ -495,8 +495,6 @@ final class IdeFilesystemSessionTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testExternalChangeToUnreadableContentLeavesBufferUntouched(): void
@@ -522,8 +520,6 @@ final class IdeFilesystemSessionTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAWriteOfTheDirtyBuffersOwnTextLeavesItSavedWithoutAWarning(): void
@@ -639,8 +635,6 @@ final class IdeFilesystemSessionTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testNewFileOnDiskAppearsInTreeAfterPoll(): void
@@ -666,8 +660,6 @@ final class IdeFilesystemSessionTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**

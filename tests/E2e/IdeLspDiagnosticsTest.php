@@ -481,8 +481,6 @@ final class IdeLspDiagnosticsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testQuickFixUsesDiagnosticRangeAndHandlesNoOpAction(): void
@@ -582,7 +580,5 @@ final class IdeLspDiagnosticsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

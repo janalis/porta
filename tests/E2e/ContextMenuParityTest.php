@@ -84,8 +84,6 @@ final class ContextMenuParityTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -187,8 +185,6 @@ final class ContextMenuParityTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** The status bar's rendered text, where a flash lands. */

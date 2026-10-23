@@ -107,8 +107,6 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testWithoutABinaryPhpantomIsSaidToBeNotFound(): void
@@ -129,8 +127,6 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testThePhpantomSettingsPageOffersToInstallTheBinary(): void
@@ -157,8 +153,6 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** A project whose phpantom binary is a stub that fixes files and writes a config. */
@@ -216,7 +210,5 @@ final class IdePhpLspPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

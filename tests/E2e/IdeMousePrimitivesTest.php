@@ -79,8 +79,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSidebarHoverHighlightsRow(): void
@@ -114,8 +112,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseClickAndWheel(): void
@@ -204,8 +200,6 @@ final class IdeMousePrimitivesTest extends TestCase
 
         // Mouse-enable escape written on startup, disable on shutdown.
         $this->assertStringContainsString("\x1b[?1006h", $terminal->getOutput());
-
-        $this->addToAssertionCount(1);
     }
 
     /** Under soft wrap the wheel scrolls rows: a notch goes INTO a tall line rather than past it. */
@@ -311,8 +305,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -357,8 +349,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseClicksOutsideAllWidgetsAreIgnored(): void
@@ -385,8 +375,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     // Editor pane starts at column 31 (tree 30 + gap 1), gutter is 7 (git strip,
@@ -437,8 +425,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseDoubleClickSelectsWord(): void
@@ -460,8 +446,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseTripleClickSelectsLine(): void
@@ -484,8 +468,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseShiftClickExtendsSelection(): void
@@ -507,8 +489,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseAltClickTogglesCaret(): void
@@ -529,8 +509,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMousePlainClickCollapsesCarets(): void
@@ -551,8 +529,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseAltShiftDragColumnSelection(): void
@@ -579,8 +555,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseClicksUnsavedChangesDialog(): void
@@ -765,8 +739,6 @@ final class IdeMousePrimitivesTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**

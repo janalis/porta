@@ -163,8 +163,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** A minimal named plugin flashing a distinct label. */
@@ -254,8 +252,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testADisabledPluginIsSkippedAtBootButStaysListedForReEnabling(): void
@@ -287,8 +283,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAThirdPartyPluginShipsItsOwnNamespacedClass(): void
@@ -319,8 +313,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAThirdPartyPluginUsesAPackageItVendoredWithComposer(): void
@@ -350,8 +342,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -426,8 +416,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testEnablingBringsWhatItRequiresAndDisablingTakesItsDependents(): void
@@ -474,8 +462,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testEnablingSomethingNotInstalledSaysSoRatherThanClaimingSuccess(): void
@@ -500,8 +486,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testEnablingAPluginInstallsItsDependenciesFirst(): void
@@ -536,8 +520,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTheRequirementChainInstallsOneAtATimeAndStillDepsFirst(): void
@@ -571,8 +553,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testEnablingWithoutComposerKeepsTheChoiceAndSaysWhatIsMissing(): void
@@ -600,8 +580,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAFailedInstallLeavesThePluginEnabledAndSaysWhichCodeFailed(): void
@@ -631,8 +609,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDisablingAPluginMidInstallDropsItsActivation(): void
@@ -671,8 +647,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testEnablingWhileAnotherInstallRunsIsRefusedRatherThanQueued(): void
@@ -705,8 +679,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDisablingRemovesTheDependenciesPortaInstalled(): void
@@ -739,8 +711,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAVendorTreeThePluginShippedSurvivesADisable(): void
@@ -765,8 +735,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRemovalIsDeferredToNobodyWhenAnInstallIsRunning(): void
@@ -801,8 +769,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDisablingSomethingNotInstalledAnywhereIsHarmless(): void
@@ -824,8 +790,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testABootWithAnEnabledButUninstalledPluginInstallsAndActivatesIt(): void
@@ -853,8 +817,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testABootDrainThatCannotInstallLeavesTheDependentOut(): void
@@ -879,8 +841,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTheBootDrainInstallsRequirementsBeforeWhatNeedsThem(): void
@@ -913,8 +873,6 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAPendingPluginWhoseRequirementAlreadyLoadedJustInstalls(): void
@@ -940,7 +898,5 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

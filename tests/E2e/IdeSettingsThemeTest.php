@@ -77,8 +77,6 @@ final class IdeSettingsThemeTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSettingsViewSidebarNavFormAndLanguages(): void

@@ -141,8 +141,6 @@ final class IdeDocsTest extends TestCase
             ],
             docsDir: $docs->dir,
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseClickAndWheelAndSessionExclusion(): void
@@ -250,8 +248,6 @@ final class IdeDocsTest extends TestCase
         $paths = \array_column($session['buffers'] ?? [], 'path');
         $this->assertNotContains(\realpath($docs->path('README.md')), $paths, 'the docs are never a buffer to restore');
         $this->assertNotEmpty(\array_filter($paths, static fn (string $p): bool => \str_ends_with($p, 'a.php')), 'the code tab persists');
-
-        $this->addToAssertionCount(1);
     }
 
     public function testHeaderClicksWorkAfterACodeTabShowedItsBreadcrumbTrail(): void
@@ -297,8 +293,6 @@ final class IdeDocsTest extends TestCase
             ],
             docsDir: $docs->dir,
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testShippedDocsRenderAndTreeMarkdownStaysEditable(): void
@@ -338,8 +332,6 @@ final class IdeDocsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testCtrlFFindsWithinTheDocsPage(): void
@@ -376,8 +368,6 @@ final class IdeDocsTest extends TestCase
             ],
             docsDir: $docs->dir,
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -468,8 +458,6 @@ final class IdeDocsTest extends TestCase
             ],
             docsDir: $docs->dir,
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** Docs with no front page: F1 opens no empty window, and says why. */
@@ -491,7 +479,5 @@ final class IdeDocsTest extends TestCase
             ],
             docsDir: $docs->dir,
         );
-
-        $this->addToAssertionCount(1);
     }
 }

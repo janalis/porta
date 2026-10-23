@@ -64,8 +64,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseDragResizesBottomPanelAndPersists(): void
@@ -102,8 +100,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseDragResizesResultsPaneAndPersists(): void
@@ -141,8 +137,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseDragResizesAnEmptyResultsPane(): void
@@ -175,8 +169,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSavedLayoutIsAppliedOnStartup(): void
@@ -201,8 +193,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGapClickWithoutDragDoesNotResizeOrPersist(): void
@@ -222,8 +212,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -255,8 +243,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testThePaneDividerThickensUnderThePointer(): void
@@ -293,8 +279,6 @@ final class IdeLayoutFocusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testF6CyclesFocusAcrossPanesAndDelegatesToViews(): void

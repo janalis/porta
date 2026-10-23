@@ -84,8 +84,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testBufferCloseFlows(): void
@@ -167,8 +165,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRecentFilesSaysSoWhenThereIsNowhereToSwitch(): void
@@ -197,8 +193,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRecentFilesOffersAFileThatIsNoLongerOpen(): void
@@ -390,8 +384,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testVerticalTabListMouseInteractions(): void
@@ -466,8 +458,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testKeyboardTabMenuAnchorsOnTheBottomStripsOwnRow(): void
@@ -497,8 +487,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTabCloseOthersAndCloseAllKeepUnsavedTabs(): void
@@ -585,8 +573,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTabCloseIconClosesThatTab(): void
@@ -614,8 +600,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTabDragReorderRepaintsTheStripImmediately(): void
@@ -664,8 +648,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -715,8 +697,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testKeyboardMovesActiveTab(): void
@@ -745,8 +725,6 @@ final class IdeTabsBuffersTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     // --- CLI-supplied options -------------------------------------------------

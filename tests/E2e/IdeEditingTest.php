@@ -78,8 +78,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testStickyScrollPinsHeaderAndClickJumps(): void
@@ -113,8 +111,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testBreadcrumbsShowScopePathAndJumpOnClick(): void
@@ -167,8 +163,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAVisibleToastDoesNotSelfSustainFrames(): void
@@ -198,8 +192,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testBreadcrumbTrailSettlesAfterTypingPauses(): void
@@ -234,8 +226,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFoldAllAndUnfoldAllAreReachableFromTheKEYBOARD(): void
@@ -277,8 +267,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -326,8 +314,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testCopyPathAndCopyReferenceReachTheCLIPBOARDFromTheirChords(): void
@@ -359,8 +345,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testLastEditLocationTakesYouBackToWhatYouWereWriting(): void
@@ -432,8 +416,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMultiCursorThroughRunningIde(): void
@@ -458,8 +440,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMultiCaretSurvivesStrayInputAndShiftSelects(): void
@@ -489,8 +469,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testExpandSelectionThenSurroundThroughFullIde(): void
@@ -564,8 +542,6 @@ final class IdeEditingTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**

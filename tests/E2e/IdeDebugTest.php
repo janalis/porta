@@ -98,8 +98,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDebugSessionStopsStepsAndTerminates(): void
@@ -165,8 +163,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGuardsFallThroughAndAdapterlessLaunchFlashes(): void
@@ -189,8 +185,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testStopMidPauseCleansUpAndPanelMouseWorks(): void
@@ -280,8 +274,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testConditionalBreakpointsAndWatchesEndToEnd(): void
@@ -334,8 +326,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRunToCursorStopsAtTheCaretOnce(): void
@@ -369,8 +359,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testExceptionFiltersReachTheAdapterAndToggleLive(): void
@@ -413,8 +401,6 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDebugStatePersistsAcrossRelaunch(): void
@@ -473,7 +459,5 @@ final class IdeDebugTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

@@ -122,8 +122,6 @@ final class IdeTerminalTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testCloseSessionByTabClickThenCloseLastClosesPanel(): void
@@ -165,8 +163,6 @@ final class IdeTerminalTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSessionTabDragReorders(): void
@@ -204,8 +200,6 @@ final class IdeTerminalTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testSessionTabContextMenuOffersNewAndCloseSession(): void
@@ -251,8 +245,6 @@ final class IdeTerminalTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRunConfigurationGetsItsOwnTabBesideTheShellAndReRunsInPlace(): void
@@ -302,7 +294,5 @@ final class IdeTerminalTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

@@ -88,8 +88,6 @@ final class PhpCsFixerPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFixOnSaveToggleRunsTheFixerAfterEverySave(): void
@@ -132,8 +130,6 @@ final class PhpCsFixerPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGuardsFlashForMissingBinaryNonPhpFilesAndFailures(): void
@@ -179,8 +175,6 @@ final class PhpCsFixerPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTypingWhileTheFixerRunsKeepsTheKeystrokes(): void
@@ -209,7 +203,5 @@ final class PhpCsFixerPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

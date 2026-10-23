@@ -106,8 +106,6 @@ final class MagoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testLintPublishesDiagnosticsAndACleanRunClears(): void
@@ -152,8 +150,6 @@ final class MagoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testOnSaveTogglesChainFormatThenLint(): void
@@ -205,8 +201,6 @@ final class MagoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testLintOnlyOnSavePublishesDiagnosticsWithoutFormatting(): void
@@ -234,8 +228,6 @@ final class MagoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGuardsForMissingBinaryNonPhpFilesAndFailures(): void
@@ -288,7 +280,5 @@ final class MagoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

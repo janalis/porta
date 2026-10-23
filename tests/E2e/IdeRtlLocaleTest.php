@@ -82,8 +82,6 @@ final class IdeRtlLocaleTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRtlLocaleMirrorsTheMainLayoutSidebarToTheRight(): void

@@ -227,8 +227,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testChangeMarksReachTheGutterAndFollowTheActiveBuffer(): void
@@ -270,8 +268,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testCommentMarksAreKeptPerOwnerAndFollowTheActiveBuffer(): void
@@ -307,8 +303,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testProblemsTabRefreshesLiveAsDiagnosticsLand(): void
@@ -382,8 +376,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTwoSearchesCoexistAsTabsAndF5RerunsTheRightOne(): void
@@ -457,8 +449,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testOverflowingDockStripScrollsWhenTheIndicatorIsClicked(): void
@@ -518,8 +508,6 @@ final class IdeDockToolsTest extends TestCase
             ],
             columns: 30,
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testToolTabsCoexistCycleAndClose(): void
@@ -569,8 +557,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDockToolTabDragReordersAndFixedEndpointsAreNoOps(): void
@@ -610,8 +596,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRightClickOnADockToolTabOffersClose(): void
@@ -655,8 +639,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testPointerMotionTintsStripTabs(): void
@@ -698,12 +680,9 @@ final class IdeDockToolsTest extends TestCase
                     $editorRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $editorRect->col + 10, $editorRect->row + 2));
                     $tui->tick();
-                    $this->addToAssertionCount(1); // the motion path itself is the coverage target
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testWheelParityAcrossPopupsMenusSettingsAndTheDockStrip(): void
@@ -781,8 +760,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAContributedToolOwnsItsEnterAndItsF5(): void
@@ -838,8 +815,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -891,8 +866,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -929,8 +902,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -967,8 +938,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -1009,8 +978,6 @@ final class IdeDockToolsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**

@@ -117,8 +117,6 @@ final class IdePluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -203,8 +201,6 @@ final class IdePluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGlobalPluginsLoadAndProjectWinsOnCollision(): void
@@ -254,8 +250,6 @@ final class IdePluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testABrokenPluginWarnsAtBootAndTheIdeStaysFunctional(): void
@@ -281,8 +275,6 @@ final class IdePluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testReadyFiresBeforeTheFirstFileOpenedAndShutdownLast(): void
@@ -391,8 +383,6 @@ final class IdePluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAPluginCommandOnTheFileSurfaceLearnsWhichFileWasClicked(): void
@@ -469,7 +459,5 @@ final class IdePluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

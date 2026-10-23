@@ -111,8 +111,6 @@ final class PhpstanPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAnalyseOnSaveToggle(): void
@@ -136,8 +134,6 @@ final class PhpstanPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGuardsForMissingBinaryNonPhpFilesAndInternalFailures(): void
@@ -181,7 +177,5 @@ final class PhpstanPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

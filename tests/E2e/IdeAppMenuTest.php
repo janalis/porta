@@ -85,8 +85,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -125,8 +123,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -271,8 +267,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testApplicationMenuOpenRunAndDismiss(): void
@@ -318,8 +312,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testApplicationMenuMouse(): void
@@ -380,8 +372,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testApplicationMenuHover(): void
@@ -439,8 +429,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -493,8 +481,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testOpeningMenuBeforeFirstRenderIsSafe(): void
@@ -547,8 +533,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTheCommandPaletteShowsEachActionsKey(): void
@@ -577,8 +561,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testCommandPaletteTogglesSettingAndPersists(): void
@@ -612,8 +594,6 @@ final class IdeAppMenuTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**

@@ -33,6 +33,9 @@ trait RunsIde
     use PumpsLoop;
     use ScreenReads;
 
+    /** Satisfied by the host TestCase (PHPUnit's Assert::assertSame). */
+    abstract public static function assertSame(mixed $expected, mixed $actual, string $message = ''): void;
+
     /**
      * Wait for $needle to be ON SCREEN, forcing a frame each turn.
      *
@@ -237,6 +240,7 @@ trait RunsIde
         $ide = new Ide($project->dir, $file, $terminal, docsDir: $docsDir, tool: $tool);
         $this->pinSettingsScope($ide);
         $tui = Services::resolve($ide, Tui::class);
+        $given = \array_keys($steps);
 
         // Stopping is a STEP, not a branch in the scheduler: it chains behind
         // the last step the same way every other step does, so a step that
@@ -252,7 +256,12 @@ trait RunsIde
             $tui->stop();
         };
 
-        $this->runSteps($steps, $tui, $terminal, $ide);
+        $ran = $this->runSteps($steps, $tui, $terminal, $ide);
+        // An IDE that stopped early — a step that quit, a crash the loop
+        // swallowed — would otherwise skip every later step, and their
+        // assertions with them, and pass. The terminator alone may be skipped:
+        // a scenario whose last step quits on purpose never reaches it.
+        self::assertSame($given, \array_values(\array_intersect($ran, $given)), 'every step ran: the IDE stopped before a step it was given');
 
         return $terminal;
     }
@@ -277,22 +286,26 @@ trait RunsIde
      * this worker.
      *
      * @param array<int, callable> $steps ms => step($tui, $terminal, $ide)
+     *
+     * @return list<int> the keys of the steps that ran, in order
      */
-    private function runSteps(array $steps, Tui $tui, VirtualTerminal $terminal, Ide $ide): void
+    private function runSteps(array $steps, Tui $tui, VirtualTerminal $terminal, Ide $ide): array
     {
         $timers = [];
+        $ran = [];
         \ksort($steps);
         $keys = \array_keys($steps);
         $gap = \getenv('PORTA_E2E_STEP_GAP');
         $cap = \is_numeric($gap) ? (float) $gap : 0.0;
-        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, $steps, $keys, $tui, $terminal, $ide, $cap): void {
+        $schedule = static function (int $index, int $previousKey) use (&$schedule, &$timers, &$ran, $steps, $keys, $tui, $terminal, $ide, $cap): void {
             $key = $keys[$index];
-            $timers[] = EventLoop::delay(\min($key - $previousKey, $cap) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $schedule): void {
+            $timers[] = EventLoop::delay(\min($key - $previousKey, $cap) / 1000, static function () use ($index, $key, $steps, $keys, $tui, $terminal, $ide, $schedule, &$ran): void {
                 // A user's input always lands after a paint, so every step does:
                 // with no gap, a bare tick() inside the 60fps cap paints nothing.
                 $tui->requestRender(force: true);
                 $tui->processRender();
                 $steps[$key]($tui, $terminal, $ide);
+                $ran[] = $key;
                 if (\array_key_exists($index + 1, $keys)) {
                     $schedule($index + 1, $key);
                 }
@@ -309,6 +322,8 @@ trait RunsIde
                 EventLoop::cancel($timer);
             }
         }
+
+        return $ran;
     }
 
     /**

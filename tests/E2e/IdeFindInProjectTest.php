@@ -122,8 +122,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -215,8 +213,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectModuleScopeUsesComposerPackageRoot(): void
@@ -259,8 +255,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testScopeSelectorWithNoFileOpenStaysWholeProject(): void
@@ -291,8 +285,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectInCommentsStringsScopeNarrowsMatches(): void
@@ -327,8 +319,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectContextLinesFromOpenBuffer(): void
@@ -361,8 +351,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectContextLinesFromDisk(): void
@@ -395,8 +383,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectMultilineSearchAndReplace(): void
@@ -442,8 +428,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectMultilineReplaceWithNoMatchesFlashes(): void
@@ -476,8 +460,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectModalMaskFilters(): void
@@ -514,8 +496,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectReplaceInTheModal(): void
@@ -666,8 +646,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectF5RerunsPicksUpDiskChanges(): void
@@ -700,8 +678,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectPreserveCaseReplace(): void
@@ -740,8 +716,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectSearchHistoryRecall(): void
@@ -776,8 +750,6 @@ final class IdeFindInProjectTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -860,8 +832,6 @@ final class IdeFindInProjectTest extends TestCase
                 $this->assertTrue($editor->isFindModalOpen(), 'hovering never dismissed it');
             },
         ]);
-
-        $this->addToAssertionCount(1);
     }
 
     /**

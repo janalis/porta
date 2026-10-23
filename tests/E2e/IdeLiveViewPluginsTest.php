@@ -218,8 +218,6 @@ final class IdeLiveViewPluginsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAViewPluginTogglesLiveThroughItsWholeLifecycle(): void

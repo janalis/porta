@@ -68,7 +68,5 @@ final class IdePluginDocsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

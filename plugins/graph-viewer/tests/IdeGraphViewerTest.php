@@ -98,7 +98,6 @@ final class IdeGraphViewerTest extends TestCase
                 },
             ],
         );
-        $this->addToAssertionCount(1);
     }
 
     public function testTheDotPathAndRenderModeSettingsApplyWithoutARestart(): void
@@ -160,7 +159,6 @@ final class IdeGraphViewerTest extends TestCase
                 },
             ],
         );
-        $this->addToAssertionCount(1);
     }
 
     public function testAFocusedGraphPaneGetsTheTabContextMenu(): void
@@ -301,8 +299,6 @@ final class IdeGraphViewerTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** With no graph tab there is nothing to search, and the command says so instead of opening an empty list. */
@@ -325,8 +321,6 @@ final class IdeGraphViewerTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTheBitmapPaintsAndTheRenderModeKeyFlipsBackToTheCells(): void

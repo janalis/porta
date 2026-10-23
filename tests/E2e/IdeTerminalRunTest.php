@@ -69,8 +69,6 @@ final class IdeTerminalRunTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseWheelScrollsTheTerminal(): void
@@ -111,8 +109,6 @@ final class IdeTerminalRunTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testKittyKeyInputIsTranslatedForTheShell(): void
@@ -145,8 +141,6 @@ final class IdeTerminalRunTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testIntegratedTerminalOpensRunsAndCloses(): void
@@ -219,7 +213,6 @@ final class IdeTerminalRunTest extends TestCase
             ],
         );
 
-        $this->addToAssertionCount(1);
         \putenv('SHELL');
     }
 
@@ -263,7 +256,6 @@ final class IdeTerminalRunTest extends TestCase
             ],
         );
 
-        $this->addToAssertionCount(1);
         \putenv('SHELL');
     }
 
@@ -293,7 +285,6 @@ final class IdeTerminalRunTest extends TestCase
             ],
         );
 
-        $this->addToAssertionCount(1);
         \putenv('SHELL');
     }
 
@@ -324,8 +315,6 @@ final class IdeTerminalRunTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRunLastRepeatsAndEmptyGuards(): void
@@ -356,8 +345,6 @@ final class IdeTerminalRunTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRunMenuEmptyWhenNothingToRun(): void
@@ -378,7 +365,5 @@ final class IdeTerminalRunTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

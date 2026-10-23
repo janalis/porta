@@ -113,8 +113,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTreeContextMenuCoversTheSidebarSeparator(): void
@@ -138,8 +136,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testContextMenuHighlightsTheItemUnderTheHoveringPointer(): void
@@ -175,8 +171,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInFilesFromFolderContextMenuScopesTheSearch(): void
@@ -235,8 +229,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testReplaceInFilesFromFolderContextMenuScopesTheReplacement(): void
@@ -320,8 +312,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testEditorContextMenuPlacesCaretWhenThereIsNoSelectionThenEscapes(): void
@@ -350,8 +340,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRightClickClosesAnOpenApplicationMenu(): void
@@ -377,8 +365,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRightClickOnEmptyTreeOrEmptyTabStripOpensNothing(): void
@@ -404,8 +390,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRightClickOverAnOpenPickerOpensNoMenu(): void
@@ -435,8 +419,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAPluginsFileMenuItemReachesFileRowsButNotDirectories(): void
@@ -490,8 +472,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** A plugin whose single command sits on the FILE context surface. */
@@ -544,8 +524,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTreeContextMenuNewFileAndNewFolder(): void
@@ -855,8 +833,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTreeContextMenuNearTheRightEdgeStraddlesPanes(): void
@@ -880,8 +856,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testTreeRenameOntoAnExistingNameFlashesError(): void
@@ -1100,8 +1074,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRightClickInTheGapDismissesAnOpenContextMenu(): void
@@ -1126,8 +1098,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     // --- Tab close icon + reordering ------------------------------------------
@@ -1249,7 +1219,5 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

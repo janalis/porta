@@ -192,8 +192,6 @@ final class IdePluginInstallTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testRemovalTakesTwoPressesAndDeactivatesLive(): void
@@ -258,8 +256,6 @@ final class IdePluginInstallTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGitUrlInstallClonesAndActivates(): void
@@ -305,8 +301,6 @@ final class IdePluginInstallTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGlobalScopeInstallLandsInPortaHome(): void
@@ -345,8 +339,6 @@ final class IdePluginInstallTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**

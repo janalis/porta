@@ -151,8 +151,6 @@ final class IdeLspMultiServerTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -243,7 +241,5 @@ final class IdeLspMultiServerTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

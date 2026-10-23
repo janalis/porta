@@ -86,8 +86,6 @@ final class IdeToastsTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testALoopCallbackThrowBecomesAToastAndTheSessionSurvives(): void
@@ -118,7 +116,5 @@ final class IdeToastsTest extends TestCase
         } finally {
             EventLoop::setErrorHandler(LoopErrors::rethrow());
         }
-
-        $this->addToAssertionCount(1);
     }
 }

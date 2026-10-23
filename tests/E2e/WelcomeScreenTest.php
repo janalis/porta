@@ -506,8 +506,6 @@ final class WelcomeScreenTest extends TestCase
                 $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $region->col + 5, $step)); // hover
                 $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $region->col + 5, $step)); // wheel down
                 $tui->tick();
-
-                $this->addToAssertionCount(1); // reaching here without an exception is the assertion
             },
         ]);
 

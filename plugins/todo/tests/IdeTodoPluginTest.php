@@ -74,8 +74,6 @@ final class IdeTodoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAnExistingKeymapRebindOfTheCoreIdStillFires(): void
@@ -99,8 +97,6 @@ final class IdeTodoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testDisablingThePluginTakesTheFeatureWithIt(): void
@@ -147,7 +143,5 @@ final class IdeTodoPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

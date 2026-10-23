@@ -124,8 +124,6 @@ final class PsalmPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testAnalyseOnSaveToggle(): void
@@ -158,8 +156,6 @@ final class PsalmPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testPersistedAutoLintAnalysesOnSaveAcrossRestarts(): void
@@ -182,8 +178,6 @@ final class PsalmPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testGuardsForMissingBinaryNonPhpFilesAndInternalFailures(): void
@@ -229,7 +223,5 @@ final class PsalmPluginTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

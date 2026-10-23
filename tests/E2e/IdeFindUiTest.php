@@ -68,8 +68,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindModalCaretShowsEvenWhenOpenedFromAnUnfocusedEditor(): void
@@ -91,8 +89,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseWheelScrollsTheModalPreview(): void
@@ -129,8 +125,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testMouseWheelScrollsTheResultsToolWindow(): void
@@ -172,8 +166,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testFindInProjectFilterNarrowsLoadedResults(): void
@@ -218,8 +210,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /** The find bar's value row, as text: its one row on this compact screen, the boxes' middle one on a roomy one. */
@@ -302,8 +292,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testClickingTheFindBarsOptionTagTogglesIt(): void
@@ -340,8 +328,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -376,8 +362,6 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     public function testProjectSearchRegexToggle(): void
@@ -581,7 +565,5 @@ final class IdeFindUiTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 }

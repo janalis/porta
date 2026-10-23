@@ -81,8 +81,6 @@ final class IdeLiveKeymapTest extends TestCase
                 },
             ],
         );
-
-        $this->addToAssertionCount(1);
     }
 
     /**
@@ -126,7 +124,5 @@ final class IdeLiveKeymapTest extends TestCase
         } finally {
             \putenv('PORTA_KEYMAP_PLATFORM='.$pinned);
         }
-
-        $this->addToAssertionCount(1);
     }
 }
