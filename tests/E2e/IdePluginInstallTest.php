@@ -19,7 +19,6 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -268,9 +267,7 @@ final class IdePluginInstallTest extends TestCase
         // The installer needs a real git to peek the repository, AND the fake
         // composer to actually require the package once peeked — both on PATH.
         \putenv('PATH='.$this->composerBin.\PATH_SEPARATOR.\PORTA_TEST_PRISTINE_PATH);
-        if (null === new ExecutableFinder()->find('git')) {
-            $this->markTestSkipped('git binary not available');
-        }
+        $this->skipWithoutGit();
 
         // The installed name derives from the repo's OWN composer.json "name",
         // so host the repo in a subdirectory with a valid plugin name too.

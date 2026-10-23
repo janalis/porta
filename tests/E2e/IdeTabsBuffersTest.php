@@ -67,7 +67,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tabs);
+                    $rect = Widgets::rectIn($ide, $tabs);
                     $anchor = $tabs->tabAnchor(1); // the Target.php tab
                     $this->assertNotNull($anchor);
                     $col = $rect->col + $anchor['col'] + 2;
@@ -405,7 +405,7 @@ final class IdeTabsBuffersTest extends TestCase
             '.porta.json' => \json_encode(['settings' => ['tabBarPosition' => 'left']], \JSON_THROW_ON_ERROR),
         ]);
 
-        $tabsRect = static fn (Tui $tui, Ide $ide): WidgetRect => Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tabs'));
+        $tabsRect = static fn (Tui $tui, Ide $ide): WidgetRect => Widgets::rectIn($ide, $tui->getById('tabs'));
 
         $this->runIde(
             $project,
@@ -779,7 +779,7 @@ final class IdeTabsBuffersTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tabs);
+                    $rect = Widgets::rectIn($ide, $tabs);
                     $this->assertSame(2, $rect->rows, 'forty rows: pills, the labels over their baseline');
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(0, $zone['labelRow'], 'its label row is the first');
@@ -829,7 +829,7 @@ final class IdeTabsBuffersTest extends TestCase
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tabs);
+                    $rect = Widgets::rectIn($ide, $tabs);
                     $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(
                         ['row' => 0, 'rows' => 1, 'labelRow' => 0],

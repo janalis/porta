@@ -14,6 +14,7 @@ use Porta\Layout\WorkspaceLayout;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\Widgets;
 use Porta\Ui\BidiTui;
@@ -40,6 +41,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class HalfRowsTest extends TestCase
 {
+    use ScreenReads;
+
     use BootsIde;
     use PreservesPath;
 
@@ -66,12 +69,6 @@ final class HalfRowsTest extends TestCase
         $tui = Services::resolve($ide, BidiTui::class);
         $this->assertInstanceOf(BidiTui::class, $tui);
         $this->tui = $tui;
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(true);
-        Probe::invoke($this->tui, 'processRender');
     }
 
     /** The terminal's answers: it knows mode 1016, and a cell is 10 × 20 pixels. */
@@ -110,7 +107,7 @@ final class HalfRowsTest extends TestCase
     public function testAGapsHalvesAreTheTreeEntriesBesideIt(): void
     {
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $tree = $this->rect(Services::resolve($this->ide, FileTreeWidget::class));
         $col = $tree->col + 3;
 
@@ -131,7 +128,7 @@ final class HalfRowsTest extends TestCase
     public function testTheRuleOverTheTabStripIsTheStripsOnItsLowerHalf(): void
     {
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $tabs = $this->rect($this->tabBar());
         $col = $tabs->col + 3;
 
@@ -146,7 +143,7 @@ final class HalfRowsTest extends TestCase
     {
         Services::resolve($this->ide, WorkspaceLayout::class)->setTabBarPosition(TabBarPosition::Bottom);
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $tabs = $this->rect($this->tabBar());
         $col = $tabs->col + 3;
         $below = $tabs->row + $tabs->rows;
@@ -163,7 +160,7 @@ final class HalfRowsTest extends TestCase
         $buffers->openFile($this->project->path('a.php'), OpenFocus::Keep);
         $buffers->openFile($this->project->path('b.php'), OpenFocus::Keep);
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $bar = $this->tabBar();
         $this->assertTrue($bar->position()->isSide());
         $tabs = $this->rect($bar);
@@ -181,7 +178,7 @@ final class HalfRowsTest extends TestCase
         $this->assertInstanceOf(Styles::class, $styles);
         $styles->switchTo(MonochromeTheme::definition());
         Services::resolve($this->ide, ChromeInvalidator::class)->invalidateAll();
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame($tabs->row - 1, $this->at($tabs->col + $tabs->columns, $tabs->row - 1, lower: true)->row, 'monochrome: the rule is nobody\'s');
         $this->assertSame($tabs->row, $this->at($col, $tabs->row + 1, lower: false)->row, 'the gap under it, upper half');
         $this->assertSame($tabs->row + 2, $this->at($col, $tabs->row + 1, lower: true)->row, 'its lower half: the next tab');
@@ -192,7 +189,7 @@ final class HalfRowsTest extends TestCase
     /** A cell report cannot say, and a compact screen splits no row: either passes as it came. */
     public function testWithoutPixelsOrOnACompactScreenNothingMoves(): void
     {
-        $this->frame();
+        $this->frame($this->tui);
         $tree = $this->rect(Services::resolve($this->ide, FileTreeWidget::class));
 
         $cell = $this->at($tree->col + 3, $tree->row + 3, lower: true);
@@ -200,7 +197,7 @@ final class HalfRowsTest extends TestCase
 
         $this->pixelsOn();
         $this->terminal->simulateResize(columns: 100, rows: 24);
-        $this->frame();
+        $this->frame($this->tui);
         $tree = $this->rect(Services::resolve($this->ide, FileTreeWidget::class));
         $this->assertSame($tree->row + 3, $this->at($tree->col + 3, $tree->row + 3, lower: true)->row, 'compact: rows are whole');
     }
@@ -209,12 +206,12 @@ final class HalfRowsTest extends TestCase
     public function testAnOpenViewsNavTakesTheHalvesAndTheTreeNone(): void
     {
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $tree = $this->rect(Services::resolve($this->ide, FileTreeWidget::class));
         $tabs = $this->rect($this->tabBar());
         Services::resolve($this->ide, ViewRegistry::class)->open('settings');
-        $this->frame();
-        $this->frame(); // the window lays the view out on a frame of its own
+        $this->frame($this->tui);
+        $this->frame($this->tui); // the window lays the view out on a frame of its own
         $nav = $this->rect($this->tui->getById('settings-nav') ?? $this->fail('no nav'));
 
         $this->assertSame($nav->row, $this->at($nav->col + 3, $nav->row - 1, lower: true)->row, 'the window\'s padding over the nav');
@@ -232,11 +229,11 @@ final class HalfRowsTest extends TestCase
      */
     public function testAMenuOverTheTreeKeepsItsRowsWhole(): void
     {
-        $this->frame();
+        $this->frame($this->tui);
         $this->tui->handleInput("\x1b[<0;2;1M"); // File, as cells: pixels are not on yet
         $this->tui->handleInput("\x1b[<0;2;1m");
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $tree = $this->rect(Services::resolve($this->ide, FileTreeWidget::class));
 
         $this->assertSame($tree->row + 3, $this->at($tree->col + 3, $tree->row + 3, lower: true)->row, 'the menu\'s row, not the tree entry under its gap');
@@ -252,7 +249,7 @@ final class HalfRowsTest extends TestCase
     public function testTheEdgeRowsHalvesAreTheBars(): void
     {
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $layout = Services::resolve($this->ide, WorkspaceLayout::class);
         $top = $this->rect($layout->topRule)->row;
         $bottom = $this->rect($layout->bottomRule)->row;
@@ -270,7 +267,7 @@ final class HalfRowsTest extends TestCase
         $this->assertInstanceOf(Styles::class, $styles);
         $styles->switchTo(MonochromeTheme::definition());
         Services::resolve($this->ide, ChromeInvalidator::class)->invalidateAll(); // the switch's sweep, which the edge rows are not in
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame($top, $this->at($col, $top, lower: false)->row, 'a rule holds no bar\'s half');
         $this->assertSame($bottom, $this->at($col, $bottom, lower: true)->row);
     }
@@ -284,7 +281,7 @@ final class HalfRowsTest extends TestCase
         \file_put_contents($this->project->path('README.md'), data: "# Read me\n\nText.\n");
         Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('README.md'), OpenFocus::Keep);
         $this->pixelsOn();
-        $this->frame();
+        $this->frame($this->tui);
         $bar = $this->tui->getById('breadcrumbs');
         $this->assertInstanceOf(BreadcrumbsWidget::class, $bar);
         $crumbs = $this->rect($bar);

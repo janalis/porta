@@ -30,6 +30,7 @@ use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\Glyphs;
 use Porta\Widget\CodeEditorWidget;
@@ -47,6 +48,8 @@ use Symfony\Component\Tui\Tui;
 
 final class NavigationControllerTest extends TestCase
 {
+    use StatusReads;
+
     /** Where the problem card's fix question waits for its loop turn. */
     private FakeScheduler $scheduler;
 
@@ -121,11 +124,6 @@ final class NavigationControllerTest extends TestCase
         );
     }
 
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
-    }
-
     /** Opens $path in the editor, the buffer manager and the fake LSP session, ready to answer requests. */
     private function readyOn(NavigationController $controller, string $path, string $text): void
     {
@@ -145,7 +143,7 @@ final class NavigationControllerTest extends TestCase
         $controller->pushCurrentLocation();
         $controller->navigateBack();
         $controller->navigateBack();
-        $this->assertStringContainsString('Nowhere to go back to', $this->flashed(), 'both pushes with no file were no-ops');
+        $this->assertStringContainsString('Nowhere to go back to', $this->statusRow($this->statusBar), 'both pushes with no file were no-ops');
 
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$a = 1;\n\$b = 2;\n"));
         $this->editor->getDocument()->setCursor(1, 2);
@@ -163,7 +161,7 @@ final class NavigationControllerTest extends TestCase
 
         $controller->navigateBack();
 
-        $this->assertStringContainsString('Nowhere to go back to', $this->flashed());
+        $this->assertStringContainsString('Nowhere to go back to', $this->statusRow($this->statusBar));
         $this->assertSame([], $this->opened, 'nothing to open');
     }
 
@@ -262,7 +260,7 @@ final class NavigationControllerTest extends TestCase
 
         $controller->requestErrorDescription(1, 5);
 
-        $this->assertStringContainsString('No problem at the caret', $this->flashed());
+        $this->assertStringContainsString('No problem at the caret', $this->statusRow($this->statusBar));
     }
 
     /** PhpStorm's combined popup: Shift+F1 on a problem puts it above the documentation, parted by a tee. */
@@ -295,14 +293,14 @@ final class NavigationControllerTest extends TestCase
         $controller->requestHover(1, 1);
         \array_last($this->client->requests)['respond'](null, error: null);
         $this->assertStringContainsString('Undefined variable', $this->screen(), 'no documentation: the problem alone');
-        $this->assertStringNotContainsString('No documentation found', $this->flashed());
+        $this->assertStringNotContainsString('No documentation found', $this->statusRow($this->statusBar));
 
         $offline = $this->controller();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$x = 1;\n"));
         $this->problemOn(1, 0, 2, message: 'Offline problem');
         $offline->requestHover(1, 1);
         $this->assertStringContainsString('Offline problem', $this->screen(), 'no server: the problem alone, and nothing to explain');
-        $this->assertSame('', \trim($this->flashed()));
+        $this->assertSame('', \trim($this->statusRow($this->statusBar)));
     }
 
     /** Any other key closes it and does what it does; a click on it stays on it, one elsewhere closes it. */
@@ -503,7 +501,7 @@ final class NavigationControllerTest extends TestCase
         $controller->requestPeek(1, 0);
         $this->client->requests[0]['respond'](null, error: null);
 
-        $this->assertStringContainsString('Nothing to peek', $this->flashed());
+        $this->assertStringContainsString('Nothing to peek', $this->statusRow($this->statusBar));
     }
 
     public function testRequestPeekFlashesWhenTheTargetIsOutsideTheFilesystem(): void
@@ -517,7 +515,7 @@ final class NavigationControllerTest extends TestCase
             'range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]],
         ], error: null);
 
-        $this->assertStringContainsString('Peek target outside the filesystem', $this->flashed());
+        $this->assertStringContainsString('Peek target outside the filesystem', $this->statusRow($this->statusBar));
     }
 
     public function testRequestFileStructureOpensAnOverlayThatJumpsOnPick(): void
@@ -554,7 +552,7 @@ final class NavigationControllerTest extends TestCase
         $controller->requestFileStructure();
         $this->client->requests[0]['respond']([], error: null);
 
-        $this->assertStringContainsString('No symbols in this file', $this->flashed());
+        $this->assertStringContainsString('No symbols in this file', $this->statusRow($this->statusBar));
     }
 
     public function testLineAtPrefersTheLiveBufferOverDisk(): void
@@ -701,7 +699,7 @@ final class NavigationControllerTest extends TestCase
         $controller->requestStructurePanel();
         $this->client->requests[0]['respond']([], error: null);
 
-        $this->assertStringContainsString('No symbols in this file', $this->flashed());
+        $this->assertStringContainsString('No symbols in this file', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -753,7 +751,7 @@ final class NavigationControllerTest extends TestCase
         $this->client->requests[1]['respond']([], error: null);
 
         $this->assertStringNotContainsString('Greeter', $this->plainPanel());
-        $this->assertStringNotContainsString('No symbols in this file', $this->flashed(), 'a background refresh never flashes');
+        $this->assertStringNotContainsString('No symbols in this file', $this->statusRow($this->statusBar), 'a background refresh never flashes');
     }
 
     /**
@@ -858,7 +856,7 @@ final class NavigationControllerTest extends TestCase
         $controller->{$method}(1, 9);
 
         $this->assertSame([], $this->client->requests, \sprintf('nothing was asked of a server that cannot answer %s (%s)', $request, $side));
-        $flashed = $this->flashed();
+        $flashed = $this->statusRow($this->statusBar);
         $this->assertStringContainsString('no call hierarchy', $flashed);
         $this->assertStringNotContainsString('No callers found', $flashed, 'and it does not claim the symbol has none');
     }

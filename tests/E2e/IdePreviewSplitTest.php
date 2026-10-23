@@ -19,12 +19,11 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\BreadcrumbsWidget;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FindBarWidget;
 use Porta\Widget\MarkdownPreviewWidget;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -49,20 +48,12 @@ final class IdePreviewSplitTest extends TestCase
         return new TempProject(['README.md' => self::README, 'a.php' => "<?php\n"]);
     }
 
-    private static function rect(Ide $ide, object $widget): WidgetRect
-    {
-        $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($widget);
-        self::assertInstanceOf(WidgetRect::class, $rect);
-
-        return $rect;
-    }
-
     /** A left click on the toggle captioned $caption, found on the bar's own row. */
     private function clickToggle(Tui $tui, Ide $ide, string $caption): void
     {
         $bar = $tui->getById('breadcrumbs');
         $this->assertInstanceOf(BreadcrumbsWidget::class, $bar);
-        $rect = self::rect($ide, $bar);
+        $rect = Widgets::rectIn($ide, $bar);
         foreach (\range(0, $rect->columns - 1) as $col) {
             $mode = $bar->previewModeAt($col);
             if (null !== $mode && $caption === $mode->name) {
@@ -179,8 +170,8 @@ final class IdePreviewSplitTest extends TestCase
                     $this->await(static fn (): bool => \str_contains($grid(), '│ Porta'), what: 'the split');
                     $split = Services::resolve($ide, PreviewSplit::class);
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $before = self::rect($ide, $editor)->columns;
-                    $divider = self::rect($ide, $split->separator);
+                    $before = Widgets::rectIn($ide, $editor)->columns;
+                    $divider = Widgets::rectIn($ide, $split->separator);
 
                     // Under the pointer the divider says it is a grab.
                     $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $divider->col + 1, $divider->row + 3));
@@ -192,7 +183,7 @@ final class IdePreviewSplitTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $divider->col - 11, $divider->row + 3));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $divider->col - 11, $divider->row + 3));
                     $this->frame($tui);
-                    $after = self::rect($ide, $editor)->columns;
+                    $after = Widgets::rectIn($ide, $editor)->columns;
                     $this->assertLessThan($before - 8, $after, 'the editor gave the preview its columns');
                     $persisted = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertIsArray($persisted);
@@ -201,8 +192,8 @@ final class IdePreviewSplitTest extends TestCase
                     // Shift+F12 from the editor grows it back two columns a press.
                     $tui->handleInput("\x1b[24;2~");
                     $this->frame($tui);
-                    $this->assertGreaterThan($after, self::rect($ide, $editor)->columns, 'the keyboard nudge moves the divider too');
-                    $editorColumns = self::rect($ide, $editor)->columns;
+                    $this->assertGreaterThan($after, Widgets::rectIn($ide, $editor)->columns, 'the keyboard nudge moves the divider too');
+                    $editorColumns = Widgets::rectIn($ide, $editor)->columns;
                 },
             ],
             columns: 120,
@@ -215,7 +206,7 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($editorColumns): void {
                     $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│ Porta'), what: 'the split, again');
-                    $this->assertEqualsWithDelta($editorColumns, self::rect($ide, Services::resolve($ide, CodeEditorWidget::class))->columns, 1.0, 'the remembered proportion');
+                    $this->assertEqualsWithDelta($editorColumns, Widgets::rectIn($ide, Services::resolve($ide, CodeEditorWidget::class))->columns, 1.0, 'the remembered proportion');
                 },
             ],
             columns: 120,
@@ -242,7 +233,7 @@ final class IdePreviewSplitTest extends TestCase
 
                     // A click on the navigation bar gives the preview the keys (one
                     // on its text takes the reader to the text instead).
-                    $rect = self::rect($ide, $preview);
+                    $rect = Widgets::rectIn($ide, $preview);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 3, $rect->row + 1));
                     $this->assertSame($preview, $tui->getFocus());
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 3, $rect->row + 1));
@@ -412,9 +403,9 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), 'Porta'), what: 'the split');
-                    $editor = self::rect($ide, Services::resolve($ide, CodeEditorWidget::class));
-                    $preview = self::rect($ide, Services::resolve($ide, MarkdownPreviewWidget::class));
-                    $divider = self::rect($ide, Services::resolve($ide, PreviewSplit::class)->separator);
+                    $editor = Widgets::rectIn($ide, Services::resolve($ide, CodeEditorWidget::class));
+                    $preview = Widgets::rectIn($ide, Services::resolve($ide, MarkdownPreviewWidget::class));
+                    $divider = Widgets::rectIn($ide, Services::resolve($ide, PreviewSplit::class)->separator);
 
                     $this->assertLessThan($divider->col, $preview->col, 'the preview on the left');
                     $this->assertGreaterThan($divider->col, $editor->col, 'the text on the reading side, the right');
@@ -434,7 +425,7 @@ final class IdePreviewSplitTest extends TestCase
             [
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->await(fn (): bool => \str_contains(\implode("\n", $this->screenGrid($tui, $terminal)), '│ Porta'), what: 'the split');
-                    $divider = self::rect($ide, Services::resolve($ide, PreviewSplit::class)->separator)->col;
+                    $divider = Widgets::rectIn($ide, Services::resolve($ide, PreviewSplit::class)->separator)->col;
 
                     $tui->handleInput("\x1b[21~"); // F10 arms the bar
                     for ($i = 0; $i < 5; ++$i) {
@@ -488,7 +479,7 @@ final class IdePreviewSplitTest extends TestCase
                     $service = Services::resolve($ide, BufferService::class);
                     // A click on the link drawn with $label, where the preview drew it.
                     $follow = function (string $label) use ($tui, $terminal, $ide, $preview): void {
-                        $rect = self::rect($ide, $preview);
+                        $rect = Widgets::rectIn($ide, $preview);
                         foreach ($this->screenGrid($tui, $terminal) as $row => $line) {
                             $col = \mb_strpos(\mb_substr($line, $rect->col), $label);
                             if (false !== $col && $row > $rect->row) {
@@ -560,7 +551,7 @@ final class IdePreviewSplitTest extends TestCase
                     $preview = Services::resolve($ide, MarkdownPreviewWidget::class);
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $click = static function (string $needle) use ($tui, $grid, $ide, $preview): void {
-                        $rect = self::rect($ide, $preview); // it moves when the preview is shown alone
+                        $rect = Widgets::rectIn($ide, $preview); // it moves when the preview is shown alone
                         foreach ($grid() as $row => $line) {
                             $col = \mb_strpos(\mb_substr($line, $rect->col), $needle);
                             if (false !== $col && $row > $rect->row) {
@@ -624,7 +615,7 @@ final class IdePreviewSplitTest extends TestCase
                     // Click the drawn word $word, wherever the current layout put it,
                     // and say where the caret landed.
                     $clickWord = static function (string $word) use ($tui, $grid, $ide, $preview, $editor): int {
-                        $rect = self::rect($ide, $preview);
+                        $rect = Widgets::rectIn($ide, $preview);
                         foreach ($grid() as $row => $line) {
                             $col = \mb_strpos(\mb_substr($line, $rect->col), ' '.$word.' ');
                             if (false !== $col && $row > $rect->row) {
@@ -642,7 +633,7 @@ final class IdePreviewSplitTest extends TestCase
 
                     // The divider dragged far left: the page rewraps wider, and a click
                     // still lands on the word it drew.
-                    $divider = self::rect($ide, Services::resolve($ide, PreviewSplit::class)->separator);
+                    $divider = Widgets::rectIn($ide, Services::resolve($ide, PreviewSplit::class)->separator);
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $divider->col + 1, $divider->row + 3));
                     $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $divider->col - 20, $divider->row + 3));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $divider->col - 20, $divider->row + 3));

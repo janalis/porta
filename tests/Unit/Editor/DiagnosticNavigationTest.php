@@ -10,16 +10,17 @@ use Porta\Editor\DiagnosticNavigation;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Event\ProblemRevealRequested;
 use Porta\I18n\Translator;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Render\RenderContext;
 
 final class DiagnosticNavigationTest extends TestCase
 {
+    use StatusReads;
+
     private BufferManager $buffers;
     private CodeEditorWidget $editor;
     private StatusBarWidget $status;
@@ -60,11 +61,6 @@ final class DiagnosticNavigationTest extends TestCase
         ];
     }
 
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->status->render(new RenderContext(100, 1))));
-    }
-
     private function caretLine(): int
     {
         return $this->editor->getDocument()->cursorLine;
@@ -76,8 +72,8 @@ final class DiagnosticNavigationTest extends TestCase
 
         $navigation->next();
         $this->assertSame(2, $this->caretLine());
-        $this->assertStringContainsString('first boom', $this->flashed(), 'the flash carries the diagnostic, not just the line');
-        $this->assertStringContainsString('3:', $this->flashed(), 'numbered the way the gutter numbers it');
+        $this->assertStringContainsString('first boom', $this->statusRow($this->status), 'the flash carries the diagnostic, not just the line');
+        $this->assertStringContainsString('3:', $this->statusRow($this->status), 'numbered the way the gutter numbers it');
 
         $navigation->next();
         $this->assertSame(6, $this->caretLine());
@@ -112,7 +108,7 @@ final class DiagnosticNavigationTest extends TestCase
         $navigation->next();
 
         $this->assertSame(2, $this->caretLine());
-        $this->assertStringContainsString('Wrapped', $this->flashed());
+        $this->assertStringContainsString('Wrapped', $this->statusRow($this->status));
     }
 
     public function testBeforeTheFirstProblemPreviousWrapsToTheLast(): void
@@ -122,7 +118,7 @@ final class DiagnosticNavigationTest extends TestCase
         $navigation->previous();
 
         $this->assertSame(9, $this->caretLine());
-        $this->assertStringContainsString('Wrapped', $this->flashed());
+        $this->assertStringContainsString('Wrapped', $this->statusRow($this->status));
     }
 
     public function testACleanFileSaysSoAndDoesNotMove(): void
@@ -132,7 +128,7 @@ final class DiagnosticNavigationTest extends TestCase
         $navigation->next();
 
         $this->assertSame(4, $this->caretLine());
-        $this->assertStringContainsString('No problems in this file', $this->flashed());
+        $this->assertStringContainsString('No problems in this file', $this->statusRow($this->status));
     }
 
     /** A line whose diagnostics were cleared to [] is not a problem to stop on. */

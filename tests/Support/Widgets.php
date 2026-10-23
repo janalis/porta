@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Ide;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\Renderer;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -52,5 +53,11 @@ final class Widgets
     public static function rect(Renderer $renderer, AbstractWidget $widget): WidgetRect
     {
         return $renderer->getWidgetRect($widget) ?? throw new \LogicException(\sprintf('%s was never laid out.', $widget::class));
+    }
+
+    /** {@see rect()} against a running IDE's own renderer. */
+    public static function rectIn(Ide $ide, AbstractWidget $widget): WidgetRect
+    {
+        return self::rect(Services::resolve($ide, Renderer::class), $widget);
     }
 }

@@ -9,6 +9,7 @@ use Porta\Input\MouseEvent;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneResizer;
 use Porta\Tests\Support\BuildsLayoutController;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
@@ -25,6 +26,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class LayoutControllerPreviewSplitTest extends TestCase
 {
+    use ScreenReads;
+
     use BuildsLayoutController;
 
     private CodeEditorWidget $editor;
@@ -36,15 +39,9 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->previewSplit->mount($this->editor, new TestPane('md'));
         $this->tui->add($this->previewSplit->area);
-        $this->frame();
+        $this->frame($this->tui);
 
         return $layout;
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(force: true);
-        $this->tui->processRender();
     }
 
     private static function mouse(string $sequence): MouseEvent
@@ -78,7 +75,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         $layout->armPreviewResize(self::mouse("\x1b[<0;51;3M"));
 
         $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null));
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(30, $this->editorColumns());
         $this->assertSame([], $this->layoutFile(), 'nothing written mid-drag');
 
@@ -120,7 +117,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         $layout = $this->onScreen();
 
         $layout->nudgePreviewSplit(10);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(60, $this->editorColumns());
         $this->assertSame(['previewSplitPercent' => 60], $this->layoutFile());
 
@@ -141,7 +138,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         \mkdir($this->project->dir.'/.porta');
         \file_put_contents($this->project->dir.'/.porta/layout.json', $written);
         $next->applyLayout();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertSame(30, $this->previewSplit->percent());
         $this->assertSame(30, $this->editorColumns());

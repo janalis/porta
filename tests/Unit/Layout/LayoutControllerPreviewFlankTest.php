@@ -9,6 +9,7 @@ use Porta\Input\MouseEvent;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PreviewSplit;
 use Porta\Tests\Support\BuildsLayoutController;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Render\WidgetRect;
@@ -21,6 +22,8 @@ use Symfony\Component\Tui\Render\WidgetRect;
  */
 final class LayoutControllerPreviewFlankTest extends TestCase
 {
+    use ScreenReads;
+
     use BuildsLayoutController;
 
     private CodeEditorWidget $editor;
@@ -35,15 +38,9 @@ final class LayoutControllerPreviewFlankTest extends TestCase
         $this->pane = new TestPane('theirs', $this->flank);
         $this->previewSplit->mount($this->editor, $this->pane);
         $this->tui->add($this->previewSplit->area);
-        $this->frame();
+        $this->frame($this->tui);
 
         return $layout;
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(force: true);
-        $this->tui->processRender();
     }
 
     private static function mouse(string $sequence): MouseEvent
@@ -90,7 +87,7 @@ final class LayoutControllerPreviewFlankTest extends TestCase
 
         $layout->continueResizeDrag(self::mouse("\x1b[<32;21;3M"), null);
         $layout->continueResizeDrag(self::mouse("\x1b[<0;21;3m"), null);
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertAbout(20, $this->columnsOf($this->flank));
         $this->assertSame(['flankSplitPercent'], \array_keys($this->layoutFile()), 'its own key alone');
@@ -103,7 +100,7 @@ final class LayoutControllerPreviewFlankTest extends TestCase
 
         $layout->continueResizeDrag(self::mouse("\x1b[<32;71;3M"), null);
         $layout->continueResizeDrag(self::mouse("\x1b[<0;71;3m"), null);
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertAbout(21, $this->columnsOf($this->pane));
         $this->assertSame(['flankedSplitPercent'], \array_keys($this->layoutFile()), 'its own key alone');
@@ -117,13 +114,13 @@ final class LayoutControllerPreviewFlankTest extends TestCase
 
         $this->tui->setFocus($this->flank);
         $layout->nudgePreviewSplit(4);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertAbout($flank + 4, $this->columnsOf($this->flank), 'from the flank, the flank\'s divider');
         $this->assertSame($pane, $this->columnsOf($this->pane));
 
         $this->tui->setFocus($this->pane);
         $layout->nudgePreviewSplit(4);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertAbout($pane - 4, $this->columnsOf($this->pane), 'from the pane, the pane\'s');
         $this->assertSame(['flankedSplitPercent', 'flankSplitPercent'], \array_keys($this->layoutFile()), 'each under its own key');
     }
@@ -135,7 +132,7 @@ final class LayoutControllerPreviewFlankTest extends TestCase
         $layout->nudgePreviewSplit(-6);
         $this->tui->setFocus($this->editor);
         $layout->nudgePreviewSplit(-8);
-        $this->frame();
+        $this->frame($this->tui);
         $written = (string) \file_get_contents($this->project->dir.'/.porta/layout.json');
         $flank = $this->columnsOf($this->flank);
         $pane = $this->columnsOf($this->pane);
@@ -144,7 +141,7 @@ final class LayoutControllerPreviewFlankTest extends TestCase
         \mkdir($this->project->dir.'/.porta');
         \file_put_contents($this->project->dir.'/.porta/layout.json', $written);
         $next->applyLayout();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertSame([$flank, $pane], [$this->columnsOf($this->flank), $this->columnsOf($this->pane)]);
         $this->assertSame(50, $this->previewSplit->percent(), 'the plain split keeps its own');

@@ -10,6 +10,7 @@ use Porta\Layout\LayoutController;
 use Porta\Layout\PaneResizer;
 use Porta\Layout\PaneSplit;
 use Porta\Tests\Support\BuildsLayoutController;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestPane;
 use Porta\Widget\CodeEditorWidget;
@@ -25,6 +26,8 @@ use Symfony\Component\Tui\Render\WidgetRect;
  */
 final class LayoutControllerViewSplitTest extends TestCase
 {
+    use ScreenReads;
+
     use BuildsLayoutController;
 
     private TestPane $lead;
@@ -40,15 +43,9 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->split = $this->regions->mint('git')->split('history', minSide: 20);
         $this->split->mount($this->lead = new TestPane('files'), $this->rest = new TestPane('diff'));
         $this->tui->add($this->split->area);
-        $this->frame();
+        $this->frame($this->tui);
 
         return $layout;
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(force: true);
-        $this->tui->processRender();
     }
 
     private static function mouse(string $sequence): MouseEvent
@@ -75,7 +72,7 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->assertFalse($layout->armViewSplitResize('settings', self::mouse("\x1b[<0;51;3M")), 'another view has no such split');
         $this->assertTrue($layout->armViewSplitResize('git', self::mouse("\x1b[<0;51;3M")));
         $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null));
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(30, $this->leadColumns());
         $this->assertSame([], $this->layoutFile(), 'nothing written mid-drag');
 
@@ -123,7 +120,7 @@ final class LayoutControllerViewSplitTest extends TestCase
 
         $this->tui->setFocus($this->lead);
         $resizer->resize(5);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(60, $this->leadColumns(), 'two columns a press, times five');
         $this->tui->setFocus($this->rest);
         $resizer->resize(-1);
@@ -172,7 +169,7 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->assertTrue($resizer->canResize());
 
         $this->terminal->simulateResize(40, 30);
-        $this->frame();
+        $this->frame($this->tui);
         $this->split->fit();
 
         $this->assertTrue($this->split->isNarrow());
@@ -189,7 +186,7 @@ final class LayoutControllerViewSplitTest extends TestCase
         $layout = $this->controller(columns: 101);
         $this->previewSplit->mount(new CodeEditorWidget(), new TestPane('md'));
         $this->tui->add($this->previewSplit->area);
-        $this->frame();
+        $this->frame($this->tui);
         $onPreviewDivider = self::mouse("\x1b[<0;51;3M");
 
         $this->assertFalse($layout->armDividerResize('git', null, $onPreviewDivider), 'a view open: the preview is behind it');

@@ -22,7 +22,6 @@ use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\Menu\ViewMenuSources;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Render\Renderer;
 
 /**
  * The context menu has two hand-maintained dispatch chains — a right-click
@@ -61,7 +60,7 @@ final class ContextMenuParityTest extends TestCase
 
                     // --- The editor: right-click and Ctrl+F10 agree.
                     $byMouse = $this->menuFor($tui, $ide, static function ($tui, Ide $ide): void {
-                        $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('editor'));
+                        $rect = Widgets::rectIn($ide, $tui->getById('editor'));
                         $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
                     });
                     $byKeyboard = $this->menuFor($tui, $ide, static function ($tui): void {
@@ -73,7 +72,7 @@ final class ContextMenuParityTest extends TestCase
 
                     // --- The tree: right-click a node vs Ctrl+F10 on the selection.
                     $byMouse = $this->menuFor($tui, $ide, static function ($tui, Ide $ide): void {
-                        $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tree'));
+                        $rect = Widgets::rectIn($ide, $tui->getById('tree'));
                         $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 2));
                     });
                     $byKeyboard = $this->menuFor($tui, $ide, static function ($tui): void {
@@ -176,7 +175,7 @@ final class ContextMenuParityTest extends TestCase
                     // The bar is a single row at the top of the editor pane, so the
                     // click must land on that row (row + 1 in 1-based screen coords),
                     // not below it where the editor now sits.
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('find-bar'));
+                    $rect = Widgets::rectIn($ide, $tui->getById('find-bar'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 2, $rect->row + 1));
                     $tui->tick();
                     $this->assertStringContainsString('No context menu here', $this->statusLine($tui), 'and now the mouse does too');

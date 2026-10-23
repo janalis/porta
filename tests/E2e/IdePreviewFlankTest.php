@@ -15,10 +15,9 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestPane;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\EditorArea;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -84,14 +83,6 @@ final class IdePreviewFlankTest extends TestCase
         return $flank;
     }
 
-    private static function rect(Ide $ide, object $widget): WidgetRect
-    {
-        $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($widget);
-        self::assertInstanceOf(WidgetRect::class, $rect);
-
-        return $rect;
-    }
-
     public function testTheFlankSitsBesideTheEditorAndThePointerAndTheKeysReachIt(): void
     {
         $project = $this->project();
@@ -105,12 +96,12 @@ final class IdePreviewFlankTest extends TestCase
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $flank = self::flank($ide);
                     $pane = self::pane($ide);
-                    $this->assertLessThan(self::rect($ide, $editor)->col, self::rect($ide, $flank)->col, 'the flank on the editor\'s other side');
-                    $this->assertLessThan(self::rect($ide, $pane)->col, self::rect($ide, $editor)->col);
+                    $this->assertLessThan(Widgets::rectIn($ide, $editor)->col, Widgets::rectIn($ide, $flank)->col, 'the flank on the editor\'s other side');
+                    $this->assertLessThan(Widgets::rectIn($ide, $pane)->col, Widgets::rectIn($ide, $editor)->col);
                     $this->assertSame([$flank, $editor, $pane], Services::resolve($ide, EditorArea::class)->members(), 'the focus ring walks them as they sit');
 
                     // SGR cells are 1-based: the flank's cell (1, 3) is this.
-                    $rect = self::rect($ide, $flank);
+                    $rect = Widgets::rectIn($ide, $flank);
                     [$col, $row] = [$rect->col + 4, $rect->row + 2];
                     $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $col, $row));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col, $row));

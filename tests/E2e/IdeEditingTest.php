@@ -61,7 +61,7 @@ final class IdeEditingTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
                     $editor = Widgets::editor($tui);
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $editor);
+                    $rect = Widgets::rectIn($ide, $editor);
                     $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($editor, new RenderContext(120, 20))));
 
                     $this->assertStringContainsString(Glyphs::EXPANDED, $screen(), 'the brace line starts an open region');

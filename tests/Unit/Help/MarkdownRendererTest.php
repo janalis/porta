@@ -11,6 +11,7 @@ use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Tests\Support\ClosureHighlightProvider;
+use Porta\Tests\Support\ReadsRenderedDoc;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
@@ -27,6 +28,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class MarkdownRendererTest extends TestCase
 {
+    use ReadsRenderedDoc;
+
     private Styles $styles;
 
     protected function setUp(): void
@@ -37,12 +40,6 @@ final class MarkdownRendererTest extends TestCase
     private function render(string $markdown, int $width = 40, ?CodeHighlighter $highlighter = null): RenderedDoc
     {
         return new MarkdownRenderer($this->styles, $highlighter)->render($markdown, $width);
-    }
-
-    /** @return list<string> */
-    private static function plain(RenderedDoc $doc): array
-    {
-        return \array_map(static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes($line)), $doc->lines);
     }
 
     public function testHeadingsLoseTheirMarkersAndTheFirstTwoLevelsAreRuledTheFullWidth(): void

@@ -35,6 +35,7 @@ use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestRuns;
 use Porta\Widget\CodeEditorWidget;
@@ -51,6 +52,8 @@ use Symfony\Component\Tui\Tui;
 
 final class DebugControllerTest extends TestCase
 {
+    use StatusReads;
+
     private CodeEditorWidget $editor;
     private DebugPanelWidget $panel;
     private StatusBarWidget $statusBar;
@@ -169,11 +172,6 @@ final class DebugControllerTest extends TestCase
         return $controller;
     }
 
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
-    }
-
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
     private function requestedRenderSince(callable $action): bool
     {
@@ -258,23 +256,23 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller(withFile: Presence::Without);
         $controller->toggleBreakpointAtCaret();
-        $this->assertStringContainsString('Nothing to debug', $this->flashed());
+        $this->assertStringContainsString('Nothing to debug', $this->statusRow($this->statusBar));
 
         // A fresh controller: the assertion below must not be satisfied by
         // the stale flash from the toggle above (same message text).
         $controller = $this->controller(withFile: Presence::Without);
         $controller->startForCurrentFile();
-        $this->assertStringContainsString('Nothing to debug', $this->flashed());
+        $this->assertStringContainsString('Nothing to debug', $this->statusRow($this->statusBar));
 
         $controller = $this->controller(withAdapter: Presence::Without);
         $controller->startForCurrentFile();
-        $this->assertStringContainsString('No debug adapter configured for php', $this->flashed());
+        $this->assertStringContainsString('No debug adapter configured for php', $this->statusRow($this->statusBar));
 
         $controller = $this->controller();
         $this->pauseAtBreakpoint($controller);
         $this->assertTrue($controller->isActive());
         $controller->startForCurrentFile();
-        $this->assertStringContainsString('Debugger already running', $this->flashed());
+        $this->assertStringContainsString('Debugger already running', $this->statusRow($this->statusBar));
         $this->assertCount(
             1,
             \array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c),
@@ -291,8 +289,8 @@ final class DebugControllerTest extends TestCase
 
         $this->client->close();
 
-        $this->assertStringContainsString('The debug adapter stopped unexpectedly', $this->flashed());
-        $this->assertStringNotContainsString('Could not start', $this->flashed(), 'it had started');
+        $this->assertStringContainsString('The debug adapter stopped unexpectedly', $this->statusRow($this->statusBar));
+        $this->assertStringNotContainsString('Could not start', $this->statusRow($this->statusBar), 'it had started');
         $this->assertFalse($controller->isActive());
         $this->assertStringContainsString('terminated', $this->panel->statusText());
     }
@@ -314,7 +312,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $this->client->failToStart = true;
         $controller->startForCurrentFile();
-        $this->assertStringContainsString('Could not start the debug adapter', $this->flashed());
+        $this->assertStringContainsString('Could not start the debug adapter', $this->statusRow($this->statusBar));
         $this->assertFalse($controller->isActive());
         $this->assertStringContainsString('terminated', $this->panel->statusText(), 'the panel reflects the failed spawn, not a lingering starting state');
         $this->client->emit('stopped', ['reason' => 'breakpoint', 'threadId' => 1]);
@@ -323,7 +321,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $controller->startForCurrentFile();
         $this->client->respond('initialize', [], 'bad handshake');
-        $this->assertStringContainsString('Could not start the debug adapter — initialize failed: bad handshake', $this->flashed());
+        $this->assertStringContainsString('Could not start the debug adapter — initialize failed: bad handshake', $this->statusRow($this->statusBar));
         $this->assertFalse($controller->isActive());
         $this->assertStringContainsString('terminated', $this->panel->statusText(), 'onError delegates to onTerminated to reset the panel too');
     }
@@ -693,7 +691,7 @@ final class DebugControllerTest extends TestCase
 
         $controllerWithoutFile = $this->controller(withFile: Presence::Without);
         $controllerWithoutFile->editBreakpointAtCaret();
-        $this->assertStringContainsString('Nothing to debug', $this->flashed());
+        $this->assertStringContainsString('Nothing to debug', $this->statusRow($this->statusBar));
     }
 
     public function testLogpointRendersAHollowDiamondAndShipsTheLogMessage(): void
@@ -858,7 +856,7 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->restart();
-        $this->assertStringContainsString('No debug session to restart', $this->flashed());
+        $this->assertStringContainsString('No debug session to restart', $this->statusRow($this->statusBar));
     }
 
     public function testStepAndStopCommandsAreInertWithoutASession(): void
@@ -893,7 +891,7 @@ final class DebugControllerTest extends TestCase
         $variablesRequestsBefore = \count(\array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c));
         $this->editor->handleInput("\r");
 
-        $this->assertStringContainsString('invalid value', $this->flashed(), 'the adapter error reaches the status bar');
+        $this->assertStringContainsString('invalid value', $this->statusRow($this->statusBar), 'the adapter error reaches the status bar');
         $this->assertCount(
             $variablesRequestsBefore,
             \array_filter($this->client->commands(), static fn (string $c): bool => 'variables' === $c),
@@ -911,7 +909,7 @@ final class DebugControllerTest extends TestCase
         }
         $this->panel->handleInput('e');
 
-        $this->assertStringContainsString('cannot edit variables', $this->flashed());
+        $this->assertStringContainsString('cannot edit variables', $this->statusRow($this->statusBar));
         $this->assertSame([], $this->client->argumentsOf('setVariable'), 'nothing is sent');
         $this->assertFalse(EditorState::promptOpen($this->editor), 'the guard stops before a prompt ever opens');
     }
@@ -1061,7 +1059,7 @@ final class DebugControllerTest extends TestCase
         }
         $this->editor->handleInput("\r");
         $this->assertSame(['expression' => '$name', 'context' => 'repl', 'frameId' => 1], $this->client->argumentsOf('evaluate'), 'trimmed');
-        $this->assertStringContainsString("\$name = 'porta'", $this->flashed());
+        $this->assertStringContainsString("\$name = 'porta'", $this->statusRow($this->statusBar));
 
         $this->client->responses['evaluate'] = [[], 'oops'];
         $controller->evaluatePrompt();
@@ -1069,18 +1067,18 @@ final class DebugControllerTest extends TestCase
             $this->editor->handleInput($ch);
         }
         $this->editor->handleInput("\r");
-        $this->assertStringContainsString('$bad = oops', $this->flashed());
+        $this->assertStringContainsString('$bad = oops', $this->statusRow($this->statusBar));
 
         $controller->evaluatePrompt();
         $this->editor->handleInput("\r"); // empty expression: no request
-        $this->assertStringContainsString('$bad = oops', $this->flashed(), 'flash unchanged');
+        $this->assertStringContainsString('$bad = oops', $this->statusRow($this->statusBar), 'flash unchanged');
     }
 
     public function testRunToCursorGuardsAndDelegation(): void
     {
         $controller = $this->controller();
         $controller->runToCursor();
-        $this->assertStringContainsString('Run to cursor needs a paused debugger', $this->flashed());
+        $this->assertStringContainsString('Run to cursor needs a paused debugger', $this->statusRow($this->statusBar));
 
         $this->pauseAtBreakpoint($controller, line: 2);
         $this->editor->getDocument()->setCursor(3, 0);
@@ -1097,7 +1095,7 @@ final class DebugControllerTest extends TestCase
         Probe::set($this->editor, 'filePath', null);
 
         $controller->runToCursor();
-        $this->assertStringContainsString('Nothing to debug', $this->flashed());
+        $this->assertStringContainsString('Nothing to debug', $this->statusRow($this->statusBar));
         $this->assertNotContains('continue', $this->client->commands(), 'nothing ran');
     }
 
@@ -1105,7 +1103,7 @@ final class DebugControllerTest extends TestCase
     {
         $controller = $this->controller();
         $controller->exceptionBreakpointsOverlay();
-        $this->assertStringContainsString('No debugger session', $this->flashed());
+        $this->assertStringContainsString('No debugger session', $this->statusRow($this->statusBar));
 
         $this->pauseAtBreakpoint($controller);
         $controller->exceptionBreakpointsOverlay();
@@ -1141,7 +1139,7 @@ final class DebugControllerTest extends TestCase
         $this->client->respond('initialize', ['supportsConfigurationDoneRequest' => true]); // no filters advertised
         $this->client->respond('launch');
         $controller->exceptionBreakpointsOverlay();
-        $this->assertStringContainsString('no exception breakpoint filters', $this->flashed());
+        $this->assertStringContainsString('no exception breakpoint filters', $this->statusRow($this->statusBar));
         $this->assertFalse(EditorState::pickerOpen($this->editor), 'the guard stops before an empty overlay opens');
     }
 
@@ -1163,7 +1161,7 @@ final class DebugControllerTest extends TestCase
 
         $step($controller);
 
-        $this->assertStringContainsString('No paused debugger to step', $this->flashed());
+        $this->assertStringContainsString('No paused debugger to step', $this->statusRow($this->statusBar));
         $this->assertNotContains($command, $this->client->commands(), 'nothing reached the wire');
     }
 
@@ -1185,7 +1183,7 @@ final class DebugControllerTest extends TestCase
         $controller->stepOver();
 
         $this->assertContains('next', $this->client->commands(), 'paused, the step goes through');
-        $this->assertStringNotContainsString('No paused debugger to step', $this->flashed());
+        $this->assertStringNotContainsString('No paused debugger to step', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -1203,7 +1201,7 @@ final class DebugControllerTest extends TestCase
 
         $controller->evaluatePrompt();
 
-        $this->assertStringContainsString('Evaluate needs a paused debugger', $this->flashed());
+        $this->assertStringContainsString('Evaluate needs a paused debugger', $this->statusRow($this->statusBar));
         $this->assertFalse(EditorState::promptOpen($this->editor), 'the guard stops before a prompt ever opens');
         $this->assertNotContains('evaluate', $this->client->commands());
     }
@@ -1293,7 +1291,7 @@ final class DebugControllerTest extends TestCase
         $controller = $this->controller();
         $debugger = TestRuns::create(debug: $controller)->debugger();
         $debugger->pause();
-        $this->assertStringContainsString('No running debugger to pause', $this->flashed(), 'no session');
+        $this->assertStringContainsString('No running debugger to pause', $this->statusRow($this->statusBar), 'no session');
 
         // Starting: not running yet, so nothing is asked — and nothing said.
         $this->client->responses['stackTrace'] = [['stackFrames' => [['id' => 1, 'name' => '{main}', 'source' => ['path' => '/p/prog.php'], 'line' => 3]]], null];
@@ -1312,10 +1310,10 @@ final class DebugControllerTest extends TestCase
 
         // The first refusal taken down, so this one is seen to be said again.
         $this->statusBar->withdrawFlash('No running debugger to pause');
-        $this->assertStringNotContainsString('No running debugger to pause', $this->flashed());
+        $this->assertStringNotContainsString('No running debugger to pause', $this->statusRow($this->statusBar));
         $asked = \count($this->client->requests);
         $debugger->pause();
         $this->assertCount($asked, $this->client->requests, 'paused already: nothing asked');
-        $this->assertStringContainsString('No running debugger to pause', $this->flashed());
+        $this->assertStringContainsString('No running debugger to pause', $this->statusRow($this->statusBar));
     }
 }

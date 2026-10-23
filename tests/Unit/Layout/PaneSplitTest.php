@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\NarrowSplit;
 use Porta\Layout\PaneSplit;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TestPane;
 use Porta\Ui\Theme\Styles;
 use Symfony\Component\Tui\Input\Keybindings;
@@ -27,6 +28,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class PaneSplitTest extends TestCase
 {
+    use ScreenReads;
+
     private Tui $tui;
 
     private VirtualTerminal $terminal;
@@ -45,15 +48,9 @@ final class PaneSplitTest extends TestCase
         $split = new PaneSplit('s', Styles::dark(), NarrowSplit::Stacked, $this->renderer, $this->tui, $share, minSide: 28);
         $split->mount($this->lead = new TestPane('files'), $this->rest = new TestPane('diff'));
         $this->tui->add($split->area);
-        $this->frame();
+        $this->frame($this->tui);
 
         return $split;
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(force: true);
-        $this->tui->processRender();
     }
 
     private function rectOf(object $widget): WidgetRect
@@ -92,9 +89,9 @@ final class PaneSplitTest extends TestCase
         $this->tui->setFocus($this->rest);
 
         $this->terminal->simulateResize(56, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertTrue($split->isNarrow());
         $this->assertSame([0, 0, 56], [$this->rectOf($this->lead)->row, $this->rectOf($this->lead)->col, $this->rectOf($this->rest)->columns], 'the lead on top, the rest under it, across the area');
@@ -104,9 +101,9 @@ final class PaneSplitTest extends TestCase
 
         $split->fit();
         $this->terminal->simulateResize(57, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertFalse($split->isNarrow());
         $this->assertSame([true, false], $heard, 'once per flip, not per frame');
@@ -118,7 +115,7 @@ final class PaneSplitTest extends TestCase
     {
         $split = $this->split(columns: 50);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $split->dragTo(10, $this->rectOf($split->area));
 
@@ -167,9 +164,9 @@ final class PaneSplitTest extends TestCase
         };
         $split->mount($line, $this->rest = new TestPane('diff'));
         $this->tui->add($split->area);
-        $this->frame();
+        $this->frame($this->tui);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertTrue($split->isNarrow());
         $this->assertSame(1, $this->rectOf($this->rest)->row);
@@ -182,9 +179,9 @@ final class PaneSplitTest extends TestCase
         $split = $this->split(columns: 200, share: 150); // the lead 29: one over its least
 
         $this->terminal->simulateResize(70, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertFalse($split->isNarrow(), '70 columns hold two of 28');
         $this->assertSame(28, $this->rectOf($this->lead)->columns);
@@ -192,9 +189,9 @@ final class PaneSplitTest extends TestCase
         $this->assertSame(15, $split->percent(), 'the share kept is still the user\'s');
 
         $this->terminal->simulateResize(200, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(29, $this->rectOf($this->lead)->columns, 'wide again, the divider is back where it was left');
     }
 
@@ -204,9 +201,9 @@ final class PaneSplitTest extends TestCase
         $split = $this->split(columns: 200, share: 900);
 
         $this->terminal->simulateResize(70, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $split->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertSame(28, $this->rectOf($this->rest)->columns);
     }
@@ -222,7 +219,7 @@ final class PaneSplitTest extends TestCase
 
         foreach (\range(1, end: 5) as $ignored) {
             $split->fit();
-            $this->frame();
+            $this->frame($this->tui);
         }
 
         $this->assertSame(0, $moves);

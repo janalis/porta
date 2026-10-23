@@ -16,6 +16,7 @@ use Porta\Support\AnsiText;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\BidiTui;
@@ -41,6 +42,8 @@ use Symfony\Component\Tui\Widget\AbstractWidget;
  */
 final class RuleHalvesFrameTest extends TestCase
 {
+    use ScreenReads;
+
     use BootsIde;
     use PreservesPath;
 
@@ -69,12 +72,6 @@ final class RuleHalvesFrameTest extends TestCase
 
             return $this->frame = \array_values(\array_map(\strval(...), $joined));
         });
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(true);
-        Probe::invoke($this->tui, 'processRender');
     }
 
     private function rect(AbstractWidget $widget): WidgetRect
@@ -173,8 +170,8 @@ final class RuleHalvesFrameTest extends TestCase
         $this->boot(rows: 40);
         Services::resolve($this->ide(), WorkspaceLayout::class)->setTabBarPosition(TabBarPosition::Right);
         Services::resolve($this->ide(), BufferService::class)->openFile($this->project->path('README.md'), OpenFocus::Keep);
-        $this->frame();
-        $this->frame();
+        $this->frame($this->tui);
+        $this->frame($this->tui);
         $bar = $this->tui->getById('breadcrumbs');
         $this->assertInstanceOf(BreadcrumbsWidget::class, $bar);
         $crumbs = $this->rect($bar);
@@ -192,13 +189,13 @@ final class RuleHalvesFrameTest extends TestCase
     public function testTheTreesLastRowReachesIntoTheStatusBarsHalf(): void
     {
         $this->boot(rows: 41); // an odd height: the tree's last row is an entry, not a gap
-        $this->frame();
+        $this->frame($this->tui);
         $tree = Services::resolve($this->ide(), FileTreeWidget::class);
         $rect = $this->rect($tree);
         $last = $tree->nodeAtRow($rect->rows - 1);
         $this->assertInstanceOf(FileTreeNode::class, $last, 'an entry on the tree\'s last row');
         $tree->revealPath($last->path);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame($last->path, $tree->nodeAtRow($rect->rows - 1)?->path, 'still the last row, selected');
 
         $edge = $this->cell($rect->row + $rect->rows, $rect->col + 3);
@@ -216,8 +213,8 @@ final class RuleHalvesFrameTest extends TestCase
     {
         $this->boot(rows: 40);
         Services::resolve($this->ide(), BufferService::class)->openFile($this->project->path('README.md'), OpenFocus::Editor);
-        $this->frame();
-        $this->frame();
+        $this->frame($this->tui);
+        $this->frame($this->tui);
         $bar = $this->tui->getById('breadcrumbs');
         $this->assertInstanceOf(BreadcrumbsWidget::class, $bar);
         $crumbs = $this->rect($bar);

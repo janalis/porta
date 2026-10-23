@@ -25,6 +25,7 @@ use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\CodeEditorWidget;
@@ -32,11 +33,12 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
 
 final class RefactorControllerTest extends TestCase
 {
+    use StatusReads;
+
     /** Where the controller raises what it asks others to do (a problem row's open). */
     private EventDispatcher $events;
 
@@ -49,11 +51,6 @@ final class RefactorControllerTest extends TestCase
     private RefactoringUndo $undo;
     private StatusBarWidget $statusBar;
     private Tui $tui;
-
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
-    }
 
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
     private function requestedRenderSince(callable $action): bool
@@ -262,7 +259,7 @@ final class RefactorControllerTest extends TestCase
 
         \end($this->client->requests)['respond']($result, error: $error);
 
-        $this->assertStringContainsString('No quick fixes here', $this->flashed());
+        $this->assertStringContainsString('No quick fixes here', $this->statusRow($this->statusBar));
     }
 
     /** @return \Generator<string, array{mixed, array<string, mixed>|null}> */
@@ -414,10 +411,10 @@ final class RefactorControllerTest extends TestCase
         [$first, $second] = $this->clients;
 
         \end($first->requests)['respond']([self::renameTo('z', kind: 'refactor')], error: null);
-        $this->assertStringNotContainsString('No quick fix', $this->flashed(), 'the other server may still have one');
+        $this->assertStringNotContainsString('No quick fix', $this->statusRow($this->statusBar), 'the other server may still have one');
         \end($second->requests)['respond']([self::renameTo('v', kind: 'source')], error: null);
 
-        $this->assertStringContainsString('No quick fix for this problem', $this->flashed());
+        $this->assertStringContainsString('No quick fix for this problem', $this->statusRow($this->statusBar));
         $this->assertSame("<?php\n\$x = 1;\n", $this->buffers->get('/tmp/proj/a.php')?->document->getText());
     }
 
@@ -428,7 +425,7 @@ final class RefactorControllerTest extends TestCase
 
         $controller->requestApplyQuickFix(1, 4);
 
-        $this->assertStringContainsString('No problem at the caret', $this->flashed());
+        $this->assertStringContainsString('No problem at the caret', $this->statusRow($this->statusBar));
         $this->assertSame([], \array_filter($this->client->requests, static fn (array $r): bool => 'textDocument/codeAction' === $r['method']));
     }
 
@@ -438,13 +435,13 @@ final class RefactorControllerTest extends TestCase
         $controller->requestCodeActions(0, 0);
         $request = \end($this->client->requests);
         $request['respond']([], error: null);
-        $this->assertStringContainsString('No quick fixes here', $this->flashed());
+        $this->assertStringContainsString('No quick fixes here', $this->statusRow($this->statusBar));
 
         [$controller] = $this->ready();
         $controller->requestCodeActions(0, 0);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['code' => -1, 'message' => 'nope']);
-        $this->assertStringContainsString('No quick fixes here', $this->flashed());
+        $this->assertStringContainsString('No quick fixes here', $this->statusRow($this->statusBar));
     }
 
     public function testActionsWithNoTitleAreFilteredOut(): void
@@ -464,7 +461,7 @@ final class RefactorControllerTest extends TestCase
         // titleless entries were dropped, not just skipped in the display)
         // must resolve to the real action, not a stale/wrong index.
         $this->editor->handleInput("\r");
-        $this->assertStringContainsString('Quick fix has nothing to apply', $this->flashed(), 'the surviving action ("Add import") has neither edit nor command');
+        $this->assertStringContainsString('Quick fix has nothing to apply', $this->statusRow($this->statusBar), 'the surviving action ("Add import") has neither edit nor command');
     }
 
     public function testApplyingAnEditedActionAppliesItAndFlashesTheCountAndTitle(): void
@@ -482,7 +479,7 @@ final class RefactorControllerTest extends TestCase
             ],
         ]);
 
-        $this->assertStringContainsString('Applied "Fix it" to 1 file', $this->flashed());
+        $this->assertStringContainsString('Applied "Fix it" to 1 file', $this->statusRow($this->statusBar));
         $this->assertSame("<?php\ny = 1;\n", $this->buffers->get('/tmp/proj/a.php')->document->getText(), 'the edit was actually applied');
     }
 
@@ -533,7 +530,7 @@ final class RefactorControllerTest extends TestCase
             $this->editor->handleInput("\r");
         });
 
-        $this->assertStringContainsString('Quick fix has nothing to apply', $this->flashed());
+        $this->assertStringContainsString('Quick fix has nothing to apply', $this->statusRow($this->statusBar));
         $this->assertSame(['textDocument/codeAction'], \array_column($this->client->requests, 'method'), 'nothing was sent beyond the codeAction request itself');
         $this->assertTrue($requested, 'applyCodeAction always requests a render, even when nothing was applied');
     }
@@ -544,7 +541,7 @@ final class RefactorControllerTest extends TestCase
             ['title' => 'Malformed', 'command' => ['arguments' => ['a']]], // array, but no 'command' key
         ]);
 
-        $this->assertStringContainsString('Quick fix has nothing to apply', $this->flashed());
+        $this->assertStringContainsString('Quick fix has nothing to apply', $this->statusRow($this->statusBar));
         $this->assertSame(['textDocument/codeAction'], \array_column($this->client->requests, 'method'));
     }
 
@@ -569,7 +566,7 @@ final class RefactorControllerTest extends TestCase
         ]);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: null);
-        $this->assertStringContainsString('Ran "Action Title"', $this->flashed());
+        $this->assertStringContainsString('Ran "Action Title"', $this->statusRow($this->statusBar));
 
         // action.title empty (filtered from the picker), so instead exercise
         // command.title winning over the literal 'command' fallback by giving
@@ -580,7 +577,7 @@ final class RefactorControllerTest extends TestCase
         ]);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: null);
-        $this->assertStringContainsString('Ran "Row Label"', $this->flashed());
+        $this->assertStringContainsString('Ran "Row Label"', $this->statusRow($this->statusBar));
     }
 
     public function testCommandSuccessAndFailureFlashDifferentMessages(): void
@@ -590,14 +587,14 @@ final class RefactorControllerTest extends TestCase
         ]);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: null);
-        $this->assertStringContainsString('Ran "Run fixer"', $this->flashed());
+        $this->assertStringContainsString('Ran "Run fixer"', $this->statusRow($this->statusBar));
 
         $this->pickAction([
             ['title' => 'Run fixer', 'command' => 'porta.fix'],
         ]);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['message' => 'boom']);
-        $this->assertStringContainsString('"Run fixer" failed: boom', $this->flashed());
+        $this->assertStringContainsString('"Run fixer" failed: boom', $this->statusRow($this->statusBar));
     }
 
     public function testCommandFailureWithNoMessageFallsBackToUnknownError(): void
@@ -607,7 +604,7 @@ final class RefactorControllerTest extends TestCase
         ]);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: []);
-        $this->assertStringContainsString('"Run fixer" failed: unknown error', $this->flashed());
+        $this->assertStringContainsString('"Run fixer" failed: unknown error', $this->statusRow($this->statusBar));
     }
 
     // ---------------------------------------------------------------- requestReformat
@@ -690,7 +687,7 @@ final class RefactorControllerTest extends TestCase
         $request = \end($this->client->requests);
         $request['respond']([], error: null);
 
-        $this->assertStringContainsString('Formatting not supported by php-ls', $this->flashed());
+        $this->assertStringContainsString('Formatting not supported by php-ls', $this->statusRow($this->statusBar));
     }
 
     public function testReformatErrorAlsoFlashesNotSupported(): void
@@ -701,7 +698,7 @@ final class RefactorControllerTest extends TestCase
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['message' => 'boom']);
 
-        $this->assertStringContainsString('Formatting not supported by php-ls', $this->flashed());
+        $this->assertStringContainsString('Formatting not supported by php-ls', $this->statusRow($this->statusBar));
     }
 
     public function testReformatErrorTakesPriorityEvenWithAWellFormedResult(): void
@@ -718,7 +715,7 @@ final class RefactorControllerTest extends TestCase
             ['message' => 'boom'],
         );
 
-        $this->assertStringContainsString('Formatting not supported by php-ls', $this->flashed());
+        $this->assertStringContainsString('Formatting not supported by php-ls', $this->statusRow($this->statusBar));
         $this->assertSame("<?php\n\$x = 1;\n", $this->buffers->get('/tmp/proj/a.php')->document->getText(), 'no edits applied despite a well-formed result');
     }
 
@@ -734,7 +731,7 @@ final class RefactorControllerTest extends TestCase
         ], error: null);
 
         $this->assertSame("<?php\ny = 1;\n", $this->buffers->get('/tmp/proj/a.php')->document->getText());
-        $this->assertStringContainsString('Reformatted a.php', $this->flashed());
+        $this->assertStringContainsString('Reformatted a.php', $this->statusRow($this->statusBar));
         $this->assertGreaterThan($notificationsBefore, \count($this->client->notifications), 'the reformat notifies a fresh full sync');
         $this->assertSame('textDocument/didChange', \end($this->client->notifications)['method']);
     }
@@ -756,7 +753,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
 
         $controller->undoLastRefactoring();
-        $this->assertStringContainsString('No refactoring to undo', $this->flashed(), 'nothing recorded yet');
+        $this->assertStringContainsString('No refactoring to undo', $this->statusRow($this->statusBar), 'nothing recorded yet');
 
         $buffer = $this->buffers->get('/tmp/proj/a.php');
         $this->undo->recordBuffer($buffer->path, $buffer->document->version);
@@ -764,13 +761,13 @@ final class RefactorControllerTest extends TestCase
             $this->requestedRenderSince($controller->undoLastRefactoring(...)),
             'a frame is asked for — through the flash, which already does it',
         );
-        $this->assertStringContainsString('Refactoring undone', $this->flashed());
+        $this->assertStringContainsString('Refactoring undone', $this->statusRow($this->statusBar));
 
         // And with the buffer moved on since, it refuses and names the file
         // RELATIVE to the project, like every other path this UI shows.
         $this->undo->recordBuffer($buffer->path, $buffer->document->version + 1);
         $controller->undoLastRefactoring();
-        $this->assertStringContainsString('a.php changed since', $this->flashed());
+        $this->assertStringContainsString('a.php changed since', $this->statusRow($this->statusBar));
     }
 
     public function testReformatWithOverlappingEditsChangesNothingAndSaysSo(): void
@@ -786,8 +783,8 @@ final class RefactorControllerTest extends TestCase
         ], error: null);
 
         $this->assertSame($before, $this->buffers->get('/tmp/proj/a.php')->document->getText(), 'untouched');
-        $this->assertStringContainsString('overlapping edits', $this->flashed());
-        $this->assertStringNotContainsString('Reformatted', $this->flashed(), 'and it does not claim otherwise');
+        $this->assertStringContainsString('overlapping edits', $this->statusRow($this->statusBar));
+        $this->assertStringNotContainsString('Reformatted', $this->statusRow($this->statusBar), 'and it does not claim otherwise');
     }
 
     public function testReformatForANonActiveBufferDoesNotInvalidateTheEditor(): void
@@ -852,7 +849,7 @@ final class RefactorControllerTest extends TestCase
         $this->editor->handleInput("\r");
         \end($this->client->requests)['respond'](null, error: ['message' => 'nope']);
 
-        $this->assertStringContainsString('nothing to apply', $this->flashed());
+        $this->assertStringContainsString('nothing to apply', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -968,7 +965,7 @@ final class RefactorControllerTest extends TestCase
 
         \end($this->client->requests)['respond']([['kind' => 'quickfix'], ['title' => '']], error: null);
 
-        $this->assertStringContainsString('No quick fixes here', $this->flashed());
+        $this->assertStringContainsString('No quick fixes here', $this->statusRow($this->statusBar));
     }
 
     /** A refused edit says so — the count alone would read as success. */
@@ -984,7 +981,7 @@ final class RefactorControllerTest extends TestCase
 
         $this->editor->handleInput("\r");
 
-        $this->assertStringContainsString('nothing was changed', $this->flashed());
+        $this->assertStringContainsString('nothing was changed', $this->statusRow($this->statusBar));
     }
 
     /** And a partial one names how much did not land. */
@@ -1004,7 +1001,7 @@ final class RefactorControllerTest extends TestCase
 
         $this->editor->handleInput("\r");
 
-        $this->assertStringContainsString('could not be written', $this->flashed());
+        $this->assertStringContainsString('could not be written', $this->statusRow($this->statusBar));
     }
 
     /** @return array{range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}, newText: string} */
@@ -1080,7 +1077,7 @@ final class RefactorControllerTest extends TestCase
 
         \end($this->client->requests)['respond']([], error: null);
 
-        $flashed = $this->flashed();
+        $flashed = $this->statusRow($this->statusBar);
         $this->assertStringContainsString('Nothing to organize', $flashed);
         $this->assertStringNotContainsString('No quick fixes here', $flashed);
     }
@@ -1128,7 +1125,7 @@ final class RefactorControllerTest extends TestCase
         // Asserted HERE, before anything else flashes over it: applying below
         // raises its own message, and reading the bar afterwards would pass
         // whatever this answer had said.
-        $this->assertStringNotContainsString('No quick fixes', $this->flashed(), 'another server had something, so there ARE quick fixes here');
+        $this->assertStringNotContainsString('No quick fixes', $this->statusRow($this->statusBar), 'another server had something, so there ARE quick fixes here');
 
         $this->editor->handleInput("\r");
         $this->assertStringContainsString('KEPT', $this->text(), 'the empty answer left the picker alone');
@@ -1210,7 +1207,7 @@ final class RefactorControllerTest extends TestCase
         \end($this->client->requests)['respond']([], error: null);
 
         $this->assertStringContainsString('boom', \implode("\n", $this->pickerRows()), 'the problems are what there is to show');
-        $this->assertStringNotContainsString('No quick fixes', $this->flashed());
+        $this->assertStringNotContainsString('No quick fixes', $this->statusRow($this->statusBar));
     }
 
     /** A tool plugin's findings, or a server not up yet: the problems need no server to be read. */
@@ -1224,7 +1221,7 @@ final class RefactorControllerTest extends TestCase
         $controller->requestCodeActions(1, 0);
 
         $this->assertStringContainsString('boom', \implode("\n", $this->pickerRows()));
-        $this->assertStringNotContainsString('No language server', $this->flashed(), 'nothing to explain: the list answered');
+        $this->assertStringNotContainsString('No language server', $this->statusRow($this->statusBar), 'nothing to explain: the list answered');
         // @mago-expect lint:no-isset -- $client is a non-nullable typed property; isset() is the only way to test whether it was ever initialized
         $this->assertFalse(isset($this->client), 'and no server was started to ask');
     }

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Layout;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\PaneSplit;
 use Porta\Layout\PreviewSplit;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TestPane;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
@@ -26,6 +27,8 @@ use Symfony\Component\Tui\Widget\WidgetContext;
  */
 final class PreviewSplitFlankTest extends TestCase
 {
+    use ScreenReads;
+
     private Tui $tui;
     private VirtualTerminal $terminal;
     private Renderer $renderer;
@@ -45,13 +48,7 @@ final class PreviewSplitFlankTest extends TestCase
         $this->pane = new TestPane('theirs', $this->flank);
         $this->split->mount($this->editor, $this->pane);
         $this->tui->add($this->split->area);
-        $this->frame();
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(force: true);
-        $this->tui->processRender();
+        $this->frame($this->tui);
     }
 
     /** Each split's narrow check, outer first, as the frame hooks run them. */
@@ -60,7 +57,7 @@ final class PreviewSplitFlankTest extends TestCase
         foreach ($this->split->splits() as $split) {
             $split->fit();
         }
-        $this->frame();
+        $this->frame($this->tui);
     }
 
     private function rect(object $widget): ?WidgetRect
@@ -110,7 +107,7 @@ final class PreviewSplitFlankTest extends TestCase
         $pane = $this->columnsOf($this->pane);
         $pair = $this->columnsOf($this->flank) + $this->columnsOf($this->editor);
         $this->split('flank')->dragTo($area->col + 25, $area);
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertSame(25, $this->columnsOf($this->flank));
         $this->assertSame($pair - 25, $this->columnsOf($this->editor), 'the editor takes what the flank gave up');
@@ -134,7 +131,7 @@ final class PreviewSplitFlankTest extends TestCase
         $plain = new TestPane('md');
 
         $this->split->mount($this->editor, $plain);
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertNull($this->split->flankPane());
         $this->assertNull($this->flank->getContext(), 'the flank handed back');
@@ -166,14 +163,14 @@ final class PreviewSplitFlankTest extends TestCase
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the editor takes the keys the flank had');
 
         $this->terminal->simulateResize(30, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $this->fit();
 
         $this->assertNull($this->pane->getContext(), 'then the pane');
         $this->assertInstanceOf(WidgetContext::class, $this->editor->getContext(), 'the editor stays');
 
         $this->terminal->simulateResize(92, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $this->fit();
         $this->fit();
         $this->assertInstanceOf(WidgetContext::class, $this->flank->getContext(), 'room again brings them back');
@@ -186,10 +183,10 @@ final class PreviewSplitFlankTest extends TestCase
         $this->tui->setFocus($this->pane);
 
         $this->terminal->simulateResize(50, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $this->fit();
         $this->terminal->simulateResize(30, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $this->fit();
 
         $this->assertNull($this->pane->getContext());
@@ -200,7 +197,7 @@ final class PreviewSplitFlankTest extends TestCase
     {
         $this->mounted();
         $this->split->setMirrored(true);
-        $this->frame();
+        $this->frame($this->tui);
 
         $flank = $this->rect($this->flank);
         $pane = $this->rect($this->pane);

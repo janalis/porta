@@ -152,7 +152,7 @@ final class IdeDockToolsTest extends TestCase
                     $this->frame($tui);
                     $strip = Widgets::byId($tui, 'dock-tabs', DockTabsWidget::class);
                     $this->assertSame(3, $strip->stripRows(), 'forty rows: folder tabs');
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $strip);
+                    $rect = Widgets::rectIn($ide, $strip);
                     $this->assertSame(3, $rect->rows);
                     $col = $rect->col + $rect->columns - 20; // the tail, clear of the tab
 

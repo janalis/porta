@@ -17,16 +17,17 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
-use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 final class CodeLensControllerTest extends TestCase
 {
+    use StatusReads;
+
     private CodeEditorWidget $editor;
     private FakeLspClient $client;
     private FixedActiveFile $activeFile;
@@ -219,7 +220,7 @@ final class CodeLensControllerTest extends TestCase
         $this->assertSame([1], $request['params']['arguments'], 'the arguments the server sent with it');
 
         $request['respond'](null, error: null);
-        $this->assertStringContainsString('Ran "3 usages"', $this->flashed());
+        $this->assertStringContainsString('Ran "3 usages"', $this->statusRow($this->status, 120));
     }
 
     /** A failure names the lens and the reason rather than going quiet. */
@@ -233,7 +234,7 @@ final class CodeLensControllerTest extends TestCase
         $controller->runCodeLens(1, 0);
         \end($this->client->requests)['respond'](null, error: ['code' => -32_603, 'message' => 'no handler']);
 
-        $flashed = $this->flashed();
+        $flashed = $this->statusRow($this->status, 120);
         $this->assertStringContainsString('3 usages', $flashed);
         $this->assertStringContainsString('no handler', $flashed);
     }
@@ -251,7 +252,7 @@ final class CodeLensControllerTest extends TestCase
 
         $controller->runCodeLens(1, 0);
 
-        $this->assertStringContainsString('nothing to run', $this->flashed());
+        $this->assertStringContainsString('nothing to run', $this->statusRow($this->status, 120));
         $this->assertCount(1, $this->client->requests, 'and nothing was sent');
     }
 
@@ -264,11 +265,6 @@ final class CodeLensControllerTest extends TestCase
         $controller->runCodeLens(1, 3);
 
         $this->assertSame([], $this->client->requests);
-    }
-
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->status->render(new RenderContext(120, 1))));
     }
 
     /**

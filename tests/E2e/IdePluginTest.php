@@ -374,7 +374,7 @@ final class IdePluginTest extends TestCase
             [
                 200 => function (Tui $tui, $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('editor'));
+                    $rect = Widgets::rectIn($ide, $tui->getById('editor'));
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1)); // right-click
                     $this->frame($tui);
 

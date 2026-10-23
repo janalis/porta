@@ -114,11 +114,6 @@ final class ProjectSearchControllerTest extends TestCase
         $this->await(fn (): bool => \str_contains($this->panelText(), $needle), $timeout, "the results panel to show '{$needle}'");
     }
 
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
-    }
-
     public function testOpenShowsTheFindModal(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);
@@ -267,9 +262,9 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->toggleOption(SearchOption::Regex);
 
         $controller->search("(a+)+\nz");
-        $this->await(fn (): bool => \str_contains($this->flashed(), 'too complex'), 3.0, 'the too-complex flash');
+        $this->await(fn (): bool => \str_contains($this->statusRow($this->statusBar), 'too complex'), 3.0, 'the too-complex flash');
 
-        $this->assertStringContainsString('too complex', $this->flashed());
+        $this->assertStringContainsString('too complex', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -288,7 +283,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->search('needle');
         $this->awaitModalShows('needle here');
 
-        $this->assertStringNotContainsString('too complex', $this->flashed());
+        $this->assertStringNotContainsString('too complex', $this->statusRow($this->statusBar));
     }
 
     public function testSearchDeliversResultsToTheOpenModal(): void
@@ -531,7 +526,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller->replaceAll('');
 
         $this->assertSame("<?php\n\$needle = 1;\n", (string) \file_get_contents($project->path('src/A.php')), 'nothing was deleted');
-        $this->assertStringContainsString('Alt+A again to DELETE', $this->flashed());
+        $this->assertStringContainsString('Alt+A again to DELETE', $this->statusRow($this->statusBar));
 
         $controller->replaceAll('');
 
@@ -566,8 +561,8 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('');
 
-        $this->assertStringContainsString('Nothing to replace', $this->flashed());
-        $this->assertStringNotContainsString('DELETE every match', $this->flashed());
+        $this->assertStringContainsString('Nothing to replace', $this->statusRow($this->statusBar));
+        $this->assertStringNotContainsString('DELETE every match', $this->statusRow($this->statusBar));
     }
 
     /** A NON-empty replacement needs no confirmation — the control for the case above. */
@@ -613,7 +608,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->replaceAll('anything');
 
-        $this->assertStringContainsString('Nothing to replace', $this->flashed());
+        $this->assertStringContainsString('Nothing to replace', $this->statusRow($this->statusBar));
     }
 
     /** @return iterable<string, array{string}> */
@@ -658,7 +653,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->exportResults();
 
-        $flash = $this->flashed();
+        $flash = $this->statusRow($this->statusBar);
         $this->assertStringContainsString('Exported 1 result', $flash);
         $this->assertStringNotContainsString('Exported 1 results', $flash, 'one row is not "1 results"');
     }
@@ -886,7 +881,7 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('$found = 1;', $a->document->getText());
         $this->assertStringContainsString('$found = 2;', $b->document->getText(), 'the second open buffer too');
         $this->assertStringContainsString('$found = 3;', (string) \file_get_contents($project->path('src/C.php')), 'and the closed file on disk');
-        $this->assertStringContainsString('Replaced in 3 files', $this->flashed());
+        $this->assertStringContainsString('Replaced in 3 files', $this->statusRow($this->statusBar));
     }
 
     /** Excluding the FIRST match skips only that one: the scan goes on to the matches after it. */
@@ -922,7 +917,7 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertSame(2, \substr_count($a->document->getText(), needle: '// seen'), 'one open buffer rewritten once, in memory');
         $this->assertSame(2, \substr_count($b->document->getText(), needle: '// seen'), 'so was the other — the scan does not stop after the first buffer');
         $this->assertSame(2, \substr_count((string) \file_get_contents($project->path('src/C.php')), needle: '// seen'), 'and the closed file on disk');
-        $this->assertStringContainsString('Replaced in 3 files', $this->flashed(), 'three files, six matches: counted per file');
+        $this->assertStringContainsString('Replaced in 3 files', $this->statusRow($this->statusBar), 'three files, six matches: counted per file');
     }
 
     /** replaceLines() skips an index past the end and still reaches the valid ones after it. */
@@ -963,7 +958,7 @@ final class ProjectSearchControllerTest extends TestCase
         $controller = $this->controller($project->dir);
         $controller->open();
         $this->assertSame('', $controller->exportResults());
-        $this->assertStringContainsString('Nothing to export', $this->flashed());
+        $this->assertStringContainsString('Nothing to export', $this->statusRow($this->statusBar));
 
         $controller->search('needle');
         $this->awaitModalShows('// needle');
@@ -981,7 +976,7 @@ final class ProjectSearchControllerTest extends TestCase
 
         $controller->addSearchScope($project->dir.'/src');
 
-        $this->assertStringContainsString('Added src to search scopes', $this->flashed());
+        $this->assertStringContainsString('Added src to search scopes', $this->statusRow($this->statusBar));
         $this->assertSame([['label' => 'src', 'paths' => ['src'], 'pinned' => true]], new SearchScopeStore($project->dir)->scopes);
     }
 

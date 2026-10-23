@@ -13,6 +13,7 @@ use Porta\Input\TreeDragRouter;
 use Porta\Tests\Support\AttachedStyles;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
@@ -33,6 +34,8 @@ use Symfony\Component\Tui\Tui;
  */
 final class TreeDragRouterTest extends TestCase
 {
+    use StatusReads;
+
     /** Held so the destructor does not remove the fixture mid-test. */
     private TempProject $project;
     private FileTreeWidget $tree;
@@ -434,11 +437,6 @@ final class TreeDragRouterTest extends TestCase
     }
 
     /** What the status bar is showing right now, ANSI stripped. */
-    private function flashed(): string
-    {
-        return AnsiUtils::stripAnsiCodes(\implode('', $this->statusBar->render(new RenderContext(100, 1))));
-    }
-
     /**
      * The drag says what it is carrying, and names the modifier that changes
      * what it will do.
@@ -454,8 +452,8 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->drag(2, 2), self::rect(), null);
 
-        $this->assertStringContainsString('Moving 2 files', $this->flashed());
-        $this->assertStringContainsString('Alt', $this->flashed(), 'and the modifier is offered');
+        $this->assertStringContainsString('Moving 2 files', $this->statusRow($this->statusBar));
+        $this->assertStringContainsString('Alt', $this->statusRow($this->statusBar), 'and the modifier is offered');
     }
 
     /**
@@ -476,7 +474,7 @@ final class TreeDragRouterTest extends TestCase
         $this->statusBar->flash('Saved');
         $router->continueDrag($this->drag(2, 1), self::rect(), null);
 
-        $this->assertStringContainsString('Saved', $this->flashed(), 'the hint had already had its say');
+        $this->assertStringContainsString('Saved', $this->statusRow($this->statusBar), 'the hint had already had its say');
     }
 
     /**
@@ -507,7 +505,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->continueDrag($this->release(2, 2), self::rect(), null);
 
-        $this->assertStringNotContainsString('Moving', $this->flashed());
+        $this->assertStringNotContainsString('Moving', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -523,11 +521,11 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
         $router->continueDrag($this->drag(2, 2), self::rect(), null);
-        $this->assertStringContainsString('Moving', $this->flashed());
+        $this->assertStringContainsString('Moving', $this->statusRow($this->statusBar));
 
         $router->continueDrag($this->release(2, 1), self::rect(), null);
 
-        $this->assertStringNotContainsString('Moving', $this->flashed(), 'the status bar is free again');
+        $this->assertStringNotContainsString('Moving', $this->statusRow($this->statusBar), 'the status bar is free again');
     }
 
     /** Escape takes it back too, through the same disarm. */
@@ -539,7 +537,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->cancel();
 
-        $this->assertStringNotContainsString('Moving', $this->flashed());
+        $this->assertStringNotContainsString('Moving', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -557,7 +555,7 @@ final class TreeDragRouterTest extends TestCase
 
         $router->cancel();
 
-        $this->assertStringContainsString('Saved', $this->flashed());
+        $this->assertStringContainsString('Saved', $this->statusRow($this->statusBar));
     }
 
     /**
@@ -574,7 +572,7 @@ final class TreeDragRouterTest extends TestCase
         $router->continueDrag($this->drag(60, 20), self::rect(), null); // off the tree
         $router->continueDrag($this->release(60, 20), self::rect(), null);
 
-        $this->assertStringContainsString('Drop on a folder', $this->flashed());
+        $this->assertStringContainsString('Drop on a folder', $this->statusRow($this->statusBar));
         $this->assertSame([], $this->drops, 'and nothing moved');
     }
 
@@ -586,7 +584,7 @@ final class TreeDragRouterTest extends TestCase
         $router->continueDrag($this->drag(2, 1), self::rect(), null);
         $router->continueDrag($this->release(2, 1), self::rect(), null);
 
-        $this->assertStringNotContainsString('Drop on a folder', $this->flashed());
+        $this->assertStringNotContainsString('Drop on a folder', $this->statusRow($this->statusBar));
         $this->assertCount(1, $this->drops);
     }
 

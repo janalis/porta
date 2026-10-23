@@ -15,9 +15,8 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
+use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
-use Symfony\Component\Tui\Render\Renderer;
-use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -58,18 +57,10 @@ final class MergeViewE2eTest extends TestCase
         return $flank;
     }
 
-    private static function rect(Ide $ide, object $widget): WidgetRect
-    {
-        $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($widget);
-        self::assertInstanceOf(WidgetRect::class, $rect);
-
-        return $rect;
-    }
-
     /** A left click on the widget's cell ($row, $col), 0-based within it. */
     private static function click(Tui $tui, Ide $ide, object $widget, int $row, int $col): void
     {
-        $rect = self::rect($ide, $widget);
+        $rect = Widgets::rectIn($ide, $widget);
         $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 1, $rect->row + $row + 1));
         $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 1, $rect->row + $row + 1));
     }
@@ -93,8 +84,8 @@ final class MergeViewE2eTest extends TestCase
                     $this->assertStringContainsString('⇥ HEAD', $grid, 'ours, labelled by the opener');
                     $this->assertStringContainsString('<<<<<<< HEAD', $grid, 'the result in the editor, markers and all');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $this->assertLessThan(self::rect($ide, $editor)->col, self::rect($ide, self::ours($ide))->col, 'ours on the left');
-                    $this->assertLessThan(self::rect($ide, self::theirs($ide))->col, self::rect($ide, $editor)->col, 'theirs on the right');
+                    $this->assertLessThan(Widgets::rectIn($ide, $editor)->col, Widgets::rectIn($ide, self::ours($ide))->col, 'ours on the left');
+                    $this->assertLessThan(Widgets::rectIn($ide, self::theirs($ide))->col, Widgets::rectIn($ide, $editor)->col, 'theirs on the right');
                     $this->assertSame('Conflict 1 of 2  a keep theirs  b both  n/p next/prev', self::theirs($ide)->statusRight());
                     $this->assertSame('Conflict 1 of 2  a keep ours  b both  n/p next/prev', self::ours($ide)->statusRight());
                 },
@@ -175,7 +166,7 @@ final class MergeViewE2eTest extends TestCase
                 0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, '⇥ HEAD');
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $ours = self::rect($ide, self::ours($ide));
+                    $ours = Widgets::rectIn($ide, self::ours($ide));
 
                     foreach (\range(1, end: 5) as $notch) { // five notches down over ours, past the conflicts
                         $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $ours->col + 3, $ours->row + 3));
@@ -213,8 +204,8 @@ final class MergeViewE2eTest extends TestCase
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $editor->scrollBy(20);
                     $tui->requestRender();
-                    $ours = self::rect($ide, self::ours($ide));
-                    $edit = self::rect($ide, $editor);
+                    $ours = Widgets::rectIn($ide, self::ours($ide));
+                    $edit = Widgets::rectIn($ide, $editor);
 
                     $this->await(function () use ($tui, $terminal, $ours, $edit): bool {
                         $grid = $this->screenGrid($tui, $terminal);
@@ -246,8 +237,8 @@ final class MergeViewE2eTest extends TestCase
     private function oursLineLevel(Tui $tui, VirtualTerminal $terminal, Ide $ide): \Closure
     {
         $this->await(static fn (): bool => null !== self::ours($ide)->getContext(), what: 'the merge view');
-        $ours = self::rect($ide, self::ours($ide));
-        $edit = self::rect($ide, Services::resolve($ide, CodeEditorWidget::class));
+        $ours = Widgets::rectIn($ide, self::ours($ide));
+        $edit = Widgets::rectIn($ide, Services::resolve($ide, CodeEditorWidget::class));
 
         return function () use ($tui, $terminal, $ours, $edit): bool {
             $grid = $this->screenGrid($tui, $terminal);
@@ -335,7 +326,7 @@ final class MergeViewE2eTest extends TestCase
                     $editor = Services::resolve($ide, CodeEditorWidget::class);
                     $level = $this->oursLineLevel($tui, $terminal, $ide);
                     $this->await($level, what: 'level to begin with');
-                    $ours = self::rect($ide, self::ours($ide));
+                    $ours = Widgets::rectIn($ide, self::ours($ide));
 
                     $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $ours->col + 3, $ours->row + 3));
 

@@ -270,7 +270,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $overlay = Services::resolve($ide, MenuOverlayController::class);
 
                     // The context menu, opened over the editor.
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $editor);
+                    $rect = Widgets::rectIn($ide, $editor);
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 12, $rect->row + 3));
                     $this->frame($tui);
                     $menu = Widgets::byId($tui, 'context-menu', ContextMenu::class);
@@ -737,7 +737,7 @@ final class IdeMousePrimitivesTest extends TestCase
             $project->path('a.php'),
             [
                 200 => static function ($tui, $terminal, Ide $ide): void {
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tree'));
+                    $rect = Widgets::rectIn($ide, $tui->getById('tree'));
                     // Button 0 + 16 is Ctrl held, per the SGR modifier bits;
                     // +4 lands on c.php, two rows below the opened a.php.
                     $tui->handleInput(\sprintf("\x1b[<16;%d;%dM", $rect->col + 3, $rect->row + 4));
@@ -752,7 +752,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $this->assertStringEndsWith('a.php', (string) Widgets::editor($tui)->getFilePath(), 'and did not open it — the editor is what you compare against');
                 },
                 400 => static function ($tui, $terminal, Ide $ide): void {
-                    $rect = Widgets::rect(Services::resolve($ide, Renderer::class), $tui->getById('tree'));
+                    $rect = Widgets::rectIn($ide, $tui->getById('tree'));
                     // Button 0 + 4 is Shift: the range from the last click.
                     $tui->handleInput(\sprintf("\x1b[<4;%d;%dM", $rect->col + 3, $rect->row + 3));
                 },

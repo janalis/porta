@@ -12,12 +12,12 @@ use Porta\Highlight\HighlightRequest;
 use Porta\Highlight\HighlightSink;
 use Porta\Highlight\ThemeAwareHighlightProvider;
 use Porta\Tests\Support\ClosureHighlightProvider;
+use Porta\Tests\Support\ReadsRenderedDoc;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The page's less travelled paths: the minor heading levels, code the click
@@ -27,6 +27,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  */
 final class MarkdownPageCornersTest extends TestCase
 {
+    use ReadsRenderedDoc;
+
     private Styles $styles;
 
     protected function setUp(): void
@@ -37,12 +39,6 @@ final class MarkdownPageCornersTest extends TestCase
     private function render(string $markdown, int $width = 40): RenderedDoc
     {
         return new MarkdownRenderer($this->styles)->render($markdown, $width);
-    }
-
-    /** @return list<string> */
-    private static function plain(RenderedDoc $doc): array
-    {
-        return \array_map(static fn (string $line): string => \rtrim(AnsiUtils::stripAnsiCodes($line)), $doc->lines);
     }
 
     public function testTheMinorHeadingsStepDownAndAnEmptyOneStillHoldsItsPlace(): void

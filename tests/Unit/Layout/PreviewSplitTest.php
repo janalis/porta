@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Layout;
 use PHPUnit\Framework\TestCase;
 use Porta\Layout\PaneSplit;
 use Porta\Layout\PreviewSplit;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TestPane;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
@@ -24,6 +25,8 @@ use Symfony\Component\Tui\Tui;
  */
 final class PreviewSplitTest extends TestCase
 {
+    use ScreenReads;
+
     private Tui $tui;
     private VirtualTerminal $terminal;
     private Renderer $renderer;
@@ -41,19 +44,13 @@ final class PreviewSplitTest extends TestCase
         $this->pane = new TestPane('md');
         $this->split->mount($this->editor, $this->pane);
         $this->tui->add($this->split->area);
-        $this->frame();
+        $this->frame($this->tui);
     }
 
     /** The editor | preview split, the one a pane with no flank is seated in. */
     private function plain(): PaneSplit
     {
         return $this->split->splits()[PreviewSplit::PLAIN];
-    }
-
-    private function frame(): void
-    {
-        $this->tui->requestRender(force: true);
-        $this->tui->processRender();
     }
 
     private function columnsOf(object $widget): int
@@ -82,20 +79,20 @@ final class PreviewSplitTest extends TestCase
         $this->assertInstanceOf(WidgetRect::class, $area);
 
         $this->plain()->dragTo(30, $area);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(30, $this->columnsOf($this->editor));
         $this->assertSame(30, $this->split->percent());
 
         $this->plain()->dragTo(2, $area);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(PreviewSplit::MIN_SIDE, $this->columnsOf($this->editor), 'the editor keeps its floor');
 
         $this->plain()->dragTo(99, $area);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(PreviewSplit::MIN_SIDE, $this->columnsOf($this->pane), 'and so does the preview');
 
         $this->plain()->nudge(-10, $area);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(70, $this->columnsOf($this->editor), 'a nudge moves by columns from where it stands');
     }
 
@@ -104,13 +101,13 @@ final class PreviewSplitTest extends TestCase
         $this->mounted();
         $this->split->setMirrored(true);
         $this->split->setMirrored(true);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame([$this->pane, $this->editor], [...$this->plain()->area->all()[0]->all(), ...$this->plain()->area->all()[2]->all()]);
 
         $area = $this->split->rect();
         $this->assertInstanceOf(WidgetRect::class, $area);
         $this->plain()->dragTo(70, $area);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(30, $this->columnsOf($this->editor), 'the editor runs from the right edge to the pointer');
     }
 
@@ -123,7 +120,7 @@ final class PreviewSplitTest extends TestCase
         $this->split->setPercent(150);
         $this->assertSame(99, $this->split->percent());
         $this->split->setPercent(40);
-        $this->frame();
+        $this->frame($this->tui);
         $this->assertSame(40, $this->columnsOf($this->editor));
     }
 
@@ -154,7 +151,7 @@ final class PreviewSplitTest extends TestCase
         $this->tui->setFocus($this->pane);
 
         $this->plain()->fit();
-        $this->frame();
+        $this->frame($this->tui);
 
         $this->assertCount(1, $this->plain()->area->all(), 'the divider and the preview stepped aside');
         $this->assertNull($this->pane->getContext());
@@ -172,11 +169,11 @@ final class PreviewSplitTest extends TestCase
     {
         $this->mounted(columns: 40);
         $this->plain()->fit();
-        $this->frame();
+        $this->frame($this->tui);
         $this->tui->setFocus($this->editor);
 
         $this->terminal->simulateResize(100, 10);
-        $this->frame();
+        $this->frame($this->tui);
         $this->plain()->fit();
 
         $this->assertCount(3, $this->plain()->area->all());
