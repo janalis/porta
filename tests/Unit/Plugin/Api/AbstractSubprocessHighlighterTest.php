@@ -147,7 +147,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
             TestProjectSwitcher::create(),
         ));
 
-        $api = new PluginApi('demo', $this->manager, $this->project->dir, $settings);
+        $api = $this->manager->api('demo', $this->project->dir, $settings);
         $plugin = $this->highlighter($binaryName, $debounceMs);
         $plugin->activate($api);
         $this->manager->commit($api);

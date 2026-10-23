@@ -9,7 +9,6 @@ use Porta\Config\ActionCatalog;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\Tests\Support\DrivesGraphViewer;
 use Porta\I18n\Translator;
-use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\PngFixture;
@@ -33,7 +32,7 @@ final class GraphViewerWidgetTest extends TestCase
         // action nothing binds is a keymap row that does nothing, and a bound
         // key nothing declares is a key the user can never find or rebind.
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
-        $api = new PluginApi('graph-viewer', $manager, '/p', new PluginSettings('/p', []));
+        $api = $manager->api('graph-viewer', '/p', new PluginSettings('/p', []));
         $plugin = require \dirname(__DIR__).'/plugin.php';
         $plugin->activate($api);
 

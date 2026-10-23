@@ -28,6 +28,8 @@ use Porta\Plugin\Api\ServerNotFound;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Api\ToolCaller;
 use Porta\Plugin\Api\ToolEffect;
+use Porta\Plugin\Tool\ToolLocator;
+use Porta\Plugin\Tool\ToolRequirement;
 use Porta\Presence\Participants;
 use Porta\Search\TokenSpanProvider;
 use Porta\Workbench\Dock\DockToolSource;
@@ -39,6 +41,7 @@ use Porta\Workbench\StatusSegmentSource;
 use Porta\Workbench\View\ContributedViewSource;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Tempest\Highlight\TerminalTheme;
 
 /**
  * The committed plugin state: commands, default keys, menu entries, hook
@@ -167,6 +170,26 @@ final class PluginManager implements
     public function providesLanguageServer(string $plugin): bool
     {
         return null !== \array_find($this->languageServers, static fn (array $server): bool => $plugin === $server['plugin']);
+    }
+
+    /**
+     * The API one plugin's activate() is handed: it reaches the IDE through
+     * this manager's runtime(), tools() and dispatch(), as closures, so it
+     * names no manager of its own.
+     *
+     * @param (\Closure(): \Porta\Editor\EditorDisplayOptions)|null $display
+     * @param list<ToolRequirement>                                $declaredTools
+     */
+    public function api(
+        string $name,
+        string $rootDir,
+        PluginSettings $settings,
+        ?TerminalTheme $syntaxTheme = null,
+        ?\Closure $display = null,
+        ?ToolLocator $locator = null,
+        array $declaredTools = [],
+    ): PluginApi {
+        return new PluginApi($name, $this->runtime(...), $this->tools(...), $this->dispatch(...), $rootDir, $settings, $syntaxTheme, $display, $locator, $declaredTools);
     }
 
     /**

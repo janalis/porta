@@ -141,7 +141,7 @@ final class SettingsPluginsControllerTest extends TestCase
      */
     private function declareInstaller(string $name, string $tool, bool $available, array $via = [['composer', 'phpstan/phpstan']], string $describe = ''): void
     {
-        $api = new PluginApi($name, $this->plugins, $this->project->dir, $this->pluginSettings);
+        $api = $this->plugins->api($name, $this->project->dir, $this->pluginSettings);
         // A self-install candidate names one of the plugin's OWN commands, and
         // registerInstaller() checks that it exists — so the command has to be
         // registered on the same api first.
@@ -716,7 +716,7 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testResettingAPluginSettingDropsItAndTellsThePlugin(): void
     {
         $controller = $this->controller();
-        $api = new PluginApi('demo', $this->plugins, $this->project->dir, $this->pluginSettings);
+        $api = $this->plugins->api('demo', $this->project->dir, $this->pluginSettings);
         $api->registerSetting('binary', 'Binary path', 'text', '/stock');
         $this->plugins->commit($api);
         $this->pluginSettings->change('demo', 'binary', '/custom');
@@ -736,7 +736,7 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testResetIgnoresRowsThatAreNotThePluginsOwnSettings(): void
     {
         $controller = $this->controller();
-        $api = new PluginApi('demo', $this->plugins, $this->project->dir, $this->pluginSettings);
+        $api = $this->plugins->api('demo', $this->project->dir, $this->pluginSettings);
         $api->registerSetting('binary', 'Binary path', 'text', '/stock');
         $this->plugins->commit($api);
         $this->pluginSettings->change('demo', 'binary', '/custom');

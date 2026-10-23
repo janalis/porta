@@ -129,7 +129,7 @@ final class ToolCatalogTest extends TestCase
         $this->plugin('p', ['extra' => ['porta' => ['tools' => [['name' => 'a']]]]]);
         $available = false;
         $asked = 0;
-        $api = new PluginApi('p', $this->plugins, $this->project->dir, new PluginSettings($this->project->dir, []));
+        $api = $this->plugins->api('p', $this->project->dir, new PluginSettings($this->project->dir, []));
         $api->registerCommand('install', 'Install it', static function (): void {});
         $api->registerInstaller(
             'srv',

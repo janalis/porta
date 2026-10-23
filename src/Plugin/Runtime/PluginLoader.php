@@ -279,7 +279,7 @@ final readonly class PluginLoader
                 throw new PluginException(\sprintf('duplicate plugin name "%s"', $name));
             }
 
-            $api = new PluginApi($name, $manager, $this->rootDir, $this->settings, $this->syntaxTheme, $this->display, $this->locator, $manifest->tools);
+            $api = $manager->api($name, $this->rootDir, $this->settings, $this->syntaxTheme, $this->display, $this->locator, $manifest->tools);
             $plugin->activate($api);
             $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
             if (\is_dir($manifest->directory.'/translations')) {

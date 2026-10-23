@@ -122,7 +122,7 @@ final class AbstractToolPluginTest extends TestCase
             TestProjectSwitcher::create(),
         ));
 
-        return new PluginApi($pluginName, $manager, $this->project->dir, $settings);
+        return $manager->api($pluginName, $this->project->dir, $settings);
     }
 
     /**

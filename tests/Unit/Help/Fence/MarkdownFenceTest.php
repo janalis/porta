@@ -9,7 +9,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Help\Fence\FenceResult;
 use Porta\Help\Fence\MarkdownFenceRegistry;
-use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
@@ -64,7 +63,7 @@ final class MarkdownFenceTest extends TestCase
         $registry = new MarkdownFenceRegistry();
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings, $registry);
-        $api = new PluginApi('first', $manager, '/p', $settings);
+        $api = $manager->api('first', '/p', $settings);
         $changes = 0;
         $unsubscribe = $registry->onChange(static function () use (&$changes): void {
             ++$changes;
@@ -78,7 +77,7 @@ final class MarkdownFenceTest extends TestCase
         $this->assertSame($callback, $registry->renderer('MERMAID'));
         $this->assertSame($callback, $registry->renderer('dot'));
         $this->assertNull($registry->renderer('plantxml'));
-        $next = new PluginApi('second', $manager, '/p', $settings);
+        $next = $manager->api('second', '/p', $settings);
         $next->registerMarkdownFence(['mermaid'], $second);
         $manager->commit($next);
         $this->assertSame($callback, $registry->renderer('mermaid'));
@@ -99,7 +98,7 @@ final class MarkdownFenceTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = new PluginApi('demo', $manager, '/p', $settings);
+        $api = $manager->api('demo', '/p', $settings);
         $manager->commit($api);
         $this->expectException(PluginException::class);
         $api->registerMarkdownFence(['dot'], static fn (): \Closure => static function (): void {});
@@ -120,7 +119,7 @@ final class MarkdownFenceTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = new PluginApi('demo', $manager, '/p', $settings);
+        $api = $manager->api('demo', '/p', $settings);
         $this->expectException(PluginException::class);
         $api->registerMarkdownFence($languages, static fn (): \Closure => static function (): void {});
     }

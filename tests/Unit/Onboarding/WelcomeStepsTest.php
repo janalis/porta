@@ -104,7 +104,7 @@ final class WelcomeStepsTest extends TestCase
      */
     private function declare(string $plugin, array $via = [[PluginApi::INSTALL_SELF, 'install']]): void
     {
-        $api = new PluginApi($plugin, $this->plugins, $this->project->dir, new PluginSettings($this->project->dir, []));
+        $api = $this->plugins->api($plugin, $this->project->dir, new PluginSettings($this->project->dir, []));
         $api->registerCommand('install', 'Install it', function () use ($plugin): void {
             $this->commandsRun[] = $plugin.':install';
         });

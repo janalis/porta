@@ -23,6 +23,7 @@ use Porta\Lsp\Uri;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
+use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Plugin\Tool\ToolLocator;
 use Porta\Plugin\Tool\ToolManager;
@@ -115,12 +116,21 @@ final class PluginApi
     private readonly ToolLocator $locator;
 
     /**
+     * Built by {@see PluginManager::api()}, which hands over the three things
+     * the API asks of it as closures — so the API names no manager, and the
+     * manager draining it at commit is the only edge between the two.
+     *
+     * @param \Closure(): PluginRuntime $runtime the live IDE seams, guarded so an activate()-time call fails as a plugin error
+     * @param \Closure(): list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> $committedTools
+     * @param \Closure(PluginObservable): void $emit puts a plugin's event on the bus
      * @param (\Closure(): EditorDisplayOptions)|null $display the editor's display options, for {@see softWrap()}
      * @param list<ToolRequirement> $declaredTools what the plugin's manifest declares under `extra.porta.tools`
      */
     public function __construct(
         private readonly string $pluginName,
-        private readonly PluginManager $manager,
+        private readonly \Closure $runtime,
+        private readonly \Closure $committedTools,
+        private readonly \Closure $emit,
         private readonly string $rootDir,
         private readonly PluginSettings $settings,
         private readonly ?TerminalTheme $syntaxTheme = null,
@@ -747,7 +757,7 @@ final class PluginApi
      */
     public function refreshStatusSegments(): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->statusBar->invalidate();
         $runtime->tui->requestRender();
     }
@@ -1144,7 +1154,7 @@ final class PluginApi
      */
     public function showList(string $id, array $rows = [], ToolRun $run = ToolRun::Finished): void
     {
-        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime = ($this->runtime)(); // activate()-phase gate
         $runtime->dockTools->open($this->listToolId($id), $rows, $run);
     }
 
@@ -1157,7 +1167,7 @@ final class PluginApi
      */
     public function updateList(string $id, array $rows, ToolRun $run = ToolRun::Finished): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->dockTools->update($this->listToolId($id), $rows, $run);
     }
 
@@ -1195,7 +1205,7 @@ final class PluginApi
      */
     public function pick(string $title, array $items, \Closure $onPick): \Closure
     {
-        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime = ($this->runtime)(); // activate()-phase gate
         $rows = [];
         foreach ($items as $value => $label) {
             $rows[] = \is_array($label) ? $label : ['label' => $label, 'hint' => '', 'value' => (string) $value];
@@ -1214,7 +1224,7 @@ final class PluginApi
      */
     public function prompt(string $label, string $initial, \Closure $onSubmit, TextEcho $echo = TextEcho::Visible): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->modals->openPrompt($label, $initial, $onSubmit, echo: $echo);
     }
 
@@ -1226,7 +1236,7 @@ final class PluginApi
      */
     public function flash(string|Markup $message, float $seconds = 2.5): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->notifier->flash($message, $seconds);
     }
 
@@ -1247,7 +1257,7 @@ final class PluginApi
      */
     public function notify(string|Markup $message, ToastSeverity $severity = ToastSeverity::Info, float $seconds = 2.5, ?string $slot = null): void
     {
-        $this->manager->runtime()->notifier->notify($message, $severity, $seconds, $slot);
+        ($this->runtime)()->notifier->notify($message, $severity, $seconds, $slot);
     }
 
     /**
@@ -1266,7 +1276,7 @@ final class PluginApi
         if (!\array_key_exists($key, $this->settingDescriptors)) {
             throw new PluginException(\sprintf('Unknown setting "%s" — registerSetting() it first', $key));
         }
-        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime = ($this->runtime)(); // activate()-phase gate
         $this->settings->change($this->pluginName, $key, $value);
         // The hook gets the COERCED value — what setting() reads back now.
         $runtime->lifecycle->onPluginSettingChanged($this->pluginName, $key, $this->settings->value($this->pluginName, $key));
@@ -1289,7 +1299,7 @@ final class PluginApi
      */
     public function relaunchLanguageServer(): void
     {
-        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime = ($this->runtime)(); // activate()-phase gate
         $runtime->lifecycle->onServerBinaryReplaced($this->pluginName);
         $runtime->tui->requestRender();
     }
@@ -1300,7 +1310,7 @@ final class PluginApi
         // The active TAB's file — buffer truth, not the editor widget's (a
         // viewer tab neutralizes the editor document, but its file is still
         // the active one; the graph-viewer's export glue needs exactly that).
-        $path = $this->manager->runtime()->buffers->active()?->path;
+        $path = ($this->runtime)()->buffers->active()?->path;
 
         return null !== $path && '' !== $path ? $path : null;
     }
@@ -1316,7 +1326,7 @@ final class PluginApi
      */
     public function contextFile(): ?string
     {
-        return $this->manager->runtime()->menuFile->file() ?? $this->activeFile();
+        return ($this->runtime)()->menuFile->file() ?? $this->activeFile();
     }
 
     /**
@@ -1332,13 +1342,13 @@ final class PluginApi
      */
     public function selectedFiles(): array
     {
-        return $this->manager->runtime()->tree->selectedPaths();
+        return ($this->runtime)()->tree->selectedPaths();
     }
 
     /** The active text document's full contents, or null when none is active. */
     public function documentText(): ?string
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
 
         return null !== $this->activeFile() ? $runtime->editor->getDocument()->getText() : null;
     }
@@ -1354,7 +1364,7 @@ final class PluginApi
      */
     public function caretPosition(): ?array
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         if (null === $this->activeFile()) {
             return null;
         }
@@ -1383,7 +1393,7 @@ final class PluginApi
         if (null === $this->activeFile()) {
             return [];
         }
-        $editor = $this->manager->runtime()->editor;
+        $editor = ($this->runtime)()->editor;
         $sticky = \array_slice($editor->viewport()->stickyLines, offset: 0, length: \max(0, $rows));
         $screen = \array_map(static fn (int $line): array => ['line' => $line, 'segment' => 0, 'of' => 1], $sticky);
         foreach ($editor->screenRows($rows - \count($sticky)) as $row) {
@@ -1400,7 +1410,7 @@ final class PluginApi
      */
     public function openBuffers(): OpenBuffers
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
 
         return new OpenBuffers($runtime->buffers, $runtime->saver, $runtime->documents, $runtime->files, $runtime->workspaceEditor);
     }
@@ -1413,7 +1423,7 @@ final class PluginApi
      */
     public function participants(): PluginParticipants
     {
-        return new PluginParticipants($this->pluginName, $this->manager->runtime()->participants);
+        return new PluginParticipants($this->pluginName, ($this->runtime)()->participants);
     }
 
     /**
@@ -1423,7 +1433,7 @@ final class PluginApi
      */
     public function runs(): Runs
     {
-        return $this->manager->runtime()->runs;
+        return ($this->runtime)()->runs;
     }
 
     /**
@@ -1437,7 +1447,7 @@ final class PluginApi
      */
     public function codeIntelligence(): CodeIntelligence
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
 
         return new CodeIntelligence($runtime->lspQuery, $runtime->buffers, $runtime->workspaceEditor, $runtime->documents);
     }
@@ -1455,9 +1465,9 @@ final class PluginApi
      */
     public function tools(): array
     {
-        $this->manager->runtime(); // the not-during-activate() gate
+        ($this->runtime)(); // the not-during-activate() gate
 
-        return $this->manager->tools();
+        return ($this->committedTools)();
     }
 
     /**
@@ -1478,7 +1488,7 @@ final class PluginApi
      */
     public function replaceDocument(string $text): void
     {
-        $runtime = $this->manager->runtime(); // activate()-phase gate
+        $runtime = ($this->runtime)(); // activate()-phase gate
         if ($runtime->documents->replaceActive($text)) {
             $runtime->tui->requestRender();
         }
@@ -1498,13 +1508,13 @@ final class PluginApi
      */
     public function trans(string $id, array $params = []): string
     {
-        return $this->manager->runtime()->translator->trans($id, $params);
+        return ($this->runtime)()->translator->trans($id, $params);
     }
 
     /** Insert text at the caret (undoable, LSP-synced). No-op without a text file. */
     public function insertAtCaret(string $text): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         if (null === $this->activeFile()) {
             return;
         }
@@ -1515,7 +1525,7 @@ final class PluginApi
     /** Open a file (absolute path) and focus the editor. */
     public function openFile(string $path): void
     {
-        $this->manager->runtime()->files->openFile($path, focus: OpenFocus::Editor);
+        ($this->runtime)()->files->openFile($path, focus: OpenFocus::Editor);
     }
 
     /**
@@ -1529,7 +1539,7 @@ final class PluginApi
      */
     public function openProject(string $path, string $repeat): void
     {
-        $this->manager->runtime()->projects->openPath($path, $repeat);
+        ($this->runtime)()->projects->openPath($path, $repeat);
     }
 
     /**
@@ -1541,7 +1551,7 @@ final class PluginApi
      */
     public function scrollEditor(int $rows): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->editor->scrollRows($rows);
         $runtime->tui->requestRender();
     }
@@ -1554,7 +1564,7 @@ final class PluginApi
      */
     public function jumpTo(int $line, int $column = 0, ?int $top = null): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->editor->jumpTo($line, $column);
         if (null !== $top) {
             $runtime->editor->scrollBy($top - $runtime->editor->viewport()->vScroll);
@@ -1573,7 +1583,7 @@ final class PluginApi
      */
     public function setDiagnostics(string $path, array $diagnostics): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $byLine = [];
         foreach ($diagnostics as $diagnostic) {
             $column = \max(0, $diagnostic['column'] ?? 0);
@@ -1615,8 +1625,8 @@ final class PluginApi
      */
     public function emit(PluginObservable $event): void
     {
-        $this->manager->runtime(); // the same not-during-activate() gate the other actions carry
-        $this->manager->dispatch($event);
+        ($this->runtime)(); // the same not-during-activate() gate the other actions carry
+        ($this->emit)($event);
     }
 
     /**
@@ -1630,12 +1640,12 @@ final class PluginApi
      */
     public function openView(string $id): void
     {
-        $this->manager->runtime()->views->open($id);
+        ($this->runtime)()->views->open($id);
     }
 
     public function closeView(string $id): void
     {
-        $this->manager->runtime()->views->close($id);
+        ($this->runtime)()->views->close($id);
     }
 
     /**
@@ -1649,7 +1659,7 @@ final class PluginApi
      */
     public function toggleView(string $id): void
     {
-        $this->manager->runtime()->views->toggle($id);
+        ($this->runtime)()->views->toggle($id);
     }
 
     /**
@@ -1661,7 +1671,7 @@ final class PluginApi
      */
     public function copyToClipboard(string $text): void
     {
-        $this->manager->runtime()->clipboard->copy($text);
+        ($this->runtime)()->clipboard->copy($text);
     }
 
     /**
@@ -1682,7 +1692,7 @@ final class PluginApi
      */
     public function setChangeMarks(string $path, array $marks): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $known = [];
         foreach ($marks as $line => $kind) {
             // Normalised at the boundary, like setDiagnostics' severity: an
@@ -1715,7 +1725,7 @@ final class PluginApi
      */
     public function setFileStatuses(array $statuses): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $known = [];
         foreach ($statuses as $path => $kind) {
             $parsed = ChangeMarkKind::tryFrom($kind);
@@ -1742,7 +1752,7 @@ final class PluginApi
      */
     public function showChangeMarkGutter(bool $on): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->editorView->setVcsGutter($on);
         $runtime->tui->requestRender();
     }
@@ -1762,7 +1772,7 @@ final class PluginApi
      */
     public function setCommentMarks(string $path, array $marks): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $known = [];
         foreach ($marks as $line => $summary) {
             $known[\max(0, $line)] = $summary;
@@ -1785,7 +1795,7 @@ final class PluginApi
      */
     public function setLineAnnotations(array $byLine): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->annotations->setLineAnnotations($byLine, $this->pluginName);
         $runtime->tui->requestRender();
     }
@@ -1804,7 +1814,7 @@ final class PluginApi
      */
     public function setLineBlocks(array $byLine): void
     {
-        $runtime = $this->manager->runtime();
+        $runtime = ($this->runtime)();
         $runtime->annotations->setLineBlocks($byLine, $this->pluginName);
         $runtime->tui->requestRender();
     }

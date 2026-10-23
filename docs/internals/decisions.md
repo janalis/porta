@@ -113,7 +113,12 @@ the two stable-dependency inversions worth fixing were fixed. Verified at class
 granularity: the one real SCC — a seven-class ring closed by the old view
 registry's two `attach*()` setter fields — is gone, not pinned. A string-keyed
 `ViewRegistry` has no concrete controller fields to close it with. What remains
-allowed is two degenerate pairs. Relocating the widget→domain-VO edges was
+allowed is one degenerate pair, `IdeContainerFactory`/`Ide` (a version
+constant). `PluginApi`/`PluginManager` was the second until 2026-10-23: the
+reason pinned beside it — "every verb reports through the manager's fault
+barrier" — had stopped being true, and once the manager builds the API and
+hands it `runtime()`, `tools()` and `dispatch()` as closures, the API names no
+manager at all. Relocating the widget→domain-VO edges was
 measured and mostly rejected — for Settings, Tree, Debug and Highlight that is
 the *correct* layering direction, views reading domain shapes.
 

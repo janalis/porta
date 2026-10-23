@@ -10,7 +10,6 @@ use Porta\Config\ConfigScope;
 use Porta\GraphViewer\Graph\DiagramKind;
 use Porta\GraphViewer\Graph\MermaidEngine;
 use Porta\ImageViewer\ImageDecoder;
-use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsScope;
@@ -62,7 +61,7 @@ final class MermaidEngineTest extends TestCase
         $scope->set(ConfigScope::Project);
         $settings = new PluginSettings($project->dir, [], scope: $scope);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = new PluginApi('graph-viewer', $manager, $project->dir, $settings);
+        $api = $manager->api('graph-viewer', $project->dir, $settings);
         $plugin = require \dirname(__DIR__, levels: 2).'/plugin.php';
         $plugin->activate($api);
         $manager->commit($api, $plugin);

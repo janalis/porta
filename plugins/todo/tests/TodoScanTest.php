@@ -109,7 +109,7 @@ final class TodoScanTest extends TestCase
             TestProjectSwitcher::create(),
         ));
 
-        $api = new PluginApi('todo', $manager, $project->dir, $settings);
+        $api = $manager->api('todo', $project->dir, $settings);
         $api->registerSetting('tags', 'Tags', 'text', '' === $tags ? TodoTags::DEFAULT : $tags);
         $api->registerListTool(TodoScan::TOOL, 'TODO');
         $manager->commit($api);

@@ -30,7 +30,7 @@ final class PluginApiToolBinaryTest extends TestCase
         $store = new PluginSettings($this->project->dir, ['p' => $settings]);
         $locator = new ToolLocator($this->project->dir, $store->raw(...), static fn (): bool => true, null, static fn (): ?string => null);
 
-        return new PluginApi('p', new PluginManager(new EventDispatcher(), $store), $this->project->dir, $store, null, null, $locator, $declared);
+        return new PluginManager(new EventDispatcher(), $store)->api('p', $this->project->dir, $store, null, null, $locator, $declared);
     }
 
     private function executable(string $relative): string

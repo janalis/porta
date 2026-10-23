@@ -162,7 +162,7 @@ final class PluginApiTest extends TestCase
             });
         }
 
-        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        return $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
     }
 
     public function testRegistrationBuffersNamespacedCommandsAndValidatesIds(): void
@@ -401,7 +401,7 @@ final class PluginApiTest extends TestCase
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $seeded = new PluginSettings('/p', ['demo' => ['binary' => '/opt/x', 'strict' => 'yes', 'level' => 'nope', 'jobs' => '7']], null, self::projectScope('/p'));
-        $api = new PluginApi('demo', $manager, '/p', $seeded);
+        $api = $manager->api('demo', '/p', $seeded);
 
         // Reads work immediately after registration — i.e. during activate().
         $api->registerSetting('binary', 'Binary', 'text', '');
@@ -518,7 +518,7 @@ final class PluginApiTest extends TestCase
                 projects: TestProjectSwitcher::create(),
             ),
         );
-        $api = new PluginApi('demo', $manager, $project->dir, $settings);
+        $api = $manager->api('demo', $project->dir, $settings);
 
         $api->registerSetting('jobs', 'Jobs', 'int', 4, min: 1, max: 64, step: 2);
         $settings->registerFor('demo', $api->bufferedSettings()); // what PluginManager::commit does
@@ -1215,7 +1215,7 @@ final class PluginApiTest extends TestCase
             TestParticipants::create(),
             TestProjectSwitcher::create(),
         ));
-        $api = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $api = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');
         $manager->commit($api);
 
@@ -1266,7 +1266,7 @@ final class PluginApiTest extends TestCase
             TestParticipants::create(),
             TestProjectSwitcher::create(),
         ));
-        $api = new PluginApi('demo', $manager, $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
+        $api = $manager->api('demo', $project->dir, new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
 
         $this->assertSame(['a.php'], \array_map(basename(...), $api->selectedFiles()), 'the tree opens with its cursor row selected');
 
@@ -1407,17 +1407,17 @@ final class PluginApiTest extends TestCase
             TestProjectSwitcher::create(),
         ));
 
-        return new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        return $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
     }
 
     public function testSyntaxThemeReturnsTheGivenThemeOrDefaultsToDark(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
-        $noTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $noTheme = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $this->assertInstanceOf(DarkTerminalTheme::class, $noTheme->syntaxTheme(), 'no theme given: falls back to the default');
 
         $theme = new DarkTerminalTheme();
-        $withTheme = new PluginApi('demo', $manager, '/p', new PluginSettings('/p', [], null, self::projectScope('/p')), $theme);
+        $withTheme = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')), $theme);
         $this->assertSame($theme, $withTheme->syntaxTheme(), 'a given theme is returned as-is, not wrapped');
     }
 
@@ -1425,10 +1425,10 @@ final class PluginApiTest extends TestCase
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $settings = new PluginSettings('/p', [], null, self::projectScope('/p'));
-        $this->assertFalse(new PluginApi('demo', $manager, '/p', $settings)->softWrap(), 'no options given: off');
+        $this->assertFalse($manager->api('demo', '/p', $settings)->softWrap(), 'no options given: off');
 
         $display = new EditorDisplayOptions(static function (): void {});
-        $api = new PluginApi('demo', $manager, '/p', $settings, null, static fn (): EditorDisplayOptions => $display);
+        $api = $manager->api('demo', '/p', $settings, null, static fn (): EditorDisplayOptions => $display);
         $this->assertFalse($api->softWrap());
         $display->setSoftWrap(true);
         $this->assertTrue($api->softWrap(), 'read per call, so a switch is seen at once');

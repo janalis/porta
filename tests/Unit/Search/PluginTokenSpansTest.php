@@ -27,7 +27,7 @@ final class PluginTokenSpansTest extends TestCase
 
     private function api(PluginManager $manager, string $name): PluginApi
     {
-        return new PluginApi($name, $manager, '/p', new PluginSettings('/p', []));
+        return $manager->api($name, '/p', new PluginSettings('/p', []));
     }
 
     public function testAPluginClassifierWinsOverTheBuiltIn(): void

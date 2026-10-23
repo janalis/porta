@@ -28,7 +28,7 @@ final class PluginParticipantsTest extends TestCase
         $this->manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $this->runtime = TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget());
         $this->manager->wireRuntime($this->runtime);
-        $api = new PluginApi($name, $this->manager, '/p', new PluginSettings('/p', []));
+        $api = $this->manager->api($name, '/p', new PluginSettings('/p', []));
         $this->manager->commit($api);
 
         return $api;

@@ -466,23 +466,17 @@ final class ArchitectureCheckCommand extends Command
 
     /**
      * Multi-member SCCs the audit measured and accepted, each a sorted member
-     * list. Both are degenerate: IdeContainerFactory reads Ide::VERSION as a
-     * cache-key salt (a constant, not a collaboration), and PluginApi/
-     * PluginManager hold each other because the manager drains the API's
-     * buffers at commit, while the API reaches the IDE through the manager's
-     * `runtime()` — wired only after every plugin has loaded, and guarded so
-     * an activate()-time action call fails as a plugin error — plus its
-     * committed `tools()` and its plugin-safe `dispatch()`. The fault barrier
-     * is the manager's alone: it wraps what it drains, and the API never
-     * calls into it.
+     * list. The one left is degenerate: IdeContainerFactory reads Ide::VERSION
+     * as a cache-key salt — a constant, not a collaboration.
      *
-     * The third — the seven-class ring around the old view registry — is gone
-     * rather than pinned: its two concrete controller fields were the whole of
-     * it, and a string-keyed registry has neither.
+     * Two are gone rather than pinned. The seven-class ring around the old
+     * view registry went with its two concrete controller fields, which a
+     * string-keyed registry does not have. PluginApi/PluginManager went when
+     * the manager started building the API and handing it runtime(), tools()
+     * and dispatch() as closures: the drain at commit is the only edge left.
      */
     private const array ALLOWED_SCCS = [
         ['Porta\\Container\\IdeContainerFactory', 'Porta\\Ide'],
-        ['Porta\\Plugin\\Api\\PluginApi',         'Porta\\Plugin\\Runtime\\PluginManager'],
     ];
 
     private const int E2E_MAX_TESTS = 60;

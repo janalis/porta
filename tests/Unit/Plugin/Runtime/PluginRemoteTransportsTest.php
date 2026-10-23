@@ -30,7 +30,7 @@ final class PluginRemoteTransportsTest extends TestCase
     /** @param \Closure(RemoteSpec): ?RemoteTransport $answer */
     private function add(string $name, \Closure $answer): void
     {
-        $this->manager->commit(new PluginApi($name, $this->manager, '/p', new PluginSettings('/p', [])), new class($name, $answer) extends AbstractPlugin implements RemoteProjectPlugin {
+        $this->manager->commit($this->manager->api($name, '/p', new PluginSettings('/p', [])), new class($name, $answer) extends AbstractPlugin implements RemoteProjectPlugin {
             /** @param \Closure(RemoteSpec): ?RemoteTransport $answer */
             public function __construct(
                 string $name,
@@ -52,7 +52,7 @@ final class PluginRemoteTransportsTest extends TestCase
     {
         $ftp = new FakeRemoteTransport('/ftp');
         $ssh = new FakeRemoteTransport('/ssh');
-        $plain = new PluginApi('plain', $this->manager, '/p', new PluginSettings('/p', []));
+        $plain = $this->manager->api('plain', '/p', new PluginSettings('/p', []));
         $this->manager->commit($plain, new class('plain') extends AbstractPlugin {
             public function activate(PluginApi $api): void {}
         });

@@ -124,7 +124,7 @@ final class AbstractAnalyzerPluginTest extends TestCase
             TestProjectSwitcher::create(),
         ));
 
-        return new PluginApi('demo', $this->manager, $this->project->dir, $settings);
+        return $this->manager->api('demo', $this->project->dir, $settings);
     }
 
     /** An activated analyzer over a project whose vendor/bin shim prints $report and exits $code. */
