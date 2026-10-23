@@ -85,7 +85,10 @@ final readonly class CommandLink
     private function relink(string $dir, string $target): ?string
     {
         $staged = $dir.'/.'.self::NAME.'.'.\bin2hex(\random_bytes(4));
-        // @mago-expect lint:no-error-control-operator -- likewise a directory it may not write to; the rename onto the target only fails if the directory changed in between, and says so the same way.
+        // The rename onto the target fails only if the directory changed since
+        // the symlink went in; it then warns, leaves the staged link, and is
+        // reported the same way.
+        // @mago-expect lint:no-error-control-operator -- likewise a directory it may not write to.
         $linked = @\symlink($this->binary, $staged) && \rename($staged, $target);
 
         return $linked ? null : 'could not write to '.$dir;

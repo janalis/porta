@@ -115,8 +115,10 @@ final class PtyProcess
         \assert(\is_resource($input), description: 'a started process has somewhere to send input');
         \stream_set_blocking($input, enable: false);
         // A child that died takes no more input; its end is reported by the
-        // read side, so a failed write has nothing to add.
-        $this->input = new NonBlockingWriter($input, static function (string $reason): void {});
+        // read side, so a failed write has nothing to add. No cap, as for the
+        // terminal's own output: an overflow would kill the writer for good,
+        // and every keystroke after a huge paste would go with it.
+        $this->input = new NonBlockingWriter($input, static function (string $reason): void {}, \PHP_INT_MAX);
         $this->running = true;
 
         $this->watcher = EventLoop::onReadable($this->master, function (string $watcherId): void {

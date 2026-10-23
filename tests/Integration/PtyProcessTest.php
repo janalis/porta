@@ -26,7 +26,11 @@ final class PtyProcessTest extends TestCase
      */
     private static function closesItsTerminalThenExits7(float $after): array
     {
-        return ['/bin/sh', '-c', 'fd=0; while [ $fd -lt 256 ]; do eval "exec $fd<&-"; fd=$((fd+1)); done; sleep '.$after.'; exit 7'];
+        // The long-lived variant execs its sleep, so the kill that ends it
+        // leaves no orphan behind; the short one has an exit code to report.
+        $tail = $after >= 10 ? 'exec sleep '.$after : 'sleep '.$after.'; exit 7';
+
+        return ['/bin/sh', '-c', 'fd=0; while [ $fd -lt 256 ]; do eval "exec $fd<&-"; fd=$((fd+1)); done; '.$tail];
     }
 
     /** @var list<PtyProcess> */
@@ -116,12 +120,15 @@ final class PtyProcessTest extends TestCase
     /**
      * A paste far larger than the terminal's buffer arrives whole. The master
      * side is non-blocking, so a write takes only what fits; the rest used to
-     * be dropped without a word.
+     * be dropped without a word, and a paste past the queue's cap killed the
+     * writer outright.
      */
     public function testAWriteLargerThanTheTerminalTakesAtOnceArrivesWhole(): void
     {
         $out = \sys_get_temp_dir().'/porta-pty-paste-'.\getmypid().'-'.\bin2hex(\random_bytes(4));
-        $size = 300_000;
+        // Past the 8 MiB a NonBlockingWriter queues by default: an overflow
+        // used to kill the writer, and every later keystroke with it.
+        $size = 9_000_000;
         $p = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; exec head -c '.$size.' > '.$out], __DIR__);
         $this->procs[] = $p;
         $exit = null;
@@ -134,9 +141,13 @@ final class PtyProcessTest extends TestCase
         $p->write(\str_repeat('x', $size));
 
         try {
-            $this->await(static function () use (&$exit): bool {
-                return null !== $exit;
-            }, what: 'the child to have read every byte');
+            $this->await(
+                static function () use (&$exit): bool {
+                    return null !== $exit;
+                },
+                timeout: 30.0,
+                what: 'the child to have read every byte',
+            );
             $this->assertSame(0, $exit);
             $this->assertSame($size, \filesize($out));
         } finally {
