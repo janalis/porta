@@ -30,7 +30,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->stop();
 
         $log = (string) \file_get_contents($watchdog->logFile());
-        $this->assertStringContainsString('loop stalled for 5.00s (recovered)', $log);
+        $this->assertStringContainsString('loop stalled for 4.00s (recovered)', $log, 'five seconds between beats a second apart: blocked for four');
         $this->assertStringContainsString('2026-07-13 10:00:05', $log, 'the wall clock still stamps the line — it just no longer measures the gap');
     }
 

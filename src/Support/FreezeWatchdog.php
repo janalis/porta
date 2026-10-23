@@ -92,7 +92,11 @@ final class FreezeWatchdog
         if (null !== $this->lastBeat) {
             $gap = $beat - $this->lastBeat;
             if ($gap > $this->driftThreshold) {
-                $this->log->append(\sprintf('loop stalled for %.2fs (recovered)', $gap));
+                // The gap includes the interval the loop spent idle, as it
+                // should, waiting for this beat: what it was BLOCKED for is
+                // the rest. Logged whole, every line read a quarter second
+                // long at the IDE's 0.25s heartbeat.
+                $this->log->append(\sprintf('loop stalled for %.2fs (recovered)', $gap - $this->interval));
             }
         }
         $this->lastBeat = $beat;

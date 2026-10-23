@@ -26,8 +26,9 @@ app means either the loop is blocked in a syscall, or the terminal itself
 stopped delivering/displaying. Evidence lands in **`.porta/freeze.log`** in
 the project root:
 
-- `loop stalled for X.XXs (recovered)` — something blocked the loop and let
-  go. Repeated lines correlated with disk/network activity usually point at a
+- `loop stalled for X.XXs (recovered)` — something blocked the loop for that
+  long and let go. (Lines written before 2026-10-23 read a quarter second
+  longer: they counted the heartbeat's own interval in.) Repeated lines correlated with disk/network activity usually point at a
   slow filesystem (network mounts) or a heavyweight synchronous operation.
 - `loop blocked ≥ Ns, backtrace: …` — the loop is blocked *right now*; the
   backtrace names the exact call. A hard hang writes one entry every N
