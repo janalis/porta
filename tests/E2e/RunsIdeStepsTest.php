@@ -33,6 +33,24 @@ final class RunsIdeStepsTest extends TestCase
         ]);
     }
 
+    public function testStepsWrittenOutOfOrderRunSortedAndPass(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.txt' => "one\n"]);
+        $order = [];
+
+        $this->runIde($project, $project->path('a.txt'), [
+            300 => static function () use (&$order): void {
+                $order[] = 300;
+            },
+            100 => static function () use (&$order): void {
+                $order[] = 100;
+            },
+        ]);
+
+        $this->assertSame([100, 300], $order, 'the keys order the steps, not the order they were written in');
+    }
+
     public function testAStepTheIdeNeverReachedFailsTheScenario(): void
     {
         \putenv('PATH=/nonexistent');

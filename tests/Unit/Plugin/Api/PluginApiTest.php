@@ -1612,6 +1612,23 @@ final class PluginApiTest extends TestCase
         $this->assertGreaterThan($before, $statusBar->getRenderRevision(), 'the cached bar line is dropped so the next frame re-pulls segments');
     }
 
+    /**
+     * contributions() is public on the object every plugin holds, so what it
+     * returns is a snapshot: a row added there must not reach the commit, or
+     * it would skip the id check, the core-collision check and the stamp.
+     */
+    public function testWritingThroughContributionsRegistersNothing(): void
+    {
+        $api = $this->api(wired: Presence::Without);
+        $api->registerActions(['zoom_in' => 'Zoom In']);
+
+        $api->contributions()->actions->add(['plugin' => 'git', 'id' => 'save', 'label' => 'Smuggled']);
+        $api->contributions()->tools->add(['plugin' => 'demo', 'id' => 'x', 'description' => '', 'inputSchema' => [], 'handler' => static fn (): string => '', 'effect' => null]);
+
+        $this->assertSame(['zoom_in'], \array_column($api->contributions()->actions->all(), 'id'), 'only the verb registered');
+        $this->assertSame([], $api->contributions()->tools->all());
+    }
+
     public function testRegisterActionsValidatesEachIdAndRejectsACoreCollision(): void
     {
         $api = $this->api(wired: Presence::Without);

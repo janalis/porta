@@ -1816,10 +1816,13 @@ final class PluginApi
         return $this->pluginName;
     }
 
-    /** What activate() registered through the extension points the loader drains wholesale. */
+    /**
+     * What activate() registered through the extension points the loader
+     * drains wholesale — a snapshot, so writing to it registers nothing.
+     */
     public function contributions(): PluginContributions
     {
-        return $this->contributions;
+        return clone $this->contributions;
     }
 
     /** @return list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */

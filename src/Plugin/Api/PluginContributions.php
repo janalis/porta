@@ -72,4 +72,29 @@ final readonly class PluginContributions
         $this->debugAdapters = new PluginBuffer();
         $this->tools = new PluginBuffer();
     }
+
+    /**
+     * A copy owns copies of the buffers: {@see PluginApi::contributions()} hands
+     * out a snapshot, so a row added to it reaches nothing — the register verbs,
+     * which validate and stamp each row, stay the only way in.
+     */
+    public function __clone()
+    {
+        $this->languageServers = clone $this->languageServers;
+        $this->installers = clone $this->installers;
+        $this->highlighters = clone $this->highlighters;
+        $this->tokenSpans = clone $this->tokenSpans;
+        $this->viewers = clone $this->viewers;
+        $this->previews = clone $this->previews;
+        $this->markdownFences = clone $this->markdownFences;
+        $this->panes = clone $this->panes;
+        $this->views = clone $this->views;
+        $this->actions = clone $this->actions;
+        $this->listTools = clone $this->listTools;
+        $this->menus = clone $this->menus;
+        $this->settingHooks = clone $this->settingHooks;
+        $this->statusSegments = clone $this->statusSegments;
+        $this->debugAdapters = clone $this->debugAdapters;
+        $this->tools = clone $this->tools;
+    }
 }

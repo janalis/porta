@@ -241,6 +241,7 @@ trait RunsIde
         $this->pinSettingsScope($ide);
         $tui = Services::resolve($ide, Tui::class);
         $given = \array_keys($steps);
+        \sort($given); // the keys ORDER the steps, so they run sorted whatever order they were written in
 
         // Stopping is a STEP, not a branch in the scheduler: it chains behind
         // the last step the same way every other step does, so a step that
