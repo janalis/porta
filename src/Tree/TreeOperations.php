@@ -8,6 +8,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\PromptTone;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\TreeDropRequested;
@@ -22,6 +23,7 @@ use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\DropAction;
 use Porta\Workbench\DropConflict;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
@@ -246,11 +248,11 @@ final class TreeOperations
     private function treePaste(FileTreeNode $node): void
     {
         $sources = $this->treeClipboard->paths();
-        $copy = $this->treeClipboard->isCopy();
-        if (!$copy) {
+        $action = $this->treeClipboard->isCopy() ? DropAction::Copy : DropAction::Move;
+        if (DropAction::Move === $action) {
             $this->treeClipboard->clear();
         }
-        $this->events->dispatch(new TreeDropRequested($sources, $node->folder(), $copy));
+        $this->events->dispatch(new TreeDropRequested($sources, $node->folder(), $action));
     }
 
     private function treeNewFile(FileTreeNode $node): void
@@ -428,7 +430,7 @@ final class TreeOperations
         $question = 1 === \count($paths)
             ? $this->translator->trans('Delete %name%? (y/N)', ['%name%' => \basename($paths[0])])
             : $this->translator->trans('Delete %count% files? (y/N)', ['%count%' => \count($paths)]);
-        $this->promptName($question, '', danger: true, onSubmit: function (string $answer) use ($paths): void {
+        $this->promptName($question, '', tone: PromptTone::Danger, onSubmit: function (string $answer) use ($paths): void {
             if (!\in_array(\strtolower(\trim($answer)), ['y', 'yes'], strict: true)) {
                 $this->tui->setFocus($this->tree);
 
@@ -490,7 +492,7 @@ final class TreeOperations
     #[AsEventListener]
     public function onTreeDropRequested(TreeDropRequested $event): void
     {
-        $this->dropOnto($event->sources, $event->targetDir, $event->copy, $event->conflict);
+        $this->dropOnto($event->sources, $event->targetDir, $event->action, $event->conflict);
     }
 
     /**
@@ -515,7 +517,7 @@ final class TreeOperations
      *
      * @param list<string> $sources
      */
-    private function dropOnto(array $sources, string $targetDir, bool $copy, DropConflict $conflict): void
+    private function dropOnto(array $sources, string $targetDir, DropAction $action, DropConflict $conflict): void
     {
         $keepBoth = DropConflict::KeepBoth === $conflict;
         $moving = $keepBoth ? $sources : \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
@@ -527,8 +529,8 @@ final class TreeOperations
         }
         $taken = $keepBoth ? [] : \array_values(\array_filter($moving, static fn (string $path): bool => \file_exists($targetDir.'/'.\basename($path))));
         match (true) {
-            [] !== $taken => $this->askThenMove($moving, $taken, $targetDir, $copy),
-            [] !== $moving => $this->moveEach($moving, $targetDir, $copy, conflict: $conflict),
+            [] !== $taken => $this->askThenMove($moving, $taken, $targetDir, $action),
+            [] !== $moving => $this->moveEach($moving, $targetDir, $action, conflict: $conflict),
             default => null,
         };
     }
@@ -544,7 +546,7 @@ final class TreeOperations
      * @param list<string> $moving
      * @param list<string> $taken
      */
-    private function askThenMove(array $moving, array $taken, string $targetDir, bool $copy): void
+    private function askThenMove(array $moving, array $taken, string $targetDir, DropAction $action): void
     {
         $single = 1 === \count($moving) && 1 === \count($taken);
         $items = [
@@ -557,18 +559,18 @@ final class TreeOperations
             : $this->translator->trans('%count% files already exist in %dir%', ['%count%' => \count($taken), '%dir%' => $this->paths->relative($targetDir)]);
 
         $this->tui->setFocus($this->editor);
-        $this->editor->openListOverlay($title, $items, function (string $choice) use ($moving, $targetDir, $copy): void {
+        $this->editor->openListOverlay($title, $items, function (string $choice) use ($moving, $targetDir, $action): void {
             if ('overwrite' === $choice) {
-                $this->moveEach($moving, $targetDir, $copy, overwrite: true);
+                $this->moveEach($moving, $targetDir, $action, overwrite: true);
 
                 return;
             }
             if ('rename' === $choice) {
                 $source = $moving[0];
-                $this->promptName($this->translator->trans('Move as'), \basename($source), function (string $name) use ($source, $targetDir, $copy): void {
+                $this->promptName($this->translator->trans('Move as'), \basename($source), function (string $name) use ($source, $targetDir, $action): void {
                     $name = \trim($name);
                     if ('' !== $name) {
-                        $this->moveOne($source, $targetDir.'/'.$name, $copy);
+                        $this->moveOne($source, $targetDir.'/'.$name, $action);
                     }
                 });
             }
@@ -583,14 +585,14 @@ final class TreeOperations
      *
      * @param list<string> $moving
      */
-    private function moveEach(array $moving, string $targetDir, bool $copy, bool $overwrite = false, DropConflict $conflict = DropConflict::Ask): void
+    private function moveEach(array $moving, string $targetDir, DropAction $action, bool $overwrite = false, DropConflict $conflict = DropConflict::Ask): void
     {
         ++$this->batch;
 
         try {
             foreach ($moving as $path) {
                 $target = DropConflict::KeepBoth === $conflict ? FreeName::for($path, $targetDir) : $targetDir.'/'.\basename($path);
-                $this->moveOne($path, $target, $copy, $overwrite);
+                $this->moveOne($path, $target, $action, $overwrite);
             }
         } finally {
             --$this->batch;
@@ -605,11 +607,11 @@ final class TreeOperations
      * no `FileRenamed` is dispatched and no buffer is re-pointed. Only the
      * tree has anything to say about it.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- copy-versus-move is the one fact a drop carries; it decides which verb runs, not a second responsibility.
-    private function moveOne(string $source, string $target, bool $copy, bool $overwrite = false): void
+    // @mago-expect lint:no-boolean-flag-parameter -- $overwrite is the user's answer to "replace it?", carried to the rename or the copy, not a second job.
+    private function moveOne(string $source, string $target, DropAction $action, bool $overwrite = false): void
     {
         $name = \basename($target);
-        if (!$copy) {
+        if (DropAction::Move === $action) {
             $this->moveInto(
                 $source,
                 $target,
@@ -646,10 +648,10 @@ final class TreeOperations
         });
     }
 
-    private function promptName(string $label, string $initial, callable $onSubmit, bool $danger = false): void
+    private function promptName(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain): void
     {
         $this->tui->setFocus($this->editor);
-        $this->editor->openPrompt($label, $initial, $onSubmit, $danger);
+        $this->editor->openPrompt($label, $initial, $onSubmit, $tone);
         $this->tui->requestRender();
     }
 

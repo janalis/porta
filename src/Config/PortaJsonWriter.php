@@ -473,6 +473,6 @@ final readonly class PortaJsonWriter
      */
     private function write(string $file, array $config): bool
     {
-        return JsonFile::write($this->fs, $file, $config, trailingNewline: true);
+        return JsonFile::writeEditable($this->fs, $file, $config);
     }
 }

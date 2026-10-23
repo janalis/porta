@@ -54,11 +54,28 @@ final class JsonFile
      *
      * @param array<array-key, mixed> $data
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
-    public static function write(Filesystem $fs, string $path, array $data, bool $trailingNewline = false): bool
+    public static function write(Filesystem $fs, string $path, array $data): bool
+    {
+        return self::dump($fs, $path, $data, '');
+    }
+
+    /**
+     * {@see write()} for a file a person edits too — `.porta.json`,
+     * `composer.json` — which ends in a newline the way an editor leaves it,
+     * so the next hand edit's diff is not a "no newline at end of file".
+     *
+     * @param array<array-key, mixed> $data
+     */
+    public static function writeEditable(Filesystem $fs, string $path, array $data): bool
+    {
+        return self::dump($fs, $path, $data, \PHP_EOL);
+    }
+
+    /** @param array<array-key, mixed> $data */
+    private static function dump(Filesystem $fs, string $path, array $data, string $tail): bool
     {
         try {
-            $fs->dumpFile($path, \json_encode($data, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).($trailingNewline ? \PHP_EOL : ''));
+            $fs->dumpFile($path, \json_encode($data, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).$tail);
         } catch (IOExceptionInterface|\JsonException) {
             return false;
         }

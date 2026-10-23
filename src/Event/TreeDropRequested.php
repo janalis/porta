@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Event;
 
+use Porta\Workbench\DropAction;
 use Porta\Workbench\DropConflict;
 
 /**
@@ -35,7 +36,7 @@ final readonly class TreeDropRequested
     public function __construct(
         public array $sources,
         public string $targetDir,
-        public bool $copy,
+        public DropAction $action,
         public DropConflict $conflict = DropConflict::Ask,
     ) {}
 }

@@ -66,7 +66,7 @@ trait MenuOverlayHostTrait
         $this->invalidate();
     }
 
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- a setter of stored state: whether a view window's backdrop dims this pane.
     public function setWindowBackdrop(bool $on): void
     {
         if ($on === $this->windowBackdrop) {
@@ -88,7 +88,7 @@ trait MenuOverlayHostTrait
         $this->invalidate();
     }
 
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- a setter of stored state: whether a modal's backdrop dims this pane.
     public function setModalBackdrop(bool $on): void
     {
         if ($on === $this->modalBackdrop) {

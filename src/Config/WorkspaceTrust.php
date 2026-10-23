@@ -166,7 +166,7 @@ final readonly class WorkspaceTrust
         }
         $answers[$as][] = $root;
         $file = $this->file();
-        if (null === $file || !JsonFile::write($this->fs, $file, $answers, trailingNewline: true)) {
+        if (null === $file || !JsonFile::writeEditable($this->fs, $file, $answers)) {
             return false;
         }
         $this->fs->chmod($file, mode: 0o600);

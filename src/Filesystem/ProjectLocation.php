@@ -46,7 +46,7 @@ final readonly class ProjectLocation
     {
         $root = $home.'/.porta/remote/'.$spec->id().'/'.$spec->name();
         $fs->mkdir($root.'/.porta', 0o700);
-        JsonFile::write($fs, $root.'/'.self::MARKER, ['url' => $spec->url()], trailingNewline: true);
+        JsonFile::writeEditable($fs, $root.'/'.self::MARKER, ['url' => $spec->url()]);
 
         return (string) \realpath($root);
     }

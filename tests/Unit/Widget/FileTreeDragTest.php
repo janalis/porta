@@ -13,6 +13,7 @@ use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\ClickIntent;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\DropAction;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -333,7 +334,7 @@ final class FileTreeDragTest extends TestCase
     {
         $tree = $this->tree();
 
-        $this->assertSame([$this->project->path('src/a.php')], $tree->dragSourcesAt(2, modified: false));
+        $this->assertSame([$this->project->path('src/a.php')], $tree->dragSourcesAt(2));
     }
 
     /**
@@ -346,7 +347,7 @@ final class FileTreeDragTest extends TestCase
         $tree->clickRow(2);
         $tree->clickRow(3, ClickIntent::Add);
 
-        $sources = $tree->dragSourcesAt(3, modified: false);
+        $sources = $tree->dragSourcesAt(3);
 
         $this->assertSame([$this->project->path('src/a.php'), $this->project->path('src/b.php')], $sources);
     }
@@ -361,18 +362,18 @@ final class FileTreeDragTest extends TestCase
         $tree->clickRow(2);
         $tree->clickRow(3, ClickIntent::Add);
 
-        $this->assertSame([$this->project->path('src')], $tree->dragSourcesAt(1, modified: false));
+        $this->assertSame([$this->project->path('src')], $tree->dragSourcesAt(1));
     }
 
     /** Ctrl and Shift are building a selection, not grabbing one. */
     public function testAModifiedPressGrabsNothing(): void
     {
-        $this->assertSame([], $this->tree()->dragSourcesAt(2, modified: true));
+        $this->assertSame([], $this->tree()->dragSourcesAt(2, ClickIntent::Add));
     }
 
     public function testTheHeaderRowGrabsNothing(): void
     {
-        $this->assertSame([], $this->tree()->dragSourcesAt(0, modified: false));
+        $this->assertSame([], $this->tree()->dragSourcesAt(0));
     }
 
     /**
@@ -394,12 +395,12 @@ final class FileTreeDragTest extends TestCase
         $events = new EventDispatcher();
         $seen = [];
         $events->addListener(TreeDropRequested::class, static function (TreeDropRequested $event) use (&$seen): void {
-            $seen[] = [$event->sources, $event->targetDir, $event->copy];
+            $seen[] = [$event->sources, $event->targetDir, $event->action];
         });
 
-        $this->tree($events)->requestDrop(['/p/a.php'], '/p/src', copy: true);
+        $this->tree($events)->requestDrop(['/p/a.php'], '/p/src', DropAction::Copy);
 
-        $this->assertSame([[['/p/a.php'], '/p/src', true]], $seen);
+        $this->assertSame([[['/p/a.php'], '/p/src', DropAction::Copy]], $seen);
     }
 
     /**
@@ -567,7 +568,7 @@ final class FileTreeDragTest extends TestCase
         $this->assertNotSame($asDirectoryOnly, $row(), 'the press moved the cursor onto it');
         $this->assertSame(
             [$this->project->path('src')],
-            $tree->dragSourcesAt(1, modified: false),
+            $tree->dragSourcesAt(1),
             'and a drag from there carries that folder alone',
         );
     }

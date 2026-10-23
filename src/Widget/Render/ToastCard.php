@@ -35,7 +35,7 @@ final class ToastCard
      *
      * @return list<string> the framed card rows
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- the pointer's hover over the ✖, which only tints it; the card is drawn the same either way.
     public static function render(Toast $toast, int $innerWidth, Styles $styles, bool $closeHovered = false, string $hint = ''): array
     {
         $accent = $styles->of($toast->severity->role());

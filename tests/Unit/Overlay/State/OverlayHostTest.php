@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Overlay\State;
 
 use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\PromptTone;
 use Porta\Overlay\Region\ModalBox;
 use Porta\Overlay\State\OverlayHost;
 use Porta\Overlay\State\PickerSurface;
@@ -63,7 +64,7 @@ final class OverlayHostTest extends TestCase
         $plain->openPrompt('L', '', static fn (): null => null); // danger omitted → false
 
         $dangerous = $this->host();
-        $dangerous->openPrompt('L', '', static fn (): null => null, danger: true);
+        $dangerous->openPrompt('L', '', static fn (): null => null, tone: PromptTone::Danger);
 
         $this->assertNotSame($this->canvas($plain, 40, 5), $this->canvas($dangerous, 40, 5), 'the danger styling differs from the default');
     }

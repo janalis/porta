@@ -42,6 +42,7 @@ use Porta\Widget\Support\PanelWidth;
 use Porta\Widget\Support\StylesDefault;
 use Porta\Widget\Support\WheelScrollable;
 use Porta\Workbench\AgentActivityKind;
+use Porta\Workbench\DropAction;
 use Psr\Clock\ClockInterface;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Clock\NativeClock;
@@ -325,7 +326,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      */
     public function pressRow(int $relRow, ClickIntent $intent = ClickIntent::Open): array
     {
-        $sources = $this->dragSourcesAt($relRow, ClickIntent::Open !== $intent);
+        $sources = $this->dragSourcesAt($relRow, $intent);
         $node = $this->nodeAtRow($relRow);
         if (ClickIntent::Open !== $intent || null === $node || !$node->isDir) {
             $this->clickRow($relRow, $intent);
@@ -364,8 +365,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      * that row, without disturbing the selection, because the click that
      * follows collapses it anyway.
      *
-     * Empty — no drag — for the header row, for a $modified press (Ctrl and
-     * Shift are building a selection, not grabbing one), and a directory
+     * Empty — no drag — for the header row, for a modified press (an $intent
+     * other than Open: Ctrl and Shift are building a selection, not grabbing
+     * one), and a directory
      * always travels alone: {@see selectedPaths()} answers with files only.
      *
      * The sibling of {@see \Porta\Widget\DockTabsWidget::dragSourceAt()},
@@ -373,10 +375,10 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      *
      * @return list<string>
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- $modified is one fact with two values: the press is building a selection rather than grabbing one.
-    public function dragSourcesAt(int $relRow, bool $modified): array
+    public function dragSourcesAt(int $relRow, ClickIntent $intent = ClickIntent::Open): array
     {
-        $node = $modified ? null : $this->nodeAtRow($relRow);
+        // A modified press is building a selection, not grabbing one.
+        $node = ClickIntent::Open === $intent ? $this->nodeAtRow($relRow) : null;
         if (null === $node) {
             return [];
         }
@@ -415,9 +417,9 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
      *
      * @param list<string> $sources
      */
-    public function requestDrop(array $sources, string $targetDir, bool $copy): void
+    public function requestDrop(array $sources, string $targetDir, DropAction $action): void
     {
-        $this->events?->dispatch(new TreeDropRequested($sources, $targetDir, $copy));
+        $this->events?->dispatch(new TreeDropRequested($sources, $targetDir, $action));
     }
 
     /**

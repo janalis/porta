@@ -15,6 +15,7 @@ use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\InlayHint;
 use Porta\Editor\LineNumberMode;
+use Porta\Editor\PromptTone;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeEditorCompletion;
@@ -1051,7 +1052,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         $overlayHost = Probe::get($editor, 'overlayHost');
         $prompt = Probe::get($overlayHost, 'prompt');
-        $this->assertFalse($prompt['danger'], 'openPrompt must default to a non-destructive (non-danger) styled prompt');
+        $this->assertSame(PromptTone::Plain, $prompt['tone'], 'openPrompt must default to a non-destructive (non-danger) styled prompt');
     }
 
     // --- setSignatureHint invalidate-on-change guard --------------------------

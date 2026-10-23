@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Render;
 
+use Porta\Editor\PromptTone;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\Overlay\Region\CloseButton;
@@ -320,7 +321,7 @@ final class PickerLayout
 
     /**
      * @param array{int, int, int, int}                                                              $bounds
-     * @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt
+     * @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone} $prompt
      *
      * @return array{rows: list<string>, top: int, col: int, width: int, box: ModalBox}
      */
@@ -341,7 +342,7 @@ final class PickerLayout
         // border is the double one, so "this answer deletes" reads by shape
         // under --no-ansi as well as by its red. Centered like the list and
         // search overlays.
-        $state = $prompt['danger'] ? FieldState::Danger : FieldState::Focused;
+        $state = PromptTone::Danger === $prompt['tone'] ? FieldState::Danger : FieldState::Focused;
         $field = FieldBox::field(new FieldSpec(''), $prompt['value'], $state, CaretVisibility::Shown, $innerWidth, $fieldRows, $styles);
         $hot = $frame->hot();
         $framed = [

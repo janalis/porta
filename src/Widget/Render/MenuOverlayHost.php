@@ -28,7 +28,7 @@ interface MenuOverlayHost
     public function setWindowOverlay(array $spans): void;
 
     /** Whether this pane renders faint beneath the window spans (the window's backdrop dim). */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- a setter of stored state: whether a view window's backdrop dims this pane.
     public function setWindowBackdrop(bool $on): void;
 
     /**
@@ -40,7 +40,7 @@ interface MenuOverlayHost
     public function setModalOverlay(array $spans): void;
 
     /** Whether this pane renders faint beneath the modal spans (the backdrop dim). */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- a setter of stored state: whether a modal's backdrop dims this pane.
     public function setModalBackdrop(bool $on): void;
 
     /**

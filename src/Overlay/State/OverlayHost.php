@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Overlay\State;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\PromptTone;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
 use Porta\Overlay\Region\CloseButton;
@@ -52,7 +53,7 @@ final class OverlayHost
     private ?array $picked = null;
     /** last-rendered overlay box, for mouse hit-testing */
     private ?ModalBox $overlayBox = null;
-    /** @var array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool}|null single-line mini prompt */
+    /** @var array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone}|null single-line mini prompt */
     private ?array $prompt = null;
     /** last-rendered (centered) prompt box, for mouse hit-testing */
     private ?ModalBox $promptBox = null;
@@ -146,9 +147,9 @@ final class OverlayHost
      * border ({@see \Porta\Widget\Render\FieldState::Danger}), so a
      * destructive question never reads like a rename, colour or not.
      */
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void
     {
-        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle, echo: $echo), 'onSubmit' => $onSubmit, 'danger' => $danger];
+        $this->prompt = ['label' => $label, 'value' => new TextField($initial, $this->cursorStyle, echo: $echo), 'onSubmit' => $onSubmit, 'tone' => $tone];
         $this->promptFrame->reset();
         ($this->invalidate)();
     }
@@ -350,7 +351,7 @@ final class OverlayHost
         return null !== $prompt || null !== $overlay;
     }
 
-    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt the open prompt (non-null, narrowed by the caller) */
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone} $prompt the open prompt (non-null, narrowed by the caller) */
     private function handlePromptInput(string $keys, Keybindings $kb, array $prompt): void
     {
         match (true) {
@@ -369,7 +370,7 @@ final class OverlayHost
         ($this->invalidate)();
     }
 
-    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, danger: bool} $prompt */
+    /** @param array{label: string, value: TextField, onSubmit: callable(string): void, tone: PromptTone} $prompt */
     private function submitPrompt(array $prompt): void
     {
         $this->closePrompt();

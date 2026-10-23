@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Command\PluginCommands;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\ModalHost;
+use Porta\Editor\PromptTone;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Runtime\PluginManager;
@@ -89,7 +90,7 @@ final class PluginCommandsTest extends TestCase
 
             public function withdrawListOverlay(callable $onPick): void {}
 
-            public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void {}
+            public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void {}
         };
         new PluginCommands($this->lifecycle, $tools->catalog, $tools->jobs, $modals, $notifier, new Translator('en'))->register($this->commands);
     }

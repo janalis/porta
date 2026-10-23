@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Editor\CommentSyntax;
 use Porta\Editor\EditorHost;
+use Porta\Editor\PromptTone;
 use Porta\Editor\StatementSyntax;
 use Porta\Input\TextInput;
 use Porta\Ui\TextEcho;
@@ -36,7 +37,7 @@ final class FakeEditorHost implements EditorHost
         ($this->recorder)('notifyChange', []);
     }
 
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void
     {
         ($this->recorder)('openPrompt', [$label, $initial, $onSubmit]);
     }

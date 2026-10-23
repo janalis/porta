@@ -12,6 +12,7 @@ use Porta\Tree\TreeDragState;
 use Porta\Ui\Glyphs;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\DropAction;
 use Symfony\Component\Tui\Render\WidgetRect;
 use Symfony\Component\Tui\Tui;
 
@@ -394,7 +395,7 @@ final class TreeDragRouter
             // selection" on a tree row and Shift means "extend to it", so that
             // chord would decide two things at once. Read from the RELEASE, so
             // the modifier that started the drag never picks the outcome.
-            $this->tree->requestDrop($drag->sources, $drag->target, $mouse->alt);
+            $this->tree->requestDrop($drag->sources, $drag->target, $mouse->alt ? DropAction::Copy : DropAction::Move);
 
             return;
         }

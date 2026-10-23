@@ -284,7 +284,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
 
     /** Split shows the source's errors in the editor; alone, this pane banners them. */
     #[\Override]
-    // @mago-expect lint:no-boolean-flag-parameter -- an #[\Override]: the signature is EditorPaneWidget's, and where the text is IS the fact told
+    // @mago-expect lint:no-boolean-flag-parameter -- a state setter: it stores whether the source shows beside this pane, which decides where its errors go.
     public function textBeside(bool $beside): void
     {
         if ($beside !== $this->besideText) {

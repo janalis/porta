@@ -49,6 +49,7 @@ use Porta\Editor\MemberSeparators;
 use Porta\Editor\ModalHost;
 use Porta\Editor\MultiCaret;
 use Porta\Editor\OccurrenceHighlights;
+use Porta\Editor\PromptTone;
 use Porta\Editor\ReadOnlyInput;
 use Porta\Editor\ScopeRescan;
 use Porta\Editor\SignatureHint;
@@ -523,10 +524,10 @@ final class CodeEditorWidget extends AbstractWidget implements
      * Open a single-line input prompt (go to line, rename symbol).
      */
     #[\Override]
-    public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void
+    public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void
     {
         $this->closeSiblingFloaters();
-        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $danger, $echo);
+        $this->overlayHost->openPrompt($label, $initial, $onSubmit, $tone, $echo);
     }
 
     /**

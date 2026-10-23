@@ -22,6 +22,7 @@ use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
 use Porta\Tree\TreePathClipboard;
 use Porta\Widget\FileTreeWidget;
+use Porta\Workbench\DropAction;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -490,7 +491,7 @@ final class TreeDragAndDropTest extends TestCase
                     Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new TreeDropRequested(
                         [$project->path('a.php'), $project->path('b.php'), $project->path('c.php')],
                         $project->path('dest'),
-                        copy: false,
+                        action: DropAction::Move,
                     ));
 
                     $this->assertFileExists($project->path('dest/c.php'), 'all three moved');
@@ -858,7 +859,7 @@ final class TreeDragAndDropTest extends TestCase
                     Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new TreeDropRequested(
                         [$project->path('src/keep.php')],
                         $project->path('dest'),
-                        copy: true,
+                        action: DropAction::Copy,
                     ));
                     $this->await(static fn (): bool => EditorState::pickerOpen($tui->getById('editor')), what: 'the name-clash chooser');
 

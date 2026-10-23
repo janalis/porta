@@ -128,7 +128,7 @@ final class ExternalDrop
             return;
         }
         $sources = \array_map(static fn (string $path): string => (string) \realpath(\dirname($path)).'/'.\basename($path), $paths);
-        $this->events->dispatch(new TreeDropRequested($sources, $target, copy: true, conflict: DropConflict::KeepBoth));
+        $this->events->dispatch(new TreeDropRequested($sources, $target, DropAction::Copy, conflict: DropConflict::KeepBoth));
     }
 
     /** @param non-empty-list<string> $paths */

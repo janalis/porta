@@ -9,6 +9,7 @@ use Porta\Config\LanguageCatalog;
 use Porta\Editor\FileOpener;
 use Porta\Editor\ModalHost;
 use Porta\Editor\OpenFocus;
+use Porta\Editor\PromptTone;
 use Porta\Editor\ScratchFiles;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\PreservesPortaHome;
@@ -62,7 +63,7 @@ final class ScratchFilesTest extends TestCase
 
                 public function withdrawListOverlay(callable $onPick): void {}
 
-                public function openPrompt(string $label, string $initial, callable $onSubmit, bool $danger = false, TextEcho $echo = TextEcho::Visible): void {}
+                public function openPrompt(string $label, string $initial, callable $onSubmit, PromptTone $tone = PromptTone::Plain, TextEcho $echo = TextEcho::Visible): void {}
             },
             new class($opened) implements FileOpener {
                 /** @param list<array{string, OpenFocus}> $opened */

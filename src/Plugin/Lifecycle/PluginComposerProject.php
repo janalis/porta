@@ -39,7 +39,7 @@ final readonly class PluginComposerProject
         $dir = $scopeBase.'/.porta';
         $path = $this->composerJsonPath($scopeBase);
         if (!\is_file($path)) {
-            $written = JsonFile::write(
+            $written = JsonFile::writeEditable(
                 $this->fs,
                 $path,
                 [
@@ -56,7 +56,6 @@ final readonly class PluginComposerProject
                         'platform' => ['php' => \PHP_VERSION],
                     ],
                 ],
-                trailingNewline: true,
             );
             if (!$written) {
                 return null;
@@ -111,6 +110,6 @@ final readonly class PluginComposerProject
         $repositories[$packageName] = $repository;
         $composerJson['repositories'] = $repositories;
 
-        return JsonFile::write($this->fs, $path, $composerJson, trailingNewline: true);
+        return JsonFile::writeEditable($this->fs, $path, $composerJson);
     }
 }

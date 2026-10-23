@@ -27,6 +27,7 @@ use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
 use Porta\Ui\Sgr;
 use Porta\Widget\ResultsPanelWidget;
+use Porta\Workbench\DropAction;
 use Revolt\EventLoop;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -1609,7 +1610,7 @@ final class IdeLspFeaturesTest extends TestCase
                     );
 
                     Services::resolve($ide, EventDispatcherInterface::class)->dispatch(
-                        new TreeDropRequested([$project->path('a.php')], $project->path('src'), copy: false),
+                        new TreeDropRequested([$project->path('a.php')], $project->path('src'), action: DropAction::Move),
                     );
 
                     $this->assertFileExists($project->path('src/a.php'), 'the move itself happened');

@@ -17,6 +17,7 @@ use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\DropAction;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -185,7 +186,7 @@ final class TreeDragRouterTest extends TestCase
         $this->assertCount(1, $this->drops);
         $this->assertSame([$this->project->path('top.php')], $this->drops[0]->sources);
         $this->assertSame($this->project->path('src'), $this->drops[0]->targetDir);
-        $this->assertFalse($this->drops[0]->copy);
+        $this->assertSame(DropAction::Move, $this->drops[0]->action);
     }
 
     /**
@@ -212,7 +213,7 @@ final class TreeDragRouterTest extends TestCase
         $router->continueDrag($this->at(8, 1, 'm'), self::rect(), null);
 
         $this->assertCount(1, $this->drops);
-        $this->assertTrue($this->drops[0]->copy);
+        $this->assertSame(DropAction::Copy, $this->drops[0]->action);
     }
 
     /** Released over the editor instead: the file opens and nothing moves. */
