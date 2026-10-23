@@ -103,7 +103,9 @@ nothing ([decision history](decisions/history-01.md), "The verify loop, measured
 $deadline) usleep(…)` ran at a third of its intended allowance under the
 coverage gate: one failed `composer verify` (2026-10-23) and seven more had the
 same shape, each a positive wait for a process to end or a file to appear.
-A positive wait goes through `await()`, even outside the loop's business;
+A positive wait goes through `await()`, even outside the loop's business —
+or, where it cannot pump the loop (a fixture server's startup), spends
+`Budget::seconds()`, the same ×3;
 a fixed span is only for a NEGATIVE window ("the terminate alone does not end
 it within 1.5s"), which must not stretch. And size a positive budget to the
 code's schedule under load, not on paper: a watcher that polls 30 times by

@@ -66,7 +66,7 @@ final class DummyServer
         );
         \assert(false !== $process, description: 'php runs');
         $this->process = $process;
-        $deadline = \microtime(true) + 10.0;
+        $deadline = \microtime(true) + Budget::seconds(10.0);
         while ('' === (string) \file_get_contents($this->portFile)) {
             if (\microtime(true) > $deadline) {
                 throw new \RuntimeException('the server did not start: '.$this->script);

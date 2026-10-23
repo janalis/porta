@@ -51,7 +51,7 @@ trait PumpsLoop
      */
     private function await(callable $done, float $timeout = 10.0, string $what = self::UNNAMED): void
     {
-        $budget = $timeout * self::coverageSlowdown();
+        $budget = Budget::seconds($timeout);
         $deadline = \hrtime(as_number: true) + (int) ($budget * 1e9);
         while (!$done()) {
             if (\hrtime(as_number: true) >= $deadline) {
@@ -181,21 +181,5 @@ trait PumpsLoop
         } finally {
             EventLoop::cancel($timer);
         }
-    }
-
-    /**
-     * How much longer a barrier may take under coverage.
-     *
-     * pcov is 2-3x slower, and the turn-counted budget absorbed that by
-     * accident: 500 turns that each took 40ms were 20 seconds, not the 10 the
-     * message claimed. Measuring real time removes that accident, so the
-     * allowance has to be stated instead — otherwise the same await that
-     * passes under `composer test:*` starts timing out under
-     * `composer coverage:check`, which is the gate. The sniff is the one
-     * tests/bootstrap.php already uses.
-     */
-    private static function coverageSlowdown(): float
-    {
-        return '1' === \ini_get('pcov.enabled') ? 3.0 : 1.0;
     }
 }
