@@ -25,6 +25,7 @@ use Porta\Lsp\QuickFixProbe;
 use Porta\Lsp\StructurePanelRefresher;
 use Porta\Support\DocsUrlOpener;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
@@ -192,7 +193,7 @@ final class NavigationControllerTest extends TestCase
     /** The rendered picker rows, plain. */
     private function pickerText(): string
     {
-        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        return EditorState::pickerText($this->editor);
     }
 
     /** The editor as drawn, plain. */
@@ -357,7 +358,7 @@ final class NavigationControllerTest extends TestCase
             'range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 8]],
         ], error: null);
 
-        $picker = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $picker = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('Peek: a.php:2', $picker);
         $this->assertStringContainsString('function f() {}', $picker);
     }
@@ -537,7 +538,7 @@ final class NavigationControllerTest extends TestCase
             ],
         ], error: null);
 
-        $picker = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $picker = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('Foo', $picker);
 
         $this->editor->handleInput("\r"); // pick the only row

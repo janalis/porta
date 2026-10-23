@@ -19,7 +19,7 @@ namespace Porta\Editor;
  * applying them needs the fold model and the document version rather than the
  * store.
  *
- * One interface rather than eight single-verb ones: every method is the same
+ * One interface rather than twelve single-verb ones: every method is the same
  * "replace this decoration layer for the current buffer" operation against the
  * same store, and a caller that publishes one layer is already coupled to the
  * store's lifecycle. Callers still touch only the layer they own — git never

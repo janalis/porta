@@ -801,9 +801,8 @@ final class BidiTest extends TestCase
      */
     public function testClassifyBoundaryForCombiningMarkCodepoints(): void
     {
-        $classify = new \ReflectionMethod(Bidi::class, 'classify');
-        $this->assertSame('R', $classify->invoke(null, \mb_chr(0x0600, encoding: 'UTF-8')), 'R2 start');
-        $this->assertSame('R', $classify->invoke(null, \mb_chr(0x08FF, encoding: 'UTF-8')), 'R3 end');
+        $this->assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', \mb_chr(0x0600, encoding: 'UTF-8')), 'R2 start');
+        $this->assertSame('R', Probe::invokeStatic(Bidi::class, 'classify', \mb_chr(0x08FF, encoding: 'UTF-8')), 'R3 end');
     }
 
     /**

@@ -13,6 +13,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\DocsTree;
+use Porta\Tests\Support\Probe;
 use Porta\Widget\EditorKeymap;
 use Porta\Widget\FindBarWidget;
 use Porta\Workbench\Menu\MenuModel;
@@ -252,9 +253,8 @@ final class KeybindingsDocTest extends TestCase
                 // the arch gate enforces, so the walk can name the class.
                 $relative = \substr($file->getPathname(), \strlen($directory.'/'), length: -4);
                 $class = $prefix.\str_replace(search: '/', replace: '\\', subject: $relative);
-                $method = new \ReflectionMethod($class, 'getDefaultKeybindings');
                 /** @var array<string, list<string>> $keys */
-                $keys = $method->invoke(null);
+                $keys = Probe::invokeStatic($class, 'getDefaultKeybindings');
                 $maps[$class] = $keys;
             }
         }
@@ -475,7 +475,7 @@ final class KeybindingsDocTest extends TestCase
         // @mago-expect lint:inline-variable-return -- getConstant() returns
         // mixed, and the @var on the assignment is what shapes the rows.
         /** @var array<string, list<string>> $keys */
-        $keys = new \ReflectionClass(FindInFilesModal::class)->getConstant('KEYS');
+        $keys = Probe::getStatic(FindInFilesModal::class, 'KEYS');
 
         return $keys;
     }
@@ -490,12 +490,10 @@ final class KeybindingsDocTest extends TestCase
      */
     private static function findBarKeys(): array
     {
-        $method = new \ReflectionMethod(FindBarWidget::class, 'getDefaultKeybindings');
-
-        // @mago-expect lint:inline-variable-return -- invoke() returns mixed,
-        // and the @var on the assignment is what shapes the rows.
+        // @mago-expect lint:inline-variable-return -- invokeStatic() returns
+        // mixed, and the @var on the assignment is what shapes the rows.
         /** @var array<string, list<string>> $keys */
-        $keys = $method->invoke(null);
+        $keys = Probe::invokeStatic(FindBarWidget::class, 'getDefaultKeybindings');
 
         return $keys;
     }
@@ -520,7 +518,7 @@ final class KeybindingsDocTest extends TestCase
     {
         /** @var array<string, list<string>> $defaults */
         $defaults = EditorKeymap::defaults();
-        $specs = (string) \json_encode(new \ReflectionClass(MenuModel::class)->getConstant('DEFS'), \JSON_THROW_ON_ERROR);
+        $specs = (string) \json_encode(Probe::getStatic(MenuModel::class, 'DEFS'), \JSON_THROW_ON_ERROR);
 
         $onAMenu = [];
         foreach ($defaults as $id => $keys) {

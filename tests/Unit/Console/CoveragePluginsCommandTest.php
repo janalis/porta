@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Console;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Console\CoveragePluginsCommand;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
@@ -206,7 +207,7 @@ final class CoveragePluginsCommandTest extends TestCase
         // would drop files no plugin's own tests load), and the container cache
         // stays on because a shard neither merges nor grades src.
         $command = new CoveragePluginsCommand();
-        $spawn = new \ReflectionProperty($command, 'spawn')->getValue($command);
+        $spawn = Probe::get($command, 'spawn');
         $this->assertInstanceOf(\Closure::class, $spawn);
         $clover = 'coverage/plugins/git.xml';
         $process = $spawn(['plugins/git/tests'], $clover);

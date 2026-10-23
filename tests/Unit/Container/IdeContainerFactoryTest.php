@@ -375,8 +375,7 @@ final class IdeContainerFactoryTest extends TestCase
         $staleSibling = $project->path('container-'.$installKey.'-'.$freshHash.'ff.php');
         \file_put_contents($staleSibling, data: "a stale generation whose hash is the fresh hash's own prefix");
 
-        $method = new \ReflectionMethod(IdeContainerFactory::class, 'pruneStaleGenerations');
-        $method->invoke(null, $project->dir, $installKey, $freshHash);
+        Probe::invokeStatic(IdeContainerFactory::class, 'pruneStaleGenerations', $project->dir, $installKey, $freshHash);
 
         $this->assertFileDoesNotExist($staleSibling, 'a prefix collision is not an exact-hash match — it must still be swept');
     }

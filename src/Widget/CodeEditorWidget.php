@@ -1163,19 +1163,6 @@ final class CodeEditorWidget extends AbstractWidget implements
     }
 
     /**
-     * Lay the open pickers out against the pane-union bounds (screen coords) —
-     * {@see \Porta\Overlay\Presenter\PickerModalPresenter}'s per-frame call.
-     *
-     * @param array{int, int, int, int} $bounds
-     *
-     * @return list<array{rows: list<string>, top: int, col: int, width: int}>
-     */
-    public function layoutPickers(array $bounds): array
-    {
-        return $this->overlayHost->layout($bounds);
-    }
-
-    /**
      * Continue an armed move or resize of Find in Files or the topmost picker
      * (screen coords); false when neither has one armed.
      */

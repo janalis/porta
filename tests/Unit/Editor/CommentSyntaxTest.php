@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CommentSyntax;
 use Porta\Support\LanguageMap;
+use Porta\Tests\Support\Probe;
 
 /**
  * The first test here is the one that matters: it is the gate that stops
@@ -151,7 +152,7 @@ final class CommentSyntaxTest extends TestCase
         // mixed, and the @var on the assignment is what gives the rows a shape;
         // inlined, there is nowhere to hang it.
         /** @var array<string, array{0: string|null, 1: array{string, string}|null}> $constant */
-        $constant = new \ReflectionClass(CommentSyntax::class)->getConstant('SYNTAX');
+        $constant = Probe::getStatic(CommentSyntax::class, 'SYNTAX');
 
         return $constant;
     }

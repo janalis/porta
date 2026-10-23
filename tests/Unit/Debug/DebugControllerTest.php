@@ -674,13 +674,13 @@ final class DebugControllerTest extends TestCase
             $controller->editBreakpointAtCaret();
         });
         $this->assertTrue($opened, 're-opening the condition prompt requests a render');
-        $conditionPrompt = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $conditionPrompt = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('$x > 1', $conditionPrompt, 'the condition prompt prefills the stored condition');
         foreach (\range(1, end: 12) as $_) {
             $this->editor->handleInput("\x7f");
         }
         $this->editor->handleInput("\r");
-        $hitConditionPrompt = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $hitConditionPrompt = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('3', $hitConditionPrompt, 'the hit-count prompt prefills the stored hit condition');
         foreach (\range(1, end: 6) as $_) {
             $this->editor->handleInput("\x7f");
@@ -718,7 +718,7 @@ final class DebugControllerTest extends TestCase
         $controller->editBreakpointAtCaret();
         $this->editor->handleInput("\r"); // no condition
         $this->editor->handleInput("\r"); // no hit-count
-        $logPrompt = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $logPrompt = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('x={$x}', $logPrompt, 'the log-message prompt prefills the stored message');
         $this->editor->handleInput("\x1b"); // leave it as-is
     }
@@ -795,7 +795,7 @@ final class DebugControllerTest extends TestCase
         });
         $this->assertTrue($openRequested, 'opening the prompt requests a render');
         $this->assertSame($this->editor, $this->tui->getFocus(), 'the prompt is drivable: focus moved to the editor');
-        $promptScreen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $promptScreen = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('Set $x to', $promptScreen, 'the prompt title names the variable');
 
         $this->editor->handleInput("\x7f"); // clear the prefill
@@ -1110,7 +1110,7 @@ final class DebugControllerTest extends TestCase
         $this->pauseAtBreakpoint($controller);
         $controller->exceptionBreakpointsOverlay();
         $this->assertSame($this->editor, $this->tui->getFocus(), 'drivable from a focused dock panel too');
-        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $screen = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('[ ] Warnings', $screen);
         $this->assertStringContainsString('[✓] Uncaught Exceptions', $screen, 'the default-on filter renders checked');
 
@@ -1121,7 +1121,7 @@ final class DebugControllerTest extends TestCase
         });
         $this->assertTrue($requested, 're-opening the overlay after a toggle requests a render');
         $this->assertSame(['filters' => ['exception', 'warning']], $this->client->argumentsOf('setExceptionBreakpoints'));
-        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $screen = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('[✓] Warnings', $screen, 'the overlay re-opened with the new state');
 
         $this->editor->handleInput("\x1b[B");

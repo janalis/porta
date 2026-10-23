@@ -7,6 +7,7 @@ namespace Porta\Tests\Support;
 use Porta\Editor\EditorScroll;
 use Porta\Editor\MultiCaret;
 use Porta\Overlay\State\OverlayHost;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * Typed reader of the editor widget's private view state — the hot concepts
@@ -44,6 +45,31 @@ final class EditorState
         \assert($multiCaret instanceof MultiCaret, description: 'the editor holds its multi-caret state');
 
         return $multiCaret;
+    }
+
+    /**
+     * Lay the open pickers out against these pane-union bounds (screen
+     * coords), as `PickerModalPresenter` does each frame — which also records
+     * the boxes the click and hover paths hit-test against.
+     *
+     * @param array{int, int, int, int} $bounds
+     *
+     * @return list<array{rows: list<string>, top: int, col: int, width: int}>
+     */
+    public static function layoutPickers(object $editor, array $bounds): array
+    {
+        return self::host($editor)->layout($bounds);
+    }
+
+    /**
+     * The topmost laid-out picker's rows, ANSI-stripped and joined — what a
+     * test reads to assert on a prompt's or a list's text.
+     *
+     * @param array{int, int, int, int} $bounds
+     */
+    public static function pickerText(object $editor, array $bounds = [0, 0, 20, 100]): string
+    {
+        return \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), self::layoutPickers($editor, $bounds)[0]['rows']));
     }
 
     private static function host(object $editor): OverlayHost

@@ -10,7 +10,7 @@ namespace Porta\Editor;
  * a line.
  *
  * Narrow for {@see DiagnosticsSink}'s reason: {@see EditorDecorationSink} has
- * eight setters covering gutter marks, breakpoints and the stopped-line band,
+ * twelve setters covering gutter marks, breakpoints and the stopped-line band,
  * and a plugin that wants to annotate lines has no business with any of them.
  * Implemented by {@see DecorationStore}, which already carried the method;
  * this only names the slice.

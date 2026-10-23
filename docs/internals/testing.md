@@ -585,8 +585,11 @@ doing that line's work.
 
 ## No test-only code in `src`
 
-Private-state reflection lives only in the blessed `tests/Support` seams. Zero
-`ReflectionProperty` or `ReflectionMethod` uses remain outside them.
+Private-state reflection lives only in the blessed `tests/Support` seams.
+`composer arch` enforces it: a `ReflectionProperty`, `ReflectionMethod` or
+`ReflectionClassConstant`, or a `->getConstant()`, anywhere else in `tests/` or
+a plugin's tests fails the gate. Reading a public signature
+(`->getParameters()`) and `ReflectionClass`'s public reads stay allowed.
 
 - `Services::resolve($ide, X::class)` — a running IDE's services, locator-first
   with a container fallback for the synthetics.

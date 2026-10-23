@@ -14,7 +14,7 @@ use Symfony\Component\Finder\Finder;
 
 /**
  * The architecture gate: the structural facts the six-round SOLID audit
- * established (July 2026), enforced as a ratchet. Three checks:
+ * established (July 2026), enforced as a ratchet. Five checks:
  *
  *   1. Namespace edges — the exact import graph between top-level src/
  *      namespaces, pinned below. A NEW edge fails (new coupling: justify it
@@ -39,6 +39,14 @@ use Symfony\Component\Finder\Finder;
  *      variable. Comments are tokenizer-exempt (prose may name the trap);
  *      the scan is single-line only — a multi-line construction dodges it,
  *      but none exists and review catches what a ratchet misses.
+ *   5. No test outside tests/Support reflects private state. testing.md
+ *      blesses `Probe` (and its typed wrappers) as the one reader, so the
+ *      day a docblock or a field is renamed, one seam breaks loudly instead
+ *      of a scatter of `ReflectionProperty`s failing one by one. Reading a
+ *      public SIGNATURE (`->getParameters()`) is not private state and
+ *      passes; `ReflectionClass` is not matched at all, since its public
+ *      reads (method lists, public constants) are what the doc gates need.
+ *      Same comment-stripped, single-line scan as check 4.
  *
  * Runs from the dev console (`bin/porta-dev`, via `composer arch`): a
  * maintainer gate over Porta\'s own tree, which is why the vendor prefix and
@@ -460,8 +468,13 @@ final class ArchitectureCheckCommand extends Command
      * Multi-member SCCs the audit measured and accepted, each a sorted member
      * list. Both are degenerate: IdeContainerFactory reads Ide::VERSION as a
      * cache-key salt (a constant, not a collaboration), and PluginApi/
-     * PluginManager hold each other because the API's every verb reports
-     * through the manager's fault barrier.
+     * PluginManager hold each other because the manager drains the API's
+     * buffers at commit, while the API reaches the IDE through the manager's
+     * `runtime()` — wired only after every plugin has loaded, and guarded so
+     * an activate()-time action call fails as a plugin error — plus its
+     * committed `tools()` and its plugin-safe `dispatch()`. The fault barrier
+     * is the manager's alone: it wraps what it drains, and the API never
+     * calls into it.
      *
      * The third — the seven-class ring around the old view registry — is gone
      * rather than pinned: its two concrete controller fields were the whole of
@@ -509,6 +522,7 @@ final class ArchitectureCheckCommand extends Command
             ...$this->cycleDrift($sccs),
             ...$this->oversizedSuites($root.'/tests/E2e', ...$this->pluginTestDirs($root.'/plugins')),
             ...$this->inlineTempProjects($root.'/tests', ...$this->pluginTestDirs($root.'/plugins')),
+            ...$this->privateReflection($root.'/tests/Support/', $root.'/tests', ...$this->pluginTestDirs($root.'/plugins')),
         ];
 
         if ([] !== $failures) {
@@ -521,7 +535,7 @@ final class ArchitectureCheckCommand extends Command
         }
 
         $output->writeln(\sprintf(
-            'architecture-check: OK (%d namespace edges, %d known SCCs, E2e suites within bounds, no inline TempProject temporaries)',
+            'architecture-check: OK (%d namespace edges, %d known SCCs, E2e suites within bounds, no inline TempProject temporaries, no private reflection outside tests/Support)',
             \count($current),
             \count($sccs),
         ));
@@ -724,6 +738,41 @@ final class ArchitectureCheckCommand extends Command
 
                     $failures[] = \sprintf(
                         'tests: %s:%d chains off an inline `new TempProject(...)` — the temporary is freed (and its fixture dir removed) before the enclosing call runs; hold it in a variable',
+                        $path,
+                        $i + 1,
+                    );
+                }
+            }
+        }
+
+        return $failures;
+    }
+
+    /**
+     * Flag any test line outside $support that reflects a private member —
+     * `new ReflectionProperty`/`ReflectionMethod`/`ReflectionClassConstant`,
+     * or `->getConstant()` — instead of going through `Probe`. A method
+     * reflected only for its `->getParameters()` reads a public signature
+     * and passes.
+     *
+     * @return list<string>
+     */
+    private function privateReflection(string $support, string ...$suiteDirs): array
+    {
+        $failures = [];
+        foreach ($suiteDirs as $dir) {
+            foreach ($this->phpFiles($dir) as $path) {
+                if (\str_starts_with($path, $support)) {
+                    continue;
+                }
+                foreach (\explode("\n", $this->stripComments((string) \file_get_contents($path))) as $i => $line) {
+                    $reflects = 1 === \preg_match('/new \\\\Reflection(?:Property|Method|ClassConstant)\(|->getConstant\(/', $line);
+                    if (!$reflects || \str_contains($line, '->getParameters()')) {
+                        continue;
+                    }
+
+                    $failures[] = \sprintf(
+                        'tests: %s:%d reflects private state outside tests/Support — read it through Probe (get, invoke, getStatic, invokeStatic)',
                         $path,
                         $i + 1,
                     );

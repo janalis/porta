@@ -166,6 +166,36 @@ final class ArchitectureCheckCommandTest extends TestCase
         $this->assertStringContainsString('AlsoLeakyTest.php:2 chains off', $tester->getErrorOutput(), 'plugin test dirs are scanned too');
     }
 
+    public function testPrivateReflectionOutsideTestsSupportFails(): void
+    {
+        // Spelled split for the same reason as the TempProject fixture: the
+        // ratchet scans this file too. Line 2 is a comment naming the form,
+        // line 3 a public signature read, lines 4-6 the three private reads.
+        $new = 'new \\Reflection';
+        $project = new TempProject([
+            'src/Alpha/One.php' => $this->file('Alpha', 'One'),
+            'tests/Unit/PeekTest.php' =>
+                "<?php\n// {$new}Property(\$o, 'x') is what Probe replaces\n\$p = {$new}Method(\$c, 'm')->getParameters();\n\$v = {$new}Property(\$o, 'x')->getValue(\$o);\n\$k = {$new}Class(\$c)->getConst"
+                    .'ant(\'K\');'
+                    ."\n\$q = {$new}ClassConstant(\$c, 'K')->getValue();\n",
+            'tests/Support/Blessed.php' => "<?php\n\$v = {$new}Property(\$o, 'x')->getValue(\$o);\n",
+            'plugins/demo/tests/PeekTest.php' => "<?php\n\$m = {$new}Method(\$c, 'm');\n",
+        ]);
+
+        $tester = $this->tester();
+        $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
+        $errors = $tester->getErrorOutput();
+
+        $this->assertSame(Command::FAILURE, $status);
+        $this->assertStringContainsString('Unit/PeekTest.php:4 reflects private state outside tests/Support', $errors, 'a private property read names its file and line');
+        $this->assertStringContainsString('Unit/PeekTest.php:5 reflects', $errors, 'a constant read through the class is caught');
+        $this->assertStringContainsString('Unit/PeekTest.php:6 reflects', $errors, 'a constant reflected directly is caught');
+        $this->assertStringContainsString('demo/tests/PeekTest.php:2 reflects', $errors, 'plugin test dirs are scanned too');
+        $this->assertStringNotContainsString('Unit/PeekTest.php:2', $errors, 'a comment naming the form is not flagged');
+        $this->assertStringNotContainsString('Unit/PeekTest.php:3', $errors, 'a public signature read is not flagged');
+        $this->assertStringNotContainsString('Blessed.php', $errors, 'tests/Support is the blessed seam');
+    }
+
     public function testADotNamedFileIsStillScanned(): void
     {
         // ignoreDotFiles(false)/ignoreVCS(false) is deliberate faithfulness to

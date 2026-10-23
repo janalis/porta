@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Editor;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\StatementSyntax;
 use Porta\Support\LanguageMap;
+use Porta\Tests\Support\Probe;
 
 /**
  * The table behind `Ctrl+Shift+Enter`, gated the same way
@@ -135,7 +136,7 @@ final class StatementSyntaxTest extends TestCase
         // @mago-expect lint:inline-variable-return -- getConstant() returns
         // mixed, and the @var on the assignment is what gives the rows a shape.
         /** @var array<string, array{0: string|null, 1: array{0: string, 1: string|null}|null, 2: list<string>}> $constant */
-        $constant = new \ReflectionClass(StatementSyntax::class)->getConstant('SYNTAX');
+        $constant = Probe::getStatic(StatementSyntax::class, 'SYNTAX');
 
         return $constant;
     }

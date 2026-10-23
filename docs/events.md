@@ -58,7 +58,7 @@ Two consequences worth knowing:
 - **A command has exactly one listener**, enforced by a test. Two things
   performing one command is a design error — they would race.
 - **A fact may have any number**, which is the whole reason for a bus.
-  `BufferSwitched` has four.
+  `BufferSwitched` has five.
 
 `FileRenamed` and `BufferRepointRequested` are the pair worth studying, because
 one rename dispatches both. The re-point is a **command**: exactly one listener

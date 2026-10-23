@@ -227,8 +227,10 @@ final class SettingsFormWidget extends AbstractWidget implements FocusableInterf
      * Put the selection on the row with this key, if the page has one.
      *
      * Silently does nothing when it does not, which is the useful behaviour for
-     * the only caller: a search result naming a row that a plugin toggle or a
-     * locale switch has since removed should still open its page, not throw.
+     * both callers: a search result naming a row that a plugin toggle or a
+     * locale switch has since removed should still open its page, not throw;
+     * and a plugin page shown without its Enabled row simply keeps the
+     * selection it had.
      */
     public function selectKey(string $key): void
     {

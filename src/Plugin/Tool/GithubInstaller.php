@@ -515,9 +515,9 @@ final readonly class GithubInstaller
         // hand a racing relaunch a torn executable.
         $target = $this->binDir.'/'.$this->binary;
         $staged = $target.'.installing-'.(int) \getmypid();
-        // @mago-expect lint:no-error-control-operator -- same: a squatted target name is reported through onFailure.
+        // @mago-expect lint:no-error-control-operator -- an unwritable or full bin dir is reported through onFailure.
         $copied = @\copy($extracted, $staged);
-        // @mago-expect lint:no-error-control-operator -- same: a squatted target name is reported through onFailure.
+        // @mago-expect lint:no-error-control-operator -- the staged copy is ours, but chmod can still fail on the same bin dir; reported through onFailure.
         $prepared = $copied && @\chmod($staged, permissions: 0o755);
         if (!$prepared) {
             $this->removeTree($staged);

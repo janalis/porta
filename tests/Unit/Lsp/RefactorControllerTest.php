@@ -21,6 +21,7 @@ use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Support\ProjectPaths;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
@@ -456,7 +457,7 @@ final class RefactorControllerTest extends TestCase
         // just that "no results" degrades gracefully.
         $request['respond'](['not-an-array', ['title' => ''], ['title' => 'Add import']], error: null);
 
-        $screen = \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $this->editor->layoutPickers([0, 0, 20, 100])[0]['rows']));
+        $screen = EditorState::pickerText($this->editor);
         $this->assertStringContainsString('Add import', $screen);
 
         // Picking the only surviving row (index 0, since the malformed and
@@ -1138,7 +1139,7 @@ final class RefactorControllerTest extends TestCase
     /** @return list<string> the open quick-fix list's rows, plain */
     private function pickerRows(): array
     {
-        $pickers = $this->editor->layoutPickers([0, 0, 20, 100]);
+        $pickers = EditorState::layoutPickers($this->editor, [0, 0, 20, 100]);
 
         return [] === $pickers ? [] : \array_values(\array_filter(\array_map(static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)), $pickers[0]['rows'])));
     }
