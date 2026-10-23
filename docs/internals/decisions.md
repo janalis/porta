@@ -94,6 +94,15 @@ The pane-swap cluster met that condition on 2026-09-30. The preview split gave
 it a second exclusive dependency, and it is `Workbench/EditorSlot` now.
 [The live preview split](decisions/history-07.md) has the reasons.
 
+`PluginApi`'s registration buffers met it on 2026-10-23, measured rather than
+proposed: each of the sixteen `PluginBuffer`s was touched by exactly three
+places — built, appended by its verb, drained at commit — so all sixteen were
+exclusive. They are `Plugin/Api/PluginContributions` now, drained through one
+`contributions()` instead of sixteen public `buffered*()` methods no plugin may
+call, and mago's method pin fell from 94 (PluginApi) to 90 (the editor widget
+and `SettingsFormWidgetTest`). The four plain arrays with semantics of their
+own stay on the API.
+
 **A preview beside the editor is not an editor split.** Editor splits are
 declined: they need a second `CodeEditorWidget` and a focused-editor
 indirection through all 25 of its injection sites. The preview split keeps one
@@ -308,8 +317,7 @@ project and asked once; `PORTA_TRUSTED_FOLDERS` exists for CI and the suite.
 The runnable-key filter matches by NAME (`…path|binary|command|converter`,
 plus a short list), so a third-party plugin's setting named that way is
 covered without a new descriptor flag. `PluginApi` did not grow a
-`projectTrusted()`: it sits at the method-count pin, and the one caller,
-`AbstractToolPlugin`, is core. *Re-opens on:* a plugin setting that runs
+`projectTrusted()`: the one caller, `AbstractToolPlugin`, is core. *Re-opens on:* a plugin setting that runs
 something and cannot be named to match; that one would need the flag.
 
 **`registerWelcomeStep()` — designed and rejected.** The plugins worth

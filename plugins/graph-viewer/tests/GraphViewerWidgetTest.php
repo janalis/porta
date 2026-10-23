@@ -37,7 +37,7 @@ final class GraphViewerWidgetTest extends TestCase
         $plugin = require \dirname(__DIR__).'/plugin.php';
         $plugin->activate($api);
 
-        $declared = \array_column($api->bufferedActions(), 'id');
+        $declared = \array_column($api->contributions()->actions->all(), 'id');
         /** @var array<string, list<string>> $bound */
         $bound = Probe::invokeStatic(GraphViewerWidget::class, 'getDefaultKeybindings');
         // Scoped to the ids CORE does not declare — a pane also binds core

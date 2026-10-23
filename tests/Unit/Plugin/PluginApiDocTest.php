@@ -30,8 +30,8 @@ final class PluginApiDocTest extends TestCase
     /**
      * Methods that are public because the RUNTIME calls them, not a plugin.
      *
-     * The `buffered*` family is how the loader drains what `activate()`
-     * registered; `pluginName()` is how it labels the result. They sit under
+     * `contributions()` and the `buffered*` family are how the loader drains
+     * what `activate()` registered; `pluginName()` is how it labels the result. They sit under
      * PluginApi's own "Loader/manager plumbing" banner, and documenting them
      * would invite a plugin to call them.
      *
@@ -39,7 +39,7 @@ final class PluginApiDocTest extends TestCase
      */
     private static function plumbing(): array
     {
-        $internal = ['pluginName'];
+        $internal = ['contributions', 'pluginName'];
         foreach (\get_class_methods(PluginApi::class) as $method) {
             if (!\str_starts_with($method, 'buffered')) {
                 continue;
@@ -82,30 +82,15 @@ final class PluginApiDocTest extends TestCase
     {
         $this->assertSame(
             [
-                'bufferedActions',
                 'bufferedCommands',
-                'bufferedDebugAdapters',
-                'bufferedHighlighters',
                 'bufferedHooks',
-                'bufferedInstallers',
-                'bufferedLanguageServers',
-                'bufferedListTools',
-                'bufferedMarkdownFences',
                 'bufferedMenuItems',
-                'bufferedMenus',
-                'bufferedPanes',
-                'bufferedPreviews',
-                'bufferedSettingHooks',
                 'bufferedSettings',
-                'bufferedStatusSegments',
-                'bufferedTokenSpans',
-                'bufferedTools',
-                'bufferedViewers',
-                'bufferedViews',
+                'contributions',
                 'pluginName',
             ],
             self::plumbing(),
-            'the loader surface changed: a new buffered* drain is fine, anything else needs documenting instead',
+            'the loader surface changed: a new extension point belongs on PluginContributions, anything else needs documenting instead',
         );
     }
 }

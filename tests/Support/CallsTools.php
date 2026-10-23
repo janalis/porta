@@ -29,7 +29,7 @@ trait CallsTools
      */
     private function callTool(PluginApi $api, string $id, array $arguments = []): string|array
     {
-        $tool = \array_find($api->bufferedTools(), static fn (array $tool): bool => $id === $tool['id']);
+        $tool = \array_find($api->contributions()->tools->all(), static fn (array $tool): bool => $id === $tool['id']);
         \assert(null !== $tool, description: 'the plugin registered a tool "'.$id.'"');
         // Caught INSIDE the fiber, as the server does: a throw after a resume
         // would otherwise surface in the loop, not here.

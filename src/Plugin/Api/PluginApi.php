@@ -102,38 +102,8 @@ final class PluginApi
      * @var array<string, array{key: string, label: string, kind: string, default: bool|int|string, options: list<string>|null, hint: string|null, min: int|null, max: int|null, step: int|null}> by key
      */
     private array $settingDescriptors = [];
-    /** @var PluginBuffer<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
-    private readonly PluginBuffer $languageServers;
-    /** @var PluginBuffer<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> */
-    private readonly PluginBuffer $installers;
-    /** @var PluginBuffer<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
-    private readonly PluginBuffer $highlighters;
-    /** @var PluginBuffer<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
-    private readonly PluginBuffer $tokenSpans;
-    /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
-    private readonly PluginBuffer $viewers;
-    /** @var PluginBuffer<array{plugin: string, id: string, claims: \Closure(string): bool}> */
-    private readonly PluginBuffer $previews;
-    /** @var PluginBuffer<array{plugin: string, languages: list<string>, render: \Closure(string, string, string, int, \Closure(\Porta\Help\Fence\FenceResult): void, \Closure(string): void): \Closure(): void}> */
-    private readonly PluginBuffer $markdownFences;
-    /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
-    private readonly PluginBuffer $panes;
-
-    private readonly PluginBuffer $views;
-    /** @var PluginBuffer<array{plugin: string, id: string, label: string}> */
-    private readonly PluginBuffer $actions;
-    /** @var PluginBuffer<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
-    private readonly PluginBuffer $listTools;
-    /** @var PluginBuffer<array{plugin: string, contribution: MenuContribution}> */
-    private readonly PluginBuffer $menus;
-    /** @var PluginBuffer<array{plugin: string, listener: \Closure(string, bool|int|string): void}> */
-    private readonly PluginBuffer $settingHooks;
-    /** @var PluginBuffer<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */
-    private readonly PluginBuffer $statusSegments;
-    /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
-    private readonly PluginBuffer $debugAdapters;
-    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
-    private readonly PluginBuffer $tools;
+    /** The registration buffers {@see PluginManager::commit()} drains. */
+    private readonly PluginContributions $contributions;
     /** @var array<string, true> bare tool ids, for duplicate detection */
     private array $toolIds = [];
     /** @var array<string, true> bare ids, so showList() can reject one this plugin never registered */
@@ -159,22 +129,7 @@ final class PluginApi
         private readonly array $declaredTools = [],
     ) {
         $this->locator = $locator ?? ToolLocator::forProject($rootDir, $settings);
-        $this->languageServers = new PluginBuffer();
-        $this->installers = new PluginBuffer();
-        $this->highlighters = new PluginBuffer();
-        $this->tokenSpans = new PluginBuffer();
-        $this->viewers = new PluginBuffer();
-        $this->previews = new PluginBuffer();
-        $this->markdownFences = new PluginBuffer();
-        $this->panes = new PluginBuffer();
-        $this->views = new PluginBuffer();
-        $this->actions = new PluginBuffer();
-        $this->listTools = new PluginBuffer();
-        $this->menus = new PluginBuffer();
-        $this->settingHooks = new PluginBuffer();
-        $this->statusSegments = new PluginBuffer();
-        $this->debugAdapters = new PluginBuffer();
-        $this->tools = new PluginBuffer();
+        $this->contributions = new PluginContributions();
     }
 
     /**
@@ -399,7 +354,7 @@ final class PluginApi
         if (1 !== \preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
         }
-        $this->languageServers->add([
+        $this->contributions->languageServers->add([
             'plugin' => $this->pluginName,
             'languageId' => $languageId,
             'name' => $name,
@@ -460,7 +415,7 @@ final class PluginApi
             throw new PluginException('A highlighter must claim at least one language (or "*")');
         }
         $resolve = $languages instanceof \Closure ? $languages : static fn (): array => \array_values($languages);
-        $this->highlighters->add([
+        $this->contributions->highlighters->add([
             'plugin' => $this->pluginName,
             'id' => $id,
             'label' => $label,
@@ -488,7 +443,7 @@ final class PluginApi
      */
     public function registerViewer(string $id, array|\Closure $claims): void
     {
-        $this->viewers->add($this->route('viewer', $id, $claims));
+        $this->contributions->viewers->add($this->route('viewer', $id, $claims));
     }
 
     /**
@@ -513,7 +468,7 @@ final class PluginApi
      */
     public function registerPreview(string $id, array|\Closure $claims): void
     {
-        $this->previews->add($this->route('preview', $id, $claims));
+        $this->contributions->previews->add($this->route('preview', $id, $claims));
     }
 
     /**
@@ -567,7 +522,7 @@ final class PluginApi
         if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid view id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
-        $this->views->add([
+        $this->contributions->views->add([
             'plugin' => $this->pluginName,
             'id' => $id,
             'factory' => $factory,
@@ -602,7 +557,7 @@ final class PluginApi
         if (1 !== \preg_match(self::ID_PATTERN, $id)) {
             throw new PluginException(\sprintf('Invalid pane id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $id));
         }
-        $this->panes->add([
+        $this->contributions->panes->add([
             'plugin' => $this->pluginName,
             'id' => $id,
             'pane' => $pane,
@@ -639,7 +594,7 @@ final class PluginApi
             throw new PluginException(\sprintf('List tool "%s" needs a title — it is the strip label', $id));
         }
         $this->listToolIds[$id] = true;
-        $this->listTools->add([
+        $this->contributions->listTools->add([
             'plugin' => $this->pluginName,
             'id' => $this->pluginName.':'.$id,
             'title' => $title,
@@ -667,7 +622,7 @@ final class PluginApi
         if (1 !== \preg_match(self::ID_PATTERN, $languageId)) {
             throw new PluginException(\sprintf('Invalid language id "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $languageId));
         }
-        $this->debugAdapters->add(['plugin' => $this->pluginName, 'languageId' => $languageId, 'resolve' => $resolveCommand]);
+        $this->contributions->debugAdapters->add(['plugin' => $this->pluginName, 'languageId' => $languageId, 'resolve' => $resolveCommand]);
     }
 
     /**
@@ -714,7 +669,7 @@ final class PluginApi
             throw new PluginException(\sprintf('Tool "%s" needs an object input schema (["type" => "object", …])', $id));
         }
         $this->toolIds[$id] = true;
-        $this->tools->add([
+        $this->contributions->tools->add([
             'plugin' => $this->pluginName,
             'id' => $id,
             'description' => $description,
@@ -743,7 +698,7 @@ final class PluginApi
      */
     public function registerStatusSegment(\Closure $segment): void
     {
-        $this->statusSegments->add(['plugin' => $this->pluginName, 'segment' => $segment]);
+        $this->contributions->statusSegments->add(['plugin' => $this->pluginName, 'segment' => $segment]);
     }
 
     /**
@@ -775,7 +730,7 @@ final class PluginApi
         if ('' === $title) {
             throw new PluginException('A contributed menu needs a title');
         }
-        $this->menus->add([
+        $this->contributions->menus->add([
             'plugin' => $this->pluginName,
             'contribution' => new MenuContribution($title, $after, $items, $visible, $viewId, $viewSafe),
         ]);
@@ -821,7 +776,7 @@ final class PluginApi
             if (\array_key_exists($id, ActionCatalog::ACTIONS)) {
                 throw new PluginException(\sprintf('Action "%s" is a core action — pick an id core does not use', $id));
             }
-            $this->actions->add(['plugin' => $this->pluginName, 'id' => $id, 'label' => $label]);
+            $this->contributions->actions->add(['plugin' => $this->pluginName, 'id' => $id, 'label' => $label]);
         }
     }
 
@@ -847,7 +802,7 @@ final class PluginApi
         if (\is_array($languages) && [] === $languages) {
             throw new PluginException('A token-span provider must claim at least one language (or "*")');
         }
-        $this->tokenSpans->add([
+        $this->contributions->tokenSpans->add([
             'plugin' => $this->pluginName,
             'languages' => $languages instanceof \Closure ? $languages : static fn (): array => \array_values($languages),
             'classify' => $classify,
@@ -912,7 +867,7 @@ final class PluginApi
                 throw new PluginException(\sprintf('Self-install names "%s", which is not a command this plugin registered', $package));
             }
         }
-        $this->installers->add([
+        $this->contributions->installers->add([
             'plugin' => $this->pluginName,
             'tool' => $tool,
             'available' => $isAvailable,
@@ -1079,7 +1034,7 @@ final class PluginApi
      */
     public function onSettingChanged(\Closure $listener): void
     {
-        $this->settingHooks->add(['plugin' => $this->pluginName, 'listener' => $listener]);
+        $this->contributions->settingHooks->add(['plugin' => $this->pluginName, 'listener' => $listener]);
     }
 
     /**
@@ -1172,7 +1127,7 @@ final class PluginApi
                 throw new PluginException('Invalid Markdown fence language: '.$language);
             }
         }
-        $this->markdownFences->add([
+        $this->contributions->markdownFences->add([
             'plugin' => $this->pluginName,
             'languages' => \array_values(\array_unique(\array_map(\strtolower(...), $languages))),
             'render' => $render,
@@ -1861,6 +1816,12 @@ final class PluginApi
         return $this->pluginName;
     }
 
+    /** What activate() registered through the extension points the loader drains wholesale. */
+    public function contributions(): PluginContributions
+    {
+        return $this->contributions;
+    }
+
     /** @return list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     public function bufferedCommands(): array
     {
@@ -1885,106 +1846,5 @@ final class PluginApi
     public function bufferedSettings(): array
     {
         return \array_values($this->settingDescriptors);
-    }
-
-    /** @return list<array{plugin: string, languageId: string, name: string, role: ServerRole, resolve: \Closure(): (list<string>|ServerNotFound|null), initOptions: (\Closure(): array<string, mixed>)|null}> */
-    public function bufferedLanguageServers(): array
-    {
-        return $this->languageServers->all();
-    }
-
-    /** @return list<array{plugin: string, tool: string, available: \Closure(): bool, via: list<array{0: string, 1: string}>, describe: (\Closure(): string)|null}> */
-    public function bufferedInstallers(): array
-    {
-        return $this->installers->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, label: string, languages: \Closure(): list<string>, highlight: \Closure(string, string, \Closure(string): void): void, available: (\Closure(): bool)|null}> */
-    public function bufferedHighlighters(): array
-    {
-        return $this->highlighters->all();
-    }
-
-    /** @return list<array{plugin: string, languages: \Closure(): list<string>, classify: \Closure(string, string): (list<array{start: int, end: int}>|null)}> */
-    public function bufferedTokenSpans(): array
-    {
-        return $this->tokenSpans->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, claims: \Closure(string): bool}> */
-    public function bufferedViewers(): array
-    {
-        return $this->viewers->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, claims: \Closure(string): bool}> */
-    public function bufferedPreviews(): array
-    {
-        return $this->previews->all();
-    }
-
-    /** @return list<array{plugin: string, languages: list<string>, render: \Closure(string, string, string, int, \Closure(\Porta\Help\Fence\FenceResult): void, \Closure(string): void): \Closure(): void}> */
-    public function bufferedMarkdownFences(): array
-    {
-        return $this->markdownFences->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
-    public function bufferedPanes(): array
-    {
-        return $this->panes->all();
-    }
-
-    /**
-     * @return list<array{plugin: string, id: string, factory: \Closure}>
-     *
-     * @phpstan-ignore-next-line the buffer is untyped by design; the shape is registerView's
-     */
-    public function bufferedViews(): array
-    {
-        /** @var list<array{plugin: string, id: string, factory: \Closure}> */
-        return $this->views->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, label: string}> */
-    public function bufferedActions(): array
-    {
-        return $this->actions->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> */
-    public function bufferedListTools(): array
-    {
-        return $this->listTools->all();
-    }
-
-    /** @return list<array{plugin: string, contribution: MenuContribution}> */
-    public function bufferedMenus(): array
-    {
-        return $this->menus->all();
-    }
-
-    /** @return list<array{plugin: string, listener: \Closure(string, bool|int|string): void}> */
-    public function bufferedSettingHooks(): array
-    {
-        return $this->settingHooks->all();
-    }
-
-    /** @return list<array{plugin: string, segment: \Closure(): (string|\Porta\Workbench\StatusCell|null)}> */
-    public function bufferedStatusSegments(): array
-    {
-        return $this->statusSegments->all();
-    }
-
-    /** @return list<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
-    public function bufferedDebugAdapters(): array
-    {
-        return $this->debugAdapters->all();
-    }
-
-    /** @return list<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
-    public function bufferedTools(): array
-    {
-        return $this->tools->all();
     }
 }

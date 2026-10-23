@@ -207,7 +207,7 @@ final class PluginApiTest extends TestCase
 
         $api->registerView('vcs', $factory);
 
-        $buffered = $api->bufferedViews();
+        $buffered = $api->contributions()->views->all();
         $this->assertCount(1, $buffered);
         $this->assertSame('demo', $buffered[0]['plugin']);
         $this->assertSame('vcs', $buffered[0]['id'], 'the id is NOT namespaced: a view is reached by the id it claims');
@@ -310,7 +310,7 @@ final class PluginApiTest extends TestCase
         $resolve = static fn (): array => ['/bin/ls'];
         $api->registerLanguageServer('php', 'my-ls', $resolve);
 
-        $buffered = $api->bufferedLanguageServers();
+        $buffered = $api->contributions()->languageServers->all();
         $this->assertCount(1, $buffered);
         $this->assertSame('demo', $buffered[0]['plugin']);
         $this->assertSame('php', $buffered[0]['languageId']);
@@ -319,7 +319,7 @@ final class PluginApiTest extends TestCase
         $this->assertNull($buffered[0]['initOptions'], 'options are opt-in');
 
         $api->registerLanguageServer('twig', 'my-ls', $resolve, static fn (): array => ['environment' => 'dev']);
-        $options = $api->bufferedLanguageServers()[1]['initOptions'];
+        $options = $api->contributions()->languageServers->all()[1]['initOptions'];
         $this->assertNotNull($options);
         $this->assertSame(['environment' => 'dev'], $options());
 
@@ -339,7 +339,7 @@ final class PluginApiTest extends TestCase
             ['cargo', 'phpantom_lsp'],
         ]);
 
-        $buffered = $api->bufferedInstallers();
+        $buffered = $api->contributions()->installers->all();
         $this->assertCount(1, $buffered);
         $this->assertSame('demo', $buffered[0]['plugin']);
         $this->assertSame('phpantom', $buffered[0]['tool']);
@@ -392,7 +392,7 @@ final class PluginApiTest extends TestCase
             static fn (): string => '0.21.0',
         );
 
-        $buffered = $api->bufferedInstallers();
+        $buffered = $api->contributions()->installers->all();
         $this->assertSame([['self', 'install']], $buffered[0]['via']);
         $this->assertSame('0.21.0', $buffered[0]['describe']());
     }
@@ -679,7 +679,7 @@ final class PluginApiTest extends TestCase
                 ['plugin' => 'demo', 'id' => 'status', 'description' => 'The status', 'inputSchema' => ['type' => 'object'], 'handler' => $handler, 'effect' => null],
                 ['plugin' => 'demo', 'id' => 'push', 'description' => 'Push', 'inputSchema' => ['type' => 'object'], 'handler' => $handler, 'effect' => ToolEffect::Writes],
             ],
-            $api->bufferedTools(),
+            $api->contributions()->tools->all(),
         );
         $this->assertSame([], $api->tools(), 'buffered, not yet committed');
         $caller = new ToolCaller('mcp-1', 'Claude Code');
@@ -689,7 +689,7 @@ final class PluginApiTest extends TestCase
 
             return 'ok';
         });
-        $this->assertSame('ok', \array_last($api->bufferedTools())['handler']([], $caller));
+        $this->assertSame('ok', \array_last($api->contributions()->tools->all())['handler']([], $caller));
         $this->assertSame(['mcp-1', 'Claude Code'], $seen, 'the caller rides as the second argument');
 
         $refusals = [
@@ -707,7 +707,7 @@ final class PluginApiTest extends TestCase
                 $this->assertStringStartsWith($says, $e->getMessage());
             }
         }
-        $this->assertCount(3, $api->bufferedTools(), 'a refused tool leaves nothing behind');
+        $this->assertCount(3, $api->contributions()->tools->all(), 'a refused tool leaves nothing behind');
     }
 
     public function testOpenBuffersAndDiagnosticsReadEveryOpenBuffer(): void
@@ -1466,13 +1466,13 @@ final class PluginApiTest extends TestCase
         $highlight = static function (string $content, string $language, \Closure $deliver): void {};
 
         $api->registerHighlighter('Demo', ['php', 'JS'], $highlight);
-        $buffered = $api->bufferedHighlighters();
+        $buffered = $api->contributions()->highlighters->all();
         $this->assertSame('demo', $buffered[0]['id'], 'no id given: defaults to the plugin name');
         $this->assertSame(['php', 'JS'], $buffered[0]['languages'](), 'an array is wrapped in a closure returning it verbatim');
 
         $closureLangs = static fn (): array => ['python'];
         $api->registerHighlighter('Demo2', $closureLangs, $highlight, id: 'demo2');
-        $this->assertSame($closureLangs, $api->bufferedHighlighters()[1]['languages'], 'a closure is passed through, not re-wrapped');
+        $this->assertSame($closureLangs, $api->contributions()->highlighters->all()[1]['languages'], 'a closure is passed through, not re-wrapped');
 
         try {
             $api->registerHighlighter('Bad', ['x'], $highlight, id: 'bad id');
@@ -1494,13 +1494,13 @@ final class PluginApiTest extends TestCase
         $claimsFn = static fn (string $path): bool => true;
 
         $api->registerViewer('img', ['PNG', 'jpg']);
-        $buffered = $api->bufferedViewers();
+        $buffered = $api->contributions()->viewers->all();
         $this->assertTrue($buffered[0]['claims']('a.PNG'), 'matches case-insensitively despite the declared case');
         $this->assertTrue($buffered[0]['claims']('a.jpg'));
         $this->assertFalse($buffered[0]['claims']('a.gif'));
 
         $api->registerViewer('closurey', $claimsFn);
-        $this->assertSame($claimsFn, $api->bufferedViewers()[1]['claims'], 'a closure predicate is passed through, not wrapped');
+        $this->assertSame($claimsFn, $api->contributions()->viewers->all()[1]['claims'], 'a closure predicate is passed through, not wrapped');
 
         try {
             $api->registerViewer('bad id', ['x']);
@@ -1523,7 +1523,7 @@ final class PluginApiTest extends TestCase
         $load = static fn (string $path): mixed => null;
 
         $api->registerPane('graph', $pane, $load);
-        $this->assertSame('graph', $api->bufferedPanes()[0]['id']);
+        $this->assertSame('graph', $api->contributions()->panes->all()[0]['id']);
 
         try {
             $api->registerPane('bad id', $pane, $load);
@@ -1564,7 +1564,7 @@ final class PluginApiTest extends TestCase
         $resolve = static fn (): array => ['/bin/dap'];
         $api->registerDebugAdapter('php', $resolve);
 
-        $buffered = $api->bufferedDebugAdapters();
+        $buffered = $api->contributions()->debugAdapters->all();
         $this->assertSame('php', $buffered[0]['languageId']);
         $this->assertSame(['/bin/dap'], $buffered[0]['resolve']());
 
@@ -1583,7 +1583,7 @@ final class PluginApiTest extends TestCase
 
         $api->registerMenu('Tools', 'View', ['i:demo:hello'], $visible, 'vcs', ['i:demo:hello']);
 
-        $contribution = $api->bufferedMenus()[0]['contribution'];
+        $contribution = $api->contributions()->menus->all()[0]['contribution'];
         $this->assertSame('Tools', $contribution->title);
         $this->assertSame('View', $contribution->after);
         $this->assertSame(['i:demo:hello'], $contribution->items);
@@ -1617,7 +1617,7 @@ final class PluginApiTest extends TestCase
         $api = $this->api(wired: Presence::Without);
         $api->registerActions(['zoom_in' => 'Zoom In', 'zoom_out' => 'Zoom Out']);
 
-        $buffered = $api->bufferedActions();
+        $buffered = $api->contributions()->actions->all();
         $this->assertSame(['zoom_in', 'zoom_out'], \array_column($buffered, 'id'));
         $this->assertSame(['Zoom In', 'Zoom Out'], \array_column($buffered, 'label'));
 
@@ -1641,13 +1641,13 @@ final class PluginApiTest extends TestCase
         $classify = static fn (string $content, string $language): ?array => null;
 
         $api->registerTokenSpans(['php'], $classify);
-        $buffered = $api->bufferedTokenSpans();
+        $buffered = $api->contributions()->tokenSpans->all();
         $this->assertSame(['php'], $buffered[0]['languages']());
         $this->assertSame($classify, $buffered[0]['classify']);
 
         $closureLangs = static fn (): array => ['*'];
         $api->registerTokenSpans($closureLangs, $classify);
-        $this->assertSame($closureLangs, $api->bufferedTokenSpans()[1]['languages'], 'a closure is passed through, not re-wrapped');
+        $this->assertSame($closureLangs, $api->contributions()->tokenSpans->all()[1]['languages'], 'a closure is passed through, not re-wrapped');
 
         try {
             $api->registerTokenSpans([], $classify);

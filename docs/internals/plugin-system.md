@@ -229,9 +229,10 @@ synthetic `IdeConfig`. `ensureLoaded()` is idempotent and triggered by the
 built and plugin default keys merge into it.
 
 Registration buffers in the per-plugin `PluginApi` and commits atomically after
-`activate()`. Fifteen of the nineteen extension points share the generic
-`PluginBuffer`; the other four (commands, menu items, hooks, setting
-descriptors) stay plain arrays, each saying why at its declaration.
+`activate()`. Sixteen of the twenty extension points each have a generic
+`PluginBuffer`, held together on `Plugin/Api/PluginContributions` and drained
+through `contributions()`; the other four (commands, menu items, hooks, setting
+descriptors) stay plain arrays on the API, each saying why at its declaration.
 
 **Commit is the deadline, and a contributed VIEW arrives after it.** A view's
 factory needs the region core mints for it, which cannot exist until the view

@@ -151,7 +151,13 @@ integrations = ["symfony", "phpunit"]
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         94  Plugin/Api/PluginApi: toolBinary(), the one
+#   too-many-methods         90  Widget/CodeEditorWidget and tests/…/
+#                                SettingsFormWidgetTest, tied (2026-10-23).
+#                                PluginApi held it at 94 until its sixteen
+#                                buffered*() drains — public methods no plugin
+#                                may call — moved onto PluginContributions; its
+#                                raises before that, newest first: 94 for
+#                                toolBinary(), the one
 #                                resolution of a declared tool's binary that
 #                                Settings shares — a plugin locating its own
 #                                tool could not otherwise agree with the page
@@ -390,7 +396,7 @@ integrations = ["symfony", "phpunit"]
 # properties into Ui/Notifier trips too-many-properties and lint exits 1.
 [linter.rules]
 cyclomatic-complexity = { threshold = 143 }
-too-many-methods = { threshold = 94 }
+too-many-methods = { threshold = 90 }
 too-many-properties = { threshold = 31 }
 too-many-enum-cases = { threshold = 78 }
 excessive-parameter-list = { threshold = 26 }

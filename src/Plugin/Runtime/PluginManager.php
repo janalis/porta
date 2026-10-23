@@ -202,54 +202,55 @@ final class PluginManager implements
             $this->pluginListeners[$name][] = [$eventClass, $wrapped];
             $this->events->addListener($eventClass, $wrapped, self::PLUGIN_PRIORITY);
         }
-        foreach ($api->bufferedLanguageServers() as $server) {
+        $contributions = $api->contributions();
+        foreach ($contributions->languageServers->all() as $server) {
             $this->languageServers[] = $server;
         }
-        foreach ($api->bufferedInstallers() as $installer) {
+        foreach ($contributions->installers->all() as $installer) {
             $this->installers[] = $installer;
         }
-        foreach ($api->bufferedHighlighters() as $highlighter) {
+        foreach ($contributions->highlighters->all() as $highlighter) {
             $this->highlighters[] = $highlighter;
         }
-        foreach ($api->bufferedTokenSpans() as $spans) {
+        foreach ($contributions->tokenSpans->all() as $spans) {
             $this->tokenSpans[] = $spans;
         }
-        foreach ($api->bufferedViewers() as $viewer) {
+        foreach ($contributions->viewers->all() as $viewer) {
             $this->viewers[] = $viewer;
         }
-        foreach ($api->bufferedPreviews() as $preview) {
+        foreach ($contributions->previews->all() as $preview) {
             $this->previews[] = $preview;
         }
-        foreach ($api->bufferedPanes() as $pane) {
+        foreach ($contributions->panes->all() as $pane) {
             $this->panes[] = $pane;
         }
-        foreach ($api->bufferedViews() as $view) {
+        foreach ($contributions->views->all() as $view) {
             $this->views[] = $view;
         }
-        foreach ($api->bufferedMenus() as $menu) {
+        foreach ($contributions->menus->all() as $menu) {
             $this->menus[] = $menu;
         }
-        foreach ($api->bufferedSettingHooks() as $hook) {
+        foreach ($contributions->settingHooks->all() as $hook) {
             $this->settingHooks[] = $hook;
         }
-        foreach ($api->bufferedActions() as $action) {
+        foreach ($contributions->actions->all() as $action) {
             $this->actions[] = $action;
         }
-        foreach ($api->bufferedListTools() as $tool) {
+        foreach ($contributions->listTools->all() as $tool) {
             $this->listTools[] = $tool;
         }
-        foreach ($api->bufferedStatusSegments() as $segment) {
+        foreach ($contributions->statusSegments->all() as $segment) {
             $this->statusSegments[] = $segment;
         }
-        foreach ($api->bufferedDebugAdapters() as $adapter) {
+        foreach ($contributions->debugAdapters->all() as $adapter) {
             $this->debugAdapters[] = $adapter;
         }
-        $tools = $api->bufferedTools();
+        $tools = $contributions->tools->all();
         foreach ($tools as $tool) {
             $this->tools[] = $tool;
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
-        $this->markdownFences->add($api->bufferedMarkdownFences());
+        $this->markdownFences->add($contributions->markdownFences->all());
         // A live enable only: at boot the runtime is not wired yet, and nothing
         // could have read the set before every plugin committed.
         if ([] !== $tools && null !== $this->runtime) {

@@ -317,11 +317,11 @@ final class AbstractToolPluginTest extends TestCase
         $this->assertSame('binary', $settings[0]['key']);
         $this->assertSame('demo binary', $settings[0]['label']);
         $this->assertSame('empty = vendor/bin, then PATH', $settings[0]['hint']);
-        $this->assertSame([['tool' => 'demo', 'available' => $api->bufferedInstallers()[0]['available'], 'via' => [['composer', 'vendor/demo']], 'plugin' => 'demo']], [[
-            'tool' => $api->bufferedInstallers()[0]['tool'],
-            'available' => $api->bufferedInstallers()[0]['available'],
-            'via' => $api->bufferedInstallers()[0]['via'],
-            'plugin' => $api->bufferedInstallers()[0]['plugin'],
+        $this->assertSame([['tool' => 'demo', 'available' => $api->contributions()->installers->all()[0]['available'], 'via' => [['composer', 'vendor/demo']], 'plugin' => 'demo']], [[
+            'tool' => $api->contributions()->installers->all()[0]['tool'],
+            'available' => $api->contributions()->installers->all()[0]['available'],
+            'via' => $api->contributions()->installers->all()[0]['via'],
+            'plugin' => $api->contributions()->installers->all()[0]['plugin'],
         ]]);
 
         $commands = $api->bufferedCommands();

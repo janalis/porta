@@ -154,7 +154,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->api = $api;
         $this->plugin = $plugin;
 
-        $entry = $api->bufferedHighlighters()[0];
+        $entry = $api->contributions()->highlighters->all()[0];
         $handler = $entry['highlight'];
 
         return function (string $text, string $language = 'rust') use ($handler): void {
@@ -199,7 +199,7 @@ final class AbstractSubprocessHighlighterTest extends TestCase
         $this->assertSame(0, $rows[2]['default']);
         $this->assertSame(262_144, $rows[3]['default']);
 
-        $entry = $this->api->bufferedHighlighters()[0];
+        $entry = $this->api->contributions()->highlighters->all()[0];
         $this->assertSame('Demo', $entry['label']);
         $this->assertSame('demo', $entry['id'], 'the id defaults to the plugin name');
         $this->assertSame(['rust', 'go'], $entry['languages']());
