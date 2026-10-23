@@ -618,7 +618,7 @@ final class PluginManager implements
      * The active plugins that open projects on a server, by name, in load
      * order — what {@see PluginRemoteTransports} asks.
      *
-     * @return array<string, RemoteProjectPlugin>
+     * @return array<array-key, RemoteProjectPlugin> by plugin name — an int when the name is digits
      */
     public function remoteProjectPlugins(): array
     {

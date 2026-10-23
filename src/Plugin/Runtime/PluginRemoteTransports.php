@@ -27,7 +27,6 @@ final readonly class PluginRemoteTransports implements RemoteTransportSource
             try {
                 $transport ??= $plugin->remoteTransport($spec);
             } catch (\Throwable $error) {
-                // @mago-expect analysis:redundant-cast -- a key in digits is an int at runtime, whatever its docblock says
                 $this->plugins->reportFailure((string) $name, $error); // a name in digits keys as an int
             }
         }

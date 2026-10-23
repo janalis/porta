@@ -88,7 +88,7 @@ final readonly class SettingsDebugController
         $launch = [];
         if ('' !== $json) {
             /** @var array<array-key, mixed>|scalar|null $decoded */
-            // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
+            // @noinspection JsonEncodingApiUsageInspection -- what the user typed in the field: text that is not JSON is refused below with a message, not thrown
             $decoded = \json_decode($json, associative: true);
             if (!\is_array($decoded) || \array_is_list($decoded)) {
                 // FALSE, so the form keeps the editor open with what was

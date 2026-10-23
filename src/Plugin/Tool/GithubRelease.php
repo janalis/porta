@@ -28,7 +28,7 @@ final readonly class GithubRelease
     public function latestTag(string $json): ?string
     {
         /** @var array{tag_name?: mixed}|bool|int|float|string|null $decoded */
-        // @noinspection JsonEncodingApiUsageInspection -- a peer's line that is not JSON is dropped, not thrown: it comes off the network
+        // @noinspection JsonEncodingApiUsageInspection -- a release listing that is not JSON is no tag, not a throw: it comes off the network
         $decoded = \json_decode($json, associative: true);
         $tag = \is_array($decoded) && \is_string($decoded['tag_name'] ?? null) ? $decoded['tag_name'] : '';
 
