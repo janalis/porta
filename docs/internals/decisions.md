@@ -578,6 +578,32 @@ Dense by nature, measured, and not to be "simplified":
   describe. The rejection was right about the shape proposed, not about the
   possibility.
 
+**The cyclomatic and kan-defect pin holders — measured 2026-10-23, left alone.**
+Each class at either pin was split by shared MUTABLE state (methods linked
+only through fields they write or read, not through helpers they call) and by
+per-method branch counts:
+
+- `Editor/Document` and the graph viewer's `GraphViewerWidget`, tied at the
+  cyclomatic pin (143): one state component each, 18 of 87 and 37 of 46
+  methods, and the complexity is spread thin — the busiest method is ~22
+  branches of ~260 (`applyEditsKeepingCursor`, `handleInput`).
+- The nine kan-defect holders (`GuestSession`, `HostSession`,
+  `BufferService`, `RemoteFilesystem`, `LspSessionPool`, `PluginManager`,
+  `FindBarWidget`, `MarkdownPageWidget`, and `KeybindingsDocTest`): one
+  dominant state component each. What falls outside it is one or two methods
+  over one field (`RemoteFilesystem::walk`, `LspSessionPool::missing`,
+  `MarkdownPageWidget`'s search matches) — single-consumer VOs, which this page
+  already rejects.
+
+kan-defect counts a class's `if`s, loops and `switch`es; at these sizes it
+measures the class's size, and a pin is not lowered by shaving branches for
+it. `MouseRouter`'s drag fields do form their own component, but arming a drag
+happens inside the click handlers that use a dozen other collaborators, and
+it holds neither pin.
+
+*Re-opens on:* a component of three or more methods owning its mutable state
+in one of these classes — the `PluginContributions` shape.
+
 **A 2026-08-15 sweep of every 8+-parameter method measured five candidates,
 fixed two, rejected three.** The two fixed shared one shape: a caller had
 already destructured an existing VO — `Widget/Render/EditorDecorations`,
