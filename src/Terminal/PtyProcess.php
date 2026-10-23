@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Terminal;
 
+use Porta\Support\NonBlockingWriter;
 use Porta\Support\ProcessReaper;
 use Revolt\EventLoop;
 
@@ -30,6 +31,8 @@ final class PtyProcess
     /** @var resource|null a child whose terminal closed, until the reaper collects it */
     private $reaping;
     private bool $stopped = false;
+    /** What is typed or pasted, queued until the child's side takes it: a write takes only what fits. */
+    private ?NonBlockingWriter $input = null;
 
     /** @var (callable(string): void)|null */
     private $onOutput;
@@ -108,6 +111,12 @@ final class PtyProcess
         /** @var array{0: resource, 1?: resource, 2?: resource} $pipes */
         $this->master = $pipes[1] ?? $pipes[0];
         \stream_set_blocking($this->master, enable: false);
+        $input = $this->pty ? $this->master : $this->stdin;
+        \assert(\is_resource($input), description: 'a started process has somewhere to send input');
+        \stream_set_blocking($input, enable: false);
+        // A child that died takes no more input; its end is reported by the
+        // read side, so a failed write has nothing to add.
+        $this->input = new NonBlockingWriter($input, static function (string $reason): void {});
         $this->running = true;
 
         $this->watcher = EventLoop::onReadable($this->master, function (string $watcherId): void {
@@ -134,15 +143,13 @@ final class PtyProcess
     }
 
     /**
-     * Forward bytes (keystrokes) to the child.
+     * Forward bytes — keystrokes, a paste — to the child. The terminal takes
+     * about a kilobyte at a time; the rest is queued and goes out as the child
+     * reads, in order, instead of being dropped.
      */
     public function write(string $data): void
     {
-        $target = $this->pty ? $this->master : $this->stdin;
-        if (\is_resource($target)) {
-            // @mago-expect lint:no-error-control-operator -- fwrite to a pty/pipe whose child has died (the fd is still a live resource) raises an unavoidable EPIPE/EIO warning that no is_resource guard prevents.
-            @\fwrite($target, $data);
-        }
+        $this->input?->write($data);
     }
 
     public function stop(): void
@@ -152,6 +159,8 @@ final class PtyProcess
         // One that outlived its terminal is killed like any other; the reaper
         // still collects it.
         $this->stopped = true;
+        $this->input?->close();
+        $this->input = null;
         if (\is_resource($this->reaping)) {
             \proc_terminate($this->reaping, \SIGKILL);
         }
@@ -185,6 +194,8 @@ final class PtyProcess
      */
     private function finish(): void
     {
+        $this->input?->close();
+        $this->input = null;
         if (null !== $this->watcher) {
             EventLoop::cancel($this->watcher);
             $this->watcher = null;

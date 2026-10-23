@@ -113,6 +113,39 @@ final class PtyProcessTest extends TestCase
         $this->assertNull($p->exitCode(), 'a stopped process has no exit code of its own');
     }
 
+    /**
+     * A paste far larger than the terminal's buffer arrives whole. The master
+     * side is non-blocking, so a write takes only what fits; the rest used to
+     * be dropped without a word.
+     */
+    public function testAWriteLargerThanTheTerminalTakesAtOnceArrivesWhole(): void
+    {
+        $out = \sys_get_temp_dir().'/porta-pty-paste-'.\getmypid().'-'.\bin2hex(\random_bytes(4));
+        $size = 300_000;
+        $p = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; exec head -c '.$size.' > '.$out], __DIR__);
+        $this->procs[] = $p;
+        $exit = null;
+        $p->onExit(static function (int $c) use (&$exit): void {
+            $exit = $c;
+        });
+        $this->assertTrue($p->start());
+        $this->pump(0.2); // stty has run
+
+        $p->write(\str_repeat('x', $size));
+
+        try {
+            $this->await(static function () use (&$exit): bool {
+                return null !== $exit;
+            }, what: 'the child to have read every byte');
+            $this->assertSame(0, $exit);
+            $this->assertSame($size, \filesize($out));
+        } finally {
+            if (\is_file($out)) {
+                \unlink($out);
+            }
+        }
+    }
+
     public function testForwardsInputToTheChild(): void
     {
         // `cat` echoes stdin back through the PTY.
