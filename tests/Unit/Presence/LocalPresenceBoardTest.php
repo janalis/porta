@@ -86,6 +86,23 @@ final class LocalPresenceBoardTest extends TestCase
         }
     }
 
+    /** A board directory that is there but read-only is answered the same way — a reason, never a PHP warning. */
+    public function testABoardThatIsThereButReadOnlySaysSo(): void
+    {
+        $project = new TempProject([PresenceBoard::DIR.'/.keep' => '']);
+        \chmod($project->path(PresenceBoard::DIR), permissions: 0o500);
+        $error = null;
+        try {
+            new LocalPresenceBoard($project->dir)->publish(self::beacon('aaaaaaaaaaaaaaaa'), static function (?string $answer) use (&$error): void {
+                $error = $answer;
+            });
+        } finally {
+            \chmod($project->path(PresenceBoard::DIR), permissions: 0o700);
+        }
+
+        $this->assertSame('cannot write '.$project->dir.'/.porta/presence/aaaaaaaaaaaaaaaa.json', $error);
+    }
+
     public function testABeaconWithdrawnBetweenTheListingAndTheReadIsNone(): void
     {
         $project = new TempProject();

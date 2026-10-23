@@ -85,7 +85,7 @@ final class PtyProcess
         $ptyDescriptors = [['pty'], ['pty'], ['pty']];
         // proc_open()'s ['pty'] descriptor is a real Linux/macOS feature that
         // mago's stub does not model (it only lists pipe/file/resource forms).
-        // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return drives the pipe fallback below.
+        // @mago-expect lint:no-error-control-operator -- proc_open warns when the system refuses a PTY or cannot spawn the binary; either way the false return drives the pipe fallback below, which answers the second case for good.
         // Irreducible without lying about the descriptor. Re-checked 2026-09-02.
         // @mago-expect analysis:possibly-invalid-argument
         $process = @\proc_open($this->command, $ptyDescriptors, $pipes, $cwd, $env);

@@ -163,7 +163,7 @@ final readonly class GithubInstaller
     private function prepareScratch(): ?string
     {
         $this->reapStaleScratch();
-        // @mago-expect lint:no-error-control-operator -- a blocked scratch dir is an expected failure path; its warning must reach the flash, not the error log.
+        // @mago-expect lint:no-error-control-operator -- a blocked scratch dir is reported as 'cannot create …' through the return; the PHP warning would only repeat it in the log.
         $ready = \is_dir($this->workDir) || @\mkdir($this->workDir, permissions: 0o755, recursive: true) || \is_dir($this->workDir);
 
         return $ready ? null : 'cannot create '.$this->workDir;
@@ -501,7 +501,7 @@ final readonly class GithubInstaller
      */
     private function land(string $extracted, \Closure $onSuccess, \Closure $onFailure): void
     {
-        // @mago-expect lint:no-error-control-operator -- an unwritable destination is an expected failure path; its warning must reach the flash, not the error log.
+        // @mago-expect lint:no-error-control-operator -- an unwritable destination is reported through onFailure; the PHP warning would only repeat it in the log.
         if (!\is_dir($this->binDir) && !@\mkdir($this->binDir, permissions: 0o755, recursive: true) && !\is_dir($this->binDir)) {
             $onFailure('cannot create '.$this->binDir);
 
@@ -517,7 +517,7 @@ final readonly class GithubInstaller
         $staged = $target.'.installing-'.(int) \getmypid();
         // @mago-expect lint:no-error-control-operator -- an unwritable or full bin dir is reported through onFailure.
         $copied = @\copy($extracted, $staged);
-        // @mago-expect lint:no-error-control-operator -- the staged copy is ours, but chmod can still fail on the same bin dir; reported through onFailure.
+        // @mago-expect lint:no-error-control-operator -- the staged copy is ours, so chmod fails only on a filesystem that refuses modes or a file gone since; reported through onFailure.
         $prepared = $copied && @\chmod($staged, permissions: 0o755);
         if (!$prepared) {
             $this->removeTree($staged);
@@ -542,7 +542,7 @@ final readonly class GithubInstaller
 
                     return;
                 }
-                // @mago-expect lint:no-error-control-operator -- a squatted target name is reported through onFailure.
+                // @mago-expect lint:no-error-control-operator -- a directory squatting the target name, or a bin dir made read-only during the smoke test, is reported through onFailure.
                 if (!@\rename($staged, $target)) {
                     $this->removeTree($staged);
                     $onFailure('cannot write '.$target);

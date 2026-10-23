@@ -112,7 +112,7 @@ final class OrphanGuard
     private function start()
     {
         $pipes = [];
-        // @mago-expect lint:no-error-control-operator -- proc_open on an unusable /bin/sh emits a spawn warning that guarding the inputs cannot prevent; the false return is handled below.
+        // @mago-expect lint:no-error-control-operator -- a spawn fails only when the system is out of processes or descriptors, warning as well; the false return is handled below.
         $watcher = @\proc_open(['/bin/sh', '-c', self::SCRIPT], [0 => ['pipe', 'r'], 1 => ['file', '/dev/null', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
         if (!\is_resource($watcher)) {
             return null;

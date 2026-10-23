@@ -40,10 +40,9 @@ final class Credentials
             // @mago-expect lint:no-error-control-operator -- a directory that cannot be made warns; the null return is what is reported
             if (\is_dir($dir) || @\mkdir($dir, permissions: 0o700, recursive: true) || \is_dir($dir)) {
                 $line = \sprintf("machine %s login %s password %s\n", self::token($spec->host), self::token((string) $spec->user), self::token($password));
+                // The mode and the move only fail if the directory changes under them; the null says so then too.
                 // @mago-expect lint:no-error-control-operator -- an unwritable directory warns; the null return is what is reported
-                if (false !== @\file_put_contents($file.'.tmp', $line)) {
-                    \chmod($file.'.tmp', permissions: 0o600);
-                    \rename($file.'.tmp', $file);
+                if (false !== @\file_put_contents($file.'.tmp', $line) && \chmod($file.'.tmp', permissions: 0o600) && \rename($file.'.tmp', $file)) {
                     $stored = $file;
                 }
             }

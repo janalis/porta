@@ -33,10 +33,9 @@ final class LocalPresenceBoard extends PresenceBoard
         $file = $this->dir.'/'.self::file($beacon->id);
         $temporary = $file.'.tmp';
         // @mago-expect lint:no-error-control-operator -- a directory that cannot be made is answered below, as a board that cannot be written
-        $written =
-            (\is_dir($this->dir) || @\mkdir($this->dir, permissions: 0o777, recursive: true) || \is_dir($this->dir))
-            && false !== \file_put_contents($temporary, $beacon->toJson())
-            && \rename($temporary, $file);
+        $ready = \is_dir($this->dir) || @\mkdir($this->dir, permissions: 0o777, recursive: true) || \is_dir($this->dir);
+        // @mago-expect lint:no-error-control-operator -- nor can one that is there but read-only: the write warns as well as failing, and the failure is the answer
+        $written = $ready && false !== @\file_put_contents($temporary, $beacon->toJson()) && \rename($temporary, $file);
         $done($written ? null : 'cannot write '.$file);
     }
 
