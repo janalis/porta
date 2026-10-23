@@ -56,7 +56,7 @@ final class TestDebugController
             new Translator('en'),
             new ProjectPaths($root),
             new RecordingFileOpener(),
-            new ProcessDapClientFactory($root),
+            new ProcessDapClientFactory($root)->create(...),
             $dispatcher,
             $state,
             new EditorDecorations($breakpoints, $state, $editor->decorations),

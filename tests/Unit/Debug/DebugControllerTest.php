@@ -7,7 +7,6 @@ namespace Porta\Tests\Unit\Debug;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Debug\BreakpointStore;
-use Porta\Debug\DapClientFactory;
 use Porta\Debug\DapClientInterface;
 use Porta\Debug\DebugAdapters;
 use Porta\Debug\DebugController;
@@ -99,6 +98,7 @@ final class DebugControllerTest extends TestCase
         $this->panel = new DebugPanelWidget(events: $dispatcher);
         $this->statusBar = new StatusBarWidget();
         $this->client = new FakeDapClient();
+        $client = $this->client;
         $this->opened = [];
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->tui = $tui;
@@ -136,16 +136,7 @@ final class DebugControllerTest extends TestCase
                     $this->opened[] = $path;
                 }
             },
-            new readonly class($this->client) implements DapClientFactory {
-                public function __construct(
-                    private FakeDapClient $client,
-                ) {}
-
-                public function create(array $argv): DapClientInterface
-                {
-                    return $this->client;
-                }
-            },
+            static fn (array $argv): DapClientInterface => $client,
             $dispatcher,
             $state,
             new EditorDecorations($breakpoints, $state, $this->editor->decorations),

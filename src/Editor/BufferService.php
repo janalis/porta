@@ -18,7 +18,6 @@ use Porta\Event\TreeFileActivated;
 use Porta\Filesystem\LocalFilesystem;
 use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
-use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
@@ -52,7 +51,7 @@ use Symfony\Component\Tui\Tui;
  * events; only intra-flow calls (didOpen ordering, external reloads) stay inline.
  */
 #[AsIdeService]
-final class BufferService implements BufferReopener, ChangeMarkSink, DiagnosticsSink, FileOpener
+final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
 {
     /**
      * The file name that titles a graph tab "Project Architecture".
@@ -941,7 +940,6 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
     }
 
     /** Re-send didOpen for every open file, so a live LSP reconfigure relaunches its servers. */
-    #[\Override]
     public function reopenAllInLsp(): void
     {
         foreach ($this->buffers->all() as $buffer) {

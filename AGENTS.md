@@ -46,7 +46,7 @@ Nine; `verify:quick` is the first seven, run as format, lint, analyze, rector, a
 - **No `$this` inside injected `static fn` closures** — mago rejects it.
 - The formatter **never re-wraps lines**. Keep your own line breaks.
 - **Never `lazy: true`** on a container definition. Every definition is shared.
-- **One-consumer interfaces are forbidden**, as is widening a role for one caller.
+- **One-consumer interfaces are forbidden** (a test fake is no consumer: inject a `\Closure`), as is widening a role for one caller.
 - **FQCN is determined by path**, so a move is a pure rename. Grep the old namespace: zero.
 - **Events carry scalars, enums and VOs — never widget instances.** Never dispatch from a
   render path. The dispatcher is an optional TRAILING constructor argument on a widget.

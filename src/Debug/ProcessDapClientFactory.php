@@ -8,7 +8,7 @@ use Porta\Support\DiagnosticLog;
 use Porta\Support\OrphanGuard;
 
 /** The production transport: a debug-adapter child process speaking DAP over stdio. */
-final readonly class ProcessDapClientFactory implements DapClientFactory
+final readonly class ProcessDapClientFactory
 {
     private DiagnosticLog $log;
 
@@ -19,7 +19,7 @@ final readonly class ProcessDapClientFactory implements DapClientFactory
         $this->log = DiagnosticLog::forRoot($this->rootDir, 'dap');
     }
 
-    #[\Override]
+    /** @param list<string> $argv */
     public function create(array $argv): DapClientInterface
     {
         // Adapter stderr and transport failures land in .porta/dap.log — the

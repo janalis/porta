@@ -183,7 +183,17 @@ widget** — each resolves through its own alias, and tests hand in two narrow
 fakes.
 
 **One-consumer interfaces are forbidden**, as is widening an existing role for
-one caller. Consumers that stay concrete do so on purpose, each noted at the
+one caller. **A test fake is not a second consumer.** A seam that exists only so
+a test can substitute the collaborator is a `\Closure` parameter instead:
+`#[AutowireCallable]` for a container service (`DebugController`'s DAP
+transport, `LspReconfigurer`'s reopen), or a first-class callable a plugin
+passes by hand (the image pane's rasterizer). A one-consumer interface stays
+only for a reason a fake is not: the widget roles above, which keep a consumer
+off an 81-method class; the editor's outbound hooks on `Widget/EditorCallbacks`,
+whose implementers hold the widget, so a concrete type would close a class
+cycle (`DebugSessionObserver` likewise, for `DapSession`); an optional
+capability tested with `instanceof` (`ThemeAwareHighlightProvider`); and a
+narrowed plugin-facing slice (`LineAnnotationSink`). Consumers that stay concrete do so on purpose, each noted at the
 site: `Lsp/AbstractLspController` (its subclasses reach the inherited `$editor`
 for eleven methods), `Editor/EditorFileActions` and `Run/RunController` (they
 also hand the widget to `setFocus()`), `Input/EditorLayoutPanes` (the mouse

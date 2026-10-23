@@ -10,7 +10,6 @@ use Porta\Config\ConfigScope;
 use Porta\Config\PortaJsonWriter;
 use Porta\Debug\DebugAdapters;
 use Porta\I18n\Translator;
-use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
@@ -55,9 +54,7 @@ final class LanguageSectionTest extends TestCase
         $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
-            new class implements BufferReopener {
-                public function reopenAllInLsp(): void {}
-            },
+            static function (): void {},
             new class implements LanguageServerProvider {
                 public function languageServers(): array
                 {

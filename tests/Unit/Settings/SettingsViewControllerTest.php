@@ -25,7 +25,6 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Layout\ViewRegions;
-use Porta\Lsp\BufferReopener;
 use Porta\Lsp\FormatOnSave;
 use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
@@ -276,9 +275,7 @@ final class SettingsViewControllerTest extends TestCase
         $pool = new LspSessionPool($this->project->dir, new FixedActiveFile(), new Translator('en'));
         $reconfigurer = new LspReconfigurer(
             $pool,
-            new class implements BufferReopener {
-                public function reopenAllInLsp(): void {}
-            },
+            static function (): void {},
             new class implements LanguageServerProvider {
                 public function languageServers(): array
                 {

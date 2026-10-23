@@ -11,7 +11,6 @@ use Porta\Config\IdeConfig;
 use Porta\Config\PortaJsonWriter;
 use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
-use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
@@ -50,15 +49,8 @@ final class SettingsLspControllerTest extends TestCase
         $pool = new LspSessionPool($rootDir, new FixedActiveFile(), new Translator('en'));
 
         $reopened = &$this->reopened;
-        $reopener = new class($reopened) implements BufferReopener {
-            public function __construct(
-                private int &$reopened,
-            ) {}
-
-            public function reopenAllInLsp(): void
-            {
-                ++$this->reopened;
-            }
+        $reopener = static function () use (&$reopened): void {
+            ++$reopened;
         };
         $provider = new class implements LanguageServerProvider {
             public function languageServers(): array

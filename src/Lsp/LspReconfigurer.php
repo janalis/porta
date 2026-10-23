@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Editor\BufferService;
+use Symfony\Component\DependencyInjection\Attribute\AutowireCallable;
+
 /**
  * Re-resolves the language servers (user config + plugin-provided) and applies
  * the change live: swaps the session pool's server map and re-opens every
@@ -15,9 +18,13 @@ namespace Porta\Lsp;
  */
 final readonly class LspReconfigurer
 {
+    /**
+     * @param \Closure(): void $reopenAll re-sends didOpen for every open buffer, so a relaunched server learns them
+     */
     public function __construct(
         private LspSessionPool $lsp,
-        private BufferReopener $reopener,
+        #[AutowireCallable(service: BufferService::class, method: 'reopenAllInLsp')]
+        private \Closure $reopenAll,
         private LanguageServerProvider $pluginServers,
         private string $rootDir,
         private ?string $lspCommand,
@@ -40,7 +47,7 @@ final readonly class LspReconfigurer
     {
         $this->lsp->reload(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()));
         $this->lsp->missing($this->pluginServers->missingServers());
-        $this->reopener->reopenAllInLsp();
+        ($this->reopenAll)();
     }
 
     /** Re-resolve every server (config + plugins), swap the pool, and re-open buffers. */
@@ -52,7 +59,7 @@ final readonly class LspReconfigurer
         // phpantom's fix-on-save would tear down and relaunch every server.
         $this->lsp->missing($this->pluginServers->missingServers());
         if ($this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()))) {
-            $this->reopener->reopenAllInLsp();
+            ($this->reopenAll)();
         }
     }
 }

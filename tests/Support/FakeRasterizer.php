@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
-use Porta\ImageViewer\Rasterizer;
-
 /**
- * A scriptable {@see Rasterizer} for widget tests: answers with queued PNG bytes
- * (or an error) synchronously, or holds the callbacks for manual delivery when
- * `$deferred` — no converter binary, no subprocess, no event loop. The
+ * A scriptable stand-in for {@see \Porta\ImageViewer\SvgRasterizer} in widget
+ * tests, handed to the pane as `$fake->rasterize(...)`: answers with queued
+ * PNG bytes (or an error) synchronously, or holds the callbacks for manual
+ * delivery when `$deferred` — no converter binary, no subprocess, no event
+ * loop. The
  * {@see FakeLayoutEngine} of the image pane.
  */
-final class FakeRasterizer implements Rasterizer
+final class FakeRasterizer
 {
     /** @var list<?float> every scale rasterize() was asked for, in order (null = the document's own size) */
     public array $scales = [];

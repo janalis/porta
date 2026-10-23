@@ -6,7 +6,6 @@ namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
-use Porta\Lsp\BufferReopener;
 use Porta\Lsp\LanguageServerProvider;
 use Porta\Lsp\LspReconfigurer;
 use Porta\Lsp\LspSessionPool;
@@ -23,15 +22,8 @@ final class LspReconfigurerTest extends TestCase
 
         return new LspReconfigurer(
             $pool,
-            new class($reopened) implements BufferReopener {
-                public function __construct(
-                    private int &$reopened,
-                ) {}
-
-                public function reopenAllInLsp(): void
-                {
-                    ++$this->reopened;
-                }
+            static function () use (&$reopened): void {
+                ++$reopened;
             },
             new class implements LanguageServerProvider {
                 public function languageServers(): array

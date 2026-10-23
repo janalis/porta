@@ -27,6 +27,7 @@ use Porta\Workbench\StatusSegment;
 use Porta\Workbench\StatusTone;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
+use Symfony\Component\DependencyInjection\Attribute\AutowireCallable;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Tui\Tui;
 
@@ -49,6 +50,9 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     /** The launched file's name — restored onto the Debug tab if a stop re-opens it. */
     private string $panelTitle = '';
 
+    /**
+     * @param \Closure(list<string>): DapClientInterface $clients the transport for an adapter's argv
+     */
     public function __construct(
         private readonly BreakpointStore $breakpoints,
         private readonly DebugAdapters $adapters,
@@ -60,7 +64,8 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         private readonly Translator $translator,
         private readonly ProjectPaths $paths,
         private readonly FileOpener $files,
-        private readonly DapClientFactory $clients,
+        #[AutowireCallable(service: ProcessDapClientFactory::class, method: 'create')]
+        private readonly \Closure $clients,
         private readonly EventDispatcherInterface $dispatcher,
         private readonly DebugSessionState $state,
         private readonly EditorDecorations $decorations,
@@ -359,7 +364,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->panel->setWatches($this->watches->expressions);
 
         $this->session = new DapSession(
-            $this->clients->create($config->adapterArgv),
+            ($this->clients)($config->adapterArgv),
             $languageId,
             fn (): array => $this->breakpoints->all(),
             $this,
