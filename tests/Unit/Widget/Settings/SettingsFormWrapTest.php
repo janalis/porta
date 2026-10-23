@@ -111,10 +111,14 @@ final class SettingsFormWrapTest extends TestCase
         };
 
         $wide = $frame(220);
-        $this->assertCount(1, \array_filter($wide, static fn (string $l): bool => \str_contains($l, $long)), 'whole on one row');
+        $this->assertCount(
+            1,
+            \array_filter($wide, static fn (string $l): bool => \str_contains($l, 'Runtime indexing (trusts the workspace:')),
+            'two rows in the forty columns a wide pane gives a label',
+        );
+        $this->assertCount(1, \array_filter($wide, static fn (string $l): bool => \str_contains($l, 'the server executes its PHP)')), 'and the rest on the next');
 
         $narrow = $frame(40);
-        $this->assertSame([], \array_filter($narrow, static fn (string $l): bool => \str_contains($l, $long)), 're-wrapped');
         $this->assertNotSame([], \array_filter($narrow, static fn (string $l): bool => \str_contains($l, 'Setting 2')), 'the selection still in view');
         $this->assertSame([], \array_filter($narrow, static fn (string $l): bool => \str_contains($l, 'Runtime')), 'scrolled past the item that grew');
         $this->assertSame([40], \array_unique(\array_map(AnsiUtils::visibleWidth(...), $narrow)));

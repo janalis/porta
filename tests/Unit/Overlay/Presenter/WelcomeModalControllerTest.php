@@ -36,6 +36,7 @@ use Porta\Ui\Theme\Theme;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Onboarding\WelcomeWidget;
+use Porta\Widget\Render\ModalFrame;
 use Porta\Workbench\ChromeInvalidator;
 use Porta\Workbench\ChromeRefreshListener;
 use Porta\Workbench\EditorArea;
@@ -341,13 +342,13 @@ final class WelcomeModalControllerTest extends TestCase
     public function testATitleBarDragMovesAndClampsTheBox(): void
     {
         $controller = $this->controller();
-        $this->frame(80);
+        $this->frame(80, rows: 40);
         $controller->open();
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
         // Press on the title bar (off the ✖), drag down-and-left one column
-        // (the 76-wide, 22-row box on an 80×24 pane leaves little room).
+        // (the 76-wide box is as tall as its cards, 27 rows of an 80×40 pane).
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 2, $region->col + 1, release: false));
         $moved = $controller->region();
@@ -359,14 +360,14 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($controller->continueDragTo(500, 500, release: true));
         $pinned = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $pinned);
-        $this->assertSame(24 - $pinned->count, $pinned->top, 'clamped to the pane bottom');
+        $this->assertSame(40 - $pinned->count, $pinned->top, 'clamped to the pane bottom');
         $this->assertSame(80 - $pinned->width, $pinned->col, 'clamped to the pane right edge');
         // The two lines above re-derive their expected value from the same
         // $pinned object being checked (shadowClamped()'s own count/width
         // are computed FROM $top/$col), so a clamp() bound that's wrong in
         // the same direction the shadow math folds back would still pass
         // them. Pin the literal, independently-known numbers too.
-        $this->assertSame(2, $pinned->top, 'literal clamped row: boundBottom(24) - box rows(22)');
+        $this->assertSame(13, $pinned->top, 'literal clamped row: boundBottom(40) - box rows(27)');
         $this->assertSame(4, $pinned->col, 'literal clamped column: boundRight(80) - box width(76)');
         $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the drag');
     }
@@ -375,7 +376,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testACornerDragResizesTheBoxAndReopenResets(): void
     {
         $controller = $this->controller();
-        $this->frame(80);
+        $this->frame(80, rows: 40);
         $controller->open();
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
@@ -409,7 +410,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testHoveringTheResizeCornerHeaviesIt(): void
     {
         $controller = $this->controller();
-        $this->frame(80);
+        $this->frame(80, rows: 40);
         $controller->open();
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
@@ -712,10 +713,10 @@ final class WelcomeModalControllerTest extends TestCase
     }
 
     /**
-     * Fixture geometry (80x24, default steps): box.count=18, and
+     * Fixture geometry (80x24, default steps): box.count=20, and
      * WelcomeWidget's row-owner map is one entry longer than the visible
      * window ({@see \Porta\Widget\Onboarding\WelcomeWidget::render()} records
-     * every body() row before the final clip), so row 18 and row 17 own the
+     * every body() row before the final clip), so row 20 and row 19 own the
      * *same* step — only the `< $box->count` boundary tells them apart.
      */
     public function testHoverContentRowRespectsTheWindowBoundary(): void
@@ -724,10 +725,10 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80);
         $controller->open();
         $box = Probe::get($controller, 'box');
-        $this->assertSame(18, $box->count, 'pinning the fixture this test depends on');
+        $this->assertSame(20, $box->count, 'pinning the fixture this test depends on');
 
-        $lastValidRow = $box->windowTop() + 17;
-        $onePastRow = $box->windowTop() + 18;
+        $lastValidRow = $box->windowTop() + 19;
+        $onePastRow = $box->windowTop() + 20;
 
         $this->assertTrue($controller->hoverAt($lastValidRow, $box->col + 2), 'the last row inside the window registers a hover');
         $this->assertTrue($controller->hoverAt(0, 0), 'off the box entirely clears it');
@@ -811,13 +812,13 @@ final class WelcomeModalControllerTest extends TestCase
         // against the box's CURRENT startRow, not the original one — a
         // rowOffset sign flip is invisible while startRow is still 0.
         $controller = $this->controller();
-        $this->frame(80);
+        $this->frame(80, rows: 40);
         $controller->open();
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
-        // The box is 22 of 24 rows tall, leaving only 2 rows of vertical
-        // room to move in before clamping — small, deliberate deltas.
+        // The box is 27 of 40 rows tall — small, deliberate deltas all the
+        // same.
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 1, $region->col, release: true));
         $moved = $controller->region();
@@ -944,13 +945,13 @@ final class WelcomeModalControllerTest extends TestCase
         // since anchor and pointer move together. Moving the box first,
         // THEN resizing, is what pulls the two apart.
         $controller = $this->controller();
-        $this->frame(80);
+        $this->frame(80, rows: 40);
         $controller->open();
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
-        // Only 1 row / 4 columns of room to move in (box is 22x76 of 24x80),
-        // so a small move, then shrink (plenty of floor room at 20x5) rather
+        // Only 4 columns of room to move in (box is 27x76 of 40x80), so a
+        // small move, then shrink (plenty of floor room at 20x5) rather
         // than grow (which would immediately re-clamp back to the max size).
         $this->assertTrue($controller->clickAt($region->top, $region->col + 2));
         $this->assertTrue($controller->continueDragTo($region->top + 1, $region->col + 1, release: true));
@@ -1061,16 +1062,16 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertSame(0, $region->top, 'auto-centered row');
         $this->assertSame(2, $region->col, 'auto-centered column');
         $this->assertSame(77, $region->width, 'shadow-inclusive width (box width 76 + 1)');
-        $this->assertSame(23, $region->count, 'shadow-inclusive row count (box rows 22 + 1)');
+        $this->assertSame(24, $region->count, 'box rows 24, the whole pane: its shadow falls off the bottom');
 
         $box = Probe::get($controller, 'box');
         $this->assertSame(0, $box->startRow);
         $this->assertSame(2, $box->col);
         $this->assertSame(76, $box->width);
-        $this->assertSame(22, $box->rows);
+        $this->assertSame(24, $box->rows, 'the cards want 23 rows of content: the pane caps them at 20');
         $this->assertSame(2, $box->headerRows);
         $this->assertSame(0, $box->windowStart, 'the window starts at the top of the content, not offset by one');
-        $this->assertSame(18, $box->count);
+        $this->assertSame(20, $box->count);
     }
 
     /**
@@ -1091,8 +1092,40 @@ final class WelcomeModalControllerTest extends TestCase
 
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
-        $this->assertSame(12, $region->top, 'boundTop(0) + intdiv(boundBottom(60)-boundTop(0)-rows(22), 3) = 12');
+        $this->assertSame(11, $region->top, 'boundTop(0) + intdiv(boundBottom(60)-boundTop(0)-rows(27), 3) = 11');
         $this->assertSame(60, $region->col, 'boundLeft(0) + intdiv(boundRight(200)-boundLeft(0)-width(80), 2) = 60');
+    }
+
+    /**
+     * A tall pane gets every card at once — the box stopped at 18 rows of
+     * content however tall the terminal, leaving the last card to scroll to —
+     * and no taller: its bottom edge stops where the cards do.
+     */
+    public function testATallPaneShowsEveryCardAndTheBoxStopsAtThem(): void
+    {
+        $controller = $this->controller();
+        $this->frame(80, rows: 40);
+        $controller->open();
+        $box = Probe::get($controller, 'box');
+        $this->assertSame(23, $box->count, 'as tall as the cards, not the 18 rows it was capped at');
+        $this->assertStringContainsString('Read the guide', \implode('', \array_column($this->pane->modalSpans, 'segment')), 'the last card shows');
+
+        $bottom = $box->startRow + $box->rows - 1;
+        $this->assertTrue($controller->clickAt($bottom, $box->col + 10));
+        $this->assertTrue($controller->continueDragTo($bottom + 6, $box->col + 10, release: true));
+        $this->assertSame(23, Probe::get($controller, 'box')->count, 'the bottom edge stops where the cards do');
+
+        // Narrowed, the cards wrap taller, and so far the edge may go.
+        $box = Probe::get($controller, 'box');
+        $right = $box->col + $box->width - 1;
+        $this->assertTrue($controller->clickAt($box->startRow + 5, $right));
+        $this->assertTrue($controller->continueDragTo($box->startRow + 5, $right - 40, release: true));
+        $box = Probe::get($controller, 'box');
+        $bottom = $box->startRow + $box->rows - 1;
+        $this->assertTrue($controller->clickAt($bottom, $box->col + 10));
+        $this->assertTrue($controller->continueDragTo($bottom + 20, $box->col + 10, release: true));
+        $this->assertSame($this->welcome->naturalHeight($box->width - ModalFrame::CHROME_COLS), Probe::get($controller, 'box')->count, 'as tall as the narrower cards');
+        $this->assertGreaterThan(23, Probe::get($controller, 'box')->count);
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */

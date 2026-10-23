@@ -34,7 +34,8 @@ final class SettingsRowLayoutTest extends TestCase
      * One pathological label must not push every value off the right edge:
      * the column stops at a third of the pane and the label wraps inside it,
      * leaving the control and its detail the rest. A comfortable label's 28
-     * columns are kept whole while half the pane allows.
+     * columns are kept whole while half the pane allows, and no column grows
+     * past forty, however wide the pane.
      */
     public function testAPathologicalLabelIsCappedAtAThirdOfThePane(): void
     {
@@ -47,7 +48,8 @@ final class SettingsRowLayoutTest extends TestCase
         $this->assertSame(40, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy, details: ['', \str_repeat('x', times: 49)])->label, 'a third');
         $this->assertSame(28, SettingsRowLayout::measure([$label, $bool], 60, Density::Roomy, details: ['', \str_repeat('x', times: 20)])->label, 'a comfortable label, past a third');
         $this->assertSame(20, SettingsRowLayout::measure([$label], 40, Density::Roomy)->label, 'never past half');
-        $this->assertSame(60, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy)->label, 'no hint to pay for it: half');
+        $this->assertSame(40, SettingsRowLayout::measure([$label, $text], 120, Density::Roomy)->label, 'no hint to pay for it, toward half: never past forty');
+        $this->assertSame(40, SettingsRowLayout::measure([$label], 150, Density::Roomy)->label, 'a third of a wide pane: never past forty');
     }
 
     /**

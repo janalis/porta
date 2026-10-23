@@ -210,32 +210,13 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
      */
     private function body(int $width, int $rows): array
     {
-        $content = \max(1, \min($width - (2 * self::H_MARGIN), self::CONTENT_MAX));
-        $margin = \str_repeat(' ', \max(self::H_MARGIN, \intdiv($width - $content, num2: 2)));
-
-        $body = $rows >= self::HERO_MIN_ROWS ? $this->hero($width) : [];
-        $chrome = \count($body); // the hero block (the title bar belongs to the modal frame)
-
+        $body = $this->head($width, $rows);
         if ([] === $this->steps) {
-            $body[] = $this->message($this->translator->trans('Nothing to set up.'), $width, $margin);
-
             return $body;
         }
-        $checkable = \array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
-        if ([] !== $checkable && [] === \array_filter($checkable, static fn (WelcomeStep $step): bool => !$step->isDone())) {
-            // A banner, not a replacement: the cards — their [✓]s, and any link
-            // step — stay visible and navigable beneath it.
-            $body[] = $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width, $margin);
-            $body[] = [AnsiText::blank($width), null];
-            $chrome += 2;
-        }
-
-        $cards = [];
-        foreach ($this->steps as $index => $step) {
-            $cards[] = $this->card($step, $index, $width, $content, $margin);
-        }
+        $cards = $this->cards($width);
         $heights = \array_map(\count(...), $cards);
-        $budget = \max(1, $rows - $chrome);
+        $budget = \max(1, $rows - \count($body));
         $scroll = $this->list->followHeights($heights, $budget);
         // How many cards FIT from here — which is what a page IS. This list is
         // measured in cards and drawn in rows, so the pane height is not a page
@@ -251,6 +232,66 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         }
 
         return $body;
+    }
+
+    /**
+     * The rows every card showing at once takes at $width, the greeting and
+     * any banner above them included — how tall the modal grows before its
+     * cards have to scroll.
+     */
+    public function naturalHeight(int $width): int
+    {
+        return \count($this->head($width, self::HERO_MIN_ROWS)) + \array_sum(\array_map(\count(...), $this->cards($width)));
+    }
+
+    /**
+     * What stands above the cards: the hero where $rows leave it room, then
+     * the all-set banner, or the one message saying there is nothing to set up.
+     *
+     * @return list<array{0: string, 1: null}>
+     */
+    private function head(int $width, int $rows): array
+    {
+        $body = $rows >= self::HERO_MIN_ROWS ? $this->hero($width) : [];
+        if ([] === $this->steps) {
+            $body[] = $this->message($this->translator->trans('Nothing to set up.'), $width, $this->margin($width));
+
+            return $body;
+        }
+        $checkable = \array_filter($this->steps, static fn (WelcomeStep $step): bool => $step->isCheckable());
+        if ([] !== $checkable && [] === \array_filter($checkable, static fn (WelcomeStep $step): bool => !$step->isDone())) {
+            // A banner, not a replacement: the cards — their [✓]s, and any link
+            // step — stay visible and navigable beneath it.
+            $body[] = $this->message($this->translator->trans('All set. Reopen this any time from Help.'), $width, $this->margin($width));
+            $body[] = [AnsiText::blank($width), null];
+        }
+
+        return $body;
+    }
+
+    /** @return list<non-empty-list<array{0: string, 1: int|null}>> */
+    private function cards(int $width): array
+    {
+        $content = $this->content($width);
+        $margin = $this->margin($width);
+        $cards = [];
+        foreach ($this->steps as $index => $step) {
+            $cards[] = $this->card($step, $index, $width, $content, $margin);
+        }
+
+        return $cards;
+    }
+
+    /** The cards' text column: the pane less its margins, at most a comfortable measure. */
+    private function content(int $width): int
+    {
+        return \max(1, \min($width - (2 * self::H_MARGIN), self::CONTENT_MAX));
+    }
+
+    /** What centres the content column in the pane. */
+    private function margin(int $width): string
+    {
+        return \str_repeat(' ', \max(self::H_MARGIN, \intdiv($width - $this->content($width), num2: 2)));
     }
 
     /**

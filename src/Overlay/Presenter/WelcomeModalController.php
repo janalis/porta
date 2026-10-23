@@ -64,9 +64,6 @@ final class WelcomeModalController implements ContributedView
     /** The frame's widest content column; matches the widget's own comfortable cap. */
     private const int MAX_INNER_WIDTH = 76;
 
-    /** The tallest content window — past this the cards scroll. */
-    private const int MAX_INNER_HEIGHT = 18;
-
     /** The content window's floors: a narrower or shorter box has no card left to read. */
     private const int MIN_INNER_WIDTH = 20;
 
@@ -364,19 +361,22 @@ final class WelcomeModalController implements ContributedView
         [$boundTop, $boundLeft, $boundBottom, $boundRight] = $bounds;
         $this->lastBounds = $bounds;
 
-        // Height budgets the frame chrome only (no breathing rows): on a
-        // 24-row terminal the content window keeps the 18 rows that fit the
-        // five standard onboarding cards — the padding must not scroll the
-        // last one off. A Symfony project adds a sixth card, which overflows
-        // this window by design: the widget's followHeights() scrolls the
-        // selection into view, so navigating down reveals what the fold hides.
+        // As tall as every card at the width the box gets, the terminal
+        // allowing — a fixed 18-row window left a tall terminal's sixth card
+        // behind the fold — and its vertical handles stop there too. Placed
+        // twice: the width the user dragged decides how tall the cards wrap.
+        $width = \min(self::MAX_INNER_WIDTH, $boundRight - $boundLeft - PopupMetrics::CENTERED_MARGIN) + ModalFrame::CHROME_COLS;
+        $rows = fn (int $width): int => \max(self::MIN_INNER_HEIGHT, $this->welcome->naturalHeight($width - ModalFrame::CHROME_COLS)) + ModalFrame::CHROME_ROWS;
+        $place = $this->frame->place($bounds, $width, $rows($width), WindowPlacement::UpperThird, self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS, self::MIN_INNER_HEIGHT + ModalFrame::CHROME_ROWS);
+        $tall = $rows($place->width);
         $place = $this->frame->place(
             $bounds,
-            \min(self::MAX_INNER_WIDTH, $boundRight - $boundLeft - PopupMetrics::CENTERED_MARGIN) + ModalFrame::CHROME_COLS,
-            \min(self::MAX_INNER_HEIGHT, $boundBottom - $boundTop - ModalFrame::CHROME_ROWS) + ModalFrame::CHROME_ROWS,
+            $width,
+            $tall,
             WindowPlacement::UpperThird,
             self::MIN_INNER_WIDTH + ModalFrame::CHROME_COLS,
             self::MIN_INNER_HEIGHT + ModalFrame::CHROME_ROWS,
+            maxRows: $tall,
         );
         [$top, $col, $width, $rows] = [$place->top, $place->col, $place->width, $place->rows];
         $innerWidth = $width - ModalFrame::CHROME_COLS;

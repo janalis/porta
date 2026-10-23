@@ -27,7 +27,7 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * Measured per page rather than per row: the label column is capped at a
  * third of the pane (a comfortable label's width while half allows, and
  * while that leaves the hints room to wrap), widening toward half for as
- * long as no hint pays a line for it, so one
+ * long as no hint pays a line for it, and never past forty columns, so one
  * pathological label cannot push every value off the right edge, and every
  * boxed control on the page shares ONE width, the way a form's
  * inputs line up — sized for the widest control, capped at a browser input's
@@ -59,6 +59,13 @@ final readonly class SettingsRowLayout
      * that should wrap in a sixty-column form.
      */
     private const int COMFORTABLE_LABEL = 28;
+
+    /**
+     * The widest a label column grows, however wide the pane: past it a long
+     * label wraps rather than parting every short one from its control — a
+     * 140-column form gave `Enabled` a 58-column gap to cross.
+     */
+    private const int MAX_LABEL = 40;
 
     /** A text field's width, value or not: a field, not a label that grows. */
     private const int TEXT_FIELD = 24;
@@ -147,7 +154,7 @@ final readonly class SettingsRowLayout
         // longest word, short of two thirds of the pane, so wrapping breaks
         // between words: `Auto-pairs` in nine columns was `Auto-pair` over a
         // lone `s`.
-        $third = \min($longest, \max(self::MIN_LABEL, \intdiv($width, num2: 3), \min($word, \intdiv($width * 2, num2: 3))));
+        $third = \min($longest, \max(self::MIN_LABEL, \min(\intdiv($width, num2: 3), self::MAX_LABEL), \min($word, \intdiv($width * 2, num2: 3))));
         $label = \min($longest, \max($third, \min(\intdiv($width, num2: 2), self::COMFORTABLE_LABEL)));
         // The comfortable width gives way to a third when that is what keeps
         // the hints beside their controls rather than under them, or cut: a
@@ -158,11 +165,12 @@ final readonly class SettingsRowLayout
         if ([$thirdCost[0], $thirdCost[1]] < [$cost[0], $cost[1]]) {
             [$label, $cost] = [$third, $thirdCost];
         }
-        // And widens toward the longest label, up to half the pane, for as
+        // And widens toward the longest label, up to half the pane and
+        // {@see self::MAX_LABEL}, for as
         // long as no hint pays a line for it: `phpantom_lsp — the PHP
         // language server` wrapped in a third of a 101-column form while its
         // hint beside it took two lines either way.
-        for ($wider = \min($longest, \intdiv($width, num2: 2)); $wider > $label; --$wider) {
+        for ($wider = \min($longest, \intdiv($width, num2: 2), self::MAX_LABEL); $wider > $label; --$wider) {
             if (self::cost($rows, $details, $width, $wider, $density, $needed) !== $cost) {
                 continue;
             }
