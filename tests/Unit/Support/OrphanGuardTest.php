@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\OrphanGuard;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Symfony\Component\Tui\Terminal\Terminal;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 
@@ -19,6 +20,8 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
  */
 final class OrphanGuardTest extends TestCase
 {
+    use PumpsLoop;
+
     /** The guard of a process that leads its own group, alive until that process exits. */
     private static ?OrphanGuard $heldUntilExit = null;
 
@@ -46,6 +49,18 @@ final class OrphanGuardTest extends TestCase
         return [$child, \proc_get_status($child)['pid']];
     }
 
+    /**
+     * Wait for $child to end — through {@see await()}, so the budget stretches
+     * under coverage as every other barrier's does. The fixed spans below are
+     * for the NEGATIVE windows, which must not stretch.
+     *
+     * @param resource $child
+     */
+    private function awaitEnded($child, string $what, float $timeout = 3.0): void
+    {
+        $this->await(static fn (): bool => !\proc_get_status($child)['running'], $timeout, $what);
+    }
+
     /** @param resource $child */
     private static function endsWithin(float $seconds, $child): bool
     {
@@ -70,7 +85,7 @@ final class OrphanGuardTest extends TestCase
 
         unset($guard); // the pipe closes, as it does when the IDE ends
 
-        $this->assertTrue(self::endsWithin(3.0, $child), 'ended once the guard went');
+        $this->awaitEnded($child, 'the child to end once the guard went');
     }
 
     public function testAForgottenChildIsLeftAlone(): void
@@ -85,7 +100,7 @@ final class OrphanGuardTest extends TestCase
 
         unset($guard);
 
-        $this->assertTrue(self::endsWithin(3.0, $other), 'the one still watched ends');
+        $this->awaitEnded($other, 'the one still watched to end');
         $this->assertTrue(\proc_get_status($child)['running'], 'the forgotten one runs on: its pid may be another process\'s now');
     }
 
@@ -98,11 +113,7 @@ final class OrphanGuardTest extends TestCase
         [$child, $pid] = $this->child("sh -c 'trap \"\" TERM; touch {$ready}; while :; do sleep 1; done'");
         $guard = new OrphanGuard();
         $guard->watch($pid);
-        $deadline = \microtime(true) + 3.0;
-        while (!\is_file($ready) && \microtime(true) < $deadline) {
-            \usleep(10_000);
-        }
-        $this->assertFileExists($ready, 'the child installed its trap');
+        $this->await(static fn (): bool => \is_file($ready), timeout: 3.0, what: 'the child to install its trap');
         \unlink($ready);
 
         unset($guard);
@@ -111,7 +122,7 @@ final class OrphanGuardTest extends TestCase
         // The watcher kills ~3s after the pipe closes on paper — 30 polls of
         // 0.1s — but each poll forks a sleep and a kill -0, which a loaded
         // machine stretches. A generous ceiling: it returns at the kill.
-        $this->assertTrue(self::endsWithin(15.0, $child), 'the kill does');
+        $this->awaitEnded($child, 'the kill to end it', timeout: 15.0);
     }
 
     public function testForgettingBeforeAnyWatchStartsNothing(): void
@@ -173,7 +184,7 @@ final class OrphanGuardTest extends TestCase
         [, $orphan] = $this->orphanOf(leader: true);
 
         $this->assertGreaterThan(0, $orphan);
-        $this->assertTrue(self::goneWithin(4.0, $orphan), 'the child it never watched ends with it');
+        $this->await(static fn (): bool => !\posix_kill($orphan, signal: 0), timeout: 4.0, what: 'the child it never watched to end with it');
     }
 
     /** One sharing its launcher's group guards nothing by group: the launcher would go with it. */
@@ -206,10 +217,7 @@ final class OrphanGuardTest extends TestCase
         $watcher = Probe::get($guard, 'watcher');
         $this->assertIsResource($watcher);
         \proc_terminate($watcher, signal: 9);
-        $deadline = \microtime(true) + 3.0;
-        while (\proc_get_status($watcher)['running'] && \microtime(true) < $deadline) {
-            \usleep(20_000);
-        }
+        $this->await(static fn (): bool => !\proc_get_status($watcher)['running'], timeout: 3.0, what: 'the watcher to die');
 
         $guard->watch($pid); // finds the pipe broken
         $this->assertNull(Probe::get($guard, 'pipe'), 'the dead watcher dropped');
@@ -217,7 +225,7 @@ final class OrphanGuardTest extends TestCase
         $this->assertNotSame($watcher, Probe::get($guard, 'watcher'));
 
         unset($guard);
-        $this->assertTrue(self::endsWithin(3.0, $child), 'which guards as the first did');
+        $this->awaitEnded($child, 'the child to end, guarded as the first watcher guarded it');
     }
 
     /**

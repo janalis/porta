@@ -99,6 +99,16 @@ measured for a sharper reason: it stands in for a real clock, so `pump(0.4)` has
 to be 0.4s. The 0.02s turn itself stays — a backoff was measured and bought
 nothing ([decision history](decisions/history-01.md), "The verify loop, measured", has the four alternated runs).
 
+**A hand-rolled deadline loop gets no ×3.** `while (… && microtime(true) <
+$deadline) usleep(…)` ran at a third of its intended allowance under the
+coverage gate: one failed `composer verify` (2026-10-23) and seven more had the
+same shape, each a positive wait for a process to end or a file to appear.
+A positive wait goes through `await()`, even outside the loop's business;
+a fixed span is only for a NEGATIVE window ("the terminate alone does not end
+it within 1.5s"), which must not stretch. And size a positive budget to the
+code's schedule under load, not on paper: a watcher that polls 30 times by
+forking `sleep` is not done in 3.0s on a busy machine.
+
 `awaitPainted` exists because 91 E2e sites did action → `tick()` → assert the
 message is on screen. A bare tick is not a frame, so whether the status bar had
 painted was a timing accident — invisible under `composer test`, fatal under the

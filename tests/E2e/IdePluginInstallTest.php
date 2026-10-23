@@ -371,10 +371,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertNotSame([], Probe::get(Services::resolve($ide, RunningProcesses::class), 'running'), 'the manager runs, kept where quitting can reach it');
                     // The manager is its own process, so waiting here for its
                     // first line does not hold up the loop it runs beside.
-                    $deadline = \microtime(true) + 3.0;
-                    while ((!\is_file($pidFile) || '' === \file_get_contents($pidFile)) && \microtime(true) < $deadline) {
-                        \usleep(20_000);
-                    }
+                    $this->await(static fn (): bool => \is_file($pidFile) && '' !== \file_get_contents($pidFile), timeout: 3.0, what: 'the manager to say who it is');
                 },
             ],
         );
@@ -387,11 +384,7 @@ final class IdePluginInstallTest extends TestCase
         $pid = (int) \file_get_contents($pidFile);
         $this->assertGreaterThan(0, $pid, 'the manager started and said who it is');
         $ended = static fn (): bool => !\posix_kill($pid, signal: 0) || \str_starts_with(\trim((string) \shell_exec('ps -o stat= -p '.$pid)), 'Z');
-        $deadline = \microtime(true) + 3.0;
-        while (!$ended() && \microtime(true) < $deadline) {
-            \usleep(20_000);
-        }
-        $this->assertTrue($ended(), 'quitting ended the manager');
+        $this->await($ended, timeout: 3.0, what: 'quitting to end the manager');
         $this->assertFileDoesNotExist($mark, 'quitting stopped it before it finished');
     }
 }

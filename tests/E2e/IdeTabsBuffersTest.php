@@ -638,7 +638,6 @@ final class IdeTabsBuffersTest extends TestCase
 
                             return 1 === \preg_match('/B\.php.*A\.php/', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                         },
-                        timeout: 1.0,
                         what: 'the reordered strip to repaint on a tick',
                     );
                     $this->assertSame(['B.php', 'A.php'], $this->tabNames($tui));
