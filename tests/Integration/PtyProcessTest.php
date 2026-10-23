@@ -17,15 +17,16 @@ final class PtyProcessTest extends TestCase
     use PumpsLoop;
 
     /**
-     * A child that closes every descriptor holding the terminal — 3 to 9 too:
-     * it inherits a spare copy beyond the three stdio slots — so the PTY
-     * reports EOF at once while the child lives on, then exits 7.
+     * A child that closes every descriptor that could hold the terminal — not
+     * just stdio: the child inherits spare copies above fd 2, how many
+     * depending on what the parent had open — so the PTY reports EOF at once
+     * while the child lives on, then exits 7.
      *
      * @return list<string>
      */
     private static function closesItsTerminalThenExits7(float $after): array
     {
-        return ['/bin/sh', '-c', 'exec 0<&- 1>&- 2>&- 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9<&-; sleep '.$after.'; exit 7'];
+        return ['/bin/sh', '-c', 'fd=0; while [ $fd -lt 256 ]; do eval "exec $fd<&-"; fd=$((fd+1)); done; sleep '.$after.'; exit 7'];
     }
 
     /** @var list<PtyProcess> */
@@ -79,10 +80,13 @@ final class PtyProcessTest extends TestCase
         });
 
         $this->assertTrue($p->start());
+        $this->await(static fn (): bool => null !== Probe::get($p, 'reaping'), what: 'the terminal to close while the child lives on');
+        $this->assertTrue($p->isRunning(), 'running until it is reaped: a waiter on the end must hear the code with it');
         $this->await(static function () use (&$exit): bool {
             return null !== $exit;
         }, what: 'the exit to be reported');
 
+        $this->assertFalse($p->isRunning());
         $this->assertSame(7, $exit);
         $this->assertSame(7, $p->exitCode());
     }
@@ -97,7 +101,7 @@ final class PtyProcessTest extends TestCase
             $exit = $c;
         });
         $this->assertTrue($p->start());
-        $this->await(static fn (): bool => !$p->isRunning(), what: 'the terminal to close');
+        $this->await(static fn (): bool => null !== Probe::get($p, 'reaping'), what: 'the terminal to close while the child lives on');
 
         $reaping = Probe::get($p, 'reaping');
         $this->assertIsResource($reaping, 'the child outlived its terminal, so it is still being collected');

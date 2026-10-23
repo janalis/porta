@@ -189,9 +189,10 @@ final class PtyProcess
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
         }
+        // Still running until it is reaped: what waits for the end must hear
+        // the exit code with it, not a moment before it.
         $process = $this->process;
         $this->process = null;
-        $this->running = false;
         if (\is_resource($process)) {
             $this->reaping = $process;
             ProcessReaper::closeWhenDead($process, function (int $code): void {
@@ -199,6 +200,7 @@ final class PtyProcess
                 if ($this->stopped) {
                     return;
                 }
+                $this->running = false;
                 $this->exitCode = $code;
                 if (null !== $this->onExit) {
                     ($this->onExit)($code);
