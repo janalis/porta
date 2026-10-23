@@ -117,6 +117,12 @@ trait RunsIde
         }
     }
 
+    /** A `.porta.json` body pointing the language server at the suite's scripted mock. */
+    private function mockLspConfig(): string
+    {
+        return \json_encode(['lsp' => \PHP_BINARY.' '.__DIR__.'/mock-lsp-server.php'], \JSON_THROW_ON_ERROR);
+    }
+
     /**
      * Wait until the mock language server is actually UP, not merely configured.
      *
