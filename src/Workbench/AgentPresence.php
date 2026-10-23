@@ -80,7 +80,7 @@ final class AgentPresence
     public function onAgentLeft(AgentLeft $event): void
     {
         foreach (\array_keys($this->files) as $path) {
-            $this->forget($path, $event->agent, cancel: true);
+            $this->cancelAndForget($path, $event->agent);
         }
         unset($this->slots[$event->agent]);
         $this->changed();
@@ -108,7 +108,7 @@ final class AgentPresence
     public function onFileDeleted(FileDeleted $event): void
     {
         foreach (\array_keys($this->files[$event->path] ?? []) as $agent) {
-            $this->forget($event->path, $agent, cancel: true);
+            $this->cancelAndForget($event->path, $agent);
         }
         $this->changed();
     }
@@ -161,15 +161,21 @@ final class AgentPresence
         return \count($this->slots) % self::SLOTS;
     }
 
-    // @mago-expect lint:no-boolean-flag-parameter -- a fade has already fired its timer; a leave or a delete must cancel it — that IS the one difference
-    private function forget(string $path, string $agent, bool $cancel = false): void
+    /** A leave or a delete: the fade timer has not fired yet, so it is cancelled first. */
+    private function cancelAndForget(string $path, string $agent): void
     {
-        $entry = $this->files[$path][$agent] ?? null;
-        if (null === $entry) {
-            return;
+        $timer = $this->files[$path][$agent]['timer'] ?? null;
+        if (null !== $timer) {
+            $this->scheduler->cancel($timer);
         }
-        if ($cancel) {
-            $this->scheduler->cancel($entry['timer']);
+        $this->forget($path, $agent);
+    }
+
+    /** Drop $agent's caret in $path — after a fade, whose timer has already fired. */
+    private function forget(string $path, string $agent): void
+    {
+        if (null === ($this->files[$path][$agent] ?? null)) {
+            return;
         }
         unset($this->files[$path][$agent]);
         $this->decorations->setRemoteCaret($path, $agent, null);

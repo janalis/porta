@@ -749,7 +749,8 @@ final class MouseRouter
         $editor = $this->panes->editor;
         match (true) {
             $mouse->ctrl && !$mouse->alt && !$mouse->shift => $this->ctrlClickAt($rel['row'], $rel['col']),
-            $mouse->alt => $this->altClickAt($rel['row'], $rel['col'], $mouse->shift),
+            $mouse->alt && $mouse->shift => $this->columnSelectFrom($rel['row'], $rel['col']),
+            $mouse->alt => $editor->addOrRemoveCaretAt($rel['row'], $rel['col']),
             $rel['col'] < $editor->gutterWidth() && null !== ($docLine = $editor->documentLineAt($rel['row'])) => $this->gutter->click($rel['col'], $docLine),
             default => $this->pressTextAt($mouse, $rel['row'], $rel['col']),
         };
@@ -767,17 +768,11 @@ final class MouseRouter
         $this->panes->editor->runAction('goto_definition');
     }
 
-    /** Alt+Shift starts a column selection; Alt alone adds or removes a caret. */
-    // @mago-expect lint:no-boolean-flag-parameter -- the modifier IS the one fact the press carries, as MouseEvent holds it.
-    private function altClickAt(int $row, int $col, bool $shift): void
+    /** Alt+Shift: start a column selection and arm its drag. (Alt alone adds or removes a caret.) */
+    private function columnSelectFrom(int $row, int $col): void
     {
-        if ($shift) {
-            $this->panes->editor->beginColumnSelectionAt($row, $col);
-            $this->columnSelecting = true;
-
-            return;
-        }
-        $this->panes->editor->addOrRemoveCaretAt($row, $col);
+        $this->panes->editor->beginColumnSelectionAt($row, $col);
+        $this->columnSelecting = true;
     }
 
     /** A press on the text: extend with Shift, else select by click count, and arm the drag. */

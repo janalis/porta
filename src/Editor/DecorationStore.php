@@ -218,7 +218,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
             if (0 === $delta) {
                 $this->shiftRemoteColumns($path, $document, $cursorLine);
             }
-            $this->measureRemoteLines($path, $document, all: true);
+            $this->remeasureRemoteLines($path, $document);
         }
         $this->remapVcsMarks($atLine, $delta);
     }
@@ -247,15 +247,18 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         }
     }
 
-    /**
-     * Remember each caret's line length in $path — only the unmeasured ones
-     * at a frame, every one after an edit.
-     */
-    // @mago-expect lint:no-boolean-flag-parameter -- after an edit every length is stale; at a frame only the new carets lack one — that IS the one difference
-    private function measureRemoteLines(string $path, Document $document, bool $all = false): void
+    /** After an edit every caret's remembered line length in $path is stale: measure them all again. */
+    private function remeasureRemoteLines(string $path, Document $document): void
+    {
+        unset($this->remoteLineLengths[$path]);
+        $this->measureNewRemoteLines($path, $document);
+    }
+
+    /** At a frame: remember the line length of each caret in $path that has none yet. */
+    private function measureNewRemoteLines(string $path, Document $document): void
     {
         foreach ($this->remoteCarets[$path] ?? [] as $owner => $caret) {
-            if (!$all && \array_key_exists($owner, $this->remoteLineLengths[$path] ?? [])) {
+            if (\array_key_exists($owner, $this->remoteLineLengths[$path] ?? [])) {
                 continue;
             }
             $this->remoteLineLengths[$path][$owner] = \strlen($document->getLine($caret['line']));
@@ -590,7 +593,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public function remoteCaretsIn(?string $path, ?Document $document = null): array
     {
         if (null !== $path && null !== $document) {
-            $this->measureRemoteLines($path, $document);
+            $this->measureNewRemoteLines($path, $document);
         }
         $byLine = [];
         foreach ($this->remoteCarets[$path ?? ''] ?? [] as $caret) {

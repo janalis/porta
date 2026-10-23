@@ -173,7 +173,8 @@ final readonly class EditorActions
             $kb->matches($keys, 'select_all_occurrences') => $this->multiCaret->selectAllOccurrences(...),
             // Block copy/cut: intercept before MultiCaret::handleInput (which does
             // not know the copy/cut verbs and would collapse the carets first).
-            $this->multiCaret->hasMultiple() && ($kb->matches($keys, 'copy') || $kb->matches($keys, 'cut')) => fn () => $this->copyBlock($kb->matches($keys, 'cut')),
+            $this->multiCaret->hasMultiple() && $kb->matches($keys, 'cut') => $this->cutBlock(...),
+            $this->multiCaret->hasMultiple() && $kb->matches($keys, 'copy') => $this->copyBlock(...),
             default => null,
         });
 
@@ -182,18 +183,24 @@ final readonly class EditorActions
         return $handled || ($this->multiCaret->hasMultiple() && $this->multiCaret->handleInput($keys, $kb, $this->clipboard->latest(), fn (string $d): bool => $this->host->isInsertable($d)));
     }
 
-    /** Copy every caret's selection as one block, removing them when it is a cut. */
-    // @mago-expect lint:no-boolean-flag-parameter -- copy and cut are one verb here, differing only in the tail.
-    private function copyBlock(bool $cut): void
+    /** Copy every caret's selection as one block. */
+    private function copyBlock(): void
+    {
+        $this->clipboardBlock();
+        $this->host->invalidate();
+    }
+
+    /** Copy every caret's selection as one block, then remove the selections. */
+    private function cutBlock(): void
+    {
+        $this->clipboardBlock();
+        $this->multiCaret->deleteSelections();
+    }
+
+    private function clipboardBlock(): void
     {
         $this->clipboard->push($this->multiCaret->selectedBlockText());
         $this->host->fireCopy($this->clipboard->latest());
-        if ($cut) {
-            $this->multiCaret->deleteSelections();
-
-            return;
-        }
-        $this->host->invalidate();
     }
 
     /** Whether keyboard column selection is on — the status bar says so. */

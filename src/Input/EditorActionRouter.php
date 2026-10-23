@@ -40,7 +40,8 @@ final readonly class EditorActionRouter
         match (true) {
             null !== $action => $this->run($action),
             $cycle => ($this->callbacks)()->buffer?->cycleBuffer($kb->matches($keys, 'next_buffer') ? 1 : -1),
-            $find => $this->openFind($kb->matches($keys, 'replace')),
+            $find && $kb->matches($keys, 'replace') => ($this->callbacks)()->file?->openFindReplace(),
+            $find => ($this->callbacks)()->file?->openFind(),
             default => null,
         };
 
@@ -64,13 +65,6 @@ final readonly class EditorActionRouter
         }
 
         return null !== $simple || null !== $positional;
-    }
-
-    // @mago-expect lint:no-boolean-flag-parameter -- which of the two bars opens is the one fact the key carries.
-    private function openFind(bool $replace): void
-    {
-        $file = ($this->callbacks)()->file;
-        $replace ? $file?->openFindReplace() : $file?->openFind();
     }
 
     /**
