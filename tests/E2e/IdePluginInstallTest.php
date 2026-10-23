@@ -362,9 +362,10 @@ final class IdePluginInstallTest extends TestCase
             '.porta/plugins/needy/composer.json' => (string) \json_encode(['extra' => ['porta' => ['tools' => [['name' => 'x', 'sources' => [['brew', 'x']]]]]]], \JSON_THROW_ON_ERROR),
         ]);
         $mark = $project->path('installed.mark');
+        $pidFile = $project->path('brew.pid');
         $brew = $project->path('bin/brew');
         \mkdir(\dirname($brew));
-        \file_put_contents($brew, "#!/bin/sh\nsleep 1\ntouch '{$mark}'\n");
+        \file_put_contents($brew, "#!/bin/sh\necho \$\$ > '{$pidFile}'\nsleep 1\ntouch '{$mark}'\n");
         \chmod($brew, permissions: 0o755);
         // Before the IDE starts: the installer finds its managers on the PATH once.
         \putenv('PATH='.\dirname($brew).':/usr/bin:/bin');
@@ -373,14 +374,32 @@ final class IdePluginInstallTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                100 => function ($tui, $terminal, Ide $ide): void {
+                100 => function ($tui, $terminal, Ide $ide) use ($pidFile): void {
                     Services::resolve($ide, CommandRegistry::class)->run('plugins_install_tools');
                     $this->assertNotSame([], Probe::get(Services::resolve($ide, RunningProcesses::class), 'running'), 'the manager runs, kept where quitting can reach it');
+                    // The manager is its own process, so waiting here for its
+                    // first line does not hold up the loop it runs beside.
+                    $deadline = \microtime(true) + 3.0;
+                    while ((!\is_file($pidFile) || '' === \file_get_contents($pidFile)) && \microtime(true) < $deadline) {
+                        \usleep(20_000);
+                    }
                 },
             ],
         );
 
-        \usleep(1_500_000);
+        // Not a fixed wait: the manager's own pid is the positive control. Once
+        // that process has ended it can never write the mark, so the negative
+        // below is final rather than "not yet". Ended includes a zombie: the
+        // IDE killed it, and the reaper that would collect it stopped with
+        // the loop.
+        $pid = (int) \file_get_contents($pidFile);
+        $this->assertGreaterThan(0, $pid, 'the manager started and said who it is');
+        $ended = static fn (): bool => !\posix_kill($pid, signal: 0) || \str_starts_with(\trim((string) \shell_exec('ps -o stat= -p '.$pid)), 'Z');
+        $deadline = \microtime(true) + 3.0;
+        while (!$ended() && \microtime(true) < $deadline) {
+            \usleep(20_000);
+        }
+        $this->assertTrue($ended(), 'quitting ended the manager');
         $this->assertFileDoesNotExist($mark, 'quitting stopped it before it finished');
     }
 }

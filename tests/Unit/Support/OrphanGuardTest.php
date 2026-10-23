@@ -92,10 +92,18 @@ final class OrphanGuardTest extends TestCase
     /** A child that shrugs off the terminate is killed, which it cannot shrug off. */
     public function testAChildThatIgnoresTheTerminateIsKilled(): void
     {
-        [$child, $pid] = $this->child("sh -c 'trap \"\" TERM; while :; do sleep 1; done'");
+        // The marker is written only once the trap is installed: a terminate
+        // that landed before it would end the child and prove nothing.
+        $ready = \sys_get_temp_dir().'/porta-orphan-ready-'.\getmypid().'-'.\bin2hex(\random_bytes(4));
+        [$child, $pid] = $this->child("sh -c 'trap \"\" TERM; touch {$ready}; while :; do sleep 1; done'");
         $guard = new OrphanGuard();
         $guard->watch($pid);
-        \usleep(200_000);
+        $deadline = \microtime(true) + 3.0;
+        while (!\is_file($ready) && \microtime(true) < $deadline) {
+            \usleep(10_000);
+        }
+        $this->assertFileExists($ready, 'the child installed its trap');
+        \unlink($ready);
 
         unset($guard);
 
