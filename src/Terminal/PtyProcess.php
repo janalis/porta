@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Terminal;
 
+use Porta\Support\ProcessReaper;
 use Revolt\EventLoop;
 
 /**
@@ -26,6 +27,9 @@ final class PtyProcess
     private bool $pty = false;
     private bool $running = false;
     private int $exitCode = -1;
+    /** @var resource|null a child whose terminal closed, until the reaper collects it */
+    private $reaping;
+    private bool $stopped = false;
 
     /** @var (callable(string): void)|null */
     private $onOutput;
@@ -143,6 +147,14 @@ final class PtyProcess
 
     public function stop(): void
     {
+        // A stopped process never reports — not even an exit the reaper is
+        // still collecting: the session may already belong to the next run.
+        // One that outlived its terminal is killed like any other; the reaper
+        // still collects it.
+        $this->stopped = true;
+        if (\is_resource($this->reaping)) {
+            \proc_terminate($this->reaping, \SIGKILL);
+        }
         if (null !== $this->watcher) {
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
@@ -161,33 +173,37 @@ final class PtyProcess
         return null === $this->process && $this->exitCode >= 0 ? $this->exitCode : null;
     }
 
+    /**
+     * The terminal closed: collect the exit code once the child is reaped.
+     *
+     * EOF on the PTY says only that nothing holds the terminal any more — the
+     * child can outlive it, and on a loaded machine its exit can take a while
+     * to become waitable. The reaper answers at once for one already gone (the
+     * common case) and polls a straggler on a timer, so the code reported is
+     * the one the child exits with, never a -1 guessed after a fixed spin; and
+     * the loop never blocks waiting.
+     */
     private function finish(): void
     {
         if (null !== $this->watcher) {
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
         }
-        if (\is_resource($this->process)) {
-            // PTY EOF can arrive a hair before the child is reaped; poll briefly
-            // so the real exit code is observed rather than a transient -1.
-            $status = \proc_get_status($this->process);
-            for ($i = 0; $i < 50 && $status['running']; ++$i) {
-                // The EOF-before-reap window is sub-200µs (the kernel releases
-                // the controlling terminal during exit processing), so event-loop
-                // dispatch latency makes this body unreachable deterministically.
-                // @codeCoverageIgnoreStart
-                \usleep(2000);
-                $status = \proc_get_status($this->process);
-
-                // @codeCoverageIgnoreEnd
-            }
-            $this->exitCode = $status['running'] ? -1 : (int) $status['exitcode'];
-            \proc_close($this->process);
-        }
+        $process = $this->process;
         $this->process = null;
         $this->running = false;
-        if (null !== $this->onExit) {
-            ($this->onExit)($this->exitCode);
+        if (\is_resource($process)) {
+            $this->reaping = $process;
+            ProcessReaper::closeWhenDead($process, function (int $code): void {
+                $this->reaping = null;
+                if ($this->stopped) {
+                    return;
+                }
+                $this->exitCode = $code;
+                if (null !== $this->onExit) {
+                    ($this->onExit)($code);
+                }
+            });
         }
     }
 }

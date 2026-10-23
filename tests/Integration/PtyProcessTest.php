@@ -16,6 +16,18 @@ final class PtyProcessTest extends TestCase
 {
     use PumpsLoop;
 
+    /**
+     * A child that closes every descriptor holding the terminal — 3 to 9 too:
+     * it inherits a spare copy beyond the three stdio slots — so the PTY
+     * reports EOF at once while the child lives on, then exits 7.
+     *
+     * @return list<string>
+     */
+    private static function closesItsTerminalThenExits7(float $after): array
+    {
+        return ['/bin/sh', '-c', 'exec 0<&- 1>&- 2>&- 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9<&-; sleep '.$after.'; exit 7'];
+    }
+
     /** @var list<PtyProcess> */
     private array $procs = [];
 
@@ -48,6 +60,53 @@ final class PtyProcessTest extends TestCase
         $this->assertContains('line1', $lines);
         $this->assertContains('line2', $lines);
         $this->assertFalse($p->isRunning());
+    }
+
+    /**
+     * The PTY can report EOF long before the child is reaped: a child that
+     * closes its terminal and keeps going, or one the machine is too loaded to
+     * schedule through its exit. Its exit code is still the one it exits with
+     * — never a -1 guessed after a fixed spin, which made a waiter for exit 0
+     * wait forever.
+     */
+    public function testAChildStillAliveAtTheTerminalsEofReportsItsRealExitCode(): void
+    {
+        $exit = null;
+        $p = new PtyProcess(self::closesItsTerminalThenExits7(0.3), __DIR__);
+        $this->procs[] = $p;
+        $p->onExit(static function (int $c) use (&$exit): void {
+            $exit = $c;
+        });
+
+        $this->assertTrue($p->start());
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        }, what: 'the exit to be reported');
+
+        $this->assertSame(7, $exit);
+        $this->assertSame(7, $p->exitCode());
+    }
+
+    /** A process stopped while its exit is still being collected never reports: its session may already belong to the next run. */
+    public function testAStopWhileTheExitIsCollectedSilencesTheReport(): void
+    {
+        $exit = null;
+        $p = new PtyProcess(self::closesItsTerminalThenExits7(30), __DIR__);
+        $this->procs[] = $p;
+        $p->onExit(static function (int $c) use (&$exit): void {
+            $exit = $c;
+        });
+        $this->assertTrue($p->start());
+        $this->await(static fn (): bool => !$p->isRunning(), what: 'the terminal to close');
+
+        $reaping = Probe::get($p, 'reaping');
+        $this->assertIsResource($reaping, 'the child outlived its terminal, so it is still being collected');
+        $pid = \proc_get_status($reaping)['pid'];
+        $p->stop();
+        $this->await(static fn (): bool => !\posix_kill($pid, signal: 0), what: 'the child that outlived its terminal to be killed and reaped, not left running');
+
+        $this->assertNull($exit);
+        $this->assertNull($p->exitCode(), 'a stopped process has no exit code of its own');
     }
 
     public function testForwardsInputToTheChild(): void
