@@ -157,6 +157,68 @@ final class PtyProcessTest extends TestCase
         }
     }
 
+    /** Input to a process that is gone — stopped, or never started — goes nowhere, quietly. */
+    public function testWritingToAStoppedProcessIsANoOp(): void
+    {
+        $unstarted = new PtyProcess(['/bin/cat'], __DIR__);
+        $unstarted->write('before');
+        $p = new PtyProcess(['/bin/cat'], __DIR__);
+        $this->procs[] = $p;
+        $this->assertTrue($p->start());
+        $p->stop();
+
+        $p->write('after');
+
+        $this->assertFalse($p->isRunning());
+    }
+
+    /**
+     * A paste the child never reads waits in a queue with a watcher on the
+     * loop (in raw mode: a cooked terminal discards what overflows its line
+     * instead of pushing back). Stopping the process, or its terminal closing, takes that watcher
+     * away — or the loop keeps a write to a dead terminal armed forever.
+     */
+    public function testQueuedInputLeavesNothingOnTheLoopWhenTheProcessGoes(): void
+    {
+        $stopped = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; exec sleep 30'], __DIR__);
+        $this->procs[] = $stopped;
+        $this->assertTrue($stopped->start());
+        $this->pump(0.2); // raw mode is set: the terminal pushes back instead of discarding
+        $stopped->write(\str_repeat('x', times: 200_000));
+        $watcher = $this->inputWatcher($stopped);
+        $stopped->stop();
+        $this->assertFalse(self::onTheLoop($watcher), 'stopped: the queue\'s watcher is gone');
+
+        $exit = null;
+        $ended = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; sleep 0.3'], __DIR__);
+        $this->procs[] = $ended;
+        $ended->onExit(static function (int $c) use (&$exit): void {
+            $exit = $c;
+        });
+        $this->assertTrue($ended->start());
+        $this->pump(0.1);
+        $ended->write(\str_repeat('x', times: 200_000));
+        $watcher = $this->inputWatcher($ended);
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        }, what: 'the child to end without reading');
+        $this->assertFalse(self::onTheLoop($watcher), 'ended: the queue\'s watcher is gone');
+    }
+
+    /** The id of the watcher draining $p's queued input — there is one, or the test proves nothing. */
+    private function inputWatcher(PtyProcess $p): string
+    {
+        $watcher = Probe::get(Probe::object($p, 'input'), 'watcher');
+        $this->assertIsString($watcher, 'more input than the terminal takes at once is queued, with a watcher');
+
+        return $watcher;
+    }
+
+    private static function onTheLoop(string $watcher): bool
+    {
+        return \in_array($watcher, EventLoop::getIdentifiers(), strict: true);
+    }
+
     public function testForwardsInputToTheChild(): void
     {
         // `cat` echoes stdin back through the PTY.
