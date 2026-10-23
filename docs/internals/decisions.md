@@ -77,6 +77,7 @@ cross-event drag state. Rejected, with the count that rejected each:
 | `HelpViewerWidget`'s FindTarget adapter | 1 of 7 |
 | `DiffViewWidget`'s selection model | 0 of 8 |
 | `DiffViewWidget`'s document/highlight cluster | 2 of 10 |
+| `OverlayHost`'s search surface (2026-10-23) | 0 of 3 — `$search`, `$searchFrame` and `$searchBox` are each read by the shared surface dispatch (`topmostSurface`, `frame`, `boxOf`, `layout`, `cancelDrag`, `moveSelection`) |
 
 The render cluster fails twice over: it also *writes* four fields the mouse
 paths read, which is the shared cross-event state clause.
