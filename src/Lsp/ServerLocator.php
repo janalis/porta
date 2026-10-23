@@ -55,9 +55,7 @@ final class ServerLocator
 
         $files = ConfigFiles::for($rootDir);
         // An untrusted project does not choose the command its server runs as.
-        // @mago-expect analysis:mixed-assignment -- a raw config value, narrowed by single() and map()
         $project = WorkspaceTrust::fromEnvironment()->isTrusted($rootDir) ? self::lspIn($files->path(ConfigScope::Project)) : null;
-        // @mago-expect analysis:mixed-assignment -- likewise
         $global = self::lspIn($files->path(ConfigScope::Global));
         // The project's single server is its whole answer; below it, the
         // per-language maps of both files, the project's winning per language
@@ -111,13 +109,18 @@ final class ServerLocator
         return $servers;
     }
 
-    /** A config file's raw "lsp" value; null when the file, or the key, is absent. */
-    private static function lspIn(?string $file): mixed
+    /**
+     * A config file's "lsp" value when it can be one — a command string, or an
+     * argv or per-language map; null when the file, or the key, is absent or
+     * holds anything else.
+     *
+     * @return string|array<array-key, mixed>|null
+     */
+    private static function lspIn(?string $file): string|array|null
     {
-        /** @var array{lsp?: mixed}|null $config */
         $config = null === $file ? null : JsonFile::read($file);
 
-        return $config['lsp'] ?? null;
+        return \is_string($config['lsp'] ?? null) || \is_array($config['lsp'] ?? null) ? $config['lsp'] : null;
     }
 
     /**

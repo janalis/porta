@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Console;
 
 use Porta\Lsp\LspClientInterface;
+use Porta\Support\Decoded;
 
 /**
  * What one server said during an {@see LspProbeCommand} run, channel by
@@ -52,11 +53,7 @@ final class LspProbeReport
             return;
         }
         $kept = [];
-        // @mago-expect analysis:mixed-assignment -- a decoded wire value, narrowed on the next line
-        foreach (\is_array($params['diagnostics'] ?? null) ? $params['diagnostics'] : [] as $diagnostic) {
-            if (!\is_array($diagnostic)) {
-                continue;
-            }
+        foreach (Decoded::objects($params['diagnostics'] ?? null) as $diagnostic) {
             $kept[] = [
                 'line' => self::int($diagnostic['range']['start']['line'] ?? null, default: 0),
                 'severity' => self::int($diagnostic['severity'] ?? null, default: 1),

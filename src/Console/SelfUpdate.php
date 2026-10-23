@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Support\Decoded;
+
 /**
  * `porta --self-update`: replace the running phar with the latest GitHub
  * release of {@see REPOSITORY}.
@@ -165,9 +167,8 @@ final readonly class SelfUpdate
     {
         $release = $this->api('releases/tags/'.\rawurlencode($tag));
         $assets = [];
-        // @mago-expect analysis:mixed-assignment -- decoded JSON; every value is narrowed below before it is used.
-        foreach (\is_array($release['assets'] ?? null) ? $release['assets'] : [] as $asset) {
-            if (!\is_array($asset) || !\is_string($asset['name'] ?? null) || !\is_string($asset['url'] ?? null)) {
+        foreach (Decoded::objects($release['assets'] ?? null) as $asset) {
+            if (!\is_string($asset['name'] ?? null) || !\is_string($asset['url'] ?? null)) {
                 continue;
             }
             $assets[$asset['name']] = $asset['url'];

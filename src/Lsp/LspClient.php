@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\Decoded;
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
 use Porta\Support\OrphanGuard;
@@ -537,22 +538,16 @@ final class LspClient implements LspClientInterface
      */
     private function register(mixed $registrations): null
     {
-        foreach (self::objects($registrations) as $registration) {
+        foreach (Decoded::objects($registrations) as $registration) {
             if ('workspace/didChangeWatchedFiles' !== ($registration['method'] ?? null)) {
                 continue;
             }
-            // @mago-expect analysis:mixed-assignment -- a decoded wire value, narrowed by objects()
-            $options = $registration['registerOptions'] ?? null;
             $watchers = [];
-            foreach (self::objects(\is_array($options) ? $options['watchers'] ?? null : null) as $watcher) {
-                // @mago-expect analysis:mixed-assignment -- narrowed on the next line
-                $glob = $watcher['globPattern'] ?? null;
-                if (!\is_string($glob)) {
+            foreach (Decoded::objects($registration['registerOptions']['watchers'] ?? null) as $watcher) {
+                if (!\is_string($watcher['globPattern'] ?? null)) {
                     continue;
                 }
-                // @mago-expect analysis:mixed-assignment -- narrowed on the next line
-                $kind = $watcher['kind'] ?? null;
-                $watchers[] = ['glob' => $glob, 'kind' => \is_int($kind) ? $kind : 7];
+                $watchers[] = ['glob' => $watcher['globPattern'], 'kind' => \is_int($watcher['kind'] ?? null) ? $watcher['kind'] : 7];
             }
             // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
             $this->watcherRegistrations[(string) \json_encode($registration['id'] ?? null)] = $watchers;
@@ -563,32 +558,12 @@ final class LspClient implements LspClientInterface
 
     private function unregister(mixed $unregistrations): null
     {
-        foreach (self::objects($unregistrations) as $unregistration) {
+        foreach (Decoded::objects($unregistrations) as $unregistration) {
             // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
             unset($this->watcherRegistrations[(string) \json_encode($unregistration['id'] ?? null)]);
         }
 
         return null;
-    }
-
-    /**
-     * The entries of a decoded wire list that are themselves objects; anything
-     * else in it — or a value that is no list at all — is not a registration.
-     *
-     * @return list<array<array-key, mixed>>
-     */
-    private static function objects(mixed $list): array
-    {
-        $objects = [];
-        // @mago-expect analysis:mixed-assignment -- a decoded wire value, narrowed on the next line
-        foreach (\is_array($list) ? $list : [] as $entry) {
-            if (!\is_array($entry)) {
-                continue;
-            }
-            $objects[] = $entry;
-        }
-
-        return $objects;
     }
 
     private function log(string $message): void

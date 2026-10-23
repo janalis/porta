@@ -31,10 +31,9 @@ final readonly class ProjectLocation
     /** The location of the project at $rootDir: remote when its marker names a server. */
     public static function forRoot(string $rootDir): self
     {
-        // @mago-expect analysis:mixed-assignment -- a decoded file: narrowed below
-        $url = JsonFile::read($rootDir.'/'.self::MARKER)['url'] ?? null;
+        $marker = JsonFile::read($rootDir.'/'.self::MARKER);
 
-        return new self(\is_string($url) ? RemoteSpec::parse($url) : null);
+        return new self(\is_string($marker['url'] ?? null) ? RemoteSpec::parse($marker['url']) : null);
     }
 
     /**
