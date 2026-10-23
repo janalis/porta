@@ -108,7 +108,10 @@ final class OrphanGuardTest extends TestCase
         unset($guard);
 
         $this->assertFalse(self::endsWithin(1.5, $child), 'the terminate alone does not end it');
-        $this->assertTrue(self::endsWithin(3.0, $child), 'the kill does');
+        // The watcher kills ~3s after the pipe closes on paper — 30 polls of
+        // 0.1s — but each poll forks a sleep and a kill -0, which a loaded
+        // machine stretches. A generous ceiling: it returns at the kill.
+        $this->assertTrue(self::endsWithin(15.0, $child), 'the kill does');
     }
 
     public function testForgettingBeforeAnyWatchStartsNothing(): void
