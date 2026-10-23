@@ -901,7 +901,7 @@ final class BufferService implements BufferReopener, ChangeMarkSink, Diagnostics
      * Activate the most recently focused text buffer (for the editor-hosted
      * modals that cannot open over an image tab). Null when only images are open.
      */
-    public function activateAdjacentTextBuffer(): ?Buffer
+    private function activateAdjacentTextBuffer(): ?Buffer
     {
         foreach ($this->buffers->recent() as $buffer) {
             if ($buffer->isViewer()) {

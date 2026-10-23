@@ -1531,7 +1531,7 @@ final class CodeEditorWidget extends AbstractWidget implements
      * the render, the caret and the mouse share. Stateless over the store and
      * the display options, so it is built where it is needed rather than kept.
      */
-    public function inlays(): InlayLines
+    private function inlays(): InlayLines
     {
         return new InlayLines($this->decorations, $this->display);
     }

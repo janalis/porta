@@ -1051,7 +1051,7 @@ final class FindInFilesModal
      * resize, both {@see WindowFrame}'s; the next layout clamps the result.
      * False when nothing is armed, so the router chain falls through.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- $release marks the drag's LAST move, not another action: the box still follows the pointer, then disarms.
     public function continueDragTo(int $relRow, int $relCol, bool $release): bool
     {
         if (!$this->frame->dragTo($relRow, $relCol, $release)) {

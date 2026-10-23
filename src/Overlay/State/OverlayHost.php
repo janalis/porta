@@ -657,7 +657,7 @@ final class OverlayHost
     }
 
     /** Follow an armed move or resize of the topmost picker; false when none is armed. */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- $release marks the drag's LAST move, not another action: the box still follows the pointer, then disarms.
     public function continueDragTo(int $row, int $col, bool $release): bool
     {
         $surface = $this->topmostSurface();

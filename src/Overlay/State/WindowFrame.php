@@ -136,7 +136,7 @@ final class WindowFrame
      * origin moves as the size changes, and the floor stops the handle
      * rather than pushing the far edge. $release ends the drag.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- $release marks the drag's LAST move, not another action: the box still follows the pointer, then disarms.
     public function dragTo(int $row, int $col, bool $release): bool
     {
         $zone = $this->dragZone;

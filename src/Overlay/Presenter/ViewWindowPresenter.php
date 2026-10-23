@@ -178,7 +178,7 @@ final class ViewWindowPresenter
     }
 
     /** Follow an armed move or resize; false when none is armed. */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- $release marks the drag's LAST move, not another action: the box still follows the pointer, then disarms.
     public function dragTo(int $row, int $col, bool $release): bool
     {
         if (!$this->frame->dragTo($row, $col, $release)) {

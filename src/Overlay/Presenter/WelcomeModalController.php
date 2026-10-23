@@ -306,7 +306,7 @@ final class WelcomeModalController implements ContributedView
      * Continue (or finish, on release) whichever drag is armed — a move or a
      * resize, both {@see WindowFrame}'s; compose clamps the result.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- the bool IS the domain here, not a hidden second responsibility.
+    // @mago-expect lint:no-boolean-flag-parameter -- $release marks the drag's LAST move, not another action: the box still follows the pointer, then disarms.
     public function continueDragTo(int $row, int $col, bool $release): bool
     {
         if (!$this->frame->dragTo($row, $col, $release)) {
