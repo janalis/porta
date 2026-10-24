@@ -119,6 +119,24 @@ final class FtpTransportTest extends TestCase
         $this->assertSame('missing is not on the server', $this->answer(fn (\Closure $done) => $this->transport->fetch('missing', $done)));
     }
 
+    /**
+     * A fetch whose stamp could not be read says WHY — the server's own words —
+     * rather than claiming the file is not there. A refused login is the
+     * likeliest reason, and "README.md is not on the server" would send the
+     * user looking for a file that is fine.
+     */
+    public function testAFetchWhoseLookupFailsSaysWhyNotThatTheFileIsMissing(): void
+    {
+        \putenv('FAKE_FTP_PASSWORD=right');
+        try {
+            $answer = $this->answer(fn (\Closure $done) => $this->transport->fetch('README.md', $done));
+        } finally {
+            \putenv('FAKE_FTP_PASSWORD');
+        }
+
+        $this->assertSame('curl: (67) Access denied: 530', $answer);
+    }
+
     public function testItWritesThroughAPartialNameAndAnswersTheNewStamp(): void
     {
         $stamp = $this->answer(fn (\Closure $done) => $this->transport->put('deep/new.txt', "fresh\n", null, $done));

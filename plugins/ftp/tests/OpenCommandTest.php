@@ -9,7 +9,9 @@ use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteSpec;
 use Porta\FtpPlugin\Console\OpenCommand;
 use Porta\FtpPlugin\Credentials;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Console\Question\Question;
 use Symfony\Component\Console\Tester\CommandTester;
 
 /** `porta ftp` asks for the password, logs in once to be sure of it, then opens Porta on the cache. */
@@ -41,6 +43,16 @@ final class OpenCommandTest extends TestCase
                 return $curl;
             },
         ));
+    }
+
+    /** The password is never echoed — not as it is typed, nor by a fallback that cannot hide it. */
+    public function testThePasswordQuestionHidesWhatIsTypedWithNoEchoingFallback(): void
+    {
+        $question = Probe::invokeStatic(OpenCommand::class, 'passwordQuestion', new RemoteSpec('ftp', 'example.org', '/site', 'me'), 'me');
+
+        $this->assertInstanceOf(Question::class, $question);
+        $this->assertTrue($question->isHidden());
+        $this->assertFalse($question->isHiddenFallback());
     }
 
     public function testItAsksForThePasswordKeepsItAndOpens(): void

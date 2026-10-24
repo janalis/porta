@@ -68,11 +68,8 @@ final class OpenCommand extends OpenRemoteCommand
         $home = (string) ($this->home ?? PortaHome::base());
         $netrc = null;
         if (null !== $spec->user) {
-            $question = new Question(\sprintf('Password for %s@%s: ', $spec->user, $spec->host))
-                ->setHidden(true)
-                ->setHiddenFallback(false);
             // @mago-expect analysis:mixed-assignment -- whatever was typed: narrowed below
-            $password = new QuestionHelper()->ask($input, $output, $question);
+            $password = new QuestionHelper()->ask($input, $output, self::passwordQuestion($spec, $spec->user));
             $netrc = Credentials::store($home, $spec, \is_string($password) ? $password : '');
             if (null === $netrc) {
                 return \sprintf('Cannot keep the password in %s', \dirname(Credentials::file($home, $spec)));
@@ -80,6 +77,18 @@ final class OpenCommand extends OpenRemoteCommand
         }
 
         return $this->tryLogin($spec, $home, $netrc);
+    }
+
+    /**
+     * Never shown as it is typed — and never shown at all when the terminal
+     * cannot hide it: without the `false` fallback, Symfony asks again with the
+     * answer echoed, which would print the password on the screen.
+     */
+    private static function passwordQuestion(RemoteSpec $spec, string $user): Question
+    {
+        return new Question(\sprintf('Password for %s@%s: ', $user, $spec->host))
+            ->setHidden(true)
+            ->setHiddenFallback(false);
     }
 
     /** Log in to $spec with $netrc: null when it works, else why — and the stored password is forgotten. */
