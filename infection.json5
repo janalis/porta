@@ -32,7 +32,12 @@
     "source": {
         "directories": ["src"]
     },
-    "timeout": 45,
+    // 600, not 45: Infection SKIPS a mutant whose covering tests took longer
+    // than this unmutated — and the code most tests cover (PluginManager,
+    // PluginApi, TreeOperations) is exactly what a 45s budget skipped, 79 of
+    // 341 mutants on 2026-10-23, with three gaps among them. Only a mutant
+    // that hangs pays the longer wait, and it reports as a timeout anyway.
+    "timeout": 600,
     "logs": {
         "text": "coverage/infection.log"
     },

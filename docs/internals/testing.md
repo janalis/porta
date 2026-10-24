@@ -197,6 +197,17 @@ a subprocess-driven test never kills an in-process mutant (the child loads
 pristine source from disk), and the three harmless shapes above recur
 constantly. The MSI is therefore a floor, and never a gate.
 
+**"Required more time than configured" is not a verdict — it is a mutant that
+never ran.** Infection skips a mutant when the tests covering it took longer
+than `infection.json5`'s timeout unmutated, and the code most tests cover is
+exactly what gets skipped: at the old 45s, 79 of 341 mutants on a three-day
+range (`PluginManager`, `PluginApi`, `TreeOperations`), three real gaps among
+them. The script runs only the covering test cases now
+(`--only-covering-test-cases`) under a 600s timeout, and both steps without a
+memory limit — the coverage merge alone died at 512M on that range, and
+Infection then reports nothing but a missing `index.xml`. A committed range
+runs the same two commands with another `--git-diff-base`.
+
 **Method order is randomized** (`executionOrder="random"` in phpunit.xml.dist —
 formalizing what paratest's method distribution never guaranteed anyway). A
 failure that only reproduces in-suite may therefore be order coupling, not
