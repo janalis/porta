@@ -25,6 +25,13 @@ final class IntralineDiffTest extends TestCase
         $this->assertSame([[1, 1], [1, 2]], $ranges, 'empty old range at the insertion point');
     }
 
+    public function testTheCommonEndsNeverOverlap(): void
+    {
+        // All of "aa" is both a prefix and a suffix of "aaa": the suffix may
+        // only claim what the prefix left.
+        $this->assertSame([[2, 2], [2, 3]], IntralineDiff::changedRanges('aa', 'aaa'));
+    }
+
     public function testIdenticalAndDisjointLinesCarryNoRange(): void
     {
         $this->assertNull(IntralineDiff::changedRanges('same', 'same'));

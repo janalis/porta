@@ -90,8 +90,9 @@ final readonly class DiffDocument
     {
         $count = \count($lines);
         for ($i = 0; $i < $count; ++$i) {
-            if ('-' !== $lines[$i]->origin || ($i > 0 && '-' === $lines[$i - 1]->origin)) {
-                continue; // only the start of a deletion run
+            // A run is consumed whole below, so every '-' reached here starts one.
+            if ('-' !== $lines[$i]->origin) {
+                continue;
             }
             $delStart = $i;
             $dels = 0;

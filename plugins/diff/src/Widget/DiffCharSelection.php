@@ -22,7 +22,7 @@ final readonly class DiffCharSelection
     ) {}
 
     /** A zero-width selection — a plain click with no drag (row-copy rules apply). */
-    public function isDegenerate(): bool
+    private function isDegenerate(): bool
     {
         return $this->fromRow === $this->toRow && $this->fromCol === $this->toCol;
     }

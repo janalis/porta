@@ -46,6 +46,14 @@ final class DiffRowHeightsTest extends TestCase
         $this->assertSame(1, $heights->height(1), 'the context pair');
     }
 
+    public function testAPairWithABlankHalfIsAsTallAsItsText(): void
+    {
+        $document = DiffDocument::parse("@@ -1,2 +1,1 @@\n-a\n-b\n+c\n");
+        $heights = DiffRowHeights::of($document, $document->splitRows(), 61, true);
+
+        $this->assertSame(1, $heights->height(2), 'b beside nothing: the blank half adds no row');
+    }
+
     public function testUnwrappedOrWithNoDiffEveryRowIsOne(): void
     {
         $document = DiffDocument::parse(self::RAW);
@@ -112,5 +120,6 @@ final class DiffRowHeightsTest extends TestCase
         $this->assertSame(1, $heights->fitting(3, 2), 'at least one, though it does not fit');
         $this->assertSame(3, $heights->fitting(3, 5), 'past the end each row counts one');
         $this->assertSame(1, $heights->fitting(0, 0));
+        $this->assertSame(1, $heights->fitting(2, 4), 'the rows BELOW the scroll: the n\'s do not fit under the o\'s');
     }
 }

@@ -452,6 +452,22 @@ final class MergePaneWidgetTest extends TestCase
         $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto', 'save'], $tabs->calls);
     }
 
+    public function testTheTabKeysAreIgnoredBeforeTheTabsAreAttached(): void
+    {
+        $pane = $this->shown(ConflictSide::Ours);
+
+        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x10", "\x1b\x13"] as $key) {
+            $pane->handleInput($key);
+        }
+
+        $this->assertSame([], $this->calls, 'no tabs to reach, and nothing else answered');
+    }
+
+    public function testAPaneGivenNoRowsDrawsNone(): void
+    {
+        $this->assertSame([], self::plain($this->shown(ConflictSide::Ours), rows: 0));
+    }
+
     public function testCtrlSSavesTheResultFromASide(): void
     {
         $this->shown(ConflictSide::Ours)->handleInput("\x13");

@@ -160,6 +160,52 @@ final class DiffDocumentTest extends TestCase
         $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2], 'after a deletion the marker rides the old side');
     }
 
+    public function testHunkHeaderTextInsideABodyLineIsContent(): void
+    {
+        // Only a line that STARTS with @@ opens a hunk.
+        $doc = DiffDocument::parse("@@ -1,2 +1,2 @@\n see @@ -40,2 +40,9 @@ below\n-a\n+b\n");
+
+        $this->assertCount(1, $doc->hunks);
+        $this->assertCount(3, $doc->hunks[0]->lines);
+    }
+
+    public function testANewCountIsReadFromItsOwnFieldWhateverTheHeading(): void
+    {
+        $bare = DiffDocument::parse("@@ -1,2 +1,3 @@\n a\n+b\n c\n")->hunks[0];
+        $this->assertSame(3, $bare->newCount, 'an explicit count with no heading');
+
+        $headed = DiffDocument::parse("@@ -1 +1 @@ function demo()\n-a\n+b\n")->hunks[0];
+        $this->assertSame(1, $headed->newCount, 'a missing count is one even when a heading follows');
+    }
+
+    public function testEachPairedLineCarriesItsOwnSidesChangedRange(): void
+    {
+        // Two back-to-back ± runs: the second is paired too, and the old and
+        // new ranges differ in length so a swap would show.
+        $lines = DiffDocument::parse("@@ -1,2 +1,2 @@\n-abc\n+aXYc\n-one\n+onX\n")->hunks[0]->lines;
+
+        $this->assertSame([1, 2], $lines[0]->changedRange);
+        $this->assertSame([1, 3], $lines[1]->changedRange);
+        $this->assertSame([2, 3], $lines[2]->changedRange);
+        $this->assertSame([2, 3], $lines[3]->changedRange);
+    }
+
+    public function testSplitRowsGoOnPastALoneAdditionAndEndOnADeletion(): void
+    {
+        $rows = DiffDocument::parse("@@ -1,3 +1,3 @@\n a\n+b\n c\n-d\n")->splitRows();
+
+        $this->assertSame(
+            [
+                ['kind' => DiffRowKind::Hunk, 'hunk' => 0, 'left' => -1, 'right' => -1],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 0, 'right' => 0],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => -1, 'right' => 1],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 2, 'right' => 2],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 3, 'right' => -1],
+            ],
+            $rows,
+        );
+    }
+
     public function testSplitRowsOfAnEmptyDocument(): void
     {
         $this->assertSame([], DiffDocument::parse('')->splitRows());

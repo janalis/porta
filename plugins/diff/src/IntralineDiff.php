@@ -46,7 +46,8 @@ final class IntralineDiff
         while ($suffix < $maxSuffix && $old[\strlen($old) - 1 - $suffix] === $new[\strlen($new) - 1 - $suffix]) {
             ++$suffix;
         }
-        while ($suffix > 0 && (self::isContinuation($old, \strlen($old) - $suffix) || self::isContinuation($new, \strlen($new) - $suffix))) {
+        // The suffix is the same bytes on both sides, so one side says where it splits.
+        while ($suffix > 0 && self::isContinuation($old, \strlen($old) - $suffix)) {
             --$suffix;
         }
 
