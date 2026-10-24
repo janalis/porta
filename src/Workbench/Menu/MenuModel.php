@@ -259,6 +259,9 @@ final class MenuModel
         Translator $translator,
         ?\Closure $beforeRun = null,
     ): array {
+        // Once per menu, not per item: the editor's map is merged and
+        // re-validated on every call, and boot builds every menu three times.
+        $editorKeys = $editor->getKeybindings();
         $items = [];
         foreach ($specs as $entry) {
             $spec = $entry instanceof PluginMenuSpec ? $entry->spec : $entry;
@@ -276,7 +279,7 @@ final class MenuModel
             }
             $items[] = self::SEP === $spec
                 ? MenuItem::separator()
-                : self::item($spec, $commands, $editor, $ideKeys, $translator, $beforeRun, $when);
+                : self::item($spec, $commands, $editor, $editorKeys, $ideKeys, $translator, $beforeRun, $when);
         }
         while ([] !== $items && $items[\count($items) - 1]->separator) {
             \array_pop($items);
@@ -299,6 +302,7 @@ final class MenuModel
         string $spec,
         CommandRegistry $commands,
         EditorCommandTarget $editor,
+        Keybindings $editorKeys,
         Keybindings $ideKeys,
         Translator $translator,
         ?\Closure $beforeRun,
@@ -310,7 +314,7 @@ final class MenuModel
                 ? $commands->label($id) ?? ActionCatalog::label($id)
                 : ActionCatalog::label($id),
         );
-        $shortcut = KeyHints::key($id, $editor->getKeybindings(), $ideKeys);
+        $shortcut = KeyHints::key($id, $editorKeys, $ideKeys);
         $run = static function () use ($scope, $id, $commands, $editor, $beforeRun): void {
             if (null !== $beforeRun) {
                 $beforeRun($scope, $id);
