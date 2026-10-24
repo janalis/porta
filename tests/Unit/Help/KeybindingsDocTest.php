@@ -10,10 +10,10 @@ use Porta\Config\ConfigWarning;
 use Porta\Overlay\State\FindInFilesModal;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
-use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\DocsTree;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\SurfaceKeymaps;
 use Porta\Widget\EditorKeymap;
 use Porta\Widget\FindBarWidget;
 use Porta\Workbench\Menu\MenuModel;
@@ -104,7 +104,7 @@ final class KeybindingsDocTest extends TestCase
     {
         $core = self::coreDoc();
         $missing = [];
-        foreach (self::surfaceKeymaps() as $class => $keys) {
+        foreach (SurfaceKeymaps::all() as $class => $keys) {
             [$where, $doc] = self::ownerDoc($class);
             foreach ($keys as $id => $bound) {
                 foreach ($bound as $key) {
@@ -178,7 +178,7 @@ final class KeybindingsDocTest extends TestCase
     private static function ownerDoc(string $class): array
     {
         $root = \dirname(__DIR__, levels: 3);
-        foreach (self::sourceRoots($root) as $prefix => $directory) {
+        foreach (SurfaceKeymaps::sourceRoots($root) as $prefix => $directory) {
             if ('Porta\\' === $prefix || !\str_starts_with($class, $prefix)) {
                 continue;
             }
@@ -219,84 +219,6 @@ final class KeybindingsDocTest extends TestCase
      * @var list<string>
      */
     private const array CONVENTIONS = ['escape', 'enter', 'tab', 'shift+tab', 'backspace', 'up', 'down', 'arrowl', 'arrowr', 'pgup', 'pgdn', 'home', 'end', 'space'];
-
-    /**
-     * Every class ANYWHERE in the tree with a `getDefaultKeybindings()`, mapped
-     * to what it returns.
-     *
-     * The framework's trait declares it `protected static`, so reflection is
-     * the only way in from outside — and a public accessor added so a test
-     * could ask would be test-only code in `src`.
-     *
-     * @return array<string, array<string, list<string>>>
-     */
-    private static function surfaceKeymaps(): array
-    {
-        $root = \dirname(__DIR__, levels: 3);
-        $maps = [];
-        foreach (self::sourceRoots($root) as $prefix => $directory) {
-            /** @var \SplFileInfo $file */
-            foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
-                if ('php' !== $file->getExtension() || !\str_contains((string) \file_get_contents($file->getPathname()), 'function getDefaultKeybindings')) {
-                    continue;
-                }
-                // The EDITOR is not one of these surfaces. Its map is
-                // {@see EditorKeymap::defaults()}, whose twenty-two micro-bindings
-                // (arrows, shift+arrows, ctrl+home) are undocumented ON PURPOSE —
-                // see this class's docblock — and it has its own gate above,
-                // narrowed to the verbs a menu advertises. Sweeping it in here
-                // would silently re-open a decision that was made and argued.
-                if (\str_ends_with($file->getPathname(), '/Widget/CodeEditorWidget.php')) {
-                    continue;
-                }
-                // FQCN is determined by path — a rule this repository states and
-                // the arch gate enforces, so the walk can name the class.
-                $relative = \substr($file->getPathname(), \strlen($directory.'/'), length: -4);
-                $class = $prefix.\str_replace(search: '/', replace: '\\', subject: $relative);
-                /** @var array<string, list<string>> $keys */
-                $keys = Probe::invokeStatic($class, 'getDefaultKeybindings');
-                $maps[$class] = $keys;
-            }
-        }
-
-        self::assertNotSame([], $maps, 'the walk found no keymaps at all, which means it is broken rather than clean');
-
-        return $maps;
-    }
-
-    /**
-     * Where key-binding classes can live, as namespace prefix => directory.
-     *
-     * `src/` is one of these and NOT the only one: a bundled plugin binds keys
-     * through the same trait, and the git view and the graph viewer are whole
-     * surfaces reached only by their own keys. Walking `src/` alone made both
-     * of them invisible to a gate whose whole promise is that nothing is —
-     * which is this class's own lesson (a hard-coded list is a checklist the
-     * next surface walks past) applied one directory out.
-     *
-     * The plugins' prefixes are read from their MANIFESTS, the same source the
-     * autoloader uses, so a plugin cannot be missed by being spelled
-     * differently and a new one is swept in the day it is added.
-     *
-     * @return array<string, string>
-     */
-    private static function sourceRoots(string $root): array
-    {
-        $roots = ['Porta\\' => $root.'/src'];
-        $manifests = \glob($root.'/plugins/*/plugin.php');
-        foreach (false === $manifests ? [] : $manifests as $pluginFile) {
-            foreach (PluginManifest::beside($pluginFile)->autoloadDirs() as $prefix => $directories) {
-                foreach ($directories as $directory) {
-                    if (!\is_dir($directory)) {
-                        continue;
-                    }
-                    $roots[$prefix] = \rtrim($directory, characters: '/');
-                }
-            }
-        }
-
-        return $roots;
-    }
 
     /**
      * A MODAL's own keys are the only way to use it, so an undocumented one is

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\SurfaceKeymaps;
 use Porta\Widget\EditorKeymap;
 
 /**
@@ -46,5 +47,24 @@ final class EditorKeymapTest extends TestCase
             $this->assertSame($keys, $actual[$action], "action {$action} binds different keys — if intended, rerun with UPDATE_EDITOR_KEYMAP_GOLDEN=1");
         }
         $this->assertSame(\array_keys($expected), \array_keys($actual), 'the action set changed — if intended, rerun with UPDATE_EDITOR_KEYMAP_GOLDEN=1');
+    }
+
+    /**
+     * A surface that keeps the IDE's own verbs working while it has the keys
+     * (saving, tab management, Go to File) binds them to the editor's keys: a
+     * copy that drifted would leave Ctrl+F4 closing a tab everywhere but
+     * there. Only these: a find bar's Alt+C or a list's Home reuse an editor
+     * id for their own meaning, and are no copy.
+     */
+    public function testASurfaceThatKeepsTheIdesVerbsBindsTheEditorsKeys(): void
+    {
+        $editor = \array_intersect_key(EditorKeymap::defaults(), \array_flip(['save', 'save_all', 'next_buffer', 'prev_buffer', 'recent_files', 'close_buffer', 'goto_file']));
+        $checked = 0;
+        foreach (SurfaceKeymaps::all() as $class => $keys) {
+            $shared = \array_intersect_key($keys, $editor);
+            $this->assertSame(\array_replace($shared, \array_intersect_key($editor, $shared)), $shared, "{$class} binds an IDE verb to other keys than the editor does");
+            $checked += \count($shared);
+        }
+        $this->assertGreaterThan(0, $checked, 'no surface keeps an IDE verb, so this compared nothing');
     }
 }
