@@ -64,7 +64,15 @@ final class ToolInstallerTest extends TestCase
             static fn (): ?string => null,
         );
 
-        return new ToolInstaller($this->project->dir, $executables, $locator, new ToolVersions($this->runner()), $this->runner(), osFamily: 'Darwin', machine: 'arm64');
+        return new ToolInstaller(
+            $this->project->dir,
+            static fn (string $name): ?string => $executables[$name] ?? null,
+            $locator,
+            new ToolVersions($this->runner()),
+            $this->runner(),
+            osFamily: 'Darwin',
+            machine: 'arm64',
+        );
     }
 
     /**

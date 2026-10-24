@@ -30,14 +30,17 @@ final readonly class ToolInstaller
     private \Closure $run;
 
     /**
-     * @param array<string, string|null> $executables a manager's executable name => its path (null when absent)
+     * @param \Closure(string): (string|null) $find a manager's executable name => its path, or null when absent —
+     *        asked only when that manager matters ({@see create()} remembers each
+     *        answer): a lookup the PATH misses shells out to `command -v`, and
+     *        the installer is built at boot
      * @param (\Closure(list<string>, string, \Closure(int, string): void, (\Closure(string): void)|null): void)|null $run
      *        how anything is spawned — {@see ProcessRunner::default()}; inject a fake to test without processes
      * @param string $token a GitHub token for the API fallback, or '' — never logged, never toasted
      */
     public function __construct(
         private string $rootDir,
-        private array $executables,
+        private \Closure $find,
         private ToolLocator $locator,
         private ToolVersions $versions,
         ?\Closure $run = null,
@@ -49,22 +52,31 @@ final readonly class ToolInstaller
         $this->run = $run ?? ProcessRunner::default();
     }
 
+    /** Where a manager's $name is, or null when it is not on the PATH. */
+    private function executable(string $name): ?string
+    {
+        return ($this->find)($name);
+    }
+
     /**
      * Production wiring: every manager resolved from the PATH, the token from
      * the environment, and what runs kept in $runs, so quitting stops it.
      */
     public static function create(string $rootDir, ToolLocator $locator, ToolVersions $versions, RunningProcesses $runs): self
     {
+        // Each manager is looked up the first time it matters, once: a name
+        // the PATH misses shells out to `command -v`, and this runs at boot.
         $finder = new ExecutableFinder();
-        $executables = [];
-        foreach (ToolManager::cases() as $manager) {
-            $executable = $manager->executable();
-            if (null !== $executable) {
-                $executables[$executable] = $finder->find($executable);
+        $found = [];
+        $find = static function (string $name) use ($finder, &$found): ?string {
+            if (!\array_key_exists($name, $found)) {
+                $found[$name] = $finder->find($name);
             }
-        }
 
-        return new self($rootDir, $executables, $locator, $versions, ProcessRunner::default(runs: $runs), GithubInstaller::tokenFromEnvironment(), machine: \php_uname('m'));
+            return $found[$name];
+        };
+
+        return new self($rootDir, $find, $locator, $versions, ProcessRunner::default(runs: $runs), GithubInstaller::tokenFromEnvironment(), machine: \php_uname('m'));
     }
 
     /** The source an install of $tool would use, or null when none is usable here. */
@@ -139,8 +151,8 @@ final readonly class ToolInstaller
         return match ($source->manager) {
             ToolManager::Plugin => true,
             ToolManager::Github => null !== $this->locator->binDir && null !== $source->asset?->assetFor('v0', $this->osFamily, $this->machine),
-            ToolManager::Composer => null !== ($this->executables[(string) $executable] ?? null) && $this->locator->trusted(),
-            default => null !== ($this->executables[(string) $executable] ?? null),
+            ToolManager::Composer => null !== $this->executable((string) $executable) && $this->locator->trusted(),
+            default => null !== $this->executable((string) $executable),
         };
     }
 
@@ -153,7 +165,7 @@ final readonly class ToolInstaller
      */
     private function manage(ToolSource $source, array $args, ToolOutcome $success, \Closure $onDone): void
     {
-        $executable = $this->executables[(string) $source->manager->executable()] ?? null;
+        $executable = $this->executable((string) $source->manager->executable());
         if (null === $executable) {
             $onDone(new ToolResult(ToolOutcome::Failed, why: (string) $source->manager->executable().' is not on the PATH'));
 

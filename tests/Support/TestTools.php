@@ -96,7 +96,7 @@ final readonly class TestTools
         );
         $this->versions = new ToolVersions($run);
         $this->catalog = new ToolCatalog($plugins, $manager, $this->locator, $this->versions);
-        $this->installer = new ToolInstaller($rootDir, $executables, $this->locator, $this->versions, $run, osFamily: 'Darwin', machine: 'arm64');
+        $this->installer = new ToolInstaller($rootDir, static fn (string $name): ?string => $executables[$name] ?? null, $this->locator, $this->versions, $run, osFamily: 'Darwin', machine: 'arm64');
         $translator = new Translator('en');
         $this->jobs = new ToolJobs($this->installer, $this->catalog, $this->versions, $notifier, $translator, $lifecycle, $commands);
         $this->updates = new ToolUpdates(
