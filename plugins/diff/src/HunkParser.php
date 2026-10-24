@@ -39,12 +39,8 @@ final class HunkParser
                 $index = $newStart - 1 + $i;
                 // Lines beyond the overlap with the old hunk are new additions;
                 // the overlapping ones are modifications.
+                // A pure addition (old count 0) overlaps nothing: every line is added.
                 $marks[$index] = $i < $oldCount ? 'modified' : 'added';
-            }
-            if (0 === $oldCount) {
-                for ($i = 0; $i < $newCount; ++$i) {
-                    $marks[$newStart - 1 + $i] = 'added';
-                }
             }
         }
 

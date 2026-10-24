@@ -30,6 +30,27 @@ final class HunkParserTest extends TestCase
         $this->assertSame([4 => 'modified'], $marks);
     }
 
+    /** A missing OLD count is one line, whatever the new side says. */
+    public function testAMissingOldCountIsOneLineAgainstALongerNewSide(): void
+    {
+        $this->assertSame([4 => 'modified', 5 => 'added'], HunkParser::parse("@@ -5 +5,2 @@\n"));
+    }
+
+    /** A deletion's mark ends ITS hunk, not the parse: what follows is still read. */
+    public function testAHunkAfterAPureDeletionIsStillParsed(): void
+    {
+        $this->assertSame([3 => 'deleted', 9 => 'added'], HunkParser::parse("@@ -5,3 +4,0 @@\n-a\n-b\n-c\n@@ -9,0 +10 @@\n+new\n"));
+    }
+
+    /**
+     * A header is a header only at the START of a line: a changed line whose
+     * text merely contains one — editing a patch file — is content.
+     */
+    public function testHunkHeaderTextInsideAChangedLineIsContent(): void
+    {
+        $this->assertSame([0 => 'modified'], HunkParser::parse("@@ -1 +1 @@\n-old\n+see @@ -40,2 +40,9 @@ below\n"));
+    }
+
     public function testOverlappingLinesAreModifiedAndExtraLinesAreAdded(): void
     {
         // old has 1 line, new has 3: line 0 overlaps (modified), lines 1-2 are new (added).
