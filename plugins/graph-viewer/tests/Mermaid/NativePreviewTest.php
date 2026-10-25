@@ -350,7 +350,35 @@ final class NativePreviewTest extends TestCase
         }, what: 'native fence without GD');
         $this->assertNull($result->png);
         $this->assertStringContainsString('Readable', $this->plain($result->rows));
-        $this->assertStringContainsString('GD extension', $result->error);
+        $this->assertSame('could not start mmdc · Native Mermaid PNG requires the PHP GD extension with FreeType support', $result->error, 'why there is no picture, then why there are only rows');
         $this->assertContains(0, $result->origins);
+    }
+
+    public function testMarkdownSaysWhyNeitherMmdcNorTheNativeRendererDrewIt(): void
+    {
+        $project = new TempProject();
+        $renderer = new MarkdownFenceRenderer(
+            static fn (string $key): string => 'renderMode' === $key ? 'bitmap' : '/nonexistent/mmdc',
+            static fn (string $message): string => $message,
+        );
+        $error = null;
+        $renderer(
+            'mermaid',
+            source: 'graph TD; A[',
+            path: $project->path('doc.md'),
+            width: 40,
+            success: static function (): never {
+                self::fail('a broken diagram drew');
+            },
+            error: static function (string $value) use (&$error): void {
+                $error = $value;
+            },
+        );
+        $this->await(static function () use (&$error): bool {
+            return null !== $error;
+        }, what: 'both renderers failing');
+
+        $this->assertStringStartsWith('could not start mmdc · ', (string) $error);
+        $this->assertGreaterThan(\strlen('could not start mmdc · '), \strlen((string) $error), 'and the source\'s own error after it');
     }
 }

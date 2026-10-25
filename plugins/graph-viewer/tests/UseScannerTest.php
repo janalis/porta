@@ -155,4 +155,39 @@ final class UseScannerTest extends TestCase
 
         $this->assertSame(['App\Kept', 'App\AlsoKept'], $scanned['uses']);
     }
+
+    /**
+     * A class body stays a class body however its methods brace: an
+     * interpolation's brace and a method's both close inside it, so the trait
+     * after them is still no import.
+     */
+    public function testATraitAfterAMethodOrAnInterpolationIsNoImport(): void
+    {
+        $scanned = UseScanner::scan(<<<'PHP'
+            <?php
+            namespace App;
+
+            use App\Kept;
+
+            final class C
+            {
+                public function f(): string { return "{$this->x}"; }
+                use Helper;
+                public function g(): void {}
+                use Other;
+            }
+            PHP);
+
+        $this->assertSame(['App\Kept'], $scanned['uses']);
+    }
+
+    public function testAnAliasedFunctionImportIsSkippedToo(): void
+    {
+        $this->assertSame(['App\Kept'], UseScanner::scan("<?php namespace App; use function App\\slugify as slug; use App\\Kept;")['uses']);
+    }
+
+    public function testALeadingBackslashIsNotPartOfTheName(): void
+    {
+        $this->assertSame(['App\Kept', 'App\Group\One'], UseScanner::scan("<?php use \\App\\Kept; use \\App\\Group\\{One};")['uses']);
+    }
 }

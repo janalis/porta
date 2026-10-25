@@ -86,6 +86,21 @@ final class MermaidCliRendererTest extends TestCase
         $renderer->cancel();
     }
 
+    /** A resolution of nothing is drawn at one dot, never at none: the picture exists and maps back at its size. */
+    public function testANonPositiveResolutionDrawsAtOneDot(): void
+    {
+        $project = new TempProject();
+        $engine = new MermaidEngine($project->dir, self::support('fake-mmdc'));
+        $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
+
+        [$picture, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]", dpi: 0);
+
+        $this->assertNull($error);
+        $this->assertSame([1, 1], PngDimensions::read($picture->png), 'a hundred by fifty, at a 96th');
+        $this->assertSame([96.0, 96.0], [$picture->scene?->graph->width, $picture->scene?->graph->height], 'one dot back to 96 points');
+        $renderer->cancel();
+    }
+
     public function testToolChangesInvalidateSnapshotsAndLargeSvgSnapshotsAreNotRetained(): void
     {
         $project = new TempProject();

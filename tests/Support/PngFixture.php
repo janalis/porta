@@ -14,15 +14,21 @@ namespace Porta\Tests\Support;
 final class PngFixture
 {
     /**
-     * A $width × $height PNG filled with $rgb.
+     * A $width × $height PNG filled with $rgb — its right half with $right
+     * when given, so a test can tell which part of the picture is on screen.
      *
      * @param array{int, int, int} $rgb
+     * @param ?array{int, int, int} $right
      */
-    public static function bytes(int $width, int $height, array $rgb = [200, 40, 40]): string
+    public static function bytes(int $width, int $height, array $rgb = [200, 40, 40], ?array $right = null): string
     {
         $gd = \imagecreatetruecolor($width, height: $height);
         [$r, $g, $b] = $rgb;
         \imagefilledrectangle($gd, x1: 0, y1: 0, x2: $width - 1, y2: $height - 1, color: (int) \imagecolorallocate($gd, red: $r, green: $g, blue: $b));
+        if (null !== $right) {
+            [$r, $g, $b] = $right;
+            \imagefilledrectangle($gd, x1: \intdiv($width, num2: 2), y1: 0, x2: $width - 1, y2: $height - 1, color: (int) \imagecolorallocate($gd, red: $r, green: $g, blue: $b));
+        }
         \ob_start();
         \imagepng($gd);
 

@@ -90,6 +90,57 @@ final class GraphViewerPixelsTest extends TestCase
         $this->assertCount(1, PixelGraphics::sentImages($this->terminal), 'another selection, another picture');
     }
 
+    /**
+     * The outline is the selected node's own box, at the picture's scale: a
+     * graph shorter than the pane shows all four of its sides. Fit puts the
+     * 416.5-point drawing across 640 pixels, 1.54 a point; each box below is
+     * the node's, so scaled, with the stroke's 3 to 4 pixels either side.
+     */
+    public function testTheOutlineIsTheSelectedNodesBoxAtThePicturesScale(): void
+    {
+        $engine = new FakeLayoutEngine();
+        $engine->nextResult = DotJsonParser::parse((string) \file_get_contents(\dirname(__DIR__, levels: 3).'/tests/Support/fixtures/graph/clustered.json'));
+        $engine->nextPng = PngFixture::bytes(1250, 295); // three pixels a point, as asked
+        [$graphics, $terminal] = PixelGraphics::answered(cellWidth: 8);
+        $widget = new GraphViewerWidget($engine, new Translator('en'), scheduler: $this->scheduler, graphics: $graphics);
+        $widget->show('/p/arch.dot', 'clustered');
+        $this->settle();
+        $widget->render(new RenderContext(80, 24));
+        $this->settle();
+
+        $boxes = [];
+        foreach (['API', 'Service'] as $node) {
+            $terminal->clearOutput();
+            $widget->handleInput('n');
+            $widget->render(new RenderContext(80, 24));
+            $boxes[$node] = self::accentBox(PixelGraphics::sentImages($terminal)[0]);
+        }
+
+        // Both 36 points tall, centred 59 points down: rows 63 to 118, stroked.
+        $this->assertSame(['API' => [21, 111, 59, 122], 'Service' => [160, 255, 59, 122]], $boxes);
+    }
+
+    /** @return array{int, int, int, int} the accent pixels' bounds: x from, x to, y from, y to */
+    private static function accentBox(\GdImage $image): array
+    {
+        $rgb = Styles::dark()->of(Role::TabAccent)->getColor()?->toRgb() ?? ['r' => -1, 'g' => -1, 'b' => -1];
+        $accent = ($rgb['r'] << 16) | ($rgb['g'] << 8) | $rgb['b'];
+        $xs = [];
+        $ys = [];
+        for ($x = 0; $x < \imagesx($image); ++$x) {
+            for ($y = 0; $y < \imagesy($image); ++$y) {
+                if ((\imagecolorat($image, $x, $y) & 0xFF_FF_FF) !== $accent) {
+                    continue;
+                }
+                $xs[] = $x;
+                $ys[] = $y;
+            }
+        }
+        self::assertNotSame([], $xs, 'an outline was drawn');
+
+        return [\min($xs), \max($xs), \min($ys), \max($ys)];
+    }
+
     public function testAPictureWithNothingSelectedHasNoOutline(): void
     {
         $this->settle();

@@ -158,4 +158,24 @@ final class MermaidSvgMapTest extends TestCase
         $this->assertGreaterThan(4, \count($steps));
         $this->assertSame([1 => 4], $work->getReturn()->elements);
     }
+
+    /**
+     * An element the picture cannot place — drawn twice, or squeezed to
+     * nothing against the picture's edge — is passed over, and the next one
+     * still placed: a plain box, not a dashed one.
+     */
+    public function testAnElementThatCannotBePlacedLeavesTheNextOneItsPlace(): void
+    {
+        $twice = '<g data-id="A"><rect width="10" height="10"/></g><g data-id="A"><rect x="20" width="10" height="10"/></g>';
+        $atTheRightEdge = '<g data-id="A"><rect x="100" width="10" height="10"/></g>';
+        $atTheBottomEdge = '<g data-id="A"><rect y="50" width="10" height="10"/></g>';
+        $placed = '<g data-id="B"><rect x="60" y="20" width="30" height="20"/></g>';
+
+        foreach (['drawn twice' => $twice, 'at the right edge' => $atTheRightEdge, 'at the bottom edge' => $atTheBottomEdge] as $what => $unplaced) {
+            $map = self::map($unplaced.$placed, self::source());
+            $this->assertInstanceOf(MermaidScene::class, $map, $what);
+            $this->assertSame([2 => 7], $map->elements, $what);
+            $this->assertFalse($map->graph->nodes[2]->dashed);
+        }
+    }
 }

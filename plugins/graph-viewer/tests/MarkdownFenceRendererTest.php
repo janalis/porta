@@ -161,6 +161,7 @@ final class MarkdownFenceRendererTest extends TestCase
         }, what: 'syntax error');
         $this->assertStringStartsWith('translated:', $error);
         $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageIsOrContains('Unsupported diagram fence: plantxml');
         $renderer('plantxml', source: '', path: $project->dir.'/doc.md', width: 40, success: static function (): void {}, error: static function (): void {});
     }
 }

@@ -93,6 +93,43 @@ final class GraphViewerPictureTest extends TestCase
         $this->assertStringContainsString('┌', self::plain($widget->render(new RenderContext(80, 24))), 'never a blank pane');
     }
 
+    /**
+     * The picture is read at its own density — dpi over the tool's 1:1 — so
+     * all of it is on screen at fit: both halves, each at its own end.
+     */
+    public function testThePictureIsReadAtTheDensityItWasAskedFor(): void
+    {
+        $this->engine->nextResult = self::layout();
+        $this->engine->nextPng = PngFixture::bytes(260, 36, [200, 40, 40], right: [40, 40, 200]);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph G { A -> B; }');
+        $this->settle();
+
+        $rows = $widget->render(new RenderContext(80, 24));
+        $middle = $rows[\intdiv(\count($rows), num2: 2)];
+
+        $this->assertSame([72], $this->engine->renderDpis);
+        $this->assertStringStartsWith("\x1b[38;2;200;40;40", $middle, 'the left half at the left edge');
+        $this->assertStringContainsString('38;2;40;40;200', AnsiUtils::sliceToWidth($middle, 70, 10), 'the right half at the right one');
+    }
+
+    /** PlantUML's 1:1 is 96 dpi, not graphviz's 72: read at 72, a third of its picture would be lost. */
+    public function testAPlantUmlPictureIsReadAtItsOwnDensity(): void
+    {
+        $this->plantUml->nextPng = PngFixture::bytes(260, 36, [200, 40, 40], right: [40, 40, 200]);
+        $widget = $this->widget();
+        $widget->show('/p/seq.puml', '@startuml');
+        $this->settle();
+
+        $rows = $widget->render(new RenderContext(80, 24));
+
+        $middle = $rows[\intdiv(\count($rows), num2: 2)];
+        $this->assertSame([96], $this->plantUml->renderDpis);
+        // A slice re-opens the style in force at its start, so what counts is a colour a cell is DRAWN in.
+        $this->assertDoesNotMatchRegularExpression('/38;2;40;40;200[;0-9]*m▀/', AnsiUtils::sliceToWidth($middle, 0, 40), 'the halves meet mid-pane');
+        $this->assertDoesNotMatchRegularExpression('/38;2;200;40;40[;0-9]*m▀/', AnsiUtils::sliceToWidth($middle, 40, 40));
+    }
+
     public function testAFailedRenderKeepsTheCellsUnderABanner(): void
     {
         // What a graphviz built without libgd says — the case the fallback exists for.

@@ -103,6 +103,12 @@ final class MermaidEngineTest extends TestCase
         $this->assertSame('2', $options['--scale']);
         $this->assertSame("flowchart LR\nA[été] --> B", $source);
         $this->assertDirectoryDoesNotExist(\dirname($options['--output']));
+        $this->assertMatchesRegularExpression(
+            '#^'.\preg_quote(\sys_get_temp_dir(), delimiter: '#').'/porta-mermaid-[0-9a-f]{32}/diagram\.png$#',
+            $options['--output'],
+            'a directory of its own, under a name no one can guess',
+        );
+        $this->assertSame('700', \file_get_contents($project->path('mermaid-output-dir-mode.txt')), 'that only this user can open');
         [$png] = $this->render($engine, 'flowchart TD', 0);
         $this->assertNotNull($png, 'even a nonpositive dpi has a positive scale');
         $engine->cancel();

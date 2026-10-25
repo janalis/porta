@@ -48,6 +48,12 @@ final class MermaidSvgRasterizerTest extends TestCase
         $this->assertSame($source, $svg);
         $this->assertStringEqualsFile(MermaidSvgRasterizer::SCRIPT, $program);
         $this->assertSame(\dirname($script), \dirname($input));
+        $this->assertMatchesRegularExpression(
+            '#^'.\preg_quote(\sys_get_temp_dir(), delimiter: '#').'/porta-mermaid-svg-[0-9a-f]{32}$#',
+            \dirname($input),
+            'a directory of its own, under a name no one can guess',
+        );
+        $this->assertSame('700', \file_get_contents($project->path('mermaid-browser-dir-mode.txt')), 'that only this user can open');
         $this->assertDirectoryDoesNotExist(\dirname($input));
         $this->assertNull(Probe::get($rasterizer, 'directory'));
         $rasterizer->cancel();
@@ -88,6 +94,7 @@ final class MermaidSvgRasterizerTest extends TestCase
         $this->assertNotNull($error);
         $this->assertStringContainsString('missing.mjs', $error);
         $this->assertNull(Probe::get($rasterizer, 'directory'));
+        $this->assertNull(Probe::get(Probe::get($rasterizer, 'slot'), 'current'), 'no browser was started');
         $this->assertFileDoesNotExist($project->path('mermaid-browser-request.json'));
         $rasterizer->cancel();
     }
@@ -213,5 +220,21 @@ final class MermaidSvgRasterizerTest extends TestCase
         $this->assertDirectoryDoesNotExist(\dirname($script));
         $this->assertSame(0, $success);
         $this->assertNull($error);
+    }
+
+    /** A newer picture asked for while one is still drawing takes its place, and the older one's snapshot goes with it. */
+    public function testANewerRasterReplacesAPendingOneAndItsSnapshot(): void
+    {
+        $project = new TempProject();
+        $rasterizer = new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), self::support('fake-mermaid-browser'));
+        $rasterizer->rasterize('<svg><!--deferred-browser--></svg>', null, $this->fail(...), $this->fail(...));
+        $older = Probe::get($rasterizer, 'directory');
+        $this->assertIsString($older);
+        $this->assertDirectoryExists($older);
+
+        $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', null, $success, self::fail(...)));
+
+        $this->assertSame([100, 50], PngDimensions::read($png));
+        $this->assertDirectoryDoesNotExist($older);
     }
 }

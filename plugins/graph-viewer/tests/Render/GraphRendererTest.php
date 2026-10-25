@@ -119,6 +119,50 @@ final class GraphRendererTest extends TestCase
         $this->assertStringNotContainsString('┌', $screen, 'no frame fits a 4-column pane at fit scale');
     }
 
+    /**
+     * Where two boxes overlap, each cell goes to the box whose centre is
+     * nearer — a row counting twice a column, a cell being twice as tall as
+     * wide — and a tie to the one drawn last.
+     */
+    public function testWhereBoxesOverlapTheNearerCentreWins(): void
+    {
+        $layout = new GraphLayout(40.0, 24.0, [0 => self::node(0, 'A', 10.0, 10.0, w: 16.0, h: 12.0), 1 => self::node(1, 'B', 20.0, 14.0, w: 16.0, h: 12.0)], [], []);
+        $view = new ZoomPanModel(40, 24);
+        $view->actualSize(40, 24);
+
+        $map = [];
+        for ($row = 2; $row <= 10; ++$row) {
+            $line = '';
+            for ($col = 2; $col <= 28; ++$col) {
+                $line .= ['A', 'B'][GraphRenderer::nodeAt($layout, $view, 40, 12, $row, $col) ?? -1] ?? '.';
+            }
+            $map[] = $line;
+        }
+
+        $this->assertSame(
+            [
+                'AAAAAAAAAAAAAAAAA..........',
+                'AAAAAAAAAAAAAAAAA..........',
+                'AAAAAAAAAAAAAAABBBBBBBBBBBB',
+                'AAAAAAAAAAAAAAABBBBBBBBBBBB',
+                'AAAAAAAAAAAAABBBBBBBBBBBBBB',
+                'AAAAAAAAAAABBBBBBBBBBBBBBBB',
+                'AAAAAAAAAAABBBBBBBBBBBBBBBB',
+                '..........BBBBBBBBBBBBBBBBB',
+                '..........BBBBBBBBBBBBBBBBB',
+            ],
+            $map,
+        );
+    }
+
+    /** Over the picture, two nodes covering a cell alike: the one drawn last, which the picture shows on top. */
+    public function testOverThePictureATieGoesToTheNodeDrawnLast(): void
+    {
+        $layout = new GraphLayout(40.0, 24.0, [0 => self::node(0, 'A', 20.0, 12.0), 1 => self::node(1, 'B', 20.0, 12.0)], [], []);
+
+        $this->assertSame(1, GraphRenderer::nodeShownAt($layout, new ZoomPanModel(40, 24), 40, 12, 6, 20));
+    }
+
     public function testNodeAtHitsTheBoxAndMissesEmptySpace(): void
     {
         $layout = new GraphLayout(

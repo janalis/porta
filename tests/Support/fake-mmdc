@@ -13,6 +13,10 @@ foreach (array_slice($argv, 1) as $index => $arg) {
 }
 $source = (string) stream_get_contents(STDIN);
 file_put_contents('mermaid-request.json', json_encode([$options, $source], JSON_THROW_ON_ERROR));
+// Who else could read what is written there: the directory the output goes to, as mmdc finds it.
+if (isset($options['--output'])) {
+    file_put_contents('mermaid-output-dir-mode.txt', decoct(fileperms(dirname($options['--output'])) & 0o777));
+}
 if (str_contains($source, 'deferred')) {
     fclose(STDOUT);
     fclose(STDERR);

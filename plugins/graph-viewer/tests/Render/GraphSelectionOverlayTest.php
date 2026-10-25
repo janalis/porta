@@ -107,4 +107,48 @@ final class GraphSelectionOverlayTest extends TestCase
         $after = \substr($lines[5], (int) \strrpos($lines[5], Glyphs::FRAME_VERTICAL) + \strlen(Glyphs::FRAME_VERTICAL));
         $this->assertMatchesRegularExpression('/^(?:\e\[[0-9;:]*m)*?\e\[44m /', $after);
     }
+
+    /** Each rail covers just its own column: the text either side of it stays where it was. */
+    public function testARailReplacesOnlyTheColumnItIsOn(): void
+    {
+        $node = new GraphNode(0, 'A', 'A', 103.0, 101.0, 60.0, 40.0, null, null, false); // columns 7 to 13, rows 4 to 6
+        $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
+
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: 'abcdefghijklmnopqrst'), $layout, new ZoomPanModel(200, 200), 0, 20, 10, Styles::dark());
+
+        $this->assertSame('abcdefg'.Glyphs::FRAME_VERTICAL.'ijklm'.Glyphs::FRAME_VERTICAL.'opqrst', AnsiUtils::stripAnsiCodes($lines[5]));
+    }
+
+    /** A node bigger than the pane is framed at the pane's own edges, every side of it. */
+    public function testANodeBiggerThanThePaneIsFramedAtItsEdges(): void
+    {
+        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 300.0, 300.0, null, null, false);
+        $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
+
+        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), GraphSelectionOverlay::apply(\array_fill(0, count: 4, value: '......'), $layout, new ZoomPanModel(200, 200), 0, 6, 4, Styles::dark()));
+
+        $this->assertSame(
+            [
+                Glyphs::MODAL_TOP_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 4).Glyphs::MODAL_TOP_RIGHT,
+                Glyphs::FRAME_VERTICAL.'....'.Glyphs::FRAME_VERTICAL,
+                Glyphs::FRAME_VERTICAL.'....'.Glyphs::FRAME_VERTICAL,
+                Glyphs::MODAL_BOTTOM_LEFT.\str_repeat(Glyphs::FRAME_HORIZONTAL, times: 4).Glyphs::MODAL_BOTTOM_RIGHT,
+            ],
+            $lines,
+        );
+    }
+
+    /** Two columns are room enough for a pair of corners. */
+    public function testATwoColumnNodeHasItsCorners(): void
+    {
+        $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 15.0, 60.0, null, null, false);
+        $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
+        $view = new ZoomPanModel(200, 200);
+        [$x0, $y0, $x1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
+        $this->assertSame(1, $x1 - $x0, 'the premise: two columns');
+
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
+
+        $this->assertSame(Glyphs::MODAL_TOP_LEFT.Glyphs::MODAL_TOP_RIGHT, \trim(AnsiUtils::stripAnsiCodes($lines[$y0])));
+    }
 }

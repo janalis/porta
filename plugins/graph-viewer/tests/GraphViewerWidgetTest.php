@@ -463,6 +463,10 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertSame(9, $this->engine->layoutCalls);
 
         $widget->clear();
+        $widget->show('/p/g1.dot', 'dot 1'); // the cap's eight, g1 to g8, are all still held
+        $this->assertSame(9, $this->engine->layoutCalls);
+
+        $widget->clear();
         $widget->show('/p/g0.dot', 'dot 0'); // the oldest hash was evicted: the engine runs again
         $this->assertSame(10, $this->engine->layoutCalls);
     }

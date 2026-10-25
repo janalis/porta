@@ -32,11 +32,12 @@ final class ComposerRootsTest extends TestCase
         $project = new TempProject([
             'composer.json' => (string) \json_encode(
                 [
-                    'autoload' => ['psr-4' => ['App\\' => 'nonexistent/', 'Lib\\' => ['also-missing/', 'lib/'], 'Bad\\' => 42]],
+                    'autoload' => ['psr-4' => ['App\\' => 'nonexistent/', 'Lib\\' => ['also-missing/', 'lib/', 'lib2/'], 'Bad\\' => 42]],
                 ],
                 \JSON_THROW_ON_ERROR,
             ),
             'lib/.keep' => '',
+            'lib2/.keep' => '',
         ]);
 
         $this->assertSame(['Lib' => $project->dir.'/lib'], ComposerRoots::roots($project->dir), 'a multi-dir prefix takes its first existing dir; non-string entries drop');

@@ -112,7 +112,37 @@ final class NativeFenceActionsTest extends TestCase
             $scheduler->fire();
         }
         $this->assertSame('prior', \file_get_contents($project->path('doc-diagram-1.svg')));
-        $this->assertStringStartsWith('Export failed:', $messages[0][0]);
+        $this->assertStringStartsWith('Export failed: ', $messages[0][0]);
+        $this->assertStringNotContainsString('%error%', $messages[0][0], 'the reason is spelled out');
         $this->assertSame(5.0, $messages[0][1]);
+    }
+
+    /** A picture drawn but not written — its path is a directory — is one failure, said once, never also a success. */
+    public function testAnExportThatCannotBeWrittenSaysSoOnce(): void
+    {
+        $project = new TempProject(['doc.md' => 'source', 'doc-diagram-1.svg/.keep' => '']);
+        $scheduler = new FakeScheduler();
+        $messages = [];
+        $actions = new NativeFenceActions(
+            'flowchart; A[Drawn]',
+            $project->path('doc.md'),
+            [],
+            new NativeMermaidExport(new NativeMermaidRenderer(new MermaidTask($scheduler))),
+            static fn (string $text, array $parameters): string => \strtr($text, $parameters),
+            static function (string $message, float $duration) use (&$messages): void {
+                $messages[] = [$message, $duration];
+            },
+            static function (): never {
+                self::fail('No semantic elements should create a picker');
+            },
+        )->actions();
+
+        ($actions[0]->run)(new FenceContext(1, static function (): void {}));
+        while ([] !== $scheduler->scheduled) {
+            $scheduler->fire();
+        }
+
+        $this->assertCount(1, $messages);
+        $this->assertStringStartsWith('Export failed: ', $messages[0][0]);
     }
 }
