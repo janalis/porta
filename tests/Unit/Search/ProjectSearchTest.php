@@ -506,6 +506,49 @@ final class ProjectSearchTest extends TestCase
         \putenv('PATH='.$tools->dir);
 
         $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), 'needle'));
+        $regex = new SearchOptions(regex: true);
+        $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), 'need+le', $regex), 'nor does asking it whether it reads PCRE');
+    }
+
+    /**
+     * grep picks the lines, so it reads a regex as the find bar does: PCRE
+     * (`-P`) where this grep takes it — GNU's ERE reads `\d` as a `d` — asked
+     * once; ERE where it does not, and on a server, whose grep nobody asked.
+     */
+    public function testARegexIsReadAsPcreWhereGrepCanReadIt(): void
+    {
+        $project = $this->fixtures();
+        $tools = new TempProject([], 'porta-pcregrep-');
+        $log = $tools->path('argv.log');
+        $grep = static function (int $probe) use ($tools, $log): void {
+            // The probe answers $probe; a search says what it was asked, and finds nothing.
+            $tools->write('grep', "#!/bin/sh\nif [ \"\$1\" = -qP ]; then echo probe >> '{$log}'; exit {$probe}; fi\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
+            \chmod($tools->path('grep'), permissions: 0o755);
+            \file_put_contents($log, data: '');
+        };
+        $asked = static fn (): array => \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
+        $tail = static fn (string $line): string => \substr($line, (int) \strrpos($line, needle: ' -- ') - 2);
+        $regex = new SearchOptions(regex: true, caseSensitive: true);
+        \putenv('PATH='.$tools->dir.':/bin'); // sh for the fake server's command; grep is the stub
+
+        $grep(1);
+        $search = new ProjectSearch($project->dir);
+        $this->awaitSearch($search, '\d+', $regex);
+        $this->awaitSearch($search, '\d+', $regex);
+        $this->assertSame(['probe', '-P -- \d+ .', '-P -- \d+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'PCRE, and grep asked once');
+
+        $grep(1);
+        $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $this->assertSame(['-F -- needle .'], \array_map($tail, $asked()), 'a literal asks nothing');
+
+        $grep(2);
+        $this->awaitSearch(new ProjectSearch($project->dir), '\d+', $regex);
+        $this->assertSame(['probe', '-E -- \d+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'no -P: ERE');
+
+        $grep(1);
+        $cache = new TempProject([]);
+        $this->awaitSearch(new ProjectSearch($cache->dir, new FakeRemoteTransport($project->dir)->filesystem($cache->dir)), '\d+', $regex);
+        $this->assertSame(['-E -- \d+ .'], \array_map($tail, $asked()), "the server's grep is not this one");
     }
 
     public function testParseSkipsMalformedGrepLines(): void

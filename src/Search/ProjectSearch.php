@@ -8,7 +8,9 @@ use Porta\Filesystem\RemoteFilesystem;
 use Porta\Support\AsyncProcess;
 use Porta\Support\Files;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Process\Exception\RuntimeException as ProcessRuntimeException;
 use Symfony\Component\Process\ExecutableFinder;
+use Symfony\Component\Process\Process;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
@@ -28,6 +30,9 @@ final class ProjectSearch
     /** The resolved `grep` binary; see {@see findGrep()} — resolved once, not per search. */
     private ?string $grep = null;
     private bool $grepResolved = false;
+
+    /** Whether that grep takes `-P`; see {@see readsPcre()} — asked once, on the first regex search. */
+    private ?bool $pcre = null;
 
     /**
      * Whether the regex engine GAVE UP somewhere in the last search.
@@ -88,7 +93,7 @@ final class ProjectSearch
         // -H: GNU grep drops the `path:` prefix when it is handed a single file
         // (a file scope), and the parser reads `path:line:text`; BSD grep and
         // ugrep print it anyway, which is why only Linux lost those matches.
-        $flags = ['-rnH', '--binary-files=without-match', $options->regex ? '-E' : '-F'];
+        $flags = ['-rnH', '--binary-files=without-match'];
         if (!$options->caseSensitive) {
             $flags[] = '-i';
         }
@@ -100,16 +105,17 @@ final class ProjectSearch
         foreach ($this->maskGlobs($mask) as $glob) {
             $flags[] = '--include='.$glob;
         }
+        foreach (self::EXCLUDES as $dir) {
+            $flags[] = '--exclude-dir='.$dir;
+        }
         // The scope paths are arguments, not the cwd: grep still runs in $rootDir
         // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
-        $command = [$grep, ...$flags, '--', $query, ...$paths];
-        foreach (self::EXCLUDES as $dir) {
-            \array_splice($command, offset: 1, length: 0, replacement: ['--exclude-dir='.$dir]);
-        }
+        $args = static fn (string $regex): array => [...$flags, $options->regex ? $regex : '-F', '--', $query, ...$paths];
         // A remote project's cache holds only what was opened: its grep runs
         // on the server, where every file is — named `grep` there, since the
-        // path found here is this machine's.
-        $command = $this->remote?->remoteCommand(['grep', ...\array_slice($command, offset: 1)]) ?? $command;
+        // path found here is this machine's, and asked for ERE, since whether
+        // that grep reads PCRE was never asked.
+        $command = $this->remote?->remoteCommand(['grep', ...$args('-E')]) ?? [$grep, ...$args($options->regex && $this->readsPcre($grep) ? '-P' : '-E')];
 
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
@@ -537,6 +543,31 @@ final class ProjectSearch
     private function readFile(string $abs): string
     {
         return Files::read($abs);
+    }
+
+    /**
+     * Whether $grep reads PCRE (`-P`: GNU grep's), the dialect the find bar,
+     * the "bad regex" check and the highlights all speak. Under `-E` GNU grep
+     * reads POSIX ERE, where `\d` is a `d`, so the lines it picked were the
+     * wrong ones: `\d+` found "ddd". BSD grep has no `-P` and stays on `-E`,
+     * which reads `\d`, `\s`, `\w` and `\b` as PCRE does and refuses a
+     * lookaround outright — handing the search to the built-in engine.
+     */
+    private function readsPcre(string $grep): bool
+    {
+        try {
+            // An option grep does not know is a usage error (2); one it knows
+            // finds no `x` in nothing (1).
+            return $this->pcre ??= 1 === new Process([$grep, '-qP', 'x', '/dev/null'], timeout: 5)->run();
+
+            // Linux refuses to spawn a grep that cannot run (macOS spawns it,
+            // and reads its exit code): the search's own fallback takes over.
+            // @codeCoverageIgnoreStart
+        } catch (ProcessRuntimeException) {
+            return $this->pcre = false;
+        }
+
+        // @codeCoverageIgnoreEnd
     }
 
     private function findGrep(): ?string
