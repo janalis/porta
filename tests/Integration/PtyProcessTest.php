@@ -180,23 +180,33 @@ final class PtyProcessTest extends TestCase
      */
     public function testQueuedInputLeavesNothingOnTheLoopWhenTheProcessGoes(): void
     {
-        $stopped = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; exec sleep 30'], __DIR__);
+        // Raw mode first, said with a mark — then the terminal pushes back instead of discarding.
+        // A fixed pause stood in for the mark, and a busy machine outran it.
+        $raw = function (PtyProcess $p): void {
+            $said = '';
+            $p->onOutput(static function (string $bytes) use (&$said): void {
+                $said .= $bytes;
+            });
+            $this->assertTrue($p->start());
+            $this->await(static function () use (&$said): bool {
+                return \str_contains($said, 'R');
+            }, what: 'raw mode set');
+        };
+        $stopped = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; printf R; exec sleep 30'], __DIR__);
         $this->procs[] = $stopped;
-        $this->assertTrue($stopped->start());
-        $this->pump(0.2); // raw mode is set: the terminal pushes back instead of discarding
+        $raw($stopped);
         $stopped->write(\str_repeat('x', times: 200_000));
         $watcher = $this->inputWatcher($stopped);
         $stopped->stop();
         $this->assertFalse(self::onTheLoop($watcher), 'stopped: the queue\'s watcher is gone');
 
         $exit = null;
-        $ended = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; sleep 0.3'], __DIR__);
+        $ended = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; printf R; sleep 1'], __DIR__);
         $this->procs[] = $ended;
         $ended->onExit(static function (int $c) use (&$exit): void {
             $exit = $c;
         });
-        $this->assertTrue($ended->start());
-        $this->pump(0.1);
+        $raw($ended);
         $ended->write(\str_repeat('x', times: 200_000));
         $watcher = $this->inputWatcher($ended);
         $this->await(static function () use (&$exit): bool {
