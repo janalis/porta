@@ -22,10 +22,10 @@ final class TodoTags
     /** The `TAG1|TAG2|…` alternation for a comma-separated tag list. */
     public static function pattern(string $tags): string
     {
-        $parts = \array_values(\array_filter(
+        $parts = \array_filter(
             \array_map(trim(...), \explode(',', $tags)),
             static fn (string $tag): bool => '' !== $tag,
-        ));
+        );
 
         return \implode('|', [] === $parts ? self::FALLBACK : $parts);
     }

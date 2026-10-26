@@ -144,7 +144,7 @@ final class FtpPluginTest extends TestCase
         $this->editor->handleInput('x');
         $this->editor->handleInput("\r");
 
-        $this->assertStringContainsString('Cannot keep the password in', $this->flashText($this->status));
+        $this->assertStringContainsString('Cannot keep the password in '.$home->dir, $this->flashText($this->status), 'where it could not');
     }
 
     public function testWithoutAHomeThereIsNoPasswordToRead(): void

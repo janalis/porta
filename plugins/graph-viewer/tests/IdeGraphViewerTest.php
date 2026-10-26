@@ -12,6 +12,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\OpenFocus;
+use Porta\GraphViewer\Graph\GraphRenderMode;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\Render\GraphCellGrid;
 use Porta\Help\LinkSpan;
@@ -27,6 +28,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Tests\Support\Widgets;
 use Porta\Widget\CodeEditorWidget;
@@ -150,8 +152,12 @@ final class IdeGraphViewerTest extends TestCase
                     );
 
                     // renderMode reaches the pane already on screen.
+                    $widget = Probe::get(Probe::get(Probe::get($lifecycle, 'plugins'), 'instances')['graph-viewer'], 'widget');
+                    $this->assertInstanceOf(GraphViewerWidget::class, $widget);
+                    $this->assertSame(GraphRenderMode::Bitmap, Probe::get($widget, 'mode'), 'the default, before');
                     $settings->change('graph-viewer', 'renderMode', 'cells');
                     $lifecycle->onPluginSettingChanged('graph-viewer', 'renderMode', 'cells');
+                    $this->assertSame(GraphRenderMode::Cells, Probe::get($widget, 'mode'));
                     $this->await(
                         static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'),
                         what: 'the standing pane switching to cell rendering',
@@ -249,7 +255,8 @@ final class IdeGraphViewerTest extends TestCase
 
                     // Exporting the broken document fails the same loud way.
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
-                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Export failed'), what: 'the export-failure flash');
+                    $this->await(static fn (): bool => \str_starts_with(Toasts::last($ide), 'Export failed: '), what: 'the export-failure flash');
+                    $this->assertStringNotContainsString('%error%', Toasts::last($ide), 'and why');
                 },
             ],
         );
@@ -506,6 +513,7 @@ final class IdeGraphViewerTest extends TestCase
                 Services::resolve($ide, DocumentReplacer::class)->replace($active, \sprintf($syntax, 'Unsaved'));
                 $commands = Services::resolve($ide, CommandRegistry::class);
                 $commands->run('graph-viewer:export-svg');
+                $this->assertStringNotContainsString('Export failed', \implode("\n", Toasts::all($ide)), 'drawn natively, and by nothing else');
                 $this->await(static fn (): bool => \is_file($project->path('native.svg')), what: 'the native SVG export');
                 $svg = (string) \file_get_contents($project->path('native.svg'));
                 $this->assertStringContainsString(\sprintf('>'.$exportLabel.'</text>', 'Unsaved'), $svg);
@@ -554,6 +562,7 @@ final class IdeGraphViewerTest extends TestCase
 
                     // The library draws it through the same tool: an export lands beside the document.
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
+                    $this->assertStringNotContainsString('Export failed', \implode("\n", Toasts::all($ide)), 'drawn by PlantUML, and by nothing else');
                     $this->await(static fn (): bool => \is_file($project->path('seq.png')), what: 'the PlantUML PNG export');
                     $this->assertStringStartsWith("\x89PNG", (string) \file_get_contents($project->path('seq.png')));
                 },
@@ -713,6 +722,7 @@ final class IdeGraphViewerTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-pdf');
                     $this->await(static fn (): bool => \is_file($project->path('architecture.pdf')), what: 'the PDF export');
                     $this->assertStringContainsString('-Tpdf -o', (string) \file_get_contents($project->path('architecture.pdf')), 'dot drew the PDF itself');
+                    $this->await(static fn (): bool => \in_array('Exported architecture.pdf', Toasts::all($ide), strict: true), what: 'the export said, by name');
                 },
             ],
         );
@@ -853,10 +863,11 @@ final class IdeGraphViewerTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:architecture');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Cannot write'), what: 'the unwritable flash');
 
-                    // A text tab active: the plugin export handler self-guards.
+                    // A text tab active: the plugin export handler self-guards — a
+                    // graphviz-less export would have failed and said so, there and then.
+                    $toasts = Toasts::all($ide);
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-svg');
-                    $this->pump(0.1);
-                    $this->assertStringNotContainsString('Exported', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertSame($toasts, Toasts::all($ide), 'nothing said: nothing tried');
                 },
             ],
         );
