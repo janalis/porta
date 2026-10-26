@@ -12,12 +12,23 @@ final class SearchPattern
 {
     public static function build(string $query, MatchMode $match, WordMode $word, CaseMode $case): string
     {
-        $body = MatchMode::Regex === $match ? $query : \preg_quote($query, delimiter: '/');
+        $body = MatchMode::Regex === $match ? self::delimited($query) : \preg_quote($query, delimiter: '/');
         if (WordMode::WholeWord === $word) {
             $body = '\b(?:'.$body.')\b';
         }
 
         return '/'.$body.'/'.(CaseMode::Sensitive === $case ? '' : 'i');
+    }
+
+    /**
+     * A regex query with its bare `/` escaped, since `/` delimits the pattern:
+     * `src/Foo` is a slash to the user, not the end of the regex. An escape
+     * pair is kept whole, so `\/` stays one escaped slash, and `\\/` (a
+     * backslash, then a slash) gets its slash escaped.
+     */
+    private static function delimited(string $query): string
+    {
+        return (string) \preg_replace_callback('~\\\\.|/~s', static fn (array $m): string => '/' === $m[0] ? '\\/' : $m[0], $query);
     }
 
     /**

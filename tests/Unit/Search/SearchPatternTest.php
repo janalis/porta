@@ -19,4 +19,17 @@ final class SearchPatternTest extends TestCase
         $this->assertSame('/\b(?:foo)\b/i', SearchPattern::build('foo', MatchMode::Literal, WordMode::WholeWord, CaseMode::Insensitive));
         $this->assertSame('/\b(?:fo+)\b/', SearchPattern::build('fo+', MatchMode::Regex, WordMode::WholeWord, CaseMode::Sensitive));
     }
+
+    /** `/` delimits the built pattern, so a regex of a path is a path — not a bad regex. */
+    public function testARegexSlashIsTheUsersNotTheDelimiter(): void
+    {
+        $build = static fn (string $query): string => SearchPattern::build($query, MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive);
+
+        $this->assertSame('/src\/Fo+/', $build('src/Fo+'));
+        $this->assertMatchesRegularExpression($build('src/Fo+'), 'src/Foo');
+        $this->assertSame('/a\/b/', $build('a\/b'), 'already escaped: kept as typed');
+        $this->assertSame('/a\\\\\/b/', $build('a\\\\/b'), 'an escaped backslash, then a bare slash');
+        $this->assertMatchesRegularExpression($build('a\\\\/b'), 'a\/b');
+        $this->assertSame('/a\.b\/\//', $build("a\\.b//"), 'other escapes untouched, every bare slash escaped');
+    }
 }

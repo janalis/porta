@@ -19,13 +19,16 @@ final class TodoTags
 
     private const array FALLBACK = ['TODO', 'FIXME'];
 
-    /** The `TAG1|TAG2|…` alternation for a comma-separated tag list. */
+    /** The `TAG1|TAG2|…` alternation for a comma-separated tag list, each tag matched as it is written. */
     public static function pattern(string $tags): string
     {
         $parts = \array_filter(
             \array_map(trim(...), \explode(',', $tags)),
             static fn (string $tag): bool => '' !== $tag,
         );
+        // A tag is literal text: `FIX.ME` is not FIXAME, and `TODO(` no bad regex. The
+        // set is what both grep -E and PCRE read as special, each escaped the same way.
+        $parts = \array_map(static fn (string $tag): string => (string) \preg_replace('~[.\\\\\[\](){}*+?|^$]~', replacement: '\\\\$0', subject: $tag), $parts);
 
         return \implode('|', [] === $parts ? self::FALLBACK : $parts);
     }
