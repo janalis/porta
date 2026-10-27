@@ -138,4 +138,13 @@ final class FileIndexTest extends TestCase
         $index->refresh();
         $this->assertContains('b.php', \array_column($index->entries(), 'path'));
     }
+
+    /** Go to File folds every letter: été finds Été.md. */
+    public function testGoToFileFoldsEveryLetter(): void
+    {
+        $project = new TempProject(['docs/Été.md' => '', 'docs/ete.md' => '']);
+
+        $this->assertSame(['docs/Été.md'], new FileIndex($project->dir)->search('été', limit: 10));
+        $this->assertSame(['docs/Été.md'], new FileIndex($project->dir)->search('ÉTÉ', limit: 10), 'the query folds as well as the path');
+    }
 }

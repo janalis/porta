@@ -25,7 +25,8 @@ final class FuzzyMatcher
      */
     public static function score(string $haystack, string $query, int $boundaryStart = 0): ?int
     {
-        return self::scoreLowered(\strtolower($haystack), \strtolower($query), $boundaryStart, $haystack);
+        // Every letter folded, not ASCII alone: é finds the É of a name.
+        return self::scoreLowered(\mb_strtolower($haystack), \mb_strtolower($query), $boundaryStart, $haystack);
     }
 
     /**
@@ -59,7 +60,9 @@ final class FuzzyMatcher
             if ($wordBoundary) {
                 $score += 4; // word-boundary start
             }
-            if (!$wordBoundary && null !== $original && \ctype_lower($original[$pos - 1]) && \ctype_upper($original[$pos])) {
+            // The hump reads the original at the lowered offsets: only where
+            // lowering kept every byte where it was (an İ does not).
+            if (!$wordBoundary && null !== $original && \strlen($original) === $length && \ctype_lower($original[$pos - 1]) && \ctype_upper($original[$pos])) {
                 $score += 4; // camelCase hump
             }
             $prevPos = $pos;

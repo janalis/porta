@@ -66,7 +66,7 @@ final class FileIndex
 
         /** @var list<array{0: int, 1: string}> $scored */
         $scored = [];
-        $lower = \strtolower($query);
+        $lower = \mb_strtolower($query);
         foreach ($entries as $entry) {
             // Pre-lowered haystack (no camelCase noise on paths, by design);
             // the basename offset is the primary segment.
@@ -113,7 +113,7 @@ final class FileIndex
         \sort($paths);
 
         return \array_map(static function (string $path): array {
-            $lower = \strtolower($path);
+            $lower = \mb_strtolower($path);
 
             return ['path' => $path, 'lower' => $lower, 'boundary' => \strlen($lower) - \strlen(\basename($lower))];
         }, $paths);

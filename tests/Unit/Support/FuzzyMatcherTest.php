@@ -87,4 +87,18 @@ final class FuzzyMatcherTest extends TestCase
         $this->assertSame([], FuzzyMatcher::positions('abc', ''));
         $this->assertSame([1, 2], FuzzyMatcher::positions('éÉè', 'éè'), 'by character, not by byte');
     }
+
+    /** Every letter is folded, not ASCII alone: é finds the É of a name — and a name whose lowercase is longer keeps its score sane. */
+    public function testEveryLetterFolds(): void
+    {
+        $this->assertNotNull(FuzzyMatcher::score('ÉtéReport', 'été'));
+        $this->assertNotNull(FuzzyMatcher::score('étéReport', 'ÉTÉ'), 'the query folds as well as the name');
+        $this->assertNotNull(FuzzyMatcher::score('İstanbulSeries', 'series'), 'İ lowers to two code points: the hump bonus is skipped, the match stands');
+    }
+
+    /** A capital right after a lowercase letter is a hump, read from the letter just before it. */
+    public function testAHumpIsACapitalRightAfterALowercaseLetter(): void
+    {
+        $this->assertGreaterThan(FuzzyMatcher::score('Xabc', 'b'), FuzzyMatcher::score('XaBc', 'b'));
+    }
 }

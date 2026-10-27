@@ -66,7 +66,7 @@ final class SettingsSearchIndex
 
         /** @var list<array{0: int, 1: SettingsSearchEntry}> $scored */
         $scored = [];
-        $lower = \strtolower(\trim($query));
+        $lower = \mb_strtolower(\trim($query));
         foreach ($entries as $row) {
             $score = FuzzyMatcher::scoreLowered($row['lower'], $lower, $row['boundary']);
             if (null !== $score) {
@@ -128,7 +128,7 @@ final class SettingsSearchIndex
                 $haystack = $page->label.' '.$row->label;
                 $entries[] = [
                     'entry' => new SettingsSearchEntry($page->id, $row->key, $row->label, $page->label),
-                    'lower' => \strtolower($haystack),
+                    'lower' => \mb_strtolower($haystack),
                     'boundary' => \strlen($page->label) + 1,
                 ];
             }

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
 use Porta\Settings\SettingsPages;
+use Porta\Settings\SettingsSearchEntry;
 use Porta\Settings\SettingsSearchIndex;
 use Porta\Settings\SettingsSection;
 use Porta\Tests\Support\MutableSettingsSection;
@@ -142,5 +143,15 @@ final class SettingsSearchIndexTest extends TestCase
     private function section(string $id, string $label, array $rows): SettingsSection
     {
         return new MutableSettingsSection($id, $label, $rows);
+    }
+
+    /** A label in any script is found ignoring its case: THÈME finds Thème. */
+    public function testALabelIsFoundIgnoringTheCaseOfEveryLetter(): void
+    {
+        $index = new SettingsSearchIndex(new SettingsPages([$this->section('interface', 'Interface', ['theme' => 'Thème', 'screen' => 'Écran'])]), new Translator());
+        $found = static fn (string $query): array => \array_map(static fn (SettingsSearchEntry $e): string => $e->label, $index->search($query, limit: 5));
+
+        $this->assertSame(['Thème'], $found(' THÈME '), 'the query folded, and its spaces are not part of it');
+        $this->assertSame(['Écran'], $found('écran'), 'the label folds as well as the query');
     }
 }
