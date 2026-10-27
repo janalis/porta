@@ -17,7 +17,19 @@ final class SearchPattern
             $body = '\b(?:'.$body.')\b';
         }
 
-        return '/'.$body.'/'.(CaseMode::Sensitive === $case ? '' : 'i');
+        // Unicode (`u`): ignoring case folds É to é as well as E to e, and
+        // \w and \b know an accented letter — for a query that is UTF-8 at all.
+        return '/'.$body.'/'.(CaseMode::Sensitive === $case ? '' : 'i').(\mb_check_encoding($query, encoding: 'UTF-8') ? 'u' : '');
+    }
+
+    /**
+     * $pattern made fit for $subject: as built, or — for a subject that is not
+     * UTF-8, which a Unicode pattern refuses outright — matched byte for byte,
+     * so a Latin-1 line is still searched, its case folded only for ASCII.
+     */
+    public static function fit(string $pattern, string $subject): string
+    {
+        return \str_ends_with($pattern, 'u') && !\mb_check_encoding($subject, encoding: 'UTF-8') ? \substr($pattern, offset: 0, length: -1) : $pattern;
     }
 
     /**

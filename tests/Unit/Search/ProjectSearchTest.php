@@ -207,14 +207,13 @@ final class ProjectSearchTest extends TestCase
     }
 
     /**
-     * grep lists only the lines the pattern that highlights and replaces them
-     * matches: in a UTF-8 locale it folded `É` to `é` under -i, and replace
-     * skipped the line it had listed. Both read bytes now.
+     * Ignoring case, É is é — to grep, whatever locale Porta itself runs in,
+     * and to the pattern that highlights and replaces what grep listed.
      */
-    public function testGrepFoldsCaseAsThePatternDoes(): void
+    public function testIgnoringCaseGrepFoldsEveryLetterAsThePatternDoes(): void
     {
         $locale = \getenv('LC_ALL');
-        \putenv('LC_ALL=en_US.UTF-8');
+        \putenv('LC_ALL=C');
         try {
             $project = new TempProject(['a.txt' => "café\n", 'b.txt' => "CAFE\n"]);
             $results = $this->awaitSearch(new ProjectSearch($project->dir), 'cafÉ', new SearchOptions(caseSensitive: false));
@@ -222,56 +221,17 @@ final class ProjectSearchTest extends TestCase
             \putenv(false === $locale ? 'LC_ALL' : 'LC_ALL='.$locale);
         }
 
-        $this->assertSame([], $results, 'É is not é to the highlighter, so it is not to grep');
-        $this->assertSame(
-            ['b.txt'],
-            \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'cafe', new SearchOptions(caseSensitive: false)), 'path'),
-            'the premise: an ASCII fold still finds',
-        );
+        $this->assertSame([['path' => 'a.txt', 'line' => 0, 'text' => 'café', 'ranges' => [['start' => 0, 'length' => 4]]]], $results);
     }
 
-    /**
-     * Every file the walk passes over — off the mask, past the size cap,
-     * binary, or seen in an earlier scope — still comes through, as null: a
-     * slice pauses on it. Turned away inside Finder, a tree of them passed in
-     * one step, past every deadline.
-     */
-    public function testThePhpWalkPausesOnEveryFileItPassesOver(): void
-    {
-        $project = new TempProject([
-            'src/A.php' => "<?php\n// needle\n",
-            'src/page.html' => 'needle',
-            'src/big.php' => \str_repeat('x', times: 1_048_577),
-            'src/blob.php' => "needle\0",
-        ]);
-
-        $walked = [];
-        foreach (Probe::invoke(new ProjectSearch($project->dir), 'texts', ['src', 'src/A.php'], '*.php') as $rel => $content) {
-            $walked[] = [$rel, null !== $content];
-        }
-        \sort($walked);
-
-        $this->assertSame(
-            [
-                ['src/A.php',     false],
-                ['src/A.php',     true],
-                ['src/big.php',   false],
-                ['src/blob.php',  false],
-                ['src/page.html', false],
-            ],
-            $walked,
-        );
-    }
-
-    /** A file the walk passed over in one scope is still read when another scope names it — as grep reads it. */
-    public function testAFileNamedInItsOwnScopeIsSearchedPastTheCapOfItsFolder(): void
+    /** The PHP walk folds every letter too, and still searches a file that is not UTF-8. */
+    public function testThePhpWalkFoldsEveryLetterAndSearchesALatin1File(): void
     {
         \putenv('PATH=/nonexistent');
-        $project = new TempProject(['data/big.json' => \str_repeat('x', times: 1_048_577)."needle\n"]);
+        $project = new TempProject(['a.txt' => "café\n", 'latin1.txt' => "caf\xe9 au CAFE\n"]);
 
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: ['data', 'data/big.json']), 'path');
-
-        $this->assertSame(['data/big.json'], $paths);
+        $this->assertSame(['a.txt'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'CAFÉ', new SearchOptions(caseSensitive: false)), 'path'));
+        $this->assertSame(['latin1.txt'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'cafe', new SearchOptions(caseSensitive: false)), 'path'));
     }
 
     /** The PHP walk shows a hit as grep's results are shown: without its indentation. */

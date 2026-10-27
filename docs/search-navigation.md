@@ -40,7 +40,8 @@ a caret with the match selected, the bar closes, and what you type replaces
 them all. It honours the query and its options, which the editor's word-based
 `Ctrl+Alt+Shift+J` cannot. Without `Aa`,
 an all-lower-case query ignores case and one with a capital does not (smart
-case). Note that in this bar `Alt+R` means replace; the Find-in-Files modal
+case) — for every letter, not only ASCII: `été` finds `ÉTÉ`, as it does in
+Find in Files. Note that in this bar `Alt+R` means replace; the Find-in-Files modal
 uses `Alt+R` for its regex toggle instead. In regex mode the replacement is a
 preg replacement pattern: `$1` inserts the first captured group, `\$` a literal
 dollar. An invalid half-typed pattern shows `[bad regex]` in place of the match

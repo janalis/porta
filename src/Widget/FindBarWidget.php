@@ -526,9 +526,12 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         $this->patternTooComplex = false;
         $query = $this->query->value();
         // Smart case unless Aa is on; it carries into regex mode via the i flag.
-        $caseInsensitive = !$this->matchCase && \strtolower($query) === $query;
+        $caseInsensitive = !$this->matchCase && \mb_strtolower($query) === $query;
+        // Folding a letter past ASCII is the pattern's job: lowering the line
+        // by hand can change its length in bytes, and every offset after it.
+        $byPattern = $this->regex || $this->wholeWord || ($caseInsensitive && 1 === \preg_match('/[^\x00-\x7F]/', $query));
 
-        if ($this->regex || $this->wholeWord) {
+        if ($byPattern) {
             $pattern = SearchPattern::build(
                 $query,
                 $this->regex ? MatchMode::Regex : MatchMode::Literal,
@@ -547,7 +550,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
                     continue;
                 }
                 \set_error_handler(static fn (): bool => true);
-                $count = \preg_match_all($pattern, $line, $found, \PREG_OFFSET_CAPTURE);
+                $count = \preg_match_all(SearchPattern::fit($pattern, $line), $line, $found, \PREG_OFFSET_CAPTURE);
                 \restore_error_handler();
                 if (false === $count) {
                     // The engine gave up on this line: skip it, but remember,
@@ -569,7 +572,7 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
                 }
             }
         }
-        if (!$this->regex && !$this->wholeWord) {
+        if (!$byPattern) {
             $needle = $caseInsensitive ? \strtolower($query) : $query;
             $needleLen = \strlen($query);
 
@@ -694,10 +697,10 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             $this->query->value(),
             MatchMode::Regex,
             $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
-            \strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
+            \mb_strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
         );
         \set_error_handler(static fn (): bool => true);
-        $expanded = \preg_replace($pattern, $replacement, $matched, limit: 1);
+        $expanded = \preg_replace(SearchPattern::fit($pattern, $matched), $replacement, $matched, limit: 1);
         \restore_error_handler();
 
         return \is_string($expanded) ? $expanded : $replacement;

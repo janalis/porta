@@ -132,10 +132,9 @@ final class ProjectSearch
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
         // spawns it and reports an exit code — one fallback serves both.
         $fallback = fn () => $this->sliced($this->searchWithPhp($pattern, $paths, $mask), $onDone);
-        // Bytes, as the pattern that highlights and replaces reads them: in a
-        // UTF-8 locale grep folds `É` to `é` under -i, and a line it listed was
-        // then one replace skipped.
-        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C']);
+        // UTF-8, as the pattern that highlights and replaces reads it: under -i
+        // grep folds É to é as that pattern does, whatever locale Porta runs in.
+        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
         $started = $process->start(
             // grep's own failure (2, or 126/127 for a binary that cannot run)
             // with nothing printed is no answer; 1 is grep saying "no match",
@@ -252,7 +251,7 @@ final class ProjectSearch
             return [];
         }
         \set_error_handler(static fn (): bool => true);
-        $count = \preg_match_all($pattern, $text, $matches, \PREG_OFFSET_CAPTURE);
+        $count = \preg_match_all(SearchPattern::fit($pattern, $text), $text, $matches, \PREG_OFFSET_CAPTURE);
         \restore_error_handler();
         if (false === $count) {
             $this->gaveUp = true;
@@ -281,7 +280,7 @@ final class ProjectSearch
         foreach ($this->texts($paths, $mask) as $rel => $content) {
             // Not explode('') for a file passed over: its one empty line is a match for `^`.
             foreach (null === $content ? [] : \explode("\n", $content) as $lineIndex => $line) {
-                if (1 !== \preg_match($pattern, $line)) {
+                if (1 !== \preg_match(SearchPattern::fit($pattern, $line), $line)) {
                     continue;
                 }
 
@@ -493,7 +492,7 @@ final class ProjectSearch
      */
     public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options): string
     {
-        $pattern = $this->pattern($query, $options);
+        $pattern = SearchPattern::fit($this->pattern($query, $options), $content);
         // Preserve-case (literal replace only): map each match's casing onto the
         // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
         if ($options->preserveCase && !$options->regex) {

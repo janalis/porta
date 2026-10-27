@@ -12,6 +12,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\I18n\Translator;
 use Porta\Tests\Support\CompactScreen;
 use Porta\Tests\Support\FakeFindTarget;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\FindBarWidget;
@@ -629,6 +630,23 @@ final class FindBarWidgetTest extends TestCase
         $this->type($bar, 'a');
 
         $this->assertCount(5000, \array_merge(...\array_values($bar->getMatchesByLine())), 'the scan stops at the cap');
+    }
+
+    /** A lowercase query matched ÉTÉ ignoring case, so its replacement is expanded ignoring case too. */
+    public function testARegexReplaceExpandsWhatALowercaseQueryMatched(): void
+    {
+        $doc = new Document("ÉTÉ\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, 'été');
+        $bar->handleInput("\t"); // → replace field
+        $this->type($bar, '[$0]');
+
+        $bar->handleInput("\x1br");
+
+        $this->assertSame("[ÉTÉ]\n", $doc->getText());
     }
 
     public function testRegexReplaceExpandsBackreferences(): void
@@ -1383,5 +1401,35 @@ final class FindBarWidgetTest extends TestCase
 
         $this->assertCount(1, $rows);
         $this->assertStringStartsWith('Paste', AnsiUtils::stripAnsiCodes($rows[0]));
+    }
+
+    /** Smart case knows every letter: é finds É, and an É in the query asks for case. */
+    public function testSmartCaseFoldsEveryLetter(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("Été\nété\n")), mode: FindMode::Find);
+
+        $this->type($bar, 'été');
+        $this->assertSame([[0, 0, 5], [1, 0, 5]], \array_map(static fn (array $m): array => [$m['line'], $m['start'], $m['end']], Probe::get($bar, 'matches')), 'é finds É, at its bytes');
+
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("Été\nété\n")), mode: FindMode::Find);
+        $this->type($bar, 'Été');
+        $this->assertSame([0], \array_column(Probe::get($bar, 'matches'), 'line'), 'an É in the query asks for case');
+    }
+
+    /** A regex of whole words folds every letter too: é.é finds ÉTÉ. */
+    public function testAWholeWordRegexFoldsEveryLetter(): void
+    {
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("un ÉTÉ chaud\n")), mode: FindMode::Find);
+        $bar->handleInput("\x1bx"); // regex
+        $bar->handleInput("\x1bw"); // whole word
+        $this->type($bar, 'é.é');
+
+        $this->assertSame([[0, 3, 8]], \array_map(static fn (array $m): array => [$m['line'], $m['start'], $m['end']], Probe::get($bar, 'matches')));
     }
 }
