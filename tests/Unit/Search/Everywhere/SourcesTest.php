@@ -17,16 +17,18 @@ use Porta\Search\FileIndex;
 use Porta\Search\ProjectSearch;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 
 final class SourcesTest extends TestCase
 {
     use PreservesPath;
+    use PumpsLoop;
 
     protected function setUp(): void
     {
-        // No grep on PATH → ProjectSearch takes its synchronous PHP fallback, so
-        // the TextSource emit is deterministic in-test.
+        // No grep on PATH → ProjectSearch takes its PHP walk: the same engine
+        // on every machine.
         \putenv('PATH=/nonexistent');
     }
 
@@ -37,6 +39,10 @@ final class SourcesTest extends TestCase
         $run(static function (array $emitted) use (&$hits): void {
             $hits = $emitted;
         });
+        // The text source answers between frames; the rest at once.
+        $this->await(static function () use (&$hits): bool {
+            return null !== $hits;
+        }, what: 'the run to emit its batch of hits');
         \assert(null !== $hits, description: 'the run invoked the emit callback with a batch of hits');
 
         return $hits;

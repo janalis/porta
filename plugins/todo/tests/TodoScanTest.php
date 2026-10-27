@@ -20,6 +20,7 @@ use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\RecordingChangeMarkSink;
 use Porta\Tests\Support\RecordingDiagnosticsSink;
 use Porta\Tests\Support\RecordingFileOpener;
@@ -57,14 +58,14 @@ use Symfony\Component\Tui\Render\RenderContext;
 final class TodoScanTest extends TestCase
 {
     use PreservesPath;
+    use PumpsLoop;
 
     private BottomDock $dock;
     private ResultsPanelWidget $results;
 
     protected function setUp(): void
     {
-        // No grep on PATH → the engine's synchronous PHP fallback, so the scan
-        // completes inside run() without pumping the event loop.
+        // No grep on PATH → the engine's PHP walk: one file system everywhere.
         \putenv('PATH=/nonexistent');
     }
 
@@ -117,6 +118,13 @@ final class TodoScanTest extends TestCase
         return $api;
     }
 
+    /** Run a scan and wait it out: the walk answers between frames. */
+    private function scan(PluginApi $api, TempProject $project): void
+    {
+        new TodoScan($api, new ProjectSearch($project->dir))->run();
+        $this->await(fn (): bool => !\str_contains($this->results->statusText(), 'searching'), what: 'the scan to finish');
+    }
+
     private function panel(): string
     {
         return AnsiUtils::stripAnsiCodes(\implode("\n", $this->results->render(new RenderContext(120, 12))));
@@ -130,7 +138,7 @@ final class TodoScanTest extends TestCase
         ]);
         $api = $this->api($project);
 
-        new TodoScan($api, new ProjectSearch($project->dir))->run();
+        $this->scan($api, $project);
 
         $this->assertSame('TODO', $this->results->getTitle());
         $this->assertNull($this->dock->mode(), 'a contributed tool serves no core mode');
@@ -146,7 +154,7 @@ final class TodoScanTest extends TestCase
         $project = new TempProject(['src/A.php' => "<?php\n// HACK temporary\n// TODO later\n"]);
         $api = $this->api($project, tags: 'HACK');
 
-        new TodoScan($api, new ProjectSearch($project->dir))->run();
+        $this->scan($api, $project);
 
         $plain = $this->panel();
         $this->assertStringContainsString('HACK temporary', $plain, 'HACK is scanned when configured');
@@ -155,7 +163,7 @@ final class TodoScanTest extends TestCase
         // The setting is read per RUN, so an edit lands on the next scan with
         // nothing to invalidate — the live-apply path the core version needed.
         $api->changeSetting('tags', '  ,  ');
-        new TodoScan($api, new ProjectSearch($project->dir))->run();
+        $this->scan($api, $project);
         $this->assertStringContainsString('TODO later', $this->panel(), 'blank tags fall back to TODO|FIXME');
     }
 
@@ -164,8 +172,8 @@ final class TodoScanTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n// TODO one\n"]);
         $api = $this->api($project);
 
-        new TodoScan($api, new ProjectSearch($project->dir))->run();
-        new TodoScan($api, new ProjectSearch($project->dir))->run();
+        $this->scan($api, $project);
+        $this->scan($api, $project);
 
         $this->assertCount(1, $this->dock->aliveTabs(), 'the tool id keys the tab; F5 is a refresh, not a new tab');
     }

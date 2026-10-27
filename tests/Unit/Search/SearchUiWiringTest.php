@@ -35,6 +35,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
 use Porta\Ui\BidiTui;
@@ -64,6 +65,7 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 final class SearchUiWiringTest extends TestCase
 {
     use PreservesPath;
+    use PumpsLoop;
 
     private CodeEditorWidget $editor;
     private BottomDock $dock;
@@ -77,8 +79,8 @@ final class SearchUiWiringTest extends TestCase
 
     protected function setUp(): void
     {
-        // No grep on PATH → ProjectSearch takes its synchronous PHP fallback,
-        // so a search's results are available immediately, deterministically.
+        // No grep on PATH → ProjectSearch takes its PHP walk: the same engine
+        // on every machine.
         \putenv('PATH=/nonexistent');
     }
 
@@ -240,6 +242,7 @@ final class SearchUiWiringTest extends TestCase
         $searchController = Probe::get($wiring, 'projectSearch');
         $searchController->search('needle');
         $searchController->promoteToPane(); // binds a real, active Search-mode dock tab
+        $this->await(static fn (): bool => 1 === \count(Probe::get($searchController, 'lastSearchResults')), what: 'the first run to answer');
         $this->assertCount(1, Probe::get($searchController, 'lastSearchResults'), 'the query matched once before the rerun');
 
         // A new matching file appears on disk after the first run: a real
@@ -247,6 +250,7 @@ final class SearchUiWiringTest extends TestCase
         $project->write('b.php', "<?php\n\$needle = 2;\n");
         $wiring->onRerunRequested(new ResultsRerunRequested());
 
+        $this->await(static fn (): bool => 2 === \count(Probe::get($searchController, 'lastSearchResults')), what: 'the rerun to answer');
         $this->assertCount(2, Probe::get($searchController, 'lastSearchResults'), 'the rerun re-scanned the project and found the new match too');
     }
 

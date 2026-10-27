@@ -184,6 +184,22 @@ final class ProjectSearchTest extends TestCase
         // quietly returning fewer results is worse than the find bar doing it,
         // because a handful of skipped files among thousands is invisible.
         $this->assertTrue($search->gaveUp(), 'the engine gave up and the search admits it');
+
+        // Skipped, that file — not the rest of the scan: a file after it still answers.
+        $project->write('src/B.php', "a\nz\n");
+        $after = $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true), scope: ['src/A.php', 'src/B.php']);
+        $this->assertSame(['src/B.php'], \array_column($after, 'path'));
+    }
+
+    /** The PHP walk shows a hit as grep's results are shown: without its indentation. */
+    public function testThePhpWalkShowsAHitTrimmed(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n    \$needle = 1;  \n"]);
+
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+
+        $this->assertSame(['$needle = 1;'], \array_column($results, 'text'));
     }
 
     /**
@@ -549,6 +565,41 @@ final class ProjectSearchTest extends TestCase
         $cache = new TempProject([]);
         $this->awaitSearch(new ProjectSearch($cache->dir, new FakeRemoteTransport($project->dir)->filesystem($cache->dir)), '\d+', $regex);
         $this->assertSame(['-E -- \d+ .'], \array_map($tail, $asked()), "the server's grep is not this one");
+    }
+
+    /**
+     * The PHP walk holds the loop a slice at a time — a large project used to
+     * freeze the UI for the whole scan (12 s over this repository) — and a
+     * new search or a cancel drops the rest of the old one.
+     */
+    public function testThePhpWalkAnswersBetweenFramesAndStopsWhenCancelled(): void
+    {
+        $scan = static function (): \Generator {
+            for ($file = 0; $file < 10; ++$file) {
+                \usleep(3000); // a file that takes 3 ms: ten of them outlast a slice
+                yield;
+            }
+
+            return [['path' => 'a.php', 'line' => 0, 'text' => 'done', 'ranges' => []]];
+        };
+        $search = new ProjectSearch('/tmp');
+        $results = null;
+        $onDone = static function (array $r) use (&$results): void {
+            $results = $r;
+        };
+
+        Probe::invoke($search, 'sliced', $scan(), $onDone);
+        $this->assertNull($results, 'the scan yields the loop before it is through');
+        $this->await(static function () use (&$results): bool {
+            return null !== $results;
+        }, what: 'the rest of the scan, on later turns');
+        $this->assertSame('done', $results[0]['text'] ?? null);
+
+        $results = null;
+        Probe::invoke($search, 'sliced', $scan(), $onDone);
+        $search->cancel();
+        $this->pump(0.1);
+        $this->assertNull($results, 'cancelled: the rest never runs');
     }
 
     public function testParseSkipsMalformedGrepLines(): void

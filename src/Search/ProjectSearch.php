@@ -7,6 +7,7 @@ namespace Porta\Search;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Support\AsyncProcess;
 use Porta\Support\Files;
+use Revolt\EventLoop;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Process\Exception\RuntimeException as ProcessRuntimeException;
 use Symfony\Component\Process\ExecutableFinder;
@@ -17,7 +18,8 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
  * Asynchronous project-wide text search.
  *
  * Prefers `grep -rn` streamed through an {@see AsyncProcess} on the event
- * loop; falls back to a synchronous PHP walk when grep is unavailable.
+ * loop; falls back to a PHP walk when grep is unavailable, run in slices
+ * between frames so a large project never freezes the UI.
  * Results are capped to keep the panel responsive.
  */
 final class ProjectSearch
@@ -25,7 +27,13 @@ final class ProjectSearch
     public const int MAX_RESULTS = 500;
     private const array EXCLUDES = ['.git', 'node_modules', 'vendor', '.idea', '.vscode'];
 
+    /** How long one slice of the PHP walk may hold the loop: half a frame. */
+    private const int SLICE_NS = 8_000_000;
+
     private ?AsyncProcess $process = null;
+
+    /** The PHP walk's next slice, deferred on the loop. */
+    private ?string $slice = null;
 
     /** The resolved `grep` binary; see {@see findGrep()} — resolved once, not per search. */
     private ?string $grep = null;
@@ -75,8 +83,8 @@ final class ProjectSearch
             // A malformed regex yields no results rather than a crash.
             $options->regex && !SearchPattern::compiles($pattern) => $onDone([]),
             // A query spanning lines can't go through line-based grep: scan whole files.
-            \str_contains($query, "\n") => $onDone($this->searchMultiline($pattern, $paths, $mask)),
-            null === ($grep = $this->findGrep()) => $onDone($this->searchWithPhp($query, $options, $paths, $mask)),
+            \str_contains($query, "\n") => $this->sliced($this->searchMultiline($pattern, $paths, $mask), $onDone),
+            null === ($grep = $this->findGrep()) => $this->sliced($this->searchWithPhp($pattern, $paths, $mask), $onDone),
             default => $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask),
         };
     }
@@ -120,7 +128,7 @@ final class ProjectSearch
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
         // spawns it and reports an exit code — one fallback serves both.
-        $fallback = fn () => $onDone($this->searchWithPhp($query, $options, $paths, $mask));
+        $fallback = fn () => $this->sliced($this->searchWithPhp($pattern, $paths, $mask), $onDone);
         $process = new AsyncProcess($command, $this->rootDir);
         $started = $process->start(
             // grep's own failure (2, or 126/127 for a binary that cannot run)
@@ -152,6 +160,33 @@ final class ProjectSearch
     {
         $this->process?->cancel();
         $this->process = null;
+        if (null !== $this->slice) {
+            EventLoop::cancel($this->slice);
+            $this->slice = null;
+        }
+    }
+
+    /**
+     * Run $scan — which yields after each file — a slice at a time: the first
+     * now, so a small project answers at once, the rest deferred while the
+     * loop draws and reads keys in between.
+     *
+     * @param \Generator<int, null, mixed, list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>> $scan
+     * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void                 $onDone
+     */
+    private function sliced(\Generator $scan, callable $onDone): void
+    {
+        $until = \hrtime(true) + self::SLICE_NS;
+        while ($scan->valid() && \hrtime(true) < $until) {
+            $scan->next();
+        }
+        if ($scan->valid()) {
+            $this->slice = EventLoop::defer(fn () => $this->sliced($scan, $onDone));
+
+            return;
+        }
+        $this->slice = null;
+        $onDone($scan->getReturn());
     }
 
     /** @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void $onDone */
@@ -228,56 +263,82 @@ final class ProjectSearch
     }
 
     /**
+     * The PHP walk, a line at a time; yields after each file.
+     *
      * @param list<string> $paths scope paths (each a directory, a single file, or `.`)
      *
-     * @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>
+     * @return \Generator<int, null, mixed, list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>>
      */
-    private function searchWithPhp(string $query, SearchOptions $options, array $paths, string $mask): array
+    private function searchWithPhp(string $pattern, array $paths, string $mask): \Generator
     {
-        $pattern = $this->pattern($query, $options);
-        $globs = $this->maskGlobs($mask);
         $results = [];
-        $seen = [];
-        foreach ($paths as $scope) {
-            foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
-                if (null !== ($seen[$rel] ?? null)) {
-                    continue; // overlapping scopes (e.g. open files under a dir) match once
-                }
-                $seen[$rel] = true;
-                $content = $this->readFile($abs);
-                if (\str_contains($content, "\0")) {
+        foreach ($this->texts($paths, $mask) as $rel => $content) {
+            foreach (\explode("\n", $content) as $lineIndex => $line) {
+                if (1 !== \preg_match($pattern, $line)) {
                     continue;
                 }
-                foreach (\explode("\n", $content) as $lineIndex => $line) {
-                    if (1 !== \preg_match($pattern, $line)) {
-                        continue;
-                    }
 
-                    $text = \trim($line);
-                    $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
-                    if (\count($results) >= self::MAX_RESULTS) {
-                        return $results;
-                    }
+                $text = \trim($line);
+                $results[] = ['path' => $rel, 'line' => $lineIndex, 'text' => $text, 'ranges' => $this->rangesFor($text, $pattern)];
+                if (\count($results) >= self::MAX_RESULTS) {
+                    return $results;
                 }
             }
+            yield;
         }
 
         return $results;
     }
 
     /**
-     * Whole-file scan for a query that spans lines (grep is line-based). Each
-     * match reports its 0-based start line and a single-line preview (its first
-     * line, with `⏎…` appended when the match continues onto further lines).
+     * Whole-file scan for a query that spans lines (grep is line-based); yields
+     * after each file. Each match reports its 0-based start line and a
+     * single-line preview (its first line, with `⏎…` appended when the match
+     * continues onto further lines).
      *
      * @param list<string> $paths
      *
-     * @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>
+     * @return \Generator<int, null, mixed, list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>>
      */
-    private function searchMultiline(string $pattern, array $paths, string $mask): array
+    private function searchMultiline(string $pattern, array $paths, string $mask): \Generator
+    {
+        $results = [];
+        foreach ($this->texts($paths, $mask) as $rel => $content) {
+            $matches = [];
+            \set_error_handler(static fn (): bool => true);
+            $count = \preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE);
+            \restore_error_handler();
+            if (false === $count) {
+                $this->gaveUp = true;
+
+                continue;
+            }
+            // A multiline query always contains a real newline, so its matches
+            // are never zero-width — no empty-match guard needed here.
+            foreach ($matches[0] as $hit) {
+                $results[] = $this->multilineResult($rel, $content, $hit[0], (int) $hit[1]);
+                if (\count($results) >= self::MAX_RESULTS) {
+                    return $results;
+                }
+            }
+            yield;
+        }
+
+        return $results;
+    }
+
+    /**
+     * The `[rootRelativePath => content]` of each text file the scopes cover,
+     * once each: overlapping scopes (open files under a directory) match once,
+     * and a file with a NUL byte is binary, never searched.
+     *
+     * @param list<string> $paths
+     *
+     * @return \Generator<string, string>
+     */
+    private function texts(array $paths, string $mask): \Generator
     {
         $globs = $this->maskGlobs($mask);
-        $results = [];
         $seen = [];
         foreach ($paths as $scope) {
             foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
@@ -286,30 +347,11 @@ final class ProjectSearch
                 }
                 $seen[$rel] = true;
                 $content = $this->readFile($abs);
-                $matches = [];
-                if (\str_contains($content, "\0")) {
-                    continue;
-                }
-                \set_error_handler(static fn (): bool => true);
-                $count = \preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE);
-                \restore_error_handler();
-                if (false === $count) {
-                    $this->gaveUp = true;
-
-                    continue;
-                }
-                // A multiline query always contains a real newline, so its matches
-                // are never zero-width — no empty-match guard needed here.
-                foreach ($matches[0] as $hit) {
-                    $results[] = $this->multilineResult($rel, $content, $hit[0], (int) $hit[1]);
-                    if (\count($results) >= self::MAX_RESULTS) {
-                        return $results;
-                    }
+                if (!\str_contains($content, "\0")) {
+                    yield $rel => $content;
                 }
             }
         }
-
-        return $results;
     }
 
     /**
