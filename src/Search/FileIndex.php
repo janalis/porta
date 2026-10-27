@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Support\FuzzyMatcher;
+use Porta\Support\GitIgnored;
 use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 
 /**
  * A lazily-built, cached index of the project's files with fuzzy search — the
@@ -89,6 +91,11 @@ final class FileIndex
         if (!$this->includeVendor) {
             $excludes[] = 'vendor';
         }
+        // A tree git ignores — a coverage report, a framework's cache — is not
+        // walked: its files filled the budget and pushed the project's own out.
+        // A single ignored file (`.env`) is kept, and so is vendor/ when asked for.
+        $pruner = GitIgnored::pruner($this->rootDir);
+        $keepVendor = $this->includeVendor;
         $finder = new Finder()
             ->files()
             ->in($this->rootDir)
@@ -96,7 +103,8 @@ final class FileIndex
             ->ignoreUnreadableDirs() // a root-owned Docker volume, say: passed over, as grep passes it
             ->ignoreVCS(false)
             ->exclude($excludes)
-            ->notName('.DS_Store');
+            ->notName('.DS_Store')
+            ->filter(static fn (SplFileInfo $entry): bool => ($keepVendor && 1 === \preg_match('~(^|/)vendor(/|$)~', $entry->getRelativePathname())) || $pruner($entry), prune: true);
 
         $paths = [];
         foreach (new \LimitIterator($finder->getIterator(), 0, self::MAX_FILES) as $file) {

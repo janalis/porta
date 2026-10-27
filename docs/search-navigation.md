@@ -4,7 +4,7 @@
 
 | Key | Target |
 | --- | --- |
-| `Ctrl+Shift+N` / `Ctrl+P` | File (fuzzy, camel-hump aware) |
+| `Ctrl+Shift+N` / `Ctrl+P` | File (fuzzy, camel-hump aware). A folder git ignores — a coverage report, `var/cache/` — is left out, so it never crowds out your own files; a single ignored file such as `.env` is still found, and `vendor/` too once `searchIncludeVendor` is on |
 | `Ctrl+Alt+Shift+N` | Symbol in project (`workspace/symbol`, live-filtered) |
 | `Ctrl+F12` | Symbol in the current file (file structure popup) |
 | `Ctrl+G` | Line |

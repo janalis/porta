@@ -23,6 +23,29 @@ final class FileIndexTest extends TestCase
         $this->assertSame(\strlen('sub/'), $sub['boundary'], 'boundary is the start of the basename');
     }
 
+    /**
+     * A tree git ignores — a coverage report, a framework's cache — is not
+     * walked: its files filled the index's budget and pushed the project's own
+     * out (16,000 of 20,000 entries here, and 1,060 of src/ missing). A single
+     * ignored file is still found: `.env` is opened by name.
+     */
+    public function testATreeGitIgnoresIsLeftOutAndAnIgnoredFileIsNot(): void
+    {
+        $project = new TempProject(['.gitignore' => "/var/\n.env\n", '.env' => 'X=1', 'src/A.php' => '', 'var/cache/Container.php' => '']);
+
+        $this->assertSame(['.env', '.gitignore', 'src/A.php'], \array_column(new FileIndex($project->dir)->entries(), 'path'));
+    }
+
+    /** "Search vendor/ files" reaches into vendor/ even where git ignores it, as it nearly always does. */
+    public function testTheVendorSettingReachesAnIgnoredVendor(): void
+    {
+        $project = new TempProject(['.gitignore' => "/vendor/\n", 'a.php' => '', 'vendor/pkg/Lib.php' => '']);
+        $index = new FileIndex($project->dir);
+        $index->setIncludeVendor(true);
+
+        $this->assertSame(['.gitignore', 'a.php', 'vendor/pkg/Lib.php'], \array_column($index->entries(), 'path'));
+    }
+
     /** A directory nobody may list — a root-owned Docker volume — is passed over, not the end of Go to File. */
     public function testAnUnreadableDirectoryIsPassedOver(): void
     {
