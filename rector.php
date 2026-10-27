@@ -161,4 +161,7 @@ return RectorConfig::configure()
     ->withPhpSets(php85: true)
     ->withPreparedSets(typeDeclarations: true, codeQuality: true, deadCode: true, phpunitCodeQuality: true)
     ->withComposerBased(phpunit: true)
-    ->withParallel();
+    // Rector's 120 s per-job default is too tight on CI: the self-hosted
+    // runners share one host with the coverage jobs, and two starved
+    // workers timed out there (run 40567693607) on code that passes locally.
+    ->withParallel(timeoutSeconds: 600);
