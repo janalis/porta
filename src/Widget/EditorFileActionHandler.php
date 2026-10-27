@@ -25,7 +25,4 @@ interface EditorFileActionHandler
 
     /** Open the find bar with the replace field. */
     public function openFindReplace(): void;
-
-    /** Open the go-to-file palette. */
-    public function openGotoFile(): void;
 }

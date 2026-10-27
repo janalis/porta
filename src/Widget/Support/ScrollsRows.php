@@ -49,7 +49,6 @@ trait ScrollsRows
             'next_buffer' => ['ctrl+right'],
             'prev_buffer' => ['ctrl+left'],
             'close_buffer' => ['ctrl+f4', 'alt+w'],
-            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
         ];
     }
 

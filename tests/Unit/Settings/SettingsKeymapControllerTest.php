@@ -377,7 +377,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $byAction = \array_column($controller->rows(), null, 'action');
 
         $this->assertSame('n', $byAction['test_pane_step']->binding, "the pane's own action shows the pane's key");
-        $this->assertSame('ctrl+shift+n', $byAction['goto_file']->binding, "a core action the editor also binds keeps the editor's");
+        $this->assertSame('ctrl+s', $byAction['save']->binding, "a core action the editor also binds keeps the editor's");
     }
 
     public function testAPaneBindingBeatsAnIdeScopeBindingWhenTheEditorHasNeither(): void

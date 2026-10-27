@@ -110,7 +110,6 @@ final class EditorKeymap
 
             'find' => ['ctrl+f'],
             'replace' => ['ctrl+r'],
-            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
 
             'quick_doc' => ['shift+f1'], // plain F1 is the IDE-level docs browser
             'code_action' => ['alt+enter'],

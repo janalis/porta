@@ -97,13 +97,6 @@ final readonly class HelpViewerActions implements HelpViewerHandler
     }
 
     #[\Override]
-    public function openGotoFile(): void
-    {
-        $this->window->close();
-        $this->navigator->openGotoFile();
-    }
-
-    #[\Override]
     public function saveAll(): void
     {
         $this->navigator->saveAll();

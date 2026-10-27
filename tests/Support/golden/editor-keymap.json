@@ -239,10 +239,6 @@
     "replace": [
         "ctrl+r"
     ],
-    "goto_file": [
-        "ctrl+shift+n",
-        "ctrl+p"
-    ],
     "quick_doc": [
         "shift+f1"
     ],

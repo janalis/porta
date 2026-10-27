@@ -19,6 +19,7 @@ use Porta\Tests\Support\RendersExactWidth;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
+use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
 
 /**
@@ -498,6 +499,7 @@ final class CodeEditorGeometryTest extends TestCase
     public function testRenderEmptyStateCentersTheHintHorizontallyFlooringAtZero(): void
     {
         $editor = new CodeEditorWidget();
+        $editor->setKeybindings(new Keybindings(['goto_file' => ['ctrl+shift+n', 'ctrl+p']])); // Go to File is Ide-scope: the live keymap hands it over
         $translator = new Translator('en');
         $hint = $translator->trans('No file open · press %key% to open a file', ['%key%' => 'Ctrl+Shift+N']);
         $text = AnsiText::truncate($hint, 200);

@@ -130,7 +130,7 @@ settings.
 | `Ctrl+Alt+Shift+S` | New scratch file — pick a language, get an empty buffer in `<home>/.porta/scratches/` |
 | `Ctrl+Shift+O` | Open project — pick one you have opened before, or type a path. The current session ends the way a quit does (buffers saved, session written) and the IDE reopens on the new root |
 | `Ctrl+Alt+Shift+O` | Open remote project — type `user@host:/path` or an `ssh://`, `sftp://`, `ftp://` or `ftps://` URL; the [SSH](../plugins/ssh/docs/README.md) and [FTP](../plugins/ftp/docs/README.md) plugins serve it. Open Project's path prompt takes the same |
-| `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) |
+| `Ctrl+Shift+N` / `Ctrl+P` | Go to file (fuzzy finder) — from anywhere: the tree, a viewer, the editor |
 | `Ctrl+E` | Recent files popup (`Ctrl+E` again cycles, `Enter` opens, and typing filters) |
 | `Ctrl+←` / `Ctrl+→` | Previous / next editor tab |
 | `Ctrl+Shift+←` / `Ctrl+Shift+→` | Move the active tab left / right |
@@ -334,8 +334,8 @@ page scrolls back to the top. Following a link clears
 the forward trail, like a browser. All navigation happens inside the single
 Documentation tab.
 
-Tab-management keys (`Ctrl+←/→`, `Ctrl+F4`, `Ctrl+P`…) keep working on the
-help tab.
+Tab-management keys (`Ctrl+←/→`, `Ctrl+F4`…) keep working on the help tab,
+and Go to File (`Ctrl+P`) works there as it does everywhere.
 
 **A Markdown file's live preview reads the same way** once it has the keys
 (`F6`, or a click on its navigation bar — a click on its text instead puts the

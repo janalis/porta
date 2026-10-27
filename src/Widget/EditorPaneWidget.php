@@ -43,7 +43,7 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
 
     /**
      * The tab keys a pane standing where the editor stood answers as the
-     * editor does — next and previous tab, close, Go to File, Save All — bound
+     * editor does — next and previous tab, close, Save All — bound
      * to the editor's defaults, so tab management keeps working while the code
      * editor is detached ({@see EditorKeymap}). Answered by {@see tabKey()}.
      */
@@ -51,7 +51,6 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
         'next_buffer' => ['ctrl+right'],
         'prev_buffer' => ['ctrl+left'],
         'close_buffer' => ['ctrl+f4', 'alt+w'],
-        'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
         'save_all' => ['ctrl+alt+s'],
     ];
 
@@ -71,7 +70,6 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
             $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
             $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
             $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
             $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
             default => null,
         };

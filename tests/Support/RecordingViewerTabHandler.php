@@ -22,11 +22,6 @@ final class RecordingViewerTabHandler implements ViewerTabHandler
         $this->events[] = 'close';
     }
 
-    public function openGotoFile(): void
-    {
-        $this->events[] = 'goto';
-    }
-
     public function saveAll(): void
     {
         $this->events[] = 'save_all';

@@ -79,7 +79,6 @@ final readonly class EditorActionRouter
         return [
             'recent_files' => static fn (EditorCallbacks $c) => $c->buffer?->openRecentFiles(),
             'close_buffer' => static fn (EditorCallbacks $c) => $c->buffer?->closeBuffer(),
-            'goto_file' => static fn (EditorCallbacks $c) => $c->file?->openGotoFile(),
             'reformat' => static fn (EditorCallbacks $c) => $c->refactor?->requestReformat(),
             'file_structure' => static fn (EditorCallbacks $c) => $c->navigation?->requestFileStructure(),
             'save_all' => static fn (EditorCallbacks $c) => $c->file?->saveAll(),

@@ -19,8 +19,6 @@ interface ViewerTabHandler
 
     public function closeBuffer(): void;
 
-    public function openGotoFile(): void;
-
     public function saveAll(): void;
 
     /** Zoom/pan changed — refresh the status bar. */

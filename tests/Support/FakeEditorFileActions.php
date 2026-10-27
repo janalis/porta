@@ -15,7 +15,6 @@ final readonly class FakeEditorFileActions implements EditorFileActionHandler
         private ?\Closure $saveAll = null,
         private ?\Closure $copy = null,
         private ?\Closure $openFind = null,
-        private ?\Closure $openGotoFile = null,
     ) {}
 
     public function save(): void
@@ -50,13 +49,6 @@ final readonly class FakeEditorFileActions implements EditorFileActionHandler
     {
         if (null !== $this->openFind) {
             ($this->openFind)(FindMode::Replace);
-        }
-    }
-
-    public function openGotoFile(): void
-    {
-        if (null !== $this->openGotoFile) {
-            ($this->openGotoFile)();
         }
     }
 }

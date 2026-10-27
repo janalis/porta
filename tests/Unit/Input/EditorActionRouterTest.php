@@ -79,11 +79,6 @@ final class EditorActionRouterTest extends TestCase
             {
                 $this->recording[] = 'replace';
             }
-
-            public function openGotoFile(): void
-            {
-                $this->recording[] = 'goto_file';
-            }
         };
         $navigation = new class($recording) implements EditorNavigationHandler {
             /** @param list<string> $recording */
@@ -217,7 +212,6 @@ final class EditorActionRouterTest extends TestCase
         $kb = new Keybindings([
             'recent_files' => ['a'],
             'close_buffer' => ['b'],
-            'goto_file' => ['c'],
             'reformat' => ['d'],
             'file_structure' => ['e'],
             'save_all' => ['f'],
@@ -228,7 +222,6 @@ final class EditorActionRouterTest extends TestCase
         foreach ([
             'a' => 'recent_files',
             'b' => 'close_buffer',
-            'c' => 'goto_file',
             'd' => 'reformat',
             'e' => 'file_structure',
             'f' => 'save_all',
@@ -237,7 +230,7 @@ final class EditorActionRouterTest extends TestCase
         ] as $key => $expected) {
             $this->assertTrue($router->dispatchKey($key, $kb), $expected.' reports it consumed the key');
         }
-        $this->assertSame(['recent_files', 'close_buffer', 'goto_file', 'reformat', 'file_structure', 'save_all', 'save', 'navigate_back'], $f['recording']);
+        $this->assertSame(['recent_files', 'close_buffer', 'reformat', 'file_structure', 'save_all', 'save', 'navigate_back'], $f['recording']);
     }
 
     public function testDispatchKeyFiresEveryPositionalHandlerWithTheCaret(): void
@@ -317,7 +310,6 @@ final class EditorActionRouterTest extends TestCase
         $kb = new Keybindings([
             'recent_files' => ['a'],
             'close_buffer' => ['b'],
-            'goto_file' => ['c'],
             'reformat' => ['d'],
             'file_structure' => ['e'],
             'save_all' => ['f'],
@@ -337,7 +329,7 @@ final class EditorActionRouterTest extends TestCase
             'replace' => ['w'],
         ]);
 
-        foreach (['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'o', 'q', 's', 't', 'u', 'v', 'w'] as $key) {
+        foreach (['a', 'b', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'o', 'q', 's', 't', 'u', 'v', 'w'] as $key) {
             $this->assertTrue($router->dispatchKey($key, $kb), "key '{$key}' must still report handled even with no callbacks wired");
         }
     }

@@ -16,7 +16,6 @@ final readonly class EditorFileActions implements EditorFileActionHandler
 {
     public function __construct(
         private BufferService $bufferService,
-        private BufferNavigator $navigator,
         private Clipboard $clipboard,
         private FindBarWidget $findBar,
         // Concrete on purpose: it reads the document *and* hands EditorFindTarget
@@ -73,11 +72,5 @@ final readonly class EditorFileActions implements EditorFileActionHandler
         );
         $this->tui->setFocus($this->findBar);
         $this->tui->requestRender();
-    }
-
-    #[\Override]
-    public function openGotoFile(): void
-    {
-        $this->navigator->openGotoFile();
     }
 }

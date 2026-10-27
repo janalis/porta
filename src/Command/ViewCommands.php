@@ -99,13 +99,17 @@ final readonly class ViewCommands implements CommandProvider
             )
             ->add('move_tab_left', fn () => $this->workbench->moveTab(-1), keyBound: KeyDispatch::Bound)
             ->add('move_tab_right', fn () => $this->workbench->moveTab(1), keyBound: KeyDispatch::Bound)
-            ->add('goto_file', function (): void {
-                // The picker composites over the editor pane (like Search
-                // Everywhere), so an image view is swapped for a text buffer first.
-                if ($this->bufferService->ensureTextEditorActive()) {
-                    $this->goToFile->open();
-                }
-            })
+            ->add(
+                'goto_file',
+                function (): void {
+                    // The picker composites over the editor pane (like Search
+                    // Everywhere), so an image view is swapped for a text buffer first.
+                    if ($this->bufferService->ensureTextEditorActive()) {
+                        $this->goToFile->open();
+                    }
+                },
+                keyBound: KeyDispatch::Bound,
+            )
             ->add(
                 'close_other_tabs',
                 function (): void {

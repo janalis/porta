@@ -1167,8 +1167,6 @@ final class IdeHelpersTest extends TestCase
         $this->assertStringEndsWith('one.php', (string) $manager->active()?->path, 'cycled back a tab');
         $actions->closeBuffer();
         $this->assertStringEndsWith('two.php', (string) $manager->active()?->path, 'closed the active tab');
-        $actions->openGotoFile();
-        $this->assertTrue(Widgets::editor(Services::resolve($this->ide, Tui::class))->isAnyPickerOpen(), 'the file picker opened');
         $actions->viewChanged();
         $actions->saveAll(); // nothing dirty: a silent sweep
 
@@ -1211,9 +1209,6 @@ final class IdeHelpersTest extends TestCase
         $window->open();
         $help->cycleBuffer(1);
         $this->assertFalse($views->isOpen('help'), 'a tab verb reaches past the window: it closes first');
-        $window->open();
-        $help->openGotoFile();
-        $this->assertFalse($views->isOpen('help'));
         $help->revealSource(1, 0); // a doc page has no source: nothing happens
 
         // The other half of this test used to reach the image viewer the same

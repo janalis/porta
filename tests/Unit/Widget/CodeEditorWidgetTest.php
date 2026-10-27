@@ -414,6 +414,7 @@ final class CodeEditorWidgetTest extends TestCase
     {
         $editor = new CodeEditorWidget(); // no file opened → filePath is null
         $editor->setFocused(true);
+        $editor->setKeybindings(new Keybindings(['goto_file' => ['ctrl+shift+n', 'ctrl+p']])); // Go to File is Ide-scope: the live keymap hands it over
 
         $rendered = $editor->render(new RenderContext(80, 20));
         $this->assertCount(20, $rendered);
@@ -1284,9 +1285,6 @@ $a = f();
                 openFind: static function (FindMode $r) use (&$events): void {
                     $events[] = 'find:'.\var_export(FindMode::Replace === $r, return: true);
                 },
-                openGotoFile: static function () use (&$events): void {
-                    $events[] = 'goto';
-                },
             ),
             navigation: new FakeEditorNavigation(
                 requestHover: static function () use (&$events): void {
@@ -1315,12 +1313,11 @@ $a = f();
         $editor->handleInput("\x1bw"); // alt+w
         $editor->handleInput("\x06"); // ctrl+f
         $editor->handleInput("\x12"); // ctrl+r
-        $editor->handleInput("\x10"); // ctrl+p
         $editor->handleInput("\x1b[1;2P"); // f1
         $editor->handleInput("\x1b[18;3~"); // alt+f7
 
         $this->assertSame(
-            ['cycle:1', 'cycle:-1', 'recent', 'close', 'find:false', 'find:true', 'goto', 'doc', 'usages'],
+            ['cycle:1', 'cycle:-1', 'recent', 'close', 'find:false', 'find:true', 'doc', 'usages'],
             $events,
         );
     }

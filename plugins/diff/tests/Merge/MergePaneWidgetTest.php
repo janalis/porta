@@ -429,11 +429,6 @@ final class MergePaneWidgetTest extends TestCase
                 $this->calls[] = 'close';
             }
 
-            public function openGotoFile(): void
-            {
-                $this->calls[] = 'goto';
-            }
-
             public function saveAll(): void
             {
                 $this->calls[] = 'save';
@@ -445,18 +440,18 @@ final class MergePaneWidgetTest extends TestCase
         };
         $pane->setHandler($tabs);
 
-        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x10", "\x1b\x13"] as $key) {
+        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x1b\x13"] as $key) {
             $pane->handleInput($key);
         }
 
-        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto', 'save'], $tabs->calls);
+        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'save'], $tabs->calls);
     }
 
     public function testTheTabKeysAreIgnoredBeforeTheTabsAreAttached(): void
     {
         $pane = $this->shown(ConflictSide::Ours);
 
-        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x10", "\x1b\x13"] as $key) {
+        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x1b\x13"] as $key) {
             $pane->handleInput($key);
         }
 

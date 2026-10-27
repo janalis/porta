@@ -29,12 +29,6 @@ trait DelegatesTabVerbs
     }
 
     #[\Override]
-    public function openGotoFile(): void
-    {
-        $this->tabs()->openGotoFile();
-    }
-
-    #[\Override]
     public function saveAll(): void
     {
         $this->tabs()->saveAll();

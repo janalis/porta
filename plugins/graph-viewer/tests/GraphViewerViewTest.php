@@ -183,11 +183,11 @@ final class GraphViewerViewTest extends TestCase
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
 
-        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1b[1;5S", "\x1bw", "\x10", "\x1b[110;6u", "\x1b\x13"] as $key) {
+        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1b[1;5S", "\x1bw", "\x1b\x13"] as $key) {
             $widget->handleInput($key);
         }
 
-        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'close', 'goto', 'goto', 'save_all'], $handler->events);
+        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'close', 'save_all'], $handler->events); // Go to File is the IDE's own key, not the pane's
     }
 
     /** A layout that lands later repaints the pane and tells the tab. */

@@ -147,7 +147,7 @@ final class TextPreviewWidgetTest extends TestCase
         $widget->render(new RenderContext(40, 4));
         $before = $this->plain($widget);
 
-        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x10", "\x1b[115;7u"] as $key) {
+        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x1b[115;7u"] as $key) {
             $widget->handleInput($key);
         }
 
@@ -234,7 +234,7 @@ final class TextPreviewWidgetTest extends TestCase
      * The tab verbs reach the IDE while the code editor is detached.
      *
      * A pane owns the editor area's slot, so the editor's keymap is not
-     * listening — without these four arms, Ctrl+Right and Alt+W would do
+     * listening — without these three arms, Ctrl+Right and Alt+W would do
      * nothing at all while a large file is open, and the tab you opened it from
      * would be unreachable by keyboard.
      */
@@ -247,9 +247,8 @@ final class TextPreviewWidgetTest extends TestCase
         $widget->handleInput("\x1b[1;5C"); // ctrl+right
         $widget->handleInput("\x1b[1;5D"); // ctrl+left
         $widget->handleInput("\x1bw"); // alt+w
-        $widget->handleInput("\x10"); // ctrl+p
 
-        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto'], $handler->events);
+        $this->assertSame(['cycle:1', 'cycle:-1', 'close'], $handler->events);
     }
 
     /** A key this pane does not bind is left alone rather than swallowed. */

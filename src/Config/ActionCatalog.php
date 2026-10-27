@@ -157,7 +157,8 @@ final class ActionCatalog
         'close_all_tabs' => ['label' => 'Close All Tabs', 'keys' => ['ctrl+alt+shift+w']],
         'find' => ['label' => 'Find in File'],
         'replace' => ['label' => 'Replace in File'],
-        'goto_file' => ['label' => 'Go to File'],
+        // Ide-scope like its siblings: from the tree, a viewer or the editor alike (PhpStorm's Ctrl+Shift+N).
+        'goto_file' => ['label' => 'Go to File', 'keys' => ['ctrl+shift+n', 'ctrl+p']],
         'quick_doc' => ['label' => 'Quick Documentation'],
         'goto_line' => ['label' => 'Go to Line'],
         'rename_symbol' => ['label' => 'Rename Symbol'],

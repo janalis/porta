@@ -595,9 +595,8 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\x1b[1;5D"); // ctrl+left
         $viewer->handleInput("\x07"); // unbound
         $viewer->handleInput("\x1bw"); // alt+w
-        $viewer->handleInput("\x10"); // ctrl+p
         $viewer->handleInput("\x1b\x13"); // ctrl+alt+s
-        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'goto', 'save-all'], $this->handler->events);
+        $this->assertSame(['cycle:1', 'cycle:-1', 'close', 'save-all'], $this->handler->events);
 
         $this->assertSame(\realpath($this->docs->path('README.md')), $viewer->path());
         $viewer->clear();

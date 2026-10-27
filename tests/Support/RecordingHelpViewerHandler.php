@@ -63,11 +63,6 @@ final class RecordingHelpViewerHandler implements HelpViewerHandler
         $this->events[] = 'close';
     }
 
-    public function openGotoFile(): void
-    {
-        $this->events[] = 'goto';
-    }
-
     public function viewChanged(): void
     {
         $this->events[] = 'view';

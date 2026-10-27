@@ -11,6 +11,7 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Widgets;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
@@ -76,5 +77,27 @@ final class IdePickerTest extends TestCase
             columns: 120,
             rows: 30,
         );
+    }
+
+    /**
+     * Go to File is the IDE's own key, as PhpStorm's is: from the file tree
+     * too, not only from the editor. It used to be the editor's alone, and
+     * Ctrl+P with the tree focused did nothing at all.
+     */
+    public function testGoToFileOpensFromTheTree(): void
+    {
+        $project = new TempProject(['composer.json' => '{}', 'src/Thing.php' => "<?php\n"]);
+
+        $this->runIde($project, $project->path('composer.json'), [
+            100 => function (Tui $tui): void {
+                $tui->setFocus($tui->getById('tree'));
+                $this->assertSame('tree', $tui->getFocus()?->getId(), 'the premise: the tree has the keys');
+                $tui->handleInput("\x10"); // ctrl+p
+            },
+            300 => function (Tui $tui): void {
+                $this->await(static fn (): bool => Widgets::editor($tui)->isAnyPickerOpen(), what: 'Go to File to open from the tree');
+                $this->assertTrue(Widgets::editor($tui)->isAnyPickerOpen());
+            },
+        ]);
     }
 }

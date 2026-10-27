@@ -41,7 +41,7 @@ final class TestPane extends NavigablePaneWidget
      */
     public static function getDefaultKeybindings(): array
     {
-        return ['test_pane_step' => ['n'], 'goto_file' => ['g']];
+        return ['test_pane_step' => ['n'], 'save' => ['g']];
     }
 
     public function paneId(): string

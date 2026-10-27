@@ -6,7 +6,6 @@ namespace Porta\Editor;
 
 use Porta\History\RecentFilesStore;
 use Porta\I18n\Translator;
-use Porta\Search\Everywhere\SearchEverywhereController;
 use Porta\Support\ProjectPaths;
 use Porta\Ui\Glyphs;
 use Porta\Widget\BufferNavigationHandler;
@@ -14,7 +13,6 @@ use Porta\Widget\StatusBarWidget;
 use Porta\Widget\ViewerTabHandler;
 use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\AsAlias;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -36,8 +34,6 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
     public function __construct(
         private BufferManager $buffers,
         private BufferService $bufferService,
-        #[Autowire(service: 'porta.go_to_file')]
-        private SearchEverywhereController $goToFile,
         private ModalHost $editor,
         private StatusBarWidget $statusBar,
         private Tui $tui,
@@ -66,17 +62,6 @@ final readonly class BufferNavigator implements BufferNavigationHandler, ViewerT
     public function closeActive(CloseMode $mode = CloseMode::Guarded): void
     {
         $this->bufferService->closeActiveBuffer($mode);
-    }
-
-    #[\Override]
-    public function openGotoFile(): void
-    {
-        // The picker composites over the editor pane, so ensure it is the active
-        // view first (an image is swapped for an adjacent text buffer).
-        if ($this->bufferService->ensureTextEditorActive()) {
-            $this->goToFile->open();
-        }
-        $this->tui->requestRender();
     }
 
     #[\Override]
