@@ -36,7 +36,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 {
     use StylesDefault;
 
-    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks?: list<StatusClickSpan>})|null */
+    /** @var (callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftNote?: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks?: list<StatusClickSpan>})|null */
     private $provider;
 
     /**
@@ -48,6 +48,8 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     private const int LEFT_FLOOR = 24;
 
     private string $lastLeft = '';
+    /** What the left says after the file part — the caret's problem — or ''. */
+    private string $lastNote = '';
     private string $lastRight = '';
     /**
      * The contributed cells, as the provider reports them.
@@ -101,8 +103,9 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     private array $cellClicks = [];
 
     /**
-     * Left-clickable spans of the LEFT segment — the caret's problem message —
-     * relative to it as the provider reports them.
+     * Left-clickable spans of the left's note — the caret's problem message —
+     * relative to the file part and the note joined, as the provider reports
+     * them.
      *
      * @var list<StatusClickSpan>
      */
@@ -127,7 +130,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     }
 
     /**
-     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks?: list<StatusClickSpan>} $provider
+     * @param callable(): array{cells?: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip?: ?string}>, left: string, leftNote?: string, leftTooltip?: ?string, leftPath?: ?string, leftPathWidth?: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks?: list<StatusClickSpan>} $provider
      */
     public function setProvider(callable $provider): self
     {
@@ -284,6 +287,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 
         $segments = ($this->provider)();
         $left = $segments['left'];
+        $note = $segments['leftNote'] ?? '';
         $right = $segments['right'];
         $cells = $segments['cells'] ?? [];
         $this->cellClicks = $segments['rightClicks'] ?? [];
@@ -293,9 +297,16 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $leftPath = $segments['leftPath'] ?? null;
         // The path is compared too: the file span is only rebuilt by a render,
         // so it must follow the file even when the drawn text stays the same.
-        if ($leftPath !== $this->leftPath || $left !== $this->lastLeft || $right !== $this->lastRight || \array_column($cells, 'text') !== \array_column($this->cells, 'text')) {
+        if (
+            $leftPath !== $this->leftPath
+            || $left !== $this->lastLeft
+            || $note !== $this->lastNote
+            || $right !== $this->lastRight
+            || \array_column($cells, 'text') !== \array_column($this->cells, 'text')
+        ) {
             $this->cells = $cells;
             $this->lastLeft = $left;
+            $this->lastNote = $note;
             $this->lastRight = $right;
             $this->leftPath = $leftPath;
             $this->invalidate();
@@ -349,8 +360,9 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         // replaced; the cells go with it.
         $cells = null !== $this->flash ? [] : $this->cells;
         $left = null !== $this->flash ? Glyphs::FLASH_MARKER.' '.$this->flash['text'] : $this->lastLeft;
+        $note = null !== $this->flash ? '' : $this->lastNote;
         $right = $this->lastRight;
-        $whole = self::prefix(\array_column($cells, 'text')).$left;
+        $whole = self::prefix(\array_column($cells, 'text')).self::joined($left, $note);
 
         // A flash is transient information the user must read, so it wins the
         // width fight: the right side (whose tail is the static key legend)
@@ -382,20 +394,19 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         // never cut: a half-drawn branch name is a click target that lies.
         // Only the file part is elided, in the MIDDLE, because it ends with the
         // file's name: a tail cut kept `src/Some…` and threw away the one word
-        // that says which file this is.
+        // that says which file this is. The note after it is cut on its own.
         $drawn = $cells;
         while ([] !== $drawn && AnsiUtils::visibleWidth(self::prefix(\array_column($drawn, 'text'))) > $leftMax) {
             \array_pop($drawn);
         }
         $prefix = self::prefix(\array_column($drawn, 'text'));
-        $file = AnsiText::elideMiddle($left, \max(0, $leftMax - AnsiUtils::visibleWidth($prefix)));
+        [$file, $partWidth, $fileWidth] = self::fitLeft($left, $note, \max(0, $leftMax - AnsiUtils::visibleWidth($prefix)));
 
         [$parts, $at] = $this->placeCells($drawn);
-        $fileWidth = AnsiUtils::visibleWidth($file);
         $this->renderedFile =
             null !== $this->flash || null === $this->leftPath
                 ? null
-                : ['from' => $at, 'to' => $at + \min($this->leftPathWidth, $fileWidth), 'path' => $this->leftPath];
+                : ['from' => $at, 'to' => $at + \min($this->leftPathWidth, $partWidth), 'path' => $this->leftPath];
         $leftText = ([] === $parts ? '' : \implode($this->separator(), $parts).$this->separator()).$file;
         $leftWidth = AnsiUtils::visibleWidth($prefix.$file);
 
@@ -407,7 +418,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         $room = $right === $this->lastRight ? $rightWidth : $rightWidth - 1; // a cut's last column is its ellipsis
         $leftAt = $at;
         $this->renderedClicks = [
-            ...$this->leftSpans($file, $left, $leftAt),
+            ...$this->leftSpans($left, $file, $partWidth, $leftAt),
             ...\array_values(\array_map(
                 static fn (StatusClickSpan $span): StatusClickSpan => $span->shifted($rightStart),
                 \array_filter($this->cellClicks, static fn (StatusClickSpan $span): bool => $span->to <= $room),
@@ -416,7 +427,7 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
         // The file part says more only where it could: a path cut to fit, or
         // a state its glyph and colour carry (unsaved, a diagnostic) — a card
         // repeating a whole file name is noise.
-        $fileSaysMore = null !== $this->leftTooltip && ($file !== $left || \str_contains($this->leftTooltip, "\n"));
+        $fileSaysMore = null !== $this->leftTooltip && ($file !== self::joined($left, $note) || \str_contains($this->leftTooltip, "\n"));
         $this->renderedTips = $this->tips($drawn, $fileSaysMore ? $this->leftTooltip : null, $fileWidth);
         $lit = $this->litSpan($this->hoverCol);
         if (null !== $lit && $lit[0] >= $leftAt && $lit[1] <= ($leftAt + $fileWidth)) {
@@ -481,36 +492,65 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     }
 
     /**
-     * The left's click spans where they land on the row. A left cut in the
-     * middle ({@see AnsiText::elideMiddle()}) keeps its head and its tail, so
-     * a span keeps what of it is still drawn — the tail piece where it has
-     * one, the caret's problem being the left's last words — moved by the
-     * columns cut away; a span cut away whole is gone. A flash has the left's
-     * place, and none of its spans.
+     * The left in $room columns, how wide its file part is drawn, and how
+     * wide all of it is.
+     *
+     * Alone, the file part is cut in the middle ({@see AnsiText::elideMiddle()}),
+     * which keeps the file's name. A note after it — the caret's problem — is
+     * cut on its own, at its tail, once the file part is down to the floor: one
+     * middle cut through both fused the path's head with the message's last
+     * words, so `src/Editor/BufferNavigator…n a variable, expected {` had lost
+     * the file's name, its ●, the problem's glyph and what the problem was.
+     * Too narrow for a glyph and its mark, the note goes, and the file part
+     * has the room; its card still says the problem whole.
+     *
+     * @return array{string, int, int}
+     */
+    private static function fitLeft(string $left, string $note, int $room): array
+    {
+        $kept = AnsiUtils::visibleWidth($left);
+        $noteRoom = 0;
+        if ('' !== $note) {
+            $kept = \min($kept, \max(self::LEFT_FLOOR, $room - self::NOTE_GAP - AnsiUtils::visibleWidth($note)));
+            $noteRoom = $room - $kept - self::NOTE_GAP;
+        }
+        if ($noteRoom < 2) {
+            $file = AnsiText::elideMiddle($left, $room);
+            $width = AnsiUtils::visibleWidth($file);
+
+            return [$file, $width, $width];
+        }
+        $file = AnsiText::elideMiddle($left, $kept);
+        $width = AnsiUtils::visibleWidth($file);
+        $note = AnsiText::truncate($note, $noteRoom);
+
+        return [self::joined($file, $note), $width, $width + self::NOTE_GAP + AnsiUtils::visibleWidth($note)];
+    }
+
+    /** The file part and the note after it, as the row spells them. */
+    private static function joined(string $left, string $note): string
+    {
+        return '' === $note ? $left : $left.\str_repeat(' ', self::NOTE_GAP).$note;
+    }
+
+    /**
+     * The note's click spans where they land on the row: moved by the columns
+     * the file part's cut took, and keeping what of them the note's own cut
+     * left. The file part offers none of its own — its click is the file
+     * ({@see fileAt()}) — and a flash has the left's place, and none of them.
      *
      * @return list<StatusClickSpan>
      */
-    private function leftSpans(string $file, string $left, int $at): array
+    private function leftSpans(string $left, string $drawnText, int $fileWidth, int $at): array
     {
         $whole = AnsiUtils::visibleWidth($left);
-        $drawn = AnsiUtils::visibleWidth($file);
-        if (null !== $this->flash || $drawn < 2) {
-            return [];
-        }
-        // elideMiddle's own split: the head gets the smaller half of what is
-        // left once the mark is placed.
-        $head = $drawn === $whole ? $whole : \intdiv($drawn - 1, num2: 2);
-        $tailStart = $drawn === $whole ? 0 : $whole - ($drawn - 1 - $head);
+        $drawnWidth = AnsiUtils::visibleWidth($drawnText);
+        $cut = $whole - $fileWidth;
         $spans = [];
-        foreach ($this->leftClicks as $span) {
-            $piece = match (true) {
-                $drawn === $whole => [$span->from, $span->to],
-                $span->to > $tailStart => [\max($span->from, $tailStart) - ($whole - $drawn), $span->to - ($whole - $drawn)],
-                $span->from < $head => [$span->from, \min($span->to, $head)],
-                default => null,
-            };
-            if (null !== $piece) {
-                $spans[] = new StatusClickSpan($at + $piece[0], $at + $piece[1], $span->action, $span->tooltip);
+        foreach (null === $this->flash ? $this->leftClicks : [] as $span) {
+            $from = $span->from - $cut;
+            if ($span->from >= $whole && $from < $drawnWidth) {
+                $spans[] = new StatusClickSpan($at + $from, $at + \min($span->to - $cut, $drawnWidth), $span->action, $span->tooltip);
             }
         }
 
@@ -525,6 +565,9 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
 
     /** ` │ `, the one column of rule between two cells and after the last. */
     private const int SEPARATOR_WIDTH = 3;
+
+    /** The spaces between the file part and the note after it. */
+    private const int NOTE_GAP = 2;
 
     private function separator(): string
     {

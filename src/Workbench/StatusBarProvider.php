@@ -51,7 +51,7 @@ final readonly class StatusBarProvider
      * widget lays the cells out — it alone knows which of them fit — so the
      * router still hit-tests a click without knowing which cell is which.
      *
-     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftTooltip: ?string, leftPath: ?string, leftPathWidth: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks: list<StatusClickSpan>}
+     * @return array{cells: list<array{text: string, menu: (\Closure(): list<MenuItem>)|null, tooltip: ?string}>, left: string, leftNote?: string, leftTooltip: ?string, leftPath: ?string, leftPathWidth: int, leftClicks?: list<StatusClickSpan>, right: string, rightClicks: list<StatusClickSpan>}
      */
     public function segments(): array
     {
@@ -119,6 +119,7 @@ final readonly class StatusBarProvider
 
         // Led by its severity's glyph, so an error and a hint differ without colour.
         $leftClicks = [];
+        $leftNote = '';
         if (null !== ($diagnostic = $this->editor->getCursorDiagnostic())) {
             $text = $diagnostic['severity']->glyph().' '.$diagnostic['message'];
             $leftTooltip = null === $leftTooltip ? $text : $leftTooltip."\n".$text; // whole, where the row may cut it
@@ -130,7 +131,8 @@ final readonly class StatusBarProvider
                 'ide_reveal_caret_problem',
                 $text."\n".$this->translator->trans('Click to show it in the Problems panel'),
             );
-            $left .= '  '.match ($diagnostic['severity']) {
+            // A note of its own, not more of the left: the row cuts each apart.
+            $leftNote = match ($diagnostic['severity']) {
                 DiagnosticSeverity::Error => $this->styles->of(Role::StatusError)->apply($text),
                 DiagnosticSeverity::Warning => $this->styles->of(Role::StatusWarning)->apply($text),
                 DiagnosticSeverity::Information, DiagnosticSeverity::Hint => $text,
@@ -198,6 +200,7 @@ final readonly class StatusBarProvider
         return [
             'cells' => $cells,
             'left' => $left,
+            'leftNote' => $leftNote,
             'leftTooltip' => $leftTooltip,
             'leftPath' => $leftPath,
             'leftPathWidth' => $leftPathWidth,

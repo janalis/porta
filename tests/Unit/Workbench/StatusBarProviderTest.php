@@ -349,23 +349,29 @@ final class StatusBarProviderTest extends TestCase
     public function testTheCaretDiagnosticLeadsWithItsSeverity(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n\n");
+        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n\n\n");
         $this->editor->decorations->setDiagnostics([
             0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]],
             1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'meh', 'col' => 0]],
             2 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'tip', 'col' => 0]],
+            3 => [['severity' => DiagnosticSeverity::Information, 'message' => 'fyi', 'col' => 0]],
         ]);
         $styles = Styles::dark();
 
-        $this->assertStringContainsString($styles->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' boom'), $provider->segments()['left']);
+        $this->assertStringContainsString($styles->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' boom'), $provider->segments()['leftNote'] ?? '');
         $this->editor->getDocument()->setCursor(1, 0);
-        $this->assertStringContainsString($styles->of(Role::StatusWarning)->apply(Glyphs::SEVERITY_WARNING.' meh'), $provider->segments()['left']);
+        $this->assertStringContainsString($styles->of(Role::StatusWarning)->apply(Glyphs::SEVERITY_WARNING.' meh'), $provider->segments()['leftNote'] ?? '');
         $this->editor->getDocument()->setCursor(2, 0);
-        $left = $provider->segments()['left'];
-        $this->assertStringEndsWith('  '.Glyphs::SEVERITY_HINT.' tip', $left, 'plain: no role at all');
+        $this->assertSame(Glyphs::SEVERITY_HINT.' tip', $provider->segments()['leftNote'] ?? '', 'plain: no role at all');
+        $this->editor->getDocument()->setCursor(3, 0);
+        $this->assertSame(DiagnosticSeverity::Information->glyph().' fyi', $provider->segments()['leftNote'] ?? '', 'information is as plain');
     }
 
-    /** The caret's problem is a click target over exactly its words: it opens it in the Problems panel. */
+    /**
+     * The caret's problem is a note of its own after the file part, and a
+     * click target over exactly its words where the row joins the two: it
+     * opens it in the Problems panel.
+     */
     public function testTheCaretProblemIsAClickOverItsWords(): void
     {
         $provider = $this->provider();
@@ -373,7 +379,8 @@ final class StatusBarProviderTest extends TestCase
         $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
 
         $segments = $provider->segments();
-        $plain = AnsiUtils::stripAnsiCodes($segments['left']);
+        $this->assertStringNotContainsString('boom', $segments['left'], 'the file part is the file alone');
+        $plain = AnsiUtils::stripAnsiCodes($segments['left'].'  '.($segments['leftNote'] ?? ''));
         [$span] = $segments['leftClicks'] ?? [];
 
         $this->assertSame('ide_reveal_caret_problem', $span->action);

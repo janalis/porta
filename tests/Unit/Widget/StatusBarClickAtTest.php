@@ -224,15 +224,17 @@ final class StatusBarClickAtTest extends TestCase
         $this->assertSame('/q/src/a.php', $status->fileAt(1));
     }
 
-    /** `src/A.php  ✗ boom` with the problem's words clickable, as the provider reports it. */
-    private function barWithAProblem(): StatusBarWidget
+    /** `$path  ✗ $problem` with the problem's words clickable, as the provider reports it. */
+    private function barWithAProblem(string $path = 'src/A.php', string $problem = 'boom'): StatusBarWidget
     {
+        $from = AnsiUtils::visibleWidth($path) + 2;
         $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
         $status->setProvider(static fn (): array => [
-            'left' => 'src/A.php  ✗ boom',
-            'leftPath' => '/p/src/A.php',
-            'leftPathWidth' => 9,
-            'leftClicks' => [new StatusClickSpan(11, 17, 'ide_reveal_caret_problem', "✗ boom\nClick to show it in the Problems panel")],
+            'left' => $path,
+            'leftNote' => '✗ '.$problem,
+            'leftPath' => '/p/'.$path,
+            'leftPathWidth' => AnsiUtils::visibleWidth($path),
+            'leftClicks' => [new StatusClickSpan($from, $from + 2 + \mb_strlen($problem), 'ide_reveal_caret_problem', "✗ {$problem}\nClick to show it in the Problems panel")],
             'right' => 'AB',
         ]);
         $status->beforeRender();
@@ -266,41 +268,122 @@ final class StatusBarClickAtTest extends TestCase
     }
 
     /**
-     * Cut in the middle, the left keeps its tail — the problem's last words —
-     * and they stay clickable where they are drawn now; covered by a flash,
-     * nothing of it is.
+     * Short of room, the path and the problem are cut apart: the path in the
+     * middle, keeping the file's name and its ●, and the problem at its tail,
+     * keeping what it is. One middle cut through both drew
+     * `src/Editor/BufferNavigator…n a variable, expected {`.
      */
-    public function testAnElidedLeftKeepsItsTailClickableAndAFlashNone(): void
+    public function testAPathAndItsProblemAreCutApart(): void
     {
-        $status = $this->barWithAProblem();
-        $row = $status->render(new RenderContext(18, 1))[0];
-        $plain = AnsiUtils::stripAnsiCodes($row);
-        $this->assertStringContainsString('…', $plain, 'the left was cut in the middle');
-        $tail = \mb_strpos($plain, needle: 'boom');
-        $this->assertNotFalse($tail);
-        $this->assertSame('ide_reveal_caret_problem', $status->clickAt($tail), 'the drawn tail is still the problem');
-        $this->assertNull($status->clickAt(\mb_strpos($plain, needle: '…')), 'the mark is not');
+        // 45 columns leave the left 40: the path its floor of 24, the
+        // problem 14 after the two-space gap.
+        $status = $this->barWithAProblem('src/Editor/BufferNavigator.php ●', 'Syntax error: unexpected token');
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(45, 1))[0]);
 
-        $status = $this->barWithAProblem();
-        $status->flash('Saved');
-        $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
-        $this->assertNull($status->clickAt(self::columnOf($row, 'Saved')), 'flashed');
+        $this->assertSame(' src/Editor/…igator.php ●  ✗ Syntax erro…', \rtrim(\mb_substr($plain, start: 0, length: \mb_strpos($plain, needle: 'AB'))));
+        $this->assertSame('/p/src/Editor/BufferNavigator.php ●', $status->fileAt(1), 'the path is still the file');
+        $at = \mb_strpos($plain, needle: '✗');
+        $this->assertNotFalse($at);
+        $this->assertSame('ide_reveal_caret_problem', $status->clickAt($at), 'the problem moved with the cut path');
+        $this->assertSame('ide_reveal_caret_problem', $status->clickAt($at + 13), 'its mark, the last of it drawn');
+        $this->assertNull($status->clickAt($at + 14), 'not the gap after it');
+        $this->assertNull($status->clickAt($at - 1), 'not the gap before it');
     }
 
-    /** A span in the kept head stays where it was; one in the cut middle is gone. */
-    public function testAnElidedLeftKeepsAHeadSpanAndDropsOneCutAway(): void
+    /** Too narrow for the problem's glyph and its mark, the path has the room, cut in the middle as when alone. */
+    public function testAProblemWithNoRoomLeavesThePathTheLeft(): void
+    {
+        // 31 columns leave the left 26: past the floor and the gap, the problem 0.
+        $status = $this->barWithAProblem('src/Editor/BufferNavigator.php ●', 'Syntax error');
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(31, 1))[0]);
+
+        $this->assertStringNotContainsString('✗', $plain);
+        $this->assertStringContainsString(' src/Editor/B…vigator.php ● ', $plain);
+        $this->assertNull($status->clickAt(\mb_strpos($plain, needle: '●') + 2), 'nothing is left to click');
+
+        // One more column of room and the problem shows: its glyph and its mark.
+        $plain = AnsiUtils::stripAnsiCodes($this->barWithAProblem('src/Editor/BufferNavigator.php ●', 'Syntax error')->render(new RenderContext(33, 1))[0]);
+        $this->assertStringContainsString('●  ✗…', $plain);
+    }
+
+    /**
+     * The path gives way only as far as the problem needs: down from 41
+     * columns to 33, not to its floor, and the problem shows whole.
+     */
+    public function testAPathGivesAProblemOnlyTheRoomItNeeds(): void
+    {
+        // 50 columns leave the left 45: 33 for the path, 2 for the gap, 10 for the problem.
+        $status = $this->barWithAProblem('src/Some/Deep/Directory/LongClassName.php', '12345678');
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(50, 1))[0]);
+
+        $this->assertSame(' src/Some/Deep/Di…ongClassName.php  ✗ 12345678', \rtrim(\mb_substr($plain, start: 0, length: \mb_strpos($plain, needle: 'AB'))));
+    }
+
+    /** A span over part of the note moves with the path's cut and ends where it did: here the glyph alone. */
+    public function testANoteSpanMovesWithTheCutPathAndKeepsItsEnd(): void
     {
         $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
         $status->setProvider(static fn (): array => [
-            'left' => 'abcdefghijklmnopqrstuvwxyz',
-            'leftClicks' => [new StatusClickSpan(0, 3, 'head'), new StatusClickSpan(10, 14, 'middle')],
+            'left' => 'src/Some/Deep/Directory/LongClassName.php',
+            'leftNote' => '✗ 12345678',
+            'leftClicks' => [new StatusClickSpan(43, 44, 'glyph')],
             'right' => 'AB',
         ]);
         $status->beforeRender();
-        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(20, 1))[0]);
+        $plain = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(50, 1))[0]);
+        $at = \mb_strpos($plain, needle: '✗');
+        $this->assertNotFalse($at);
 
-        $this->assertStringContainsString('…', $plain);
-        $this->assertSame('head', $status->clickAt(1 + 1), 'b, in the kept head');
-        $this->assertNull($status->clickAt(\mb_strpos($plain, needle: '…') + 1), 'nothing of the middle is drawn');
+        $this->assertSame('glyph', $status->clickAt($at));
+        $this->assertNull($status->clickAt($at + 1), 'the space after it');
+    }
+
+    /** A new problem behind the same file part is drawn: the note alone says the row is stale. */
+    public function testANewProblemBehindTheSamePathIsDrawn(): void
+    {
+        $note = '✗ boom';
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static function () use (&$note): array {
+            return ['left' => 'src/a.php', 'leftNote' => $note, 'right' => ''];
+        });
+        $renderer = new Renderer(new StyleSheet());
+        $this->assertStringContainsString('✗ boom', AnsiUtils::stripAnsiCodes($renderer->renderWidgetLines($status, new RenderContext(self::COLUMNS, 1))->getLine(0)));
+
+        $note = '✗ bang';
+
+        $this->assertStringContainsString('✗ bang', AnsiUtils::stripAnsiCodes($renderer->renderWidgetLines($status, new RenderContext(self::COLUMNS, 1))->getLine(0)));
+    }
+
+    /** A flash has the left's place, and the problem's click goes with it. */
+    public function testAFlashTakesTheProblemsClick(): void
+    {
+        $status = $this->barWithAProblem();
+        $status->flash('Saved');
+        $row = AnsiUtils::stripAnsiCodes($status->render(new RenderContext(self::COLUMNS, 1))[0]);
+
+        $this->assertStringNotContainsString('boom', $row);
+        foreach (\range(0, self::COLUMNS - 4) as $column) {
+            $this->assertNull($status->clickAt($column), "column {$column} is the flash's, or the gap");
+        }
+    }
+
+    /** Only the note's spans are clicks: one over the file part is not offered — the file part's click is the file. */
+    public function testASpanOverTheFilePartIsNotOffered(): void
+    {
+        $status = new StatusBarWidget(new MockClock('2020-01-01T00:00:00+00:00'));
+        $status->setProvider(static fn (): array => [
+            'left' => 'src/a.php',
+            'leftNote' => '✗ boom',
+            // From the file part's end on: the gap and the note.
+            'leftClicks' => [new StatusClickSpan(0, 3, 'file'), new StatusClickSpan(9, 17, 'note')],
+            'right' => 'AB',
+        ]);
+        $status->beforeRender();
+        $status->render(new RenderContext(self::COLUMNS, 1));
+
+        $this->assertNull($status->clickAt(1), 'the file part');
+        $this->assertSame('note', $status->clickAt(1 + 9), 'the gap after it belongs to the note');
+        $this->assertSame('note', $status->clickAt(1 + 16), 'its last column');
+        $this->assertNull($status->clickAt(1 + 17));
     }
 }
