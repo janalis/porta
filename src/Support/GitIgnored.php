@@ -33,15 +33,23 @@ final class GitIgnored
         // in per question, and kept when rewinding lands on it.
         $slot = new \ArrayIterator();
         $matcher = new VcsIgnoredFilterIterator($slot, $root);
-
-        return static function (SplFileInfo $entry) use ($slot, $matcher): bool {
-            if (!$entry->isDir()) {
-                return true;
-            }
+        $ignored = static function (\SplFileInfo $entry) use ($slot, $matcher): bool {
             $slot->offsetSet(0, $entry);
-            $matcher->rewind();
+            try {
+                $matcher->rewind();
 
-            return $matcher->valid();
+                return !$matcher->valid();
+            } catch (\RuntimeException) {
+                return false; // a .gitignore that cannot be read rules out nothing
+            }
         };
+        // A project inside a repository that ignores it — a scratch folder in
+        // a home directory kept in git with `*` ignored: that repository's
+        // rules are about its own tree, and would rule out the whole project.
+        if ($ignored(new \SplFileInfo($root))) {
+            return static fn (SplFileInfo $entry): bool => true;
+        }
+
+        return static fn (SplFileInfo $entry): bool => !$entry->isDir() || !$ignored($entry);
     }
 }

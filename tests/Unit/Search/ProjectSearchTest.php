@@ -263,6 +263,17 @@ final class ProjectSearchTest extends TestCase
         );
     }
 
+    /** A file the walk passed over in one scope is still read when another scope names it — as grep reads it. */
+    public function testAFileNamedInItsOwnScopeIsSearchedPastTheCapOfItsFolder(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['data/big.json' => \str_repeat('x', times: 1_048_577)."needle\n"]);
+
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: ['data', 'data/big.json']), 'path');
+
+        $this->assertSame(['data/big.json'], $paths);
+    }
+
     /** The PHP walk shows a hit as grep's results are shown: without its indentation. */
     public function testThePhpWalkShowsAHitTrimmed(): void
     {

@@ -53,6 +53,32 @@ final class GitIgnoredTest extends TestCase
         $this->assertSame(['.gitignore', 'src/A.php'], self::walk($project));
     }
 
+    /**
+     * A project inside a repository that ignores it — a scratch folder under a
+     * home directory kept in git with `*` ignored — is walked whole: that
+     * repository's rules are about its own tree, not this one's.
+     */
+    public function testAProjectAnOuterRepositoryIgnoresIsWalkedWhole(): void
+    {
+        $outer = new TempProject(['.gitignore' => "proj/\n", 'proj/src/A.php' => '', 'proj/top.php' => '']);
+        $outer->initGit();
+        $finder = Finder::create()
+            ->files()
+            ->in($outer->path('proj'))
+            ->filter(GitIgnored::pruner($outer->path('proj')), prune: true);
+
+        $this->assertSame(['src/A.php', 'top.php'], self::found($finder));
+    }
+
+    /** A .gitignore that cannot be read rules out nothing: the walk goes on. */
+    public function testAnUnreadableGitignoreRulesOutNothing(): void
+    {
+        $project = new TempProject(['src/sub/B.php' => '']);
+        \mkdir($project->path('src/.gitignore')); // a directory where the file should be, read to judge src/sub
+
+        $this->assertSame(['src/sub/B.php'], self::found(Finder::create()->files()->in($project->dir)->filter(GitIgnored::pruner($project->dir), prune: true)));
+    }
+
     /** The rules are git's, as Finder reads them — a nested .gitignore, a negation, a directory-only rule: pruning keeps every file the filter keeps. */
     public function testItKeepsWhatGitKeeps(): void
     {

@@ -340,7 +340,11 @@ final class ProjectSearch
         foreach ($paths as $scope) {
             foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
                 $content = null === $abs || null !== ($seen[$rel] ?? null) ? null : $this->readFile($abs);
-                $seen[$rel] = true;
+                // Only a file read counts as seen: one this scope passed over
+                // may be named by the next — searched there, as grep searches it.
+                if (null !== $abs) {
+                    $seen[$rel] = true;
+                }
                 yield $rel => null === $content || \str_contains($content, "\0") ? null : $content;
             }
         }
