@@ -185,11 +185,27 @@ final class CoveragePluginsCommandTest extends TestCase
     public function testTheSlowestShardIsNamedBecauseItIsTheFloor(): void
     {
         $project = $this->project();
+        // beta ends last by construction, not by a head start that process
+        // startup under load can eat: the others leave a mark and go, and beta
+        // waits for both marks — its own startup inside the wait — then 0.5 s.
+        $marks = $project->path('done');
+        \mkdir($marks);
         $spawn = static fn (array $paths, string $cloverPath): Process => new Process([
             \PHP_BINARY,
             '-r',
-            'usleep(str_contains($argv[1], "beta") ? 200000 : 10000); exit(0);',
+            <<<'PHP'
+                [, $clover, $marks] = $argv;
+                if (!str_contains($clover, 'beta')) {
+                    touch($marks.'/'.basename($clover));
+                    exit(0);
+                }
+                for ($deadline = microtime(true) + 30; count(glob($marks.'/*')) < 2 && microtime(true) < $deadline;) {
+                    usleep(10000);
+                }
+                usleep(500000);
+                PHP,
             $cloverPath,
+            $marks,
         ]);
 
         $tester = $this->tester($project, $spawn);
