@@ -152,7 +152,17 @@ final class CoveragePluginsCommandTest extends TestCase
         $this->assertSame('+-+-+-', \file_get_contents($log), 'at one process the shards must not overlap');
 
         \unlink($log);
-        $this->tester($project, $spawn)->execute(['--output-dir' => $project->path('out'), '--processes' => 3]);
+        // Overlapping by construction, not by a 200 ms window a loaded runner
+        // can let one shard finish inside: each waits, after its start, for a
+        // second start — at once when the pool runs them side by side, and
+        // only past a 10 s deadline, still unpaired, when it does not.
+        $paired = static fn (array $paths, string $cloverPath): Process => new Process([
+            \PHP_BINARY,
+            '-r',
+            'file_put_contents($argv[1], "+", FILE_APPEND); for ($d = microtime(true) + 10; substr_count((string) file_get_contents($argv[1]), "+") < 2 && microtime(true) < $d;) { usleep(10000); } file_put_contents($argv[1], "-", FILE_APPEND); exit(0);',
+            $log,
+        ]);
+        $this->tester($project, $paired)->execute(['--output-dir' => $project->path('out'), '--processes' => 3]);
         $this->assertStringContainsString('++', (string) \file_get_contents($log), 'at three processes they must');
     }
 
