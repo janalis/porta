@@ -31,15 +31,7 @@ final class MenuOverlayControllerTest extends TestCase
 
     public function testRefreshContextMenuPositionsAndFramesTheDropdown(): void
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(
-            terminal: new VirtualTerminal(columns: 100, rows: 24),
-            keybindings: new Keybindings([]),
-            renderer: $this->renderer,
-        );
-        $pane = new TestOverlayPane();
-        $this->tui->add($pane);
-        $this->frame();
+        $pane = $this->aPaneOnAFreshScreen();
 
         $menuBar = new MenuBarWidget();
         $contextMenu = new ContextMenu();
@@ -73,15 +65,7 @@ final class MenuOverlayControllerTest extends TestCase
      */
     public function testAMirroredMenuClaimsItsShadowToTheLeft(): void
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(
-            terminal: new VirtualTerminal(columns: 100, rows: 24),
-            keybindings: new Keybindings([]),
-            renderer: $this->renderer,
-        );
-        $pane = new TestOverlayPane();
-        $this->tui->add($pane);
-        $this->frame();
+        $pane = $this->aPaneOnAFreshScreen();
         $contextMenu = new ContextMenu();
         $layer = new FloatingLayer();
         $controller = new MenuOverlayController(
@@ -126,15 +110,7 @@ final class MenuOverlayControllerTest extends TestCase
      */
     public function testALiveSwitchToMirroredTakesTheMenuOffThePanes(): void
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(
-            terminal: new VirtualTerminal(columns: 100, rows: 24),
-            keybindings: new Keybindings([]),
-            renderer: $this->renderer,
-        );
-        $pane = new TestOverlayPane();
-        $this->tui->add($pane);
-        $this->frame();
+        $pane = $this->aPaneOnAFreshScreen();
         $translator = new Translator('en');
         $contextMenu = new ContextMenu();
         $controller = new MenuOverlayController(
@@ -158,8 +134,8 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertStringNotContainsString('Copy', $rendered(), 'mirrored, the pane no longer does');
     }
 
-    /** An unchanged menu asks for no frame: asking every frame would never let the screen settle. */
-    public function testAnUnchangedMirroredMenuAsksForNoFrame(): void
+    /** A fresh 100 × 24 screen holding one overlay pane, drawn once. */
+    private function aPaneOnAFreshScreen(): TestOverlayPane
     {
         $this->renderer = new Renderer(new StyleSheet());
         $this->tui = new BidiTui(
@@ -170,6 +146,34 @@ final class MenuOverlayControllerTest extends TestCase
         $pane = new TestOverlayPane();
         $this->tui->add($pane);
         $this->frame();
+
+        return $pane;
+    }
+
+    /**
+     * A fresh screen 30 columns wide and $rows tall: a menu bar whose File
+     * menu holds ten items, over one overlay pane — drawn once.
+     *
+     * @return array{MenuBarWidget, TestOverlayPane}
+     */
+    private function aFileMenuOfTenOn(int $rows): array
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 30, rows: $rows), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $menuBar = new MenuBarWidget();
+        $menuBar->setMenus([new Menu('File', \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)))]);
+        $pane = new TestOverlayPane();
+        $this->tui->add($menuBar);
+        $this->tui->add($pane);
+        $this->frame(30, $rows);
+
+        return [$menuBar, $pane];
+    }
+
+    /** An unchanged menu asks for no frame: asking every frame would never let the screen settle. */
+    public function testAnUnchangedMirroredMenuAsksForNoFrame(): void
+    {
+        $pane = $this->aPaneOnAFreshScreen();
         $contextMenu = new ContextMenu();
         $controller = new MenuOverlayController(
             $this->renderer,
@@ -192,15 +196,7 @@ final class MenuOverlayControllerTest extends TestCase
 
     public function testAListboxIsHeavyFramedAndFlipsAboveItsControl(): void
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(
-            terminal: new VirtualTerminal(columns: 100, rows: 24),
-            keybindings: new Keybindings([]),
-            renderer: $this->renderer,
-        );
-        $pane = new TestOverlayPane();
-        $this->tui->add($pane);
-        $this->frame();
+        $pane = $this->aPaneOnAFreshScreen();
         $contextMenu = new ContextMenu();
         $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane]));
 
@@ -288,14 +284,7 @@ final class MenuOverlayControllerTest extends TestCase
      */
     public function testATallMenuScrollsWithinTheScreen(): void
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 30, rows: 8), keybindings: new Keybindings([]), renderer: $this->renderer);
-        $menuBar = new MenuBarWidget();
-        $menuBar->setMenus([new Menu('File', \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)))]);
-        $pane = new TestOverlayPane();
-        $this->tui->add($menuBar);
-        $this->tui->add($pane);
-        $this->frame(30, 8);
+        [$menuBar, $pane] = $this->aFileMenuOfTenOn(rows: 8);
         $controller = new MenuOverlayController($this->renderer, $menuBar, new ContextMenu(), new MenuOverlayPanes([$pane]));
         // The pane's rect spans rows 1-8: the box gets eight rows, six items.
         $screen = static fn (): array => \array_map(AnsiUtils::stripAnsiCodes(...), $pane->render(new RenderContext(30, 8)));
@@ -328,14 +317,7 @@ final class MenuOverlayControllerTest extends TestCase
      */
     public function testAnOpenMenuIsLaidOutAgainWhenTheScreenChanges(): void
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 30, rows: 12), keybindings: new Keybindings([]), renderer: $this->renderer);
-        $menuBar = new MenuBarWidget();
-        $menuBar->setMenus([new Menu('File', \array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)))]);
-        $pane = new TestOverlayPane();
-        $this->tui->add($menuBar);
-        $this->tui->add($pane);
-        $this->frame(30, 12);
+        [$menuBar, $pane] = $this->aFileMenuOfTenOn(rows: 12);
         $contextMenu = new ContextMenu();
         $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane]), frameHooks: $this->tui, tui: $this->tui);
         $pending = fn (): bool => (bool) Probe::get($this->tui, 'renderRequested');

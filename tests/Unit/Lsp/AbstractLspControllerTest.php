@@ -11,6 +11,7 @@ use Porta\Lsp\AbstractLspController;
 use Porta\Lsp\FlushMode;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TestTui;
@@ -37,18 +38,7 @@ final class AbstractLspControllerTest extends TestCase
     {
         $this->client = new FakeLspClient();
         $this->editor = new CodeEditorWidget();
-        $this->pool = new LspSessionPool(
-            '/tmp/proj',
-            new FixedActiveFile('/tmp/proj/a.php'),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client,
-        );
-        $this->pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $this->pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), fn (): FakeLspClient => $this->client);
         $tui = TestTui::create();
         $this->statusBar = new StatusBarWidget();
 

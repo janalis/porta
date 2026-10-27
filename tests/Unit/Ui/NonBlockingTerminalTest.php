@@ -10,9 +10,6 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\RecordingTerminal;
 use Porta\Ui\NonBlockingTerminal;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 final class NonBlockingTerminalTest extends TestCase
 {
@@ -87,63 +84,11 @@ final class NonBlockingTerminalTest extends TestCase
     {
         [$stream, $peer] = $this->pair();
         $blockedDuringStart = null;
-        $inner = new class($stream, $blockedDuringStart) implements TerminalInterface {
-            public function __construct(
-                private $stream,
-                private ?bool &$blockedDuringStart,
-            ) {}
-
-            public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void
-            {
-                // The inner terminal's own boot writes must still run blocking.
-                $this->blockedDuringStart = \stream_get_meta_data($this->stream)['blocked'];
-            }
-
-            public function stop(): void {}
-
-            public function write(string $data): void {}
-
-            public function getColumns(): int
-            {
-                return 0;
-            }
-
-            public function getRows(): int
-            {
-                return 0;
-            }
-
-            public function isKittyProtocolActive(): bool
-            {
-                return false;
-            }
-
-            public function moveBy(int $lines): void {}
-
-            public function hideCursor(): void {}
-
-            public function showCursor(): void {}
-
-            public function clearLine(): void {}
-
-            public function clearFromCursor(): void {}
-
-            public function clearScreen(): void {}
-
-            public function setTitle(string $title): void {}
-
-            public function bell(): void {}
-
-            public function isVirtual(): bool
-            {
-                return false;
-            }
-
-            public function getEventDispatcher(): EventDispatcherInterface
-            {
-                return new EventDispatcher();
-            }
-        };
+        $calls = [];
+        // The inner terminal's own boot writes must still run blocking.
+        $inner = new RecordingTerminal($calls, onStart: static function () use ($stream, &$blockedDuringStart): void {
+            $blockedDuringStart = \stream_get_meta_data($stream)['blocked'];
+        });
         $terminal = new NonBlockingTerminal($inner, $stream);
 
         $terminal->start(static function (): void {}, static function (): void {}, static function (): void {});

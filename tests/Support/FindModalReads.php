@@ -51,6 +51,17 @@ trait FindModalReads
         $tui->tick();
     }
 
+    /** A step that opens Find in Files (ctrl+shift+f) and types $query into it, a key at a time. */
+    private static function findInFiles(string $query): \Closure
+    {
+        return static function (Tui $tui) use ($query): void {
+            $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
+            foreach (\str_split($query) as $ch) {
+                $tui->handleInput($ch);
+            }
+        };
+    }
+
     /** The Find-in-Files modal's text (it composites over the editor pane). */
     private function modalText(Tui $tui): string
     {

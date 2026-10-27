@@ -15,6 +15,7 @@ use Porta\Lsp\CompletionController;
 use Porta\Lsp\LspBufferListener;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -31,18 +32,7 @@ final class LspBufferListenerTest extends TestCase
     /** @return array{0: LspBufferListener, 1: LspSessionPool} */
     private function listener(): array
     {
-        $pool = new LspSessionPool(
-            '/tmp/proj',
-            $this->activeFile = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(['inlayHintProvider' => true]),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/tmp/proj', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient(['inlayHintProvider' => true]));
         $tui = new Tui(terminal: new VirtualTerminal(columns: 80, rows: 10));
         $this->editor = new CodeEditorWidget();
         $completion = new CompletionController($pool, $this->editor, $tui, new Notifier(new StatusBarWidget(), $tui), new Translator('en'));

@@ -164,12 +164,7 @@ final class MergePaneWidget extends EditorPaneWidget
             // keep working while this pane has the keys (see EditorKeymap):
             // the next thing after the last accept is the save.
             $kb->matches($data, 'save') => ($this->save)(),
-            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
-            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
-            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
-            $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
-            default => null,
+            default => $this->tabKey($data),
         };
     }
 
@@ -308,11 +303,7 @@ final class MergePaneWidget extends EditorPaneWidget
             'merge_next' => ['n'],
             'merge_prev' => ['p'],
             'save' => ['ctrl+s'],
-            'next_buffer' => ['ctrl+right'],
-            'prev_buffer' => ['ctrl+left'],
-            'close_buffer' => ['ctrl+f4', 'alt+w'],
-            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
-            'save_all' => ['ctrl+alt+s'],
+            ...self::TAB_KEYS,
         ];
     }
 }

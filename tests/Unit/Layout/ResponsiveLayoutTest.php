@@ -320,14 +320,12 @@ final class ResponsiveLayoutTest extends TestCase
         $this->addToAssertionCount(1);
     }
 
-    public function testArrangeViewAreasOrdersEveryMintedRegionsOwnArea(): void
+    /** A pane layout over $regions in $locale, with no floating box over anything. */
+    private function paneLayout(ViewRegions $regions, string $locale = 'en'): PaneLayout
     {
-        $this->responsive();
-        $regions = new ViewRegions(Styles::dark());
-        $region = $regions->mint('acme');
-        $paneLayout = new PaneLayout(
+        return new PaneLayout(
             $this->layout,
-            new Translator('en'),
+            new Translator($locale),
             $this->bidi,
             new PaneSegmenter($this->renderer, new class implements FloatingRegions {
                 public function regions(): array
@@ -339,6 +337,14 @@ final class ResponsiveLayoutTest extends TestCase
             $regions,
             new PreviewSplit(Styles::dark()),
         );
+    }
+
+    public function testArrangeViewAreasOrdersEveryMintedRegionsOwnArea(): void
+    {
+        $this->responsive();
+        $regions = new ViewRegions(Styles::dark());
+        $region = $regions->mint('acme');
+        $paneLayout = $this->paneLayout($regions);
 
         $paneLayout->arrangeViewAreas();
 
@@ -355,37 +361,11 @@ final class ResponsiveLayoutTest extends TestCase
         $regions = new ViewRegions(Styles::dark());
         $regions->mint('acme');
 
-        $ltr = new PaneLayout(
-            $this->layout,
-            new Translator('en'),
-            $this->bidi,
-            new PaneSegmenter($this->renderer, new class implements FloatingRegions {
-                public function regions(): array
-                {
-                    return [];
-                }
-            }),
-            new PaneReorder(),
-            $regions,
-            new PreviewSplit(Styles::dark()),
-        );
+        $ltr = $this->paneLayout($regions);
         $ltr->applyDirection();
         $this->assertFalse($this->bidi->isMirrored(), 'an LTR locale must not install the reorder seam');
 
-        $rtl = new PaneLayout(
-            $this->layout,
-            new Translator('he'),
-            $this->bidi,
-            new PaneSegmenter($this->renderer, new class implements FloatingRegions {
-                public function regions(): array
-                {
-                    return [];
-                }
-            }),
-            new PaneReorder(),
-            $regions,
-            new PreviewSplit(Styles::dark()),
-        );
+        $rtl = $this->paneLayout($regions, 'he');
         $rtl->applyDirection();
         $this->assertTrue($this->bidi->isMirrored(), 'an RTL locale must install it');
     }
@@ -399,20 +379,7 @@ final class ResponsiveLayoutTest extends TestCase
         $this->responsive();
         $regions = new ViewRegions(Styles::dark());
         $region = $regions->mint('acme');
-        $paneLayout = new PaneLayout(
-            $this->layout,
-            new Translator('en'),
-            $this->bidi,
-            new PaneSegmenter($this->renderer, new class implements FloatingRegions {
-                public function regions(): array
-                {
-                    return [];
-                }
-            }),
-            new PaneReorder(),
-            $regions,
-            new PreviewSplit(Styles::dark()),
-        );
+        $paneLayout = $this->paneLayout($regions);
 
         $paneLayout->applyDirection();
 

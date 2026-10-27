@@ -581,12 +581,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             $kb->matches($data, 'help_home') => $this->scrollBy(-\PHP_INT_MAX),
             $kb->matches($data, 'help_end') => $this->scrollBy(\PHP_INT_MAX),
             $kb->matches($data, 'help_find') => $this->docs()?->openFind(),
-            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
-            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
-            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
-            $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
-            default => null,
+            default => $this->tabKey($data),
         };
     }
 
@@ -606,13 +601,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             'help_home' => [Key::HOME],
             'help_end' => [Key::END],
             'help_find' => ['ctrl+f'],
-            // Re-bound to the editor's defaults so tab management keeps working
-            // while the code editor is detached (see EditorKeymap).
-            'next_buffer' => ['ctrl+right'],
-            'prev_buffer' => ['ctrl+left'],
-            'close_buffer' => ['ctrl+f4', 'alt+w'],
-            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
-            'save_all' => ['ctrl+alt+s'],
+            ...self::TAB_KEYS,
         ];
     }
 

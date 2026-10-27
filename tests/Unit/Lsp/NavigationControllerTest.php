@@ -19,7 +19,6 @@ use Porta\Editor\ProblemCards;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
 use Porta\I18n\Translator;
-use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\QuickFixProbe;
 use Porta\Lsp\StructurePanelRefresher;
@@ -27,6 +26,7 @@ use Porta\Support\DocsUrlOpener;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
@@ -85,18 +85,7 @@ final class NavigationControllerTest extends TestCase
         $dock = $this->dock;
         $this->buffers = new BufferManager();
         $opened = &$this->opened;
-        $pool = new LspSessionPool(
-            '/p',
-            $this->activeFile = new FixedActiveFile(),
-            $translator,
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($this->capabilities),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient($this->capabilities));
 
         return new NavigationController(
             $pool,

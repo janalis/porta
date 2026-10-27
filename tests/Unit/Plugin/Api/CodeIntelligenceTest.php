@@ -9,11 +9,11 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\DocumentReplacer;
 use Porta\Editor\EditorInvalidator;
-use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
 use Porta\Plugin\Api\CodeIntelligence;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestLspQuery;
@@ -49,18 +49,7 @@ final class CodeIntelligenceTest extends TestCase
     {
         $this->root = (string) \realpath($this->project->dir);
         $this->buffers = new BufferManager();
-        $pool = new LspSessionPool(
-            $this->root,
-            new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create($this->root, new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient());
         $this->pool = $pool;
         $screen = new class implements EditorInvalidator {
             public function invalidate(): void {}

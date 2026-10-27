@@ -53,12 +53,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('src/A.php'), // the active file drives Directory/Current File scope
             [
-                100 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                100 => self::findInFiles('tok'),
                 200 => function (object $tui) use ($panelText): void {
                     // Each scope change re-runs the grep subprocess, and a
                     // stale result set isn't cleared until the new one lands —
@@ -228,12 +223,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('pkg/src/A.php'), // a file inside the pkg/ package
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 600 => function (object $tui): void {
                     $tui->tick();
                     $this->nextScope($tui); // → Directory
@@ -266,12 +256,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             null, // no file open → Directory/Current File resolve to the whole project
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 600 => function (object $tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
                     $this->nextScope($tui); // alt+s → Directory, but no file → whole project
@@ -296,12 +281,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             null, // no open file → the modal composites over an empty pane (no file text leaks into asserts)
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('needle') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('needle'),
                 600 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
                     $this->awaitSearch($ide);
                     $panel = $panelText($tui);
@@ -324,18 +304,33 @@ final class IdeFindInProjectTest extends TestCase
     public function testFindInProjectContextLinesFromOpenBuffer(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$x = 1;\n// tok here\n\$y = 2;\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 20))));
 
+        $panel = $this->contextAroundTheFirstMatch($project, $project->path('src/A.php')); // open → context reads from the buffer
+
+        $this->assertStringContainsString('$x = 1;', $panel, 'the preceding line is shown');
+        $this->assertStringContainsString('$y = 2;', $panel, 'the following line is shown');
+    }
+
+    public function testFindInProjectContextLinesFromDisk(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
+
+        $panel = $this->contextAroundTheFirstMatch($project, null); // nothing open → context reads from disk
+
+        $this->assertStringContainsString('// alpha', $panel, 'the preceding line is read from disk');
+        $this->assertStringContainsString('// beta', $panel, 'the following line is read from disk');
+    }
+
+    /** The results pane's text once Find in Files for `tok` has expanded context (alt+m) around its first match. */
+    private function contextAroundTheFirstMatch(TempProject $project, ?string $open): string
+    {
+        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 20))));
+        $panel = '';
         $this->runIde(
             $project,
-            $project->path('src/A.php'), // open → context reads from the buffer
+            $open,
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 600 => function (Tui $tui) use ($panelText): void {
                     $this->promote($tui); // modal → results pane (context lines live on the pane)
                     // The grep is a subprocess: await the match landing before
@@ -343,46 +338,14 @@ final class IdeFindInProjectTest extends TestCase
                     $this->await(static fn (): bool => \str_contains($panelText($tui), 'tok here'), what: 'the match to land');
                     $tui->handleInput("\x1bm"); // alt+m → expand context on the first match
                 },
-                800 => function ($tui) use ($panelText): void {
+                800 => static function ($tui) use ($panelText, &$panel): void {
                     $tui->tick();
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('$x = 1;', $panel, 'the preceding line is shown');
-                    $this->assertStringContainsString('$y = 2;', $panel, 'the following line is shown');
                 },
             ],
         );
-    }
 
-    public function testFindInProjectContextLinesFromDisk(): void
-    {
-        $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
-        $panelText = static fn ($tui): string => AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 20))));
-
-        $this->runIde(
-            $project,
-            null, // nothing open → context reads from disk
-            [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
-                600 => function (Tui $tui) use ($panelText): void {
-                    $this->promote($tui); // modal → results pane (context lines live on the pane)
-                    // The grep is a subprocess: await the match landing before
-                    // expanding context on it.
-                    $this->await(static fn (): bool => \str_contains($panelText($tui), 'tok here'), what: 'the match to land');
-                    $tui->handleInput("\x1bm"); // alt+m → expand context
-                },
-                800 => function ($tui) use ($panelText): void {
-                    $tui->tick();
-                    $panel = $panelText($tui);
-                    $this->assertStringContainsString('// alpha', $panel, 'the preceding line is read from disk');
-                    $this->assertStringContainsString('// beta', $panel, 'the following line is read from disk');
-                },
-            ],
-        );
+        return $panel;
     }
 
     public function testFindInProjectMultilineSearchAndReplace(): void
@@ -547,12 +510,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 600 => function (Tui $tui): void {
                     $this->promote($tui); // modal → results pane (export runs from the pane)
                     // The grep is a subprocess: await both matches landing
@@ -616,12 +574,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 500 => function (object $tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
                     $tui->handleInput("\t"); // query → replace
@@ -657,12 +610,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 600 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->awaitSearch($ide);
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
@@ -688,12 +636,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             null, // no open buffer → replace-all writes the file on disk
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('oldname') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('oldname'),
                 600 => function (Tui $tui): void {
                     // The grep is a subprocess: await its match landing in the
                     // MODAL before acting on it, instead of a fixed gap. (The
@@ -726,12 +669,7 @@ final class IdeFindInProjectTest extends TestCase
             $project,
             null, // no open buffer → the editor never bleeds "tok" behind the modal
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 500 => function ($tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
                     $tui->handleInput("\x1b"); // esc → close (records "tok" in history)

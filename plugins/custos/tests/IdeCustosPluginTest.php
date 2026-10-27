@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\LspWireLog;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
@@ -81,29 +82,6 @@ final class IdeCustosPluginTest extends TestCase
         return $project;
     }
 
-    /**
-     * Every `initialize` the stub logged, oldest first: whether it carried
-     * `initializationOptions`, and what they were.
-     *
-     * @return list<array<string, mixed>|null>
-     */
-    private static function initializeOptions(string $log): array
-    {
-        if (!\is_file($log)) {
-            return [];
-        }
-        $options = [];
-        foreach (\array_filter(\explode("\n", (string) \file_get_contents($log))) as $line) {
-            /** @var array{method?: string, params?: array{initializationOptions?: array<string, mixed>}}|null $message */
-            $message = \json_decode($line, associative: true, flags: \JSON_THROW_ON_ERROR);
-            if (\is_array($message) && 'initialize' === ($message['method'] ?? null)) {
-                $options[] = $message['params']['initializationOptions'] ?? null;
-            }
-        }
-
-        return $options;
-    }
-
     public function testTheServerLaunchesAsTheLspSubcommandWithTheChosenOverrides(): void
     {
         $project = self::project(['php' => '8.2', 'comparisonStyle' => 'yoda']);
@@ -113,8 +91,8 @@ final class IdeCustosPluginTest extends TestCase
             300 => function () use ($log): void {
                 // The stub only execs the server for `lsp`: a log at all is
                 // the argv assert.
-                $this->await(static fn (): bool => [] !== self::initializeOptions($log), what: 'the first initialize to reach the wire log');
-                $this->assertSame(['php' => '8.2', 'comparisonStyle' => 'yoda'], self::initializeOptions($log)[0]);
+                $this->await(static fn (): bool => [] !== LspWireLog::initializeOptions($log), what: 'the first initialize to reach the wire log');
+                $this->assertSame(['php' => '8.2', 'comparisonStyle' => 'yoda'], LspWireLog::initializeOptions($log)[0]);
             },
         ]);
     }
@@ -126,8 +104,8 @@ final class IdeCustosPluginTest extends TestCase
 
         $this->runIde($project, $project->path('a.php'), [
             300 => function () use ($log): void {
-                $this->await(static fn (): bool => [] !== self::initializeOptions($log), what: 'the first initialize to reach the wire log');
-                $this->assertNull(self::initializeOptions($log)[0], 'the project config decides: nothing overrides it');
+                $this->await(static fn (): bool => [] !== LspWireLog::initializeOptions($log), what: 'the first initialize to reach the wire log');
+                $this->assertNull(LspWireLog::initializeOptions($log)[0], 'the project config decides: nothing overrides it');
             },
         ]);
     }

@@ -70,17 +70,24 @@ final class ResultsPanelWidgetTest extends TestCase
         $this->assertTrue($panel->isOpen());
     }
 
-    public function testJumpOnSelectedResultNotifiesAndStaysOpen(): void
+    /** The panel open on three usages; a row activated lands in $jumped as [path, line]. */
+    private function usagesOfThree(?array &$jumped): ResultsPanelWidget
     {
         $events = new EventDispatcher();
         $panel = new ResultsPanelWidget(events: $events);
-        $jumped = null;
         $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
-            [$path, $line] = [$event->relativePath, $event->line];
-            $jumped = [$path, $line];
+            $jumped = [$event->relativePath, $event->line];
         });
         $panel->open('Usages', ResultsPanelFields::resultsOnly());
         $panel->setResults($this->results(3));
+
+        return $panel;
+    }
+
+    public function testJumpOnSelectedResultNotifiesAndStaysOpen(): void
+    {
+        $jumped = null;
+        $panel = $this->usagesOfThree($jumped);
 
         $panel->handleInput("\x1b[B"); // down to second
         $panel->handleInput("\r");
@@ -317,15 +324,8 @@ final class ResultsPanelWidgetTest extends TestCase
 
     public function testClickResultRowSelectsAndJumps(): void
     {
-        $events = new EventDispatcher();
-        $panel = new ResultsPanelWidget(events: $events);
         $jumped = null;
-        $events->addListener(ResultRowActivated::class, static function (ResultRowActivated $event) use (&$jumped): void {
-            [$path, $line] = [$event->relativePath, $event->line];
-            $jumped = [$path, $line];
-        });
-        $panel->open('Usages', ResultsPanelFields::resultsOnly());
-        $panel->setResults($this->results(3));
+        $panel = $this->usagesOfThree($jumped);
         $panel->render(new RenderContext(60, 12)); // establish geometry (scroll = 0)
 
         $panel->handleClick(1); // no header rows: result rows start at 0 → index 1

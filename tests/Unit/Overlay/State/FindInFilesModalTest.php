@@ -331,22 +331,10 @@ final class FindInFilesModalTest extends TestCase
 
     public function testReplacePreviewExcludeAndReplaceAll(): void
     {
-        $modal = $this->modal();
         $replaced = null;
-        $modal->setCallbacks(new FindModalCallbacks(
-            onReplaceAll: static function (string $r, array $excluded) use (&$replaced): void {
-                $replaced = [$r, $excluded];
-            },
-            previewReplacement: static fn (string $old, string $repl): string => \str_replace('foo', $repl, $old),
-        ));
-        $modal->open('Find in Files');
-        $modal->setPreview($this->results()); // rows: [hdr A, match(4), match(9), hdr B, match(2)]
-
-        // Type a replacement → the preview flips to old → new with checkboxes.
-        $modal->handleInput("\t", $this->kb); // query → replace
-        foreach (\str_split('bar') as $ch) {
-            $modal->handleInput($ch, $this->kb);
-        }
+        // rows: [hdr A, match(4), match(9), hdr B, match(2)]; a replacement typed →
+        // the preview flips to old → new with checkboxes.
+        $modal = $this->modalTypedForReplaceAll($replaced);
         $screen = $this->screen($modal);
         $this->assertStringContainsString('→', $screen, 'preview shows old → new');
         $this->assertStringContainsString('[✓]', $screen, 'kept matches are checked');
@@ -466,11 +454,7 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['src/A.php', 4], $jumped, 'up at the top kept the first match selected');
 
         // Many matches scroll the preview window.
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal->setPreview(self::fourteenHits());
         for ($i = 0; $i < 12; ++$i) {
             $modal->handleInput("\x1b[B", $this->kb); // page down through the matches
         }
@@ -491,24 +475,37 @@ final class FindInFilesModalTest extends TestCase
         $this->assertFalse($modal->hoverAt($box->windowTop() + 99, $box->col + 2), 'below the preview');
     }
 
-    public function testScrollPreviewWithTheWheelMovesTheWindow(): void
+    /** The modal open on fourteen hits in one file: 15 display rows (1 header + 14 matches), 10 visible, the first match selected. */
+    private function withFourteenHits(): FindInFilesModal
     {
         $modal = $this->modal();
         $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal->setPreview(self::fourteenHits());
 
-        $box = function () use ($modal): ModalBox {
-            $this->compose($modal);
+        return $modal;
+    }
 
-            $box = $modal->lastBox();
-            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
+    /** @return list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}> */
+    private static function fourteenHits(): array
+    {
+        return \array_map(static fn (int $i): array => ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []], \range(start: 0, end: 13));
+    }
 
-            return $box;
-        };
+    /** $modal laid out as a frame draws it, and the box it was laid out in. */
+    private function laidOut(FindInFilesModal $modal): ModalBox
+    {
+        $this->compose($modal);
+        $box = $modal->lastBox();
+        $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
+
+        return $box;
+    }
+
+    public function testScrollPreviewWithTheWheelMovesTheWindow(): void
+    {
+        $modal = $this->withFourteenHits();
+
+        $box = fn (): ModalBox => $this->laidOut($modal);
 
         $this->assertSame(0, $box()->windowStart, 'starts at the top');
 
@@ -521,22 +518,9 @@ final class FindInFilesModalTest extends TestCase
 
     public function testHoverSelectsWithoutScrollingTheWindow(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many); // 15 display rows (1 header + 14 matches), 10 visible
+        $modal = $this->withFourteenHits(); // 15 display rows (1 header + 14 matches), 10 visible
 
-        $box = function () use ($modal): ModalBox {
-            $this->compose($modal);
-
-            $box = $modal->lastBox();
-            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
-
-            return $box;
-        };
+        $box = fn (): ModalBox => $this->laidOut($modal);
 
         // Hovering the bottom-most visible row moves the selection but never the window.
         $b = $box();
@@ -554,22 +538,9 @@ final class FindInFilesModalTest extends TestCase
 
     public function testKeyboardScrollsMinimallyIntoView(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many); // selection on the first match (display index 1)
+        $modal = $this->withFourteenHits(); // selection on the first match (display index 1)
 
-        $box = function () use ($modal): ModalBox {
-            $this->compose($modal);
-
-            $box = $modal->lastBox();
-            $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
-
-            return $box;
-        };
+        $box = fn (): ModalBox => $this->laidOut($modal);
 
         $this->assertSame(0, $box()->windowStart);
         for ($i = 0; $i < 9; ++$i) {
@@ -585,7 +556,7 @@ final class FindInFilesModalTest extends TestCase
         // A new search resets the window to the top.
         $modal->scrollPreview(20);
         $this->assertSame(5, $box()->windowStart);
-        $modal->setPreview($many);
+        $modal->setPreview(self::fourteenHits());
         $this->assertSame(0, $box()->windowStart, 'new results start at the top');
     }
 
@@ -642,13 +613,7 @@ final class FindInFilesModalTest extends TestCase
     /** A corner drag resizes the box: wider/taller, floored at 48 wide × 1 preview row, reset on open. */
     public function testACornerDragResizesTheBoxAndOpenResets(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal = $this->withFourteenHits();
         $this->screen($modal);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
@@ -682,7 +647,7 @@ final class FindInFilesModalTest extends TestCase
 
         // A fresh open re-derives the size — overrides are session-only.
         $modal->open('Find in Files');
-        $modal->setPreview($many);
+        $modal->setPreview(self::fourteenHits());
         $this->screen($modal);
         $reopened = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $reopened);
@@ -984,11 +949,7 @@ final class FindInFilesModalTest extends TestCase
         $modal->handleInput("\t", $this->kb);
         $modal->handleInput('m', $this->kb);
         $modal->setSearching();
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal->setPreview(self::fourteenHits());
         $modal->scrollPreview(12);
         $this->compose($modal); // windowStart only updates inside layout()
         $this->assertGreaterThan(0, Probe::get($modal, 'windowStart'), 'sanity: windowStart genuinely moved before reopening');
@@ -1106,13 +1067,7 @@ final class FindInFilesModalTest extends TestCase
 
     public function testSetPreviewResetsSelectionToTheTopEvenWhenThereAreNoMatches(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal = $this->withFourteenHits();
         $modal->scrollPreview(12);
         $this->compose($modal); // windowStart only updates inside layout()
         $this->assertGreaterThan(0, Probe::get($modal, 'windowStart'), 'sanity: windowStart genuinely moved before the reset');
@@ -1186,13 +1141,7 @@ final class FindInFilesModalTest extends TestCase
 
     public function testScrollPreviewMovesExactlyByTheGivenDelta(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many); // selected starts at display index 1
+        $modal = $this->withFourteenHits(); // selected starts at display index 1
 
         $modal->scrollPreview(3);
         $this->assertSame(4, Probe::get($modal, 'selected'), 'moved exactly 3 rows down, not 4');
@@ -1301,13 +1250,7 @@ final class FindInFilesModalTest extends TestCase
 
     public function testPreviewRowHighlightsTrackSelectionAndHoverPrecisely(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many); // displayRows: [hdr, hit0..hit13]; selected starts at index 1 ("hit 0")
+        $modal = $this->withFourteenHits(); // displayRows: [hdr, hit0..hit13]; selected starts at index 1 ("hit 0")
 
         $box = function () use ($modal): ModalBox {
             $this->compose($modal);
@@ -1668,13 +1611,7 @@ final class FindInFilesModalTest extends TestCase
 
     public function testPreviewIndexAtOnePastTheLastVisibleRowIsInvalid(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal = $this->withFourteenHits();
         $this->compose($modal);
         $box = $modal->lastBox();
         $this->assertInstanceOf(ModalBox::class, $box);
@@ -1684,13 +1621,7 @@ final class FindInFilesModalTest extends TestCase
 
     public function testPreviewIndexAtTheFirstVisibleRowIsValid(): void
     {
-        $modal = $this->modal();
-        $modal->open('Find in Files');
-        $many = [];
-        for ($i = 0; $i < 14; ++$i) {
-            $many[] = ['path' => 'src/A.php', 'line' => $i, 'text' => "hit {$i}", 'ranges' => []];
-        }
-        $modal->setPreview($many);
+        $modal = $this->withFourteenHits();
         $modal->scrollPreview(20); // scroll past the header, so windowStart's row (i=0) is a genuine match
         $this->compose($modal);
         $box = $modal->lastBox();

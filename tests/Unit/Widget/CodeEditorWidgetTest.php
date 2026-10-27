@@ -25,20 +25,16 @@ use Porta\Tests\Support\FakeEditorRefactor;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersExactWidth;
 use Porta\Tests\Support\RendersWidget;
+use Porta\Tests\Support\ScriptedView;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Sgr;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\EditorCallbacks;
 use Porta\Widget\Render\LineDecorator;
-use Porta\Workbench\Menu\ViewMenuSource;
-use Porta\Workbench\View\ContributedView;
-use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
-use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\FocusableInterface;
 
 final class CodeEditorWidgetTest extends TestCase
 {
@@ -1511,64 +1507,7 @@ $a = f();
 
     public function testCloseSiblingFloatersClosesTheWelcomeView(): void
     {
-        $welcome = new class implements ContributedView {
-            private bool $open = false;
-
-            public function viewId(): string
-            {
-                return 'welcome';
-            }
-
-            public function hostsWindow(): bool
-            {
-                return false;
-            }
-
-            public function title(): string
-            {
-                return '';
-            }
-
-            public function isOpen(): bool
-            {
-                return $this->open;
-            }
-
-            public function open(): void
-            {
-                $this->open = true;
-            }
-
-            public function close(): void
-            {
-                $this->open = false;
-            }
-
-            public function toggle(): void
-            {
-                $this->open = !$this->open;
-            }
-
-            public function pointer(): ?ViewPointer
-            {
-                return null;
-            }
-
-            public function contextMenus(): ?ViewMenuSource
-            {
-                return null;
-            }
-
-            public function focusTarget(): AbstractWidget&FocusableInterface
-            {
-                throw new \LogicException('not exercised by this test');
-            }
-
-            public function cycleFocus(int $direction): bool
-            {
-                return false;
-            }
-        };
+        $welcome = new ScriptedView('welcome', hostsWindow: false); // a floater, as the welcome view is
         $views = new ViewRegistry();
         $views->register($welcome);
         $views->open('welcome');

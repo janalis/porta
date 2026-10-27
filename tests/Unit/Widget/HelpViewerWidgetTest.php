@@ -976,6 +976,16 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringNotContainsString('Home', $header, 'the unrelated root README must not appear as an ancestor crumb');
     }
 
+    /** A pane with no IDE to hand its tab keys to — a bare one — lets Save All pass without breaking. */
+    public function testSaveAllWithNoHandlerDoesNothing(): void
+    {
+        $viewer = new HelpViewerWidget();
+        $viewer->setFocused(true);
+        $this->assertTrue($viewer->getKeybindings()->matches("\x1b\x13", 'save_all'), 'the premise: ctrl+alt+s is Save All here');
+
+        $viewer->handleInput("\x1b\x13"); // no handler is called on null
+    }
+
     public function testEveryScrollKeyBindingMovesTheViewport(): void
     {
         $viewer = $this->viewer();
@@ -995,10 +1005,11 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertSame(0, $viewer->findCaretLine, 'help_home returns to the top');
 
         $viewer->handleInput("\x1b[F"); // End
-        $this->assertGreaterThan(0, $viewer->findCaretLine, 'help_end jumps to the bottom');
+        $end = $viewer->findCaretLine;
+        $this->assertGreaterThan(0, $end, 'help_end jumps to the bottom');
 
         $viewer->handleInput("\x1b[5~"); // Page Up
-        $this->assertLessThan($viewer->findCaretLine + 1, $viewer->findCaretLine, 'help_page_up is wired (sanity: still a valid line)');
+        $this->assertLessThan($end, $viewer->findCaretLine, 'help_page_up moves back up from the bottom');
     }
 
     public function testCycleLinkDoesNotScrollWhenTheFocusedLinkIsAlreadyOnScreen(): void

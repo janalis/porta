@@ -140,12 +140,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             null,
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 700 => function (Tui $tui) use ($panelText): void {
                     $this->promote($tui); // Alt+Enter → results tool window
                     // The grep is a subprocess: await the matches landing
@@ -180,12 +175,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('tok') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('tok'),
                 600 => function (Tui $tui) use ($panelText): void {
                     // Await in the MODAL — the results pane holds nothing until
                     // promote() moves the rows onto it.
@@ -410,12 +400,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('foo') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                300 => self::findInFiles('foo'),
                 700 => function (Tui $tui): void {
                     // The grep is a subprocess: await its match landing in the
                     // MODAL before acting on it, instead of a fixed gap. (The
@@ -448,12 +433,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                300 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('foo') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                300 => self::findInFiles('foo'),
                 700 => function ($tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
                     $tui->handleInput("\t"); // modal: query → replace
@@ -500,12 +480,7 @@ final class IdeFindUiTest extends TestCase
             $project,
             $project->path('src/A.php'),
             [
-                200 => static function ($tui): void {
-                    $tui->handleInput("\x1b[102;6u"); // ctrl+shift+f
-                    foreach (\str_split('foo') as $ch) {
-                        $tui->handleInput($ch);
-                    }
-                },
+                200 => self::findInFiles('foo'),
                 600 => function ($tui) use ($panelText): void {
                     // The grep is a subprocess: await its rows before driving
                     // the preview, instead of assuming 400ms was enough.

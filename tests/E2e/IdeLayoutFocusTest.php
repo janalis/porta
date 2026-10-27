@@ -319,6 +319,18 @@ final class IdeLayoutFocusTest extends TestCase
         );
     }
 
+    /** The bottom panel, shown with the results of Recent Locations and drawn once. */
+    private function shownBottomPanel(Tui $tui, Ide $ide): DockPanelWidget
+    {
+        Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
+        $tui->requestRender(force: true);
+        $tui->processRender();
+        $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
+        $this->assertInstanceOf(DockPanelWidget::class, $panel, 'the results panel is showing');
+
+        return $panel;
+    }
+
     public function testMaximisingTheBottomPanelAndPuttingItBack(): void
     {
         // PhpStorm's Ctrl+Shift+' on a tool window. The restore is the half
@@ -332,13 +344,8 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
-                    $tui->requestRender(force: true);
-                    $tui->processRender();
-
-                    $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
-                    $this->assertInstanceOf(DockPanelWidget::class, $panel);
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $panel = $this->shownBottomPanel($tui, $ide);
                     $before = $panel->visibleRows();
 
                     $tui->handleInput("\x1b[39;6u"); // ctrl+shift+'
@@ -397,13 +404,8 @@ final class IdeLayoutFocusTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_recent_locations');
-                    $tui->requestRender(force: true);
-                    $tui->processRender();
-
-                    $panel = Services::resolve($ide, BottomDock::class)->visiblePanel();
-                    $this->assertInstanceOf(DockPanelWidget::class, $panel, 'the results panel is showing');
+                200 => function (Tui $tui, $terminal, Ide $ide): void {
+                    $panel = $this->shownBottomPanel($tui, $ide);
                     // The rect is not WRONG here — it reports the same 10 the
                     // panel holds. It is just a frame behind, which is enough.
                     $this->assertSame(

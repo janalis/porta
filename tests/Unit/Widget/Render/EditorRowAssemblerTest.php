@@ -64,6 +64,24 @@ final class EditorRowAssemblerTest extends TestCase
         return new EditorDecorations(false, null, [], [], null);
     }
 
+    /**
+     * The second of two lines, drawn plain, with breakpoints of each kind on the lines listed.
+     *
+     * @param list<int> $plain
+     * @param list<int> $conditional
+     * @param list<int> $log
+     */
+    private function secondLineWith(array $plain, array $conditional, array $log): string
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->setBreakpointLines($plain, $conditional, $log);
+        [$assembler] = $this->assembler(new Document("a\nb\n"), store: $store);
+        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
+        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
+
+        return AnsiUtils::stripAnsiCodes($rows[1]);
+    }
+
     public function testAnInjectedThemeIsHonoredInsteadOfTheDarkDefault(): void
     {
         $doc = new Document("a\n");
@@ -176,28 +194,12 @@ final class EditorRowAssemblerTest extends TestCase
 
     public function testGutterCellShowsTheLogpointGlyphWhenOnlyALogpointIsSet(): void
     {
-        $doc = new Document("a\nb\n");
-        $store = new DecorationStore(static function (): void {});
-        $store->setBreakpointLines([], [], [1]); // line 1: logpoint only
-        [$assembler] = $this->assembler($doc, store: $store);
-        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
-
-        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
-
-        $this->assertStringContainsString(Glyphs::LOGPOINT, AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertStringContainsString(Glyphs::LOGPOINT, $this->secondLineWith([], [], [1])); // line 1: logpoint only
     }
 
     public function testGutterCellShowsTheConditionalBreakpointGlyphWhenOnlyOneIsSet(): void
     {
-        $doc = new Document("a\nb\n");
-        $store = new DecorationStore(static function (): void {});
-        $store->setBreakpointLines([], [1], []); // line 1: conditional breakpoint only
-        [$assembler] = $this->assembler($doc, store: $store);
-        $geo = new EditorGeometry(numberWidth: 1, gutterWidth: 3, contentWidth: 5, stripeCol: 0);
-
-        $rows = $assembler->assemble($geo, $this->noSelection(), sticky: [], highlighted: ['a', 'b'], stripe: ['', ''], contentRows: 2, vScroll: 0, cursorLine: -1, cursorDisplayCol: 0, hScroll: 0);
-
-        $this->assertStringContainsString(Glyphs::BREAKPOINT_CONDITIONAL, AnsiUtils::stripAnsiCodes($rows[1]));
+        $this->assertStringContainsString(Glyphs::BREAKPOINT_CONDITIONAL, $this->secondLineWith([], [1], [])); // line 1: conditional breakpoint only
     }
 
     public function testCollapsedFoldMarkerReportsTheExactHiddenLineCountAndOrder(): void

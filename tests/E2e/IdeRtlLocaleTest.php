@@ -437,20 +437,8 @@ final class IdeRtlLocaleTest extends TestCase
      */
     public function testAMirroredSelectDropsItsListUnderItself(): void
     {
-        \putenv('PATH=/nonexistent');
-        $project = new TempProject([
-            '.porta.json' => \json_encode(['settings' => ['language' => 'he', 'theme' => 'dark']], \JSON_THROW_ON_ERROR),
-            'demo.php' => "<?php\n",
-        ]);
-
-        $this->runIde(
-            $project,
-            $project->path('demo.php'),
+        $this->onHebrewInterfaceSettings(
             [
-                300 => function (Tui $tui, $terminal, Ide $ide): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'interface');
-                },
                 500 => static function (object $tui): void {
                     $tui->requestRender(force: true);
                     $tui->processRender(); // a frame: the reorder the list is anchored against
@@ -530,7 +518,12 @@ final class IdeRtlLocaleTest extends TestCase
         self::fail("no row shows {$needle}");
     }
 
-    public function testRtlSettingsValuesKeepTheirBrackets(): void
+    /**
+     * In Hebrew, Settings open on its Interface page — then $steps.
+     *
+     * @param array<int, \Closure> $steps
+     */
+    private function onHebrewInterfaceSettings(array $steps, int $rows = 24): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
@@ -547,6 +540,15 @@ final class IdeRtlLocaleTest extends TestCase
                     // The view opens on General; Theme lives on Interface.
                     $this->selectSettingsSection($this->settingsNav($tui), 'interface');
                 },
+            ] + $steps,
+            rows: $rows,
+        );
+    }
+
+    public function testRtlSettingsValuesKeepTheirBrackets(): void
+    {
+        $this->onHebrewInterfaceSettings(
+            [
                 500 => function (object $tui, $terminal, Ide $ide): void {
                     $tui->tick();
                     $renderer = Probe::get($tui, 'renderer');

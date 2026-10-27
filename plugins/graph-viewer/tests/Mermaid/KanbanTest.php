@@ -10,29 +10,19 @@ use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
 use Porta\Tests\Support\FakeScheduler;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 final class KanbanTest extends TestCase
 {
     #[DataProvider('upstreamExamples')]
     public function testPinnedUpstreamFixturesRenderWithoutCli(string $path): void
     {
-        $source = \file_get_contents($path);
-        $this->assertIsString($source);
-        $result = NativeFixtureRows::render($source, width: 30);
-        $this->assertNotEmpty($result->rows);
-        $this->assertCount(\count($result->rows), $result->origins);
-        foreach ($result->rows as $row) {
-            $this->assertLessThanOrEqual(30, AnsiUtils::visibleWidth($row));
-        }
+        NativeCorpus::assertRendersWithin($path, width: 30);
     }
 
-    /** @return iterable<array{string}> */
+    /** @return iterable<string, array{string}> */
     public static function upstreamExamples(): iterable
     {
-        foreach (new \GlobIterator(__DIR__.'/../fixtures/mermaid/kanban/*.mmd') as $file) {
-            yield [$file->getPathname()];
-        }
+        return NativeCorpus::of('kanban');
     }
 
     public function testCancellationNeverPublishesPartialBoard(): void

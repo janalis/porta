@@ -252,7 +252,14 @@ final class MergeViewE2eTest extends TestCase
         };
     }
 
-    public function testUnderSoftWrapEachLineSitsOnTheSameRowAsInTheEditor(): void
+    /**
+     * Soft wrap on, a 300-column line above a conflict, the merge view open
+     * on it — then $then, with the editor and whether the ours line stands
+     * level in the editor and in ours.
+     *
+     * @param \Closure(Tui, VirtualTerminal, Ide, CodeEditorWidget, \Closure(): bool): void $then
+     */
+    private function softWrappedOverAConflict(\Closure $then): void
     {
         \putenv('PATH=/nonexistent');
         $long = \str_repeat('z', times: 300);
@@ -263,20 +270,24 @@ final class MergeViewE2eTest extends TestCase
             $project,
             $project->path('m.php'),
             [
-                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $level = $this->oursLineLevel($tui, $terminal, $ide);
-
-                    $this->await($level, what: 'the ours line on the same row in ours as in the editor, below a wrapped line');
-                    $this->assertNotNull($editor->viewport()->wrapWidth, 'the editor wraps, or this proves nothing');
-                    $this->assertGreaterThan(1, (int) \ceil(300 / (int) $editor->viewport()->wrapWidth), 'and the long line takes several rows');
-
-                    $editor->display->setSoftWrap(false);
-                    $tui->requestRender();
-                    $this->await(static fn (): bool => null === $editor->viewport()->wrapWidth && $level(), what: 'still level, one row a line');
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($then): void {
+                    $then($tui, $terminal, $ide, Services::resolve($ide, CodeEditorWidget::class), $this->oursLineLevel($tui, $terminal, $ide));
                 },
             ],
         );
+    }
+
+    public function testUnderSoftWrapEachLineSitsOnTheSameRowAsInTheEditor(): void
+    {
+        $this->softWrappedOverAConflict(function (Tui $tui, VirtualTerminal $terminal, Ide $ide, CodeEditorWidget $editor, \Closure $level): void {
+            $this->await($level, what: 'the ours line on the same row in ours as in the editor, below a wrapped line');
+            $this->assertNotNull($editor->viewport()->wrapWidth, 'the editor wraps, or this proves nothing');
+            $this->assertGreaterThan(1, (int) \ceil(300 / (int) $editor->viewport()->wrapWidth), 'and the long line takes several rows');
+
+            $editor->display->setSoftWrap(false);
+            $tui->requestRender();
+            $this->await(static fn (): bool => null === $editor->viewport()->wrapWidth && $level(), what: 'still level, one row a line');
+        });
     }
 
     /**
@@ -313,29 +324,16 @@ final class MergeViewE2eTest extends TestCase
     /** Under soft wrap a notch over a side scrolls the editor by rows: INTO a tall line, the three still level. */
     public function testUnderSoftWrapANotchOverASideScrollsIntoATallLine(): void
     {
-        \putenv('PATH=/nonexistent');
-        $long = \str_repeat('z', times: 300);
-        $file = "<?php\n\$long = '{$long}';\n<<<<<<< HEAD\n\$y = 'ours';\n=======\n\$y = 'theirs';\n>>>>>>> topic\n";
-        $project = new TempProject(['m.php' => $file, '.porta.json' => '{"enabledPlugins":["diff"],"settings":{"softWrap":true}}']);
+        $this->softWrappedOverAConflict(function (Tui $tui, VirtualTerminal $terminal, Ide $ide, CodeEditorWidget $editor, \Closure $level): void {
+            $this->await($level, what: 'level to begin with');
+            $ours = Widgets::rectIn($ide, self::ours($ide));
 
-        $this->runIde(
-            $project,
-            $project->path('m.php'),
-            [
-                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $level = $this->oursLineLevel($tui, $terminal, $ide);
-                    $this->await($level, what: 'level to begin with');
-                    $ours = Widgets::rectIn($ide, self::ours($ide));
+            $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $ours->col + 3, $ours->row + 3));
 
-                    $tui->handleInput(\sprintf("\x1b[<65;%d;%dM", $ours->col + 3, $ours->row + 3));
-
-                    $this->assertSame(1, $editor->viewport()->vScroll, 'onto the long line');
-                    $this->assertGreaterThan(0, $editor->viewport()->vScrollSegment, 'and into it, not past it');
-                    $this->assertSame(0, $editor->getDocument()->cursorLine, 'the caret did not move');
-                    $this->await($level, what: 'still level, scrolled into the long line');
-                },
-            ],
-        );
+            $this->assertSame(1, $editor->viewport()->vScroll, 'onto the long line');
+            $this->assertGreaterThan(0, $editor->viewport()->vScrollSegment, 'and into it, not past it');
+            $this->assertSame(0, $editor->getDocument()->cursorLine, 'the caret did not move');
+            $this->await($level, what: 'still level, scrolled into the long line');
+        });
     }
 }

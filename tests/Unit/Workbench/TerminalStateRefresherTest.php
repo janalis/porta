@@ -6,11 +6,9 @@ namespace Porta\Tests\Unit\Workbench;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Input\PixelPointer;
+use Porta\Tests\Support\RecordingTerminal;
 use Porta\Workbench\TerminalStateRefresher;
-use Symfony\Component\EventDispatcher\EventDispatcher;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Event\InputEvent;
-use Symfony\Component\Tui\Terminal\TerminalInterface;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -18,79 +16,23 @@ final class TerminalStateRefresherTest extends TestCase
 {
     public function testEmitsTheReassertBytesEveryNthTickOnARealTerminal(): void
     {
-        $writes = [];
-        $terminal = new class($writes) implements TerminalInterface {
-            /** @param list<string> $writes */
-            public function __construct(
-                private array &$writes,
-                private readonly EventDispatcherInterface $dispatcher = new EventDispatcher(),
-            ) {}
-
-            public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void {}
-
-            public function stop(): void {}
-
-            public function write(string $data): void
-            {
-                $this->writes[] = $data;
-            }
-
-            public function getColumns(): int
-            {
-                return 80;
-            }
-
-            public function getRows(): int
-            {
-                return 24;
-            }
-
-            public function isKittyProtocolActive(): bool
-            {
-                return false;
-            }
-
-            public function moveBy(int $lines): void {}
-
-            public function hideCursor(): void {}
-
-            public function showCursor(): void {}
-
-            public function clearLine(): void {}
-
-            public function clearFromCursor(): void {}
-
-            public function clearScreen(): void {}
-
-            public function setTitle(string $title): void {}
-
-            public function bell(): void {}
-
-            public function isVirtual(): bool
-            {
-                return false;
-            }
-
-            public function getEventDispatcher(): EventDispatcherInterface
-            {
-                return $this->dispatcher;
-            }
-        };
+        $calls = [];
+        $terminal = new RecordingTerminal($calls); // a real terminal, not a virtual one
         $tui = new Tui(terminal: $terminal);
         $pointer = new PixelPointer($tui);
         $refresher = new TerminalStateRefresher($tui, $pointer, every: 3);
 
         $refresher->tick();
         $refresher->tick();
-        $this->assertSame([], $writes, 'nothing before the Nth tick');
+        $this->assertSame([], self::written($calls), 'nothing before the Nth tick');
 
         $refresher->tick();
-        $this->assertSame([TerminalStateRefresher::REASSERT], $writes, 'the 3rd tick re-asserts');
+        $this->assertSame([TerminalStateRefresher::REASSERT], self::written($calls), 'the 3rd tick re-asserts');
 
         $refresher->tick();
         $refresher->tick();
         $refresher->tick();
-        $this->assertCount(2, $writes, 'and again on the 6th');
+        $this->assertCount(2, self::written($calls), 'and again on the 6th');
         $this->assertStringContainsString("\x1b[?2026l", TerminalStateRefresher::REASSERT, 'synchronized output unlatched');
         $this->assertStringContainsString("\x1b[?1003h", TerminalStateRefresher::REASSERT, 'mouse motion mode re-enabled');
 
@@ -98,11 +40,23 @@ final class TerminalStateRefresherTest extends TestCase
         // `?1006h` alone would turn them back into cell reports.
         $pointer->onInput(new InputEvent("\x1b[?1016;2\$y"));
         $pointer->onInput(new InputEvent("\x1b[6;20;10t"));
-        $writes = [];
+        $calls = [];
         $refresher->tick();
         $refresher->tick();
         $refresher->tick();
-        $this->assertSame([TerminalStateRefresher::REASSERT.PixelPointer::ON], \array_slice($writes, -1), 'pixel reports re-asserted after the cell encoding');
+        $this->assertSame([TerminalStateRefresher::REASSERT.PixelPointer::ON], \array_slice(self::written($calls), -1), 'pixel reports re-asserted after the cell encoding');
+    }
+
+    /**
+     * The bytes written, in order: what a terminal on a real tty would have received.
+     *
+     * @param list<string> $calls
+     *
+     * @return list<string>
+     */
+    private static function written(array $calls): array
+    {
+        return \array_values(\array_map(static fn (string $call): string => \substr($call, offset: 6), \array_filter($calls, static fn (string $call): bool => \str_starts_with($call, 'write:'))));
     }
 
     public function testAVirtualTerminalIsNeverWrittenTo(): void

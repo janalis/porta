@@ -31,6 +31,7 @@ use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeDapClient;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
@@ -70,18 +71,7 @@ final class DebugControllerTest extends TestCase
     /** A pool whose one session answers with $capabilities, for the tests that reach the LSP. */
     private function lspPool(array $capabilities): LspSessionPool
     {
-        $pool = new LspSessionPool(
-            '/p',
-            $active = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->lspClient = new FakeLspClient($capabilities),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $active = new FixedActiveFile(), fn (): FakeLspClient => $this->lspClient = new FakeLspClient($capabilities));
         $active->set('/p/prog.php');
         $pool->notifyDidOpen('/p/prog.php', "<?php\n", 'php', 1);
 

@@ -79,6 +79,24 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame('', $this->shownQuery($bar), 'and back to an empty field, not stuck on the newest');
     }
 
+    /** A find bar over a history of 'older' then 'newer', walked back two steps (Alt+↑ twice) to the oldest. */
+    private function walkedBackToTheOldest(): FindBarWidget
+    {
+        $project = new TempProject();
+        $history = new SearchHistoryStore($project->dir);
+        $history->add('older');
+        $history->add('newer');
+
+        $bar = new FindBarWidget(new Translator('en'), history: $history);
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
+        $bar->handleInput("\x1b[1;3A");
+        $bar->handleInput("\x1b[1;3A");
+        $this->assertSame('older', $this->shownQuery($bar), 'two steps back');
+
+        return $bar;
+    }
+
     /**
      * The cursor walks BOTH ways and keeps its place.
      *
@@ -89,18 +107,7 @@ final class FindBarWidgetTest extends TestCase
      */
     public function testTheHistoryCursorSurvivesAStepBackTheOtherWay(): void
     {
-        $project = new TempProject();
-        $history = new SearchHistoryStore($project->dir);
-        $history->add('older');
-        $history->add('newer');
-
-        $bar = new FindBarWidget(new Translator('en'), history: $history);
-        $bar->setFocused(true);
-        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
-
-        $bar->handleInput("\x1b[1;3A");
-        $bar->handleInput("\x1b[1;3A");
-        $this->assertSame('older', $this->shownQuery($bar));
+        $bar = $this->walkedBackToTheOldest();
 
         $bar->handleInput("\x1b[1;3B"); // back towards the newest
         $this->assertSame('newer', $this->shownQuery($bar));
@@ -184,18 +191,7 @@ final class FindBarWidgetTest extends TestCase
      */
     public function testTypingResetsTheHistoryCursor(): void
     {
-        $project = new TempProject();
-        $history = new SearchHistoryStore($project->dir);
-        $history->add('older');
-        $history->add('newer');
-
-        $bar = new FindBarWidget(new Translator('en'), history: $history);
-        $bar->setFocused(true);
-        $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
-
-        $bar->handleInput("\x1b[1;3A");
-        $bar->handleInput("\x1b[1;3A");
-        $this->assertSame('older', $this->shownQuery($bar), 'two steps back');
+        $bar = $this->walkedBackToTheOldest();
 
         $this->type($bar, 'z');
         $bar->handleInput("\x1b[1;3A");

@@ -7,46 +7,27 @@ namespace Porta\Todo\Tests;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
-use Porta\Editor\BufferManager;
-use Porta\Editor\BufferSaver;
-use Porta\I18n\Translator;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Runtime\PluginManager;
-use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Search\ProjectSearch;
 use Porta\Settings\SettingsScope;
-use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
-use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
-use Porta\Tests\Support\RecordingChangeMarkSink;
-use Porta\Tests\Support\RecordingDiagnosticsSink;
-use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestBottomDock;
-use Porta\Tests\Support\TestDockTools;
-use Porta\Tests\Support\TestLspQuery;
-use Porta\Tests\Support\TestParticipants;
-use Porta\Tests\Support\TestProjectSwitcher;
-use Porta\Tests\Support\TestRuns;
+use Porta\Tests\Support\TestPluginRuntime;
 use Porta\Tests\Support\TestTui;
-use Porta\Tests\Support\TestWorkspaceEditor;
 use Porta\Todo\TodoScan;
 use Porta\Todo\TodoTags;
-use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\DebugPanelWidget;
-use Porta\Widget\FileTreeWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TerminalPanelWidget;
 use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolController;
-use Porta\Workbench\Menu\MenuFileContext;
-use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -81,34 +62,7 @@ final class TodoScanTest extends TestCase
         $tui = TestTui::create(120, 24);
         $this->results = new ResultsPanelWidget();
         $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
-        $manager->wireRuntime(new PluginRuntime(
-            new Notifier(new StatusBarWidget(), $tui),
-            new Translator('en'),
-            new CodeEditorWidget(),
-            new RecordingFileOpener(),
-            $tui,
-            new RecordingDiagnosticsSink(),
-            new CodeEditorWidget()->decorations,
-            new RecordingChangeMarkSink(),
-            new FileStatuses(),
-            new BufferManager(),
-            new DockToolController($manager, $this->dock, new ProjectPaths($project->dir)),
-            TestDockTools::replacer(),
-            new CodeEditorWidget(),
-            new MenuFileContext(),
-            new ViewRegistry(),
-            new Clipboard($tui),
-            new StatusBarWidget(),
-            new CodeEditorWidget(),
-            new FakePluginLifecycle(),
-            new FileTreeWidget(\sys_get_temp_dir()),
-            TestLspQuery::create(),
-            new BufferSaver(new BufferManager(), new EventDispatcher()),
-            TestRuns::create(),
-            TestWorkspaceEditor::create(),
-            TestParticipants::create(),
-            TestProjectSwitcher::create(),
-        ));
+        $manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget(), $tui, dock: new DockToolController($manager, $this->dock, new ProjectPaths($project->dir))));
 
         $api = $manager->api('todo', $project->dir, $settings);
         $api->registerSetting('tags', 'Tags', 'text', '' === $tags ? TodoTags::DEFAULT : $tags);

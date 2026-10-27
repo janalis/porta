@@ -526,29 +526,39 @@ final class LspClientTest extends TestCase
         $this->assertFalse(\posix_kill($pid, signal: 0), 'the child process no longer exists');
     }
 
+    /**
+     * A client of the logging server, started, its handshake whole in $log.
+     * $ready fires once the initialize RESPONSE is processed, but the client's
+     * own `initialized` notify() is a separate, independent write — awaited
+     * too, or a test reading the log races it (markedly more likely to lose
+     * under coverage), and one clearing the log keeps a stray `initialized`.
+     */
+    private function loggedClient(string $log): LspClient
+    {
+        $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
+        $this->clients[] = $client;
+        $ready = false;
+        $client->start(static function () use (&$ready): void {
+            $ready = true;
+        });
+        $this->await(static function () use (&$ready): bool {
+            return $ready;
+        });
+        $this->await(
+            static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"),
+            timeout: 30.0,
+            what: 'both the initialize request and the initialized notify to be logged',
+        );
+
+        return $client;
+    }
+
     public function testRequestAndNotifyEnvelopesCarryTheJsonRpcVersionAndId(): void
     {
         $log = \tempnam(\sys_get_temp_dir(), prefix: 'lsplog');
         $this->assertNotFalse($log);
         try {
-            $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
-            $this->clients[] = $client;
-            $ready = false;
-            $client->start(static function () use (&$ready): void {
-                $ready = true;
-            });
-            $this->await(static function () use (&$ready): bool {
-                return $ready;
-            });
-            // $ready fires once the initialize RESPONSE is processed, but the
-            // client's own `initialized` notify() is a separate, independent
-            // write — await its arrival in the log too, or this races (and is
-            // markedly more likely to lose under coverage/PCOV instrumentation).
-            $this->await(
-                static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"),
-                timeout: 15.0,
-                what: 'both the initialize request and the initialized notify to be logged',
-            );
+            $client = $this->loggedClient($log);
 
             $lines = \array_values(\array_filter(\explode("\n", (string) \file_get_contents($log))));
             $messages = \array_map(static fn (string $l): mixed => \json_decode($l, associative: true, flags: \JSON_THROW_ON_ERROR), $lines);
@@ -663,25 +673,7 @@ final class LspClientTest extends TestCase
         $log = \tempnam(\sys_get_temp_dir(), prefix: 'lsplog');
         $this->assertNotFalse($log);
         try {
-            $client = new LspClient([\PHP_BINARY, __DIR__.'/../Support/logging-lsp-server.php', $log], \dirname(__DIR__, levels: 2));
-            $this->clients[] = $client;
-            $ready = false;
-            $client->start(static function () use (&$ready): void {
-                $ready = true;
-            });
-            $this->await(static function () use (&$ready): bool {
-                return $ready;
-            });
-            // $ready fires once the initialize RESPONSE is processed, but the
-            // client's own `initialized` notify() is a separate, independent
-            // write — await its arrival before clearing the log, or a slow
-            // delivery can land it AFTER the clear, corrupting the "shutdown
-            // is sent first" assertion below with a stray `initialized` line.
-            $this->await(
-                static fn (): bool => 2 === \substr_count((string) \file_get_contents($log), needle: "\n"),
-                timeout: 30.0,
-                what: 'the initialize handshake to fully land before clearing the log',
-            );
+            $client = $this->loggedClient($log);
             \file_put_contents($log, data: ''); // drop the initialize entry — only the stop() sequence matters here
 
             $client->stop();

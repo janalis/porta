@@ -41,12 +41,40 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
     use MenuOverlayHostTrait;
     use StylesDefault;
 
+    /**
+     * The tab keys a pane standing where the editor stood answers as the
+     * editor does — next and previous tab, close, Go to File, Save All — bound
+     * to the editor's defaults, so tab management keeps working while the code
+     * editor is detached ({@see EditorKeymap}). Answered by {@see tabKey()}.
+     */
+    protected const array TAB_KEYS = [
+        'next_buffer' => ['ctrl+right'],
+        'prev_buffer' => ['ctrl+left'],
+        'close_buffer' => ['ctrl+f4', 'alt+w'],
+        'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
+        'save_all' => ['ctrl+alt+s'],
+    ];
+
     protected ?ViewerTabHandler $handler = null;
 
     /** The tab actions re-bound while the editor is detached; nullable so a test can construct a bare pane. */
     final public function setHandler(ViewerTabHandler $handler): void
     {
         $this->handler = $handler;
+    }
+
+    /** Answer $data if it is one of the {@see TAB_KEYS} — the pane's own keys come first. */
+    protected function tabKey(string $data): void
+    {
+        $kb = $this->getKeybindings();
+        match (true) {
+            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
+            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
+            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
+            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
+            $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
+            default => null,
+        };
     }
 
     /**

@@ -64,11 +64,7 @@ trait ScrollsRows
             $kb->matches($data, 'page_down') => $this->scrollBy($this->bodyRows),
             $kb->matches($data, 'document_start') => $this->scrollTo(0),
             $kb->matches($data, 'document_end') => $this->scrollTo(\PHP_INT_MAX),
-            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
-            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
-            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
-            default => null,
+            default => $this->tabKey($data),
         };
     }
 

@@ -453,7 +453,13 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(['list ', 'list a'], $this->transport->calls);
     }
 
-    public function testADirectoryIsNeverListedTwiceAtOnce(): void
+    /**
+     * A remote project whose transport no plugin has given yet, and how a
+     * plugin gives it.
+     *
+     * @return array{RemoteFilesystem, \Closure(RemoteTransport): void}
+     */
+    private function beforeAnyPlugin(): array
     {
         $source = new class implements RemoteTransportSource {
             public ?RemoteTransport $transport = null;
@@ -473,8 +479,20 @@ final class RemoteFilesystemTest extends TestCase
             new FileIndex($this->cache->dir),
             new EventDispatcher(),
         );
+
+        return [
+            $files,
+            static function (RemoteTransport $transport) use ($source): void {
+                $source->transport = $transport;
+            },
+        ];
+    }
+
+    public function testADirectoryIsNeverListedTwiceAtOnce(): void
+    {
+        [$files, $plugIn] = $this->beforeAnyPlugin();
         $files->listed($this->cache->dir); // before any plugin: wanted
-        $source->transport = $this->transport;
+        $plugIn($this->transport);
         $this->transport->hold = true;
 
         $files->poll(); // lists what was wanted, then the listed ones in turn — the root again
@@ -818,30 +836,13 @@ final class RemoteFilesystemTest extends TestCase
      */
     public function testADirectoryAskedForBeforeAnyPluginIsListedByTheFirstPoll(): void
     {
-        $source = new class implements RemoteTransportSource {
-            public ?RemoteTransport $transport = null;
-
-            public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
-            {
-                return $this->transport;
-            }
-        };
-        $files = new RemoteFilesystem(
-            new ProjectLocation(new RemoteSpec('ssh', 'example.org', '/srv/app')),
-            $this->cache->dir,
-            $source,
-            new Notifier($this->status, TestTui::create()),
-            new Translator('en'),
-            $this->buffers,
-            new FileIndex($this->cache->dir),
-            new EventDispatcher(),
-        );
+        [$files, $plugIn] = $this->beforeAnyPlugin();
 
         $this->assertFalse($files->listed($this->cache->dir));
         $files->poll();
         $this->assertFileDoesNotExist($this->cache->path('README.md'), 'still no plugin');
 
-        $source->transport = $this->transport;
+        $plugIn($this->transport);
         $files->poll();
 
         $this->assertFileExists($this->cache->path('README.md'));

@@ -91,14 +91,7 @@ final class ListOverlayFilterTest extends TestCase
     /** @return list<string> */
     private function canvas(OverlayHost $host): array
     {
-        $lines = \array_fill(start_index: 0, count: 24, value: \str_repeat(' ', times: 100));
-        foreach ($host->layout([0, 0, 24, 100]) as $box) {
-            foreach ($box['rows'] as $i => $rowText) {
-                $lines[$box['top'] + $i] = OverlayCompositor::into($lines[$box['top'] + $i], $box['col'], $box['width'], 100, $rowText);
-            }
-        }
-
-        return \array_map(AnsiUtils::stripAnsiCodes(...), $lines);
+        return \array_map(AnsiUtils::stripAnsiCodes(...), $this->rawCanvas($host));
     }
 
     public function testTypingNarrowsTheListAndEnterPicksFromWhatIsLeft(): void

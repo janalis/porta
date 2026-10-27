@@ -135,6 +135,7 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringContainsString('dot produced invalid JSON', $screen, 'the banner shows the first line');
         $this->assertStringContainsString('┌', $screen, 'the previous good graph is still on screen');
         $this->assertSame('3 nodes · 2 edges', $widget->statusInfo(), 'the model still reflects the good layout');
+        $this->assertSame([], $widget->render(new RenderContext(0, 20)), 'no room, no banner either');
     }
 
     /**
