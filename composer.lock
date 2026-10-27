@@ -5777,16 +5777,16 @@
         },
         {
             "name": "systemsdk/phpcpd",
-            "version": "v9.1.0",
+            "version": "v9.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/systemsdk/phpcpd.git",
-                "reference": "4a54c220fe148f97a338fc7004084cd686a050a3"
+                "reference": "07634cef619cf0afa2ded185915ffa954b77c871"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/systemsdk/phpcpd/zipball/4a54c220fe148f97a338fc7004084cd686a050a3",
-                "reference": "4a54c220fe148f97a338fc7004084cd686a050a3",
+                "url": "https://api.github.com/repos/systemsdk/phpcpd/zipball/07634cef619cf0afa2ded185915ffa954b77c871",
+                "reference": "07634cef619cf0afa2ded185915ffa954b77c871",
                 "shasum": ""
             },
             "require": {
@@ -5851,7 +5851,7 @@
             ],
             "support": {
                 "issues": "https://github.com/systemsdk/phpcpd/issues",
-                "source": "https://github.com/systemsdk/phpcpd/tree/v9.1.0"
+                "source": "https://github.com/systemsdk/phpcpd/tree/v9.2.0"
             },
             "funding": [
                 {
@@ -5867,7 +5867,7 @@
                     "type": "wayforpay"
                 }
             ],
-            "time": "2026-09-02T16:44:35+00:00"
+            "time": "2026-10-18T23:32:13+00:00"
         },
         {
             "name": "thecodingmachine/safe",
