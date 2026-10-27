@@ -32,4 +32,16 @@ final class SearchPatternTest extends TestCase
         $this->assertMatchesRegularExpression($build('a\\\\/b'), 'a\/b');
         $this->assertSame('/a\.b\/\//', $build("a\\.b//"), 'other escapes untouched, every bare slash escaped');
     }
+
+    /** Inside `\Q…\E` every character is literal, so a slash there is closed out of the quote, not given a backslash. */
+    public function testASlashInsideAQuoteIsStillASlash(): void
+    {
+        $build = static fn (string $query): string => SearchPattern::build($query, MatchMode::Regex, WordMode::Anywhere, CaseMode::Sensitive);
+
+        $this->assertSame('/\Qa\E\/\Qb\E/', $build('\Qa/b\E'));
+        $this->assertMatchesRegularExpression($build('\Qa/b\E'), 'a/b');
+        $this->assertDoesNotMatchRegularExpression($build('\Qa/b\E'), 'a\/b');
+        $this->assertMatchesRegularExpression($build('\Q/\E+'), '//', 'the quote closed only around the slash: what follows it is still regex');
+        $this->assertSame('/\\\\Q\//', $build('\\\\Q/'), 'an escaped backslash before a Q opens no quote');
+    }
 }

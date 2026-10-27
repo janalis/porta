@@ -24,11 +24,21 @@ final class SearchPattern
      * A regex query with its bare `/` escaped, since `/` delimits the pattern:
      * `src/Foo` is a slash to the user, not the end of the regex. An escape
      * pair is kept whole, so `\/` stays one escaped slash, and `\\/` (a
-     * backslash, then a slash) gets its slash escaped.
+     * backslash, then a slash) gets its slash escaped. Inside `\Q…\E`, where
+     * every character is literal and `\/` would be two, the quote is closed
+     * around the slash: `\Qa/b\E` is `\Qa\E\/\Qb\E`.
      */
     private static function delimited(string $query): string
     {
-        return (string) \preg_replace_callback('~\\\\.|/~s', static fn (array $m): string => '/' === $m[0] ? '\\/' : $m[0], $query);
+        return (string) \preg_replace_callback(
+            '~\\\\Q.*?(?:\\\\E|$)|\\\\.|/~s',
+            static fn (array $m): string => match (true) {
+                '/' === $m[0] => '\\/',
+                \str_starts_with($m[0], '\\Q') => \str_replace(search: '/', replace: '\\E\\/\\Q', subject: $m[0]),
+                default => $m[0],
+            },
+            $query,
+        );
     }
 
     /**

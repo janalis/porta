@@ -27,6 +27,9 @@ final class ProjectSearch
     public const int MAX_RESULTS = 500;
     private const array EXCLUDES = ['.git', 'node_modules', 'vendor', '.idea', '.vscode'];
 
+    /** The largest file the PHP walk reads: 1 MiB. */
+    private const int MAX_FILE_BYTES = 1_048_576;
+
     /** How long one slice of the PHP walk may hold the loop: half a frame. */
     private const int SLICE_NS = 8_000_000;
 
@@ -129,7 +132,10 @@ final class ProjectSearch
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
         // spawns it and reports an exit code — one fallback serves both.
         $fallback = fn () => $this->sliced($this->searchWithPhp($pattern, $paths, $mask), $onDone);
-        $process = new AsyncProcess($command, $this->rootDir);
+        // Bytes, as the pattern that highlights and replaces reads them: in a
+        // UTF-8 locale grep folds `É` to `é` under -i, and a line it listed was
+        // then one replace skipped.
+        $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C']);
         $started = $process->start(
             // grep's own failure (2, or 126/127 for a binary that cannot run)
             // with nothing printed is no answer; 1 is grep saying "no match",
@@ -273,7 +279,8 @@ final class ProjectSearch
     {
         $results = [];
         foreach ($this->texts($paths, $mask) as $rel => $content) {
-            foreach (\explode("\n", $content) as $lineIndex => $line) {
+            // Not explode('') for a file passed over: its one empty line is a match for `^`.
+            foreach (null === $content ? [] : \explode("\n", $content) as $lineIndex => $line) {
                 if (1 !== \preg_match($pattern, $line)) {
                     continue;
                 }
@@ -304,19 +311,8 @@ final class ProjectSearch
     {
         $results = [];
         foreach ($this->texts($paths, $mask) as $rel => $content) {
-            $matches = [];
-            \set_error_handler(static fn (): bool => true);
-            $count = \preg_match_all($pattern, $content, $matches, \PREG_OFFSET_CAPTURE);
-            \restore_error_handler();
-            if (false === $count) {
-                $this->gaveUp = true;
-
-                continue;
-            }
-            // A multiline query always contains a real newline, so its matches
-            // are never zero-width — no empty-match guard needed here.
-            foreach ($matches[0] as $hit) {
-                $results[] = $this->multilineResult($rel, $content, $hit[0], (int) $hit[1]);
+            foreach (null === $content ? [] : $this->hits($content, $pattern) as $hit) {
+                $results[] = $this->multilineResult($rel, (string) $content, $hit[0], $hit[1]);
                 if (\count($results) >= self::MAX_RESULTS) {
                     return $results;
                 }
@@ -330,11 +326,12 @@ final class ProjectSearch
     /**
      * The `[rootRelativePath => content]` of each text file the scopes cover,
      * once each: overlapping scopes (open files under a directory) match once,
-     * and a file with a NUL byte is binary, never searched.
+     * and a file with a NUL byte is binary, never searched. A file passed over
+     * comes as null, so the scan still pauses on it.
      *
      * @param list<string> $paths
      *
-     * @return \Generator<string, string>
+     * @return \Generator<string, ?string>
      */
     private function texts(array $paths, string $mask): \Generator
     {
@@ -342,14 +339,9 @@ final class ProjectSearch
         $seen = [];
         foreach ($paths as $scope) {
             foreach ($this->scopeFiles($scope, $globs) as $rel => $abs) {
-                if (null !== ($seen[$rel] ?? null)) {
-                    continue;
-                }
+                $content = null === $abs || null !== ($seen[$rel] ?? null) ? null : $this->readFile($abs);
                 $seen[$rel] = true;
-                $content = $this->readFile($abs);
-                if (!\str_contains($content, "\0")) {
-                    yield $rel => $content;
-                }
+                yield $rel => null === $content || \str_contains($content, "\0") ? null : $content;
             }
         }
     }
@@ -379,7 +371,7 @@ final class ProjectSearch
      *
      * @param list<string> $globs basename globs, mirroring grep --include
      *
-     * @return iterable<string, string>
+     * @return iterable<string, ?string> null for a file passed over, still yielded so a walk can pause on it
      */
     private function scopeFiles(string $scope, array $globs): iterable
     {
@@ -405,13 +397,14 @@ final class ProjectSearch
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs() // passed over, as grep passes it
             ->ignoreVCS(false)
-            ->exclude(self::EXCLUDES)
-            ->size('<= 1Mi');
-        if ([] !== $globs) {
-            $finder->name($globs); // OR of basename globs, mirroring grep --include
-        }
+            ->exclude(self::EXCLUDES);
+        // The mask (an OR of basename globs, as grep's --include) and the size
+        // cap are judged here, not by Finder: a file Finder turns away never
+        // reaches the walk, so a tree of them — 47,000 coverage pages under a
+        // `*.php` mask — passed in one step, past every slice's deadline.
         foreach ($finder as $file) {
-            yield $prefix.$file->getRelativePathname() => $file->getPathname();
+            $kept = ([] === $globs || self::matchesAnyGlob($file->getFilename(), $globs)) && (int) $file->getSize() <= self::MAX_FILE_BYTES;
+            yield $prefix.$file->getRelativePathname() => $kept ? $file->getPathname() : null;
         }
     }
 

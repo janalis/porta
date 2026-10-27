@@ -206,6 +206,63 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
     }
 
+    /**
+     * grep lists only the lines the pattern that highlights and replaces them
+     * matches: in a UTF-8 locale it folded `É` to `é` under -i, and replace
+     * skipped the line it had listed. Both read bytes now.
+     */
+    public function testGrepFoldsCaseAsThePatternDoes(): void
+    {
+        $locale = \getenv('LC_ALL');
+        \putenv('LC_ALL=en_US.UTF-8');
+        try {
+            $project = new TempProject(['a.txt' => "café\n", 'b.txt' => "CAFE\n"]);
+            $results = $this->awaitSearch(new ProjectSearch($project->dir), 'cafÉ', new SearchOptions(caseSensitive: false));
+        } finally {
+            \putenv(false === $locale ? 'LC_ALL' : 'LC_ALL='.$locale);
+        }
+
+        $this->assertSame([], $results, 'É is not é to the highlighter, so it is not to grep');
+        $this->assertSame(
+            ['b.txt'],
+            \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'cafe', new SearchOptions(caseSensitive: false)), 'path'),
+            'the premise: an ASCII fold still finds',
+        );
+    }
+
+    /**
+     * Every file the walk passes over — off the mask, past the size cap,
+     * binary, or seen in an earlier scope — still comes through, as null: a
+     * slice pauses on it. Turned away inside Finder, a tree of them passed in
+     * one step, past every deadline.
+     */
+    public function testThePhpWalkPausesOnEveryFileItPassesOver(): void
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle\n",
+            'src/page.html' => 'needle',
+            'src/big.php' => \str_repeat('x', times: 1_048_577),
+            'src/blob.php' => "needle\0",
+        ]);
+
+        $walked = [];
+        foreach (Probe::invoke(new ProjectSearch($project->dir), 'texts', ['src', 'src/A.php'], '*.php') as $rel => $content) {
+            $walked[] = [$rel, null !== $content];
+        }
+        \sort($walked);
+
+        $this->assertSame(
+            [
+                ['src/A.php',     false],
+                ['src/A.php',     true],
+                ['src/big.php',   false],
+                ['src/blob.php',  false],
+                ['src/page.html', false],
+            ],
+            $walked,
+        );
+    }
+
     /** The PHP walk shows a hit as grep's results are shown: without its indentation. */
     public function testThePhpWalkShowsAHitTrimmed(): void
     {
