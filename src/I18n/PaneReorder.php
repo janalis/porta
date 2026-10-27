@@ -233,17 +233,65 @@ final class PaneReorder
         // Without this a click inside a mirrored dropdown was mapped through
         // the pane underneath it and hit nothing — the box moved with the
         // frame and the mouse did not follow it.
+        return self::surfaceColumn($regions, $visualCol, AnsiUtils::visibleWidth($line), self::rtlColumns($surfaces)) ?? self::runColumn($runs, $visualCol, self::rtlColumns($line));
+    }
+
+    /**
+     * {@see logicalColumn()} for every column of $line at once, each run and
+     * surface reordered once: a column at a time reorders its run again for
+     * each one, and a frame pass that maps every cell of a side tab strip's
+     * rows took 2.4 s a frame that way.
+     *
+     * @param list<array{start: int, width: int, ltr: bool}>                       $runs
+     * @param list<array{start: int, width: int, ltr: bool, box?: array{int, int}}> $regions
+     *
+     * @return list<int> visual column => logical column, over the line's width
+     */
+    public function logicalColumns(string $line, array $runs, array $regions = [], string $surfaces = ''): array
+    {
         $width = AnsiUtils::visibleWidth($line);
-        $column = self::surfaceColumn($regions, $visualCol, $width, $surfaces);
-        if (null !== $column) {
-            return $column;
+        $inSurfaces = self::rtlColumns($surfaces);
+        $inLine = self::rtlColumns($line);
+        $columns = [];
+        for ($visualCol = 0; $visualCol < $width; ++$visualCol) {
+            $columns[] = self::surfaceColumn($regions, $visualCol, $width, $inSurfaces) ?? self::runColumn($runs, $visualCol, $inLine);
         }
 
+        return $columns;
+    }
+
+    /**
+     * The logical column under $visualCol in the pane run that holds it.
+     *
+     * @param list<array{start: int, width: int, ltr: bool}> $runs
+     * @param \Closure(int, int): ?list<int>                 $rtl
+     */
+    private static function runColumn(array $runs, int $visualCol, \Closure $rtl): int
+    {
         $run = \array_find($runs, static fn (array $run): bool => $visualCol < ($run['start'] + $run['width']));
 
-        return null === $run || $run['ltr']
-            ? $visualCol
-            : $run['start'] + Bidi::visualToLogicalColumn(AnsiUtils::sliceByColumn($line, $run['start'], $run['width'], strict: true), $visualCol - $run['start'], BaseDirection::Rtl);
+        return null === $run || $run['ltr'] ? $visualCol : $run['start'] + Bidi::columnIn($rtl($run['start'], $run['width']), $visualCol - $run['start']);
+    }
+
+    /**
+     * $text's columns [start, start + span) mirrored right to left, as
+     * {@see Bidi::visualToLogicalColumns()} maps them — each span worked out
+     * once however many columns ask.
+     *
+     * @return \Closure(int, int): ?list<int>
+     */
+    private static function rtlColumns(string $text): \Closure
+    {
+        $maps = [];
+
+        return static function (int $start, int $span) use ($text, &$maps): ?array {
+            $key = $start.':'.$span;
+            if (!\array_key_exists($key, $maps)) {
+                $maps[$key] = Bidi::visualToLogicalColumns(AnsiUtils::sliceByColumn($text, $start, $span, strict: true), BaseDirection::Rtl);
+            }
+
+            return $maps[$key];
+        };
     }
 
     /**
@@ -251,8 +299,9 @@ final class PaneReorder
      * it, or null when none does.
      *
      * @param list<array{start: int, width: int, ltr: bool, box?: array{int, int}}> $regions
+     * @param \Closure(int, int): ?list<int>                                         $rtl     the surfaces' columns, mirrored
      */
-    private static function surfaceColumn(array $regions, int $visualCol, int $width, string $surfaces): ?int
+    private static function surfaceColumn(array $regions, int $visualCol, int $width, \Closure $rtl): ?int
     {
         $column = null;
         foreach (\array_reverse($regions) as $region) {
@@ -263,7 +312,7 @@ final class PaneReorder
             $offset = $visualCol - $start;
             $column = $region['ltr']
                 ? $region['start'] + $offset
-                : $region['start'] + Bidi::visualToLogicalColumn(AnsiUtils::sliceByColumn($surfaces, $region['start'], $keep, strict: true), $offset, BaseDirection::Rtl);
+                : $region['start'] + Bidi::columnIn($rtl($region['start'], $keep), $offset);
             break;
         }
 

@@ -482,6 +482,40 @@ final class PaneReorderTest extends TestCase
         $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 6, runs: $pane, regions: $region));
     }
 
+    /**
+     * A whole row mapped at once answers every column as a click on it does —
+     * the frame passes ask for every cell, and a column at a time cost a side
+     * tab strip 2.4 s a frame.
+     */
+    public function testARowMappedAtOnceAnswersEachColumnAsAClickDoes(): void
+    {
+        $reorder = new PaneReorder();
+        $hebrew = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
+        $rtl = [['start' => 0, 'width' => 10, 'ltr' => false]];
+        $cases = [
+            'two panes, one each way' => ["\x1b[2mab\x1b[0m".self::SHALOM.'cd'.self::SHALOM.'xy', [['start' => 0, 'width' => 4, 'ltr' => true], ['start' => 4, 'width' => 12, 'ltr' => false]], [], ''],
+            'wide glyphs' => ['日本'.self::SHALOM.'語', [['start' => 0, 'width' => 10, 'ltr' => false]], [], ''],
+            'a box over the pane' => ['[AB]'.\str_repeat(' ', times: 6), $rtl, [['start' => 0, 'width' => 4, 'ltr' => true]], ''],
+            'two boxes, the later on top' => [\str_repeat('x', times: 10), $rtl, [['start' => 0, 'width' => 4, 'ltr' => true], ['start' => 2, 'width' => 4, 'ltr' => true]], ''],
+            'a Hebrew box' => ['ab'.\str_repeat(' ', times: 8), $rtl, [['start' => 0, 'width' => 4, 'ltr' => false]], $hebrew.\str_repeat(' ', times: 6)],
+            'two right-to-left panes of one width' => [self::SHALOM.'abcd', [['start' => 0, 'width' => 4, 'ltr' => false], ['start' => 4, 'width' => 4, 'ltr' => false]], [], ''],
+            'runs short of the row' => [self::SHALOM.'abcdef', [['start' => 0, 'width' => 4, 'ltr' => false]], [], ''],
+        ];
+
+        foreach ($cases as $name => [$line, $runs, $regions, $surfaces]) {
+            $each = \array_map(
+                static fn (int $col): int => $reorder->logicalColumn($line, $col, $runs, $regions, $surfaces),
+                \range(start: 0, end: AnsiUtils::visibleWidth($line) - 1),
+            );
+            $this->assertSame($each, $reorder->logicalColumns($line, $runs, $regions, $surfaces), $name);
+        }
+        $this->assertNotSame(
+            \range(start: 0, end: 9),
+            $reorder->logicalColumns('ab'.\str_repeat(' ', times: 8), $rtl, [['start' => 0, 'width' => 4, 'ltr' => false]], $hebrew.\str_repeat(' ', times: 6)),
+            'the premise: a row that is mirrored',
+        );
+    }
+
     public function testAClickOutsideTheBoxStillMapsThroughThePane(): void
     {
         $reorder = new PaneReorder();

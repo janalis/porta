@@ -189,9 +189,21 @@ final class Bidi
      */
     public static function visualToLogicalColumn(string $line, int $visualCol, BaseDirection $direction): int
     {
+        return self::columnIn($visualCol < 0 ? null : self::visualToLogicalColumns($line, $direction), $visualCol);
+    }
+
+    /**
+     * {@see visualToLogicalColumn()} for every column of $line in one pass — a
+     * column at a time re-reads and re-orders the whole line for each one.
+     * Null when the line is not reordered: every column is its own.
+     *
+     * @return list<int>|null visual column => logical column
+     */
+    public static function visualToLogicalColumns(string $line, BaseDirection $direction): ?array
+    {
         /** @var list<array{g: string, w: int}> $glyphs */
         $glyphs = [];
-        foreach ($visualCol < 0 ? [] : self::tokens($line) as $token) {
+        foreach (self::tokens($line) as $token) {
             if (\str_starts_with($token, "\x1b[")) {
                 continue; // SGR carries no column
             }
@@ -201,34 +213,41 @@ final class Bidi
         }
         $classes = \array_map(static fn (array $c): string => self::classify($c['g']), $glyphs);
         if ([] === $glyphs || (BaseDirection::Ltr === $direction && !\in_array('R', $classes, strict: true))) {
-            return \max(0, $visualCol);
+            return null;
         }
 
         $levels = self::levels($classes, \array_column($glyphs, column_key: 'g'), $direction);
-        $order = self::visualOrder($levels);
-
         $logicalStart = [];
         $acc = 0;
         foreach ($glyphs as $i => $glyph) {
             $logicalStart[$i] = $acc;
             $acc += $glyph['w'];
         }
-
-        $logical = $acc; // a click past the content maps to the logical line end
-        $visual = 0;
-        foreach ($order as $logicalIndex) {
-            $width = $glyphs[$logicalIndex]['w'];
-            if (0 === $width) {
-                continue; // the zero-width cursor marker occupies no column
+        $columns = [];
+        foreach (self::visualOrder($levels) as $logicalIndex) {
+            // A wide glyph's columns follow its own; the zero-width cursor marker has none.
+            for ($cell = 0; $cell < $glyphs[$logicalIndex]['w']; ++$cell) {
+                $columns[] = $logicalStart[$logicalIndex] + $cell;
             }
-            if ($visualCol < ($visual + $width)) {
-                $logical = $logicalStart[$logicalIndex] + ($visualCol - $visual);
-                break;
-            }
-            $visual += $width;
         }
 
-        return $logical;
+        return $columns;
+    }
+
+    /**
+     * The logical column $visualCol maps to through $columns (from
+     * {@see visualToLogicalColumns()}): before the line is its start, past the
+     * content its logical end, and with no reordering the column itself.
+     *
+     * @param list<int>|null $columns
+     */
+    public static function columnIn(?array $columns, int $visualCol): int
+    {
+        return match (true) {
+            $visualCol < 0 => 0,
+            null === $columns => $visualCol,
+            default => $columns[$visualCol] ?? \count($columns),
+        };
     }
 
     /**

@@ -371,6 +371,15 @@ final class BidiTest extends TestCase
         $this->assertSame(0, Bidi::visualToLogicalColumn(self::SHALOM, 3, BaseDirection::Rtl));
     }
 
+    /** A wide glyph's two columns map to its own two, in reading order, wherever the reorder put it. */
+    public function testAWideGlyphsColumnsMapInItsOwnOrder(): void
+    {
+        // On screen: םולש then 日 — the Hebrew reversed, the ideograph after it.
+        $this->assertSame([5, 4, 3, 2, 0, 1], Bidi::visualToLogicalColumns('日'.self::SHALOM, BaseDirection::Rtl));
+        $this->assertSame(1, Bidi::visualToLogicalColumn('日'.self::SHALOM, 5, BaseDirection::Rtl));
+        $this->assertNull(Bidi::visualToLogicalColumns('abc', BaseDirection::Ltr), 'nothing reordered: no map to build');
+    }
+
     public function testVisualToLogicalColumnIsIdentityForUnreorderedContent(): void
     {
         $this->assertSame(2, Bidi::visualToLogicalColumn('abc', 2, BaseDirection::Ltr)); // ltr, no rtl

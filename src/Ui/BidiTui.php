@@ -109,6 +109,9 @@ final class BidiTui extends Tui implements FrameHooks
     /** @var list<string> the last frame's floating layer, what a click inside a box maps through */
     private array $lastSurfaces = [];
 
+    /** @var array<int, list<int>> each row's visual → logical columns, worked out on the first ask after a paint */
+    private array $columnMaps = [];
+
     /** Minimum seconds between generated frames while pacing is wired (60fps). */
     public const float MIN_FRAME_INTERVAL = 1 / 60;
 
@@ -295,7 +298,19 @@ final class BidiTui extends Tui implements FrameHooks
             return $visualCol;
         }
 
-        return $this->reorder->logicalColumn($this->lastLines[$row], $visualCol, $this->lastRuns[$row], $this->lastRegions[$row] ?? [], $this->lastSurfaces[$row] ?? '');
+        // The frame's own passes ask for every cell of a row: the row is mapped
+        // once. A column off the row's width is asked of the reorder alone.
+        $this->columnMaps[$row] ??= $this->reorder->logicalColumns($this->lastLines[$row], $this->lastRuns[$row], $this->lastRegions[$row] ?? [], $this->lastSurfaces[$row] ?? '');
+
+        return (
+            $this->columnMaps[$row][$visualCol] ?? $this->reorder->logicalColumn(
+                $this->lastLines[$row],
+                $visualCol,
+                $this->lastRuns[$row],
+                $this->lastRegions[$row] ?? [],
+                $this->lastSurfaces[$row] ?? '',
+            )
+        );
     }
 
     /**
@@ -519,6 +534,7 @@ final class BidiTui extends Tui implements FrameHooks
             // surfaces, or a mirrored surface left a hole where it logically sat.
             $surfaces = $segmenter->surfaces($columns, $rows);
             $this->lastSurfaces = $surfaces;
+            $this->columnMaps = [];
             $out = [];
             $arranged = [];
             foreach ($lines as $row => $line) {

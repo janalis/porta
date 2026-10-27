@@ -491,6 +491,37 @@ final class BidiTuiTest extends TestCase
         $this->assertSame(0, $tui->logicalColumn(0, 3));
     }
 
+    /** A row's columns are mapped once a frame — and again for the next frame's row. */
+    public function testAClickMapsThroughTheFrameNowOnScreen(): void
+    {
+        $content = new \ArrayObject(['line' => self::SHALOM]);
+        $widget = new class($content) extends AbstractWidget {
+            /** @param \ArrayObject<string, string> $content */
+            public function __construct(
+                private readonly \ArrayObject $content,
+            ) {}
+
+            public function render(RenderContext $context): array
+            {
+                return [$this->content['line']];
+            }
+        };
+        $this->renderer = new Renderer(new StyleSheet());
+        $tui = new BidiTui(terminal: new VirtualTerminal(columns: 20, rows: 2), renderer: $this->renderer);
+        $tui->add($widget);
+        $this->enableRtl($tui);
+        $tui->requestRender();
+        $tui->processRender();
+        $this->assertSame(3, $tui->logicalColumn(0, 0), 'the premise: the first frame, mapped');
+
+        $content['line'] = 'ab'.self::SHALOM;
+        $widget->invalidate();
+        $tui->requestRender();
+        $tui->processRender();
+
+        $this->assertSame(5, $tui->logicalColumn(0, 0), "the second frame's row: its last letter now sits leftmost");
+    }
+
     /**
      * A floating box anchors where what it hangs from was DRAWN, mirrored
      * back across the row — the box is its own run, reordered as a whole.
