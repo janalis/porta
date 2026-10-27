@@ -93,6 +93,7 @@ final class FileIndex
             ->files()
             ->in($this->rootDir)
             ->ignoreDotFiles(false)
+            ->ignoreUnreadableDirs() // a root-owned Docker volume, say: passed over, as grep passes it
             ->ignoreVCS(false)
             ->exclude($excludes)
             ->notName('.DS_Store');

@@ -191,6 +191,21 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(['src/B.php'], \array_column($after, 'path'));
     }
 
+    /** The PHP walk passes over a directory nobody may list, as grep does, and finds the rest. */
+    public function testThePhpWalkPassesOverAnUnreadableDirectory(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = $this->fixtures();
+        if (!$project->lock('docker/db')) {
+            $this->markTestSkipped('this user reads every directory');
+        }
+
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle'), 'path');
+        \sort($paths);
+
+        $this->assertSame(['src/A.php', 'src/B.php'], $paths);
+    }
+
     /** The PHP walk shows a hit as grep's results are shown: without its indentation. */
     public function testThePhpWalkShowsAHitTrimmed(): void
     {

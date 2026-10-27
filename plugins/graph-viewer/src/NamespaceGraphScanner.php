@@ -112,6 +112,7 @@ final readonly class NamespaceGraphScanner
         $finder = new Finder()
             ->files()
             ->in($dir)
+            ->ignoreUnreadableDirs()
             ->name('*.php')
             ->notPath('~(^|/)(?:'.\implode('|', self::SKIP_DIRS).')/~');
         foreach ($finder as $file) {

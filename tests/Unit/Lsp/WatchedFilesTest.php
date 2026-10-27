@@ -115,6 +115,22 @@ final class WatchedFilesTest extends TestCase
         $this->assertCount(1, $this->sent('php-ls'), 'a sweep that sees nothing new says nothing');
     }
 
+    /** A directory nobody may list — a root-owned Docker volume — is passed over; the sweep goes on. */
+    public function testAnUnreadableDirectoryIsPassedOver(): void
+    {
+        if (!$this->project->lock('docker/db')) {
+            $this->markTestSkipped('this user reads every directory');
+        }
+        $this->startServers();
+        $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
+        $this->watched->tick();
+
+        $this->project->write('src/New.php', '<?php // new');
+        $this->watched->tick();
+
+        $this->assertSame([[['uri' => $this->uri('src/New.php'), 'type' => 1]]], $this->sent('php-ls'));
+    }
+
     public function testEachServerHearsOnlyItsOwnGlobsAndKinds(): void
     {
         $this->startServers();

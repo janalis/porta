@@ -19,6 +19,9 @@ final class TempProject
     /** @var list<string> symlinks made by {@see alias()}, removed with the project */
     private array $aliases = [];
 
+    /** @var list<string> directories {@see lock()} made unreadable, readable again before the project goes */
+    private array $locked = [];
+
     /** The git binary, resolved once against the pristine PATH. */
     private static ?string $git = null;
 
@@ -39,6 +42,20 @@ final class TempProject
         $this->fs->dumpFile($abs, $content);
 
         return $abs;
+    }
+
+    /**
+     * A directory nobody may list — a root-owned Docker volume, say — with a
+     * file in it, so a walk that went in would find something. False where
+     * the lock does not hold (root reads everything): the test has no premise.
+     */
+    public function lock(string $relativePath): bool
+    {
+        $dir = \dirname($this->write($relativePath.'/inside.php', "<?php\n// needle\n"));
+        \chmod($dir, permissions: 0);
+        $this->locked[] = $dir;
+
+        return !\is_readable($dir);
     }
 
     public function path(string $relativePath = ''): string
@@ -124,6 +141,9 @@ final class TempProject
                 continue;
             }
             \unlink($link); // the link only, never its target
+        }
+        foreach ($this->locked as $dir) {
+            \chmod($dir, permissions: 0o755);
         }
         try {
             $this->fs->remove($this->dir);

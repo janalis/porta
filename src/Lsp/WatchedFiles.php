@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\PollBackoff;
+use Porta\Support\GitIgnored;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\Glob;
@@ -157,7 +158,9 @@ final class WatchedFiles
             ->in($this->rootDir)
             ->exclude(self::SKIP)
             ->ignoreDotFiles(false)
+            ->ignoreUnreadableDirs()
             ->ignoreVCSIgnored(true)
+            ->filter(GitIgnored::pruner($this->rootDir), prune: true)
             ->getIterator();
         $walk->rewind();
         $this->seen = [];

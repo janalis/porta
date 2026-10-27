@@ -23,6 +23,17 @@ final class FileIndexTest extends TestCase
         $this->assertSame(\strlen('sub/'), $sub['boundary'], 'boundary is the start of the basename');
     }
 
+    /** A directory nobody may list — a root-owned Docker volume — is passed over, not the end of Go to File. */
+    public function testAnUnreadableDirectoryIsPassedOver(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        if (!$project->lock('docker/db')) {
+            $this->markTestSkipped('this user reads every directory');
+        }
+
+        $this->assertSame(['a.php'], \array_column(new FileIndex($project->dir)->entries(), 'path'));
+    }
+
     public function testExcludesVcsAndDependencyDirs(): void
     {
         $project = new TempProject(['a.php' => '', '.git/config' => 'x', 'node_modules/lib.js' => 'x', '.idea/x.iml' => 'y', 'vendor/pkg/Lib.php' => 'z']);

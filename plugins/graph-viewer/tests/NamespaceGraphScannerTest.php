@@ -60,6 +60,17 @@ final class NamespaceGraphScannerTest extends TestCase
         $this->assertStringContainsString('"App\\\\Editor" [label="Editor"];', $dot, 'the rest of the scan proceeded');
     }
 
+    /** So is a directory nobody may list — a root-owned Docker volume: the scan goes on past it. */
+    public function testAnUnreadableDirectoryIsSkipped(): void
+    {
+        $project = $this->project();
+        if (!$project->lock('src/Locked')) { // inside a namespace root, where the scan walks
+            $this->markTestSkipped('this user reads every directory');
+        }
+
+        $this->assertStringContainsString('"App\\\\Editor" [label="Editor"];', new NamespaceGraphScanner($project->dir)->scan());
+    }
+
     public function testOutputIsDeterministic(): void
     {
         $project = $this->project();

@@ -10,6 +10,7 @@ use Porta\Lsp\LspClientInterface;
 use Porta\Lsp\ServerLocator;
 use Porta\Lsp\Uri;
 use Porta\Plugin\Runtime\PluginHost;
+use Porta\Support\GitIgnored;
 use Porta\Support\LanguageMap;
 use Porta\Support\OrphanGuard;
 use Porta\Support\Outcome;
@@ -217,7 +218,9 @@ final class LspProbeCommand extends Command
             ->in($root)
             ->exclude(self::NOT_WALKED)
             ->ignoreDotFiles(false)
+            ->ignoreUnreadableDirs()
             ->ignoreVCSIgnored(true)
+            ->filter(GitIgnored::pruner($root), prune: true)
             ->sortByName();
         $byLanguage = [];
         foreach ($finder as $file) {

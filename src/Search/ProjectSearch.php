@@ -403,6 +403,7 @@ final class ProjectSearch
             ->files()
             ->in($abs)
             ->ignoreDotFiles(false)
+            ->ignoreUnreadableDirs() // passed over, as grep passes it
             ->ignoreVCS(false)
             ->exclude(self::EXCLUDES)
             ->size('<= 1Mi');
