@@ -378,14 +378,22 @@ final readonly class RuleHalves
             }
             for ($col = 0, $columns = AnsiUtils::visibleWidth($lines[$edge]); $col < $columns; ++$col) {
                 $laid = $logical($edge, $col);
-                if ($laid < $rect->col || $laid >= ($rect->col + $rect->columns) || !self::sameSurface($surface($line, $col), $surface($edge, $col), $floating, $rect)) {
+                if ($laid < $rect->col || $laid >= ($rect->col + $rect->columns)) {
                     continue;
                 }
                 // A rule, or a blank on nothing: the padding over a view
-                // in a window, the room under a short list.
+                // in a window, the room under a short list — or a bar's half.
+                // Any other glyph joins nothing, so it is turned away before
+                // the surfaces are asked and the codes read, cell by cell.
                 $beside = $cells[$line][$col] ?? '';
-                $state = self::state(self::lead($beside));
                 $glyph = AnsiUtils::stripAnsiCodes($beside);
+                if (
+                    !\in_array($glyph, [Glyphs::FRAME_HORIZONTAL, ' ', Glyphs::HALF_UPPER, Glyphs::HALF_LOWER], strict: true)
+                    || !self::sameSurface($surface($line, $col), $surface($edge, $col), $floating, $rect)
+                ) {
+                    continue;
+                }
+                $state = self::state(self::lead($beside));
                 $isRule = Glyphs::FRAME_HORIZONTAL === $glyph && $tint === $state['fg'];
                 // A head's row over it holds a bar's half only where a bar draws one.
                 $barTint = match (true) {

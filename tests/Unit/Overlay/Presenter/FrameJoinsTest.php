@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Overlay\Presenter;
 use PHPUnit\Framework\TestCase;
 use Porta\Overlay\Presenter\FrameJoins;
 use Porta\Overlay\Region\DropdownRegion;
+use Porta\Ui\Glyphs;
 
 /**
  * The joins read off a painted frame: a rule meeting a divider turns into it,
@@ -44,6 +45,21 @@ final class FrameJoinsTest extends TestCase
                 'status  ',
             ],
             self::joined(['menu    ', '────────', 'tre│ed  ', 'tre│ed  ', '────────', 'status  '], [[2, 3, 2]]),
+        );
+    }
+
+    /** A wide glyph before the divider takes two columns, its codes none: the divider is found where it is drawn. */
+    public function testAWideGlyphBeforeTheDividerKeepsItsColumn(): void
+    {
+        $styled = "\e[1m日ab\e[0m│ed   "; // 日 two columns, then a and b: the divider at column 4
+        $grid = ['menu      ', '──────────', $styled, $styled, '──────────'];
+
+        $this->assertSame(
+            [
+                [1, 4, Glyphs::RULE_DOWN],
+                [4, 4, Glyphs::RULE_UP],
+            ],
+            FrameJoins::junctions($grid, [[2, 4, 2]], []),
         );
     }
 

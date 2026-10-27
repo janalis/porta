@@ -10,7 +10,6 @@ use Porta\Layout\ViewRegions;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\Region\FloatingRegions;
-use Porta\Support\AnsiText;
 use Porta\Ui\BidiTui;
 use Porta\Ui\Glyphs;
 use Porta\Ui\Role;
@@ -100,10 +99,20 @@ final readonly class FrameJoins
         // Over the window: every floating surface but the window's own.
         $overWindow = \array_values(\array_filter($floating, static fn (DropdownRegion $region): bool => !\array_any($window, static fn (DropdownRegion $own): bool => self::same($own, $region))));
         $columns = [] === $lines ? 0 : AnsiUtils::visibleWidth($lines[0]);
-        // The plain glyph at a cell; nothing off the frame.
-        $cell = static fn (int $row, int $col): string => $col < 0 || $col >= $columns || !\array_key_exists($row, $lines)
-            ? ''
-            : AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($lines[$row], $col, 1));
+        // The plain glyph at a cell; nothing off the frame. Each row is walked
+        // once, on first ask: a slice per cell re-read the row's codes from its
+        // start every time, and a mirrored frame puts a divider near the end.
+        $plain = [];
+        $cell = static function (int $row, int $col) use ($lines, &$plain): string {
+            if (!\array_key_exists($row, $lines)) {
+                return '';
+            }
+            if (!\array_key_exists($row, $plain)) {
+                $plain[$row] = self::plainCells($lines[$row]);
+            }
+
+            return $plain[$row][$col] ?? ''; // a column off either side is nothing
+        };
         $joins = [];
         foreach ($dividers as $divider) {
             [$top, $col, $rows] = $divider;
@@ -139,6 +148,34 @@ final readonly class FrameJoins
         }
 
         return $joins;
+    }
+
+    /**
+     * The plain glyph of each column of $line, a wide glyph's second column
+     * empty.
+     *
+     * @return list<string>
+     */
+    private static function plainCells(string $line): array
+    {
+        // A row of one-column characters — nearly every row — splits as it
+        // is, natively; only one with a wide glyph is walked cell by cell.
+        $plain = AnsiUtils::stripAnsiCodes($line);
+        $chars = \mb_str_split($plain);
+        if (\count($chars) === AnsiUtils::visibleWidth($plain)) {
+            return $chars;
+        }
+        $cells = [];
+        foreach (AnsiUtils::walkCells($line) as $token) {
+            if ($token['width'] > 0) {
+                $cells[] = $token['text'];
+            }
+            if (2 === $token['width']) {
+                $cells[] = '';
+            }
+        }
+
+        return $cells;
     }
 
     /** The same rectangle: a window's regions are minted afresh on every ask. */
