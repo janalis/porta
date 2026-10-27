@@ -185,28 +185,11 @@ final class CoveragePluginsCommandTest extends TestCase
     public function testTheSlowestShardIsNamedBecauseItIsTheFloor(): void
     {
         $project = $this->project();
-        // beta ends last by construction, not by a head start that process
-        // startup under load can eat: the others leave a mark and go, and beta
-        // waits for both marks — its own startup inside the wait — then 0.5 s.
-        $marks = $project->path('done');
-        \mkdir($marks);
-        $spawn = static fn (array $paths, string $cloverPath): Process => new Process([
-            \PHP_BINARY,
-            '-r',
-            <<<'PHP'
-                [, $clover, $marks] = $argv;
-                if (!str_contains($clover, 'beta')) {
-                    touch($marks.'/'.basename($clover));
-                    exit(0);
-                }
-                for ($deadline = microtime(true) + 30; count(glob($marks.'/*')) < 2 && microtime(true) < $deadline;) {
-                    usleep(10000);
-                }
-                usleep(500000);
-                PHP,
-            $cloverPath,
-            $marks,
-        ]);
+        // beta outlives the others by construction: `sleep 2` lives two
+        // seconds however loaded the machine, and `true` exits at once. PHP
+        // shards could not promise it — on CI one that only touched a file
+        // and exited took 3.2 s to start and stop.
+        $spawn = static fn (array $paths, string $cloverPath): Process => new Process(\str_contains($cloverPath, 'beta') ? ['sleep', '2'] : ['true']);
 
         $tester = $this->tester($project, $spawn);
         $tester->execute(['--output-dir' => $project->path('out'), '--processes' => 3]);

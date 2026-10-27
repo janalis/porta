@@ -30,7 +30,10 @@ final class PtyProcessTest extends TestCase
         // leaves no orphan behind; the short one has an exit code to report.
         $tail = $after >= 10 ? 'exec sleep '.$after : 'sleep '.$after.'; exit 7';
 
-        return ['/bin/sh', '-c', 'fd=0; while [ $fd -lt 256 ]; do eval "exec $fd<&-"; fd=$((fd+1)); done; '.$tail];
+        // bash, not sh: Linux's sh is dash, which reads only one digit as a
+        // descriptor — `exec 10<&-` there runs a command named 10, and the
+        // child died with 127 before it ever closed its terminal.
+        return ['/bin/bash', '-c', 'fd=0; while [ $fd -lt 256 ]; do eval "exec $fd<&-"; fd=$((fd+1)); done; '.$tail];
     }
 
     /** @var list<PtyProcess> */
