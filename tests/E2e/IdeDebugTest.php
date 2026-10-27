@@ -187,6 +187,16 @@ final class IdeDebugTest extends TestCase
         );
     }
 
+    /** A step that puts a breakpoint on the program's third line (ctrl+f8) and starts debugging it (shift+f9): the session pauses there. */
+    private static function breakAtLineThreeAndDebug(): \Closure
+    {
+        return static function (Tui $tui): void {
+            Widgets::editor($tui)->getDocument()->setCursor(2, 0);
+            $tui->handleInput("\x1b[19;5~"); // ctrl+f8
+            $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
+        };
+    }
+
     public function testStopMidPauseCleansUpAndPanelMouseWorks(): void
     {
         \putenv('PATH=/nonexistent');
@@ -196,11 +206,7 @@ final class IdeDebugTest extends TestCase
             $project,
             $project->path('prog.php'),
             [
-                100 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(2, 0);
-                    $tui->handleInput("\x1b[19;5~");
-                    $tui->handleInput("\x1b[20;2~");
-                },
+                100 => self::breakAtLineThreeAndDebug(),
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'paused at prog.php:3');
                     $this->assertStringContainsString('paused at prog.php:3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -337,11 +343,7 @@ final class IdeDebugTest extends TestCase
             $project,
             $project->path('prog.php'),
             [
-                100 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(2, 0); // breakpoint at wire line 3
-                    $tui->handleInput("\x1b[19;5~"); // ctrl+f8
-                    $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
-                },
+                100 => self::breakAtLineThreeAndDebug(),
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->awaitPainted($tui, $terminal, 'paused at prog.php:3');
                     $this->assertStringContainsString('paused at prog.php:3', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
@@ -378,11 +380,7 @@ final class IdeDebugTest extends TestCase
             $project,
             $project->path('prog.php'),
             [
-                200 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(2, 0);
-                    $tui->handleInput("\x1b[19;5~"); // a breakpoint keeps the session paused
-                    $tui->handleInput("\x1b[20;2~"); // shift+f9 debug
-                },
+                200 => self::breakAtLineThreeAndDebug(),
                 600 => function (Tui $tui, VirtualTerminal $terminal) use ($palette): void {
                     $this->awaitPainted($tui, $terminal, 'paused at prog.php:3'); // the debug session exists
                     $tui->handleInput("\x1b[96;5u"); // ctrl+` → the adapter echo lives in the debug terminal session

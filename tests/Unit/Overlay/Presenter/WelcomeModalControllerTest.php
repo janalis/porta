@@ -65,6 +65,19 @@ final class WelcomeModalControllerTest extends TestCase
     private MenuBarWidget $menuBar;
     private EditorArea $editArea;
 
+    /** A fresh 80 × 24 screen with one overlay pane, a compact welcome card and no views: its editor area. */
+    private function freshScreen(): EditorArea
+    {
+        $this->renderer = new Renderer(new StyleSheet());
+        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
+        $this->pane = new TestOverlayPane();
+        $this->tui->add($this->pane);
+        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
+        $this->views = new ViewRegistry();
+
+        return new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
+    }
+
     private function controller(): WelcomeModalController
     {
         return $this->controllerWith(new FakePluginLifecycle());
@@ -72,25 +85,8 @@ final class WelcomeModalControllerTest extends TestCase
 
     private function controllerWith(FakePluginLifecycle $lifecycle, ?SyntaxHighlightProviderSource $source = null): WelcomeModalController
     {
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(
-            terminal: new VirtualTerminal(columns: 80, rows: 24),
-            keybindings: new Keybindings([]),
-            renderer: $this->renderer,
-        );
-        $this->pane = new TestOverlayPane();
-        $this->tui->add($this->pane);
-
-        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
-        $this->views = new ViewRegistry();
+        $this->editArea = $this->freshScreen();
         $this->menuBar = new MenuBarWidget();
-
-        $this->editArea = new EditorArea(
-            new BufferManager(),
-            new CodeEditorWidget(),
-            new EditorPanes(),
-            $this->tui,
-        );
 
         return new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
@@ -573,13 +569,7 @@ final class WelcomeModalControllerTest extends TestCase
     {
         // frameHooks is nullable — the nullsafe call must guard against a
         // truly absent scheduler, not just a happy-path presence.
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
-        $this->pane = new TestOverlayPane();
-        $this->tui->add($this->pane);
-        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
-        $this->views = new ViewRegistry();
-        $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
+        $editArea = $this->freshScreen();
 
         new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
@@ -613,13 +603,7 @@ final class WelcomeModalControllerTest extends TestCase
     public function testRefreshPicksUpMagoBecomingAvailable(): void
     {
         $project = new TempProject();
-        $this->renderer = new Renderer(new StyleSheet());
-        $this->tui = new BidiTui(terminal: new VirtualTerminal(columns: 80, rows: 24), keybindings: new Keybindings([]), renderer: $this->renderer);
-        $this->pane = new TestOverlayPane();
-        $this->tui->add($this->pane);
-        $this->welcome = new WelcomeWidget(new Translator('en'), density: CompactScreen::density());
-        $this->views = new ViewRegistry();
-        $editArea = new EditorArea(new BufferManager(), new CodeEditorWidget(), new EditorPanes(), $this->tui);
+        $editArea = $this->freshScreen();
         $controller = new WelcomeModalController(
             new OverlayDelivery($this->renderer, new MenuOverlayPanes([$this->pane]), $this->tui),
             $this->welcome,

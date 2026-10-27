@@ -11,9 +11,13 @@ use Symfony\Component\Tui\Terminal\TerminalInterface;
 /** An inner terminal that traces every call into $calls and keeps the kitty callback it was handed. */
 final class RecordingTerminal implements TerminalInterface
 {
-    /** @param list<string> $calls */
+    /**
+     * @param list<string>   $calls
+     * @param ?\Closure(): void $onStart what the inner terminal does as it boots, before the probe
+     */
     public function __construct(
         private array &$calls,
+        private readonly ?\Closure $onStart = null,
     ) {}
 
     /** @var (callable(): void)|null the kitty callback this inner was handed */
@@ -22,6 +26,9 @@ final class RecordingTerminal implements TerminalInterface
     public function start(callable $onInput, callable $onResize, callable $onKittyProtocolActivated): void
     {
         $this->calls[] = 'start';
+        if (null !== $this->onStart) {
+            ($this->onStart)();
+        }
         $this->kitty = $onKittyProtocolActivated;
         $onInput('probe'); // prove the callbacks were passed through verbatim
     }

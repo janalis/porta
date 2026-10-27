@@ -6,15 +6,12 @@ namespace Porta\Tests\Unit\Workbench\View;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\ScriptedView;
 use Porta\Workbench\Menu\MenuContribution;
 use Porta\Workbench\Menu\MenuContributions;
-use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
 use Porta\Workbench\View\ViewCommandGate;
-use Porta\Workbench\View\ViewPointer;
 use Porta\Workbench\View\ViewRegistry;
-use Symfony\Component\Tui\Widget\AbstractWidget;
-use Symfony\Component\Tui\Widget\FocusableInterface;
 
 /**
  * A command reaching past an open view window: the view's own commands run
@@ -43,68 +40,7 @@ final class ViewCommandGateTest extends TestCase
 
     private static function view(string $id): ContributedView
     {
-        return new class($id) implements ContributedView {
-            private bool $open = false;
-
-            public function __construct(
-                private readonly string $id,
-            ) {}
-
-            public function viewId(): string
-            {
-                return $this->id;
-            }
-
-            public function hostsWindow(): bool
-            {
-                return 'welcome' !== $this->id;
-            }
-
-            public function title(): string
-            {
-                return $this->id;
-            }
-
-            public function isOpen(): bool
-            {
-                return $this->open;
-            }
-
-            public function open(): void
-            {
-                $this->open = true;
-            }
-
-            public function close(): void
-            {
-                $this->open = false;
-            }
-
-            public function toggle(): void
-            {
-                $this->open = !$this->open;
-            }
-
-            public function pointer(): ?ViewPointer
-            {
-                return null;
-            }
-
-            public function contextMenus(): ?ViewMenuSource
-            {
-                return null;
-            }
-
-            public function focusTarget(): AbstractWidget&FocusableInterface
-            {
-                throw new \LogicException('not asked');
-            }
-
-            public function cycleFocus(int $direction): bool
-            {
-                return false;
-            }
-        };
+        return new ScriptedView($id, hostsWindow: 'welcome' !== $id); // the welcome view floats
     }
 
     public function testAnEditorCommandClosesTheOpenViewFirst(): void

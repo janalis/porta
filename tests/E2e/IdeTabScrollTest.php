@@ -8,6 +8,7 @@ use PHPUnit\Framework\Assert;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Ide;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
@@ -117,38 +118,23 @@ final class IdeTabScrollTest extends TestCase
 
     public function testWheelScrollsTheVerticalList(): void
     {
-        $project = new TempProject(
-            self::files(self::TALL_FILES)
-            + [
-                '.porta.json' => (string) \json_encode(['settings' => ['tabBarPosition' => 'left']], \JSON_THROW_ON_ERROR),
-            ],
-        );
+        $this->withEveryTallFileOpenOnTheLeft(function (Tui $tui, Ide $ide, TabBarWidget $tabs): void {
+            $this->assertNotNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the list followed the active tab');
+            $this->assertNull($tabs->tabAnchor(0), 'the first tab is scrolled out above');
 
-        $this->runIde($project, null, [
-            100 => static function (Tui $tui, $terminal, $ide) use ($project): void {
-                self::openAll($ide, $project, self::TALL_FILES);
-            },
-            300 => function (Tui $tui, $terminal, $ide): void {
-                $this->frame($tui);
-                /** @var TabBarWidget $tabs */
-                $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                $this->assertNotNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the list followed the active tab');
-                $this->assertNull($tabs->tabAnchor(0), 'the first tab is scrolled out above');
+            // One notch scrolls three rows on the vertical list.
+            self::wheel($tui, self::tabsRect($ide, $tui), 64, times: 4);
+            $this->frame($tui);
+            $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up reached the first tab');
+            $this->assertNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the last tab scrolled out below');
 
-                // One notch scrolls three rows on the vertical list.
-                self::wheel($tui, self::tabsRect($ide, $tui), 64, times: 4);
-                $this->frame($tui);
-                $this->assertNotNull($tabs->tabAnchor(0), 'wheel-up reached the first tab');
-                $this->assertNull($tabs->tabAnchor(self::TALL_FILES - 1), 'the last tab scrolled out below');
-
-                // The bottom ▼ indicator row is clickable and pages forward.
-                $rect = self::tabsRect($ide, $tui);
-                self::click($tui, $rect, $rect->rows - 1, 2);
-                $this->frame($tui);
-                $this->assertNull($tabs->tabAnchor(0), 'clicking ▼ scrolled the first tab out');
-                $this->assertNotNull($tabs->tabAnchor(3), 'clicking ▼ paged three rows forward');
-            },
-        ]);
+            // The bottom ▼ indicator row is clickable and pages forward.
+            $rect = self::tabsRect($ide, $tui);
+            self::click($tui, $rect, $rect->rows - 1, 2);
+            $this->frame($tui);
+            $this->assertNull($tabs->tabAnchor(0), 'clicking ▼ scrolled the first tab out');
+            $this->assertNotNull($tabs->tabAnchor(3), 'clicking ▼ paged three rows forward');
+        });
     }
 
     /**
@@ -157,6 +143,28 @@ final class IdeTabScrollTest extends TestCase
      * as the one-row list's.
      */
     public function testAWheelNotchMovesTheSideTabsOneTab(): void
+    {
+        $this->withEveryTallFileOpenOnTheLeft(
+            function (Tui $tui, Ide $ide, TabBarWidget $tabs): void {
+                $this->assertSame(1, $tabs->tabAnchor(self::TALL_FILES - 1)['rows'] ?? null, 'forty rows: a tab is a row, with a gap under it');
+                $top = static fn (): ?int => $tabs->tabIndexAt(1, 3); // the first tab under the ▲ row
+
+                $before = $top();
+                self::wheel($tui, self::tabsRect($ide, $tui), 64);
+                $this->frame($tui);
+                $this->assertSame($before - 1, $top(), 'one notch up, one tab');
+            },
+            rows: 40,
+        );
+    }
+
+    /**
+     * Every one of the tall project's files open, the tabs a list down the
+     * left — then $then with that list.
+     *
+     * @param \Closure(Tui, Ide, TabBarWidget): void $then
+     */
+    private function withEveryTallFileOpenOnTheLeft(\Closure $then, int $rows = 24): void
     {
         $project = new TempProject(
             self::files(self::TALL_FILES)
@@ -172,20 +180,14 @@ final class IdeTabScrollTest extends TestCase
                 100 => static function (Tui $tui, $terminal, $ide) use ($project): void {
                     self::openAll($ide, $project, self::TALL_FILES);
                 },
-                300 => function (Tui $tui, $terminal, $ide): void {
+                300 => function (Tui $tui, $terminal, Ide $ide) use ($then): void {
                     $this->frame($tui);
                     /** @var TabBarWidget $tabs */
                     $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-                    $this->assertSame(1, $tabs->tabAnchor(self::TALL_FILES - 1)['rows'] ?? null, 'forty rows: a tab is a row, with a gap under it');
-                    $top = static fn (): ?int => $tabs->tabIndexAt(1, 3); // the first tab under the ▲ row
-
-                    $before = $top();
-                    self::wheel($tui, self::tabsRect($ide, $tui), 64);
-                    $this->frame($tui);
-                    $this->assertSame($before - 1, $top(), 'one notch up, one tab');
+                    $then($tui, $ide, $tabs);
                 },
             ],
-            rows: 40,
+            rows: $rows,
         );
     }
 }

@@ -10,11 +10,10 @@ use Porta\Editor\Document;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferSaved;
 use Porta\Event\LspStatusChanged;
-use Porta\I18n\Translator;
-use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\SemanticTokensController;
 use Porta\Lsp\SemanticTokensRefresher;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
@@ -45,18 +44,7 @@ final class SemanticTokensControllerTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->tui = $tui;
-        $pool = new LspSessionPool(
-            '/p',
-            $this->activeFile = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient($capabilities));
 
         return new SemanticTokensController($pool, $this->editor, $this->editor->decorations, $tui);
     }

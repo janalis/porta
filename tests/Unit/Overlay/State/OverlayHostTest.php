@@ -902,11 +902,10 @@ final class OverlayHostTest extends TestCase
         }
     }
 
-    public function testSearchMouseClickPicksAHitAndClicksElsewhereClose(): void
+    /** A search open over 80 × 20, its rows laid out: a pick sets $picked to the hit's label, a close counts in $closed. */
+    private function searchOpen(?string &$picked, int &$closed): OverlayHost
     {
         $host = $this->host();
-        $picked = null;
-        $closed = 0;
         $host->openSearch(
             'Search',
             static fn (): null => null,
@@ -919,6 +918,15 @@ final class OverlayHostTest extends TestCase
         );
         $host->setSearchRows($this->searchRows(static fn (): null => null));
         $host->layout([0, 0, 20, 80]);
+
+        return $host;
+    }
+
+    public function testSearchMouseClickPicksAHitAndClicksElsewhereClose(): void
+    {
+        $picked = null;
+        $closed = 0;
+        $host = $this->searchOpen($picked, $closed);
 
         // Hover finds a hit row; clicking it picks that hit.
         $hitRow = -1;
@@ -943,21 +951,9 @@ final class OverlayHostTest extends TestCase
     /** A press on a hit row's rail resizes the window: it neither picks the row nor closes. */
     public function testAPressOnTheRailBesideAHitResizesAndPicksNothing(): void
     {
-        $host = $this->host();
         $picked = null;
         $closed = 0;
-        $host->openSearch(
-            'Search',
-            static fn (): null => null,
-            static function (SearchHit $h) use (&$picked): void {
-                $picked = $h->label;
-            },
-            static function () use (&$closed): void {
-                ++$closed;
-            },
-        );
-        $host->setSearchRows($this->searchRows(static fn (): null => null));
-        $host->layout([0, 0, 20, 80]);
+        $host = $this->searchOpen($picked, $closed);
         $box = Probe::get($host, 'searchBox');
         Assert::assertInstanceOf(ModalBox::class, $box);
         $hitRow = $box->windowTop() + 1;

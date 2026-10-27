@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Lsp\InlineValueRequest;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
@@ -49,18 +50,7 @@ final class InlineValuesTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->showDocument('/p/a.php', new Document("<?php\n\$count = 41;\n\$name = 'x';\n"));
 
-        $pool = new LspSessionPool(
-            '/p',
-            $active = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(['inlineValueProvider' => true]),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $active = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient(['inlineValueProvider' => true]));
         $active->set('/p/a.php');
         $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
 

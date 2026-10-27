@@ -439,19 +439,11 @@ final class GraphViewerWidget extends NavigablePaneWidget
     /** @return list<string> */
     public function render(RenderContext $context): array
     {
+        $lines = $this->framedLines($context);
         $cols = $context->getColumns();
-        $rows = $context->getRows();
-        if ($cols < 1 || $rows < 1) {
-            return [];
-        }
-        $this->beginFrame($cols, $rows);
-        $lines = $this->contentLines($cols, $rows);
-        if ($this->isFocused() && $cols >= 3 && $rows >= 3) {
-            $lines = $this->focusFrame($lines, $cols, $rows);
-        }
         // The banner/progress row outranks the focus frame's top border — an
         // error (or in-flight hint) must never hide behind focus chrome.
-        if (null !== $this->layout || null !== $this->bitmap || null !== $this->nativeScene) {
+        if ([] !== $lines && (null !== $this->layout || null !== $this->bitmap || null !== $this->nativeScene)) {
             // A source error is the editor's to show while the text is beside
             // this pane; shown alone, the picture has to say it.
             $banner = $this->error ?? ($this->besideText ? null : $this->sourceError);
@@ -488,12 +480,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             $kb->matches($data, 'graph_select_next') => $this->cycleSelection(1),
             $kb->matches($data, 'graph_select_prev') => $this->cycleSelection(-1),
             $kb->matches($data, 'graph_find_node') => $this->findNode(),
-            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
-            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
-            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'goto_file') => $this->handler?->openGotoFile(),
-            $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
-            default => null,
+            default => $this->tabKey($data),
         };
     }
 
@@ -513,13 +500,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             'graph_select_next' => ['n'],
             'graph_select_prev' => ['p'],
             'graph_find_node' => ['/'],
-            // Re-bound to the editor's defaults so tab management keeps working
-            // while the code editor is detached (see EditorKeymap).
-            'next_buffer' => ['ctrl+right'],
-            'prev_buffer' => ['ctrl+left'],
-            'close_buffer' => ['ctrl+f4', 'alt+w'],
-            'goto_file' => ['ctrl+shift+n', 'ctrl+p'],
-            'save_all' => ['ctrl+alt+s'],
+            ...self::TAB_KEYS,
         ];
     }
 

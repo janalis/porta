@@ -8,8 +8,8 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\I18n\Translator;
 use Porta\Lsp\CompletionController;
-use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Widget\CodeEditorWidget;
@@ -41,17 +41,10 @@ final class SignatureActiveParameterTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->tui = $tui;
         $translator = new Translator('en');
-        $pool = new LspSessionPool(
+        $pool = FakeLspPool::create(
             '/p',
             $this->activeFile = new FixedActiveFile(),
-            $translator,
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(['signatureHelpProvider' => ['triggerCharacters' => ['(', ',']]]),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
+            fn (): FakeLspClient => $this->client = new FakeLspClient(['signatureHelpProvider' => ['triggerCharacters' => ['(', ',']]]),
         );
         $controller = new CompletionController($pool, $this->editor, $tui, new Notifier(new StatusBarWidget(), $tui), $translator);
 

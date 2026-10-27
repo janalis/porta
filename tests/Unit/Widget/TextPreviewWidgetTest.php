@@ -123,6 +123,37 @@ final class TextPreviewWidgetTest extends TestCase
         $this->assertSame(['0', '1', '2'], \array_map(rtrim(...), \array_slice($this->plain($widget), offset: 1)));
     }
 
+    /** Down and Up move a line, Page Up a body back. */
+    public function testTheArrowsMoveALineAndPageUpABody(): void
+    {
+        $widget = $this->widget(new TextPreview(\implode("\n", \range(start: 0, end: 9)), bytes: 3_000_000, truncated: false));
+        $widget->render(new RenderContext(40, 4)); // 1 banner + 3 body
+        $top = fn (): string => \rtrim($this->plain($widget)[1] ?? '');
+
+        $widget->handleInput("\x1b[B");
+        $this->assertSame('1', $top(), 'down a line');
+        $widget->handleInput("\x1b[A");
+        $this->assertSame('0', $top(), 'and back up');
+
+        $widget->handleInput("\x1b[F"); // End: 7 on top
+        $widget->handleInput("\x1b[5~");
+        $this->assertSame('4', $top(), 'a body of three back');
+    }
+
+    /** With no IDE to hand them to — a bare pane — the tab keys do nothing, and nothing breaks. */
+    public function testWithNoHandlerTheTabKeysDoNothing(): void
+    {
+        $widget = $this->widget(new TextPreview("a\n", bytes: 3_000_000, truncated: false));
+        $widget->render(new RenderContext(40, 4));
+        $before = $this->plain($widget);
+
+        foreach (["\x1b[1;5C", "\x1b[1;5D", "\x1bw", "\x10", "\x1b[115;7u"] as $key) {
+            $widget->handleInput($key);
+        }
+
+        $this->assertSame($before, $this->plain($widget));
+    }
+
     /** The wheel is the same verb, which is what makes the pane feel like a document. */
     public function testTheWheelScrollsTheSameRows(): void
     {

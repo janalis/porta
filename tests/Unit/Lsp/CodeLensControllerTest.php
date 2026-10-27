@@ -15,6 +15,7 @@ use Porta\Lsp\CodeLensController;
 use Porta\Lsp\CodeLensRefresher;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
@@ -38,18 +39,7 @@ final class CodeLensControllerTest extends TestCase
     {
         $this->editor = new CodeEditorWidget();
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
-        $pool = new LspSessionPool(
-            '/p',
-            $this->activeFile = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient($capabilities));
 
         return new CodeLensController($pool, $this->editor, $this->editor->decorations, $tui, new Notifier($this->status = new StatusBarWidget(), $tui), new Translator('en'));
     }

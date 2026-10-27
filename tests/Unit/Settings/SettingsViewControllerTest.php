@@ -884,7 +884,8 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertMatchesRegularExpression('/late\s+│\s+Open\s+│/u', $screen);
     }
 
-    public function testPluginPageRoutesRowsAndChangesAndFallsBackWhenRemoved(): void
+    /** The view open on the page of a plugin `demo` — one text setting, Binary path — picked in the nav as a user picks it. */
+    private function onTheDemoPluginsPage(): SettingsViewController
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
@@ -892,10 +893,16 @@ final class SettingsViewControllerTest extends TestCase
             ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
         $controller->open();
-
-        // The plugin sub-item appears in the nav and selecting it shows its page.
         $this->nav->setPluginEntries(['demo']);
         $this->selectSettingsSection($this->nav, 'plugin:demo');
+
+        return $controller;
+    }
+
+    public function testPluginPageRoutesRowsAndChangesAndFallsBackWhenRemoved(): void
+    {
+        // The plugin sub-item appears in the nav and selecting it shows its page.
+        $controller = $this->onTheDemoPluginsPage();
         $this->assertSame('plugin:demo', $this->nav->selectedId());
         $screen = \implode("\n", $this->form->render(new RenderContext(80, 60)));
         $this->assertStringContainsString('Enabled', $screen);
@@ -1004,17 +1011,10 @@ final class SettingsViewControllerTest extends TestCase
 
     public function testRefreshWhileClosedIsACompleteNoOpEvenOnAPluginSection(): void
     {
-        $controller = $this->controller();
         // Reach a plugin: section the ordinary way, then close — refresh()
         // must not act on it while closed, even though closed leaves $section
         // pointing at it.
-        $this->lifecycle->names = ['demo'];
-        $this->pluginSettings->registerFor('demo', [
-            ['key' => 'binary', 'label' => 'Binary path', 'kind' => 'text', 'default' => '', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
-        ]);
-        $controller->open();
-        $this->nav->setPluginEntries(['demo']);
-        $this->selectSettingsSection($this->nav, 'plugin:demo');
+        $controller = $this->onTheDemoPluginsPage();
         $controller->close();
 
         $this->lifecycle->names = []; // the plugin "vanishes" while closed

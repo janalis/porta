@@ -86,7 +86,12 @@ final class SettingsFormBehaviourTest extends TestCase
         );
     }
 
-    public function testAPageTallerThanThePaneScrollsToItsLastRow(): void
+    /**
+     * Settings open on its Interface page, drawn — then $steps.
+     *
+     * @param array<int, \Closure> $steps
+     */
+    private function onInterfaceSettings(array $steps, int $rows = 24): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
@@ -97,10 +102,18 @@ final class SettingsFormBehaviourTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'interface');
+                    $this->selectSettingsSection($this->settingsNav($tui), 'interface');
                     $this->frame($tui);
                 },
+            ] + $steps,
+            rows: $rows,
+        );
+    }
+
+    public function testAPageTallerThanThePaneScrollsToItsLastRow(): void
+    {
+        $this->onInterfaceSettings(
+            [
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);
@@ -231,19 +244,8 @@ final class SettingsFormBehaviourTest extends TestCase
      */
     public function testTheModifiedMarkerAppearsOnlyOnWhatYouChanged(): void
     {
-        \putenv('PATH=/nonexistent');
-        $project = new TempProject(['A.php' => "<?php\n\$x = 1;\n"]);
-
-        $this->runIde(
-            $project,
-            $project->path('A.php'),
+        $this->onInterfaceSettings(
             [
-                300 => function (Tui $tui, $terminal, Ide $ide): void {
-                    Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-                    $nav = $this->settingsNav($tui);
-                    $this->selectSettingsSection($nav, 'interface');
-                    $this->frame($tui);
-                },
                 500 => function (Tui $tui, $terminal): void {
                     $form = $this->settingsForm($tui);
                     $tui->setFocus($form);

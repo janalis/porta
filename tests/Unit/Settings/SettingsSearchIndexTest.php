@@ -7,10 +7,7 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\SettingsRowsStale;
 use Porta\I18n\Translator;
-use Porta\Settings\SettingsPage;
 use Porta\Settings\SettingsPages;
-use Porta\Settings\SettingsRow;
-use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsSearchIndex;
 use Porta\Settings\SettingsSection;
 use Porta\Tests\Support\MutableSettingsSection;
@@ -144,40 +141,6 @@ final class SettingsSearchIndexTest extends TestCase
     /** @param array<string, string> $rows key => label */
     private function section(string $id, string $label, array $rows): SettingsSection
     {
-        return new readonly class($id, $label, $rows) implements SettingsSection {
-            /** @param array<string, string> $rows */
-            public function __construct(
-                private string $id,
-                private string $label,
-                private array $rows,
-            ) {}
-
-            public function handles(string $section): bool
-            {
-                return $this->id === $section;
-            }
-
-            public function pages(): array
-            {
-                return [new SettingsPage($this->id, $this->label)];
-            }
-
-            public function rows(string $section): array
-            {
-                $out = [];
-                foreach ($this->rows as $key => $label) {
-                    $out[] = new SettingsRow(key: $key, label: $label, kind: SettingsRowKind::Bool, value: true, restart: false);
-                }
-
-                return $out;
-            }
-
-            public function change(string $section, string $key, bool|int|string $value): bool
-            {
-                return true;
-            }
-
-            public function reset(string $section, string $key): void {}
-        };
+        return new MutableSettingsSection($id, $label, $rows);
     }
 }

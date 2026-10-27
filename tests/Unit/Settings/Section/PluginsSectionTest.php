@@ -24,6 +24,26 @@ use Porta\Workbench\Notifier;
 
 final class PluginsSectionTest extends TestCase
 {
+    /** The plugins page over a real controller, its tools bare: the project's own settings, lifecycle and scope. */
+    private static function section(TempProject $project, PluginSettings $pluginSettings, FakePluginLifecycle $lifecycle, SettingsScope $scope, ConfigFiles $files): PluginsSection
+    {
+        $tools = TestTools::bare($project->dir, $pluginSettings);
+
+        return new PluginsSection(new SettingsPluginsController(
+            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
+            $pluginSettings,
+            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Translator('en'),
+            $lifecycle,
+            $tools->catalog,
+            $tools->jobs,
+            $tools->updates,
+            new SettingsScopeRow($scope, $files, new Translator('en')),
+            $scope,
+            new SettingsProvenance($files),
+        ), new Translator('en'));
+    }
+
     public function testChangeOnTheTopLevelPluginsSectionRoutesOnlyToChangeNotChangePlugin(): void
     {
         $project = new TempProject();
@@ -76,20 +96,7 @@ final class PluginsSectionTest extends TestCase
         $pluginSettings->registerFor('demo', [
             ['key' => 'binary', 'label' => 'Binary', 'kind' => 'text', 'default' => '/stock', 'options' => null, 'hint' => null, 'min' => null, 'max' => null, 'step' => null],
         ]);
-        $tools = TestTools::bare($project->dir, $pluginSettings);
-        $section = new PluginsSection(new SettingsPluginsController(
-            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
-            $pluginSettings,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
-            new Translator('en'),
-            $lifecycle,
-            $tools->catalog,
-            $tools->jobs,
-            $tools->updates,
-            new SettingsScopeRow($scope, $files, new Translator('en')),
-            $scope,
-            new SettingsProvenance($files),
-        ), new Translator('en'));
+        $section = self::section($project, $pluginSettings, $lifecycle, $scope, $files);
 
         $section->reset('plugins', 'pluginSetting:binary');
         $this->assertSame('/custom', $pluginSettings->value('demo', 'binary'), 'the index page resets nothing');
@@ -114,20 +121,7 @@ final class PluginsSectionTest extends TestCase
         $lifecycle = new FakePluginLifecycle();
         $lifecycle->names = ['git', 'todo'];
         $pluginSettings = new PluginSettings($project->dir, [], null, $scope);
-        $tools = TestTools::bare($project->dir, $pluginSettings);
-        $section = new PluginsSection(new SettingsPluginsController(
-            new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
-            $pluginSettings,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
-            new Translator('en'),
-            $lifecycle,
-            $tools->catalog,
-            $tools->jobs,
-            $tools->updates,
-            new SettingsScopeRow($scope, $files, new Translator('en')),
-            $scope,
-            new SettingsProvenance($files),
-        ), new Translator('en'));
+        $section = self::section($project, $pluginSettings, $lifecycle, $scope, $files);
 
         $pages = $section->pages();
 

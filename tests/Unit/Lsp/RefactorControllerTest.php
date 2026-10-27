@@ -23,6 +23,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
@@ -67,18 +68,7 @@ final class RefactorControllerTest extends TestCase
      */
     private function controller(): RefactorController
     {
-        $pool = new LspSessionPool(
-            '/tmp/proj',
-            new FixedActiveFile('/tmp/proj/a.php'),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), fn (): FakeLspClient => $this->client = new FakeLspClient());
         $this->editor = new CodeEditorWidget();
         $tui = TestTui::create(80, 24);
         $this->tui = $tui;

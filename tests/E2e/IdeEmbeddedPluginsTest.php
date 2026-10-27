@@ -611,11 +611,14 @@ final class IdeEmbeddedPluginsTest extends TestCase
         );
     }
 
-    public function testDisablingAPluginMidInstallDropsItsActivation(): void
+    /**
+     * A project with the `needy` plugin switched off, a composer on PATH that
+     * installs it — then $then, a frame into the IDE, with its lifecycle.
+     *
+     * @param \Closure(Ide, PluginLifecycle, TempProject): void $then
+     */
+    private function withNeedyOffAndComposerAt(\Closure $then): void
     {
-        // The install lands after the user changed their mind. Loading it then
-        // would resurrect a plugin the user just switched off — and the disable
-        // has already flashed, so there is nothing left to say.
         $project = new TempProject(['a.php' => "<?php\n"]);
         $this->needyPlugin($project, 'needy');
         $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
@@ -625,28 +628,37 @@ final class IdeEmbeddedPluginsTest extends TestCase
             $project,
             $project->path('a.php'),
             [
-                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
-                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
-                    $lifecycle->enable('needy');
-                    $lifecycle->disable('needy'); // before the subprocess can exit
-
-                    // Read the toasts HERE, not after the await below: their
-                    // lifetime is wall-clock, and waiting on a subprocess is
-                    // exactly long enough for the disable's own toast to age
-                    // out under the slower coverage run. That failure looked
-                    // like the disable never flashed.
-                    $flashed = Toasts::all($ide);
-                    $this->assertContains('Plugin "needy" disabled', $flashed);
-                    $this->assertNotContains('Plugin "needy" enabled', $flashed);
-
-                    $this->await(static fn (): bool => \is_dir($project->path('.porta/plugins/needy/vendor')), what: 'the install to finish anyway');
-                    $this->pump(0.1); // let the exit callback land, proving it does nothing
-
-                    $this->assertNotContains('Needy Run', \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'), 'the late install did not resurrect it');
-                    $this->assertNotContains('Plugin "needy" enabled', Toasts::all($ide), 'and the late install flashed nothing');
+                200 => static function ($tui, $terminal, Ide $ide) use ($then, $project): void {
+                    $then($ide, Services::resolve($ide, PluginLifecycle::class), $project);
                 },
             ],
         );
+    }
+
+    public function testDisablingAPluginMidInstallDropsItsActivation(): void
+    {
+        // The install lands after the user changed their mind. Loading it then
+        // would resurrect a plugin the user just switched off — and the disable
+        // has already flashed, so there is nothing left to say.
+        $this->withNeedyOffAndComposerAt(function (Ide $ide, PluginLifecycle $lifecycle, TempProject $project): void {
+            $lifecycle->enable('needy');
+            $lifecycle->disable('needy'); // before the subprocess can exit
+
+            // Read the toasts HERE, not after the await below: their
+            // lifetime is wall-clock, and waiting on a subprocess is
+            // exactly long enough for the disable's own toast to age
+            // out under the slower coverage run. That failure looked
+            // like the disable never flashed.
+            $flashed = Toasts::all($ide);
+            $this->assertContains('Plugin "needy" disabled', $flashed);
+            $this->assertNotContains('Plugin "needy" enabled', $flashed);
+
+            $this->await(static fn (): bool => \is_dir($project->path('.porta/plugins/needy/vendor')), what: 'the install to finish anyway');
+            $this->pump(0.1); // let the exit callback land, proving it does nothing
+
+            $this->assertNotContains('Needy Run', \array_column(Services::resolve($ide, CommandRegistry::class)->paletteCommands(), 'label'), 'the late install did not resurrect it');
+            $this->assertNotContains('Plugin "needy" enabled', Toasts::all($ide), 'and the late install flashed nothing');
+        });
     }
 
     public function testEnablingWhileAnotherInstallRunsIsRefusedRatherThanQueued(): void
@@ -686,31 +698,19 @@ final class IdeEmbeddedPluginsTest extends TestCase
         // The symmetry the toggle promises: what enabling put on disk, disabling
         // takes back. It costs a reinstall to turn it on again — that is the
         // trade, and it only applies to trees Porta made.
-        $project = new TempProject(['a.php' => "<?php\n"]);
-        $this->needyPlugin($project, 'needy');
-        $project->write('.porta.json', (string) \json_encode(['disabledPlugins' => ['needy']], \JSON_THROW_ON_ERROR));
-        \putenv('PATH='.$this->fakeComposerPath($project));
+        $this->withNeedyOffAndComposerAt(function (Ide $ide, PluginLifecycle $lifecycle, TempProject $project): void {
+            $vendor = $project->path('.porta/plugins/needy/vendor');
 
-        $this->runIde(
-            $project,
-            $project->path('a.php'),
-            [
-                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
-                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
-                    $vendor = $project->path('.porta/plugins/needy/vendor');
+            $lifecycle->enable('needy');
+            // The marker, not the directory: composer creates vendor/
+            // while it runs and the marker lands with its exit code, so
+            // awaiting the directory would race the claim.
+            $this->await(static fn (): bool => \is_file($vendor.'/.porta-installed'), what: 'the install to be marked ours');
 
-                    $lifecycle->enable('needy');
-                    // The marker, not the directory: composer creates vendor/
-                    // while it runs and the marker lands with its exit code, so
-                    // awaiting the directory would race the claim.
-                    $this->await(static fn (): bool => \is_file($vendor.'/.porta-installed'), what: 'the install to be marked ours');
-
-                    $lifecycle->disable('needy');
-                    $this->assertDirectoryDoesNotExist($vendor, 'and taken back');
-                    $this->assertFileExists($project->path('.porta/plugins/needy/composer.json'), 'the plugin itself stands');
-                },
-            ],
-        );
+            $lifecycle->disable('needy');
+            $this->assertDirectoryDoesNotExist($vendor, 'and taken back');
+            $this->assertFileExists($project->path('.porta/plugins/needy/composer.json'), 'the plugin itself stands');
+        });
     }
 
     public function testAVendorTreeThePluginShippedSurvivesADisable(): void

@@ -13,6 +13,7 @@ use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\LongHintForm;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\ReadsSettingsForm;
 use Porta\Tests\Support\RendersWidget;
@@ -130,7 +131,7 @@ final class SettingsFormWidgetTest extends TestCase
     /** A row whose detail was cut says it whole; a changed row says what its ● means; a plain row says nothing. */
     public function testARowSaysWhatItCouldNotShow(): void
     {
-        $widget = $this->longHintWidget();
+        $widget = LongHintForm::create();
         // 24 columns leave the hint too little room to wrap in, beside the
         // field or under it: it is cut on one row.
         $rows = \explode("\n", $this->plain($widget->render(new RenderContext(24, 20))));
@@ -142,18 +143,6 @@ final class SettingsFormWidgetTest extends TestCase
         $this->assertSame('Changed from its default — r puts it back', $widget->tooltipAt($rowOf('Changed'), 3)?->text);
         $this->assertNull($widget->tooltipAt(0, 3), 'the title is nobody\'s');
         $this->assertNull($widget->tooltipAt(\count($rows) - 1, 3), 'nor the footer');
-    }
-
-    private function longHintWidget(): SettingsFormWidget
-    {
-        $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows([
-            new SettingsRow(key: 'plain', label: 'Plain', kind: SettingsRowKind::Bool, value: true, restart: false, default: true),
-            new SettingsRow(key: 'long', label: 'Long', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'a hint far too long to fit beside the field in a narrow pane'),
-            new SettingsRow(key: 'changed', label: 'Changed', kind: SettingsRowKind::Bool, value: false, restart: false, default: true),
-        ]);
-
-        return $widget;
     }
 
     public function testActionRowRendersABoxedButtonAndActuatesForwardOnly(): void

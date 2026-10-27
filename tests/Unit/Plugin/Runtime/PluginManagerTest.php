@@ -11,13 +11,11 @@ use Porta\Config\KeyDispatch;
 use Porta\Editor\ActiveBufferTracker;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
-use Porta\Editor\BufferSaver;
 use Porta\Event\ActiveBufferChanged;
 use Porta\Event\BufferOpened;
 use Porta\Event\BufferSaved;
 use Porta\Event\BufferSwitched;
 use Porta\Event\ToolsChanged;
-use Porta\I18n\Translator;
 use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
@@ -26,28 +24,12 @@ use Porta\Plugin\Api\ServerNotFound;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginMenuSpec;
-use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
-use Porta\Support\Clipboard;
-use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\Probe;
-use Porta\Tests\Support\RecordingChangeMarkSink;
-use Porta\Tests\Support\RecordingDiagnosticsSink;
-use Porta\Tests\Support\RecordingFileOpener;
-use Porta\Tests\Support\TestDockTools;
-use Porta\Tests\Support\TestLspQuery;
-use Porta\Tests\Support\TestParticipants;
-use Porta\Tests\Support\TestProjectSwitcher;
-use Porta\Tests\Support\TestRuns;
+use Porta\Tests\Support\TestPluginRuntime;
 use Porta\Tests\Support\TestTui;
-use Porta\Tests\Support\TestWorkspaceEditor;
-use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
-use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
-use Porta\Workbench\Menu\MenuFileContext;
-use Porta\Workbench\Notifier;
-use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -67,34 +49,7 @@ final class PluginManagerTest extends TestCase
         $tui = TestTui::create(120, 24);
         $this->status = new StatusBarWidget();
         $manager->wireRuntime(
-            new PluginRuntime(
-                new Notifier($this->status, $tui),
-                new Translator('en'),
-                new CodeEditorWidget(),
-                new RecordingFileOpener(),
-                $tui,
-                new RecordingDiagnosticsSink(),
-                new CodeEditorWidget()->decorations,
-                new RecordingChangeMarkSink(),
-                new FileStatuses(),
-                new BufferManager(),
-                TestDockTools::controller(),
-                TestDockTools::replacer(),
-                new CodeEditorWidget(),
-                new MenuFileContext(),
-                new ViewRegistry(),
-                new Clipboard($tui),
-                new StatusBarWidget(),
-                new CodeEditorWidget(),
-                new FakePluginLifecycle(),
-                new FileTreeWidget(\sys_get_temp_dir()),
-                TestLspQuery::create(),
-                new BufferSaver(new BufferManager(), new EventDispatcher()),
-                TestRuns::create(),
-                TestWorkspaceEditor::create(),
-                TestParticipants::create(),
-                TestProjectSwitcher::create(),
-            ),
+            TestPluginRuntime::create(new CodeEditorWidget(), $this->status, $tui),
         );
 
         return $manager;

@@ -7,10 +7,10 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
-use Porta\I18n\Translator;
 use Porta\Lsp\LspPathListener;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 
 /**
@@ -27,18 +27,7 @@ final class LspPathListenerTest extends TestCase
     /** @return array{0: LspPathListener, 1: LspSessionPool} */
     private function listener(): array
     {
-        $pool = new LspSessionPool(
-            '/tmp/proj',
-            new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient());
 
         return [new LspPathListener($pool), $pool];
     }

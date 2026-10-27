@@ -739,17 +739,32 @@ final class BottomDockTest extends TestCase
         $this->assertTrue($dock->isToolAlive($tool), 'closing an unrelated tab must not also close the active tool');
     }
 
-    public function testClosingABackgroundToolTabRendersButDoesNotRebind(): void
+    /**
+     * Problems then Notifications open in the dock, the second displayed; each
+     * rebind from here on lands in $bound, and no render is pending yet.
+     *
+     * @param list<mixed> $bound
+     *
+     * @return array{BottomDock, DockToolTab, DockToolTab}
+     */
+    private function twoToolsWatched(array &$bound): array
     {
         $events = new EventDispatcher();
         $dock = $this->dock($events);
         $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
-        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []); // displayed
-        $bound = [];
+        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []);
         $events->addListener(DockToolBound::class, static function (DockToolBound $event) use (&$bound): void {
             $bound[] = $event->tab;
         });
         Probe::set($this->tui, 'renderRequested', false);
+
+        return [$dock, $problems, $todo];
+    }
+
+    public function testClosingABackgroundToolTabRendersButDoesNotRebind(): void
+    {
+        $bound = [];
+        [$dock, $problems, $todo] = $this->twoToolsWatched($bound);
 
         $dock->closeTab(DockTab::Results, (string) $problems->id); // a BACKGROUND (non-displayed) tab
 
@@ -760,15 +775,8 @@ final class BottomDockTest extends TestCase
 
     public function testClosingTheDisplayedToolTabRebindsAndRenders(): void
     {
-        $events = new EventDispatcher();
-        $dock = $this->dock($events);
-        $problems = $dock->showList(ResultsPanelMode::Problems, 'Problems', []);
-        $todo = $dock->showList(ResultsPanelMode::Notifications, 'Notifications', []); // displayed
         $bound = [];
-        $events->addListener(DockToolBound::class, static function (DockToolBound $event) use (&$bound): void {
-            $bound[] = $event->tab;
-        });
-        Probe::set($this->tui, 'renderRequested', false);
+        [$dock, $problems, $todo] = $this->twoToolsWatched($bound);
 
         $dock->closeTab(DockTab::Results, (string) $todo->id); // the DISPLAYED tab itself
 

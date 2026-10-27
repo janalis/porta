@@ -20,6 +20,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Widgets;
 use Porta\Ui\Role;
 use Porta\Ui\Theme\Styles;
+use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ResultsPanelWidget;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\Renderer;
@@ -89,11 +90,12 @@ final class IdeLspDiagnosticsTest extends TestCase
     }
 
     /**
-     * PhpStorm's problem card: rest the pointer on a squiggle and the card
-     * says what is wrong, then — once the server answers — what Alt+Enter
-     * would offer, with the key that does it.
+     * src/Problem.php open under the mock language server, its diagnostic
+     * painted — then $then, with the editor and where it is on screen.
+     *
+     * @param \Closure(Tui, VirtualTerminal, Ide, CodeEditorWidget, WidgetRect): void $then
      */
-    public function testASquiggleExplainsItsProblemAndItsFix(): void
+    private function onTheMockDiagnostic(\Closure $then): void
     {
         $project = new TempProject([
             '.porta.json' => $this->mockLspConfig(),
@@ -104,21 +106,32 @@ final class IdeLspDiagnosticsTest extends TestCase
             $project,
             $project->path('src/Problem.php'),
             [
-                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($then): void {
                     $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
                     $editor = Widgets::editor($tui);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
-
-                    // A bare move onto the `<` the error underlines.
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
-
-                    $this->await(static fn (): bool => \str_starts_with(Services::resolve($ide, TooltipCenter::class)->shown()->key ?? '', 'problem:'), what: 'the problem card');
-                    $this->awaitPainted($tui, $terminal, 'Fix: Import class');
-                    $this->assertNotNull($this->rowOf($this->screenGrid($tui, $terminal), 'More actions…'), 'and the list behind it');
+                    $then($tui, $terminal, $ide, $editor, $rect);
                 },
             ],
         );
+    }
+
+    /**
+     * PhpStorm's problem card: rest the pointer on a squiggle and the card
+     * says what is wrong, then — once the server answers — what Alt+Enter
+     * would offer, with the key that does it.
+     */
+    public function testASquiggleExplainsItsProblemAndItsFix(): void
+    {
+        $this->onTheMockDiagnostic(function (Tui $tui, VirtualTerminal $terminal, Ide $ide, CodeEditorWidget $editor, WidgetRect $rect): void {
+            // A bare move onto the `<` the error underlines.
+            $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
+
+            $this->await(static fn (): bool => \str_starts_with(Services::resolve($ide, TooltipCenter::class)->shown()->key ?? '', 'problem:'), what: 'the problem card');
+            $this->awaitPainted($tui, $terminal, 'Fix: Import class');
+            $this->assertNotNull($this->rowOf($this->screenGrid($tui, $terminal), 'More actions…'), 'and the list behind it');
+        });
     }
 
     /** The 0-based [row, col] of the LAST screen row carrying $needle — the status bar sits at the bottom. */
@@ -201,31 +214,16 @@ final class IdeLspDiagnosticsTest extends TestCase
     /** The gutter beside a problem says nothing of it: its card is on the code. */
     public function testTheGutterBesideAProblemHasNoCard(): void
     {
-        $project = new TempProject([
-            '.porta.json' => $this->mockLspConfig(),
-            'src/Problem.php' => "<?php\necho 1;\n",
-        ]);
+        $this->onTheMockDiagnostic(function (Tui $tui, VirtualTerminal $terminal, Ide $ide, CodeEditorWidget $editor, WidgetRect $rect): void {
+            $tooltips = Services::resolve($ide, TooltipCenter::class);
+            $tooltips->setDelayMs(0);
 
-        $this->runIde(
-            $project,
-            $project->path('src/Problem.php'),
-            [
-                600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'Mock diagnostic');
-                    $editor = Widgets::editor($tui);
-                    $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($editor);
-                    $this->assertInstanceOf(WidgetRect::class, $rect);
-                    $tooltips = Services::resolve($ide, TooltipCenter::class);
-                    $tooltips->setDelayMs(0);
-
-                    // The marker column, then the code's first cell.
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() - 2, $rect->row + 1));
-                    $this->assertNull($tooltips->shown(), 'no card from the gutter');
-                    $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
-                    $this->await(static fn (): bool => \str_starts_with($tooltips->shown()->key ?? '', 'problem:'), what: 'the card on the code');
-                },
-            ],
-        );
+            // The marker column, then the code's first cell.
+            $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() - 2, $rect->row + 1));
+            $this->assertNull($tooltips->shown(), 'no card from the gutter');
+            $tui->handleInput(\sprintf("\x1b[<35;%d;%dM", $rect->col + $editor->gutterWidth() + 1, $rect->row + 1));
+            $this->await(static fn (): bool => \str_starts_with($tooltips->shown()->key ?? '', 'problem:'), what: 'the card on the code');
+        });
     }
 
     /** PhpStorm's Ctrl+F1 on the mock's problem: the error, described where the caret is. */

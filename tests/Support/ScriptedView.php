@@ -20,6 +20,7 @@ final class ScriptedView implements ContributedView
         private readonly string $id,
         private bool $open = false,
         private readonly bool $throwOnClose = false,
+        private readonly bool $hostsWindow = true,
     ) {}
 
     public function viewId(): string
@@ -29,7 +30,7 @@ final class ScriptedView implements ContributedView
 
     public function hostsWindow(): bool
     {
-        return true;
+        return $this->hostsWindow;
     }
 
     public function title(): string

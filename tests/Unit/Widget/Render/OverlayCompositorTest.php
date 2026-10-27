@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Widget\Render;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\SgrReads;
 use Porta\Widget\Render\OverlayCompositor;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 
@@ -54,7 +55,7 @@ final class OverlayCompositorTest extends TestCase
 
         // The background active over the tail (a blank column past the popup) must
         // be the default, not the popup's — i.e. a reset separates them.
-        $this->assertSame('default', self::netBackgroundAt($out, 20), 'the popup background must not bleed across the tail');
+        $this->assertSame('default', SgrReads::backgroundAt($out, 20), 'the popup background must not bleed across the tail');
         $this->assertSame(40, AnsiUtils::visibleWidth($out));
     }
 
@@ -91,27 +92,6 @@ final class OverlayCompositorTest extends TestCase
         $out = OverlayCompositor::into($line, 2, 3, 20, 'XXX');
 
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the tail\'s own marker is not a duplicate — it must not be stripped');
-    }
-
-    /** The background colour in effect at visible column $col (net of every SGR code up to it). */
-    public static function netBackgroundAt(string $line, int $col): string
-    {
-        $slice = AnsiUtils::sliceByColumn($line, $col, 1, true); // carries all prior SGR as pending
-        $bg = 'default';
-        if (\preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
-            foreach ($codes[1] as $params) {
-                if ('' === $params || '0' === $params || '49' === $params) {
-                    $bg = 'default';
-
-                    continue;
-                }
-                if (\preg_match('/48;5;(\d+)/', $params, $m)) {
-                    $bg = '48;5;'.$m[1];
-                }
-            }
-        }
-
-        return $bg;
     }
 
     /** The tail's blank for a half-covered glyph is painted in the row's own background. */

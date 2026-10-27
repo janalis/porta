@@ -16,7 +16,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Mermaid\MermaidHitTest;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
-use Porta\Help\Fence\FenceResult;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Tests\Support\FakeScheduler;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -64,22 +63,7 @@ final class PacketTest extends TestCase
     {
         $source = \file_get_contents($path);
         $this->assertIsString($source);
-        $scheduler = new FakeScheduler();
-        $result = null;
-        new NativeMermaidRenderer(new MermaidTask($scheduler))->rows(
-            $source,
-            width: 28,
-            success: static function (FenceResult $value) use (&$result): void {
-                $result = $value;
-            },
-            error: static function (string $error): never {
-                self::fail($error);
-            },
-        );
-        while ([] !== $scheduler->scheduled) {
-            $scheduler->fire();
-        }
-        $this->assertInstanceOf(FenceResult::class, $result);
+        $result = NativeFixtureRows::render($source, 28);
         $this->assertNotEmpty($result->rows);
         $this->assertCount(\count($result->rows), $result->origins);
         foreach ($result->rows as $row) {

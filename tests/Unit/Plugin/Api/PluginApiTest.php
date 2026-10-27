@@ -56,6 +56,7 @@ use Porta\Tests\Support\TestBottomDock;
 use Porta\Tests\Support\TestDockTools;
 use Porta\Tests\Support\TestLspQuery;
 use Porta\Tests\Support\TestParticipants;
+use Porta\Tests\Support\TestPluginRuntime;
 use Porta\Tests\Support\TestProjectSwitcher;
 use Porta\Tests\Support\TestRunController;
 use Porta\Tests\Support\TestRuns;
@@ -1187,33 +1188,12 @@ final class PluginApiTest extends TestCase
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $tui = TestTui::create(100, 24);
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
-        $manager->wireRuntime(new PluginRuntime(
-            new Notifier(new StatusBarWidget(), $tui),
-            new Translator('en'),
+        $manager->wireRuntime(TestPluginRuntime::create(
             new CodeEditorWidget(),
-            new RecordingFileOpener(),
-            $tui,
-            new RecordingDiagnosticsSink(),
-            new CodeEditorWidget()->decorations,
-            $this->changeMarks = new RecordingChangeMarkSink(),
-            new FileStatuses(),
-            new BufferManager(),
-            new DockToolController($manager, $dock, new ProjectPaths('/p')), // the manager IS the source
-            TestDockTools::replacer(),
-            new CodeEditorWidget(),
-            new MenuFileContext(),
-            new ViewRegistry(),
-            new Clipboard($tui),
             new StatusBarWidget(),
-            new CodeEditorWidget(),
-            new FakePluginLifecycle(),
-            new FileTreeWidget(\sys_get_temp_dir()),
-            TestLspQuery::create(),
-            new BufferSaver(new BufferManager(), new EventDispatcher()),
-            TestRuns::create(),
-            TestWorkspaceEditor::create(),
-            TestParticipants::create(),
-            TestProjectSwitcher::create(),
+            $tui,
+            dock: new DockToolController($manager, $dock, new ProjectPaths('/p')), // the manager IS the source
+            changeMarks: $this->changeMarks = new RecordingChangeMarkSink(),
         ));
         $api = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api->registerListTool('todo', 'TODO');

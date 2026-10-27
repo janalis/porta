@@ -5,11 +5,10 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Lsp;
 
 use PHPUnit\Framework\TestCase;
-use Porta\I18n\Translator;
 use Porta\Lsp\InlineValueRequest;
-use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\Uri;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 
 /**
@@ -29,18 +28,7 @@ final class InlineValueRequestTest extends TestCase
     /** @param array<string, mixed> $capabilities */
     private function request(array $capabilities): InlineValueRequest
     {
-        $pool = new LspSessionPool(
-            '/p',
-            $this->activeFile = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient($capabilities));
         $this->activeFile->set('/p/a.php');
         $pool->notifyDidOpen('/p/a.php', "<?php\n\$count = 41;\n", 'php', 1);
 

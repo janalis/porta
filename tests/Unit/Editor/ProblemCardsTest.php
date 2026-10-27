@@ -9,9 +9,9 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\ProblemCards;
 use Porta\I18n\Translator;
-use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\QuickFixProbe;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Ui\Role;
@@ -39,18 +39,7 @@ final class ProblemCardsTest extends TestCase
     // @mago-expect lint:no-boolean-flag-parameter -- the rig's one switch: whether a server has the file open.
     private function cards(bool $server = true): ProblemCards
     {
-        $pool = new LspSessionPool(
-            '/tmp/proj',
-            new FixedActiveFile('/tmp/proj/a.php'),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(['codeActionProvider' => true]),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), fn (): FakeLspClient => $this->client = new FakeLspClient(['codeActionProvider' => true]));
         $this->editor = new CodeEditorWidget();
         $buffer = new BufferManager()->open('/tmp/proj/a.php', "<?php\n\$x = foo(\$y);\n");
         $this->editor->showDocument('/tmp/proj/a.php', $buffer->document);

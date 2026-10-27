@@ -541,56 +541,78 @@ final class IdePreviewSplitTest extends TestCase
         $body = \implode("\n", \array_map(static fn (int $n): string => 'Filler paragraph '.$n.'.', \range(1, end: 30)));
         $project = new TempProject(['README.md' => "# Porta\n\nA paragraph that wraps\nonto a second target line, **bold**.\n\n".\str_replace("\n", replace: "\n\n", subject: $body)."\n"]);
 
+        $this->onThePreviewOf($project, function (Tui $tui, VirtualTerminal $terminal, Ide $ide, \Closure $grid, MarkdownPreviewWidget $preview, CodeEditorWidget $editor): void {
+            $click = fn (string $needle) => $this->clickDrawn($tui, $ide, $preview, $grid(), $needle);
+
+            // Beside the text: the caret goes to the very byte clicked — the
+            // click lands on the word's second letter — and the text takes the keys.
+            $click('target');
+            $this->assertSame([3, 15], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "target", in the paragraph\'s second source line');
+            $this->assertSame($editor, $tui->getFocus());
+
+            // Markup the page does not draw is skipped: the source spells
+            // "bold." as "**bold**.", and the click lands on its "o".
+            $click('bold.');
+            $this->assertSame([3, 30], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "bold", inside its markup');
+
+            // Far down the page, the editor scrolls to it.
+            $tui->setFocus($preview);
+            $tui->handleInput("\x1b[F"); // End
+            $this->frame($tui);
+            $click('Filler paragraph 30');
+            $this->assertSame(63, $editor->getDocument()->cursorLine);
+            $this->assertStringContainsString('Filler paragraph 30.', \implode("\n", $grid()), 'the text scrolled to the caret');
+
+            // The preview alone keeps the keys; the caret waits in the text.
+            Services::resolve($ide, CommandRegistry::class)->run('preview_only');
+            $this->frame($tui);
+            $tui->handleInput("\x1b[H"); // Home
+            $this->frame($tui);
+            $click('Porta');
+            $this->assertSame(0, $editor->getDocument()->cursorLine);
+            $this->assertSame($preview, $tui->getFocus());
+        });
+    }
+
+    /**
+     * Click the second character of the first $needle the preview draws below
+     * its top row — wherever the current layout put it (it moves when the
+     * preview is shown alone) — on the screen $grid.
+     *
+     * @param array<int, string> $grid
+     */
+    private function clickDrawn(Tui $tui, Ide $ide, MarkdownPreviewWidget $preview, array $grid, string $needle): void
+    {
+        $rect = Widgets::rectIn($ide, $preview);
+        foreach ($grid as $row => $line) {
+            $col = \mb_strpos(\mb_substr($line, $rect->col), $needle);
+            if (false !== $col && $row > $rect->row) {
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 2, $row + 1));
+                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 2, $row + 1));
+
+                return;
+            }
+        }
+        self::fail('nothing drawn as '.$needle);
+    }
+
+    /**
+     * The project's README open beside its preview on a 120-column screen,
+     * the page drawn — then $then, with how to read the screen, the preview
+     * and the text.
+     *
+     * @param \Closure(Tui, VirtualTerminal, Ide, \Closure(): array<int, string>, MarkdownPreviewWidget, CodeEditorWidget): void $then
+     */
+    private function onThePreviewOf(TempProject $project, \Closure $then): void
+    {
         $this->runIde(
             $project,
             $project->path('README.md'),
             [
-                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($then): void {
                     $grid = fn (): array => $this->screenGrid($tui, $terminal);
                     $this->await(static fn (): bool => \str_contains(\implode("\n", $grid()), '│ Porta'), what: 'the page');
-                    $preview = Services::resolve($ide, MarkdownPreviewWidget::class);
-                    $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    $click = static function (string $needle) use ($tui, $grid, $ide, $preview): void {
-                        $rect = Widgets::rectIn($ide, $preview); // it moves when the preview is shown alone
-                        foreach ($grid() as $row => $line) {
-                            $col = \mb_strpos(\mb_substr($line, $rect->col), $needle);
-                            if (false !== $col && $row > $rect->row) {
-                                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 2, $row + 1));
-                                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 2, $row + 1));
-
-                                return;
-                            }
-                        }
-                        self::fail('nothing drawn as '.$needle);
-                    };
-
-                    // Beside the text: the caret goes to the very byte clicked — the
-                    // click lands on the word's second letter — and the text takes the keys.
-                    $click('target');
-                    $this->assertSame([3, 15], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "target", in the paragraph\'s second source line');
-                    $this->assertSame($editor, $tui->getFocus());
-
-                    // Markup the page does not draw is skipped: the source spells
-                    // "bold." as "**bold**.", and the click lands on its "o".
-                    $click('bold.');
-                    $this->assertSame([3, 30], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'on "bold", inside its markup');
-
-                    // Far down the page, the editor scrolls to it.
-                    $tui->setFocus($preview);
-                    $tui->handleInput("\x1b[F"); // End
-                    $this->frame($tui);
-                    $click('Filler paragraph 30');
-                    $this->assertSame(63, $editor->getDocument()->cursorLine);
-                    $this->assertStringContainsString('Filler paragraph 30.', \implode("\n", $grid()), 'the text scrolled to the caret');
-
-                    // The preview alone keeps the keys; the caret waits in the text.
-                    Services::resolve($ide, CommandRegistry::class)->run('preview_only');
-                    $this->frame($tui);
-                    $tui->handleInput("\x1b[H"); // Home
-                    $this->frame($tui);
-                    $click('Porta');
-                    $this->assertSame(0, $editor->getDocument()->cursorLine);
-                    $this->assertSame($preview, $tui->getFocus());
+                    $then($tui, $terminal, $ide, $grid, Services::resolve($ide, MarkdownPreviewWidget::class), Services::resolve($ide, CodeEditorWidget::class));
                 },
             ],
             columns: 120,
@@ -603,51 +625,32 @@ final class IdePreviewSplitTest extends TestCase
         $words = \implode(' ', \array_map(static fn (int $n): string => 'w'.$n, \range(1, end: 60)));
         $project = new TempProject(['README.md' => "# Porta\n\n".$words."\n"]);
 
-        $this->runIde(
-            $project,
-            $project->path('README.md'),
-            [
-                0 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $grid = fn (): array => $this->screenGrid($tui, $terminal);
-                    $this->await(static fn (): bool => \str_contains(\implode("\n", $grid()), '│ Porta'), what: 'the page');
-                    $preview = Services::resolve($ide, MarkdownPreviewWidget::class);
-                    $editor = Services::resolve($ide, CodeEditorWidget::class);
-                    // Click the drawn word $word, wherever the current layout put it,
-                    // and say where the caret landed.
-                    $clickWord = static function (string $word) use ($tui, $grid, $ide, $preview, $editor): int {
-                        $rect = Widgets::rectIn($ide, $preview);
-                        foreach ($grid() as $row => $line) {
-                            $col = \mb_strpos(\mb_substr($line, $rect->col), ' '.$word.' ');
-                            if (false !== $col && $row > $rect->row) {
-                                $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $col + 2, $row + 1));
-                                $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $col + 2, $row + 1));
+        $this->onThePreviewOf($project, function (Tui $tui, VirtualTerminal $terminal, Ide $ide, \Closure $grid, MarkdownPreviewWidget $preview, CodeEditorWidget $editor): void {
+            // Click the drawn word $word, wherever the current layout put it,
+            // and say where the caret landed.
+            $clickWord = function (string $word) use ($tui, $grid, $ide, $preview, $editor): int {
+                $this->clickDrawn($tui, $ide, $preview, $grid(), ' '.$word.' ');
 
-                                return $editor->getDocument()->cursorCol;
-                            }
-                        }
-                        self::fail('nothing drawn as '.$word);
-                    };
-                    $column = static fn (string $word): int => (int) \strpos($editor->getDocument()->getLine(2), $word.' ');
+                return $editor->getDocument()->cursorCol;
+            };
+            $column = static fn (string $word): int => (int) \strpos($editor->getDocument()->getLine(2), $word.' ');
 
-                    $this->assertSame($column('w40'), $clickWord('w40'), 'as first laid out');
+            $this->assertSame($column('w40'), $clickWord('w40'), 'as first laid out');
 
-                    // The divider dragged far left: the page rewraps wider, and a click
-                    // still lands on the word it drew.
-                    $divider = Widgets::rectIn($ide, Services::resolve($ide, PreviewSplit::class)->separator);
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $divider->col + 1, $divider->row + 3));
-                    $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $divider->col - 20, $divider->row + 3));
-                    $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $divider->col - 20, $divider->row + 3));
-                    $this->frame($tui);
-                    $this->assertSame($column('w47'), $clickWord('w47'), 'after the drag');
+            // The divider dragged far left: the page rewraps wider, and a click
+            // still lands on the word it drew.
+            $divider = Widgets::rectIn($ide, Services::resolve($ide, PreviewSplit::class)->separator);
+            $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $divider->col + 1, $divider->row + 3));
+            $tui->handleInput(\sprintf("\x1b[<32;%d;%dM", $divider->col - 20, $divider->row + 3));
+            $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $divider->col - 20, $divider->row + 3));
+            $this->frame($tui);
+            $this->assertSame($column('w47'), $clickWord('w47'), 'after the drag');
 
-                    // And after the terminal itself is resized.
-                    $terminal->simulateResize(90, 24);
-                    $this->frame($tui);
-                    $this->assertSame($column('w25'), $clickWord('w25'), 'after a terminal resize');
-                },
-            ],
-            columns: 120,
-        );
+            // And after the terminal itself is resized.
+            $terminal->simulateResize(90, 24);
+            $this->frame($tui);
+            $this->assertSame($column('w25'), $clickWord('w25'), 'after a terminal resize');
+        });
     }
 
     public function testMovingTheCaretThroughTheTextKeepsThePreviewOnIt(): void

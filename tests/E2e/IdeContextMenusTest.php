@@ -26,6 +26,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\SgrReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
@@ -109,7 +110,7 @@ final class IdeContextMenusTest extends TestCase
                     $menuRow = $rows[3] ?? '';
                     // The menu background must not be active far into the blank pane:
                     // a reset separates the composited menu from the editor tail.
-                    $this->assertSame('default', $this->netBackgroundAt($menuRow, $rect->columns - 5), 'the menu box background must not bleed across the empty editor');
+                    $this->assertSame('default', SgrReads::backgroundAt($menuRow, $rect->columns - 5), 'the menu box background must not bleed across the empty editor');
                 },
             ],
         );
@@ -977,34 +978,40 @@ final class IdeContextMenusTest extends TestCase
 
     public function testTreeContextMenuDeleteLastBufferEmptiesTheEditor(): void
     {
-        \putenv('PATH=/nonexistent');
-        $project = new TempProject(['A.php' => "<?php\n"]);
-
-        $this->runIde(
-            $project,
-            $project->path('A.php'),
-            [
-                200 => static function ($tui): void {
-                    $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
-                },
-                300 => static function ($tui): void {
-                    foreach (\range(1, end: 7) as $_) {
-                        $tui->handleInput("\x1b[B");
-                    }
-                    $tui->handleInput("\r"); // Delete…
-                },
-                380 => function (Tui $tui): void {
-                    $this->typeString($tui, 'yes'); // 'yes' is also accepted
-                    $tui->handleInput("\r");
-                },
-            ],
-        );
+        $project = $this->deletingFromTheTreeMenu(function (Tui $tui): void {
+            $this->typeString($tui, 'yes'); // 'yes' is also accepted
+            $tui->handleInput("\r");
+        });
 
         $this->assertFileDoesNotExist($project->path('A.php'));
     }
 
     public function testTreeContextMenuDeleteCancelledKeepsTheFile(): void
+    {
+        $project = $this->deletingFromTheTreeMenu(
+            static function (Tui $tui): void {
+                $tui->handleInput('n'); // decline
+                $tui->handleInput("\r");
+            },
+            [
+                460 => function (Tui $tui): void {
+                    $this->assertSame('tree', $tui->getFocus()?->getId(), 'declining returns focus to the tree');
+                },
+            ],
+        );
+
+        $this->assertFileExists($project->path('A.php'), 'declining the confirmation kept the file');
+    }
+
+    /**
+     * A project of one file, A.php, open; Delete… picked from its row's
+     * context menu in the tree, and the confirmation answered by $answer —
+     * then $after's steps.
+     *
+     * @param \Closure(Tui): void                       $answer
+     * @param array<int, \Closure(Tui, mixed, mixed): void> $after
+     */
+    private function deletingFromTheTreeMenu(\Closure $answer, array $after = []): TempProject
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['A.php' => "<?php\n"]);
@@ -1013,27 +1020,21 @@ final class IdeContextMenusTest extends TestCase
             $project,
             $project->path('A.php'),
             [
-                200 => static function ($tui): void {
+                200 => static function (Tui $tui): void {
                     $tui->tick();
-                    $tui->handleInput("\x1b[<2;3;3M");
+                    $tui->handleInput("\x1b[<2;3;3M"); // right-click A.php
                 },
-                300 => static function ($tui): void {
+                300 => static function (Tui $tui): void {
                     foreach (\range(1, end: 7) as $_) {
                         $tui->handleInput("\x1b[B");
                     }
                     $tui->handleInput("\r"); // Delete…
                 },
-                380 => static function ($tui): void {
-                    $tui->handleInput('n'); // decline
-                    $tui->handleInput("\r");
-                },
-                460 => function ($tui): void {
-                    $this->assertSame('tree', $tui->getFocus()?->getId(), 'declining returns focus to the tree');
-                },
-            ],
+                380 => $answer,
+            ] + $after,
         );
 
-        $this->assertFileExists($project->path('A.php'), 'declining the confirmation kept the file');
+        return $project;
     }
 
     public function testTreeContextMenuOpenAndRefreshViaMouse(): void
@@ -1153,27 +1154,6 @@ final class IdeContextMenusTest extends TestCase
                 },
             ],
         );
-    }
-
-    /** The background colour in effect at visible column $col (net of every SGR code up to it). */
-    private function netBackgroundAt(string $line, int $col): string
-    {
-        $slice = AnsiUtils::sliceByColumn($line, $col, 1, true); // carries all prior SGR as pending
-        $bg = 'default';
-        if (\preg_match_all('/\x1b\[([0-9;]*)m/', $slice, $codes)) {
-            foreach ($codes[1] as $params) {
-                if ('' === $params || '0' === $params || '49' === $params) {
-                    $bg = 'default';
-
-                    continue;
-                }
-                if (\preg_match('/48;5;(\d+)/', $params, $m)) {
-                    $bg = '48;5;'.$m[1];
-                }
-            }
-        }
-
-        return $bg;
     }
 
     /** Type each character of $text into the currently focused prompt/editor. */

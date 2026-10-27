@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Tests\Support\AttachedStyles;
+use Porta\Tests\Support\LongHintForm;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RendersWidget;
 use Porta\Tests\Support\TestTui;
@@ -37,12 +38,7 @@ final class SettingsFormWrapTest extends TestCase
      */
     public function testALongDetailWrapsBesideItsControl(): void
     {
-        $widget = new SettingsFormWidget(new Translator('en'));
-        $widget->setRows([
-            new SettingsRow(key: 'plain', label: 'Plain', kind: SettingsRowKind::Bool, value: true, restart: false, default: true),
-            new SettingsRow(key: 'long', label: 'Long', kind: SettingsRowKind::Text, value: '', restart: false, hint: 'a hint far too long to fit beside the field in a narrow pane'),
-            new SettingsRow(key: 'changed', label: 'Changed', kind: SettingsRowKind::Bool, value: false, restart: false, default: true),
-        ]);
+        $widget = LongHintForm::create();
         $rows = \explode("\n", $this->plain($widget->render(new RenderContext(50, 20))));
 
         $this->assertSame(

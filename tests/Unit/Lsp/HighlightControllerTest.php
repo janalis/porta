@@ -9,9 +9,9 @@ use Porta\Editor\Document;
 use Porta\Editor\OccurrenceHighlights;
 use Porta\I18n\Translator;
 use Porta\Lsp\HighlightController;
-use Porta\Lsp\LspSessionPool;
 use Porta\Support\Scheduler;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
@@ -36,18 +36,7 @@ final class HighlightControllerTest extends TestCase
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $notifier = new Notifier(new StatusBarWidget(), $tui);
         $translator = new Translator('en');
-        $pool = new LspSessionPool(
-            '/p',
-            $this->activeFile = new FixedActiveFile(),
-            $translator,
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient($capabilities),
-        );
-        $pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $pool = FakeLspPool::create('/p', $this->activeFile = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient($capabilities));
 
         return new HighlightController($pool, $this->editor, $tui, $notifier, $translator, $this->occurrences, $scheduler);
     }

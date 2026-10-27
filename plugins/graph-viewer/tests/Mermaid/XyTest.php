@@ -15,7 +15,6 @@ use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Mermaid\MermaidHitTest;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
-use Porta\Help\Fence\FenceResult;
 use Porta\ImageViewer\ZoomPanModel;
 use Porta\Tests\Support\FakeScheduler;
 
@@ -56,22 +55,7 @@ final class XyTest extends TestCase
     #[DataProvider('upstreamFixtures')]
     public function testPinnedUpstreamExamplesRenderWithoutCli(string $file): void
     {
-        $scheduler = new FakeScheduler();
-        $result = null;
-        new NativeMermaidRenderer(new MermaidTask($scheduler))->rows(
-            (string) \file_get_contents($file),
-            width: 28,
-            success: static function (FenceResult $value) use (&$result): void {
-                $result = $value;
-            },
-            error: static function (string $error): never {
-                self::fail($error);
-            },
-        );
-        while ([] !== $scheduler->scheduled) {
-            $scheduler->fire();
-        }
-        $this->assertInstanceOf(FenceResult::class, $result);
+        $result = NativeFixtureRows::render((string) \file_get_contents($file), 28);
         $this->assertNotEmpty($result->rows);
         $this->assertCount(\count($result->rows), $result->origins);
     }

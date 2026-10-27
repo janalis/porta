@@ -158,55 +158,37 @@ final class ContextMenuTest extends TestCase
      */
     public function testUpMovesExactlyOneRowNotTwo(): void
     {
-        $ran = [];
-        $menu = new ContextMenu();
-        $menu->open([
-            new MenuItem('A', '', static function () use (&$ran): void {
-                $ran[] = 'a';
-            }),
-            new MenuItem('B', '', static function () use (&$ran): void {
-                $ran[] = 'b';
-            }),
-            new MenuItem('C', '', static function () use (&$ran): void {
-                $ran[] = 'c';
-            }),
-            new MenuItem('D', '', static function () use (&$ran): void {
-                $ran[] = 'd';
-            }),
-        ]);
-        $menu->hoverItem(2); // start at C
-
-        $menu->handleInput("\x1b[A"); // up
-        $menu->handleInput("\r");
-
-        $this->assertSame(['b'], $ran, 'one row back from C is B, not A');
+        $this->assertSame(['b'], self::pickedAfter(2, "\x1b[A"), 'one row back from C is B, not A');
     }
 
     /** The down-arrow symmetric case: two rows would overshoot D onto the wrong row. */
     public function testDownMovesExactlyOneRowNotTwo(): void
     {
-        $ran = [];
-        $menu = new ContextMenu();
-        $menu->open([
-            new MenuItem('A', '', static function () use (&$ran): void {
-                $ran[] = 'a';
-            }),
-            new MenuItem('B', '', static function () use (&$ran): void {
-                $ran[] = 'b';
-            }),
-            new MenuItem('C', '', static function () use (&$ran): void {
-                $ran[] = 'c';
-            }),
-            new MenuItem('D', '', static function () use (&$ran): void {
-                $ran[] = 'd';
-            }),
-        ]);
-        $menu->hoverItem(1); // start at B
+        $this->assertSame(['c'], self::pickedAfter(1, "\x1b[B"), 'one row forward from B is C, not D');
+    }
 
-        $menu->handleInput("\x1b[B"); // down
+    /**
+     * What runs when, over four plain items A to D, the pointer rests on the
+     * item at $start, $key is pressed, then Enter.
+     *
+     * @return list<string>
+     */
+    private static function pickedAfter(int $start, string $key): array
+    {
+        $ran = [];
+        $items = [];
+        foreach (['A', 'B', 'C', 'D'] as $label) {
+            $items[] = new MenuItem($label, '', static function () use (&$ran, $label): void {
+                $ran[] = \strtolower($label);
+            });
+        }
+        $menu = new ContextMenu();
+        $menu->open($items);
+        $menu->hoverItem($start);
+        $menu->handleInput($key);
         $menu->handleInput("\r");
 
-        $this->assertSame(['c'], $ran, 'one row forward from B is C, not D');
+        return $ran;
     }
 
     public function testUpWrapsPastSeparator(): void

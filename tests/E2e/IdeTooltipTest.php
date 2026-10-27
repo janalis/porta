@@ -200,37 +200,39 @@ final class IdeTooltipTest extends TestCase
      */
     public function testAResizeKeepsTheCardOfTheElementStillUnderThePointer(): void
     {
-        \putenv('PATH=/nonexistent');
-        $project = new TempProject(['a.php' => "<?php\necho 1;\n"]);
-
-        $this->runIde(
-            $project,
-            $project->path('a.php'),
-            [
-                100 => static function (Tui $tui): void {
-                    $tui->handleInput("\x06");
-                },
-                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->frame($tui);
-                    [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
-                    self::moveTo($tui, $row, $col);
-                    $this->awaitPainted($tui, $terminal, 'Match case');
-
-                    $terminal->simulateResize(160, 14); // shorter: the toggle stays where it is
-                    $tui->requestRender();
-                },
-                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->frame($tui);
-                    $this->frame($tui); // the resized layout, then the frame that asks again
-                    $this->assertSame('find:case', $this->shown($ide)?->key);
-                    $this->assertNotNull($this->rowOnScreen($tui, $terminal, 'Match case'), 'painted on the new screen');
-                },
-            ],
-        );
+        // Shorter: the toggle stays where it is.
+        $this->resizedUnderTheMatchCaseCard(160, 14, function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+            $this->frame($tui);
+            $this->frame($tui); // the resized layout, then the frame that asks again
+            $this->assertSame('find:case', $this->shown($ide)?->key);
+            $this->assertNotNull($this->rowOnScreen($tui, $terminal, 'Match case'), 'painted on the new screen');
+        });
     }
 
     /** An element the resize carried out from under the pointer takes its card with it. */
     public function testAResizeThatMovesTheElementAwayTakesTheCard(): void
+    {
+        // Narrow enough that the sidebar folds away and the toggle moves left with the editor.
+        $this->resizedUnderTheMatchCaseCard(60, 24, function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+            $this->await(
+                function () use ($tui, $ide): bool {
+                    $this->frame($tui);
+
+                    return 'find:case' !== $this->shown($ide)?->key;
+                },
+                what: 'the card to leave with its toggle',
+            );
+            $this->assertNull($this->rowOnScreen($tui, $terminal, 'Match case'));
+        });
+    }
+
+    /**
+     * The find bar open, the pointer resting on its "Match case" toggle with
+     * the card shown, the window resized to $columns × $rows — then $after.
+     *
+     * @param \Closure(Tui, VirtualTerminal, Ide): void $after
+     */
+    private function resizedUnderTheMatchCaseCard(int $columns, int $rows, \Closure $after): void
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\necho 1;\n"]);
@@ -242,28 +244,16 @@ final class IdeTooltipTest extends TestCase
                 100 => static function (Tui $tui): void {
                     $tui->handleInput("\x06");
                 },
-                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($columns, $rows): void {
                     $this->frame($tui);
                     [$row, $col] = $this->cellOf($ide, $tui, 'find-bar', 'find:case');
                     self::moveTo($tui, $row, $col);
                     $this->awaitPainted($tui, $terminal, 'Match case');
 
-                    // Narrow enough that the sidebar folds away and the toggle
-                    // moves left with the editor.
-                    $terminal->simulateResize(60, 24);
+                    $terminal->simulateResize($columns, $rows);
                     $tui->requestRender();
                 },
-                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->await(
-                        function () use ($tui, $ide): bool {
-                            $this->frame($tui);
-
-                            return 'find:case' !== $this->shown($ide)?->key;
-                        },
-                        what: 'the card to leave with its toggle',
-                    );
-                    $this->assertNull($this->rowOnScreen($tui, $terminal, 'Match case'));
-                },
+                300 => $after,
             ],
         );
     }

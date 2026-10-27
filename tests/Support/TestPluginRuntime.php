@@ -13,6 +13,7 @@ use Porta\Tree\FileStatuses;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
 use Porta\Widget\StatusBarWidget;
+use Porta\Workbench\Dock\DockToolController;
 use Porta\Workbench\Menu\MenuFileContext;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
@@ -30,8 +31,17 @@ use Symfony\Component\Tui\Tui;
  */
 final class TestPluginRuntime
 {
-    public static function create(CodeEditorWidget $editor, StatusBarWidget $status, ?Tui $tui = null): PluginRuntime
-    {
+    /**
+     * @param ?DockToolController     $dock        a real dock for the plugin's tools to land in, when the test reads them
+     * @param ?RecordingChangeMarkSink $changeMarks the gutter marks' sink, when the test reads them
+     */
+    public static function create(
+        CodeEditorWidget $editor,
+        StatusBarWidget $status,
+        ?Tui $tui = null,
+        ?DockToolController $dock = null,
+        ?RecordingChangeMarkSink $changeMarks = null,
+    ): PluginRuntime {
         $tui ??= TestTui::create(120, 24);
         $buffers = new BufferManager();
 
@@ -43,10 +53,10 @@ final class TestPluginRuntime
             $tui,
             new RecordingDiagnosticsSink(),
             $editor->decorations,
-            new RecordingChangeMarkSink(),
+            $changeMarks ?? new RecordingChangeMarkSink(),
             new FileStatuses(),
             $buffers,
-            TestDockTools::controller(),
+            $dock ?? TestDockTools::controller(),
             TestDockTools::replacer($buffers),
             $editor,
             new MenuFileContext(),

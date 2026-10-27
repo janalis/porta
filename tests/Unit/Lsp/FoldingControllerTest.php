@@ -7,10 +7,10 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\Document;
 use Porta\Editor\FoldModel;
-use Porta\I18n\Translator;
 use Porta\Lsp\FoldingController;
 use Porta\Lsp\LspSessionPool;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
@@ -34,18 +34,7 @@ final class FoldingControllerTest extends TestCase
         $this->client = new FakeLspClient();
         $this->scheduler = new FakeScheduler();
         $this->editor = new CodeEditorWidget();
-        $this->pool = new LspSessionPool(
-            '/tmp/proj',
-            new FixedActiveFile('/tmp/proj/a.php'),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client,
-        );
-        $this->pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $this->pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), fn (): FakeLspClient => $this->client);
 
         return new FoldingController(
             $this->pool,

@@ -105,24 +105,9 @@ final class LayoutControllerNudgeTest extends TestCase
         // burst all read the same height. Five presses have to be five rows.
         // (Here the rect is absent entirely — nothing has rendered — which is
         // the same fault at its extreme: the nudge was a no-op.)
-        $layout = $this->controller();
-        $results = new ResultsPanelWidget();
-        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
-        $layout = new LayoutController(
-            new LayoutStore($this->project->dir),
-            $this->tui,
-            $this->renderer,
-            $this->tree,
-            $dock,
-            new TabBarWidget(),
-            $this->regions,
-            new Translator('en'),
-            new PreviewSplit(Styles::dark()),
-        );
-        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
         // Tall enough that five rows up stay under the ceiling: this is about
         // the step, not the clamp.
-        $this->terminal->simulateResize(columns: 100, rows: 40);
+        [$layout, $results] = $this->withOpenPanel(rows: 40);
 
         $before = $results->visibleRows();
         for ($i = 0; $i < 5; ++$i) {
@@ -230,21 +215,7 @@ final class LayoutControllerNudgeTest extends TestCase
     {
         // Otherwise a resize snaps the panel back to its stored proportion,
         // silently un-maximising it while the flag still says otherwise.
-        $this->controller(); // builds the tui, tree and regions this one rewires
-        $results = new ResultsPanelWidget();
-        $dock = TestBottomDock::create($this->tui, new TerminalPanelWidget(), $results, new DebugPanelWidget());
-        $layout = new LayoutController(
-            new LayoutStore($this->project->dir),
-            $this->tui,
-            $this->renderer,
-            $this->tree,
-            $dock,
-            new TabBarWidget(),
-            $this->regions,
-            new Translator('en'),
-            new PreviewSplit(Styles::dark()),
-        );
-        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+        [$layout, $results] = $this->withOpenPanel();
         $layout->nudgeBottomPanel(1); // persist a proportion, so applyLayout has one to restore
         $layout->toggleBottomPanelMaximised();
         $this->assertSame(

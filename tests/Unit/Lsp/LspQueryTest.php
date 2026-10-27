@@ -14,6 +14,7 @@ use Porta\Lsp\Uri;
 use Porta\Support\OrphanGuard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\FakeLspClient;
+use Porta\Tests\Support\FakeLspPool;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
@@ -50,18 +51,7 @@ final class LspQueryTest extends TestCase
         // symlink on macOS.
         $this->root = (string) \realpath($this->project->dir);
         $this->buffers = new BufferManager();
-        $this->pool = new LspSessionPool(
-            $this->root,
-            $this->active = new FixedActiveFile(),
-            new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
-        );
-        $this->pool->configure(
-            ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]],
-            static function (string $line): void {},
-            static function (array $params): void {},
-            static fn (array $edit): bool => false,
-        );
+        $this->pool = FakeLspPool::create($this->root, $this->active = new FixedActiveFile(), fn (): FakeLspClient => $this->client = new FakeLspClient());
 
         return TestLspQuery::create($this->buffers, $this->pool, $this->root);
     }

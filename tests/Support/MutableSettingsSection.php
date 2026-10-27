@@ -9,11 +9,15 @@ use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsSection;
 
-/** A section whose row set can move between searches, as a plugin toggle moves it. */
+/** A section of plain toggles whose row set can move between searches, as a plugin toggle moves it. */
 final class MutableSettingsSection implements SettingsSection
 {
-    /** @var array<string, string> */
-    private array $rows = ['theme' => 'Theme'];
+    /** @param array<string, string> $rows key => label */
+    public function __construct(
+        private readonly string $id = 'general',
+        private readonly string $label = 'General',
+        private array $rows = ['theme' => 'Theme'],
+    ) {}
 
     public function addRow(string $key, string $label): void
     {
@@ -22,12 +26,12 @@ final class MutableSettingsSection implements SettingsSection
 
     public function handles(string $section): bool
     {
-        return 'general' === $section;
+        return $this->id === $section;
     }
 
     public function pages(): array
     {
-        return [new SettingsPage('general', 'General')];
+        return [new SettingsPage($this->id, $this->label)];
     }
 
     public function rows(string $section): array
