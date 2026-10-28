@@ -446,6 +446,18 @@ final class ProjectSwitcherTest extends TestCase
         $this->assertSame([$root, $root], $this->requested, 'straight through the second time');
     }
 
+    public function testARemoteProjectsCacheOpensWithoutAQuestion(): void
+    {
+        $this->trustNothing = true;
+        $cache = new TempProject(['.porta/remote.json' => '{"url": "ftp://me@example.org/site"}']);
+        $switcher = $this->switcher($cache->dir);
+
+        $switcher->open();
+        $this->editor->handleInput("\r");
+
+        $this->assertSame([(string) \realpath($cache->dir)], $this->requested, 'nothing runs there either way: no question');
+    }
+
     public function testTrustAndOpenTrustsTheProject(): void
     {
         $this->trustNothing = true;

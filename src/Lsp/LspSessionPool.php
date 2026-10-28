@@ -130,7 +130,7 @@ final class LspSessionPool
      */
     public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, ?\Closure $onShowMessage = null, ?\Closure $onProgress = null): void
     {
-        $this->servers = $servers;
+        $this->servers = $this->restricted ? [] : $servers;
         $this->onLog = $onLog;
         $this->onDiagnostics = $onDiagnostics;
         $this->onApplyEdit = $onApplyEdit;
@@ -159,7 +159,10 @@ final class LspSessionPool
     /**
      * The project is not trusted, so no server is started for it
      * ({@see ServerLocator::restricted()}): said as that, not as a server to
-     * install or enable — neither would help.
+     * install or enable — neither would help. Decided once, at boot, as the
+     * rest of a session's trust is: a map handed in later — another window
+     * trusted the project meanwhile — is not taken, so what the bar says and
+     * what runs never part.
      */
     public function restrict(): void
     {
@@ -181,8 +184,8 @@ final class LspSessionPool
      */
     public function reconfigure(array $servers): bool
     {
-        if ($this->configured && !$this->disabled && $servers === $this->servers) {
-            return false;
+        if ($this->restricted || ($this->configured && !$this->disabled && $servers === $this->servers)) {
+            return false; // restricted: whatever the map says now, nothing of it starts
         }
         $this->reload($servers);
 
@@ -214,7 +217,7 @@ final class LspSessionPool
         $this->statuses = [];
         $this->startFailures = [];
         $this->upSince = [];
-        $this->servers = $servers;
+        $this->servers = $this->restricted ? [] : $servers;
     }
 
     /**

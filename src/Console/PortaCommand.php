@@ -8,6 +8,7 @@ use Porta\Config\WorkspaceTrust;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolLaunch;
+use Porta\Filesystem\ProjectLocation;
 use Porta\Ide;
 use Porta\Install\GitToolSetup;
 use Porta\Support\BootTrace;
@@ -196,7 +197,8 @@ final class PortaCommand extends Command
         }
         // Before the IDE takes the terminal: the answer decides what loads.
         // A git tool launch never asks — it only compares files, restricted.
-        if (null === $workspace->tool && $this->trust->shouldAsk($workspace->rootDir)) {
+        // Nor does a remote project's cache: nothing there runs either way.
+        if (null === $workspace->tool && null === ProjectLocation::forRoot($workspace->rootDir)->remote && $this->trust->shouldAsk($workspace->rootDir)) {
             $this->askTrust($io, $workspace->rootDir);
         }
         // --ansi/--no-ansi are Symfony's global options; they resolve into the

@@ -43,12 +43,13 @@ final readonly class LspBootstrapper
 
             return;
         }
-        if (ServerLocator::restricted($this->rootDir, $this->lspCommand)) {
-            $this->lsp->restrict(); // locateAll() below answers no server: say why
+        $restricted = ServerLocator::restricted($this->rootDir, $this->lspCommand);
+        if ($restricted) {
+            $this->lsp->restrict(); // no server, and the bar says why
         }
         $this->lsp->missing($this->pluginServers->missingServers());
         $this->lsp->configure(
-            ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()),
+            $restricted ? [] : ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()),
             fn (string $line) => $this->log->append($line),
             // The pool binds the server's name, the way it already does for
             // log lines and `window/showMessage`: several servers can serve

@@ -11,12 +11,15 @@ use Porta\Lsp\Uri;
 use Porta\Support\Outcome;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UntrustsProjects;
 use Revolt\EventLoop;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Tester\CommandTester;
 
 final class LspProbeCommandTest extends TestCase
 {
+    use UntrustsProjects;
+
     private TempProject $project;
 
     protected function setUp(): void
@@ -238,6 +241,10 @@ final class LspProbeCommandTest extends TestCase
         $none = $this->tester([]);
         $this->assertSame(Command::INVALID, $none->execute(['root' => $this->project->dir]));
         $this->assertStringContainsString('no language server is configured', $none->getDisplay());
+
+        $this->untrustProjects();
+        $this->assertSame(Command::INVALID, $none->execute(['root' => $this->project->dir]));
+        $this->assertStringContainsString('this project is not trusted', $none->getDisplay(), 'the reason, not "none configured"');
     }
 
     public function testTheCurrentDirectoryIsTheDefaultRoot(): void

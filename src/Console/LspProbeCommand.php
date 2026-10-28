@@ -133,6 +133,9 @@ final class LspProbeCommand extends Command
             self::errorOutput($output)
                 ->writeln(match (true) {
                     null === $servers => \sprintf('lsp:probe: no such directory: %s', $root),
+                    // As the IDE runs none there: say so, not that none is configured.
+                    \is_string($resolved) && ServerLocator::restricted($resolved)
+                        => 'lsp:probe: this project is not trusted, so no language server runs for it — open it with porta and trust it first.',
                     null === $only => 'lsp:probe: no language server is configured for this project.',
                     default => \sprintf('lsp:probe: no server named %s.', $only),
                 });

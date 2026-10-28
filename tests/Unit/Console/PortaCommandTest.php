@@ -472,8 +472,8 @@ final class PortaCommandTest extends TestCase
     }
 
     /**
-     * A project never answered for, holding something to run, is asked about
-     * before the IDE takes the terminal — and the answer is kept either way.
+     * A project never answered for is asked about before the IDE takes the
+     * terminal — and the answer is kept either way.
      */
     #[DataProvider('trustAnswers')]
     public function testAProjectNeverAnsweredForIsAskedAboutBeforeLaunch(string $answer, bool $trusted): void
@@ -515,5 +515,20 @@ final class PortaCommandTest extends TestCase
 
         $this->assertStringNotContainsString('Trust this project?', $tester->getDisplay());
         $this->assertNotNull($this->launched);
+    }
+
+    /** A remote project's cache: no language server and no tool runs there, trusted or not. */
+    public function testARemoteProjectsCacheIsNotAskedAbout(): void
+    {
+        $cache = new TempProject(['.porta/remote.json' => '{"url": "ftp://me@example.org/site"}', 'a.php' => '']);
+        $home = new TempProject();
+        $trust = new WorkspaceTrust($home->dir);
+        $tester = new CommandTester($this->command(trust: $trust));
+
+        $tester->execute(['path' => [$cache->dir]]);
+
+        $this->assertStringNotContainsString('Trust this project?', $tester->getDisplay());
+        $this->assertNotNull($this->launched);
+        $this->assertTrue($trust->shouldAsk($cache->dir), 'nothing answered on its behalf either');
     }
 }

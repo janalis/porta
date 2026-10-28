@@ -620,6 +620,24 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('off — project not trusted', $pool->statusFor('/tmp/proj/a.php'), 'the reason before any other state');
     }
 
+    /** Restricted once, at boot: a map handed in later — the project trusted elsewhere meanwhile — starts nothing. */
+    public function testARestrictedPoolTakesNoServerHandedInLater(): void
+    {
+        $php = ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]];
+        $pool = $this->pool([], configure: Presence::Without);
+        $pool->restrict();
+        $pool->configure($php, static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+        $this->assertFalse($pool->reconfigure($php), 'nothing changed that would start');
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 2);
+        $pool->reload($php);
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 3);
+
+        $this->assertCount(0, $this->clients);
+        $this->assertSame('off — project not trusted', $pool->statusFor('/tmp/proj/a.php'), 'and the bar says so, not something else');
+    }
+
     public function testStopStopsEveryStartedSession(): void
     {
         $pool = $this->pool(self::SERVERS);

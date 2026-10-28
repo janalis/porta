@@ -120,6 +120,7 @@ final class ArchitectureCheckCommand extends Command
         'Config>Support',
         'Console>Config', // PortaCommand asks whether to trust a project before the IDE boots (WorkspaceTrust)
         'Console>Container',
+        'Console>Filesystem', // PortaCommand does not ask about trust for a remote project's cache: nothing runs there
         'Console>Install',
         'Console>Lsp', // lsp:probe drives the editor's own LspClient and ServerLocator, headless
         'Console>Plugin', // PluginCommands reads bundled manifests for `porta <name>`, and runs only a Plugin\Api\PluginCommand

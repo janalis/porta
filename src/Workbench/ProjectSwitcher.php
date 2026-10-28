@@ -246,7 +246,8 @@ final readonly class ProjectSwitcher
      */
     private function askTrustThenOpen(string $root): void
     {
-        if (!$this->trust->shouldAsk($root)) {
+        // A remote project's cache runs nothing either way: no question.
+        if (null !== ProjectLocation::forRoot($root)->remote || !$this->trust->shouldAsk($root)) {
             $this->events->dispatch(new ProjectOpenRequested($root));
 
             return;
