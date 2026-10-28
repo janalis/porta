@@ -7,9 +7,11 @@ require dirname(__DIR__, 2).'/vendor/autoload.php';
 
 [$script, $cli, $input, $scale] = array_slice($argv, 1);
 $svg = (string) file_get_contents($input);
-file_put_contents('mermaid-browser-request.json', json_encode([$script, $cli, $input, $scale, $svg, file_get_contents($script)], JSON_THROW_ON_ERROR));
+// Where the test reads this from, and the directory it ran in (see fake-mmdc).
+$report = (getenv('PORTA_FAKE_REPORT_DIR') ?: getcwd()).'/';
+file_put_contents($report.'mermaid-browser-request.json', json_encode([$script, $cli, $input, $scale, $svg, file_get_contents($script), getcwd(), array_slice($argv, 5)], JSON_THROW_ON_ERROR));
 // Who else could read the snapshot: the directory it sits in, as the browser finds it.
-file_put_contents('mermaid-browser-dir-mode.txt', decoct(fileperms(dirname($input)) & 0o777));
+file_put_contents($report.'mermaid-browser-dir-mode.txt', decoct(fileperms(dirname($input)) & 0o777));
 if (str_contains($svg, 'deferred-browser')) {
     usleep(500000);
 }

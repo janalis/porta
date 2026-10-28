@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Tests;
 
 use PHPUnit\Framework\TestCase;
+use Porta\GraphViewer\Graph\MermaidEngine;
 use Porta\GraphViewer\MarkdownFenceRenderer;
 use Porta\GraphViewer\Mermaid\MermaidTask;
 use Porta\GraphViewer\Mermaid\NativeMermaidRenderer;
@@ -13,11 +14,13 @@ use Porta\Help\Fence\FenceResult;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\ReportsFakeTools;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Graphics\PngDimensions;
 
 final class MarkdownFenceRendererTest extends TestCase
 {
+    use ReportsFakeTools;
     use PumpsLoop;
     use PreservesPath;
 
@@ -31,6 +34,7 @@ final class MarkdownFenceRendererTest extends TestCase
         $renderer = new MarkdownFenceRenderer(
             static fn (string $key): string => 'renderMode' === $key ? 'bitmap' : $support.'fake-mmdc',
             static fn (string $text): string => $text,
+            browserConfig: MermaidEngine::OFFLINE, // a project not trusted
         );
         $result = null;
         $cancel = $renderer(
@@ -52,6 +56,10 @@ final class MarkdownFenceRendererTest extends TestCase
         $this->assertSame(['Alpha', 'Beta'], \array_column($result->elements, 'label'));
         $this->assertSame([1, 2], \array_column($result->elements, 'origin'));
         $this->assertNull($result->error);
+        [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertSame(MermaidEngine::OFFLINE, $options['--puppeteerConfigFile'] ?? null, 'the fence\'s CLI render is kept off the network');
+        $rest = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR)[7];
+        $this->assertSame([$project->dir, MermaidEngine::OFFLINE], $rest, 'and so is its browser, based in the document\'s directory');
         $cancel();
     }
 

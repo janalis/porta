@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Janalis\Viz\Process\Tool;
 use Janalis\Viz\Render\Format;
+use Porta\Config\WorkspaceTrust;
 use Porta\Editor\PaneServices;
 use Porta\GraphViewer\ArchitectureArtifact;
 use Porta\GraphViewer\Graph\DiagramKind;
@@ -95,7 +96,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         // restart — the AbstractToolPlugin::binary() idiom.
         $dot = new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')));
         $plantUml = new PlantUmlEngine($api->projectRoot(), static fn (): ?string => self::path($setting('plantumlPath')));
-        $mermaid = new MermaidEngine($api->projectRoot(), static fn (): ?string => self::path($api->setting('mermaidPath')));
+        $mermaid = new MermaidEngine(static fn (): ?string => self::path($api->setting('mermaidPath')), browserConfig: self::browserConfig($api));
         $this->mermaid = $mermaid;
         $exports = new NativeMermaidExport();
         $this->exports = $exports;
@@ -152,7 +153,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
                     // editor, as every other analyser's errors do.
                     $api->setDiagnostics(...),
                     $mermaid,
-                    cli: new MermaidCliRenderer($mermaid, new MermaidSvgRasterizer($api->projectRoot(), $mermaid->binary(...))),
+                    cli: new MermaidCliRenderer($mermaid, new MermaidSvgRasterizer($api->projectRoot(), $mermaid->binary(...), browserConfig: self::browserConfig($api))),
                 );
             },
             // The pane's payload is the DOT (or PlantUML) source. The size guard
@@ -275,6 +276,15 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         );
     }
 
+    /**
+     * The Mermaid CLI's browser fetches what a diagram's labels name: kept
+     * off the network for a project not trusted ({@see MermaidEngine::OFFLINE}).
+     */
+    private static function browserConfig(PluginApi $api): ?string
+    {
+        return WorkspaceTrust::fromEnvironment()->isTrusted($api->projectRoot()) ? null : MermaidEngine::OFFLINE;
+    }
+
     /** @param \Closure(string): (bool|int|string) $setting */
     private function registerFences(PluginApi $api, \Closure $setting, NativeMermaidExport $exports): void
     {
@@ -290,6 +300,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
                 $api->flash(...),
                 $api->pick(...),
             )->actions(),
+            browserConfig: self::browserConfig($api),
         );
         $api->registerMarkdownFence(['mermaid', 'dot', 'graphviz', 'plantuml', 'puml'], $fences(...));
     }

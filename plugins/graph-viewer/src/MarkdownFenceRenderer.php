@@ -32,6 +32,7 @@ final readonly class MarkdownFenceRenderer
         private \Closure $translate,
         ?\Closure $nativeFactory = null,
         private ?\Closure $actionFactory = null,
+        private ?string $browserConfig = null,
     ) {
         $this->nativeFactory = $nativeFactory ?? static fn (): NativeMermaidRenderer => new NativeMermaidRenderer();
     }
@@ -66,8 +67,8 @@ final readonly class MarkdownFenceRenderer
         if ('cells' === ($this->setting)('renderMode')) {
             return $native->rows($source, $width, $accept, $error);
         }
-        $engine = new MermaidEngine(\dirname($path), fn (): ?string => $this->path('mermaidPath'));
-        $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer(\dirname($path), $engine->binary(...)));
+        $engine = new MermaidEngine(fn (): ?string => $this->path('mermaidPath'), browserConfig: $this->browserConfig);
+        $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer(\dirname($path), $engine->binary(...), browserConfig: $this->browserConfig));
         $fallback = function (string $message) use ($source, $width, $accept, $error, $native): void {
             $translated = ($this->translate)($message);
             $native->preview(

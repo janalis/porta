@@ -27,6 +27,7 @@ final class MermaidSvgRasterizer
         private readonly Filesystem $files = new Filesystem(),
         private readonly ExecutableFinder $finder = new ExecutableFinder(),
         private readonly string $script = self::SCRIPT,
+        private readonly ?string $browserConfig = null,
     ) {}
 
     public function binary(): ?string
@@ -54,8 +55,12 @@ final class MermaidSvgRasterizer
             return;
         }
         $this->slot->run(
-            [$node, $directory.'/raster.mjs', $cli, $directory.'/diagram.svg', (string) $factor],
-            $this->rootDir,
+            // The project root is the page's base, said outright: a label's
+            // relative image resolves there, not where the browser runs.
+            [$node, $directory.'/raster.mjs', $cli, $directory.'/diagram.svg', (string) $factor, $this->rootDir, ...(null === $this->browserConfig ? [] : [$this->browserConfig])],
+            // Never the project: the browser it starts is puppeteer's, which
+            // RUNS a `.puppeteerrc.cjs` found in the working directory.
+            $directory,
             '',
             'the Mermaid SVG browser',
             function (string $png) use ($onPng): void {

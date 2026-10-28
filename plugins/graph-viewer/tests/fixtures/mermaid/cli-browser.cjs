@@ -4,7 +4,9 @@ const path = require('node:path');
 const { fileURLToPath } = require('node:url');
 const record = { calls: [] };
 let html = '';
-const save = () => fs.writeFileSync('browser-protocol.json', JSON.stringify(record));
+// Where the test reads from and plants its fixture: the render's directory is gone once it answers.
+const reports = process.env.PORTA_FAKE_REPORT_DIR || process.cwd();
+const save = () => fs.writeFileSync(path.join(reports, 'browser-protocol.json'), JSON.stringify(record));
 exports.launch = async options => {
   record.launch = options;
   record.calls.push('launch');
@@ -46,7 +48,7 @@ exports.launch = async options => {
           record.selector = selector;
           record.screenshot = options;
           record.calls.push('screenshot');
-          return fs.readFileSync(path.join(process.cwd(), 'fixture.png'));
+          return fs.readFileSync(path.join(reports, 'fixture.png'));
         },
       }),
     }),

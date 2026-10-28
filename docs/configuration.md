@@ -121,7 +121,9 @@ something to run:
   files can execute the project's PHP or a program it names (a `mago.toml`
   `[extension-hosts]` command), whichever binary reads them;
 - git ignores the repository's `core.fsmonitor`, and the filter and diff
-  drivers its `.gitattributes` name.
+  drivers its `.gitattributes` name;
+- a Mermaid diagram's remote images are not fetched — the Mermaid CLI's
+  browser is kept off the network, so opening one tells no one you did.
 
 **Trust This Project** and **Open This Project Restricted** in the command
 palette change the answer and reopen the project.

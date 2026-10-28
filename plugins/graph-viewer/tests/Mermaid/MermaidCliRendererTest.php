@@ -22,12 +22,14 @@ use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\RecordingViewerTabHandler;
+use Porta\Tests\Support\ReportsFakeTools;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Graphics\PngDimensions;
 use Symfony\Component\Tui\Render\RenderContext;
 
 final class MermaidCliRendererTest extends TestCase
 {
+    use ReportsFakeTools;
     use PreservesPath;
     use PumpsLoop;
 
@@ -61,7 +63,7 @@ final class MermaidCliRendererTest extends TestCase
     public function testOneSvgSnapshotProvidesBothOversampledPixelsAndLogicalHitRegions(): void
     {
         $project = new TempProject();
-        $engine = new MermaidEngine($project->dir, self::support('fake-mmdc'));
+        $engine = new MermaidEngine(self::support('fake-mmdc'));
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
         [$picture, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B", dpi: 192);
         $this->assertNull($error);
@@ -70,18 +72,18 @@ final class MermaidCliRendererTest extends TestCase
         $this->assertSame([1, 2], \array_values($picture->scene->elements));
         $this->assertSame(['Alpha', 'Beta'], \array_column($picture->elements, 'label'));
         $this->assertSame([[0.05, 0.1], [0.35, 0.1], [0.35, 0.5], [0.05, 0.5]], $picture->elements[0]->polygon);
-        [$options, $source] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$options, $source] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('svg', $options['--outputFormat']);
         $this->assertSame('1', $options['--scale']);
         $this->assertStringContainsString('Alpha', $source);
         $this->assertFileDoesNotExist($options['--output']);
         $this->assertDirectoryDoesNotExist(\dirname($options['--output']));
-        \unlink($project->path('mermaid-request.json'));
+        \unlink($this->fakeReports->path('mermaid-request.json'));
         [$refined, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]\nB[Beta]\nA-->B", dpi: 288);
         $this->assertNull($error);
         $this->assertSame([300, 150], PngDimensions::read($refined->png));
         $this->assertSame($picture->elements[0]->polygon, $refined->elements[0]->polygon);
-        $this->assertFileDoesNotExist($project->path('mermaid-request.json'), 'resolution-only refinement reuses the successful SVG layout');
+        $this->assertFileDoesNotExist($this->fakeReports->path('mermaid-request.json'), 'resolution-only refinement reuses the successful SVG layout');
 
         $renderer->cancel();
     }
@@ -90,7 +92,7 @@ final class MermaidCliRendererTest extends TestCase
     public function testANonPositiveResolutionDrawsAtOneDot(): void
     {
         $project = new TempProject();
-        $engine = new MermaidEngine($project->dir, self::support('fake-mmdc'));
+        $engine = new MermaidEngine(self::support('fake-mmdc'));
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
 
         [$picture, $error] = $this->render($renderer, "flowchart LR\nA[Alpha]", dpi: 0);
@@ -105,28 +107,28 @@ final class MermaidCliRendererTest extends TestCase
     {
         $project = new TempProject();
         $tool = self::support('fake-mmdc');
-        $engine = new MermaidEngine($project->dir, static function () use (&$tool): string {
+        $engine = new MermaidEngine(static function () use (&$tool): string {
             return $tool;
         });
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
         [$picture, $error] = $this->render($renderer, 'flowchart; A');
         $this->assertNull($error);
         $this->assertInstanceOf(MermaidScene::class, $picture->scene);
-        \unlink($project->path('mermaid-request.json'));
+        \unlink($this->fakeReports->path('mermaid-request.json'));
         $tool = \dirname($tool).'/../Support/fake-mmdc';
         $this->render($renderer, 'flowchart; A');
-        $this->assertFileExists($project->path('mermaid-request.json'), 'a live CLI path change cannot reuse the previous tool snapshot');
-        \unlink($project->path('mermaid-request.json'));
+        $this->assertFileExists($this->fakeReports->path('mermaid-request.json'), 'a live CLI path change cannot reuse the previous tool snapshot');
+        \unlink($this->fakeReports->path('mermaid-request.json'));
         $this->render($renderer, 'flowchart; B');
-        $this->assertFileExists($project->path('mermaid-request.json'), 'changed source cannot reuse a previous diagram snapshot');
+        $this->assertFileExists($this->fakeReports->path('mermaid-request.json'), 'changed source cannot reuse a previous diagram snapshot');
 
         foreach ([96, 192] as $dpi) {
             // @noinspection DisconnectedForeachInstructionInspection -- Remove the preceding render's record each time to prove the next render invokes the CLI.
-            \unlink($project->path('mermaid-request.json'));
+            \unlink($this->fakeReports->path('mermaid-request.json'));
             [$picture, $error] = $this->render($renderer, 'flowchart; A[oversized-svg]', $dpi);
             $this->assertNull($error);
             $this->assertNull($picture->scene);
-            $this->assertFileExists($project->path('mermaid-request.json'), 'large SVGs are displayed without retaining a cached copy or hit map');
+            $this->assertFileExists($this->fakeReports->path('mermaid-request.json'), 'large SVGs are displayed without retaining a cached copy or hit map');
         }
         $renderer->cancel();
     }
@@ -136,7 +138,7 @@ final class MermaidCliRendererTest extends TestCase
     {
         $project = new TempProject();
         $renderer = new MermaidCliRenderer(
-            new MermaidEngine($project->dir, self::support('fake-mmdc')),
+            new MermaidEngine(self::support('fake-mmdc')),
             new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')),
         );
         [$picture, $error] = $this->render($renderer, $source);
@@ -158,14 +160,14 @@ final class MermaidCliRendererTest extends TestCase
     {
         $project = new TempProject();
         $renderer = new MermaidCliRenderer(
-            new MermaidEngine($project->dir, self::support('fake-mmdc')),
+            new MermaidEngine(self::support('fake-mmdc')),
             new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support($converter)),
         );
         [$picture, $error] = $this->render($renderer, 'flowchart; A');
         $this->assertNull($error);
         $this->assertSame([120, 80], PngDimensions::read($picture->png));
         $this->assertNull($picture->scene);
-        [$options] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('png', $options['--outputFormat']);
         $renderer->cancel();
     }
@@ -181,7 +183,7 @@ final class MermaidCliRendererTest extends TestCase
         $project = new TempProject(['bin/.keep' => '']);
         \symlink(\PHP_BINARY, $project->path('bin/php'));
         \putenv('PATH='.$project->path('bin'));
-        $engine = new MermaidEngine($project->dir, self::support('fake-mmdc'));
+        $engine = new MermaidEngine(self::support('fake-mmdc'));
         $renderer = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc')));
         [$picture, $error] = $this->render($renderer, 'flowchart; A');
         $this->assertNull($error);
@@ -201,7 +203,7 @@ final class MermaidCliRendererTest extends TestCase
     public function testWidgetUsesCliCoordinatesForSelectionAndRestoresNativeCells(): void
     {
         $project = new TempProject();
-        $engine = new MermaidEngine($project->dir, self::support('fake-mmdc'));
+        $engine = new MermaidEngine(self::support('fake-mmdc'));
         $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')));
         $scheduler = new FakeScheduler();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $engine, cli: $cli);
@@ -251,7 +253,7 @@ final class MermaidCliRendererTest extends TestCase
         $parsing = new FakeScheduler();
         $mapping = new FakeScheduler();
         $renderer = new MermaidCliRenderer(
-            new MermaidEngine($project->dir, self::support('fake-mmdc')),
+            new MermaidEngine(self::support('fake-mmdc')),
             new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), nodePath: self::support('fake-mermaid-browser')),
             new NativeMermaidRenderer(new MermaidTask($parsing)),
             new MermaidTask($mapping),

@@ -18,11 +18,15 @@ use Porta\Support\SingleSlotProcess;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\ReportsFakeTools;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UntrustsProjects;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class MermaidEngineTest extends TestCase
 {
+    use ReportsFakeTools;
+    use UntrustsProjects;
     use PreservesPath;
     use PumpsLoop;
 
@@ -79,6 +83,19 @@ final class MermaidEngineTest extends TestCase
         $plugin->deactivate();
     }
 
+    public function testThePluginKeepsTheBrowserOfAProjectNotTrustedOffTheNetwork(): void
+    {
+        $project = new TempProject();
+        $settings = new PluginSettings($project->dir, []);
+        $api = new PluginManager(new EventDispatcher(), $settings)->api('graph-viewer', $project->dir, $settings);
+        $plugin = require \dirname(__DIR__, levels: 2).'/plugin.php';
+
+        $this->assertNull(Probe::invokeStatic($plugin::class, 'browserConfig', $api), 'trusted (as the suite\'s projects are): remote images load');
+
+        $this->untrustProjects();
+        $this->assertSame(MermaidEngine::OFFLINE, Probe::invokeStatic($plugin::class, 'browserConfig', $api));
+    }
+
     public function testBothExtensionsResolveOnlyToMermaid(): void
     {
         $this->assertSame(DiagramKind::Mermaid, DiagramKind::forPath('/p/diagram.MMD'));
@@ -89,14 +106,19 @@ final class MermaidEngineTest extends TestCase
 
     public function testQuietStdinExplicitPngAndScaleWithIsolatedCleanup(): void
     {
-        $project = new TempProject();
-        $engine = new MermaidEngine($project->dir, self::stub());
+        $engine = new MermaidEngine(self::stub());
         [$png, $error] = $this->render($engine, "flowchart LR\nA[été] --> B", 192);
         $this->assertNull($error);
         $this->assertSame(96, $engine->baseDpi());
         $image = new ImageDecoder()->decodeBytes((string) $png);
         $this->assertSame([240, 160], [$image?->width, $image?->height]);
-        [$options, $source] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$options, $source, $cwd] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertStringEndsWith(
+            '/'.\basename(\dirname($options['--output'])),
+            $cwd,
+            'run in that directory, never the project: puppeteer runs a .puppeteerrc.cjs it finds where it runs',
+        );
+        $this->assertArrayNotHasKey('--puppeteerConfigFile', $options, 'a trusted project\'s diagrams reach the network');
         $this->assertArrayHasKey('--quiet', $options);
         $this->assertSame('-', $options['--input']);
         $this->assertSame('png', $options['--outputFormat']);
@@ -108,22 +130,35 @@ final class MermaidEngineTest extends TestCase
             $options['--output'],
             'a directory of its own, under a name no one can guess',
         );
-        $this->assertSame('700', \file_get_contents($project->path('mermaid-output-dir-mode.txt')), 'that only this user can open');
+        $this->assertSame('700', \file_get_contents($this->fakeReports->path('mermaid-output-dir-mode.txt')), 'that only this user can open');
         [$png] = $this->render($engine, 'flowchart TD', 0);
         $this->assertNotNull($png, 'even a nonpositive dpi has a positive scale');
         $engine->cancel();
         $engine->cancel();
     }
 
+    public function testAProjectNotTrustedKeepsTheBrowserOffTheNetwork(): void
+    {
+        $engine = new MermaidEngine(self::stub(), browserConfig: MermaidEngine::OFFLINE);
+
+        [, $error] = $this->render($engine, 'flowchart LR');
+
+        $this->assertNull($error);
+        [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertSame(MermaidEngine::OFFLINE, $options['--puppeteerConfigFile'] ?? null);
+        $config = \json_decode((string) \file_get_contents(MermaidEngine::OFFLINE), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertSame(['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>'], $config['args'], 'every request, loopback too, to a proxy that does not answer');
+    }
+
     public function testFailureAndMissingOutputBothCleanTheirDirectory(): void
     {
         $project = new TempProject();
-        $engine = new MermaidEngine($project->dir, self::stub());
+        $engine = new MermaidEngine(self::stub());
         foreach (['broken' => 'parse error on line 2', 'empty-output' => 'produced no PNG'] as $source => $message) {
             [$png, $error] = $this->render($engine, $source);
             $this->assertNull($png);
             $this->assertStringContainsString($message, (string) $error);
-            [$options] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+            [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
             $this->assertDirectoryDoesNotExist(\dirname($options['--output']));
         }
     }
@@ -131,14 +166,15 @@ final class MermaidEngineTest extends TestCase
     public function testCancellationRemovesTheDirectoryAndSuppressesItsAnswer(): void
     {
         $project = new TempProject();
-        $engine = new MermaidEngine($project->dir, self::stub());
+        $engine = new MermaidEngine(self::stub());
         $fired = false;
         $mark = static function () use (&$fired): void {
             $fired = true;
         };
         $engine->render('slow', 96, $mark, $mark);
-        $this->await(static fn (): bool => \is_file($project->path('mermaid-request.json')), what: 'the stub to start');
-        [$options] = \json_decode((string) \file_get_contents($project->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $request = $this->fakeReports->path('mermaid-request.json');
+        $this->await(static fn (): bool => \is_file($request), what: 'the stub to start');
+        [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $engine->cancel();
         $engine->cancel();
         $this->assertDirectoryDoesNotExist(\dirname($options['--output']));
@@ -152,7 +188,7 @@ final class MermaidEngineTest extends TestCase
     {
         $project = new TempProject();
         $slot = new SingleSlotProcess();
-        $engine = new MermaidEngine($project->dir, self::stub(), $slot);
+        $engine = new MermaidEngine(self::stub(), $slot);
         foreach (['deferred', 'deferred-failure'] as $source) {
             $fired = false;
             $mark = static function () use (&$fired): void {
@@ -176,7 +212,7 @@ final class MermaidEngineTest extends TestCase
     {
         $project = new TempProject();
         $configured = '  '.self::stub().'  ';
-        $engine = new MermaidEngine($project->dir, static function () use (&$configured): ?string {
+        $engine = new MermaidEngine(static function () use (&$configured): ?string {
             return $configured;
         });
         $this->assertSame(self::stub(), $engine->binary());

@@ -5,17 +5,20 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Tests\Mermaid;
 
 use PHPUnit\Framework\TestCase;
+use Porta\GraphViewer\Graph\MermaidEngine;
 use Porta\GraphViewer\Mermaid\MermaidSvgRasterizer;
 use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\ReportsFakeTools;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Graphics\PngDimensions;
 use Symfony\Component\Process\ExecutableFinder;
 
 final class MermaidSvgRasterizerTest extends TestCase
 {
+    use ReportsFakeTools;
     use PreservesPath;
     use PumpsLoop;
 
@@ -26,9 +29,9 @@ final class MermaidSvgRasterizerTest extends TestCase
 
     public function testPrivateSnapshotAndPackagedHelperAreCleanedAfterTheBrowserReturns(): void
     {
-        $project = new TempProject();
         $tool = self::support('fake-mmdc');
         $browser = self::support('fake-mermaid-browser');
+        $project = new TempProject();
         $rasterizer = new MermaidSvgRasterizer(
             $project->dir,
             static function () use (&$tool): string {
@@ -42,7 +45,13 @@ final class MermaidSvgRasterizerTest extends TestCase
         $source = '<svg><foreignObject><div>HTML label</div></foreignObject></svg>';
         $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, 2.0, $success, self::fail(...)));
         $this->assertSame([200, 100], PngDimensions::read($png));
-        [$script, $cli, $input, $scale, $svg, $program] = \json_decode((string) \file_get_contents($project->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$script, $cli, $input, $scale, $svg, $program, $cwd, $rest] = \json_decode(
+            (string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')),
+            associative: true,
+            flags: \JSON_THROW_ON_ERROR,
+        );
+        $this->assertSame([$project->dir], $rest, 'the page\'s base said outright, and no browser config: the project is trusted');
+        $this->assertStringEndsWith('/'.\basename(\dirname($input)), $cwd, 'run there, never the project: its browser is puppeteer\'s, which runs a .puppeteerrc.cjs it finds');
         $this->assertSame($tool, $cli);
         $this->assertSame('2', $scale);
         $this->assertSame($source, $svg);
@@ -53,7 +62,7 @@ final class MermaidSvgRasterizerTest extends TestCase
             \dirname($input),
             'a directory of its own, under a name no one can guess',
         );
-        $this->assertSame('700', \file_get_contents($project->path('mermaid-browser-dir-mode.txt')), 'that only this user can open');
+        $this->assertSame('700', \file_get_contents($this->fakeReports->path('mermaid-browser-dir-mode.txt')), 'that only this user can open');
         $this->assertDirectoryDoesNotExist(\dirname($input));
         $this->assertNull(Probe::get($rasterizer, 'directory'));
         $rasterizer->cancel();
@@ -95,7 +104,7 @@ final class MermaidSvgRasterizerTest extends TestCase
         $this->assertStringContainsString('missing.mjs', $error);
         $this->assertNull(Probe::get($rasterizer, 'directory'));
         $this->assertNull(Probe::get(Probe::get($rasterizer, 'slot'), 'current'), 'no browser was started');
-        $this->assertFileDoesNotExist($project->path('mermaid-browser-request.json'));
+        $this->assertFileDoesNotExist($this->fakeReports->path('mermaid-browser-request.json'));
         $rasterizer->cancel();
     }
 
@@ -112,10 +121,21 @@ final class MermaidSvgRasterizerTest extends TestCase
                 $this->assertSame('Invalid SVG raster scale', $error);
                 $this->assertNull(Probe::get($rasterizer, 'directory'));
             }
-            $this->assertFileDoesNotExist($project->path('mermaid-browser-request.json'));
+            $this->assertFileDoesNotExist($this->fakeReports->path('mermaid-browser-request.json'));
         } finally {
             $rasterizer->cancel();
         }
+    }
+
+    public function testAProjectNotTrustedHandsTheBrowserItsOfflineConfig(): void
+    {
+        $project = new TempProject();
+        $rasterizer = new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), self::support('fake-mermaid-browser'), browserConfig: MermaidEngine::OFFLINE);
+
+        $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', 1.0, $success, self::fail(...)));
+
+        [, , , , , , , $rest] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertSame([$project->dir, MermaidEngine::OFFLINE], $rest);
     }
 
     public function testBundledProgramUsesTheCliBrowserProtocolAndRejectsOversizedRasters(): void
@@ -129,20 +149,25 @@ final class MermaidSvgRasterizerTest extends TestCase
             'cli/bin/mmdc.js' => '',
             'cli/node_modules/puppeteer/package.json' => '{"main":"index.cjs"}',
             'cli/node_modules/puppeteer/index.cjs' => (string) \file_get_contents(__DIR__.'/../fixtures/mermaid/cli-browser.cjs'),
-            'fixture.png' => PngFixture::bytes(100, height: 50),
         ]);
+        $this->fakeReports->write('fixture.png', PngFixture::bytes(100, height: 50));
+        $offline = new MermaidSvgRasterizer($project->dir, $project->path('cli/bin/mmdc.js'), $node, browserConfig: MermaidEngine::OFFLINE);
+        $this->awaitString(static fn (\Closure $success) => $offline->rasterize('<svg viewBox="0 0 10 10"/>', 1.0, $success, self::fail(...)));
+        $launch = \json_decode((string) \file_get_contents($this->fakeReports->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR)['launch'];
+        $this->assertSame(['headless' => 'shell', 'args' => ['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>']], $launch, 'a project not trusted: off the network');
+
         $rasterizer = new MermaidSvgRasterizer($project->dir, $project->path('cli/bin/mmdc.js'), $node);
         $source = '<svg viewBox="0 0 100.5 50.25"><foreignObject><div>HTML label</div></foreignObject></svg>';
         $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, 2.0, $success, self::fail(...)));
-        $this->assertStringEqualsFile($project->path('fixture.png'), $png);
-        $record = \json_decode((string) \file_get_contents($project->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertStringEqualsFile($this->fakeReports->path('fixture.png'), $png);
+        $record = \json_decode((string) \file_get_contents($this->fakeReports->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(['launch', 'goto', 'evaluate', 'viewport', 'screenshot', 'close'], $record['calls']);
         $this->assertSame(['headless' => 'shell'], $record['launch']);
         $this->assertSame(['width' => 101, 'height' => 51, 'deviceScaleFactor' => 2], $record['viewport']);
         $this->assertSame(['type' => 'png', 'omitBackground' => false], $record['screenshot']);
         $this->assertSame('svg', $record['selector']);
         $this->assertSame(['width' => '101px', 'height' => '51px', 'maxWidth' => 'none', 'maxHeight' => 'none', 'display' => 'block'], $record['svgStyle']);
-        $this->assertStringContainsString('<base href="file://', $record['html']);
+        $this->assertStringContainsString('<base href="file://'.$project->dir.'/"', $record['html'], 'a label\'s relative image resolves in the project, wherever the browser runs');
         $this->assertStringContainsString('HTML label', $record['html']);
         foreach ([
             ['<svg><!--huge-browser--></svg>', 1.0, 'SVG raster exceeds the image budget'],
@@ -165,7 +190,7 @@ final class MermaidSvgRasterizerTest extends TestCase
                 return null !== $error;
             }, what: 'the browser image budget');
             $this->assertStringContainsString($message, $error);
-            $record = \json_decode((string) \file_get_contents($project->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+            $record = \json_decode((string) \file_get_contents($this->fakeReports->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
             $this->assertNotContains('screenshot', $record['calls']);
             $this->assertSame('close', \array_last($record['calls']));
         }
@@ -205,13 +230,14 @@ final class MermaidSvgRasterizerTest extends TestCase
             return null !== $error;
         }, what: 'the browser failure');
         $this->assertStringContainsString('Browser could not render SVG', $error);
-        [$script] = \json_decode((string) \file_get_contents($project->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$script] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertDirectoryDoesNotExist(\dirname($script));
-        \unlink($project->path('mermaid-browser-request.json'));
+        \unlink($this->fakeReports->path('mermaid-browser-request.json'));
         $error = null;
         $rasterizer->rasterize('<svg><!--deferred-browser--></svg>', null, $accept, $fail);
-        $this->await(static fn (): bool => \is_file($project->path('mermaid-browser-request.json')), what: 'the pending browser snapshot');
-        [$script] = \json_decode((string) \file_get_contents($project->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $request = $this->fakeReports->path('mermaid-browser-request.json');
+        $this->await(static fn (): bool => \is_file($request), what: 'the pending browser snapshot');
+        [$script] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertDirectoryExists(\dirname($script));
         $slot = Probe::get($rasterizer, 'slot');
         $this->assertNotNull(Probe::get($slot, 'current'));

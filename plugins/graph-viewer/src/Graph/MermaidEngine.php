@@ -13,15 +13,24 @@ use Symfony\Component\Process\ExecutableFinder;
 /** Local mmdc, with a private output directory per request and live tool discovery. */
 final class MermaidEngine implements DiagramEngine
 {
+    /**
+     * Puppeteer's launch options for a project not trusted: every request
+     * through a proxy that does not answer, loopback included. Opening a
+     * diagram fetched what its labels named (`<img src="http://…">`),
+     * telling whoever wrote it that it was opened, and from where. mmdc's
+     * own assets are intercepted, never fetched: the render still works.
+     */
+    public const string OFFLINE = __DIR__.'/../../resources/puppeteer-offline.json';
+
     private ?string $directory = null;
 
     /** @param null|(\Closure(): ?string)|string $toolPath resolved for each render */
     public function __construct(
-        private readonly string $rootDir,
         private readonly \Closure|string|null $toolPath = null,
         private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
         private readonly Filesystem $files = new Filesystem(),
         private readonly ExecutableFinder $finder = new ExecutableFinder(),
+        private readonly ?string $browserConfig = null,
     ) {}
 
     public function baseDpi(): int
@@ -67,8 +76,14 @@ final class MermaidEngine implements DiagramEngine
         $this->directory = $directory;
         $output = $directory.'/diagram.'.$format->extension();
         $this->slot->run(
-            MermaidCommand::render($tool, $format, $output, $dpi),
-            $this->rootDir,
+            null === $this->browserConfig
+                ? MermaidCommand::render($tool, $format, $output, $dpi)
+                : [...MermaidCommand::render($tool, $format, $output, $dpi), '--puppeteerConfigFile', $this->browserConfig],
+            // Never the project: puppeteer loads a `.puppeteerrc.cjs` from the
+            // working directory and RUNS it — a repository's own JavaScript,
+            // on opening a diagram (driven with a canary). The render's private
+            // directory holds nothing anyone else wrote.
+            $directory,
             $source,
             'mmdc',
             function () use ($directory, $output, $format, $onBytes, $onError): void {
@@ -100,13 +115,9 @@ final class MermaidEngine implements DiagramEngine
         if (null === $this->directory) {
             return;
         }
-        foreach (Format::cases() as $format) {
-            $output = $this->directory.'/diagram.'.$format->extension();
-            if (\is_file($output)) {
-                \unlink($output);
-            }
-        }
-        \rmdir($this->directory);
+        // Whole, as the rasterizer's is: mmdc runs in it now, and whatever it
+        // leaves there is gone with the render, not a warning and a leak.
+        $this->files->remove($this->directory);
         $this->directory = null;
     }
 

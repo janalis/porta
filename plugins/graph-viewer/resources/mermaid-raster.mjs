@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 
 let browser;
 try {
-  const [, , cliPath, input, rawScale] = process.argv;
+  const [, , cliPath, input, rawScale, root, browserConfig] = process.argv;
   const cli = await fs.realpath(cliPath);
   let directory = path.dirname(cli);
   let found = false;
@@ -32,10 +32,12 @@ try {
   const scale = Number(rawScale);
   if (!Number.isFinite(scale) || scale <= 0) throw new Error('Invalid SVG raster scale');
   const svg = await fs.readFile(input, 'utf8');
-  const base = pathToFileURL(process.cwd() + path.sep).href.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
+  const base = pathToFileURL(root + path.sep).href.replaceAll('&', '&amp;').replaceAll('"', '&quot;');
   const html = path.join(path.dirname(input), 'diagram.html');
   await fs.writeFile(html, '<!doctype html><meta charset="utf-8"><base href="' + base + '"><style>html,body{margin:0;padding:0}</style>' + svg);
-  browser = await puppeteer.launch({ headless: 'shell' });
+  // A project not trusted: its diagram's images are not fetched (see MermaidEngine::OFFLINE).
+  const launch = browserConfig ? JSON.parse(await fs.readFile(browserConfig, 'utf8')) : {};
+  browser = await puppeteer.launch({ headless: 'shell', ...launch });
   const page = await browser.newPage();
   await page.goto(pathToFileURL(html).href, { waitUntil: 'networkidle0' });
   const size = await page.evaluate(async () => {

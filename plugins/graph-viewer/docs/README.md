@@ -281,6 +281,11 @@ terminal-native renderer leaves to the browser, such as exact browser geometry, 
 math, HTML labels and remote images, renders through the Mermaid CLI. How each family
 was brought up and verified is in [the compatibility history](https://github.com/janalis/viz/blob/main/docs/mermaid-compatibility-history.md).
 
+In a project you have not trusted, the Mermaid CLI's browser is kept off the
+network: a diagram's remote images are not fetched, so opening one tells no one
+that you did. Everything else about it renders the same. See
+[Trusting a project](../../../docs/configuration.md#trusting-a-project).
+
 The native `mindmap` renderer follows indentation, including uneven indentation
 and repeated labels on separate branches. It supports quoted multiline labels,
 entity escapes, node shape declarations, source navigation, selection, search,
