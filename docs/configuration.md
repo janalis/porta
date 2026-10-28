@@ -125,8 +125,9 @@ something to run:
   fsmonitor, filter, textconv and merge drivers (a merge uses git's own),
   `gpg.program`, credential helpers, `core.sshCommand`, a remote's
   `uploadpack`. Your own value for the same key still applies. Its
-  `.gitattributes` are ignored, git:// and ext:: remotes are refused, and
-  automatic gc is off;
+  `.gitattributes` are ignored, git:// and ext:: remotes are refused,
+  automatic gc is off, and git does not look into submodules (their changes
+  do not show);
 - a Mermaid diagram's remote images are not fetched — the Mermaid CLI's
   browser is kept off the network, so opening one tells no one you did.
 
