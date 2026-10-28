@@ -26,9 +26,11 @@ trait FindModalReads
     abstract private function await(callable $done, float $timeout = 10.0, string $what = 'condition'): void;
 
     /**
-     * The project-search barrier: no query debounce armed and no grep in
-     * flight. Typing arms a 0.25s debounce and the search it fires is a
-     * subprocess, so a result assertion behind anything less is a fixed gap.
+     * The project-search barrier: no query debounce armed, no grep in flight,
+     * and no scan slice pending. Typing arms a 0.25s debounce; the search it
+     * fires is a grep subprocess or — for a multiline query, or with no grep —
+     * the built-in scan, deferred a slice at a time. A result assertion behind
+     * anything less is a fixed gap.
      */
     private function awaitSearch(Ide $ide): void
     {
@@ -37,7 +39,10 @@ trait FindModalReads
         $search = Probe::object($wiring, 'projectSearch', 'projectSearch');
         \assert($search instanceof ProjectSearch, description: 'the wiring\'s controller holds the search engine');
         // Re-evaluates: it reads the objects' live state, it captures no scalar.
-        $this->await(static fn (): bool => null === Probe::get($wiring, 'searchDebounce') && null === Probe::get($search, 'process'), what: 'the project search to settle');
+        $this->await(
+            static fn (): bool => null === Probe::get($wiring, 'searchDebounce') && null === Probe::get($search, 'process') && null === Probe::get($search, 'slice'),
+            what: 'the project search to settle',
+        );
     }
 
     /**
