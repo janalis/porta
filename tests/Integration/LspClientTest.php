@@ -982,7 +982,9 @@ final class LspClientTest extends TestCase
         $client->stop();
 
         try {
-            $this->await(static fn (): bool => \is_file($saved), timeout: 3.0, what: 'the server to finish saving');
+            // The content, not the file: file_put_contents creates it empty
+            // first, and a loaded CI runner read it in between ('' — run 40694936748).
+            $this->await(static fn (): bool => \is_file($saved) && 'saved' === \file_get_contents($saved), timeout: 3.0, what: 'the server to finish saving');
             $this->assertSame('saved', \file_get_contents($saved));
         } finally {
             if (\is_file($saved)) {
