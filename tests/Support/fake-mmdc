@@ -15,7 +15,7 @@ $source = (string) stream_get_contents(STDIN);
 // Where the test reads this from: the render's directory is gone once it answers. And
 // the directory it ran in, recorded — the real mmdc's puppeteer runs a config found there.
 $report = (getenv('PORTA_FAKE_REPORT_DIR') ?: getcwd()).'/';
-file_put_contents($report.'mermaid-request.json', json_encode([$options, $source, getcwd()], JSON_THROW_ON_ERROR));
+file_put_contents($report.'mermaid-request.json', json_encode([$options, $source, getcwd(), @file_get_contents('.puppeteerrc.json')], JSON_THROW_ON_ERROR));
 // Who else could read what is written there: the directory the output goes to, as mmdc finds it.
 if (isset($options['--output'])) {
     file_put_contents($report.'mermaid-output-dir-mode.txt', decoct(fileperms(dirname($options['--output'])) & 0o777));

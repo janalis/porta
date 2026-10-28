@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
+use Porta\GraphViewer\Graph\MermaidEngine;
 use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -80,6 +81,7 @@ final class MermaidSvgRasterizer
         $this->directory = \sys_get_temp_dir().'/porta-mermaid-svg-'.\bin2hex(\random_bytes(16));
         try {
             $this->files->mkdir($this->directory, 0o700);
+            $this->files->dumpFile($this->directory.'/'.MermaidEngine::CONFIG_STOP, '{}'); // its browser is puppeteer's too
             $this->files->dumpFile($this->directory.'/diagram.svg', $svg);
             $this->files->dumpFile($this->directory.'/raster.mjs', $this->files->readFile($this->script));
         } catch (IOExceptionInterface $exception) {

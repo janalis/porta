@@ -112,12 +112,13 @@ final class MermaidEngineTest extends TestCase
         $this->assertSame(96, $engine->baseDpi());
         $image = new ImageDecoder()->decodeBytes((string) $png);
         $this->assertSame([240, 160], [$image?->width, $image?->height]);
-        [$options, $source, $cwd] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+        [$options, $source, $cwd, $stop] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertStringEndsWith(
             '/'.\basename(\dirname($options['--output'])),
             $cwd,
             'run in that directory, never the project: puppeteer runs a .puppeteerrc.cjs it finds where it runs',
         );
+        $this->assertSame('{}', $stop, 'and an empty config waits there, so the search does not walk up into /tmp');
         $this->assertArrayNotHasKey('--puppeteerConfigFile', $options, 'a trusted project\'s diagrams reach the network');
         $this->assertArrayHasKey('--quiet', $options);
         $this->assertSame('-', $options['--input']);

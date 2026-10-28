@@ -45,11 +45,12 @@ final class MermaidSvgRasterizerTest extends TestCase
         $source = '<svg><foreignObject><div>HTML label</div></foreignObject></svg>';
         $png = $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize($source, 2.0, $success, self::fail(...)));
         $this->assertSame([200, 100], PngDimensions::read($png));
-        [$script, $cli, $input, $scale, $svg, $program, $cwd, $rest] = \json_decode(
+        [$script, $cli, $input, $scale, $svg, $program, $cwd, $rest, $stop] = \json_decode(
             (string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')),
             associative: true,
             flags: \JSON_THROW_ON_ERROR,
         );
+        $this->assertSame('{}', $stop, 'an empty config where it runs: the search does not walk up into /tmp');
         $this->assertSame([$project->dir], $rest, 'the page\'s base said outright, and no browser config: the project is trusted');
         $this->assertStringEndsWith('/'.\basename(\dirname($input)), $cwd, 'run there, never the project: its browser is puppeteer\'s, which runs a .puppeteerrc.cjs it finds');
         $this->assertSame($tool, $cli);

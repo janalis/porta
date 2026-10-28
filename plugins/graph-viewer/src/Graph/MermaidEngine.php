@@ -22,6 +22,15 @@ final class MermaidEngine implements DiagramEngine
      */
     public const string OFFLINE = __DIR__.'/../../resources/puppeteer-offline.json';
 
+    /**
+     * Written where the tool runs: puppeteer's config search starts in its
+     * working directory and walks UP, running the first `.puppeteerrc.cjs`
+     * it meets (driven with a canary in a parent). The render's directory is
+     * this user's, but /tmp above it is anyone's on Linux: an empty config
+     * here is found first, and the walk stops.
+     */
+    public const string CONFIG_STOP = '.puppeteerrc.json';
+
     private ?string $directory = null;
 
     /** @param null|(\Closure(): ?string)|string $toolPath resolved for each render */
@@ -73,6 +82,7 @@ final class MermaidEngine implements DiagramEngine
         }
         $directory = \sys_get_temp_dir().'/porta-mermaid-'.\bin2hex(\random_bytes(16));
         $this->files->mkdir($directory, 0o700);
+        $this->files->dumpFile($directory.'/'.self::CONFIG_STOP, '{}');
         $this->directory = $directory;
         $output = $directory.'/diagram.'.$format->extension();
         $this->slot->run(
