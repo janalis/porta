@@ -366,7 +366,7 @@ final class DebugControllerTest extends TestCase
         );
         $this->assertSame(1, $debugSession->buffer->lineCount(), 'a fresh launch clears stale output');
         $this->assertSame($debugSession, $this->sessions->active(), 'the debug session becomes active again');
-        $this->assertStringContainsString('prog.php', $debugSession->title);
+        $this->assertSame('Debug output: prog.php', $debugSession->title, 'not the debug panel\'s own "Debug: prog.php" beside it');
 
         // Before the panel opens (which resets its DebugState to Starting),
         // it was left at Paused by the first session — a skipped open() would

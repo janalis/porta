@@ -327,6 +327,10 @@ final class DebugPanelWidget extends DockPanelWidget implements FocusableInterfa
         $indent = \str_repeat('  ', \max(0, $row->depth));
         $watch = $this->watches[$row->watchIndex] ?? null;
         $arrow = $this->expandArrow($row->ref);
+        if (DebugState::Terminated === $this->state && null === ($watch['value'] ?? null) && null === ($watch['error'] ?? null)) {
+            // Nothing will fill it: no stop is coming, and "…" promised one.
+            return ' '.$indent.$arrow.$row->label;
+        }
         $value = match (true) {
             null === $watch => '',
             null !== $watch['error'] => $this->styles->of(Role::Dim)->apply($watch['error']),

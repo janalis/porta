@@ -77,7 +77,8 @@ A resizable bottom panel opens with the session:
 one-shot expression against the current frame and flashes the result.
 
 The panel header shows the session state and a stepping-key legend. Program
-output streams into a terminal buffer titled `Debug: <file>`.
+output streams into a terminal buffer titled `Debug output: <file>`, beside
+the panel's own `Debug: <file>` tab.
 
 ## Exception breakpoints & persistence
 

@@ -1170,10 +1170,6 @@
         <source>No debug adapter configured for %language% — set one in Settings</source>
         <target>Aucun adaptateur de débogage configuré pour %language% — définissez-le dans les réglages</target>
       </trans-unit>
-      <trans-unit id="317">
-        <source>Debug: %label%</source>
-        <target>Débogage : %label%</target>
-      </trans-unit>
       <trans-unit id="318">
         <source>Could not start the debug adapter</source>
         <target>Impossible de démarrer l’adaptateur de débogage</target>
@@ -3585,6 +3581,10 @@
       <trans-unit id="1223">
         <source>install it yourself</source>
         <target>installez-le vous-même</target>
+      </trans-unit>
+      <trans-unit id="1224">
+        <source>Debug output: %label%</source>
+        <target>Sortie du débogage : %label%</target>
       </trans-unit>
     </body>
   </file>

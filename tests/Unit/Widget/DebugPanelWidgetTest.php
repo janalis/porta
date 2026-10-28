@@ -11,6 +11,7 @@ use Porta\Event\DebugFrameSelected;
 use Porta\Event\DebugVariableEditRequested;
 use Porta\Event\DebugWatchRemovalRequested;
 use Porta\Tests\Support\Probe;
+use Porta\Ui\Glyphs;
 use Porta\Widget\DebugPanelCallbacks;
 use Porta\Widget\DebugPanelWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -314,6 +315,13 @@ final class DebugPanelWidgetTest extends TestCase
         $screen = \implode("\n", $this->screen($panel));
         $this->assertStringContainsString('$x = …', $screen);
         $this->assertStringNotContainsString('42', $screen);
+
+        // Ended: no stop is coming to fill a value, so none is promised.
+        $panel->setSessionState(DebugState::Terminated, null);
+        $screen = \implode("\n", $this->screen($panel));
+        $this->assertStringContainsString('$x', $screen);
+        $this->assertStringNotContainsString('$x =', $screen);
+        $this->assertStringNotContainsString(Glyphs::ELLIPSIS, $screen);
     }
 
     public function testConstructorRegistersTheListStyleClassAndTenVisibleRows(): void

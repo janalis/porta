@@ -354,7 +354,10 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->currentFrameId = null;
         $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', '');
         $session->buffer->clear();
-        $session->title = $this->translator->trans('Debug: %label%', ['%label%' => \basename($path)]);
+        // Not 'Debug: …': that is the debug panel's own tab, beside this one
+        // on the same strip — two tabs of one name, and the output was the
+        // one nobody could tell apart.
+        $session->title = $this->translator->trans('Debug output: %label%', ['%label%' => \basename($path)]);
         // The debuggee's output session is created and made active but NOT
         // shown — the dock shows the debug panel; the output sits one
         // terminal-toggle away (ctrl+`).
