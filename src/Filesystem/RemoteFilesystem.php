@@ -694,7 +694,12 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                 return;
             }
             $this->force[$relative] = true;
-            $this->notifier->warn($this->translator->trans('%file% changed on the server — save again to overwrite', ['%file%' => $relative]), slot: self::SLOT);
+            // Refused, so kept as any refusal is: the next listing would
+            // fetch theirs over the cache, the reconciler would reload the
+            // buffer — saved, so clean — and the edit would be gone.
+            $warning = $this->translator->trans('%file% changed on the server — save again to overwrite', ['%file%' => $relative]);
+            $this->unsent[$relative] = $warning;
+            $this->notifier->warn($warning, slot: self::SLOT);
         });
     }
 

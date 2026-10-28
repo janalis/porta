@@ -299,6 +299,28 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame('mine', \file_get_contents($this->server->path('README.md')));
     }
 
+    public function testAnUploadRefusedOverAServerChangeOutlivesTheNextListing(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->server->write('README.md', "# someone else, longer\n");
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+
+        $files->poll();
+
+        // The buffer saved 'mine' here: taking the server's copy over it
+        // reloads that clean buffer, and the edit is gone with nothing to save.
+        $this->assertSame('mine', \file_get_contents($this->cache->path('README.md')), 'not taken back by the listing');
+        $this->assertSame(1, $files->pending(), 'still not on the server');
+        $this->assertSame('⇅ example.org ⇡1', $files->statusCells()[0]->text);
+
+        $files->dumpFile($this->cache->path('README.md'), 'mine');
+
+        $this->assertSame('mine', \file_get_contents($this->server->path('README.md')), 'saving again overwrites');
+        $this->assertSame(0, $files->pending());
+    }
+
     public function testAnUploadTheServerRefusesIsSaidAndKeptUntilItIsSavedAgain(): void
     {
         $files = $this->files();
