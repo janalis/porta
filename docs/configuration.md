@@ -120,8 +120,13 @@ something to run:
 - phpstan, psalm, php-cs-fixer and mago do not run at all — their own config
   files can execute the project's PHP or a program it names (a `mago.toml`
   `[extension-hosts]` command), whichever binary reads them;
-- git ignores the repository's `core.fsmonitor`, and the filter and diff
-  drivers its `.gitattributes` name;
+- git runs no program the repository names: its hooks (`.git/hooks` and
+  `hook.<name>.command`), and every command its own `.git/config` sets —
+  fsmonitor, filter, textconv and merge drivers (a merge uses git's own),
+  `gpg.program`, credential helpers, `core.sshCommand`, a remote's
+  `uploadpack`. Your own value for the same key still applies. Its
+  `.gitattributes` are ignored, git:// and ext:: remotes are refused, and
+  automatic gc is off;
 - a Mermaid diagram's remote images are not fetched — the Mermaid CLI's
   browser is kept off the network, so opening one tells no one you did.
 
