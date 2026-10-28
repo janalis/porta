@@ -95,16 +95,21 @@ silently turn back on every plugin you had turned off globally.
 ## Trusting a project
 
 A project can run code of its own: plugins in `.porta/plugins`, binaries and
-commands its `.porta.json` names, tools in its `vendor/bin`. Since a project is
-something you clone, Porta asks before it runs any of that. The first time you
-open a project holding one of them, `porta` asks whether to trust it; the
-project switcher asks the same before a switch. The answer is kept either way,
-in `~/.porta/trusted-projects.json`.
+commands its `.porta.json` names, tools in its `vendor/bin`, and whatever its
+own config tells a language server to run (a `.phpantom.toml` can name the
+program phpantom runs as PHPStan). Since a project is something you clone,
+Porta asks before it runs any of that. The first time you open a project,
+`porta` asks whether to trust it; the project switcher asks the same before a
+switch. The answer is kept either way, in `~/.porta/trusted-projects.json`.
 
-An untrusted project opens **restricted**. Everything you configured globally
+An untrusted project opens **restricted**. Nearly everything you configured globally
 still applies; what the project says is believed except where it names
 something to run:
 
+- no language server starts, not even one you configured globally — a server
+  reads the project's config and runs what it names — so there is no
+  completion or diagnostics, and the status bar says `LSP:off — project not
+  trusted` (an explicit `--lsp` on the command line still starts that one);
 - its `.porta/plugins` are not loaded;
 - its `.porta.json` loses `lsp`, `enabledPlugins`, each `languages.<id>.runCommand`
   and `debug`, and every plugin setting naming a program or a command line

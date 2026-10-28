@@ -15,7 +15,8 @@ use Symfony\Component\Process\ExecutableFinder;
  * Finds the language servers for the current project.
  *
  * Resolution order (see {@see locateAll()}):
- *  0. an explicit $override (e.g. the `--lsp` CLI option) — serves every language
+ *  0. an explicit $override (e.g. the `--lsp` CLI option) — serves every language;
+ *     without one, an untrusted project gets no server at all ({@see restricted()})
  *  1. "lsp" in the project's .porta.json as a command string/argv — serves
  *     every language, the historical form
  *  2. "lsp" as a {languageId: command} map for per-language servers, in the
@@ -52,17 +53,32 @@ final class ServerLocator
         if (null !== $override && '' !== $override) {
             return ['*' => [self::server(self::split($override))]];
         }
-
+        $restricted = self::restricted($rootDir);
         $files = ConfigFiles::for($rootDir);
-        // An untrusted project does not choose the command its server runs as.
-        $project = WorkspaceTrust::fromEnvironment()->isTrusted($rootDir) ? self::lspIn($files->path(ConfigScope::Project)) : null;
+        $project = $restricted ? null : self::lspIn($files->path(ConfigScope::Project));
         $global = self::lspIn($files->path(ConfigScope::Global));
         // The project's single server is its whole answer; below it, the
         // per-language maps of both files, the project's winning per language
         // — as the Settings view shows them — then the global single server.
         $single = self::single($project);
 
-        return null !== $single ? ['*' => [$single]] : self::perLanguage($global, $project, $pluginServers);
+        return match (true) {
+            $restricted => [],
+            null !== $single => ['*' => [$single]],
+            default => self::perLanguage($global, $project, $pluginServers),
+        };
+    }
+
+    /**
+     * Whether $rootDir gets no language server: it is not trusted, and the
+     * user named none for this run ($override, `--lsp`). Not even a server
+     * configured globally — a server reads the project's own config and runs
+     * what it names: phpantom ran a restricted project's `.phpantom.toml`
+     * `[phpstan] command`, and its `vendor/bin/phpstan`.
+     */
+    public static function restricted(string $rootDir, ?string $override = null): bool
+    {
+        return (null === $override || '' === $override) && !WorkspaceTrust::fromEnvironment()->isTrusted($rootDir);
     }
 
     /**

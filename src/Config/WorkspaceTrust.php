@@ -19,8 +19,12 @@ use Symfony\Component\Filesystem\Filesystem;
  * plugins are not loaded, the keys of its `.porta.json` that name something to
  * run are dropped ({@see restricted()}), tools are not taken from its
  * `vendor/bin`, and the tools that execute its PHP (a phpstan bootstrap file,
- * a php-cs-fixer config) do not run. Everything the user configured globally
- * still applies — trust is about the project's say, not the user's.
+ * a php-cs-fixer config) do not run. Nor does any language server, even one
+ * configured globally: a server reads the project's own config and runs what
+ * it names (phpantom ran a `.phpantom.toml`'s `[phpstan] command`, and the
+ * project's `vendor/bin/phpstan`, in a project opened restricted). Everything
+ * else the user configured globally still applies — trust is about the
+ * project's say, not the user's.
  *
  * The user's answers are kept in `<home>/.porta/trusted-projects.json` (0600 —
  * the user's to grow, never a project's): the projects trusted, and the ones
@@ -86,18 +90,15 @@ final readonly class WorkspaceTrust
     }
 
     /**
-     * Whether opening $rootDir should ask: never answered, and holding
-     * something trust would change. A folder with none of it opens restricted
-     * without a word — restricted changes nothing there — and one the user
-     * chose to open restricted is not asked about again.
+     * Whether opening $rootDir should ask: never answered either way. Any
+     * folder at all, not only one with a `.porta.json` or a `vendor/bin`: a
+     * restricted project starts no language server, and a folder holding
+     * nothing else can still steer one — a lone `.phpantom.toml` named a
+     * program for phpantom to run. Asked once; the answer is kept.
      */
     public function shouldAsk(string $rootDir): bool
     {
-        return (
-            !$this->isTrusted($rootDir)
-            && !\in_array(self::canonical($rootDir), $this->answers()['restricted'], strict: true)
-            && (\is_file($rootDir.'/.porta.json') || \is_dir($rootDir.'/.porta/plugins') || \is_dir($rootDir.'/vendor/bin'))
-        );
+        return !$this->isTrusted($rootDir) && !\in_array(self::canonical($rootDir), $this->answers()['restricted'], strict: true);
     }
 
     /** Trust $rootDir from now on. False when the answer cannot be written. */

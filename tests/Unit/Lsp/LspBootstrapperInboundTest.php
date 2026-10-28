@@ -21,6 +21,8 @@ use Porta\Overlay\State\ToastCenter;
 use Porta\Tests\Support\FakeLspClient;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UntrustsProjects;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
 use Psr\Clock\ClockInterface;
@@ -39,23 +41,30 @@ use Symfony\Component\Tui\Tui;
  */
 final class LspBootstrapperInboundTest extends TestCase
 {
+    use UntrustsProjects;
+
     private const string TASK = 't1';
 
     private FakeLspClient $client;
+    private int $launched = 0;
     private ToastCenter $toasts;
     private ServerProgress $progress;
 
-    private function boot(): void
+    private function boot(string $root = '/p', ?string $lspCommand = 'php-ls'): LspSessionPool
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->toasts = new ToastCenter(new FakeScheduler(), $tui);
         $this->progress = new ServerProgress($tui);
         $events = new EventDispatcher();
         $pool = new LspSessionPool(
-            '/p',
+            $root,
             new FixedActiveFile(),
             new Translator('en'),
-            fn (array $command, string $rootDir, \Closure $onLog): FakeLspClient => $this->client = new FakeLspClient(),
+            function (array $command, string $rootDir, \Closure $onLog): FakeLspClient {
+                ++$this->launched;
+
+                return $this->client = new FakeLspClient();
+            },
         );
         $clock = new class implements ClockInterface {
             #[\Override]
@@ -97,14 +106,29 @@ final class LspBootstrapperInboundTest extends TestCase
             $plugins,
             new ServerMessageReporter($notifier, new LspLog($clock, $events)),
             $this->progress,
-            '/p',
+            $root,
             // A catch-all server, so one didOpen brings a session up.
-            'php-ls',
+            $lspCommand,
             false,
         );
         $bootstrapper->start();
         // Sessions start lazily — this is what launches one.
-        $pool->notifyDidOpen('/p/a.php', "<?php\n", 'php', 1);
+        $pool->notifyDidOpen($root.'/a.php', "<?php\n", 'php', 1);
+
+        return $pool;
+    }
+
+    /** No server for an untrusted project, and the bar says why rather than "install one". */
+    public function testAnUntrustedProjectStartsNoServerAndSaysSo(): void
+    {
+        $this->untrustProjects();
+        $project = new TempProject(['a.php' => '<?php']);
+
+        $pool = $this->boot($project->dir, null);
+
+        $this->assertSame(0, $this->launched, 'no session was launched');
+        $this->assertSame('off — project not trusted', $pool->statusFor($project->dir.'/a.php'));
+        $this->assertSame('php-ls', $this->boot($project->dir, 'php-ls')->statusFor($project->dir.'/a.php'), 'one named for this run starts');
     }
 
     public function testAServerMessageBecomesAToastAttributedToThatServer(): void

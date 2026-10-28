@@ -48,6 +48,8 @@ final class ProjectSwitcherTest extends TestCase
     private UnsavedChangesGuard $guard;
     private WorkspaceTrust $trust;
     private ?WorkspaceTrust $trustOverride = null;
+    /** A test about asking sets it: otherwise every TempProject is trusted, as suite-wide, and a switch just goes. */
+    private bool $trustNothing = false;
     private bool $trustHere = false;
     private ?string $rootOverride = null;
     private ?TempProject $keep = null;
@@ -87,7 +89,7 @@ final class ProjectSwitcherTest extends TestCase
             $translator,
             $events,
             $this->guard = new UnsavedChangesGuard($this->buffers = new BufferManager(), $notifier, $translator, new MockClock()),
-            $this->trust = $this->trustOverride ?? new WorkspaceTrust($this->home->dir),
+            $this->trust = $this->trustOverride ?? new WorkspaceTrust($this->home->dir, $this->trustNothing ? [] : [(string) \PORTA_TEST_TRUSTED_FOLDERS]),
             IdeConfig::load($this->rootOverride ?? $this->here->dir),
             $this->rootOverride ?? $this->here->dir,
         );
@@ -392,23 +394,27 @@ final class ProjectSwitcherTest extends TestCase
     }
 
     /** @return iterable<string, array{array<string, string>}> */
-    public static function projectsWithSomethingToRun(): iterable
+    public static function projectsNeverAnsweredFor(): iterable
     {
         yield 'a .porta.json' => [['.porta.json' => '{}']];
         yield 'plugins of its own' => [['.porta/plugins/x/plugin.php' => '<?php']];
         yield 'a vendor/bin' => [['vendor/bin/phpstan' => '#!/bin/sh']];
+        // Its language server would read it, and run what it names.
+        yield 'nothing but a .phpantom.toml' => [['.phpantom.toml' => "[phpstan]\ncommand = \"./x\"\n"]];
+        yield 'nothing to run at all' => [['composer.json' => '{}']];
     }
 
     /**
      * Opening a project is running it once it is trusted: one never answered
-     * for, holding something to run, is asked about before the switch — and
-     * the answer is kept, so the next switch there just goes.
+     * for, whatever it holds, is asked about before the switch — and the
+     * answer is kept, so the next switch there just goes.
      *
      * @param array<string, string> $files
      */
-    #[DataProvider('projectsWithSomethingToRun')]
+    #[DataProvider('projectsNeverAnsweredFor')]
     public function testAProjectNeverAnsweredForIsAskedAboutFirst(array $files): void
     {
+        $this->trustNothing = true;
         $other = new TempProject($files);
         $switcher = $this->switcher($other->dir);
         $root = (string) \realpath($other->dir);
@@ -423,7 +429,7 @@ final class ProjectSwitcherTest extends TestCase
         $this->assertSame(
             [
                 ['Trust and Open',  'its own plugins and tools run'],
-                ['Open Restricted', 'nothing of the project\'s own runs'],
+                ['Open Restricted', 'nothing of the project\'s own runs, nor a language server'],
             ],
             \array_map(static fn (array $item): array => [$item['label'], $item['hint']], $asked['items']),
             'what each answer means, said beside it',
@@ -442,6 +448,7 @@ final class ProjectSwitcherTest extends TestCase
 
     public function testTrustAndOpenTrustsTheProject(): void
     {
+        $this->trustNothing = true;
         $other = new TempProject(['.porta.json' => '{}']);
         $switcher = $this->switcher($other->dir);
 
@@ -451,18 +458,6 @@ final class ProjectSwitcherTest extends TestCase
 
         $this->assertSame([(string) \realpath($other->dir)], $this->requested);
         $this->assertTrue($this->trust->isTrusted($other->dir));
-    }
-
-    public function testAProjectWithNothingToRunIsNotAskedAbout(): void
-    {
-        $other = new TempProject(['composer.json' => '{}']);
-        $switcher = $this->switcher($other->dir);
-
-        $switcher->open();
-        $this->editor->handleInput("\r");
-
-        $this->assertSame([(string) \realpath($other->dir)], $this->requested);
-        $this->assertFalse(EditorState::pickerOpen($this->editor), 'and nothing asked after the fact');
     }
 
     public function testAnAnswerThatCannotBeSavedOpensNothing(): void
@@ -486,6 +481,7 @@ final class ProjectSwitcherTest extends TestCase
      */
     public function testTrustingARestrictedSessionReopensItTrusted(): void
     {
+        $this->trustNothing = true;
         $this->untrustProjects();
         $switcher = $this->switcher();
         $here = $this->here->dir;
@@ -501,6 +497,7 @@ final class ProjectSwitcherTest extends TestCase
 
     public function testRestrictingATrustedSessionReopensItRestricted(): void
     {
+        $this->trustNothing = true;
         $this->untrustProjects();
         $this->trustHere = true;
         $switcher = $this->switcher();
@@ -529,6 +526,7 @@ final class ProjectSwitcherTest extends TestCase
     /** Reopening ends the session: unsaved edits hold it, and nothing is written meanwhile. */
     public function testADirtyBufferHoldsTheReopenAndTheAnswer(): void
     {
+        $this->trustNothing = true;
         $this->untrustProjects();
         $switcher = $this->switcher();
         $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');

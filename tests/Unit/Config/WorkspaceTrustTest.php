@@ -18,6 +18,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UntrustsProjects;
 use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * What an untrusted project may not do — and, for each place that used to let
@@ -146,23 +147,35 @@ final class WorkspaceTrustTest extends TestCase
         $this->assertTrue(new WorkspaceTrust($home->dir)->isTrusted($project->dir));
     }
 
-    /** @return iterable<string, array{array<string, string>, bool}> */
-    public static function whatIsWorthAsking(): iterable
+    /** @return iterable<string, array{array<string, string>}> */
+    public static function neverAnswered(): iterable
     {
-        yield 'a .porta.json' => [['.porta.json' => '{}'], true];
-        yield 'plugins of its own' => [['.porta/plugins/x/plugin.php' => '<?php'], true];
-        yield 'a vendor/bin' => [['vendor/bin/phpstan' => ''], true];
-        yield 'nothing of it' => [['composer.json' => '{}', '.porta/error.log' => ''], false];
+        yield 'a .porta.json' => [['.porta.json' => '{}']];
+        yield 'plugins of its own' => [['.porta/plugins/x/plugin.php' => '<?php']];
+        yield 'a vendor/bin' => [['vendor/bin/phpstan' => '']];
+        // What its language server would read, and run what it names.
+        yield 'nothing but a .phpantom.toml' => [['.phpantom.toml' => "[phpstan]\ncommand = \"./x\"\n"]];
+        yield 'nothing of it' => [['composer.json' => '{}', '.porta/error.log' => '']];
     }
 
-    /** @param array<string, string> $files */
-    #[DataProvider('whatIsWorthAsking')]
-    public function testOnlyAProjectHoldingSomethingToRunIsWorthAsking(array $files, bool $ask): void
+    /**
+     * Any project never answered for is asked about, whatever it holds: a
+     * restricted one starts no language server, so even a bare folder has
+     * something for the answer to change.
+     *
+     * @param array<string, string> $files
+     */
+    #[DataProvider('neverAnswered')]
+    public function testEveryProjectNeverAnsweredForIsWorthAsking(array $files): void
     {
+        $this->untrustProjects();
         $home = new TempProject();
         $project = new TempProject($files);
+        $trust = new WorkspaceTrust($home->dir);
 
-        $this->assertSame($ask, new WorkspaceTrust($home->dir)->shouldAsk($project->dir));
+        $this->assertTrue($trust->shouldAsk($project->dir));
+        $trust->restrict($project->dir);
+        $this->assertFalse($trust->shouldAsk($project->dir), 'answered: not again');
     }
 
     public function testTheConfigOfAnUntrustedProjectIsReadRestricted(): void
@@ -196,6 +209,29 @@ final class WorkspaceTrustTest extends TestCase
 
         new WorkspaceTrust($this->untrustingHome->dir)->trust($project->dir);
         $this->assertSame(['./evil-server'], ServerLocator::locateAll($project->dir)['*'][0]['command']);
+    }
+
+    /**
+     * Not even the user's own server starts: it would read the project's
+     * config and run what that names — phpantom ran a restricted project's
+     * `.phpantom.toml` `[phpstan] command`, driven end to end.
+     */
+    public function testAnUntrustedProjectStartsNoLanguageServerAtAll(): void
+    {
+        $this->untrustProjects();
+        new Filesystem()->dumpFile($this->untrustingHome->dir.'/.porta/config.json', \json_encode(['lsp' => ['php' => 'phpantom_lsp']], \JSON_THROW_ON_ERROR));
+        $project = new TempProject(['.phpantom.toml' => "[phpstan]\ncommand = \"./x\"\n", 'a.php' => '<?php']);
+        $plugin = ['php' => [['command' => ['/opt/phpantom_lsp'], 'name' => 'phpantom']]];
+
+        $this->assertTrue(ServerLocator::restricted($project->dir));
+        $this->assertSame([], ServerLocator::locateAll($project->dir, null, $plugin), 'neither the global one nor a plugin\'s');
+        $this->assertFalse(ServerLocator::restricted($project->dir, 'my-ls'), 'one named for this run is the user\'s call');
+        $this->assertSame(['my-ls'], ServerLocator::locateAll($project->dir, 'my-ls', $plugin)['*'][0]['command']);
+        $this->assertTrue(ServerLocator::restricted($project->dir, ''), 'an empty one names nothing');
+
+        new WorkspaceTrust($this->untrustingHome->dir)->trust($project->dir);
+        $this->assertFalse(ServerLocator::restricted($project->dir));
+        $this->assertSame(['phpantom_lsp'], ServerLocator::locateAll($project->dir, null, $plugin)['php'][0]['command'], 'trusted: the user\'s own again');
     }
 
     public function testAnUntrustedProjectsPluginsAreNotLoaded(): void

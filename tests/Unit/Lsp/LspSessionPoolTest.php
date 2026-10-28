@@ -615,6 +615,9 @@ final class LspSessionPoolTest extends TestCase
         $this->assertSame('disabled', $pool->statusFor('/tmp/proj/a.php'));
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $this->assertCount(0, $this->clients);
+
+        $pool->restrict();
+        $this->assertSame('off — project not trusted', $pool->statusFor('/tmp/proj/a.php'), 'the reason before any other state');
     }
 
     public function testStopStopsEveryStartedSession(): void

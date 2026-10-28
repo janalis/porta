@@ -242,7 +242,7 @@ final readonly class ProjectSwitcher
 
     /**
      * Opening a project is running it, once it is trusted: one that has never
-     * been answered for, and holds something to run, is asked about first.
+     * been answered for is asked about first ({@see WorkspaceTrust::shouldAsk()}).
      */
     private function askTrustThenOpen(string $root): void
     {
@@ -253,7 +253,7 @@ final readonly class ProjectSwitcher
         }
         $items = [
             ['label' => $this->translator->trans('Trust and Open'), 'hint' => $this->translator->trans('its own plugins and tools run'), 'value' => 'trusted'],
-            ['label' => $this->translator->trans('Open Restricted'), 'hint' => $this->translator->trans('nothing of the project\'s own runs'), 'value' => 'restricted'],
+            ['label' => $this->translator->trans('Open Restricted'), 'hint' => $this->translator->trans('nothing of the project\'s own runs, nor a language server'), 'value' => 'restricted'],
         ];
         $this->editor->openListOverlay($this->translator->trans('Trust %project%?', ['%project%' => \basename($root)]), $items, function (string $answer) use ($root): void {
             $saved = 'trusted' === $answer ? $this->trust->trust($root) : $this->trust->restrict($root);

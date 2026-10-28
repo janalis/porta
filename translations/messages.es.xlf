@@ -3274,10 +3274,6 @@
         <source>Open Restricted</source>
         <target>Abrir restringido</target>
       </trans-unit>
-      <trans-unit id="1147">
-        <source>nothing of the project's own runs</source>
-        <target>no se ejecuta nada propio del proyecto</target>
-      </trans-unit>
       <trans-unit id="1148">
         <source>Trust %project%?</source>
         <target>¿Confiar en %project%?</target>
@@ -3585,6 +3581,14 @@
       <trans-unit id="1224">
         <source>Debug output: %label%</source>
         <target>Salida de depuración: %label%</target>
+      </trans-unit>
+      <trans-unit id="1225">
+        <source>nothing of the project's own runs, nor a language server</source>
+        <target>no se ejecuta nada propio del proyecto, ni un servidor de lenguaje</target>
+      </trans-unit>
+      <trans-unit id="1226">
+        <source>off — project not trusted</source>
+        <target>desactivado — proyecto no confiable</target>
       </trans-unit>
     </body>
   </file>

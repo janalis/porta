@@ -81,6 +81,7 @@ final class LspSessionPool
     private array $published = [];
 
     private bool $disabled = false;
+    private bool $restricted = false;
 
     /** @var array<string, list<string>> languageId => servers a plugin declares whose binary is not there */
     private array $missing = [];
@@ -153,6 +154,16 @@ final class LspSessionPool
     {
         $this->disabled = true;
         $this->configured = true;
+    }
+
+    /**
+     * The project is not trusted, so no server is started for it
+     * ({@see ServerLocator::restricted()}): said as that, not as a server to
+     * install or enable — neither would help.
+     */
+    public function restrict(): void
+    {
+        $this->restricted = true;
     }
 
     /**
@@ -262,8 +273,15 @@ final class LspSessionPool
     /** The status-bar label for the server responsible for $path. */
     public function statusFor(?string $path): string
     {
-        if ($this->disabled || !$this->configured) {
-            return $this->disabled ? $this->translator->trans('disabled') : $this->translator->trans('no server');
+        // @custos-ignore DuplicateMatchCondition -- three different properties; its fix would drop the disabled arm and say "no server" for a disabled pool
+        $off = match (true) {
+            $this->restricted => $this->translator->trans('off — project not trusted'),
+            $this->disabled => $this->translator->trans('disabled'),
+            !$this->configured => $this->translator->trans('no server'),
+            default => null,
+        };
+        if (null !== $off) {
+            return $off;
         }
         $key = null === $path ? $this->fallbackKey() : $this->serverKeyFor($path);
 

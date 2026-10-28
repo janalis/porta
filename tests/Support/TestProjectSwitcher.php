@@ -20,8 +20,10 @@ use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
 /**
  * The real project switcher over doubles: a trust store with no home, so no
- * answer is ever written, and whatever bus a test listens on for the
- * `ProjectOpenRequested` a switch ends in.
+ * answer is ever written, trusting the suite's TempProjects as
+ * `PORTA_TRUSTED_FOLDERS` does — a switch goes straight through rather than
+ * ask — and whatever bus a test listens on for the `ProjectOpenRequested` a
+ * switch ends in.
  */
 final class TestProjectSwitcher
 {
@@ -42,7 +44,7 @@ final class TestProjectSwitcher
             $translator,
             $events ?? new EventDispatcher(),
             new UnsavedChangesGuard($buffers ?? new BufferManager(), $notifier, $translator, new MockClock()),
-            new WorkspaceTrust(null),
+            new WorkspaceTrust(null, [(string) \PORTA_TEST_TRUSTED_FOLDERS]),
             IdeConfig::load($rootDir),
             $rootDir,
         );

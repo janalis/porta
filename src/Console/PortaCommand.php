@@ -245,8 +245,11 @@ final class PortaCommand extends Command
     private function askTrust(SymfonyStyle $io, string $root): void
     {
         $io->writeln([
-            \sprintf('<comment>%s</comment> can run code of its own: its .porta/plugins, the binaries its .porta.json names, the tools in its vendor/bin.', $root),
-            'Untrusted, it opens restricted and none of that runs. You can change your mind from the palette (Trust This Project).',
+            \sprintf(
+                '<comment>%s</comment> can run code of its own: its .porta/plugins, the binaries its .porta.json names, the tools in its vendor/bin, and whatever its config tells a language server to run.',
+                $root,
+            ),
+            'Untrusted, it opens restricted: none of that runs, and neither do language servers, so there is no completion or diagnostics. You can change your mind from the palette (Trust This Project).',
         ]);
         $trusted = $io->confirm('Trust this project?', default: false);
         if (!($trusted ? $this->trust->trust($root) : $this->trust->restrict($root))) {

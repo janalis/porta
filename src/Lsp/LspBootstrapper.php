@@ -43,6 +43,9 @@ final readonly class LspBootstrapper
 
             return;
         }
+        if (ServerLocator::restricted($this->rootDir, $this->lspCommand)) {
+            $this->lsp->restrict(); // locateAll() below answers no server: say why
+        }
         $this->lsp->missing($this->pluginServers->missingServers());
         $this->lsp->configure(
             ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()),

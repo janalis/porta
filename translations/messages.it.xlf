@@ -3274,10 +3274,6 @@
         <source>Open Restricted</source>
         <target>Apri in modalità limitata</target>
       </trans-unit>
-      <trans-unit id="1147">
-        <source>nothing of the project's own runs</source>
-        <target>nulla del progetto stesso viene eseguito</target>
-      </trans-unit>
       <trans-unit id="1148">
         <source>Trust %project%?</source>
         <target>Considerare attendibile %project%?</target>
@@ -3585,6 +3581,14 @@
       <trans-unit id="1224">
         <source>Debug output: %label%</source>
         <target>Output del debug: %label%</target>
+      </trans-unit>
+      <trans-unit id="1225">
+        <source>nothing of the project's own runs, nor a language server</source>
+        <target>nulla del progetto stesso viene eseguito, né un server di linguaggio</target>
+      </trans-unit>
+      <trans-unit id="1226">
+        <source>off — project not trusted</source>
+        <target>disattivato — progetto non attendibile</target>
       </trans-unit>
     </body>
   </file>
