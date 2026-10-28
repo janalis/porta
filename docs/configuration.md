@@ -117,8 +117,9 @@ something to run:
   symfony-lsp's `php-command` and `runtime-indexing`, review's `hosts` and
   `provider`, an `outputDir`, mcp's `allow…` permissions for agents);
 - tools are found on your `PATH`, never in its `vendor/bin`;
-- phpstan, psalm and php-cs-fixer do not run at all — their own config files
-  can execute the project's PHP, whichever binary reads them;
+- phpstan, psalm, php-cs-fixer and mago do not run at all — their own config
+  files can execute the project's PHP or a program it names (a `mago.toml`
+  `[extension-hosts]` command), whichever binary reads them;
 - git ignores the repository's `core.fsmonitor`, and the filter and diff
   drivers its `.gitattributes` name.
 

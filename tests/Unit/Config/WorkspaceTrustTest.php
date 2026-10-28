@@ -299,9 +299,14 @@ final class WorkspaceTrustTest extends TestCase
         yield 'phpstan' => ['phpstan', true];
         yield 'psalm' => ['psalm', true];
         yield 'php-cs-fixer' => ['php-cs-fixer', true];
-        // These read the project as data.
-        yield 'mago' => ['mago', false];
+        // A `mago.toml` `[extension-hosts.*] command` is started by `mago lint` (driven with a canary).
+        yield 'mago' => ['mago', true];
+        // These read the project as data: phpactor only serves (no server runs restricted);
+        // `phpantom_lsp fix` ignores a `.phpantom.toml`'s commands (driven with a canary —
+        // its `format`, which does not, is no command of the plugin's); custos.json is settings.
         yield 'phpactor' => ['phpactor', false];
+        yield 'phpantom' => ['phpantom', false];
+        yield 'custos' => ['custos', false];
     }
 
     #[DataProvider('bundledTools')]
