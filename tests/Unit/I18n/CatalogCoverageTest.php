@@ -186,9 +186,15 @@ final class CatalogCoverageTest extends TestCase
             ->files()
             ->in(\array_values(\array_filter($dirs, \is_dir(...))))
             ->name('/\\.(php|json|md)$/')
-            ->exclude(['vendor', 'translations', 'coverage', 'node_modules', ...$alsoExclude])
+            // .phpunit.cache: the test container's dump and 15k result files,
+            // which CI restores from run to run — reading them took the scan
+            // past the 10 s test limit there, and no UI string is used in them
+            ->exclude(['vendor', 'translations', 'coverage', 'node_modules', '.phpunit.cache', ...$alsoExclude])
             ->ignoreDotFiles(false)
-            ->ignoreVCS(true);
+            ->ignoreVCS(true)
+            // plugins/ and src/ before tests/: most strings are found in the
+            // code, and a str_contains that hits early stops early — half the search
+            ->sortByName();
 
         $corpus = '';
         foreach ($tree as $file) {
