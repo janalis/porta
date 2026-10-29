@@ -127,7 +127,9 @@ something to run:
   `uploadpack`. Your own value for the same key still applies. Its
   `.gitattributes` are ignored, git:// and ext:: remotes are refused,
   automatic gc is off, and git does not look into submodules (their changes
-  do not show);
+  do not show). Where a name cannot be overridden, or git cannot read the
+  repository's config (a malformed one, a git older than 2.26), git does not
+  run there at all;
 - a Mermaid diagram's remote images are not fetched — the Mermaid CLI's
   browser is kept off the network, so opening one tells no one you did.
 
