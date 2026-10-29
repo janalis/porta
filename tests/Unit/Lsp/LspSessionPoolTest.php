@@ -626,7 +626,7 @@ final class LspSessionPoolTest extends TestCase
         $php = ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]];
         $pool = $this->pool([], configure: Presence::Without);
         $pool->restrict();
-        $pool->configure($php, static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
+        $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
 
         $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
         $this->assertFalse($pool->reconfigure($php), 'nothing changed that would start');
@@ -636,6 +636,26 @@ final class LspSessionPoolTest extends TestCase
 
         $this->assertCount(0, $this->clients);
         $this->assertSame('off — project not trusted', $pool->statusFor('/tmp/proj/a.php'), 'and the bar says so, not something else');
+    }
+
+    /**
+     * What the boot hands a restricted pool is what it runs — a server run
+     * elsewhere — and a language it does not serve still says why it has none.
+     */
+    public function testARestrictedPoolRunsTheServersItWasBootedWith(): void
+    {
+        $relayed = ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]];
+        $pool = $this->pool([], configure: Presence::Without);
+        $pool->restrict();
+        $pool->configure($relayed, static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
+
+        $pool->notifyDidOpen('/tmp/proj/a.php', 'x', 'php', 1);
+
+        $this->assertCount(1, $this->clients);
+        $this->assertStringStartsWith('assist', $pool->statusFor('/tmp/proj/a.php'));
+        $this->assertSame('off — project not trusted', $pool->statusFor('/tmp/proj/b.ts'), 'a language it does not serve');
+        $pool->reload(['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]]);
+        $this->assertStringStartsWith('assist', $pool->statusFor('/tmp/proj/a.php'), 'a reload keeps what it was booted with');
     }
 
     public function testStopStopsEveryStartedSession(): void

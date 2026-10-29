@@ -347,7 +347,9 @@ final class PluginApi
      * claim wins and later ones are dropped; a {@see ServerRole::Supplementary}
      * claim runs BESIDE it — it receives the whole document lifecycle and its
      * answers are merged into the mergeable verbs — and is promoted to primary
-     * when nothing else claims the language at all.
+     * when nothing else claims the language at all. A {@see ServerRole::Relayed}
+     * claim is a primary run elsewhere, reading nothing of this project: the
+     * one kind a restricted project still starts.
      *
      * $initializationOptions, when given, returns the LSP `initializationOptions`
      * sent in the server's initialize handshake. Like the command resolver it is

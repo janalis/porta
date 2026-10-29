@@ -109,7 +109,9 @@ something to run:
 - no language server starts, not even one you configured globally — a server
   reads the project's config and runs what it names — so there is no
   completion or diagnostics, and the status bar says `LSP:off — project not
-  trusted` (an explicit `--lsp` on the command line still starts that one);
+  trusted` (an explicit `--lsp` on the command line still starts that one, and
+  so does one run elsewhere that reads nothing of the project: assist's relay
+  to the host's server);
 - its `.porta/plugins` are not loaded;
 - its `.porta.json` loses `lsp`, `enabledPlugins`, each `languages.<id>.runCommand`
   and `debug`, and every plugin setting naming a program or a command line
@@ -368,4 +370,5 @@ git; restore any snapshot with `Ctrl+Alt+H`.
 | `PORTA_LSP` | LSP server command (same format as the `lsp` config key) |
 | `PORTA_KEYMAP_PLATFORM` | `macos`, `windows` or `linux`: the platform the `auto` keymap takes for the one you type on, instead of detecting it — for a shell profile on a server you reach from several machines |
 | `PORTA_TRUSTED_FOLDERS` | `:`-separated folders whose every project is trusted without asking — for a CI box or a sandbox ([Trusting a project](#trusting-a-project)) |
+| `PORTA_PLUGINS` | `,`-separated bundled plugins to turn on for this run, on top of `enabledPlugins` — kept in a restricted project, since the environment is yours (`porta assist` opens a host's copy restricted with `assist` on this way). Toggling a plugin in Settings during such a run saves the list it shows, these included |
 | `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) and scratch files (`~/.porta/scratches`) |

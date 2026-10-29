@@ -661,6 +661,34 @@ final class PluginManagerTest extends TestCase
     }
 
     /**
+     * A server run elsewhere is the language's own, as a primary is — the
+     * first claim wins, and a supplementary one runs beside it — and it is
+     * the only kind {@see PluginManager::relayedServers()} names.
+     */
+    public function testARelayedClaimIsTheLanguagesServerAndTheOnlyOneRelayed(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $settings = new PluginSettings('/p', []);
+        $relay = $manager->api('assist', '/p', $settings);
+        $relay->registerLanguageServer('php', 'assist', static fn (): array => ['/bin/relay'], null, ServerRole::Relayed);
+        $manager->commit($relay);
+        foreach (['phpantom' => ServerRole::Primary, 'symfony-lsp' => ServerRole::Supplementary] as $plugin => $role) {
+            $api = $manager->api($plugin, '/p', $settings);
+            $api->registerLanguageServer('php', $plugin, static fn (): array => ['/bin/'.$plugin], null, $role);
+            $api->registerLanguageServer('typescript', $plugin, static fn (): array => ['/bin/'.$plugin], null, $role);
+            $manager->commit($api);
+        }
+
+        $this->assertSame(
+            ['command' => ['/bin/relay'], 'name' => 'assist'],
+            $manager->languageServers()['php'][0] ?? null,
+            'the first claim leads; the later primary is dropped',
+        );
+        $this->assertCount(2, $manager->languageServers()['php'] ?? [], 'the supplementary one beside it');
+        $this->assertSame(['php' => [['command' => ['/bin/relay'], 'name' => 'assist']]], $manager->relayedServers());
+    }
+
+    /**
      * A supplementary claim with nothing beside it IS the language's server.
      *
      * That is what keeps symfony-lsp serving php on a project with no PHP

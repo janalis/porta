@@ -36,7 +36,7 @@ final readonly class LanguageServerMap
         $beside = [];
         foreach ($declarations as $declaration) {
             $language = $declaration['languageId'];
-            $isPrimary = ServerRole::Primary === $declaration['role'];
+            $isPrimary = ServerRole::Supplementary !== $declaration['role'];
             if ($isPrimary && \array_key_exists($language, $primary)) {
                 continue; // an earlier provider already IS this language's server
             }

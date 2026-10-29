@@ -31,6 +31,11 @@ final class LspReconfigurerTest extends TestCase
                     return [];
                 }
 
+                public function relayedServers(): array
+                {
+                    return [];
+                }
+
                 public function missingServers(): array
                 {
                     return [];

@@ -35,4 +35,13 @@ enum ServerRole
      * accident that produced it.
      */
     case Supplementary;
+
+    /**
+     * The language's server, as {@see Primary} is — run somewhere else, and
+     * reading nothing of this project: assist's relay to the host's server,
+     * where the host's own config and trust decide what it runs. The one
+     * kind a restricted project still starts, since nothing in the project
+     * can steer it.
+     */
+    case Relayed;
 }

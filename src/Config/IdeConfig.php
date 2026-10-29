@@ -184,6 +184,11 @@ final readonly class IdeConfig
      * LiveKeybindings::rebuild() keeps the global layer for free because it
      * re-reads through here. Merging any later pays for all of that and buys
      * nothing.
+     *
+     * `PORTA_PLUGINS` — a comma-separated list — turns bundled plugins on for
+     * this run, on top of what the layers enable. The environment is the
+     * user's, not the project's, so a restricted project keeps them: it is how
+     * `porta assist` opens a host's project restricted with assist on.
      */
     public static function load(string $rootDir): self
     {
@@ -200,7 +205,9 @@ final readonly class IdeConfig
             }
         }
 
-        return self::merge($layers, $warnings, $trusted);
+        $requested = \array_filter(\array_map(\trim(...), \explode(',', (string) \getenv('PORTA_PLUGINS'))), static fn (string $name): bool => '' !== $name);
+
+        return self::merge($layers, $warnings, $trusted, \array_values($requested));
     }
 
     /**
@@ -294,8 +301,9 @@ final readonly class IdeConfig
      *
      * @param list<array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}> $layers
      * @param list<ConfigWarning> $warnings
+     * @param list<string>        $requested bundled plugins this run turns on besides — `PORTA_PLUGINS`
      */
-    private static function merge(array $layers, array $warnings, bool $trusted): self
+    private static function merge(array $layers, array $warnings, bool $trusted, array $requested): self
     {
         $keymap = [];
         $settings = self::DEFAULT_SETTINGS;
@@ -337,7 +345,7 @@ final readonly class IdeConfig
             $lsp,
             $plugins,
             \array_values(\array_unique($disabled)),
-            $enabled ?? self::DEFAULT_ENABLED_PLUGINS,
+            \array_values(\array_unique([...($enabled ?? self::DEFAULT_ENABLED_PLUGINS), ...$requested])),
             $highlight ?? self::NO_HIGHLIGHT,
             $warnings,
             $trusted,

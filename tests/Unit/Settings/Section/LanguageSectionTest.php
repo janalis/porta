@@ -61,6 +61,11 @@ final class LanguageSectionTest extends TestCase
                     return [];
                 }
 
+                public function relayedServers(): array
+                {
+                    return [];
+                }
+
                 public function missingServers(): array
                 {
                     return [];

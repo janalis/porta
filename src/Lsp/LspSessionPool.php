@@ -130,7 +130,7 @@ final class LspSessionPool
      */
     public function configure(array $servers, \Closure $onLog, \Closure $onDiagnostics, \Closure $onApplyEdit, ?\Closure $onShowMessage = null, ?\Closure $onProgress = null): void
     {
-        $this->servers = $this->restricted ? [] : $servers;
+        $this->servers = $servers;
         $this->onLog = $onLog;
         $this->onDiagnostics = $onDiagnostics;
         $this->onApplyEdit = $onApplyEdit;
@@ -157,12 +157,13 @@ final class LspSessionPool
     }
 
     /**
-     * The project is not trusted, so no server is started for it
-     * ({@see ServerLocator::restricted()}): said as that, not as a server to
-     * install or enable — neither would help. Decided once, at boot, as the
-     * rest of a session's trust is: a map handed in later — another window
-     * trusted the project meanwhile — is not taken, so what the bar says and
-     * what runs never part.
+     * The project is not trusted, so no server of its own is started for it
+     * ({@see ServerLocator::restricted()}) — only one run elsewhere, which
+     * the boot hands {@see configure()}: a language without one says as
+     * much, not as a server to install or enable — neither would help.
+     * Decided once, at boot, as the rest of a session's trust is: a map
+     * handed in later — another window trusted the project meanwhile — is
+     * not taken, so what the bar says and what runs never part.
      */
     public function restrict(): void
     {
@@ -217,7 +218,7 @@ final class LspSessionPool
         $this->statuses = [];
         $this->startFailures = [];
         $this->upSince = [];
-        $this->servers = $this->restricted ? [] : $servers;
+        $this->servers = $this->restricted ? $this->servers : $servers;
     }
 
     /**
@@ -277,18 +278,16 @@ final class LspSessionPool
     public function statusFor(?string $path): string
     {
         // @custos-ignore DuplicateMatchCondition -- three different properties; its fix would drop the disabled arm and say "no server" for a disabled pool
+        $key = null === $path ? $this->fallbackKey() : $this->serverKeyFor($path);
         $off = match (true) {
-            $this->restricted => $this->translator->trans('off — project not trusted'),
+            // unless a server run elsewhere serves it: the one kind restricted starts
+            $this->restricted && null === $key => $this->translator->trans('off — project not trusted'),
             $this->disabled => $this->translator->trans('disabled'),
             !$this->configured => $this->translator->trans('no server'),
             default => null,
         };
-        if (null !== $off) {
-            return $off;
-        }
-        $key = null === $path ? $this->fallbackKey() : $this->serverKeyFor($path);
 
-        return null === $key ? $this->unservedStatus($path) : self::describe($this->servers[$key], $this->statuses);
+        return $off ?? (null === $key ? $this->unservedStatus($path) : self::describe($this->servers[$key], $this->statuses));
     }
 
     /** The status-bar label when no configured server answers for $path. */

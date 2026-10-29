@@ -21,6 +21,15 @@ interface LanguageServerProvider
     public function languageServers(): array;
 
     /**
+     * {@see languageServers()} of only the ones run elsewhere, which read
+     * nothing of the project ({@see \Porta\Plugin\Api\ServerRole::Relayed}):
+     * all a restricted project starts.
+     *
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
+     */
+    public function relayedServers(): array;
+
+    /**
      * The servers a plugin declares and cannot launch — no binary found —
      * by languageId: what the status bar names instead of "no server", so
      * an enabled plugin's missing binary is not mistaken for none enabled.

@@ -321,6 +321,15 @@ final class PluginManager implements
     }
 
     #[\Override]
+    public function relayedServers(): array
+    {
+        return new LanguageServerMap($this->reportFailure(...))->resolve(\array_values(\array_filter(
+            $this->languageServers,
+            static fn (array $declaration): bool => ServerRole::Relayed === $declaration['role'],
+        )));
+    }
+
+    #[\Override]
     public function missingServers(): array
     {
         return new LanguageServerMap($this->reportFailure(...))->missing($this->languageServers);

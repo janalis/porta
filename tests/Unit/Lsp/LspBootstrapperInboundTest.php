@@ -50,7 +50,8 @@ final class LspBootstrapperInboundTest extends TestCase
     private ToastCenter $toasts;
     private ServerProgress $progress;
 
-    private function boot(string $root = '/p', ?string $lspCommand = 'php-ls'): LspSessionPool
+    /** @param array<string, non-empty-list<array{command: list<string>, name: string}>> $relayed the plugins' servers run elsewhere */
+    private function boot(string $root = '/p', ?string $lspCommand = 'php-ls', array $relayed = []): LspSessionPool
     {
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 20));
         $this->toasts = new ToastCenter(new FakeScheduler(), $tui);
@@ -83,11 +84,21 @@ final class LspBootstrapperInboundTest extends TestCase
             #[\Override]
             public function applyDiagnostics(string $uri, array $byLine, string $owner): void {}
         };
-        $plugins = new class implements LanguageServerProvider {
+        $plugins = new readonly class($relayed) implements LanguageServerProvider {
+            /** @param array<string, non-empty-list<array{command: list<string>, name: string}>> $relayed */
+            public function __construct(
+                private array $relayed,
+            ) {}
+
             #[\Override]
             public function languageServers(): array
             {
                 return [];
+            }
+
+            public function relayedServers(): array
+            {
+                return $this->relayed;
             }
 
             public function missingServers(): array
@@ -129,6 +140,18 @@ final class LspBootstrapperInboundTest extends TestCase
         $this->assertSame(0, $this->launched, 'no session was launched');
         $this->assertSame('off — project not trusted', $pool->statusFor($project->dir.'/a.php'));
         $this->assertSame('php-ls', $this->boot($project->dir, 'php-ls')->statusFor($project->dir.'/a.php'), 'one named for this run starts');
+    }
+
+    /** A server run elsewhere — assist's relay to the host — is the one an untrusted project still starts. */
+    public function testAnUntrustedProjectStartsAServerRunElsewhere(): void
+    {
+        $this->untrustProjects();
+        $project = new TempProject(['a.php' => '<?php']);
+
+        $pool = $this->boot($project->dir, null, ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]]);
+
+        $this->assertSame(1, $this->launched);
+        $this->assertStringStartsWith('assist', $pool->statusFor($project->dir.'/a.php'));
     }
 
     public function testAServerMessageBecomesAToastAttributedToThatServer(): void
