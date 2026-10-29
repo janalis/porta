@@ -115,7 +115,7 @@ something to run:
   and `debug`, and every plugin setting naming a program or a command line
   (`binary`, `path`, `command`, `dotPath`, `ghBinary`, `svgConverter`, `args`,
   symfony-lsp's `php-command` and `runtime-indexing`, review's `hosts` and
-  `provider`, an `outputDir`, mcp's `allow…` permissions for agents);
+  `provider`, an `outputDir`, git's `worktreeFolder`, mcp's `allow…` permissions for agents);
 - tools are found on your `PATH`, never in its `vendor/bin`;
 - phpstan, psalm, php-cs-fixer and mago do not run at all — their own config
   files can execute the project's PHP or a program it names (a `mago.toml`

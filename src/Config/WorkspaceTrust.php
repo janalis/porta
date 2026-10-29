@@ -45,12 +45,12 @@ final readonly class WorkspaceTrust
     /**
      * A plugin setting that names a program, a command line, where a token
      * goes or where files are written — `binary`, `path`, `command`, `dotPath`,
-     * `ghBinary`, `svgConverter`, `outputDir`… — or that lets an agent act:
+     * `ghBinary`, `svgConverter`, `outputDir`, git's `worktreeFolder`… — or that lets an agent act:
      * mcp's `allowRuns`, `allowFileOps`, `allowEdits`, `allowSave`.
      * Matched by shape, so a third-party plugin naming its own the same way is
      * covered too.
      */
-    private const string RUNNABLE_SETTING = '/(?:path|binary|command|converter|dir)$|^allow/i';
+    private const string RUNNABLE_SETTING = '/(?:path|binary|command|converter|dir|folder)$|^allow/i';
 
     /** Runnable plugin settings whose names do not say so. */
     private const array RUNNABLE_SETTINGS = ['plantuml', 'runtime-indexing', 'args', 'hosts', 'provider'];

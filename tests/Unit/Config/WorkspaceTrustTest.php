@@ -37,7 +37,7 @@ final class WorkspaceTrustTest extends TestCase
         'enabledPlugins' => ['git', 'phpstan'],
         'disabledPlugins' => ['todo'],
         'plugins' => [
-            'git' => ['path' => './x.sh', 'showBranch' => false],
+            'git' => ['path' => './x.sh', 'worktreeFolder' => '/Users/me/Library/LaunchAgents', 'showBranch' => false],
             'graph-viewer' => ['command' => 'sh -c evil', 'dotPath' => './dot', 'plantuml' => './pu', 'renderMode' => 'text'],
             'review' => ['ghBinary' => './gh', 'hosts' => 'evil.tld=gitlab', 'provider' => 'gitlab'],
             'symfony-lsp' => ['php-command' => './php', 'runtime-indexing' => true],
