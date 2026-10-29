@@ -124,8 +124,25 @@ jobs:
           key: phpunit-${{ matrix.name }}-${{ github.run_id }}
           restore-keys: phpunit-${{ matrix.name }}-
       - run: composer install --no-interaction --no-progress --classmap-authoritative
+      # A deadline of its own, under the job's: a wedged worker then FAILS
+      # this step instead of the job timing out — a cancelled job runs no step
+      # after it — and the next step names the test each worker was still in,
+      # from paratest's per-worker teamcity logs (testing.md, the paratest wedge).
       - name: Tests
-        run: composer test
+        timeout-minutes: 20
+        run: |
+          mkdir -p "$RUNNER_TEMP/paratest"
+          composer test -- --log-teamcity="$RUNNER_TEMP/teamcity.log" --tmp-dir="$RUNNER_TEMP/paratest"
+      - name: Name a hung test
+        if: failure()
+        run: |
+          ps -eo pid,ppid,etime,pcpu,args | grep '[p]hp' || true
+          for log in "$RUNNER_TEMP"/paratest/*/*_teamcity; do
+            last=$(grep -E "##teamcity\[test(Started|Finished)" "$log" | tail -1)
+            case "$last" in
+              *testStarted*) echo "unfinished in $(basename "$log"): $(sed -E "s/.*locationHint='[^']*::([^']*::[^']*)'.*/\1/" <<<"$last")" ;;
+            esac
+          done
 
   # Two jobs, not one: the src pass and the plugin shards share no state and
   # produce separate reports, so the long pole is now the longer of the two

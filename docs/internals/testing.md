@@ -501,6 +501,13 @@ either is necessary is untested.
 
 Diagnose before killing — the evidence above is gone the moment the process is.
 
+On CI, the tests step has a 20-minute deadline under the job's 30. A wedge then
+fails that step rather than cancelling the job, and the `Name a hung test` step
+prints the php processes still alive and, from each worker's teamcity log, the
+test it started and never finished. The run on 2026-10-29 that hung at 15222 of
+15278 still had php children when it was cancelled, so it was not this
+signature's empty process tree.
+
 ## Mutation, not coverage
 
 **An invariant assertion is not a guard until a mutation kills it.** Coverage
