@@ -933,8 +933,10 @@ without requiring mcp; they are served whenever it is enabled.
   `Reads`, `Edits` (the IDE only — a tab, a message, an undoable buffer
   edit), `Writes` (a file on disk, a process), or `Publishes` (something
   other people see, such as a comment on a forge). An agent's client uses it to
-  run a `Reads` tool without asking and to ask first for the rest. A tool with
-  none says nothing, and a careful client treats it as the worst case.
+  run a `Reads` tool without asking and to ask first for the rest, and the
+  mcp plugin offers a `Publishes` tool only once the user turns its
+  `allowPublish` on. A tool with none says nothing, and a careful client
+  treats it as the worst case.
 
 A plugin that serves tools reads them with `tools()` and re-reads on
 `ToolsChanged`.
