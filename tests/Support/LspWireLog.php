@@ -19,7 +19,12 @@ final class LspWireLog
             return [];
         }
         $options = [];
-        foreach (\array_filter(\explode("\n", (string) \file_get_contents($log))) as $line) {
+        $lines = \explode("\n", (string) \file_get_contents($log));
+        // Read while the server appends: what follows the last newline is a
+        // line not yet whole — CI once caught one half-written, and its JSON
+        // threw. It is read on the next look, once its newline is there.
+        \array_pop($lines);
+        foreach (\array_filter($lines) as $line) {
             /** @var array{method?: string, params?: array{initializationOptions?: array<string, mixed>}}|null $message */
             $message = \json_decode($line, associative: true, flags: \JSON_THROW_ON_ERROR);
             if (\is_array($message) && 'initialize' === ($message['method'] ?? null)) {
