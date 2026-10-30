@@ -131,6 +131,8 @@ final class PortaCommand extends Command
         bool $selfUpdate = false,
         #[Option('With --git-setup: print the git config commands; with --self-update: only say what is available')]
         bool $dryRun = false,
+        #[Option('Turn a bundled plugin on for this project, besides what its config enables (repeatable)')]
+        array $plugin = [],
     ): int {
         // Failures speak on stderr so a piped stdout stays clean (the
         // CoverageCheckCommand pattern); CommandTester's plain output has no
@@ -152,7 +154,7 @@ final class PortaCommand extends Command
         return match (true) {
             $gitSetup => $this->setUpGit($output, $io, $dryRun),
             $selfUpdate => $this->updateSelf($output, $io, $dryRun),
-            default => $this->open($output, $errors, $io, $path, $line, $diff, $merge, $lsp, $noLsp),
+            default => $this->open($output, $errors, $io, $path, $line, $diff, $merge, $lsp, $noLsp, \array_values(\array_map(\strval(...), $plugin))),
         };
     }
 
@@ -161,6 +163,7 @@ final class PortaCommand extends Command
      * opened in the IDE.
      *
      * @param list<string> $path
+     * @param list<string> $plugins
      */
     // @mago-expect lint:no-boolean-flag-parameter -- the command's own flags, passed through from __invoke().
     private function open(
@@ -173,10 +176,11 @@ final class PortaCommand extends Command
         bool $merge,
         ?string $lsp,
         bool $noLsp,
+        array $plugins,
     ): int {
         $cwd = (string) \getcwd();
         try {
-            $workspace = $diff || $merge ? self::toolWorkspace($cwd, $path, $merge) : self::editWorkspace($cwd, $path[0] ?? $cwd, $line);
+            $workspace = $diff || $merge ? self::toolWorkspace($cwd, $path, $merge) : self::editWorkspace($cwd, $path[0] ?? $cwd, $line, $plugins);
         } catch (\InvalidArgumentException $e) {
             $io->error('porta: '.$e->getMessage());
 
@@ -275,12 +279,13 @@ final class PortaCommand extends Command
     }
 
     /** An ordinary launch: the target's workspace, --line overriding the file:line shorthand. */
-    private static function editWorkspace(string $cwd, string $target, ?string $line): Workspace
+    /** @param list<string> $plugins */
+    private static function editWorkspace(string $cwd, string $target, ?string $line, array $plugins): Workspace
     {
         $workspace = new WorkspaceResolver()->resolve($target, $cwd);
         $openAt = null !== $line ? \max(1, (int) $line) : $workspace->line;
 
-        return new Workspace($workspace->rootDir, $workspace->initialFile, $openAt);
+        return new Workspace($workspace->rootDir, $workspace->initialFile, $openAt, plugins: $plugins);
     }
 
     /**
@@ -410,6 +415,7 @@ final class PortaCommand extends Command
         $root = $workspace->rootDir;
         $file = $workspace->initialFile;
         $line = $workspace->line;
+        $plugins = $workspace->plugins;
         // Each project is its own Ide with its own container, run one after the
         // other in the one process. Switching project is therefore an ordinary
         // QUIT — buffers saved, terminal restored, plugins shut down — followed
@@ -428,6 +434,7 @@ final class PortaCommand extends Command
                 // prelude covers PHP + autoload, which no later clock can see.
                 bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? \microtime(true)),
                 tool: $workspace->tool,
+                plugins: $plugins,
             );
             $onBooted();
             $ide->run();
@@ -437,7 +444,9 @@ final class PortaCommand extends Command
                 return $ide->exitCode();
             }
             // The next project opens on whatever its own session restored, the
-            // way a fresh launch with no file argument does.
+            // way a fresh launch with no file argument does — and on its own
+            // config: --plugin named the project it was given with.
+            $plugins = $next === $root ? $plugins : [];
             $root = $next;
             $file = null;
             $line = null;

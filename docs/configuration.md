@@ -113,7 +113,10 @@ something to run:
   so does one run elsewhere that reads nothing of the project: assist's relay
   to the host's server);
 - its `.porta/plugins` are not loaded;
-- its `.porta.json` loses `lsp`, `enabledPlugins`, each `languages.<id>.runCommand`
+- its `.porta.json` loses `lsp`, `enabledPlugins` (`porta --plugin <name>`
+  still turns a bundled plugin on, for that project and that launch: the
+  command line is yours, and `porta assist` opens a host's copy restricted
+  with `assist` on this way), each `languages.<id>.runCommand`
   and `debug`, and every plugin setting naming a program or a command line
   (`binary`, `path`, `command`, `dotPath`, `ghBinary`, `svgConverter`, `args`,
   symfony-lsp's `php-command` and `runtime-indexing`, review's `hosts` and
@@ -370,5 +373,4 @@ git; restore any snapshot with `Ctrl+Alt+H`.
 | `PORTA_LSP` | LSP server command (same format as the `lsp` config key) |
 | `PORTA_KEYMAP_PLATFORM` | `macos`, `windows` or `linux`: the platform the `auto` keymap takes for the one you type on, instead of detecting it — for a shell profile on a server you reach from several machines |
 | `PORTA_TRUSTED_FOLDERS` | `:`-separated folders whose every project is trusted without asking — for a CI box or a sandbox ([Trusting a project](#trusting-a-project)) |
-| `PORTA_PLUGINS` | `,`-separated bundled plugins to turn on for this run, on top of `enabledPlugins` — kept in a restricted project, since the environment is yours (`porta assist` opens a host's copy restricted with `assist` on this way). Toggling a plugin in Settings during such a run saves the list it shows, these included |
 | `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) and scratch files (`~/.porta/scratches`) |

@@ -161,13 +161,20 @@ final class LspSessionPool
      * ({@see ServerLocator::restricted()}) — only one run elsewhere, which
      * the boot hands {@see configure()}: a language without one says as
      * much, not as a server to install or enable — neither would help.
-     * Decided once, at boot, as the rest of a session's trust is: a map
-     * handed in later — another window trusted the project meanwhile — is
-     * not taken, so what the bar says and what runs never part.
+     * Decided once, at boot, as the rest of a session's trust is:
+     * {@see LspReconfigurer} reads it back, so a map handed in later is
+     * again only those — whatever another window answered meanwhile — and
+     * what the bar says and what runs never part.
      */
     public function restrict(): void
     {
         $this->restricted = true;
+    }
+
+    /** Whether {@see restrict()} was: only a server run elsewhere may start. */
+    public function isRestricted(): bool
+    {
+        return $this->restricted;
     }
 
     /**
@@ -185,8 +192,8 @@ final class LspSessionPool
      */
     public function reconfigure(array $servers): bool
     {
-        if ($this->restricted || ($this->configured && !$this->disabled && $servers === $this->servers)) {
-            return false; // restricted: whatever the map says now, nothing of it starts
+        if ($this->configured && !$this->disabled && $servers === $this->servers) {
+            return false;
         }
         $this->reload($servers);
 
@@ -218,7 +225,7 @@ final class LspSessionPool
         $this->statuses = [];
         $this->startFailures = [];
         $this->upSince = [];
-        $this->servers = $this->restricted ? $this->servers : $servers;
+        $this->servers = $servers;
     }
 
     /**

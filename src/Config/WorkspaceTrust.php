@@ -22,7 +22,8 @@ use Symfony\Component\Filesystem\Filesystem;
  * a php-cs-fixer config) do not run. Nor does any language server, even one
  * configured globally: a server reads the project's own config and runs what
  * it names (phpantom ran a `.phpantom.toml`'s `[phpstan] command`, and the
- * project's `vendor/bin/phpstan`, in a project opened restricted). Everything
+ * project's `vendor/bin/phpstan`, in a project opened restricted) — only one
+ * a plugin declares run elsewhere, reading nothing of the project. Everything
  * else the user configured globally still applies — trust is about the
  * project's say, not the user's.
  *

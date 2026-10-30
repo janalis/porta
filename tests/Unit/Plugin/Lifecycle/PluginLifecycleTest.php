@@ -44,7 +44,8 @@ final class PluginLifecycleTest extends TestCase
     private ?Ide $ide = null;
 
     /** @param array<string, mixed> $porta merged into .porta.json */
-    private function boot(array $porta = []): Ide
+    /** @param list<string> $plugins what `porta --plugin` names */
+    private function boot(array $porta = [], array $plugins = []): Ide
     {
         $files = [];
         if ([] !== $porta) {
@@ -53,7 +54,7 @@ final class PluginLifecycleTest extends TestCase
         $this->project = new TempProject($files);
         new OnboardingState($this->project->dir)->markWelcomeSeen();
 
-        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 100, rows: 30));
+        $this->ide = new Ide($this->project->dir, null, new VirtualTerminal(columns: 100, rows: 30), plugins: $plugins);
         // The lifecycle persists through the session's SettingsScope, which
         // defaults to Global — the suite's shared fixture home. These tests
         // read the project's own .porta.json back, so pin it to Project.
@@ -129,6 +130,30 @@ final class PluginLifecycleTest extends TestCase
         $this->assertNotContains('acme', $lifecycle->listedNames());
         $lifecycle->enable('acme');
         $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'the project\'s code never ran');
+    }
+
+    /** `porta --plugin` turns on a bundled plugin the config leaves off — for that launch. */
+    public function testABundledPluginTheLaunchNamesIsOn(): void
+    {
+        $embedded = new TempProject(['kit/plugin.php' => <<<'PHP'
+                <?php
+                return new class implements Porta\Plugin\Api\PortaPlugin {
+                    public function name(): string { return 'kit'; }
+                    public function activate(Porta\Plugin\Api\PluginApi $api): void
+                    {
+                        $api->registerCommand('go', 'kit: go', static fn () => null);
+                    }
+                };
+                PHP]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+
+        $off = $this->boot();
+        $this->assertTrue($this->lifecycle($off)->isDisabled('kit'), 'off by default');
+        Services::resolve($off, ViewRegistry::class)->closeAll();
+        Services::resolve($off, Notifier::class)->dismissAll();
+        $ide = $this->boot(plugins: ['kit']);
+        $this->assertFalse($this->lifecycle($ide)->isDisabled('kit'));
+        $this->assertTrue($this->hasCommand($ide, 'kit:go'));
     }
 
     /**

@@ -15,6 +15,9 @@ final class LspReconfigurerTest extends TestCase
 {
     private int $reopened = 0;
 
+    /** @var array<string, non-empty-list<array{command: list<string>, name: string}>> the plugins' servers run elsewhere */
+    private array $relayed = [];
+
     private function reconfigurer(LspSessionPool $pool, ?string $lspCommand): LspReconfigurer
     {
         $this->reopened = 0;
@@ -25,15 +28,20 @@ final class LspReconfigurerTest extends TestCase
             static function () use (&$reopened): void {
                 ++$reopened;
             },
-            new class implements LanguageServerProvider {
+            new readonly class(fn (): array => $this->relayed) implements LanguageServerProvider {
+                /** @param \Closure(): array<string, non-empty-list<array{command: list<string>, name: string}>> $relayed */
+                public function __construct(
+                    private \Closure $relayed,
+                ) {}
+
                 public function languageServers(): array
                 {
-                    return [];
+                    return ['php' => [['command' => ['php-ls'], 'name' => 'php-ls']]];
                 }
 
                 public function relayedServers(): array
                 {
-                    return [];
+                    return ($this->relayed)();
                 }
 
                 public function missingServers(): array
@@ -107,5 +115,31 @@ final class LspReconfigurerTest extends TestCase
 
         $this->assertSame(2, $this->reopened, 'the same map still relaunches');
         $this->assertSame('my-server', $pool->statusFor('/tmp/proj/a.php'), 'and the map survives the forced drop');
+    }
+
+    /**
+     * A restricted session's map is still only the servers run elsewhere —
+     * as the boot handed it — and follows them: assist turned off takes its
+     * relay away, turned on brings it, a relaunch the same.
+     */
+    public function testARestrictedSessionIsHandedOnlyTheServersRunElsewhere(): void
+    {
+        $pool = new LspSessionPool('/tmp/proj', new FixedActiveFile(), new Translator('en'));
+        $pool->restrict();
+        $pool->configure([], static function (string $line): void {}, static function (array $params): void {}, static fn (array $edit): bool => false);
+        $reconfigurer = $this->reconfigurer($pool, null);
+
+        $this->relayed = ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]];
+        $reconfigurer->reconfigure();
+        $this->assertSame('assist', $pool->statusFor('/tmp/proj/a.php'), 'never the php-ls the plugins also name');
+
+        $this->relayed = [];
+        $reconfigurer->reconfigure();
+        $this->assertSame('off — project not trusted', $pool->statusFor('/tmp/proj/a.php'));
+
+        $this->relayed = ['php' => [['command' => ['porta', 'assist-lsp', 'php'], 'name' => 'assist']]];
+        $reconfigurer->relaunch();
+        $this->assertSame('assist', $pool->statusFor('/tmp/proj/a.php'));
+        $this->assertSame(3, $this->reopened, 'each change reopened the buffers');
     }
 }

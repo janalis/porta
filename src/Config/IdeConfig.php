@@ -185,12 +185,14 @@ final readonly class IdeConfig
      * re-reads through here. Merging any later pays for all of that and buys
      * nothing.
      *
-     * `PORTA_PLUGINS` — a comma-separated list — turns bundled plugins on for
-     * this run, on top of what the layers enable. The environment is the
+     * $plugins — `porta --plugin` — are bundled plugins turned on for this
+     * launch, on top of what the layers enable. The command line is the
      * user's, not the project's, so a restricted project keeps them: it is how
      * `porta assist` opens a host's project restricted with assist on.
+     *
+     * @param list<string> $plugins
      */
-    public static function load(string $rootDir): self
+    public static function load(string $rootDir, array $plugins = []): self
     {
         $files = ConfigFiles::for($rootDir);
         $trusted = WorkspaceTrust::fromEnvironment()->isTrusted($rootDir);
@@ -205,9 +207,7 @@ final readonly class IdeConfig
             }
         }
 
-        $requested = \array_filter(\array_map(\trim(...), \explode(',', (string) \getenv('PORTA_PLUGINS'))), static fn (string $name): bool => '' !== $name);
-
-        return self::merge($layers, $warnings, $trusted, \array_values($requested));
+        return self::merge($layers, $warnings, $trusted, $plugins);
     }
 
     /**
@@ -301,7 +301,7 @@ final readonly class IdeConfig
      *
      * @param list<array{keymap: array<string, list<string>>, settings: array<string, bool|int|string>, languages: array<string, array{indentStyle?: string, indentSize?: int|string, debug?: array{adapter?: string, launch?: array<string, mixed>}, runCommand?: string, templates?: array<string, string>}>, lsp: array<string, string>, plugins: array<string, array<string, bool|int|string>>, disabledPlugins: list<string>, enabledPlugins: ?list<string>, highlight: ?array{default: string, languages: array<string, string>}}> $layers
      * @param list<ConfigWarning> $warnings
-     * @param list<string>        $requested bundled plugins this run turns on besides — `PORTA_PLUGINS`
+     * @param list<string>        $requested bundled plugins this launch turns on besides — `--plugin`
      */
     private static function merge(array $layers, array $warnings, bool $trusted, array $requested): self
     {

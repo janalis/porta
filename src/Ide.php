@@ -129,6 +129,7 @@ final class Ide
     /** {@see exitCode()} */
     private int $exitCode = 0;
 
+    /** @param list<string> $plugins bundled plugins this launch turns on besides the config: `--plugin` */
     public function __construct(
         private readonly string $rootDir,
         private readonly ?string $initialFile = null,
@@ -143,6 +144,7 @@ final class Ide
         // Trailing and optional, like every late addition here: a launch as git's
         // difftool/mergetool rather than as an editor ({@see ToolLaunch}).
         private readonly ?ToolLaunch $tool = null,
+        array $plugins = [],
     ) {
         // Boot-phase evidence: the entrypoint hands in a trace whose prelude
         // covers the interpreter and autoload; test rigs get a fresh one so the
@@ -150,7 +152,7 @@ final class Ide
         $boot = $bootTrace ?? new BootTrace();
         // The shipped user guides (F1), package-relative like the translations.
         $docsDir ??= \dirname(__DIR__).'/docs';
-        $config = IdeConfig::load($this->rootDir);
+        $config = IdeConfig::load($this->rootDir, $plugins);
         // @noinspection UnusedConstructorDependenciesInspection -- the compiled container: tests reach services through it (tests/Support/Services)
         $this->container = new IdeContainerFactory()->build(
             $this->rootDir,

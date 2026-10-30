@@ -200,18 +200,14 @@ final class WorkspaceTrustTest extends TestCase
         $this->assertSame(['git', 'phpstan'], $trusted->enabledPlugins);
     }
 
-    /** What the run's environment turns on is the user's to say: a restricted project keeps it, and adds nothing to it. */
-    public function testPortaPluginsTurnsPluginsOnForTheRunRestrictedOrNot(): void
+    /** What the launch turns on (`--plugin`) is the user's to say: a restricted project keeps it, and adds nothing to it. */
+    public function testALaunchsPluginsAreOnRestrictedOrNot(): void
     {
         $this->untrustProjects();
         $project = new TempProject(['.porta.json' => \json_encode(self::HOSTILE, \JSON_THROW_ON_ERROR)]);
-        \putenv('PORTA_PLUGINS= assist,,git ');
-        try {
-            $this->assertSame([...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'assist'], IdeConfig::load($project->dir)->enabledPlugins);
-        } finally {
-            \putenv('PORTA_PLUGINS');
-        }
-        $this->assertSame(IdeConfig::DEFAULT_ENABLED_PLUGINS, IdeConfig::load($project->dir)->enabledPlugins, 'and only for that run');
+
+        $this->assertSame([...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'assist'], IdeConfig::load($project->dir, ['assist', 'git'])->enabledPlugins);
+        $this->assertSame(IdeConfig::DEFAULT_ENABLED_PLUGINS, IdeConfig::load($project->dir)->enabledPlugins, 'and only for that launch');
     }
 
     public function testAnUntrustedProjectDoesNotNameItsLanguageServer(): void

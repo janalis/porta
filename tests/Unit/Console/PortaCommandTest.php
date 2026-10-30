@@ -54,6 +54,18 @@ final class PortaCommandTest extends TestCase
         $this->assertNull($workspace->initialFile);
         $this->assertNull($lsp);
         $this->assertSame(LspMode::Enabled, $noLsp);
+        $this->assertSame([], $workspace->plugins);
+    }
+
+    /** --plugin turns bundled plugins on for the project it is given with — `porta assist`'s copy opens with assist so. */
+    public function testPluginOptionsReachTheWorkspace(): void
+    {
+        $project = new TempProject(['a.php' => '']);
+        $tester = new CommandTester($this->command());
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['path' => [$project->dir], '--plugin' => ['assist', 'todo']]));
+        [$workspace] = $this->launched;
+        $this->assertSame(['assist', 'todo'], $workspace->plugins);
     }
 
     public function testFileLineShorthandOpensAtLine(): void

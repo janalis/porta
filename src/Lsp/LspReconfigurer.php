@@ -45,7 +45,7 @@ final readonly class LspReconfigurer
      */
     public function relaunch(): void
     {
-        $this->lsp->reload(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()));
+        $this->lsp->reload($this->servers());
         $this->lsp->missing($this->pluginServers->missingServers());
         ($this->reopenAll)();
     }
@@ -58,8 +58,22 @@ final readonly class LspReconfigurer
         // of a provider plugin, so without the diff a palette toggle of
         // phpantom's fix-on-save would tear down and relaunch every server.
         $this->lsp->missing($this->pluginServers->missingServers());
-        if ($this->lsp->reconfigure(ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers()))) {
+        if ($this->lsp->reconfigure($this->servers())) {
             ($this->reopenAll)();
         }
+    }
+
+    /**
+     * The map the boot would hand the pool now: a restricted session's is
+     * still only the servers run elsewhere — a plugin turned on or off
+     * changes those too.
+     *
+     * @return array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>
+     */
+    private function servers(): array
+    {
+        return $this->lsp->isRestricted()
+            ? $this->pluginServers->relayedServers()
+            : ServerLocator::locateAll($this->rootDir, $this->lspCommand, $this->pluginServers->languageServers());
     }
 }
