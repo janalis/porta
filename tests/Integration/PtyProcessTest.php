@@ -51,9 +51,13 @@ final class PtyProcessTest extends TestCase
     {
         $buffer = new TerminalBuffer();
         $exit = null;
+        $raw = '';
         $p = new PtyProcess(['/bin/sh', '-c', 'printf "line1\nline2\n"; exit 3'], __DIR__);
         $this->procs[] = $p;
-        $p->onOutput($buffer->feed(...))->onExit(static function (int $c) use (&$exit): void {
+        $p->onOutput(static function (string $chunk) use ($buffer, &$raw): void {
+            $raw .= $chunk;
+            $buffer->feed($chunk);
+        })->onExit(static function (int $c) use (&$exit): void {
             $exit = $c;
         });
 
@@ -65,8 +69,17 @@ final class PtyProcessTest extends TestCase
         });
         $this->assertSame(3, $exit);
         $lines = \array_map(AnsiUtils::stripAnsiCodes(...), $buffer->lines);
-        $this->assertContains('line1', $lines);
-        $this->assertContains('line2', $lines);
+        // Failed once in a full verify on macOS — the exit heard, line1 not
+        // — and never in 3000 runs alone or under load since: the bytes
+        // that came, and the lines they made, tell output lost from output
+        // misread.
+        $seen = \sprintf(
+            'the output was %s, its lines %s',
+            \json_encode($raw, \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE),
+            \json_encode(\array_values(\array_filter($lines)), \JSON_THROW_ON_ERROR | \JSON_INVALID_UTF8_SUBSTITUTE),
+        );
+        $this->assertContains('line1', $lines, $seen);
+        $this->assertContains('line2', $lines, $seen);
         $this->assertFalse($p->isRunning());
     }
 
