@@ -60,7 +60,10 @@ final class Files
      */
     public static function throughLink(string $root, string $path): bool
     {
-        for ($at = $path; \str_starts_with($at, $root.'/'); $at = \dirname($at)) {
+        // A root spelled `/proj/`, or `/` itself, is the same root: the walk
+        // stops at it, never past it.
+        $below = \rtrim($root, characters: '/').'/';
+        for ($at = $path; \str_starts_with($at, $below) && \strlen($at) > \strlen($below); $at = \dirname($at)) {
             if (\is_link($at)) {
                 return true;
             }

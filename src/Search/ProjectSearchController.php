@@ -21,6 +21,7 @@ use Porta\Workbench\Dock\BottomDock;
 use Porta\Workbench\Dock\DockToolTab;
 use Porta\Workbench\Dock\ResultsPanelMode;
 use Porta\Workbench\Notifier;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Tui\Tui;
 
 /**
@@ -630,19 +631,27 @@ final class ProjectSearchController
 
     /**
      * Write the export's $lines, and say so: its path, or '' when it is
-     * not written.
+     * not written — through a link, or where `.porta` cannot hold it.
      *
      * @param list<string> $lines
      */
     private function export(array $lines): string
     {
         $abs = $this->paths->absolute('.porta/search-results.txt');
-        if (Files::throughLink($this->paths->root(), $abs)) {
+        $written = !Files::throughLink($this->paths->root(), $abs);
+        try {
+            if ($written) {
+                $this->fs->dumpFile($abs, \implode("\n", $lines)."\n");
+            }
+        } catch (IOExceptionInterface) {
+            // A `.porta` that is a file, or read-only: said, as the link is.
+            $written = false;
+        }
+        if (!$written) {
             $this->notifier->error($this->translator->trans('Cannot create %file%', ['%file%' => '.porta/search-results.txt']));
 
             return '';
         }
-        $this->fs->dumpFile($abs, \implode("\n", $lines)."\n");
         $this->notifier->flash($this->translator->trans('Exported %count% result|Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 
         return $abs;

@@ -65,6 +65,24 @@ final class LocalPresenceBoardTest extends TestCase
         $this->assertSame(['via' => 'local', 'tick' => 1.0, 'heartbeat' => 5.0], $board->cadence());
     }
 
+    /** `.porta/` comes with a clone: a board that is a link is neither written into nor emptied. */
+    public function testABoardThatIsALinkIsNeitherWrittenNorEmptied(): void
+    {
+        $elsewhere = new TempProject(['aaaaaaaaaaaaaaaa.json' => 'kept']);
+        $project = new TempProject(['.porta/keep' => '']);
+        \symlink($elsewhere->dir, $project->path(PresenceBoard::DIR));
+        $board = new LocalPresenceBoard($project->dir);
+
+        $answer = 'unanswered';
+        $board->publish(self::beacon('bbbbbbbbbbbbbbbb'), static function (?string $error) use (&$answer): void {
+            $answer = $error;
+        });
+        $board->withdraw('aaaaaaaaaaaaaaaa');
+
+        $this->assertIsString($answer, 'a board it cannot write');
+        $this->assertSame(['aaaaaaaaaaaaaaaa.json'], \array_values(\array_diff((array) \scandir($elsewhere->dir), ['.', '..'])));
+    }
+
     public function testABoardThatCannotBeWrittenOrReadSaysSo(): void
     {
         $project = new TempProject(['.porta' => 'a file where the directory would go']);

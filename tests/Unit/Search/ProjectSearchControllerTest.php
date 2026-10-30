@@ -717,6 +717,18 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('Cannot create .porta/search-results.txt', $this->statusRow($this->statusBar));
     }
 
+    public function testExportWhereDotPortaIsAFileSaysSoInsteadOfThrowing(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n", '.porta' => 'a file where the folder would go']);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('// needle');
+
+        $this->assertSame('', $controller->exportResults());
+        $this->assertStringContainsString('Cannot create .porta/search-results.txt', $this->statusRow($this->statusBar));
+    }
+
     public function testAddSearchScopeIgnoresTheProjectRoot(): void
     {
         $project = new TempProject(['A.php' => "<?php\n"]);
