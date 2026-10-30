@@ -118,12 +118,7 @@ final class JsonRpcTransport
             $this->drainStdout($onMessage);
         });
         $this->stderrWatcher = EventLoop::onReadable($this->stderr, function (): void {
-            /** @var resource $stderr */
-            $stderr = $this->stderr;
-            $data = \is_resource($stderr) ? \fread($stderr, length: 8192) : false;
-            if (\is_string($data) && '' !== $data && null !== $this->logger) {
-                ($this->logger)(\rtrim($data));
-            }
+            $this->readStderr();
         });
 
         return true;
@@ -210,17 +205,40 @@ final class JsonRpcTransport
         }
     }
 
+    /** One read of stderr, to the logger; whether it held anything. */
+    private function readStderr(): bool
+    {
+        /** @var resource $stderr */
+        $stderr = $this->stderr;
+        $data = \is_resource($stderr) ? \fread($stderr, length: 8192) : false;
+        $read = \is_string($data) && '' !== $data;
+        if ($read && null !== $this->logger) {
+            ($this->logger)(\rtrim($data));
+        }
+
+        return $read;
+    }
+
     /**
      * The peer is gone: stop listening — stderr too, which left armed would
      * spin on every tick of a dead pipe and anchor the transport until an
      * owner stop() an abandoned client never issues — and tell the owner,
      * once.
+     *
+     * What stderr still holds is read first. A peer that says why and dies
+     * has both pipes ready in the same turn, and its stdout's end can be
+     * heard first: its last words, the ones that say why, were dropped. A
+     * bounded read, for a peer whose stderr outlives its stdout.
      */
     private function gone(): void
     {
         if (null !== $this->stdoutWatcher) {
             EventLoop::cancel($this->stdoutWatcher);
             $this->stdoutWatcher = null;
+        }
+        $reads = 0;
+        while ($reads < 16 && $this->readStderr()) {
+            ++$reads;
         }
         if (null !== $this->stderrWatcher) {
             EventLoop::cancel($this->stderrWatcher);

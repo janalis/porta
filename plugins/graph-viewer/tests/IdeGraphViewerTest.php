@@ -20,6 +20,7 @@ use Porta\Help\RenderedDoc;
 use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginHost;
+use Porta\Support\Files;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PreservesPath;
@@ -720,8 +721,8 @@ final class IdeGraphViewerTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-png');
                     $this->await(static fn (): bool => \is_file($project->path('architecture.png')), what: 'the PNG export');
                     Services::resolve($ide, CommandRegistry::class)->run('graph-viewer:export-pdf');
-                    $this->await(static fn (): bool => \is_file($project->path('architecture.pdf')), what: 'the PDF export');
-                    $this->assertStringContainsString('-Tpdf -o', (string) \file_get_contents($project->path('architecture.pdf')), 'dot drew the PDF itself');
+                    // Its content, not its being there: dot makes the file before it writes it.
+                    $this->await(static fn (): bool => \str_contains(Files::read($project->path('architecture.pdf')), '-Tpdf -o'), what: 'dot to draw the PDF itself');
                     $this->await(static fn (): bool => \in_array('Exported architecture.pdf', Toasts::all($ide), strict: true), what: 'the export said, by name');
                 },
             ],

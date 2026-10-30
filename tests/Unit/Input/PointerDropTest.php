@@ -70,12 +70,18 @@ final class PointerDropTest extends TestCase
         $this->assertSame($this->project->path('src'), Probe::get($this->tree(), 'dropTarget'));
     }
 
+    /** The hover's half-second spring timer has fired: awaited, never a fixed pump a loaded machine outlasts. */
+    private function awaitSprungOpen(string $folder): void
+    {
+        $path = $this->project->path($folder);
+        $this->await(fn (): bool => Probe::get($this->tree(), 'expanded')[$path] ?? false, what: $folder.' to spring open');
+    }
+
     public function testAFolderHoveredLongEnoughSpringsOpenAndClosesOnceTheDragMovesOff(): void
     {
         [$row, $col] = $this->treeCell('src');
         $this->send("t=m:x={$col}:y={$row}");
-        $this->pump(0.6);
-        $this->assertTrue(Probe::get($this->tree(), 'expanded')[$this->project->path('src')] ?? false, 'sprung open');
+        $this->awaitSprungOpen('src');
 
         $this->frame($this->tui());
         [$row, $col] = $this->treeCell('src/A.php');
@@ -92,7 +98,7 @@ final class PointerDropTest extends TestCase
     {
         [$row, $col] = $this->treeCell('src');
         $this->send("t=m:x={$col}:y={$row}");
-        $this->pump(0.6);
+        $this->awaitSprungOpen('src');
 
         $this->send('t=m:x=-1:y=-1');
 
@@ -104,7 +110,7 @@ final class PointerDropTest extends TestCase
     {
         [$row, $col] = $this->treeCell('src');
         $this->send("t=m:x={$col}:y={$row}");
-        $this->pump(0.6);
+        $this->awaitSprungOpen('src');
         $this->replies();
         $data = \base64_encode("# kitty\r\nfile://".\str_replace(search: ' ', replace: '%20', subject: $this->outside->path('x.php'))."\r\n");
 

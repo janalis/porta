@@ -120,6 +120,45 @@ final class JsonRpcTransportTest extends TestCase
         $this->assertSame(['handler broke'], $errors, 'what threw is still heard');
     }
 
+    /**
+     * A peer that says why and dies: its stderr and its stdout's end are ready
+     * in the same turn once it is gone, and the end was heard first — which
+     * stopped listening to stderr with its last words still in the pipe. The
+     * probe's "boom" went missing on a loaded CI runner exactly so.
+     */
+    public function testThePeersLastWordsOnStderrAreReadBeforeItIsGone(): void
+    {
+        $project = new TempProject();
+        $lines = [];
+        $gone = false;
+        // More than one read's 8 KiB of it, the reason last.
+        $transport = new JsonRpcTransport(
+            [\PHP_BINARY, '-r', 'fwrite(STDERR, str_repeat("x", 20000)."\\nboom: refusing to speak LSP\\n"); exit(1);'],
+            $project->dir,
+            'crashing peer',
+            static function (string $line) use (&$lines): void {
+                $lines[] = $line;
+            },
+        );
+        $this->assertTrue($transport->start(static function (): void {}, static function () use (&$gone): void {
+            $gone = true;
+        }));
+        $process = Probe::get($transport, 'process');
+        \assert(\is_resource($process), description: 'the transport holds the spawned process');
+        // Not a turn of the loop until it has exited: both pipes are ready together.
+        $deadline = \microtime(true) + 5.0;
+        while (\proc_get_status($process)['running'] && \microtime(true) < $deadline) {
+            \usleep(10_000);
+        }
+
+        $this->await(static function () use (&$gone): bool {
+            return $gone;
+        }, what: 'the peer to be gone');
+
+        $this->assertStringContainsString('boom: refusing to speak LSP', \implode("\n", $lines));
+        $this->assertNotContains('', $lines, 'a pipe with nothing left in it says nothing');
+    }
+
     public function testACommandThatCannotRunIsLogged(): void
     {
         $project = new TempProject();
