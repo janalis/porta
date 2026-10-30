@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Lifecycle;
 
 use Porta\Config\PortaHome;
+use Porta\Config\WorkspaceTrust;
 use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManifest;
@@ -72,7 +73,25 @@ final class PluginInstaller
         private readonly ?string $composerBinary = null,
         private readonly PluginComposerProject $project = new PluginComposerProject(),
         private readonly Filesystem $fs = new Filesystem(),
+        /** @var (\Closure(): bool)|null whether the project is trusted; null asks {@see WorkspaceTrust} */
+        private readonly ?\Closure $trust = null,
     ) {}
+
+    /**
+     * Whether composer may run in the project's own `.porta/`. It runs the
+     * `composer.json` there — its scripts, the composer plugins it allows —
+     * and in a project not trusted that file is the clone's: installing a
+     * plugin "in this project" would run whatever it names.
+     */
+    private function mayRunComposerIn(InstallScope $scope): bool
+    {
+        return InstallScope::Project !== $scope || ($this->trust ?? fn (): bool => WorkspaceTrust::fromEnvironment()->isTrusted($this->rootDir))();
+    }
+
+    private function composerRefused(): string
+    {
+        return $this->translator->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => 'composer']);
+    }
 
     /** The production wiring: plugin dirs and the git/composer binaries resolved from the environment. */
     public static function create(string $rootDir, Translator $translator): self
@@ -92,13 +111,12 @@ final class PluginInstaller
     public function install(string $source, InstallScope $scope, \Closure $onDone): void
     {
         $root = null === $this->running ? $this->rootFor($scope) : null;
-        if (null === $root) {
-            $this->fail(
-                $onDone,
-                null !== $this->running
-                    ? $this->translator->trans('Another install is already running')
-                    : $this->translator->trans('Cannot install globally (no home directory)'),
-            );
+        if (null === $root || !$this->mayRunComposerIn($scope)) {
+            $this->fail($onDone, match (true) {
+                null !== $this->running => $this->translator->trans('Another install is already running'),
+                null === $root => $this->translator->trans('Cannot install globally (no home directory)'),
+                default => $this->composerRefused(),
+            });
 
             return;
         }
@@ -554,12 +572,12 @@ final class PluginInstaller
     public function remove(string $name, InstallScope $scope, \Closure $onDone): void
     {
         $root = InstallScope::Embedded === $scope ? null : $this->rootFor($scope);
-        if (null === $root) {
-            $onDone(
-                InstallScope::Embedded === $scope
-                    ? $this->translator->trans('Built-in plugins cannot be removed')
-                    : $this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]),
-            );
+        if (null === $root || !$this->mayRunComposerIn($scope)) {
+            $onDone(match (true) {
+                InstallScope::Embedded === $scope => $this->translator->trans('Built-in plugins cannot be removed'),
+                null === $root => $this->translator->trans('Cannot remove "%name%"', ['%name%' => $name]),
+                default => $this->composerRefused(),
+            });
 
             return;
         }

@@ -113,6 +113,8 @@ something to run:
   so does one run elsewhere that reads nothing of the project: assist's relay
   to the host's server);
 - its `.porta/plugins` are not loaded;
+- no plugin is installed in it, nor removed from it: composer would run what
+  its `.porta/composer.json` says (installing for every project still works);
 - its `.porta.json` loses `lsp`, `enabledPlugins` (`porta --plugin <name>`
   still turns a bundled plugin on, for that project and that launch: the
   command line is yours, and `porta assist` opens a host's copy restricted

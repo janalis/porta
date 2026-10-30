@@ -16,11 +16,13 @@ use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UntrustsProjects;
 
 final class PluginInstallerTest extends TestCase
 {
     use GitBinary;
     use PumpsLoop;
+    use UntrustsProjects;
 
     private TempProject $project;
     private TempProject $global;
@@ -193,6 +195,38 @@ final class PluginInstallerTest extends TestCase
         }
         $this->assertStringContainsString('Could not write', (string) $error);
         $this->assertStringContainsString('composer.json', (string) $error);
+    }
+
+    // --- trust ---------------------------------------------------------------------------------
+
+    /**
+     * Composer runs the `composer.json` of the `.porta/` it works in — its
+     * scripts, the composer plugins it allows — and in a project not trusted
+     * that file is the clone's: nothing is installed in, or removed from, it.
+     * Installing for every project is the user's own `.porta/`, and goes on.
+     */
+    public function testAnUntrustedProjectIsNotOneComposerRunsIn(): void
+    {
+        $this->untrustProjects();
+        $refused = 'composer runs code of the project\'s own: trust the project to use it';
+
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/mylint');
+        $this->assertSame($refused, $error);
+        $this->assertNull($file);
+        $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins');
+        $this->assertSame($refused, $this->remove($this->installer(composer: $this->fakeComposer()), 'demo'));
+
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/mylint', InstallScope::Global);
+        $this->assertNull($error, 'for every project: the user\'s own');
+    }
+
+    public function testATrustTheCallerNamesIsTheOneAsked(): void
+    {
+        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, null, $this->fakeComposer(), trust: static fn (): bool => false);
+
+        [$error] = $this->install($installer, 'acme/mylint');
+
+        $this->assertSame('composer runs code of the project\'s own: trust the project to use it', $error);
     }
 
     // --- install by vendor/name package --------------------------------------------------------
