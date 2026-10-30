@@ -527,13 +527,37 @@ final class RemoteFilesystemTest extends TestCase
     {
         $this->server->write('.porta.json', '{"theirs": true}');
         $this->server->write('.porta/session.json', '{}');
+        $this->server->write('docs/.porta.json', '{"an example": true}');
         $files = $this->files();
 
         $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('docs'));
 
         $this->assertFileDoesNotExist($this->cache->path('.porta.json'));
         $this->assertFileDoesNotExist($this->cache->path('.porta/session.json'));
+        $this->assertFileExists($this->cache->path('docs/.porta.json'), 'only the root\'s is this copy\'s');
         $this->assertFileExists($this->cache->path('README.md'), 'and the rest of the listing still lands');
+    }
+
+    /**
+     * macOS's disk finds `.porta/` under any casing, and APFS folds `ſ` to
+     * `s`: a server's `.PORTA/remote.json` would be this copy's marker, and
+     * name the server it syncs with.
+     */
+    public function testPortasOwnFilesAreRefusedHoweverTheServerCasesThem(): void
+    {
+        $this->server->write('.PORTA/planted.json', '{}');
+        $this->server->write('.Porta.jſon', '{"theirs": true}');
+        $this->transport->walks = true;
+        $files = $this->files();
+
+        $files->poll();
+        $this->await(fn (): bool => \is_file($this->cache->path('README.md')));
+
+        $this->assertFileDoesNotExist($this->cache->path('.porta/planted.json'));
+        $this->assertFileDoesNotExist($this->cache->path('.PORTA/planted.json'), 'nor where a disk that minds case keeps it');
+        $this->assertFileDoesNotExist($this->cache->path('.porta.json'));
+        $this->assertFileDoesNotExist($this->cache->path('.Porta.jſon'));
     }
 
     public function testASaveThenARemoveBeforeItsTurnLeavesNothing(): void

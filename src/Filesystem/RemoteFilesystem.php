@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Event\StatusCellsChanged;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
+use Porta\Support\Files;
 use Porta\Ui\Glyphs;
 use Porta\Workbench\Menu\MenuItem;
 use Porta\Workbench\Notifier;
@@ -974,12 +975,17 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         return '' === $relative ? $this->realRoot : $this->realRoot.'/'.$relative;
     }
 
-    /** Whether $relative is the server's: not Porta's own `.porta/` or `.porta.json`, and well-formed. */
+    /**
+     * Whether $relative is the server's: not Porta's own `.porta/` or
+     * `.porta.json`, however the server cases them ({@see Files::asTheDiskReadsIt()}:
+     * its `.PORTA/remote.json` would be this copy's marker), and well-formed.
+     */
     private static function syncable(string $relative): bool
     {
         $segments = \explode('/', $relative);
+        $first = Files::asTheDiskReadsIt($segments[0]) ?? $segments[0];
 
-        return '.porta' !== $segments[0] && '.porta.json' !== $relative && \array_all($segments, self::isName(...));
+        return '.porta' !== $first && '.porta.json' !== $first && \array_all($segments, self::isName(...));
     }
 
     /** Whether $name is one entry's name — never `.`, `..`, or anything with a separator or NUL in it. */
