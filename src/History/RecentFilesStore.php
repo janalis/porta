@@ -34,7 +34,7 @@ final class RecentFilesStore
     public private(set) array $paths;
 
     public function __construct(
-        string $rootDir,
+        private readonly string $rootDir,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/recent-files.json';
@@ -130,6 +130,6 @@ final class RecentFilesStore
     private function save(): void
     {
         // Best-effort persistence; a recent-files list is non-critical.
-        JsonFile::write($this->fs, $this->file, ['paths' => $this->paths]);
+        JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['paths' => $this->paths]);
     }
 }

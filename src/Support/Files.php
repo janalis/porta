@@ -49,6 +49,27 @@ final class Files
     }
 
     /**
+     * Whether $path, or a folder between $root and it, is a symbolic link.
+     *
+     * What Porta keeps of a project, its `.porta/`, comes with a clone like
+     * the rest of it, and a link there aims Porta's own writes anywhere:
+     * `.porta/session.json -> ~/.bashrc` would have the session written over
+     * the user's shell, on a quit they never thought of as saving. Porta
+     * makes no link there, so a write of its own that would pass one is not
+     * made. $root itself, and what is above it, are the user's to have linked.
+     */
+    public static function throughLink(string $root, string $path): bool
+    {
+        for ($at = $path; \str_starts_with($at, $root.'/'); $at = \dirname($at)) {
+            if (\is_link($at)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * $path with its `.` and `..` resolved, symlinks too — or null when
      * nothing is there.
      *

@@ -144,10 +144,11 @@ final class DiagnosticLog
             \mkdir($dir, permissions: 0o755, recursive: true);
         }
 
-        // A log that is a symlink is not written through: `.porta/` comes with
-        // a cloned project, and `error.log -> ~/.bashrc` would have every error
-        // line — paths and names the project chose among them — appended there.
-        $this->dirReady = \is_dir($dir) && !\is_link($this->path);
+        // A log that is a symlink, or in one, is not written through: `.porta/`
+        // comes with a cloned project, and `error.log -> ~/.bashrc` would have
+        // every error line — paths and names the project chose among them —
+        // appended there.
+        $this->dirReady = \is_dir($dir) && !\is_link($dir) && !\is_link($this->path);
 
         return $this->dirReady;
     }

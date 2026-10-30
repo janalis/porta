@@ -18,7 +18,7 @@ final readonly class BookmarkStore
     private string $file;
 
     public function __construct(
-        string $rootDir,
+        private string $rootDir,
         private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/bookmarks.json';
@@ -28,12 +28,12 @@ final readonly class BookmarkStore
     public function save(array $marks): bool
     {
         if ([] === $marks) {
-            $this->fs->remove($this->file);
+            JsonFile::removeInProject($this->fs, $this->rootDir, $this->file);
 
             return true;
         }
 
-        return JsonFile::write($this->fs, $this->file, ['bookmarks' => $marks]);
+        return JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['bookmarks' => $marks]);
     }
 
     /** @return array<string, list<int>> paths whose file no longer exists are dropped */

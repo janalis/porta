@@ -27,7 +27,7 @@ final class SearchPrefsStore
     private array $recentMasks;
 
     public function __construct(
-        string $rootDir,
+        private readonly string $rootDir,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/search-prefs.json';
@@ -117,7 +117,7 @@ final class SearchPrefsStore
     private function save(): void
     {
         // Best-effort persistence; prefs are non-critical.
-        JsonFile::write($this->fs, $this->file, [
+        JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, [
             'scope' => $this->scope,
             'savedScope' => $this->savedScope,
             'mask' => $this->mask,

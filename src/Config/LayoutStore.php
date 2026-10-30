@@ -18,7 +18,7 @@ final readonly class LayoutStore
     private string $file;
 
     public function __construct(
-        string $rootDir,
+        private string $rootDir,
         private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/layout.json';
@@ -49,7 +49,7 @@ final readonly class LayoutStore
             $data['flankSplitPercent'] = $prefs->flankSplitPercent;
         }
 
-        return JsonFile::write($this->fs, $this->file, $data);
+        return JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, $data);
     }
 
     /** The persisted prefs, or null when no file exists. */

@@ -141,6 +141,11 @@ something to run:
 **Trust This Project** and **Open This Project Restricted** in the command
 palette change the answer and reopen the project.
 
+Trusted or not, what Porta keeps of a project in its `.porta/` folder (the
+session, the layout, the logs, local history, local reviews) is never written
+through a symlink. A `.porta/` that came with a clone cannot aim those writes
+at a file of yours: where a link is in the way, it is not saved.
+
 ## `.porta.json`
 
 Per-project configuration, read from the project root. All keys are

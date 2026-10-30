@@ -60,6 +60,26 @@ final class JsonFile
     }
 
     /**
+     * {@see write()} for a file of Porta's own in the project $root, which is
+     * not written through a link ({@see Files::throughLink()}): false then,
+     * as for any write that fails.
+     *
+     * @param array<array-key, mixed> $data
+     */
+    public static function writeInProject(Filesystem $fs, string $root, string $path, array $data): bool
+    {
+        return !Files::throughLink($root, $path) && self::write($fs, $path, $data);
+    }
+
+    /** Remove what {@see writeInProject()} wrote — never through a link either, which would remove what it points into. */
+    public static function removeInProject(Filesystem $fs, string $root, string $path): void
+    {
+        if (!Files::throughLink($root, $path)) {
+            $fs->remove($path);
+        }
+    }
+
+    /**
      * {@see write()} for a file a person edits too — `.porta.json`,
      * `composer.json` — which ends in a newline the way an editor leaves it,
      * so the next hand edit's diff is not a "no newline at end of file".

@@ -18,7 +18,7 @@ final readonly class SessionStore
     private string $file;
 
     public function __construct(
-        string $rootDir,
+        private string $rootDir,
         private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/session.json';
@@ -30,12 +30,12 @@ final readonly class SessionStore
     public function save(array $buffers, ?string $activePath): bool
     {
         if ([] === $buffers) {
-            $this->fs->remove($this->file);
+            JsonFile::removeInProject($this->fs, $this->rootDir, $this->file);
 
             return true;
         }
 
-        return JsonFile::write($this->fs, $this->file, ['buffers' => $buffers, 'active' => $activePath]);
+        return JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['buffers' => $buffers, 'active' => $activePath]);
     }
 
     /**

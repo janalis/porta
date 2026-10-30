@@ -41,6 +41,7 @@ use Porta\Tests\Support\PharFixture;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
 use Porta\Ui\NonBlockingTerminal;
@@ -223,6 +224,13 @@ final class IdeHelpersTest extends TestCase
             $path = $this->project->dir.'/.porta/frame.txt';
             $this->assertFileExists($path);
             $this->assertStringNotContainsString("\x1b", (string) \file_get_contents($path), 'readable, not escape soup');
+
+            // `.porta/` comes with a clone: a frame.txt that is a link is not written through.
+            $outside = new TempProject(['.bashrc' => "export A=1\n"]);
+            \unlink($path);
+            \symlink($outside->path('.bashrc'), $path);
+            Probe::invoke($ide, 'writeLastFrame');
+            $this->assertSame("export A=1\n", \file_get_contents($outside->path('.bashrc')));
         } finally {
             Services::resolve($ide, ViewRegistry::class)->closeAll();
             Services::resolve($ide, Notifier::class)->dismissAll();

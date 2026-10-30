@@ -21,7 +21,7 @@ final class SearchHistoryStore
     public private(set) array $queries;
 
     public function __construct(
-        string $rootDir,
+        private readonly string $rootDir,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/search-history.json';
@@ -64,6 +64,6 @@ final class SearchHistoryStore
     private function save(): void
     {
         // Best-effort persistence; history is non-critical.
-        JsonFile::write($this->fs, $this->file, ['queries' => $this->queries]);
+        JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['queries' => $this->queries]);
     }
 }

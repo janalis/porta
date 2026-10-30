@@ -82,4 +82,20 @@ final class FilesTest extends TestCase
         $this->assertSame('/nowhere/at/../all.md', Files::canonical('/nowhere/at/../all.md'));
         $this->assertSame(PharFixture::root().'/outside.md', Files::canonical(PharFixture::root().'/docs/../outside.md'));
     }
+
+    public function testThroughLinkFindsALinkAtTheFileOrAnyFolderBelowTheRoot(): void
+    {
+        $outside = new TempProject(['x.json' => '']);
+        $project = new TempProject(['.porta/plain.json' => '', '.porta/deep/.keep' => '']);
+        \symlink($outside->path('x.json'), $project->path('.porta/file.json'));
+        \symlink($outside->dir, $project->path('.porta/deep/folder'));
+        $linkedRoot = $outside->path('root');
+        \symlink($project->dir, $linkedRoot);
+
+        $this->assertFalse(Files::throughLink($project->dir, $project->path('.porta/plain.json')));
+        $this->assertFalse(Files::throughLink($project->dir, $project->path('.porta/missing.json')), 'what is not there yet is no link');
+        $this->assertTrue(Files::throughLink($project->dir, $project->path('.porta/file.json')), 'the file itself');
+        $this->assertTrue(Files::throughLink($project->dir, $project->path('.porta/deep/folder/x.json')), 'a folder on the way');
+        $this->assertFalse(Files::throughLink($linkedRoot, $linkedRoot.'/.porta/plain.json'), 'the root is the user\'s to have linked');
+    }
 }

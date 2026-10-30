@@ -57,6 +57,17 @@ final class DiagnosticLogTest extends TestCase
         $this->assertSame("export A=1\n", \file_get_contents($outside->path('.bashrc')));
     }
 
+    public function testALogInAPortaFolderThatIsALinkIsNotWritten(): void
+    {
+        $outside = new TempProject(['error.log' => "export A=1\n"]);
+        $project = new TempProject();
+        \symlink($outside->dir, $project->path('.porta'));
+
+        DiagnosticLog::forRoot($project->dir, channel: 'error')->append('boom $(touch pwned)');
+
+        $this->assertSame("export A=1\n", \file_get_contents($outside->path('error.log')));
+    }
+
     public function testEachEntryIsDated(): void
     {
         $project = new TempProject();

@@ -38,7 +38,7 @@ final readonly class OnboardingState
     private string $file;
 
     public function __construct(
-        string $rootDir,
+        private string $rootDir,
         private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/onboarding.json';
@@ -52,6 +52,6 @@ final readonly class OnboardingState
     /** Whether the marker was written; false on an unwritable project. */
     public function markWelcomeSeen(): bool
     {
-        return JsonFile::write($this->fs, $this->file, ['welcomeSeen' => true]);
+        return JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['welcomeSeen' => true]);
     }
 }

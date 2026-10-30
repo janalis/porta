@@ -701,6 +701,22 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertFileDoesNotExist($project->dir.'/.porta/search-results.txt');
     }
 
+    /** `.porta/` comes with a clone: an export target that is a link would have lines the project chose written wherever it points. */
+    public function testExportIsNotWrittenThroughALink(): void
+    {
+        $elsewhere = new TempProject(['.bashrc' => "export A=1\n"]);
+        $project = new TempProject(['src/$(touch pwned).php' => "<?php\n// needle\n", '.porta/keep' => '']);
+        \symlink($elsewhere->path('.bashrc'), $project->path('.porta/search-results.txt'));
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('// needle');
+
+        $this->assertSame('', $controller->exportResults());
+        $this->assertSame("export A=1\n", \file_get_contents($elsewhere->path('.bashrc')));
+        $this->assertStringContainsString('Cannot create .porta/search-results.txt', $this->statusRow($this->statusBar));
+    }
+
     public function testAddSearchScopeIgnoresTheProjectRoot(): void
     {
         $project = new TempProject(['A.php' => "<?php\n"]);

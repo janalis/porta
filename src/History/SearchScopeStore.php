@@ -24,7 +24,7 @@ final class SearchScopeStore
     public private(set) array $scopes;
 
     public function __construct(
-        string $rootDir,
+        private readonly string $rootDir,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/search-scopes.json';
@@ -162,6 +162,6 @@ final class SearchScopeStore
     private function save(): void
     {
         // Best-effort persistence; saved scopes are non-critical.
-        JsonFile::write($this->fs, $this->file, ['scopes' => $this->scopes]);
+        JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['scopes' => $this->scopes]);
     }
 }

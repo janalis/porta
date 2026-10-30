@@ -599,7 +599,9 @@ final class ProjectSearchController
     /**
      * Write the current result set (grouped by file, `line: text`) to
      * `.porta/search-results.txt` and return its absolute path so the caller
-     * can open it; returns '' (and flashes) when there is nothing to export.
+     * can open it; returns '' (and flashes) when there is nothing to export,
+     * or nowhere: never through a link ({@see Files::throughLink()}), which
+     * would have lines the project chose written wherever it points.
      */
     public function exportResults(): string
     {
@@ -623,7 +625,23 @@ final class ProjectSearchController
             $lines[] = \sprintf('  %d: %s', $result['line'] + 1, $result['text']);
         }
 
+        return $this->export($lines);
+    }
+
+    /**
+     * Write the export's $lines, and say so: its path, or '' when it is
+     * not written.
+     *
+     * @param list<string> $lines
+     */
+    private function export(array $lines): string
+    {
         $abs = $this->paths->absolute('.porta/search-results.txt');
+        if (Files::throughLink($this->paths->root(), $abs)) {
+            $this->notifier->error($this->translator->trans('Cannot create %file%', ['%file%' => '.porta/search-results.txt']));
+
+            return '';
+        }
         $this->fs->dumpFile($abs, \implode("\n", $lines)."\n");
         $this->notifier->flash($this->translator->trans('Exported %count% result|Exported %count% results', ['%count%' => \count($this->lastSearchResults)]));
 

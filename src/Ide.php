@@ -53,6 +53,7 @@ use Porta\Settings\SettingsController;
 use Porta\Settings\SettingsLanguageController;
 use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
+use Porta\Support\Files;
 use Porta\Support\FreezeWatchdog;
 use Porta\Support\OrphanGuard;
 use Porta\Support\PerfCollector;
@@ -353,9 +354,9 @@ final class Ide
         // No error control operator: the directory is the one Porta already
         // writes error.log and perf.log into, so if it is there the write is
         // ordinary, and if it is not there is nothing to suppress.
-        $dir = $this->rootDir.'/.porta';
-        if (\is_dir($dir)) {
-            \file_put_contents($dir.'/frame.txt', \implode("\n", $this->lastFrame));
+        $file = $this->rootDir.'/.porta/frame.txt';
+        if (\is_dir(\dirname($file)) && !Files::throughLink($this->rootDir, $file)) {
+            \file_put_contents($file, \implode("\n", $this->lastFrame));
         }
     }
 
