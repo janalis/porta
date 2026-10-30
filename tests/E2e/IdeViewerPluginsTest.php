@@ -87,11 +87,13 @@ final class IdeViewerPluginsTest extends TestCase
             $project,
             $project->path('a.dot'),
             [
-                200 => function ($tui, $terminal, Ide $ide) use ($project): void {
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $buffers = Services::resolve($ide, BufferManager::class);
                     $aPath = (string) \realpath($project->path('a.dot'));
                     $this->assertSame('graph', $buffers->get($aPath)?->previewId, 'default-enabled: the initial file opened with the graph beside it');
-                    $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), '┌'), what: 'the graph layout');
+                    // Painted, not merely output: on a timeout the screen says whether
+                    // the layout failed, never came, or came and was not drawn.
+                    $this->awaitPainted($tui, $terminal, '┌');
 
                     $lifecycle = Services::resolve($ide, PluginLifecycle::class);
                     $lifecycle->disable('graph-viewer');
