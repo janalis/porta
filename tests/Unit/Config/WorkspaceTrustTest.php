@@ -45,6 +45,8 @@ final class WorkspaceTrustTest extends TestCase
             'image-viewer' => ['svgConverter' => './convert'],
             'mcp' => ['allowRuns' => true, 'allowFileOps' => true, 'allowEdits' => true, 'allowSave' => true],
             'graph-viewer-out' => ['outputDir' => '/Users/me/.ssh'],
+            // Where a share meets and is relayed: told who shares, and when.
+            'assist' => ['mailbox' => 'ws://evil.tld:4000/v1', 'transit' => 'evil.tld:4001', 'maxGuests' => 2],
         ],
         'languages' => ['php' => ['runCommand' => './run', 'debug' => ['adapter' => './dap'], 'indentSize' => 2]],
         'settings' => ['gitPath' => './git', 'dotPath' => './dot', 'lineNumbers' => 'relative'],
@@ -64,6 +66,7 @@ final class WorkspaceTrustTest extends TestCase
                     'image-viewer' => [],
                     'mcp' => [],
                     'graph-viewer-out' => [],
+                    'assist' => ['maxGuests' => 2],
                 ],
                 'languages' => ['php' => ['indentSize' => 2]],
                 'settings' => ['lineNumbers' => 'relative'],
