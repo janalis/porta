@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\History;
 
+use Porta\Config\IdeConfig;
 use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
@@ -26,6 +27,8 @@ final readonly class SessionRestorer
         private BufferService $bufferService,
         private EditorArea $editorArea,
         private Tui $tui,
+        private IdeConfig $config,
+        private string $rootDir,
     ) {}
 
     /**
@@ -40,7 +43,7 @@ final readonly class SessionRestorer
 
         $opened = false;
         foreach ($data['buffers'] as $buffer) {
-            if (!\is_file($buffer['path'])) {
+            if (!\is_file($buffer['path']) || !$this->mayReopen($buffer['path'])) {
                 continue;
             }
             $this->bufferService->openFile($buffer['path']);
@@ -68,6 +71,22 @@ final readonly class SessionRestorer
         }
 
         return $opened;
+    }
+
+    /**
+     * A restricted project's `.porta/session.json` may have come with the
+     * clone as easily as from the user: it reopens the project's own files,
+     * never one elsewhere on the machine — a `../../.ssh/id_rsa` it named
+     * would sit open in a tab, where an agent reading the open buffers
+     * reaches it. A link inside the project is followed to where it lands
+     * before that is asked.
+     */
+    private function mayReopen(string $path): bool
+    {
+        $root = \realpath($this->rootDir);
+        $real = \realpath($path);
+
+        return $this->config->trusted || (false !== $root && false !== $real && \str_starts_with($real, \rtrim($root, characters: '/').'/'));
     }
 
     /**

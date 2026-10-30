@@ -128,6 +128,9 @@ something to run:
 - phpstan, psalm, php-cs-fixer and mago do not run at all — their own config
   files can execute the project's PHP or a program it names (a `mago.toml`
   `[extension-hosts]` command), whichever binary reads them;
+- the tabs it reopens from its last session are its own files only: a
+  `.porta/session.json` that came with it cannot open one elsewhere on your
+  machine, where an agent reading the open buffers would reach it;
 - an agent connected through the mcp plugin runs none of its tasks or tests,
   even with `allowRuns` on in your own config — the Run menu's tasks are its
   composer scripts, its Makefile and its PHP, and `run_tests` is its
