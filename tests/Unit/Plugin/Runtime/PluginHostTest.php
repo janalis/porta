@@ -25,7 +25,7 @@ final class PluginHostTest extends TestCase
     public function testBuildsTheSubsystemAndLoadsPluginsExactlyOnce(): void
     {
         $project = new TempProject([
-            '.porta/plugins/greeter/plugin.php' => <<<'PHP'
+            '.porta/plugins/greeter/porta.php' => <<<'PHP'
                 <?php
                 return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'greeter'; }
@@ -52,7 +52,7 @@ final class PluginHostTest extends TestCase
     public function testFenceRegistrationsReachTheRegistrySharedWithMarkdownWidgets(): void
     {
         $project = new TempProject([
-            '.porta/plugins/fenced/plugin.php' => <<<'PHP'
+            '.porta/plugins/fenced/porta.php' => <<<'PHP'
                 <?php
                 return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'fenced'; }
@@ -91,7 +91,7 @@ final class PluginHostTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => \json_encode(['keymap' => ['save' => ['ctrl+shift+s']]], \JSON_THROW_ON_ERROR),
-            '.porta/plugins/keyed/plugin.php' => <<<'PHP'
+            '.porta/plugins/keyed/porta.php' => <<<'PHP'
                 <?php
                 return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'keyed'; }

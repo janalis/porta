@@ -49,7 +49,7 @@ final class KeybindingsFactoryTest extends TestCase
         // core's catalog naming it, which it cannot.
         $project = new TempProject([
             '.porta.json' => \json_encode(['keymap' => ['demo_zoom' => 'f6']], \JSON_THROW_ON_ERROR),
-            '.porta/plugins/paned/plugin.php' => self::PLUGIN,
+            '.porta/plugins/paned/porta.php' => self::PLUGIN,
         ]);
         [$factory, $host] = $this->factory($project);
 
@@ -141,7 +141,7 @@ final class KeybindingsFactoryTest extends TestCase
 
     public function testAPluginKeyTheParserCannotReadIsDroppedToo(): void
     {
-        $project = new TempProject(['.porta/plugins/typo/plugin.php' => <<<'PHP'
+        $project = new TempProject(['.porta/plugins/typo/porta.php' => <<<'PHP'
                 <?php
                 return new class('typo') extends \Porta\Plugin\Api\AbstractPlugin {
                     public function activate(\Porta\Plugin\Api\PluginApi $api): void

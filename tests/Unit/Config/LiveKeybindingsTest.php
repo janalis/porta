@@ -86,7 +86,7 @@ final class LiveKeybindingsTest extends TestCase
         $this->assertFalse($live->matches("\x1b\x02", 'keyed:boom'), 'no plugin yet: the key is unbound');
 
         // The plugin lands after boot (a live install) and loads.
-        $file = $project->write('.porta/plugins/keyed/plugin.php', self::PLUGIN);
+        $file = $project->write('.porta/plugins/keyed/porta.php', self::PLUGIN);
         $host->loader->loadFile($file, $host->manager);
         $this->assertFalse($live->matches("\x1b\x02", 'keyed:boom'), 'the frozen map does not know the new keys yet');
 
@@ -98,7 +98,7 @@ final class LiveKeybindingsTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => \json_encode(['keymap' => ['save' => ['ctrl+shift+s']]], \JSON_THROW_ON_ERROR),
-            '.porta/plugins/keyed/plugin.php' => self::PLUGIN,
+            '.porta/plugins/keyed/porta.php' => self::PLUGIN,
         ]);
         [$live, $host] = $this->live($project);
         $this->assertSame(['ctrl+alt+b'], $live->getBindings('keyed:boom'), 'boot merged the installed plugin');

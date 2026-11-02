@@ -1502,7 +1502,7 @@ final class PluginApi
      * translations instead of becoming English in every other locale.
      *
      * The message id IS the English source string. A plugin's own strings
-     * come from the `translations/` dir beside its plugin.php, which the
+     * come from the `translations/` dir beside its porta.php, which the
      * loader hands the translator once the plugin commits; a string no
      * catalog knows passes through unchanged.
      *

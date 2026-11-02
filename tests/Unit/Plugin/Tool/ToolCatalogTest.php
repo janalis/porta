@@ -60,7 +60,7 @@ final class ToolCatalogTest extends TestCase
     /** @param array<string, mixed> $manifest */
     private function plugin(string $name, array $manifest): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/plugin.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
         $this->project->write('.porta/plugins/'.$name.'/composer.json', (string) \json_encode($manifest, \JSON_THROW_ON_ERROR));
     }
 
@@ -82,7 +82,7 @@ final class ToolCatalogTest extends TestCase
 
     public function testAPluginWithoutAManifestDeclaresNothing(): void
     {
-        $this->project->write('.porta/plugins/bare/plugin.php', "<?php\n");
+        $this->project->write('.porta/plugins/bare/porta.php', "<?php\n");
 
         $this->assertSame([], $this->tools()->catalog->declared('bare'));
     }

@@ -158,7 +158,7 @@ final class SettingsPluginsControllerTest extends TestCase
     private function seedPlugin(TempProject $base, string $name): void
     {
         \mkdir($base->dir.'/.porta/plugins/'.$name, permissions: 0o777, recursive: true);
-        \file_put_contents($base->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
+        \file_put_contents($base->dir.'/.porta/plugins/'.$name.'/porta.php', data: "<?php\n");
     }
 
     /** A plugin source dir outside the scope bases, with a valid composer.json for a path install. */
@@ -166,7 +166,7 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $dir = $this->project->dir.'/src/'.$name;
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/porta.php', data: "<?php\n");
         \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR));
 
         return $dir;
@@ -234,7 +234,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
     public function testABundledPluginIsBuiltInAndHasNoRemoveButton(): void
     {
-        $embedded = new TempProject(['bundled/plugin.php' => "<?php\n"]);
+        $embedded = new TempProject(['bundled/porta.php' => "<?php\n"]);
         $this->embeddedDir = $embedded->dir;
         $controller = $this->controller();
         $this->lifecycle->names = ['bundled'];
@@ -272,9 +272,9 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testAPluginsOwnDocsAreOfferedOnItsPageAndOpenInTheHelpWindow(): void
     {
         $embedded = new TempProject([
-            'documented/plugin.php' => "<?php\n",
+            'documented/porta.php' => "<?php\n",
             'documented/docs/README.md' => "# Documented\n",
-            'bare/plugin.php' => "<?php\n",
+            'bare/porta.php' => "<?php\n",
         ]);
         $this->embeddedDir = $embedded->dir;
         $controller = $this->controller();
@@ -381,7 +381,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
         \mkdir($this->project->path('.porta/plugins/demo'), permissions: 0o755, recursive: true);
-        \file_put_contents($this->project->path('.porta/plugins/demo/plugin.php'), data: '<?php return new stdClass();');
+        \file_put_contents($this->project->path('.porta/plugins/demo/porta.php'), data: '<?php return new stdClass();');
         \file_put_contents($this->project->path('.porta.json'), \json_encode(['enabledPlugins' => ['todo']], \JSON_THROW_ON_ERROR));
 
         $this->assertNull($controller->pluginRows('demo')[0]->origin);
@@ -401,7 +401,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->embeddedDir = $this->embedded->dir;
         foreach ($names as $name) {
             \mkdir($this->embeddedDir.'/'.$name, permissions: 0o755, recursive: true);
-            \file_put_contents($this->embeddedDir.'/'.$name.'/plugin.php', data: '<?php return new stdClass();');
+            \file_put_contents($this->embeddedDir.'/'.$name.'/porta.php', data: '<?php return new stdClass();');
         }
         $controller = $this->controller();
         $this->lifecycle->names = $names;
@@ -432,7 +432,7 @@ final class SettingsPluginsControllerTest extends TestCase
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
         $this->await(fn (): bool => 0 < $this->lifecycle->refreshed, what: 'the install to land');
-        $this->assertSame([$this->global->dir.'/.porta/plugins/demo/plugin.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
+        $this->assertSame([$this->global->dir.'/.porta/plugins/demo/porta.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
         $this->assertStringContainsString('Plugin installed', $this->statusRow($this->status, 120));
         $this->assertSame(1, $this->lifecycle->refreshed);
     }

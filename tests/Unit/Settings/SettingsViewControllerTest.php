@@ -813,7 +813,7 @@ final class SettingsViewControllerTest extends TestCase
     {
         $controller = $this->controller();
         \mkdir($this->project->dir.'/.porta/plugins/demo', permissions: 0o777, recursive: true);
-        \file_put_contents($this->project->dir.'/.porta/plugins/demo/plugin.php', data: "<?php\n");
+        \file_put_contents($this->project->dir.'/.porta/plugins/demo/porta.php', data: "<?php\n");
         $this->lifecycle->names = ['demo'];
         $this->nav->setPluginEntries(['demo']);
         $controller->open();
@@ -849,7 +849,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller();
         foreach (['one', 'two'] as $name) {
             \mkdir($this->project->dir.'/.porta/plugins/'.$name, permissions: 0o777, recursive: true);
-            \file_put_contents($this->project->dir.'/.porta/plugins/'.$name.'/plugin.php', data: "<?php\n");
+            \file_put_contents($this->project->dir.'/.porta/plugins/'.$name.'/porta.php', data: "<?php\n");
         }
         $this->lifecycle->names = ['one', 'two'];
         $this->nav->setPluginEntries(['one', 'two']);
@@ -882,7 +882,7 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->selectSettingsSection($this->nav, 'plugins');
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
-        \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        \file_put_contents($this->project->dir.'/.porta/plugins/late/porta.php', data: "<?php\n");
         $this->lifecycle->names = ['late'];
         $controller->refresh(); // re-reads the rows: the late plugin appears
         $screen = AnsiUtils::stripAnsiCodes(\implode("\n", $this->form->render(new RenderContext(80, 40))));
@@ -1113,7 +1113,7 @@ final class SettingsViewControllerTest extends TestCase
         $controller->open();
         $this->selectSettingsSection($this->nav, 'plugins');
         \mkdir($this->project->dir.'/.porta/plugins/late', permissions: 0o777, recursive: true);
-        \file_put_contents($this->project->dir.'/.porta/plugins/late/plugin.php', data: "<?php\n");
+        \file_put_contents($this->project->dir.'/.porta/plugins/late/porta.php', data: "<?php\n");
         $this->lifecycle->names = ['late'];
         Probe::set($this->tui, 'renderRequested', false);
 

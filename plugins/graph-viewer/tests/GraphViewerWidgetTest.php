@@ -25,7 +25,7 @@ final class GraphViewerWidgetTest extends TestCase
 
     public function testItBindsExactlyTheActionsThePluginDeclares(): void
     {
-        // Both halves belong to this plugin now: plugin.php declares the ids and
+        // Both halves belong to this plugin now: porta.php declares the ids and
         // labels Settings → Keymap lists, the pane binds the keys. Core sees
         // neither, so this is the only place the pair can be pinned — and each
         // direction catches a real defect the other cannot see: a declared
@@ -33,7 +33,7 @@ final class GraphViewerWidgetTest extends TestCase
         // key nothing declares is a key the user can never find or rebind.
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $api = $manager->api('graph-viewer', '/p', new PluginSettings('/p', []));
-        $plugin = require \dirname(__DIR__).'/plugin.php';
+        $plugin = require \dirname(__DIR__).'/porta.php';
         $plugin->activate($api);
 
         $declared = \array_column($api->contributions()->actions->all(), 'id');

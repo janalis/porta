@@ -430,7 +430,7 @@ final class IdeContextMenusTest extends TestCase
         // handing folders the file items too went unnoticed.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta/plugins/filesurf/plugin.php' => $this->fileSurfacePlugin(),
+            '.porta/plugins/filesurf/porta.php' => $this->fileSurfacePlugin(),
             'pkg/deep.php' => "<?php\n",
             'a.php' => "<?php\n",
         ]);

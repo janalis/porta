@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Api;
 
 /**
- * The contract a plugin file fulfills: `<project>/.porta/plugins/<dir>/plugin.php`
+ * The contract a plugin file fulfills: `<project>/.porta/plugins/<dir>/porta.php`
  * (or the same path under `~/.porta/plugins/`) must `return` an instance of this
  * interface. `activate()` runs once during IDE construction and may only call
  * the {@see PluginApi} registration methods — the action methods (flash, editor

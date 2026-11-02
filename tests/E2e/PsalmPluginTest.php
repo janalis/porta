@@ -22,7 +22,7 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
- * The shipped psalm plugin (plugins/psalm/plugin.php) against stub
+ * The shipped psalm plugin (plugins/psalm/porta.php) against stub
  * analyser binaries — the real plugin file is loaded from the repo. Issues
  * surface as editor diagnostics and in the Problems panel; a clean run clears.
  */
@@ -40,9 +40,9 @@ final class PsalmPluginTest extends TestCase
     /** A project with the real plugin file and (optionally) a stub psalm. */
     private function project(?string $stubBody = null): TempProject
     {
-        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/psalm/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/psalm/porta.php');
         $project = new TempProject([
-            '.porta/plugins/psalm/plugin.php' => $plugin,
+            '.porta/plugins/psalm/porta.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n\$y = 2;\n",
             'notes.txt' => "plain\n",
         ]);

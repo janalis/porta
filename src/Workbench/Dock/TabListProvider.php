@@ -52,8 +52,8 @@ final readonly class TabListProvider
     /**
      * One title per buffer, with same-named files told apart.
      *
-     * `basename()` alone is how two open tabs both read `plugin.php` — and in
-     * a project with per-directory conventions (a plugin.php per plugin, a
+     * `basename()` alone is how two open tabs both read `porta.php` — and in
+     * a project with per-directory conventions (a porta.php per plugin, a
      * composer.json per package, an index.php per entry point) that is the
      * normal case, not an edge one. Closing or editing the wrong one of two
      * identical tabs is the whole cost.
@@ -93,12 +93,12 @@ final readonly class TabListProvider
     /**
      * Qualify each of $indexes with as much of its parent path as it takes.
      *
-     * The qualifier goes AFTER the name — `plugin.php (symfony-lsp)`, the
+     * The qualifier goes AFTER the name — `porta.php (symfony-lsp)`, the
      * shape PhpStorm and VS Code both use — and that ordering is load bearing
      * here rather than cosmetic: the side strip gives a name 19 columns, so a
-     * leading `symfony-lsp/plugin.php` would truncate away the only part that
+     * leading `symfony-lsp/porta.php` would truncate away the only part that
      * says what the file IS, while this truncates the tail and still reads
-     * `plugin.php (symfo…`.
+     * `porta.php (symfo…`.
      *
      * Walks up a directory at a time, because one level is not always enough:
      * two `GitSidebar.php` under `<plugin>/src/View/` agree on `View` and on

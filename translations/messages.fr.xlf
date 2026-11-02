@@ -1231,8 +1231,8 @@
         <target>« %name% » n’est pas un nom d’extension valide</target>
       </trans-unit>
       <trans-unit id="334">
-        <source>No plugin.php found in %source%</source>
-        <target>Aucun plugin.php trouvé dans %source%</target>
+        <source>No porta.php found in %source%</source>
+        <target>Aucun porta.php trouvé dans %source%</target>
       </trans-unit>
       <trans-unit id="335">
         <source>git is not available</source>
@@ -1243,8 +1243,8 @@
         <target>git clone a échoué (code de sortie %code%)</target>
       </trans-unit>
       <trans-unit id="337">
-        <source>The repository contains no plugin.php</source>
-        <target>Le dépôt ne contient pas de plugin.php</target>
+        <source>The repository contains no porta.php</source>
+        <target>Le dépôt ne contient pas de porta.php</target>
       </trans-unit>
       <trans-unit id="338">
         <source>Another install is already running</source>

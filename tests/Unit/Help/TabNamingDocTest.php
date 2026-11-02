@@ -15,7 +15,7 @@ use Porta\Workbench\Dock\TabListProvider;
  * The tab-naming examples in `docs/editor.md` are the real output.
  *
  * A worked example is the part of a doc a reader trusts most and the part
- * nothing checks: `plugin.php (git)` is a promise about a format, and the
+ * nothing checks: `porta.php (git)` is a promise about a format, and the
  * format lives in {@see TabListProvider}. The sibling doc gates here ask
  * whether a vocabulary is MENTIONED; this one asks whether a demonstration is
  * still true, which is the failure the others cannot see.
@@ -39,9 +39,9 @@ final class TabNamingDocTest extends TestCase
     {
         $doc = (string) \file_get_contents(self::DOC);
 
-        $titles = self::titlesFor(['/p/plugins/git/plugin.php', '/p/plugins/symfony-lsp/plugin.php']);
+        $titles = self::titlesFor(['/p/plugins/git/porta.php', '/p/plugins/symfony-lsp/porta.php']);
 
-        $this->assertSame(['plugin.php (git)', 'plugin.php (symfony-lsp)'], $titles);
+        $this->assertSame(['porta.php (git)', 'porta.php (symfony-lsp)'], $titles);
         foreach ($titles as $title) {
             $this->assertStringContainsString($title, $doc, 'the doc shows this example, so it has to still be the output');
         }

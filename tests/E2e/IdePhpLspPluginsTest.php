@@ -48,7 +48,7 @@ final class IdePhpLspPluginsTest extends TestCase
     {
         // The manifest too: the tool the Settings page offers is declared there.
         return new TempProject([
-            'phpantom/plugin.php' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/plugin.php'),
+            'phpantom/porta.php' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/porta.php'),
             'phpantom/composer.json' => (string) \file_get_contents(__DIR__.'/../../plugins/phpantom/composer.json'),
         ]);
     }

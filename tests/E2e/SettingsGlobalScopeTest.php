@@ -339,7 +339,7 @@ final class SettingsGlobalScopeTest extends TestCase
         // `enabledPlugins` and never reach this path.
         $this->project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta/plugins/noisy/plugin.php' => <<<'PHP'
+            '.porta/plugins/noisy/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;
@@ -527,7 +527,7 @@ final class SettingsGlobalScopeTest extends TestCase
             // would default to Global too, both paths would write to the same
             // file, and this test would pass whatever the wiring did.
             '.porta.json' => \json_encode(['settings' => ['theme' => 'dark']], \JSON_THROW_ON_ERROR),
-            '.porta/plugins/noisy/plugin.php' => <<<'PHP'
+            '.porta/plugins/noisy/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;

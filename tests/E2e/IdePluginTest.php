@@ -84,7 +84,7 @@ final class IdePluginTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
+            '.porta/plugins/demo/porta.php' => $this->demoPlugin(),
             'a.php' => "<?php\n",
         ]);
 
@@ -128,7 +128,7 @@ final class IdePluginTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta/plugins/saver/plugin.php' => <<<'PHP'
+            '.porta/plugins/saver/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\AbstractPlugin;
                 use Porta\Plugin\Api\PluginApi;
@@ -173,7 +173,7 @@ final class IdePluginTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
+            '.porta/plugins/demo/porta.php' => $this->demoPlugin(),
             '.porta.json' => (string) \json_encode(['keymap' => ['demo:hello' => ['f8']]], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
@@ -207,8 +207,8 @@ final class IdePluginTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $global = new TempProject([
-            '.porta/plugins/demo/plugin.php' => \str_replace(["'demo'", "'hello ran in '"], ["'globaldemo'", "'GLOBAL ran in '"], $this->demoPlugin()),
-            '.porta/plugins/wave/plugin.php' => <<<'PHP'
+            '.porta/plugins/demo/porta.php' => \str_replace(["'demo'", "'hello ran in '"], ["'globaldemo'", "'GLOBAL ran in '"], $this->demoPlugin()),
+            '.porta/plugins/wave/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;
@@ -230,7 +230,7 @@ final class IdePluginTest extends TestCase
         ]);
         \putenv('PORTA_HOME='.$global->dir);
         $project = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->demoPlugin(),
+            '.porta/plugins/demo/porta.php' => $this->demoPlugin(),
             'a.php' => "<?php\n",
         ]);
 
@@ -256,7 +256,7 @@ final class IdePluginTest extends TestCase
     {
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
-            '.porta/plugins/broken/plugin.php' => '<?php not valid php {{{',
+            '.porta/plugins/broken/porta.php' => '<?php not valid php {{{',
             'a.php' => "<?php\n",
         ]);
 
@@ -287,7 +287,7 @@ final class IdePluginTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta/plugins/lifecycle/plugin.php' => <<<'PHP'
+            '.porta/plugins/lifecycle/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;
@@ -337,7 +337,7 @@ final class IdePluginTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta/plugins/ctx/plugin.php' => <<<'PHP'
+            '.porta/plugins/ctx/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;
@@ -395,7 +395,7 @@ final class IdePluginTest extends TestCase
         $project = new TempProject([
             'a.php' => "<?php\n",
             'other.php' => "<?php\n",
-            '.porta/plugins/filectx/plugin.php' => <<<'PHP'
+            '.porta/plugins/filectx/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;

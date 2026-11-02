@@ -102,7 +102,7 @@ final class PluginCommandsTest extends TestCase
      */
     private function plugin(string $name, ?string $description, array $tools): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/plugin.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
         $manifest = ['extra' => ['porta' => ['tools' => $tools]]];
         if (null !== $description) {
             $manifest['description'] = $description;

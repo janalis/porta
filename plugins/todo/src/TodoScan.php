@@ -14,7 +14,7 @@ use Porta\Workbench\Dock\ToolRun;
  * plugin's dock tab. Case-sensitive on purpose, so prose "todo" stays out; the
  * regex ranges bold the keyword in each row.
  *
- * It lives here rather than in `plugin.php` because a plugin file only WIRES:
+ * It lives here rather than in `porta.php` because a plugin file only WIRES:
  * everything under `src/` is analysed by mago and held at 100% coverage by this
  * plugin's own tests, and a scan with an async completion is exactly the logic
  * that must be.

@@ -207,7 +207,7 @@ final class CatalogCoverageTest extends TestCase
     /**
      * Every literal string in the FIRST argument of a ->trans() (or its
      * markup twin, Translator::markup()) call in src/
-     * and the bundled plugins' src/ and plugin.php, each with the set its
+     * and the bundled plugins' src/ and porta.php, each with the set its
      * file resolves against (core, or the plugin's name). Dynamic ids cannot be collected
      * statically; the two big dynamic-id tables are covered by
      * {@see labelLiterals()} and the enum labels by {@see enumLabelLiterals()}.
@@ -338,7 +338,7 @@ final class CatalogCoverageTest extends TestCase
         '/src/Run/RunConfigs.php' => false, // 'composer '.$name, 'make '.$target
         '/plugins/git/src/Command/GitCommands.php' => false, // stash subjects and branch names
         '/plugins/git/src/Command/WorktreeCommands.php' => false, // worktree folder and branch names
-        '/plugins/assist/plugin.php' => false, // 'localhost:'.$port, the host's shared servers
+        '/plugins/assist/porta.php' => false, // 'localhost:'.$port, the host's shared servers
     ];
 
     /**
@@ -455,12 +455,12 @@ final class CatalogCoverageTest extends TestCase
         ];
     }
 
-    /** @return list<string> every .php file under src/ and plugins/<name>/src/, and every plugins/<name>/plugin.php */
+    /** @return list<string> every .php file under src/ and plugins/<name>/src/, and every plugins/<name>/porta.php */
     private function phpFiles(): array
     {
         $pluginSrc = \glob(self::ROOT.'/plugins/*/src');
         $roots = [self::ROOT.'/src', ...(\is_array($pluginSrc) ? $pluginSrc : [])];
-        $entries = \glob(self::ROOT.'/plugins/*/plugin.php');
+        $entries = \glob(self::ROOT.'/plugins/*/porta.php');
         $files = \is_array($entries) ? $entries : [];
         foreach ($roots as $root) {
             $tree = new Finder()

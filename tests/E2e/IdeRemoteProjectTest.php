@@ -53,7 +53,7 @@ final class IdeRemoteProjectTest extends TestCase
         $server = new TempProject(['README.md' => "# served\n\n\n\n\n", 'src/App.php' => "<?php\n\n\n// the line a search found\n", 'src/Secret.php' => "<?php // not yours\n"]);
         $cache = new TempProject([
             ProjectLocation::MARKER => '{"url": "ssh://example.org/srv/app"}',
-            '.porta/plugins/fakeremote/plugin.php' => \sprintf(<<<'PHP'
+            '.porta/plugins/fakeremote/porta.php' => \sprintf(<<<'PHP'
                 <?php
                 use Porta\Filesystem\RemoteSpec;
                 use Porta\Filesystem\RemoteTransport;

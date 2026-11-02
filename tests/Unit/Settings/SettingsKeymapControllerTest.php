@@ -327,7 +327,7 @@ final class SettingsKeymapControllerTest extends TestCase
         // action, the page lists it with the plugin's own label, a rebind
         // persists under the bare id, and the re-merged live map binds it. Core
         // names none of it.
-        $project = new TempProject(['.porta/plugins/hex/plugin.php' => <<<'PHP'
+        $project = new TempProject(['.porta/plugins/hex/porta.php' => <<<'PHP'
                 <?php
                 return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
                     public function activate(\Porta\Plugin\Api\PluginApi $api): void
@@ -360,7 +360,7 @@ final class SettingsKeymapControllerTest extends TestCase
         // through the code editor and the IDE map alone shows every plugin
         // pane's action as unbound — "no key" for a key that works — because a
         // pane's defaults live on the pane and nowhere else.
-        $project = new TempProject(['.porta/plugins/demo/plugin.php' => <<<'PHP'
+        $project = new TempProject(['.porta/plugins/demo/porta.php' => <<<'PHP'
                 <?php
                 return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
                     public function activate(\Porta\Plugin\Api\PluginApi $api): void
@@ -385,7 +385,7 @@ final class SettingsKeymapControllerTest extends TestCase
         // Priority is editor, THEN pane, THEN ide scope — an action bound at
         // both pane and ide scope (but not editor scope) must show the pane's
         // key, since that is the one that actually fires.
-        $project = new TempProject(['.porta/plugins/demo/plugin.php' => <<<'PHP'
+        $project = new TempProject(['.porta/plugins/demo/porta.php' => <<<'PHP'
                 <?php
                 return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
                     public function activate(\Porta\Plugin\Api\PluginApi $api): void
@@ -434,7 +434,7 @@ final class SettingsKeymapControllerTest extends TestCase
 
     public function testARebindOfAnActionOnlyAPaneMatchesIsLiveToo(): void
     {
-        $project = new TempProject(['.porta/plugins/demo/plugin.php' => <<<'PHP'
+        $project = new TempProject(['.porta/plugins/demo/porta.php' => <<<'PHP'
                 <?php
                 return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
                     public function activate(\Porta\Plugin\Api\PluginApi $api): void
@@ -472,7 +472,7 @@ final class SettingsKeymapControllerTest extends TestCase
     {
         // registerActions() takes no keys, deliberately: an action no pane
         // binds has nowhere live to land.
-        $project = new TempProject(['.porta/plugins/hex/plugin.php' => <<<'PHP'
+        $project = new TempProject(['.porta/plugins/hex/porta.php' => <<<'PHP'
                 <?php
                 return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
                     public function activate(\Porta\Plugin\Api\PluginApi $api): void

@@ -176,7 +176,7 @@ final class DockToolControllerTest extends TestCase
 
     public function testRowsAreNormalisedBecauseAPluginsShapeIsUnchecked(): void
     {
-        // plugin.php files sit outside mago's analyzer, so this is the only
+        // porta.php files sit outside mago's analyzer, so this is the only
         // place a row's shape is enforced at all.
         $controller = $this->controller(self::tool(), rootDir: __DIR__);
         $controller->open('demo:todo', [

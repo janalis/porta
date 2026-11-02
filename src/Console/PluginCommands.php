@@ -39,7 +39,7 @@ final readonly class PluginCommands
     {
         $manifests = [];
         // An empty name is no command: nothing is even read.
-        foreach ('' === $name ? [] : Files::childFiles($this->pluginsDir, 'plugin.php') as $file) {
+        foreach ('' === $name ? [] : Files::childFiles($this->pluginsDir, 'porta.php') as $file) {
             $manifest = PluginManifest::beside($file);
             $manifests[$manifest->name] = $manifest;
         }

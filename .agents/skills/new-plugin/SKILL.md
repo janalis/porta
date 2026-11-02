@@ -6,7 +6,7 @@ description: Add a bundled plugin under plugins/<name>/ in the Porta repo — la
 Worked examples: `git show --stat b4506a85` (mcp), `006b7600` (symfony-lsp). The API is
 `docs/plugins.md`; loading, ordering and the drain are `docs/internals/plugin-system.md`.
 
-1. **`plugins/<name>/plugin.php`**: `return new class('<name>') extends AbstractPlugin { … };`.
+1. **`plugins/<name>/porta.php`**: `return new class('<name>') extends AbstractPlugin { … };`.
    It only wires; code lives in `plugins/<name>/src/`. Use anonymous classes in plugin files (a
    cross-plugin redeclaration is an uncatchable fatal), and a plugin class is never a container service.
 2. **`plugins/<name>/composer.json`**: `"type": "porta-plugin"`, `autoload.psr-4`
@@ -19,14 +19,14 @@ Worked examples: `git show --stat b4506a85` (mcp), `006b7600` (symfony-lsp). The
    `enabledPlugins` in its `.porta.json` (see `plugins/symfony-lsp/tests/IdeSymfonyLspPluginTest.php`).
 4. **`plugins/<name>/tests/`** joins the Plugins suite and `coverage:plugins` automatically (one shard per
    `*Test.php`).
-   - **The plugin's OWN tests must reach 100%** of its `src/` AND its `plugin.php` (`--require=plugins`).
+   - **The plugin's OWN tests must reach 100%** of its `src/` AND its `porta.php` (`--require=plugins`).
      Core tests don't count.
 5. **`mago.toml`**: add `"plugins/<name>/tests"` to the analyzer `excludes` by hand; mago excludes take no
    globs. If the plugin vendors dependencies, also add a `plugins/<name>/vendor` source exclude
    (`BundledPluginVendorTest`).
 6. **Arch**: in `ALLOWED_EDGES` (`src/Console/ArchitectureCheckCommand.php`), add one commented
    `'<Ns>>X'` edge per core namespace the plugin's `src/` imports. `<Ns>` is the psr-4 segment after
-   `Porta\`, not the directory name (`GitPlugin`, but `SymfonyLsp`). `plugin.php` is outside the graph.
+   `Porta\`, not the directory name (`GitPlugin`, but `SymfonyLsp`). `porta.php` is outside the graph.
    Guard: `composer arch` (fails on drift in both directions).
 7. **Translations**, if it has strings: `plugins/<name>/translations/messages.{en,de,es,fr,he,it,ja}.xlf`,
    ids from 1, called through `$api->trans()`; add each string with

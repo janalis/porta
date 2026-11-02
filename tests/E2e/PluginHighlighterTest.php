@@ -55,7 +55,7 @@ final class PluginHighlighterTest extends TestCase
     public function testPluginBackendPaintsTheEditor(): void
     {
         $project = new TempProject([
-            '.porta/plugins/shouty/plugin.php' => self::PLUGIN,
+            '.porta/plugins/shouty/porta.php' => self::PLUGIN,
             'a.php' => "<?php\n\$x = 1;\n",
         ]);
 
@@ -69,7 +69,7 @@ final class PluginHighlighterTest extends TestCase
     {
         $project = new TempProject([
             '.porta.json' => '{"highlight":{"default":"tempest"}}',
-            '.porta/plugins/shouty/plugin.php' => self::PLUGIN,
+            '.porta/plugins/shouty/porta.php' => self::PLUGIN,
             'a.php' => "<?php\n\$x = 1;\n",
         ]);
 
@@ -84,7 +84,7 @@ final class PluginHighlighterTest extends TestCase
     {
         $plugin = \str_replace("['php']", replace: "['rust']", subject: self::PLUGIN);
         $project = new TempProject([
-            '.porta/plugins/shouty/plugin.php' => $plugin,
+            '.porta/plugins/shouty/porta.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n",
         ]);
 

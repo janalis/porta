@@ -154,7 +154,7 @@ final class WorkspaceTrustTest extends TestCase
     public static function neverAnswered(): iterable
     {
         yield 'a .porta.json' => [['.porta.json' => '{}']];
-        yield 'plugins of its own' => [['.porta/plugins/x/plugin.php' => '<?php']];
+        yield 'plugins of its own' => [['.porta/plugins/x/porta.php' => '<?php']];
         yield 'a vendor/bin' => [['vendor/bin/phpstan' => '']];
         // What its language server would read, and run what it names.
         yield 'nothing but a .phpantom.toml' => [['.phpantom.toml' => "[phpstan]\ncommand = \"./x\"\n"]];
@@ -250,7 +250,7 @@ final class WorkspaceTrustTest extends TestCase
     public function testAnUntrustedProjectsPluginsAreNotLoaded(): void
     {
         $plugin = "<?php\nreturn new class('mine') extends Porta\\Plugin\\Api\\AbstractPlugin { public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {} };";
-        $project = new TempProject(['.porta/plugins/mine/plugin.php' => $plugin]);
+        $project = new TempProject(['.porta/plugins/mine/porta.php' => $plugin]);
         $load = static function (bool $trusted) use ($project): PluginManager {
             $manager = new PluginManager(new EventDispatcher(), new PluginSettings($project->dir, []));
             new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), trusted: $trusted)->loadInto($manager);
@@ -272,18 +272,18 @@ final class WorkspaceTrustTest extends TestCase
     {
         $plugin =
             static fn (string $name): string => "<?php\nreturn new class('{$name}') extends Porta\\Plugin\\Api\\AbstractPlugin { public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {} };";
-        $project = new TempProject(['.porta/plugins/mine/plugin.php' => $plugin('mine')]);
-        $global = new TempProject(['.porta/plugins/theirs/plugin.php' => $plugin('theirs')]);
+        $project = new TempProject(['.porta/plugins/mine/porta.php' => $plugin('mine')]);
+        $global = new TempProject(['.porta/plugins/theirs/porta.php' => $plugin('theirs')]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings($project->dir, []));
         $untrusted = new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), trusted: false);
 
-        $refused = $untrusted->loadFile($project->path('.porta/plugins/mine/plugin.php'), $manager);
+        $refused = $untrusted->loadFile($project->path('.porta/plugins/mine/porta.php'), $manager);
         $this->assertSame('Plugin "%name%" is in an untrusted project — not loaded', $refused?->key);
         $this->assertSame(['%name%' => 'mine'], $refused->params);
         $this->assertFalse($manager->hasPlugin('mine'), 'nothing of it ran');
         $this->assertFalse($untrusted->mayLoad($project->path('.porta/plugins/mine')));
 
-        $this->assertNull($untrusted->loadFile($global->path('.porta/plugins/theirs/plugin.php'), $manager));
+        $this->assertNull($untrusted->loadFile($global->path('.porta/plugins/theirs/porta.php'), $manager));
         $this->assertTrue($manager->hasPlugin('theirs'), 'a global copy is the user\'s own');
 
         $checkout = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), embeddedDir: $project->path('.porta/plugins'), trusted: false);
@@ -325,8 +325,8 @@ final class WorkspaceTrustTest extends TestCase
     #[DataProvider('bundledTools')]
     public function testTheBundledToolsThatRunProjectCodeSaySo(string $plugin, bool $runs): void
     {
-        $tool = require \dirname(__DIR__, levels: 3).'/plugins/'.$plugin.'/plugin.php';
-        \assert(\is_object($tool), description: 'a plugin.php returns its plugin');
+        $tool = require \dirname(__DIR__, levels: 3).'/plugins/'.$plugin.'/porta.php';
+        \assert(\is_object($tool), description: 'a porta.php returns its plugin');
 
         $this->assertSame($runs, Probe::invoke($tool, 'runsProjectCode'));
     }

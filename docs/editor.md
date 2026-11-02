@@ -127,8 +127,8 @@ the edge facing the code that opens beside the shown or hovered tab. Shorter ter
 code keeps the rows. The dock's top edge is its resize grab, above the tool's
 count.
 
-Two open files with the same name say which is which — `plugin.php (git)` and
-`plugin.php (symfony-lsp)` — and the qualifier grows a directory at a time
+Two open files with the same name say which is which — `porta.php (git)` and
+`porta.php (symfony-lsp)` — and the qualifier grows a directory at a time
 until it distinguishes them, so two `GitSidebar.php` under `<plugin>/src/View/`
 become `GitSidebar.php (git/src/View)` and `(other/src/View)`. It goes after
 the name rather than in front so the part that says what the file *is* survives

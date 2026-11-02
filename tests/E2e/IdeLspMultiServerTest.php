@@ -46,7 +46,7 @@ final class IdeLspMultiServerTest extends TestCase
         $php = \PHP_BINARY;
 
         return new TempProject([
-            'zeta/plugin.php' => <<<PHP
+            'zeta/porta.php' => <<<PHP
                 <?php
                 use Porta\\Plugin\\Api\\PluginApi;
                 use Porta\\Plugin\\Api\\PortaPlugin;
@@ -63,7 +63,7 @@ final class IdeLspMultiServerTest extends TestCase
                     }
                 };
                 PHP,
-            'alpha/plugin.php' => <<<PHP
+            'alpha/porta.php' => <<<PHP
                 <?php
                 use Porta\\Plugin\\Api\\PluginApi;
                 use Porta\\Plugin\\Api\\PortaPlugin;
@@ -163,7 +163,7 @@ final class IdeLspMultiServerTest extends TestCase
         $php = \PHP_BINARY;
 
         return new TempProject([
-            'zeta/plugin.php' => <<<PHP
+            'zeta/porta.php' => <<<PHP
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;
@@ -180,7 +180,7 @@ final class IdeLspMultiServerTest extends TestCase
                     }
                 };
                 PHP,
-            'alpha/plugin.php' => <<<PHP
+            'alpha/porta.php' => <<<PHP
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;

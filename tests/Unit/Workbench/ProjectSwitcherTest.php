@@ -397,7 +397,7 @@ final class ProjectSwitcherTest extends TestCase
     public static function projectsNeverAnsweredFor(): iterable
     {
         yield 'a .porta.json' => [['.porta.json' => '{}']];
-        yield 'plugins of its own' => [['.porta/plugins/x/plugin.php' => '<?php']];
+        yield 'plugins of its own' => [['.porta/plugins/x/porta.php' => '<?php']];
         yield 'a vendor/bin' => [['vendor/bin/phpstan' => '#!/bin/sh']];
         // Its language server would read it, and run what it names.
         yield 'nothing but a .phpantom.toml' => [['.phpantom.toml' => "[phpstan]\ncommand = \"./x\"\n"]];

@@ -22,7 +22,7 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
- * The shipped mago plugin (plugins/mago/plugin.php) against a stub
+ * The shipped mago plugin (plugins/mago/porta.php) against a stub
  * binary that serves both faces: `format` rewrites the file, `lint` emits the
  * JSON issue report. The real plugin file is loaded from the repo.
  */
@@ -39,9 +39,9 @@ final class MagoPluginTest extends TestCase
 
     private function project(?string $stubBody = null): TempProject
     {
-        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/mago/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/mago/porta.php');
         $project = new TempProject([
-            '.porta/plugins/mago/plugin.php' => $plugin,
+            '.porta/plugins/mago/porta.php' => $plugin,
             'a.php' => "<?php\n\$x = 1;\n",
             'notes.txt' => "plain\n",
         ]);

@@ -179,7 +179,7 @@ final class SettingsPagesGoldenTest extends TestCase
             ),
             // One plugin as the index and its own page show it: described,
             // on, one required tool missing and one suggested, removable.
-            '.porta/plugins/viewer/plugin.php' => self::plugin('viewer'),
+            '.porta/plugins/viewer/porta.php' => self::plugin('viewer'),
             '.porta/plugins/viewer/composer.json' => \json_encode(
                 [
                     'description' => 'Shows diagrams',
@@ -194,7 +194,7 @@ final class SettingsPagesGoldenTest extends TestCase
                 ],
                 \JSON_THROW_ON_ERROR,
             ),
-            '.porta/plugins/quiet/plugin.php' => self::plugin('quiet'),
+            '.porta/plugins/quiet/porta.php' => self::plugin('quiet'),
         ]);
         \putenv('PORTA_HOME='.$this->home->dir);
         // The Command line page names ~/.local/bin/porta: a fixed home keeps

@@ -123,7 +123,7 @@ its one-line row in [Settled questions](../decisions.md).
 - symfony-lsp knows what it installed (2026-09-22)
 - The symfony-lsp round: four symptoms, four causes (2026-09-09)
 - The floor that stopped fitting its own rows (2026-09-09)
-- Two tabs called plugin.php (2026-09-09)
+- Two tabs called porta.php (2026-09-09)
 - A rebind you could make and never unmake (2026-09-09)
 - The catalog that loaded as nothing (2026-09-09)
 - The status bar dropped the file, and kept the cheat sheet (2026-09-09)

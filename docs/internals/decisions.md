@@ -169,7 +169,7 @@ What that commit had to build, beyond the move itself:
   buffers at commit, but a view's factory runs after commit (it needs the region
   core mints for it). Anything registered before the view exists — the `ide_git`
   toggle, the core-bus listeners — goes through the slot.
-- **A fact bridge in `plugin.php`.** The plugin's widgets dispatch on its own
+- **A fact bridge in `porta.php`.** The plugin's widgets dispatch on its own
   `EventDispatcher`, and three of those events are core `PluginObservable`
   facts. Forwarding them is what keeps the gutter stripe refreshing after a
   commit or a pull; without it they would reach only the git plugin's own
@@ -210,7 +210,7 @@ Three regressions the gates would not have caught, each now pinned by a test:
 - `PaneLayout::applyDirection()` ran during the eager boot, before a PLUGIN view
   can have minted its region — so the git area mounted empty. It runs after the
   view registrar now.
-- The `#[AsWidget]` flex styles vanished with the attribute; `plugin.php`
+- The `#[AsWidget]` flex styles vanished with the attribute; `porta.php`
   applies them by hand beside the ids.
 - `ide_git` had to become adoptable. The old note said flagging it would make
   `MenuModel` skip the item when unregistered, "the opposite of what the skip is
@@ -259,14 +259,14 @@ mutation sweep, not the reading, is what found the hole underneath.
 That sweep is also why the fix is a fix. Five mutations survived its first pass
 — shutdown missing the remote lane, shutdown cancelling nothing, and the lane
 not reaching any of three constructors — and writing tests for them turned up a
-real gap in the working tree: `plugin.php` was still building `GitRemote`
+real gap in the working tree: `porta.php` was still building `GitRemote`
 without its lane, so shutdown reached one lane of two. The defect the commit
 claims to fix, reintroduced while fixing it, caught only because nothing
 asserted the claim.
 
 The fifty files are grouped by tier now (`Process/`, `Parse/`, `Diff/`, `View/`,
 `Command/`, `Blame/`, `Setting/`, `Support/`), with the membership rules in
-`plugins/git/plugin.php`'s docblock — the only plugin large enough to need its
+`plugins/git/porta.php`'s docblock — the only plugin large enough to need its
 own `code-map.md`. `composer arch` stayed at 220 edges throughout: the scanner
 keys on the first segment after `Porta\`, so a subdirectory cannot invent
 coupling.
@@ -316,7 +316,7 @@ preview's feed cannot absorb.
 
 **A project's plugins and runnable config wait for trust — kept.** Project
 plugins used to be opt-out, "trusted like composer scripts". But opening a
-clone ran its `plugin.php`, its `.porta.json` named the git binary and the
+clone ran its `porta.php`, its `.porta.json` named the git binary and the
 language server, and the status poll ran both with nobody asking. Now an
 untrusted project opens restricted (`Config/WorkspaceTrust`). Trust is per
 project and asked once; `PORTA_TRUSTED_FOLDERS` exists for CI and the suite.
@@ -502,7 +502,7 @@ loop-condition narrowing, named arguments, escaped backslashes in patterns,
 string destructuring, filesystem calls costed as cheap, and more) and shipped
 in 0.1.1; the suppressions they needed are gone. Left off, by choice:
 - `UsingInclusionReturnValue`: it flags the plugin contract itself, as a
-  `plugin.php` returns its instance.
+  `porta.php` returns its instance.
 - `BadExceptionsProcessing`: its only hits are "too many statements in a try",
   a style call; the swallowed-exception half found nothing.
 - `EfferentObjectCoupling`, `CompactCanBeUsed`,

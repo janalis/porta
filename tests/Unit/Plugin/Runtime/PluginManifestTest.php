@@ -31,12 +31,12 @@ final class PluginManifestTest extends TestCase
 
     private function entryFile(string $dir, ?string $json): string
     {
-        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/porta.php', data: "<?php\n");
         if (null !== $json) {
             \file_put_contents($dir.'/composer.json', data: $json);
         }
 
-        return $dir.'/plugin.php';
+        return $dir.'/porta.php';
     }
 
     /** A plugin whose composer.json is $json; $with names the extra directories to create beside it. */
@@ -47,10 +47,10 @@ final class PluginManifestTest extends TestCase
         foreach ($with as $extra) {
             \mkdir($dir.'/'.$extra, permissions: 0o777, recursive: true);
         }
-        \file_put_contents($dir.'/plugin.php', data: "<?php\n");
+        \file_put_contents($dir.'/porta.php', data: "<?php\n");
         \file_put_contents($dir.'/composer.json', data: $json);
 
-        return PluginManifest::beside($dir.'/plugin.php');
+        return PluginManifest::beside($dir.'/porta.php');
     }
 
     public function testAPluginWithNoManifestShipsNothingAndRequiresNothing(): void
@@ -80,7 +80,7 @@ final class PluginManifestTest extends TestCase
     public function testAPrefixMayNameSeveralDirectoriesAndThePluginRoot(): void
     {
         // Composer accepts a string or a list, and `.`/`""` mean the package
-        // root — a plugin whose classes sit beside its plugin.php.
+        // root — a plugin whose classes sit beside its porta.php.
         $project = new TempProject();
         $file = $this->pluginDir($project, 'multi', '{"autoload": {"psr-4": {"A\\\\": ["src/", "."], "B\\\\": "src"}}}');
         $dirs = PluginManifest::beside($file)->autoloadDirs();

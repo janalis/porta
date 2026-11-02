@@ -46,7 +46,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     /** An embedded fixture plugin whose menu item is usable only once its binary setting is set. */
     private function embeddedFixture(): TempProject
     {
-        return new TempProject(['bundled/plugin.php' => <<<'PHP'
+        return new TempProject(['bundled/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;
@@ -201,14 +201,14 @@ final class IdeEmbeddedPluginsTest extends TestCase
     public function testRemovingAShadowingCopyFallsBackToTheEmbeddedOneAndErrorsFlash(): void
     {
         $embedded = new TempProject([
-            'bundled/plugin.php' => $this->namedPlugin('bundled', 'Bundled Run'),
-            'shadowfail/plugin.php' => "<?php\nreturn 42;\n", // a broken fallback copy
-            'sleeper/plugin.php' => "<?php\nreturn 42;\n", // broken, disabled at boot
+            'bundled/porta.php' => $this->namedPlugin('bundled', 'Bundled Run'),
+            'shadowfail/porta.php' => "<?php\nreturn 42;\n", // a broken fallback copy
+            'sleeper/porta.php' => "<?php\nreturn 42;\n", // broken, disabled at boot
         ]);
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $project = new TempProject([
-            '.porta/plugins/bundled/plugin.php' => $this->namedPlugin('bundled', 'Project Run'),
-            '.porta/plugins/shadowfail/plugin.php' => $this->namedPlugin('shadowfail', 'Shadow OK'),
+            '.porta/plugins/bundled/porta.php' => $this->namedPlugin('bundled', 'Project Run'),
+            '.porta/plugins/shadowfail/porta.php' => $this->namedPlugin('shadowfail', 'Shadow OK'),
             '.porta.json' => \json_encode(['disabledPlugins' => ['sleeper']], \JSON_THROW_ON_ERROR),
             'a.php' => "<?php\n",
         ]);
@@ -379,7 +379,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
     {
         $dir = $project->path('.porta/plugins/'.$name);
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: $this->namedPlugin($name, \ucfirst($name).' Run'));
+        \file_put_contents($dir.'/porta.php', data: $this->namedPlugin($name, \ucfirst($name).' Run'));
         if ([] !== $requires) {
             \file_put_contents($dir.'/composer.json', data: (string) \json_encode(['extra' => ['porta' => ['requires' => $requires]]], \JSON_THROW_ON_ERROR));
         }

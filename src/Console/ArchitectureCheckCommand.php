@@ -128,7 +128,7 @@ final class ArchitectureCheckCommand extends Command
         'Container>Config',
         // The custos plugin's own code (plugins/custos/src): ServerNotFound, so
         // a php claim with no binary leaves custos out instead of launching a
-        // broken process. Its plugin.php does the rest of the wiring.
+        // broken process. Its porta.php does the rest of the wiring.
         'Custos>Plugin',
         'Debug>Container',
         'Debug>Editor',
@@ -396,7 +396,7 @@ final class ArchitectureCheckCommand extends Command
         'Support>Ui',
         // The symfony-lsp plugin's core reaches: ServerNotFound, so a claimed
         // language with no binary is said rather than silent, and Argv::split
-        // for the php-command setting. Its plugin.php (outside the namespace
+        // for the php-command setting. Its porta.php (outside the namespace
         // graph) does the rest of the PluginApi wiring.
         'SymfonyLsp>Plugin',
         'SymfonyLsp>Support',

@@ -78,7 +78,7 @@ final class SurfaceKeymaps
     public static function sourceRoots(string $root): array
     {
         $roots = ['Porta\\' => $root.'/src'];
-        $manifests = \glob($root.'/plugins/*/plugin.php');
+        $manifests = \glob($root.'/plugins/*/porta.php');
         foreach (false === $manifests ? [] : $manifests as $pluginFile) {
             foreach (PluginManifest::beside($pluginFile)->autoloadDirs() as $prefix => $directories) {
                 foreach ($directories as $directory) {

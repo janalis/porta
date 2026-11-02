@@ -29,7 +29,7 @@ final class ContainerSmokeTest extends ContainerTestCase
     public function testEveryPublicIdAndEveryLocatorEntryResolves(): void
     {
         // Hermetic plugin loading: resolving Keybindings executes every
-        // plugin.php via PluginHost::ensureLoaded(), and the loader's global
+        // porta.php via PluginHost::ensureLoaded(), and the loader's global
         // base must not be this machine's real ~/.porta.
         $home = new TempProject();
         $savedHome = \getenv('PORTA_HOME');

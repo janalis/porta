@@ -54,7 +54,7 @@ final class IdeLiveViewPluginsTest extends TestCase
     /** An embedded fixture plugin contributing a view, a top-level menu and the toggle verb. */
     private function embeddedViewFixture(): TempProject
     {
-        return new TempProject(['demo/plugin.php' => <<<'PHP'
+        return new TempProject(['demo/porta.php' => <<<'PHP'
                 <?php
 
                 declare(strict_types=1);
@@ -283,7 +283,7 @@ final class IdeLiveViewPluginsTest extends TestCase
         // The mint happens BEFORE the factory runs (a view fills its panes
         // while being constructed), so a failed factory used to leak a minted,
         // empty region — a blank workspace with no error anywhere.
-        $embedded = new TempProject(['demo/plugin.php' => <<<'PHP'
+        $embedded = new TempProject(['demo/porta.php' => <<<'PHP'
                 <?php
 
                 declare(strict_types=1);

@@ -24,10 +24,10 @@ final class PluginCommandsTest extends TestCase
     private function plugins(#[\SensitiveParameter] string $token): TempProject
     {
         return new TempProject([
-            'base/plugin.php' => "<?php\n",
+            'base/porta.php' => "<?php\n",
             'base/composer.json' => \json_encode(['autoload' => ['psr-4' => ["Base{$token}\\" => 'src/']]], \JSON_THROW_ON_ERROR),
             'base/src/Greeting.php' => "<?php\nnamespace Base{$token};\nabstract class Greeting extends \\Porta\\Plugin\\Api\\PluginCommand {}\n",
-            'greeter/plugin.php' => "<?php\n",
+            'greeter/porta.php' => "<?php\n",
             'greeter/composer.json' => \json_encode(
                 [
                     'autoload' => ['psr-4' => ["Greeter{$token}\\" => 'src/']],
@@ -36,7 +36,7 @@ final class PluginCommandsTest extends TestCase
                 \JSON_THROW_ON_ERROR,
             ),
             'greeter/src/Hello.php' => "<?php\nnamespace Greeter{$token};\n#[\\Symfony\\Component\\Console\\Attribute\\AsCommand(name: 'hello')]\nfinal class Hello extends \\Base{$token}\\Greeting {}\n",
-            'broken/plugin.php' => "<?php\n",
+            'broken/porta.php' => "<?php\n",
             'broken/composer.json' => \json_encode(
                 [
                     'autoload' => ['psr-4' => ["Broken{$token}\\" => 'src/']],

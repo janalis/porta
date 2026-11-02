@@ -18,4 +18,4 @@ declare(strict_types=1);
  * It delegates to the real bundled file rather than copying it, so the suite
  * exercises the shipped plugin.
  */
-return require \dirname(__DIR__, levels: 7).'/plugins/tempest/plugin.php';
+return require \dirname(__DIR__, levels: 7).'/plugins/tempest/porta.php';

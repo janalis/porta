@@ -1231,8 +1231,8 @@
         <target>„%name%” אינו שם תוסף חוקי</target>
       </trans-unit>
       <trans-unit id="334">
-        <source>No plugin.php found in %source%</source>
-        <target>לא נמצא plugin.php ב־%source%</target>
+        <source>No porta.php found in %source%</source>
+        <target>לא נמצא porta.php ב־%source%</target>
       </trans-unit>
       <trans-unit id="335">
         <source>git is not available</source>
@@ -1243,8 +1243,8 @@
         <target>git clone נכשל (קוד יציאה %code%)</target>
       </trans-unit>
       <trans-unit id="337">
-        <source>The repository contains no plugin.php</source>
-        <target>המאגר אינו מכיל plugin.php</target>
+        <source>The repository contains no porta.php</source>
+        <target>המאגר אינו מכיל porta.php</target>
       </trans-unit>
       <trans-unit id="338">
         <source>Another install is already running</source>

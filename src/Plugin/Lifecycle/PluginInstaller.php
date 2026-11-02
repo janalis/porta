@@ -104,7 +104,7 @@ final class PluginInstaller
     /**
      * Install a plugin PACKAGE from a directory path, a git URL, or a
      * `vendor/name` package, into the scope's plugin dir. Exactly one $onDone
-     * call: a translated error, or the installed plugin.php path.
+     * call: a translated error, or the installed porta.php path.
      *
      * @param \Closure(?string, ?string): void $onDone (?error, ?pluginFile)
      */
@@ -212,16 +212,16 @@ final class PluginInstaller
 
     /**
      * The package name a local plugin directory declares — null (with $onDone
-     * already called) when it has no plugin.php or no Porta plugin manifest.
+     * already called) when it has no porta.php or no Porta plugin manifest.
      *
      * @param \Closure(?string, ?string): void $onDone
      */
     private function pathPackage(string $source, \Closure $onDone): ?string
     {
-        $hasPluginFile = \is_file($source.'/plugin.php');
+        $hasPluginFile = \is_file($source.'/porta.php');
         [$packageName, $type] = $hasPluginFile ? $this->packageManifest($source) : [null, null];
         $refusal = match (true) {
-            !$hasPluginFile => $this->translator->trans('No plugin.php found in %source%', ['%source%' => $source]),
+            !$hasPluginFile => $this->translator->trans('No porta.php found in %source%', ['%source%' => $source]),
             null === $packageName || 'porta-plugin' !== $type
                 => $this->translator->trans('No installable plugin package found in %source% (needs a composer.json with "name" and "type": "porta-plugin")', ['%source%' => $source]),
             default => null,
@@ -272,7 +272,7 @@ final class PluginInstaller
             }
             $landed = $this->project->packageDir($root, $packageName);
             [, $type] = $this->packageManifest($landed);
-            if ('porta-plugin' !== $type || !\is_file($landed.'/plugin.php')) {
+            if ('porta-plugin' !== $type || !\is_file($landed.'/porta.php')) {
                 $this->startComposer($composerDir, ['remove', $packageName, '--no-interaction'], static function (int $exitCode): void {});
                 $this->fail($onDone, $this->translator->trans('"%source%" is not a Porta plugin package', ['%source%' => $packageName]));
 
@@ -317,9 +317,9 @@ final class PluginInstaller
 
                 return;
             }
-            if (!\is_file($scratch.'/plugin.php')) {
+            if (!\is_file($scratch.'/porta.php')) {
                 $this->fs->remove($scratch);
-                $this->fail($onDone, $this->translator->trans('The repository contains no plugin.php'));
+                $this->fail($onDone, $this->translator->trans('The repository contains no porta.php'));
 
                 return;
             }
@@ -433,7 +433,7 @@ final class PluginInstaller
      */
     private function finishInstall(string $dest, \Closure $onDone): void
     {
-        $pluginFile = $dest.'/plugin.php';
+        $pluginFile = $dest.'/porta.php';
         $outcome = $this->installDependencies($dest, function (int $code) use ($pluginFile, $onDone): void {
             if (0 !== $code) {
                 $this->fail($onDone, $this->translator->trans('Installed, but composer install failed (exit code %code%)', ['%code%' => $code]));
@@ -484,7 +484,7 @@ final class PluginInstaller
         // whose only requirement is `php` asks for nothing, and shelling out
         // for it would be a subprocess to answer no.
         return match (true) {
-            !PluginManifest::beside($pluginDir.'/plugin.php')->needsInstall() => DependencyInstall::NotNeeded,
+            !PluginManifest::beside($pluginDir.'/porta.php')->needsInstall() => DependencyInstall::NotNeeded,
             null !== $this->running => DependencyInstall::Busy,
             null === $this->composerBinary => DependencyInstall::NoComposer,
             default => $this->runComposerInstall($this->composerBinary, $pluginDir, $onExit),
@@ -661,7 +661,7 @@ final class PluginInstaller
                 continue;
             }
             $isEmbedded = null !== $embeddedReal && \realpath($pluginsDir) === $embeddedReal;
-            foreach (Files::childFiles($pluginsDir, 'plugin.php') as $file) {
+            foreach (Files::childFiles($pluginsDir, 'porta.php') as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 $plugins[] = ['name' => $name, 'scope' => $isEmbedded ? InstallScope::Embedded : $scope, 'dir' => $dir];
@@ -671,7 +671,7 @@ final class PluginInstaller
             }
         }
         if (null !== $this->embeddedDir) {
-            foreach (Files::childFiles($this->embeddedDir, 'plugin.php') as $file) {
+            foreach (Files::childFiles($this->embeddedDir, 'porta.php') as $file) {
                 $dir = \dirname($file);
                 $name = \basename($dir);
                 if (!\array_key_exists($name, $embeddedSeen)) {

@@ -66,7 +66,7 @@ final class MermaidEngineTest extends TestCase
         $settings = new PluginSettings($project->dir, [], scope: $scope);
         $manager = new PluginManager(new EventDispatcher(), $settings);
         $api = $manager->api('graph-viewer', $project->dir, $settings);
-        $plugin = require \dirname(__DIR__, levels: 2).'/plugin.php';
+        $plugin = require \dirname(__DIR__, levels: 2).'/porta.php';
         $plugin->activate($api);
         $manager->commit($api, $plugin);
         $this->assertSame('graph', $manager->previewFor('/p/diagram.mmd'));
@@ -88,7 +88,7 @@ final class MermaidEngineTest extends TestCase
         $project = new TempProject();
         $settings = new PluginSettings($project->dir, []);
         $api = new PluginManager(new EventDispatcher(), $settings)->api('graph-viewer', $project->dir, $settings);
-        $plugin = require \dirname(__DIR__, levels: 2).'/plugin.php';
+        $plugin = require \dirname(__DIR__, levels: 2).'/porta.php';
 
         $this->assertNull(Probe::invokeStatic($plugin::class, 'browserConfig', $api), 'trusted (as the suite\'s projects are): remote images load');
 

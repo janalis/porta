@@ -18,7 +18,7 @@ final class PluginLoaderTest extends TestCase
 {
     use PreservesPortaHome;
 
-    /** A plugin.php source registering one command named after the plugin. */
+    /** A porta.php source registering one command named after the plugin. */
     private function pluginSource(string $name, string $extra = ''): string
     {
         return <<<PHP
@@ -64,7 +64,7 @@ final class PluginLoaderTest extends TestCase
         $this->assertSame([], $empty->warnings);
         $this->assertSame([], $empty->defaultKeys);
 
-        $project = new TempProject(['.porta/plugins/demo/plugin.php' => $this->pluginSource('demo')]);
+        $project = new TempProject(['.porta/plugins/demo/porta.php' => $this->pluginSource('demo')]);
         $manager = $this->load($project);
 
         $this->assertTrue($manager->hasPlugin('demo'));
@@ -79,7 +79,7 @@ final class PluginLoaderTest extends TestCase
      */
     public function testAPluginInADirectoryNamedInDigitsLoads(): void
     {
-        $manager = $this->load(new TempProject(['.porta/plugins/2048/plugin.php' => $this->pluginSource('2048')]));
+        $manager = $this->load(new TempProject(['.porta/plugins/2048/porta.php' => $this->pluginSource('2048')]));
 
         $this->assertTrue($manager->hasPlugin('2048'));
         $this->assertSame([], $manager->warnings);
@@ -88,10 +88,10 @@ final class PluginLoaderTest extends TestCase
     public function testProjectBeatsGlobalOnDirectoryNameAndGlobalOnlyLoads(): void
     {
         $global = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->pluginSource('globaldemo'),
-            '.porta/plugins/extra/plugin.php' => $this->pluginSource('extra'),
+            '.porta/plugins/demo/porta.php' => $this->pluginSource('globaldemo'),
+            '.porta/plugins/extra/porta.php' => $this->pluginSource('extra'),
         ]);
-        $project = new TempProject(['.porta/plugins/demo/plugin.php' => $this->pluginSource('demo')]);
+        $project = new TempProject(['.porta/plugins/demo/porta.php' => $this->pluginSource('demo')]);
 
         $manager = $this->load($project, $global->dir);
         $this->assertTrue($manager->hasPlugin('demo'), 'the project copy won');
@@ -116,10 +116,10 @@ final class PluginLoaderTest extends TestCase
     {
         $project = new TempProject([
             // Discovery is alphabetical, so `alpha` is reached first and loads.
-            '.porta/plugins/alpha/plugin.php' => $this->pluginSource('alpha'),
+            '.porta/plugins/alpha/porta.php' => $this->pluginSource('alpha'),
             // Skipped for an unmet PLUGIN requirement, which is what this loop
             // reports — a platform requirement is warned about elsewhere.
-            '.porta/plugins/zulu/plugin.php' => $this->pluginSource('zulu'),
+            '.porta/plugins/zulu/porta.php' => $this->pluginSource('zulu'),
             '.porta/plugins/zulu/composer.json' => '{"extra":{"porta":{"requires":["nowhere"]}}}',
         ]);
         $manager = $this->load($project);
@@ -132,9 +132,9 @@ final class PluginLoaderTest extends TestCase
     public function testAnUnmetPlatformRequirementDeclinesByNameAndTakesDependentsAlong(): void
     {
         $project = new TempProject([
-            '.porta/plugins/future/plugin.php' => $this->pluginSource('future'),
+            '.porta/plugins/future/porta.php' => $this->pluginSource('future'),
             '.porta/plugins/future/composer.json' => '{"require": {"php": ">=99.0", "ext-porta_nonexistent": "*"}}',
-            '.porta/plugins/rider/plugin.php' => $this->pluginSource('rider'),
+            '.porta/plugins/rider/porta.php' => $this->pluginSource('rider'),
             '.porta/plugins/rider/composer.json' => '{"extra": {"porta": {"requires": ["future"]}}}',
         ]);
         $manager = $this->load($project);
@@ -149,9 +149,9 @@ final class PluginLoaderTest extends TestCase
     public function testAMismatchedPluginApiMajorDeclinesAndAMatchingOneLoads(): void
     {
         $project = new TempProject([
-            '.porta/plugins/oldapi/plugin.php' => $this->pluginSource('oldapi'),
+            '.porta/plugins/oldapi/porta.php' => $this->pluginSource('oldapi'),
             '.porta/plugins/oldapi/composer.json' => '{"extra": {"porta": {"api": 999}}}',
-            '.porta/plugins/current/plugin.php' => $this->pluginSource('current'),
+            '.porta/plugins/current/porta.php' => $this->pluginSource('current'),
             '.porta/plugins/current/composer.json' => '{"require": {"php": ">=8.4"}, "extra": {"porta": {"api": 1}}}',
         ]);
         $manager = $this->load($project);
@@ -164,10 +164,10 @@ final class PluginLoaderTest extends TestCase
     public function testTheLiveLoadPathRegistersThePluginsOwnClasses(): void
     {
         // A just-installed plugin's classes have to resolve from the first
-        // line of its plugin.php, exactly like the boot pre-pass — this
+        // line of its porta.php, exactly like the boot pre-pass — this
         // activate() only works through the manifest's autoload registration.
         $project = new TempProject([
-            'live/plugin.php' => <<<'PHP'
+            'live/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\AbstractPlugin;
                 use Porta\Plugin\Api\PluginApi;
@@ -185,7 +185,7 @@ final class PluginLoaderTest extends TestCase
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
 
-        $this->assertNull($loader->loadFile($project->path('live/plugin.php'), $manager));
+        $this->assertNull($loader->loadFile($project->path('live/porta.php'), $manager));
         $this->assertTrue($manager->hasPlugin('live'));
     }
 
@@ -198,17 +198,17 @@ final class PluginLoaderTest extends TestCase
             .'</body></file></xliff>';
         $project = new TempProject([
             'core/.keep' => '',
-            'tr/plugin.php' => $this->pluginSource('tr'),
+            'tr/porta.php' => $this->pluginSource('tr'),
             'tr/translations/messages.fr.xlf' => $catalog,
-            'broken/plugin.php' => $this->pluginSource('broken', "throw new \\RuntimeException('boom');"),
+            'broken/porta.php' => $this->pluginSource('broken', "throw new \\RuntimeException('boom');"),
             'broken/translations/messages.fr.xlf' => \str_replace(search: 'Hello from %name%', replace: 'Broken %name%', subject: $catalog),
         ]);
         $translator = new Translator('fr', $project->path('core'));
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), translator: $translator);
 
-        $this->assertNull($loader->loadFile($project->path('tr/plugin.php'), $manager));
-        $this->assertInstanceOf(ConfigWarning::class, $loader->loadFile($project->path('broken/plugin.php'), $manager));
+        $this->assertNull($loader->loadFile($project->path('tr/porta.php'), $manager));
+        $this->assertInstanceOf(ConfigWarning::class, $loader->loadFile($project->path('broken/porta.php'), $manager));
 
         $this->assertSame('Bonjour de tr', $translator->trans('Hello from %name%', ['%name%' => 'tr']));
         $this->assertSame('Broken x', $translator->trans('Broken %name%', ['%name%' => 'x']), 'a plugin that failed to load contributes no strings either');
@@ -219,13 +219,13 @@ final class PluginLoaderTest extends TestCase
         // loadFile is the just-installed/re-enabled door — a plugin declined
         // at boot must not slip in through it.
         $project = new TempProject([
-            'future/plugin.php' => $this->pluginSource('future'),
+            'future/porta.php' => $this->pluginSource('future'),
             'future/composer.json' => '{"require": {"php": ">=99.0"}}',
         ]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
 
-        $error = $loader->loadFile($project->path('future/plugin.php'), $manager);
+        $error = $loader->loadFile($project->path('future/porta.php'), $manager);
 
         $this->assertInstanceOf(ConfigWarning::class, $error);
         $this->assertStringContainsString('needs PHP >=99.0', self::render($error));
@@ -235,7 +235,7 @@ final class PluginLoaderTest extends TestCase
     public function testATypoedComposerJsonWarnsWithTheDecoderReason(): void
     {
         $project = new TempProject([
-            '.porta/plugins/typo/plugin.php' => $this->pluginSource('typo'),
+            '.porta/plugins/typo/porta.php' => $this->pluginSource('typo'),
             '.porta/plugins/typo/composer.json' => '{"autoload": ',
         ]);
         $manager = $this->load($project);
@@ -249,19 +249,19 @@ final class PluginLoaderTest extends TestCase
     public function testFailuresAreContainedPerPluginAndSiblingsStillLoad(): void
     {
         $project = new TempProject([
-            '.porta/plugins/a-parse-error/plugin.php' => '<?php this is not php at all {{{',
-            '.porta/plugins/b-wrong-return/plugin.php' => '<?php return 42;',
-            '.porta/plugins/c-bad-name/plugin.php' => $this->badNameSource(),
-            '.porta/plugins/d-activate-throws/plugin.php' => $this->pluginSource('thrower', 'throw new \RuntimeException("mid-activate");'),
-            '.porta/plugins/e-action-during-activate/plugin.php' => $this->pluginSource('eager', '$api->flash("too soon");'),
-            '.porta/plugins/f-good/plugin.php' => $this->pluginSource('good'),
-            '.porta/plugins/g-duplicate/plugin.php' => $this->pluginSource('good'),
+            '.porta/plugins/a-parse-error/porta.php' => '<?php this is not php at all {{{',
+            '.porta/plugins/b-wrong-return/porta.php' => '<?php return 42;',
+            '.porta/plugins/c-bad-name/porta.php' => $this->badNameSource(),
+            '.porta/plugins/d-activate-throws/porta.php' => $this->pluginSource('thrower', 'throw new \RuntimeException("mid-activate");'),
+            '.porta/plugins/e-action-during-activate/porta.php' => $this->pluginSource('eager', '$api->flash("too soon");'),
+            '.porta/plugins/f-good/porta.php' => $this->pluginSource('good'),
+            '.porta/plugins/g-duplicate/porta.php' => $this->pluginSource('good'),
         ]);
         $manager = $this->load($project);
 
         $warnings = self::renderAll($manager->warnings);
         $this->assertStringContainsString('Plugin "a-parse-error" failed to load', $warnings);
-        $this->assertStringContainsString('Plugin "b-wrong-return" failed to load: plugin.php must return a PortaPlugin instance', $warnings);
+        $this->assertStringContainsString('Plugin "b-wrong-return" failed to load: porta.php must return a PortaPlugin instance', $warnings);
         $this->assertStringContainsString('invalid plugin name "bad:name"', $warnings);
         $this->assertStringContainsString('Plugin "d-activate-throws" failed to load: mid-activate', $warnings);
         $this->assertStringContainsString('unavailable during activate()', $warnings);
@@ -281,10 +281,10 @@ final class PluginLoaderTest extends TestCase
         // nothing, exactly like any other loadInto() failure — not escape the
         // fault barrier and take the whole boot down.
         $project = new TempProject([
-            '.porta/plugins/corrupt/plugin.php' => $this->pluginSource('corrupt'),
+            '.porta/plugins/corrupt/porta.php' => $this->pluginSource('corrupt'),
             '.porta/plugins/corrupt/composer.json' => '{"autoload": {"psr-4": {"Corrupt\\\\": "src/"}}}',
             '.porta/plugins/corrupt/vendor/composer/autoload_psr4.php' => '<?php this is not valid php syntax {{{',
-            '.porta/plugins/good/plugin.php' => $this->pluginSource('good'),
+            '.porta/plugins/good/porta.php' => $this->pluginSource('good'),
         ]);
 
         $manager = $this->load($project);
@@ -297,14 +297,14 @@ final class PluginLoaderTest extends TestCase
     public function testTheLiveLoadPathAlsoContainsACorruptedVendorAutoloadDump(): void
     {
         $project = new TempProject([
-            'corrupt/plugin.php' => $this->pluginSource('corrupt'),
+            'corrupt/porta.php' => $this->pluginSource('corrupt'),
             'corrupt/composer.json' => '{"autoload": {"psr-4": {"Corrupt\\\\": "src/"}}}',
             'corrupt/vendor/composer/autoload_psr4.php' => '<?php this is not valid php syntax {{{',
         ]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
 
-        $error = $loader->loadFile($project->path('corrupt/plugin.php'), $manager);
+        $error = $loader->loadFile($project->path('corrupt/porta.php'), $manager);
 
         $this->assertInstanceOf(ConfigWarning::class, $error);
         $this->assertStringContainsString('Plugin "corrupt" failed to load', self::render($error));
@@ -314,17 +314,17 @@ final class PluginLoaderTest extends TestCase
     public function testLoadFileReturnsTheErrorInsteadOfWarning(): void
     {
         $project = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->pluginSource('demo'),
-            '.porta/plugins/broken/plugin.php' => '<?php return 42;',
+            '.porta/plugins/demo/porta.php' => $this->pluginSource('demo'),
+            '.porta/plugins/broken/porta.php' => '<?php return 42;',
         ]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $loader = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []));
 
-        $this->assertNull($loader->loadFile($project->path('.porta/plugins/demo/plugin.php'), $manager));
+        $this->assertNull($loader->loadFile($project->path('.porta/plugins/demo/porta.php'), $manager));
         $this->assertTrue($manager->hasPlugin('demo'), 'a direct load commits like a boot load');
 
-        $error = $loader->loadFile($project->path('.porta/plugins/broken/plugin.php'), $manager);
-        $this->assertEquals(new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => 'broken', '%message%' => 'plugin.php must return a PortaPlugin instance']), $error);
+        $error = $loader->loadFile($project->path('.porta/plugins/broken/porta.php'), $manager);
+        $this->assertEquals(new ConfigWarning('Plugin "%name%" failed to load: %message%', ['%name%' => 'broken', '%message%' => 'porta.php must return a PortaPlugin instance']), $error);
         $this->assertSame([], $manager->warnings, 'the caller owns the failure, no warning is queued');
     }
 
@@ -337,7 +337,7 @@ final class PluginLoaderTest extends TestCase
         \putenv('PORTA_EMBEDDED_PLUGINS=');
         try {
             $this->assertStringEndsWith('/plugins', PluginLoader::embeddedDir(), 'empty env → the package dir');
-            $this->assertFileExists(PluginLoader::embeddedDir().'/psalm/plugin.php', 'and it holds the bundled plugins');
+            $this->assertFileExists(PluginLoader::embeddedDir().'/psalm/porta.php', 'and it holds the bundled plugins');
         } finally {
             \putenv('PORTA_EMBEDDED_PLUGINS='.$pinned);
         }
@@ -346,12 +346,12 @@ final class PluginLoaderTest extends TestCase
     public function testEmbeddedPluginsAreShadowedByNameAndLoadOnlyWhenOptedIn(): void
     {
         $embedded = new TempProject([
-            'demo/plugin.php' => $this->pluginSource('embeddeddemo'),
-            'extra/plugin.php' => $this->pluginSource('embeddedextra'),
-            'own/plugin.php' => $this->pluginSource('own'),
+            'demo/porta.php' => $this->pluginSource('embeddeddemo'),
+            'extra/porta.php' => $this->pluginSource('embeddedextra'),
+            'own/porta.php' => $this->pluginSource('own'),
         ]);
-        $global = new TempProject(['.porta/plugins/extra/plugin.php' => $this->pluginSource('globalextra')]);
-        $project = new TempProject(['.porta/plugins/demo/plugin.php' => $this->pluginSource('demo')]);
+        $global = new TempProject(['.porta/plugins/extra/porta.php' => $this->pluginSource('globalextra')]);
+        $project = new TempProject(['.porta/plugins/demo/porta.php' => $this->pluginSource('demo')]);
 
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         // Bundled plugins are off by default; only 'own' is opted into enabledPlugins.
@@ -366,8 +366,8 @@ final class PluginLoaderTest extends TestCase
 
     public function testEmbeddedPluginsAreOffByDefaultUnlessEnabled(): void
     {
-        $embedded = new TempProject(['bundled/plugin.php' => $this->pluginSource('bundled')]);
-        $project = new TempProject(['.porta/plugins/local/plugin.php' => $this->pluginSource('local')]);
+        $embedded = new TempProject(['bundled/porta.php' => $this->pluginSource('bundled')]);
+        $project = new TempProject(['.porta/plugins/local/porta.php' => $this->pluginSource('local')]);
 
         // No enabledPlugins → the bundled plugin stays off; the project plugin loads by default.
         $off = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
@@ -402,10 +402,10 @@ final class PluginLoaderTest extends TestCase
         // dependents go with it, because it never enters the order.
         $project = new TempProject([
             '.porta/plugins/needy/composer.json' => '{"require":{"vend/lib":"^1.0"}}',
-            '.porta/plugins/needy/plugin.php' => $this->pluginSource('needy'),
+            '.porta/plugins/needy/porta.php' => $this->pluginSource('needy'),
             '.porta/plugins/dependent/composer.json' => '{"extra":{"porta":{"requires":["needy"]}}}',
-            '.porta/plugins/dependent/plugin.php' => $this->pluginSource('dependent'),
-            '.porta/plugins/unrelated/plugin.php' => $this->pluginSource('unrelated'),
+            '.porta/plugins/dependent/porta.php' => $this->pluginSource('dependent'),
+            '.porta/plugins/unrelated/porta.php' => $this->pluginSource('unrelated'),
         ]);
 
         $manager = $this->load($project);
@@ -424,7 +424,7 @@ final class PluginLoaderTest extends TestCase
         // it joins the same queue.
         $project = new TempProject([
             '.porta/plugins/undumped/composer.json' => '{"autoload":{"classmap":["lib/"]}}',
-            '.porta/plugins/undumped/plugin.php' => $this->pluginSource('undumped'),
+            '.porta/plugins/undumped/porta.php' => $this->pluginSource('undumped'),
         ]);
 
         $manager = $this->load($project);
@@ -439,7 +439,7 @@ final class PluginLoaderTest extends TestCase
         // have a composer.json, and most will declare only `php`.
         $project = new TempProject([
             '.porta/plugins/modern/composer.json' => '{"require":{"php":">=8.4"}}',
-            '.porta/plugins/modern/plugin.php' => $this->pluginSource('modern'),
+            '.porta/plugins/modern/porta.php' => $this->pluginSource('modern'),
         ]);
 
         $manager = $this->load($project);
@@ -456,7 +456,7 @@ final class PluginLoaderTest extends TestCase
         $project = new TempProject([
             '.porta/plugins/shadowy/composer.json' => '{"require":{"symfony/clock":"^1.0"}}',
             '.porta/plugins/shadowy/vendor/composer/installed.json' => '{"packages":[{"name":"symfony/clock"},{"name":"vend/lib"}]}',
-            '.porta/plugins/shadowy/plugin.php' => $this->pluginSource('shadowy'),
+            '.porta/plugins/shadowy/porta.php' => $this->pluginSource('shadowy'),
         ]);
 
         $manager = $this->load($project);
@@ -469,10 +469,10 @@ final class PluginLoaderTest extends TestCase
 
     public function testDisabledPluginNamesAreSkippedInBothTheOptOutAndEmbeddedTiers(): void
     {
-        $embedded = new TempProject(['bundled/plugin.php' => $this->pluginSource('bundled')]);
+        $embedded = new TempProject(['bundled/porta.php' => $this->pluginSource('bundled')]);
         $project = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->pluginSource('demo'),
-            '.porta/plugins/keep/plugin.php' => $this->pluginSource('keep'),
+            '.porta/plugins/demo/porta.php' => $this->pluginSource('demo'),
+            '.porta/plugins/keep/porta.php' => $this->pluginSource('keep'),
         ]);
 
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
@@ -491,7 +491,7 @@ final class PluginLoaderTest extends TestCase
         // classes in silence, which is the one failure worth a warning.
         $project = new TempProject([
             '.porta/plugins/legacy/plugin.json' => '{"namespace":"Legacy","autoload":"src"}',
-            '.porta/plugins/legacy/plugin.php' => $this->pluginSource('legacy'),
+            '.porta/plugins/legacy/porta.php' => $this->pluginSource('legacy'),
         ]);
 
         $manager = $this->load($project);

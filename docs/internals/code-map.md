@@ -77,7 +77,7 @@ through the git plugin's `GitProcessRunner` and reads diffs with its
 live objects.
 
 A plugin big enough to need interior structure states its own rules, because
-this page cannot: the git plugin's are in `plugins/git/plugin.php`'s docblock.
+this page cannot: the git plugin's are in `plugins/git/porta.php`'s docblock.
 A subdirectory there costs nothing in the graph — `composer arch` attributes a
 file by the first segment after `Porta\`, so `Porta\GitPlugin\Process\Foo` is a
 `GitPlugin` file exactly as `Porta\GitPlugin\Foo` was.
@@ -209,7 +209,7 @@ boot, with the PSR-4 fallback keeping new files working in development.
 
 CI's `composer install` adds `--classmap-authoritative`, which is safe because
 `src/` is PSR-4-clean, the only dynamic `class_exists` and `new $class` calls
-pass `autoload: false`, and bundled `plugins/*/plugin.php` files are `require`d
+pass `autoload: false`, and bundled `plugins/*/porta.php` files are `require`d
 directly rather than Composer-autoloaded.
 
 **Every test namespace must mirror its path under `tests/`**, or the

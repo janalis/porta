@@ -43,7 +43,7 @@ final class FtpPluginTest extends TestCase
         $this->status = new StatusBarWidget();
         $manager->wireRuntime(TestPluginRuntime::create($this->editor, $this->status));
         $api = $manager->api('ftp', '/p', $settings);
-        $plugin = require \dirname(__DIR__).'/plugin.php';
+        $plugin = require \dirname(__DIR__).'/porta.php';
         $this->assertInstanceOf(RemoteProjectPlugin::class, $plugin, 'the ftp plugin opens remote projects');
         $this->assertInstanceOf(AbstractPlugin::class, $plugin, 'and is a plugin like any other');
         $plugin->activate($api);

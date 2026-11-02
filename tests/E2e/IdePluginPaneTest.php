@@ -47,7 +47,7 @@ final class IdePluginPaneTest extends TestCase
     {
         $dir = $project->path('.porta/plugins/test-pane');
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);

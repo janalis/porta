@@ -78,7 +78,7 @@ final class PluginLifecycleTest extends TestCase
     {
         $dir = $this->project->dir.'/.porta/plugins/'.$name;
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', <<<PHP
+        \file_put_contents($dir.'/porta.php', <<<PHP
             <?php
             return new class implements Porta\\Plugin\\Api\\PortaPlugin {
                 public function name(): string { return '{$name}'; }
@@ -102,7 +102,7 @@ final class PluginLifecycleTest extends TestCase
     {
         $dir = $this->project->dir.'/.porta/plugins/'.$name;
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: '<?php return 42;');
+        \file_put_contents($dir.'/porta.php', data: '<?php return 42;');
     }
 
     private function lifecycle(Ide $ide): PluginLifecycle
@@ -135,7 +135,7 @@ final class PluginLifecycleTest extends TestCase
     /** `porta --plugin` turns on a bundled plugin the config leaves off — for that launch. */
     public function testABundledPluginTheLaunchNamesIsOn(): void
     {
-        $embedded = new TempProject(['kit/plugin.php' => <<<'PHP'
+        $embedded = new TempProject(['kit/porta.php' => <<<'PHP'
                 <?php
                 return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'kit'; }
@@ -163,7 +163,7 @@ final class PluginLifecycleTest extends TestCase
      */
     public function testABundledPluginThatDisabledPluginsListsIsOffUntilEnabled(): void
     {
-        $embedded = new TempProject(['kit/plugin.php' => <<<'PHP'
+        $embedded = new TempProject(['kit/porta.php' => <<<'PHP'
                 <?php
                 return new class implements Porta\Plugin\Api\PortaPlugin {
                     public function name(): string { return 'kit'; }
@@ -257,7 +257,7 @@ final class PluginLifecycleTest extends TestCase
         $ide = $this->boot();
         $this->writePlugin('acme', command: 'greet');
         $lifecycle = $this->lifecycle($ide);
-        $file = $this->project->dir.'/.porta/plugins/acme/plugin.php';
+        $file = $this->project->dir.'/.porta/plugins/acme/porta.php';
 
         $result = $lifecycle->activateInstalled($file);
 
@@ -270,7 +270,7 @@ final class PluginLifecycleTest extends TestCase
         $ide = $this->boot();
         $this->writeMalformedPlugin('broken');
         $lifecycle = $this->lifecycle($ide);
-        $file = $this->project->dir.'/.porta/plugins/broken/plugin.php';
+        $file = $this->project->dir.'/.porta/plugins/broken/porta.php';
 
         $result = $lifecycle->activateInstalled($file);
 
@@ -353,7 +353,7 @@ final class PluginLifecycleTest extends TestCase
         $this->writePlugin('other');
         $dir = $this->project->dir.'/.porta/plugins/acme-ls';
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
             return new class implements Porta\Plugin\Api\PortaPlugin {
                 public function name(): string { return 'acme-ls'; }

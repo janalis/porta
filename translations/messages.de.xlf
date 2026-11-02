@@ -1231,8 +1231,8 @@
         <target>„%name%“ ist kein gültiger Plugin-Name</target>
       </trans-unit>
       <trans-unit id="334">
-        <source>No plugin.php found in %source%</source>
-        <target>Kein plugin.php in %source% gefunden</target>
+        <source>No porta.php found in %source%</source>
+        <target>Kein porta.php in %source% gefunden</target>
       </trans-unit>
       <trans-unit id="335">
         <source>git is not available</source>
@@ -1243,8 +1243,8 @@
         <target>git clone fehlgeschlagen (Exit-Code %code%)</target>
       </trans-unit>
       <trans-unit id="337">
-        <source>The repository contains no plugin.php</source>
-        <target>Das Repository enthält kein plugin.php</target>
+        <source>The repository contains no porta.php</source>
+        <target>Das Repository enthält kein porta.php</target>
       </trans-unit>
       <trans-unit id="338">
         <source>Another install is already running</source>

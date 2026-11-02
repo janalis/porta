@@ -11,7 +11,7 @@ namespace Porta\Plugin\Runtime;
  *
  * Composer maps only `Porta\ => src/`, and a third-party plugin cannot edit
  * composer.json, so both halves have to be registered at runtime — before the
- * plugin's `plugin.php` is required, since its first line may already name one
+ * plugin's `porta.php` is required, since its first line may already name one
  * of its own classes.
  *
  * **Composer's own autoloader is deliberately never run.** The obvious

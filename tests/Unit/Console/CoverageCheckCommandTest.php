@@ -466,11 +466,11 @@ final class CoverageCheckCommandTest extends TestCase
     public function testAnExternalToolPluginEntryPointMayBeAbsent(): void
     {
         // Its tests skipWithoutBinary(), so on a machine without the tool
-        // plugin.php is never required and pcov has nothing to record. The list
+        // porta.php is never required and pcov has nothing to record. The list
         // permits that absence; it does not excuse a neighbour's.
         $project = new TempProject([
-            'plugins/psalm/plugin.php' => "<?php\n",
-            'plugins/demo/plugin.php' => "<?php\n",
+            'plugins/psalm/porta.php' => "<?php\n",
+            'plugins/demo/porta.php' => "<?php\n",
         ]);
         $project->write('clover.xml', $this->clover([], totalCovered: 0, totalStatements: 0));
 
@@ -483,7 +483,7 @@ final class CoverageCheckCommandTest extends TestCase
         $display = $tester->getDisplay();
 
         $this->assertSame(Command::FAILURE, $status, $display);
-        $this->assertStringContainsString('demo/plugin.php', $display, 'an ordinary plugin entry point is still required');
+        $this->assertStringContainsString('demo/porta.php', $display, 'an ordinary plugin entry point is still required');
         $this->assertStringNotContainsString('psalm', $display, 'the external-tool one is excused');
     }
 
@@ -500,7 +500,7 @@ final class CoverageCheckCommandTest extends TestCase
             totalStatements: 5,
         ));
 
-        $tester = new CommandTester(new CoverageCheckCommand(mayBeAbsent: ['plugins/ghost/plugin.php']));
+        $tester = new CommandTester(new CoverageCheckCommand(mayBeAbsent: ['plugins/ghost/porta.php']));
         $status = $tester->execute([
             'clover' => $project->path('clover.xml'),
             'threshold' => '100',
@@ -511,14 +511,14 @@ final class CoverageCheckCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $status, $display);
         $this->assertStringContainsString('no longer exist', $display);
-        $this->assertStringContainsString('plugins/ghost/plugin.php', $display, 'the dead entry is named');
+        $this->assertStringContainsString('plugins/ghost/porta.php', $display, 'the dead entry is named');
         $this->assertStringContainsString(
             "\n\ncoverage-check: FAILED — MAY_BE_ABSENT excuses",
             $display,
             'a blank line separates the total from the failure message',
         );
         $this->assertStringContainsString(
-            '  plugins/ghost/plugin.php',
+            '  plugins/ghost/porta.php',
             $display,
             'the entry is indented exactly two spaces before the path, not concatenated on the wrong side',
         );
@@ -574,7 +574,7 @@ final class CoverageCheckCommandTest extends TestCase
         // report holds files another shard also covered. Summing the two rows
         // would grade this file 8/8 statements when it has 4; taking either
         // row alone would grade it 2/4 and fail a file that IS fully covered.
-        $file = '/p/plugins/tempest/plugin.php';
+        $file = '/p/plugins/tempest/porta.php';
         $project = new TempProject([
             // The method entry is noise the union must ignore: counting it would
             // make this file's line map disagree with its own metrics.

@@ -287,9 +287,9 @@ final class ArchitectureCheckCommandTest extends TestCase
         // No manifest, one with no psr-4, a prefix pointing at a directory that
         // is not there, an empty prefix, a non-string prefix and directory, an
         // autoload that is not an object, and metadata that does not parse:
-        // every way to ship only a plugin.php, none of them an error.
+        // every way to ship only a porta.php, none of them an error.
         $project = new TempProject([
-            'plugins/wires-only/plugin.php' => "<?php\n",
+            'plugins/wires-only/porta.php' => "<?php\n",
             'plugins/no-namespace/composer.json' => '{"extra": {"porta": {"requires": ["wires-only"]}}}',
             'plugins/no-directory/composer.json' => '{"autoload": {"psr-4": {"Porta\\\\Absent\\\\": "src/"}}}',
             'plugins/empty-prefix/composer.json' => '{"autoload": {"psr-4": {"": "src/"}}}',

@@ -40,7 +40,7 @@ final class IdePreviewFlankTest extends TestCase
         $project = new TempProject(['doc.flank' => "one\ntwo\n"]);
         $dir = $project->path('.porta/plugins/flanked');
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);

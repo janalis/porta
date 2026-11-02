@@ -67,7 +67,7 @@ final class CoverageCheckCommand extends Command
      *
      * Each is the entry point of a plugin that wraps an EXTERNAL binary, and its
      * tests call `skipWithoutBinary()`. On a machine without that tool the tests
-     * skip, `plugin.php` is never required, and pcov has nothing to record — so
+     * skip, `porta.php` is never required, and pcov has nothing to record — so
      * the file is legitimately missing. On a machine that has the tool it is
      * present and graded like anything else; this list permits an absence, it
      * does not excuse a shortfall.
@@ -78,13 +78,13 @@ final class CoverageCheckCommand extends Command
      * @var list<string>
      */
     private const array MAY_BE_ABSENT = [
-        'plugins/chroma/plugin.php',
-        'plugins/mago/plugin.php',
-        'plugins/php-cs-fixer/plugin.php',
-        'plugins/phpactor/plugin.php',
-        'plugins/phpantom/plugin.php',
-        'plugins/phpstan/plugin.php',
-        'plugins/psalm/plugin.php',
+        'plugins/chroma/porta.php',
+        'plugins/mago/porta.php',
+        'plugins/php-cs-fixer/porta.php',
+        'plugins/phpactor/porta.php',
+        'plugins/phpantom/porta.php',
+        'plugins/phpstan/porta.php',
+        'plugins/psalm/porta.php',
     ];
 
     public function __invoke(

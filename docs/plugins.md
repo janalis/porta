@@ -1,7 +1,7 @@
 # Plugins
 
 Porta is extensible with small PHP plugins: a directory containing a
-`plugin.php` that registers commands, keybindings, menu entries and event
+`porta.php` that registers commands, keybindings, menu entries and event
 hooks through a stable API. Plugins run in-process on the shared event loop
 and are trusted code, like composer scripts.
 
@@ -42,9 +42,9 @@ entries with separators.
 
 | Scope | Path |
 | --- | --- |
-| Project | `<project>/.porta/plugins/<name>/plugin.php` |
-| Global | `~/.porta/plugins/<name>/plugin.php` (`PORTA_HOME` overrides the home directory) |
-| Bundled | `<package>/plugins/<name>/plugin.php`, available everywhere (opt-in) |
+| Project | `<project>/.porta/plugins/<name>/porta.php` |
+| Global | `~/.porta/plugins/<name>/porta.php` (`PORTA_HOME` overrides the home directory) |
+| Bundled | `<package>/plugins/<name>/porta.php`, available everywhere (opt-in) |
 
 A plugin directory may hold more than the entry file: an optional
 `composer.json`, and — with one — a `src/` of its own classes and a `vendor/`
@@ -59,11 +59,11 @@ under the same name.
 ## Documenting your plugin
 
 A plugin carries its own documentation: Markdown pages in a `docs/` folder
-beside its `plugin.php`, with `docs/README.md` as the front page.
+beside its `porta.php`, with `docs/README.md` as the front page.
 
 ```
 my-plugin/
-├── plugin.php
+├── porta.php
 └── docs/
     ├── README.md      # what it does, its settings, its keys
     └── advanced.md    # linked from README.md
@@ -82,7 +82,7 @@ table for every key it binds.
 
 ## `composer.json`: your own classes, and what you depend on
 
-A plugin may ship a `composer.json` beside its `plugin.php` — composer's own
+A plugin may ship a `composer.json` beside its `porta.php` — composer's own
 file, because everything a plugin needs to declare, composer already has a field
 for. Every field is optional, and a plugin without one behaves exactly as it did
 before there was one.
@@ -104,7 +104,7 @@ before there was one.
   the plugin. `Acme\Tools\Greeting` then loads from `<plugin>/src/Greeting.php`.
   Porta's own composer.json maps only `Porta\ => src/` and cannot be edited by a
   plugin you install, so this is how a plugin ships classes of its own; the
-  mapping is registered **before** your `plugin.php` is required, so your classes
+  mapping is registered **before** your `porta.php` is required, so your classes
   resolve from its first line. A prefix may name several directories, and `"."`
   means the plugin's own root.
 - **`extra.porta.requires`** — plugin **names** (directory names) that must load,
@@ -533,7 +533,7 @@ only becomes composer-managed by going through the install form above.
 
 ## Writing a plugin
 
-`plugin.php` must **return** an instance of `Porta\Plugin\Api\PortaPlugin`.
+`porta.php` must **return** an instance of `Porta\Plugin\Api\PortaPlugin`.
 Prefer an **anonymous class** — two plugins declaring the same named class
 is an uncatchable PHP fatal.
 
@@ -1060,7 +1060,7 @@ them from a command handler or a hook, never from `activate()`.
 
 ### Translating your strings
 
-Ship a `translations/` dir beside your `plugin.php`, one XLIFF 1.2 file per
+Ship a `translations/` dir beside your `porta.php`, one XLIFF 1.2 file per
 locale: `messages.en.xlf`, `messages.fr.xlf`, and so on for `de`, `es`, `it`,
 `ja` and `he`. **The English source string is the message id**, so a unit reads
 `<source>Working tree clean</source><target>Arbre de travail propre</target>`

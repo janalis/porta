@@ -255,7 +255,7 @@ final class IdeViewerPluginsTest extends TestCase
     {
         $dir = $project->path('.porta/plugins/throwing-pane');
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);
@@ -300,7 +300,7 @@ final class IdeViewerPluginsTest extends TestCase
     {
         $dir = $project->path('.porta/plugins/demo-pane');
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);

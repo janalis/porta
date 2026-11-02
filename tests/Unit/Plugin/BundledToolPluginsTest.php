@@ -36,7 +36,7 @@ final class BundledToolPluginsTest extends TestCase
         $this->manager = new PluginManager(new EventDispatcher(), $this->settings);
         $this->manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget()));
         $api = $this->manager->api($name, $project->dir, $this->settings);
-        $plugin = require \dirname(__DIR__, levels: 3).'/plugins/'.$name.'/plugin.php';
+        $plugin = require \dirname(__DIR__, levels: 3).'/plugins/'.$name.'/porta.php';
         $this->assertInstanceOf(AbstractPlugin::class, $plugin);
         $plugin->activate($api);
         $this->manager->commit($api, $plugin);

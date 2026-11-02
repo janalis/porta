@@ -227,7 +227,7 @@ final class SettingsSearchTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'A.php' => "<?php\n\$x = 1;\n",
-            '.porta/plugins/noisy/plugin.php' => <<<'PHP'
+            '.porta/plugins/noisy/porta.php' => <<<'PHP'
                 <?php
                 use Porta\Plugin\Api\PluginApi;
                 use Porta\Plugin\Api\PortaPlugin;

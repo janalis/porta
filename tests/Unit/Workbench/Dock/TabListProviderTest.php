@@ -56,9 +56,9 @@ final class TabListProviderTest extends TestCase
 
     /**
      * Two open files with the same basename are two identical tabs, and this
-     * project has fourteen `plugin.php`. Closing or editing the wrong one of a
+     * project has fourteen `porta.php`. Closing or editing the wrong one of a
      * matched pair is the cost, and it is not an edge case: per-directory
-     * conventions (a plugin.php per plugin, a composer.json per package) make
+     * conventions (a porta.php per plugin, a composer.json per package) make
      * collisions the normal way a repo is laid out.
      */
     public function testTabsSharingABasenameSayWhichOneTheyAre(): void
@@ -70,12 +70,12 @@ final class TabListProviderTest extends TestCase
         // left every collision behind it ambiguous. With the pair opened first
         // the two behave identically, which is how that went unnoticed.
         $buffers->open('/p/src/Ide.php', '<?php');
-        $buffers->open('/p/plugins/git/plugin.php', '<?php');
-        $buffers->open('/p/plugins/symfony-lsp/plugin.php', '<?php');
+        $buffers->open('/p/plugins/git/porta.php', '<?php');
+        $buffers->open('/p/plugins/symfony-lsp/porta.php', '<?php');
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
-        $this->assertSame(['Ide.php', 'plugin.php (git)', 'plugin.php (symfony-lsp)'], $names, 'and a name nothing collides with is left alone');
+        $this->assertSame(['Ide.php', 'porta.php (git)', 'porta.php (symfony-lsp)'], $names, 'and a name nothing collides with is left alone');
     }
 
     /**
@@ -119,13 +119,13 @@ final class TabListProviderTest extends TestCase
     public function testAPinnedTabKeepsItsGlyphInFrontOfTheQualifiedName(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/plugins/git/plugin.php', '<?php');
-        $buffers->open('/p/plugins/todo/plugin.php', '<?php');
-        $buffers->get('/p/plugins/git/plugin.php')->pinned = true;
+        $buffers->open('/p/plugins/git/porta.php', '<?php');
+        $buffers->open('/p/plugins/todo/porta.php', '<?php');
+        $buffers->get('/p/plugins/git/porta.php')->pinned = true;
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
-        $this->assertSame([Glyphs::PINNED.' plugin.php (git)', 'plugin.php (todo)'], $names);
+        $this->assertSame([Glyphs::PINNED.' porta.php (git)', 'porta.php (todo)'], $names);
     }
 
     /**

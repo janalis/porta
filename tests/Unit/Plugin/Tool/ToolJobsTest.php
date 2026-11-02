@@ -81,7 +81,7 @@ final class ToolJobsTest extends TestCase
      */
     private function plugin(array $tools, string $name = 'p'): void
     {
-        $this->project->write('.porta/plugins/'.$name.'/plugin.php', "<?php\n");
+        $this->project->write('.porta/plugins/'.$name.'/porta.php', "<?php\n");
         $this->project->write('.porta/plugins/'.$name.'/composer.json', (string) \json_encode(['extra' => ['porta' => ['tools' => $tools]]], \JSON_THROW_ON_ERROR));
         $this->lifecycle->names[] = $name;
     }

@@ -53,7 +53,7 @@ final class ToolCatalog
         $file = $dir.'/composer.json';
         $stamp = \is_file($file) ? (int) \filemtime($file) : 0;
         if ($stamp !== ($this->manifests[$dir][0] ?? null)) {
-            $this->manifests[$dir] = [$stamp, PluginManifest::beside($dir.'/plugin.php')];
+            $this->manifests[$dir] = [$stamp, PluginManifest::beside($dir.'/porta.php')];
         }
 
         return $this->manifests[$dir][1];

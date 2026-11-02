@@ -8,8 +8,8 @@ behind it.
 
 Three sources, in precedence order:
 
-1. `<project>/.porta/plugins/*/plugin.php`
-2. `~/.porta/plugins/*/plugin.php` (`PORTA_HOME` overrides the home dir)
+1. `<project>/.porta/plugins/*/porta.php`
+2. `~/.porta/plugins/*/porta.php` (`PORTA_HOME` overrides the home dir)
 3. the plugins bundled in the Porta package at `<package>/plugins/`
    (`PORTA_EMBEDDED_PLUGINS` overrides)
 
@@ -457,7 +457,7 @@ suites and distributes by method — which is the run CI's `tests` job repeats
 over the intl matrix.
 
 Every shard keeps `--coverage-filter plugins`, the whole tree, not its own
-plugin: `plugins/tempest/plugin.php` has no tests of its own and is loaded by
+plugin: `plugins/tempest/porta.php` has no tests of its own and is loaded by
 every booted IDE, so a per-plugin filter would drop it from every report and
 `--require=plugins` would fail a file that is fully covered.
 

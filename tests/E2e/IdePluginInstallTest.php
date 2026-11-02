@@ -101,9 +101,9 @@ final class IdePluginInstallTest extends TestCase
     public function testLocalPathInstallActivatesLive(): void
     {
         $project = new TempProject([
-            'plugin-src/installee/plugin.php' => $this->pluginSource('installee'),
+            'plugin-src/installee/porta.php' => $this->pluginSource('installee'),
             'plugin-src/installee/composer.json' => $this->pluginManifest('installee'),
-            'plugin-src/broken/plugin.php' => "<?php\nreturn 42;\n",
+            'plugin-src/broken/porta.php' => "<?php\nreturn 42;\n",
             'plugin-src/broken/composer.json' => $this->pluginManifest('broken'),
             'a.php' => "<?php\n",
         ]);
@@ -134,7 +134,7 @@ final class IdePluginInstallTest extends TestCase
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
-                    $this->assertFileExists($project->path('.porta/plugins/installee/plugin.php'));
+                    $this->assertFileExists($project->path('.porta/plugins/installee/porta.php'));
                     $this->assertMatchesRegularExpression('/installee\s+[│┃]\s+Open\s+[│┃] · on · project/u', $screen, 'the new plugin lists, on, with a button to its page');
 
                     // Live activation: the command is in the registry and the palette.
@@ -164,7 +164,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'failed to load'));
                     $tui->tick();
-                    $this->assertStringContainsString('Plugin "broken" failed to load: plugin.php must return a PortaPlugin instance', Toasts::last($ide));
+                    $this->assertStringContainsString('Plugin "broken" failed to load: porta.php must return a PortaPlugin instance', Toasts::last($ide));
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
                     // A project-scope plugin toggles Enabled via the opt-out `disabledPlugins`
@@ -197,8 +197,8 @@ final class IdePluginInstallTest extends TestCase
     public function testRemovalTakesTwoPressesAndDeactivatesLive(): void
     {
         $project = new TempProject([
-            '.porta/plugins/demo/plugin.php' => $this->pluginSource('demo'),
-            'plugin-src/demo/plugin.php' => $this->pluginSource('demo'),
+            '.porta/plugins/demo/porta.php' => $this->pluginSource('demo'),
+            'plugin-src/demo/porta.php' => $this->pluginSource('demo'),
             'plugin-src/demo/composer.json' => $this->pluginManifest('demo'),
             'a.php' => "<?php\n",
         ]);
@@ -268,7 +268,7 @@ final class IdePluginInstallTest extends TestCase
         // The installed name derives from the repo's OWN composer.json "name",
         // so host the repo in a subdirectory with a valid plugin name too.
         $host = new TempProject([
-            'cloned/plugin.php' => $this->pluginSource('cloned'),
+            'cloned/porta.php' => $this->pluginSource('cloned'),
             'cloned/composer.json' => $this->pluginManifest('cloned'),
         ]);
         $dir = \escapeshellarg($host->path('cloned'));
@@ -291,7 +291,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->awaitPainted($tui, $terminal, '· on · project');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
-                    $this->assertFileExists($project->path('.porta/plugins/cloned/plugin.php'));
+                    $this->assertFileExists($project->path('.porta/plugins/cloned/porta.php'));
                     $this->assertMatchesRegularExpression('/cloned\s+[│┃]\s+Open\s+[│┃] · on · project/u', $screen, 'the async refresh re-listed the section');
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -308,7 +308,7 @@ final class IdePluginInstallTest extends TestCase
         $home = new TempProject();
         \putenv('PORTA_HOME='.$home->dir);
         $project = new TempProject([
-            'plugin-src/worldwide/plugin.php' => $this->pluginSource('worldwide'),
+            'plugin-src/worldwide/porta.php' => $this->pluginSource('worldwide'),
             'plugin-src/worldwide/composer.json' => $this->pluginManifest('worldwide'),
             'a.php' => "<?php\n",
         ]);
@@ -333,7 +333,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     $this->awaitPainted($tui, $terminal, '· on · global');
 
-                    $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/plugin.php');
+                    $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/porta.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
                     $this->assertMatchesRegularExpression('/worldwide\s+[│┃]\s+Open\s+[│┃] · on · global/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
@@ -350,7 +350,7 @@ final class IdePluginInstallTest extends TestCase
     {
         $project = new TempProject([
             'a.php' => "<?php\n",
-            '.porta/plugins/needy/plugin.php' => $this->pluginSource('needy'),
+            '.porta/plugins/needy/porta.php' => $this->pluginSource('needy'),
             '.porta/plugins/needy/composer.json' => (string) \json_encode(['extra' => ['porta' => ['tools' => [['name' => 'x', 'sources' => [['brew', 'x']]]]]]], \JSON_THROW_ON_ERROR),
         ]);
         $mark = $project->path('installed.mark');

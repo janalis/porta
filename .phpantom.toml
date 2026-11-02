@@ -25,7 +25,7 @@ message = "^(?:Argument 1 \\(\\$facts\\) expects Porta\\\\ReviewPlugin\\\\Forge\
 # phpantom 0.10.0; still reported on main (6fb245f).
 [[diagnostics.ignore]]
 identifier = "type_mismatch_argument"
-path = "{plugins/git/plugin.php,plugins/git/src/Command/GitCommands.php,src/Debug/DapSession.php,src/Plugin/Lifecycle/ToolInstaller.php,src/Widget/FindBarWidget.php,src/Widget/MarkdownPageWidget.php,src/Workbench/AgentPresence.php,src/Workbench/Menu/Mnemonics.php}"
+path = "{plugins/git/porta.php,plugins/git/src/Command/GitCommands.php,src/Debug/DapSession.php,src/Plugin/Lifecycle/ToolInstaller.php,src/Widget/FindBarWidget.php,src/Widget/MarkdownPageWidget.php,src/Workbench/AgentPresence.php,src/Workbench/Menu/Mnemonics.php}"
 message = "^(?:Argument 1 \\(\\$eventClass\\) expects class-string, got int\\|string|Argument 1 \\(\\$eventName\\) expects string, got int\\|string \\(int does not satisfy string\\)|Argument 1 \\(\\$index\\) expects int, got int\\|string \\(string does not satisfy int\\)|Argument 1 \\(\\$name\\) expects string, got array-key|Argument 1 \\(\\$path\\) expects string, got int\\|string \\(int does not satisfy string\\)|Argument 2 \\(\\$agent\\) expects string, got array-key|Argument 2 \\(\\$managerBinaries\\) expects array<string, string\\|null>, got array<int\\|string, string\\|null>|Argument 2 \\(\\$offset\\) expects int, got array-key|Argument 3 \\(\\$owner\\) expects array<array-key, int>, got array<int\\|string, int\\|string>)$"
 [[diagnostics.ignore]]
 identifier = "type_mismatch_return"

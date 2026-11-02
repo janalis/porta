@@ -11,7 +11,7 @@ use Porta\Support\JsonFile;
 
 /**
  * What a plugin declares about ITSELF, in an optional `composer.json` beside its
- * `plugin.php`:
+ * `porta.php`:
  *
  * ```json
  * {
@@ -39,7 +39,7 @@ use Porta\Support\JsonFile;
  * is a requirement rather than a preference: `requires` decides LOAD ORDER, so
  * it cannot itself be discovered by loading. The autoload map is registered with
  * {@see PluginAutoloader} for the same reason — a plugin's own classes must
- * resolve from the first line of its `plugin.php`.
+ * resolve from the first line of its `porta.php`.
  *
  * Every field is optional, and a plugin with no manifest at all behaves exactly
  * as it did before there was one: no classes of its own, no dependencies.

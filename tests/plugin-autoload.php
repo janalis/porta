@@ -13,7 +13,7 @@ use Porta\Plugin\Runtime\PluginManifest;
 // in a running IDE: composer maps `Porta\ => src/` only, and CI installs with
 // --classmap-authoritative, which has never heard of `Porta\GraphViewer`. A
 // plugin's own tests are loaded by path, but the code they exercise is not.
-$pluginFiles = glob(dirname(__DIR__).'/plugins/*/plugin.php');
+$pluginFiles = glob(dirname(__DIR__).'/plugins/*/porta.php');
 foreach (false === $pluginFiles ? [] : $pluginFiles as $pluginFile) {
     $manifest = PluginManifest::beside($pluginFile);
     PluginAutoloader::register($manifest);

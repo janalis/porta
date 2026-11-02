@@ -1231,8 +1231,8 @@
         <target>«%name%» no es un nombre de complemento válido</target>
       </trans-unit>
       <trans-unit id="334">
-        <source>No plugin.php found in %source%</source>
-        <target>No se encontró plugin.php en %source%</target>
+        <source>No porta.php found in %source%</source>
+        <target>No se encontró porta.php en %source%</target>
       </trans-unit>
       <trans-unit id="335">
         <source>git is not available</source>
@@ -1243,8 +1243,8 @@
         <target>git clone falló (código de salida %code%)</target>
       </trans-unit>
       <trans-unit id="337">
-        <source>The repository contains no plugin.php</source>
-        <target>El repositorio no contiene plugin.php</target>
+        <source>The repository contains no porta.php</source>
+        <target>El repositorio no contiene porta.php</target>
       </trans-unit>
       <trans-unit id="338">
         <source>Another install is already running</source>

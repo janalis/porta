@@ -15,8 +15,8 @@ use Porta\Support\Files;
 use Tempest\Highlight\TerminalTheme;
 
 /**
- * Discovers and activates plugins from `<project>/.porta/plugins/<name>/plugin.php`
- * and `<global>/.porta/plugins/<name>/plugin.php` (project wins when both define
+ * Discovers and activates plugins from `<project>/.porta/plugins/<name>/porta.php`
+ * and `<global>/.porta/plugins/<name>/porta.php` (project wins when both define
  * the same directory name). Each file must `return` a {@see PortaPlugin}. Every
  * failure — a parse error, a wrong return value, a bad name, a throwing
  * `activate()` — is contained per plugin: the plugin contributes nothing
@@ -78,7 +78,7 @@ final readonly class PluginLoader
     {
         // Every manifest is read, and every namespace registered, BEFORE any
         // plugin PHP runs: a plugin's own classes have to resolve from the first
-        // line of its plugin.php, and the requires[] that decide LOAD ORDER
+        // line of its porta.php, and the requires[] that decide LOAD ORDER
         // cannot be discovered by loading, since loading is what they order.
         $manifests = [];
         foreach ($this->discover() as $file) {
@@ -157,7 +157,7 @@ final readonly class PluginLoader
             $manager->addWarning($skipped[$manifest->name]);
         }
         foreach ($order as $manifest) {
-            $error = $this->loadFile($manifest->directory.'/plugin.php', $manager);
+            $error = $this->loadFile($manifest->directory.'/porta.php', $manager);
             if (null !== $error) {
                 $manager->addWarning($error);
             }
@@ -187,7 +187,7 @@ final readonly class PluginLoader
             if (null === $dir) {
                 continue;
             }
-            foreach (Files::childFiles($dir, 'plugin.php') as $file) {
+            foreach (Files::childFiles($dir, 'porta.php') as $file) {
                 $name = \basename(\dirname($file));
                 if (!\array_key_exists($name, $seen)) {
                     $seen[$name] = true;
@@ -197,7 +197,7 @@ final readonly class PluginLoader
         }
 
         // Bundled (embedded) plugins are off unless opted into `enabledPlugins`.
-        foreach (null === $this->embeddedDir ? [] : Files::childFiles($this->embeddedDir, 'plugin.php') as $file) {
+        foreach (null === $this->embeddedDir ? [] : Files::childFiles($this->embeddedDir, 'porta.php') as $file) {
             $name = \basename(\dirname($file));
             if (\array_key_exists($name, $seen)) {
                 continue; // shadowed by a project/global copy, or explicitly disabled
@@ -269,7 +269,7 @@ final readonly class PluginLoader
             /** @var mixed $plugin */
             $plugin = (static fn (): mixed => require $file)();
             if (!$plugin instanceof PortaPlugin) {
-                throw new PluginException('plugin.php must return a PortaPlugin instance');
+                throw new PluginException('porta.php must return a PortaPlugin instance');
             }
             $name = $plugin->name();
             if (1 !== \preg_match(self::NAME_PATTERN, $name)) {

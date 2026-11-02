@@ -142,7 +142,7 @@ final class Files
      * `glob("$dir/*\/$name")` as a directory walk.
      *
      * Because `glob()` cannot see into a phar: the bundled plugins live at
-     * `phar://…/plugins/*\/plugin.php` when Porta runs as one, and a glob there
+     * `phar://…/plugins/*\/porta.php` when Porta runs as one, and a glob there
      * returns nothing — so the phar silently shipped without its plugins.
      * Hidden entries are skipped, as glob's `*` skips them; a missing $dir is
      * an empty list.

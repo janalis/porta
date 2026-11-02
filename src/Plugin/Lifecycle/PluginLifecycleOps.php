@@ -13,7 +13,7 @@ namespace Porta\Plugin\Lifecycle;
  */
 interface PluginLifecycleOps extends PluginEnablement
 {
-    /** Live-load an installed plugin.php; returns the failure message or null. */
+    /** Live-load an installed porta.php; returns the failure message or null. */
     public function activateInstalled(string $file): ?string;
 
     /** Live-deactivate a removed plugin (and reactivate a shadowed copy). */

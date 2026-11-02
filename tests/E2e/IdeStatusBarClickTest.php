@@ -147,7 +147,7 @@ final class IdeStatusBarClickTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n"]);
         $dir = $project->path('.porta/plugins/cell-menu');
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);

@@ -21,7 +21,7 @@ use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
 /**
- * The shipped php-cs-fixer plugin (plugins/php-cs-fixer/plugin.php),
+ * The shipped php-cs-fixer plugin (plugins/php-cs-fixer/porta.php),
  * exercised against stub fixer binaries — the real plugin file is loaded from
  * the repo so the test keeps it honest.
  */
@@ -39,9 +39,9 @@ final class PhpCsFixerPluginTest extends TestCase
     /** A project with the real plugin file and (optionally) a stub fixer binary. */
     private function project(?int $stubExitCode = 0): TempProject
     {
-        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/php-cs-fixer/plugin.php');
+        $plugin = (string) \file_get_contents(__DIR__.'/../../plugins/php-cs-fixer/porta.php');
         $project = new TempProject([
-            '.porta/plugins/php-cs-fixer/plugin.php' => $plugin,
+            '.porta/plugins/php-cs-fixer/porta.php' => $plugin,
             'a.php' => "<?php\n\$x=1;\n",
             'notes.txt' => "plain\n",
         ]);

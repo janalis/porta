@@ -26,7 +26,7 @@ use Porta\Widget\TextPreviewWidget;
  * Core registering through the plugin extension point is what keeps the point
  * honest: it had three consumers inside `src/` before any plugin depended on
  * it, and when the two viewers moved out only their CODE changed — each took
- * its registration and its loader to its own `plugin.php` unaltered. What is
+ * its registration and its loader to its own `porta.php` unaltered. What is
  * left here is the one pane core genuinely owns.
  *
  * A loader THROWS to refuse a file — too large to decode, not UTF-8 — and

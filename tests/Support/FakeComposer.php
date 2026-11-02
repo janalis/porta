@@ -22,7 +22,7 @@ namespace Porta\Tests\Support;
  *   behaviour); a `vcs` entry is `git clone`d for real — it always carries a
  *   real git URL, and only a real clone lands the repository's ACTUAL
  *   content, which a live-activation test needs; no entry at all (the
- *   Packagist-name case) materializes `vendor/<pkg>/plugin.php` +
+ *   Packagist-name case) materializes `vendor/<pkg>/porta.php` +
  *   `composer.json` from $packages, since there is no real package behind
  *   it. Records the requirement in `composer.json`'s own `require`, like
  *   real composer would.
@@ -95,7 +95,7 @@ final class FakeComposer
                     }
                 } else {
                     mkdir($dest, 0o777, true);
-                    file_put_contents($dest.'/plugin.php', $recipe[$pkg]['plugin'] ?? "<?php\n");
+                    file_put_contents($dest.'/porta.php', $recipe[$pkg]['plugin'] ?? "<?php\n");
                     file_put_contents($dest.'/composer.json', $recipe[$pkg]['composerJson'] ?? json_encode(['name' => $pkg, 'type' => 'porta-plugin']));
                 }
                 $composerJson['require'][$pkg] = explode(':', $spec, limit: 2)[1] ?? '*';

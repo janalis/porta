@@ -57,6 +57,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   read-only split repository. A plugin package's leading `porta-` is dropped
   from the directory it installs into, so `janalis/porta-todo` installs as
   `todo` and shadows the bundled copy.
+- A plugin's entry file is `porta.php`, not `plugin.php`: in a plugin's own
+  repository it says whose plugin it is. Rename it in a plugin of your own.
 - Opening a project no longer runs it: an untrusted project opens restricted.
 
 ### Fixed

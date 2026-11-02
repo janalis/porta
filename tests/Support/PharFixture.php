@@ -13,7 +13,7 @@ namespace Porta\Tests\Support;
  *     docs/README.md               links guide.md, ../plugins/demo/docs/README.md, ../outside.md
  *     docs/guide.md                links ./README.md
  *     outside.md                   outside every docs tree
- *     plugins/demo/plugin.php
+ *     plugins/demo/porta.php
  *     plugins/demo/docs/README.md  links ../../../docs/README.md
  *
  * Rebuild with `php -d phar.readonly=0`, `new Phar(...)` and

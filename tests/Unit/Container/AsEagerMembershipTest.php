@@ -70,7 +70,7 @@ final class AsEagerMembershipTest extends ContainerTestCase
         //
         // Three left when a view took ownership of its pointer and its context
         // menus, and two left with git: a plugin class can never be a container
-        // service, so what `plugin.php` builds by hand cannot carry a tag. The
+        // service, so what `porta.php` builds by hand cannot carry a tag. The
         // tag is still the sanctioned way for a CORE service to exist for its
         // side effect, and every one that does is written down here.
         $unordered = [

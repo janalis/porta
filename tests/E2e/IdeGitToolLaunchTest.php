@@ -71,7 +71,7 @@ final class IdeGitToolLaunchTest extends TestCase
         $project = new TempProject(['right.php' => "<?php\necho 'right-hand side';\n", 'left.php' => "<?php\n"]);
         $dir = $project->path('.porta/plugins/diff-answer');
         \mkdir($dir, permissions: 0o777, recursive: true);
-        \file_put_contents($dir.'/plugin.php', data: <<<'PHP'
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
             <?php
 
             declare(strict_types=1);

@@ -27,7 +27,7 @@ final class DocsTree
     public static function plugins(): array
     {
         $plugins = [];
-        $entries = \glob(self::repo().'/plugins/*/plugin.php');
+        $entries = \glob(self::repo().'/plugins/*/porta.php');
         foreach (false === $entries ? [] : $entries as $entry) {
             $dir = \dirname($entry);
             $plugins[\basename($dir)] = $dir.'/docs';

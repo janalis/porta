@@ -161,7 +161,7 @@ final class PluginLifecycle implements PluginLifecycleOps
                     continue;
                 }
 
-                $error = $this->loader->loadFile($candidate['dir'].'/plugin.php', $this->plugins);
+                $error = $this->loader->loadFile($candidate['dir'].'/porta.php', $this->plugins);
                 if (null !== $error) {
                     $this->notifier->error($this->translator->trans($error->key, $error->params));
                 }
@@ -517,7 +517,7 @@ final class PluginLifecycle implements PluginLifecycleOps
     private function activateInstalledCopy(string $name): bool
     {
         $dir = $this->installedDir($name);
-        $error = null === $dir ? null : $this->loader->loadFile($dir.'/plugin.php', $this->plugins);
+        $error = null === $dir ? null : $this->loader->loadFile($dir.'/porta.php', $this->plugins);
         if (null !== $error) {
             $this->notifier->error($this->translator->trans($error->key, $error->params));
         }
@@ -614,7 +614,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         // would take its requires from one copy and its code from the other.
         $dir = $this->installedDir($name);
 
-        return null === $dir ? [] : PluginManifest::beside($dir.'/plugin.php')->requires;
+        return null === $dir ? [] : PluginManifest::beside($dir.'/porta.php')->requires;
     }
 
     /** @param list<string> $names */
