@@ -570,6 +570,28 @@ final class ProjectSearchTest extends TestCase
     }
 
     /**
+     * grep -r prints in the file system's order — ext4 hashes it, so on a CI
+     * runner File7.php came before File0.php and the first files were not the
+     * first rows. The results are listed by path, compared as bytes, then line.
+     */
+    public function testGrepResultsAreListedByPathThenLine(): void
+    {
+        $tools = new TempProject([], 'porta-hashgrep-');
+        $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' './src/b.php:3:tok' './src/a.php:9:tok' './src/a.php:2:tok' './src/9.php:1:tok' './src/10.php:1:tok'\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+
+        $project = $this->fixtures();
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'tok');
+
+        $this->assertSame(
+            ['src/10.php:0', 'src/9.php:0', 'src/a.php:1', 'src/a.php:8', 'src/b.php:2'],
+            \array_map(static fn (array $r): string => $r['path'].':'.$r['line'], $results),
+            '"10.php" before "9.php": the bytes, not their numbers',
+        );
+    }
+
+    /**
      * grep picks the lines, so it reads a regex as the find bar does: PCRE
      * (`-P`) where this grep takes it — GNU's ERE reads `\d` as a `d` — asked
      * once; ERE where it does not, and on a server, whose grep nobody asked.

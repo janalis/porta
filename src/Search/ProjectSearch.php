@@ -217,6 +217,9 @@ final class ProjectSearch
                 break;
             }
         }
+        // grep -r walks in the file system's order — on ext4 a hash order, so
+        // File7.php can come before File0.php: the panel lists by path, then line.
+        \usort($results, static fn (array $a, array $b): int => 0 !== \strcmp($a['path'], $b['path']) ? \strcmp($a['path'], $b['path']) : $a['line'] <=> $b['line']);
 
         return $results;
     }
