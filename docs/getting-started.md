@@ -10,37 +10,40 @@
 ## Installation
 
 Porta is a command, `porta`. It needs PHP ≥ 8.5 and an interactive terminal.
-Three ways to put it on your `PATH`:
+Four ways to put it on your `PATH`:
 
-**The phar** — one file, no Composer at run time. Download it from the
-latest [release](https://github.com/janalis/porta/releases) (the repository is
-private, so with the `gh` CLI: `gh release download --repo janalis/porta
---pattern porta.phar`), then:
+**Homebrew** (macOS, Linux) — the phar, with PHP as a dependency:
 
 ```bash
+brew install janalis/tap/porta
+```
+
+**The phar** — one file, no Composer at run time. Download it from the
+latest [release](https://github.com/janalis/porta/releases), then:
+
+```bash
+curl -fsSLO https://github.com/janalis/porta/releases/latest/download/porta.phar
 install -m 755 porta.phar ~/.local/bin/porta
 porta --self-update   # later: replace it with the latest release
 ```
 
-`--self-update` downloads through your `gh` login (or `GH_TOKEN` /
-`GITHUB_TOKEN`), checks the release's SHA-256, runs the new phar once, and only
-then swaps it in; `--self-update --dry-run` only says whether there is one. To
-build it yourself instead: `composer install && composer build:phar`, which
-fetches [Box](https://github.com/box-project/box) into `build/` the first time.
+`--self-update` checks the release's SHA-256, runs the new phar once, and only
+then swaps it in; `--self-update --dry-run` only says whether there is one.
+A `GH_TOKEN` or `GITHUB_TOKEN` in the environment is sent along, which only
+lifts GitHub's anonymous rate limit. To build it yourself instead:
+`composer install && composer build:phar`, which fetches
+[Box](https://github.com/box-project/box) into `build/` the first time.
 
-**Composer, globally.** The repository is not on Packagist, so name it first;
-Porta follows `symfony/tui`'s development branch, hence the stability settings:
+**Composer, globally.** Porta follows `symfony/tui`'s development branch,
+hence the stability settings:
 
 ```bash
-composer global config repositories.porta vcs git@github.com:janalis/porta.git
 composer global config minimum-stability dev
 composer global config prefer-stable true
-composer global require janalis/porta:dev-main
+composer global require janalis/porta
 ```
 
-and put `$(composer global config bin-dir --absolute)` on your `PATH`. If
-Composer asks for a GitHub token (the repository is private), add
-`--prefer-source` to clone over SSH instead.
+and put `$(composer global config bin-dir --absolute)` on your `PATH`.
 
 **A checkout**, to work on Porta itself — a symlink is enough:
 

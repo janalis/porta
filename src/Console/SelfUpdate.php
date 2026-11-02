@@ -10,9 +10,9 @@ use Porta\Support\Decoded;
  * `porta --self-update`: replace the running phar with the latest GitHub
  * release of {@see REPOSITORY}.
  *
- * The repository is private, so every request carries credentials: the `gh`
- * CLI's own login when `gh` is installed, else `GH_TOKEN` / `GITHUB_TOKEN`
- * through the REST API. Each release carries `porta.phar` and
+ * The releases are public and read through the REST API; a `GH_TOKEN` or
+ * `GITHUB_TOKEN` in the environment is sent along when there is one, which
+ * only lifts the anonymous rate limit. Each release carries `porta.phar` and
  * `porta.phar.sha256` (the release workflow attaches both).
  *
  * The swap is the careful part. The download is checked against its checksum
@@ -45,18 +45,10 @@ final readonly class SelfUpdate
     /**
      * The latest release's tag.
      *
-     * @throws \RuntimeException with a sentence saying what to do when there are no credentials or no release
+     * @throws \RuntimeException with a sentence saying what went wrong when the releases cannot be read
      */
     public function latest(): string
     {
-        if ($this->hasGh()) {
-            [$code, $out] = ($this->run)(['gh', 'release', 'view', '--repo', self::REPOSITORY, '--json', 'tagName', '--jq', '.tagName']);
-            if (0 !== $code || '' === \trim($out)) {
-                throw new \RuntimeException('gh could not read the latest release of '.self::REPOSITORY.' — run `gh auth login`, or check that a release exists.');
-            }
-
-            return \trim($out);
-        }
         $release = $this->api('releases/latest');
 
         return \is_string($release['tag_name'] ?? null) ? $release['tag_name'] : '';
@@ -131,24 +123,9 @@ final readonly class SelfUpdate
         return 1 === \preg_match('/^v?(\d+(?:\.\d+)+)/', $version, $match) ? $match[1] : '0';
     }
 
-    private function hasGh(): bool
-    {
-        [$code] = ($this->run)(['gh', '--version']);
-
-        return 0 === $code;
-    }
-
     /** $tag's phar and its checksum, into $dir. */
     private function download(string $tag, string $dir): void
     {
-        if ($this->hasGh()) {
-            [$code] = ($this->run)(['gh', 'release', 'download', $tag, '--repo', self::REPOSITORY, '--dir', $dir, '--pattern', self::ASSET, '--pattern', self::ASSET.'.sha256']);
-            if (0 !== $code) {
-                throw new \RuntimeException('gh could not download '.$tag.'; nothing was changed.');
-            }
-
-            return;
-        }
         foreach ($this->assets($tag) as $name => $url) {
             if (!\in_array($name, [self::ASSET, self::ASSET.'.sha256'], strict: true)) {
                 continue;
@@ -178,7 +155,7 @@ final readonly class SelfUpdate
     }
 
     /**
-     * A GitHub REST call for this repository, authenticated with the token.
+     * A GitHub REST call for this repository, with the token when there is one.
      *
      * @return array<array-key, mixed>
      */
@@ -189,15 +166,15 @@ final readonly class SelfUpdate
         // @noinspection JsonEncodingApiUsageInspection -- another program's output that is not JSON reads as none, it does not throw
         $decoded = 0 === $code ? \json_decode($out, associative: true) : null;
         if (!\is_array($decoded)) {
-            throw new \RuntimeException('could not reach the releases of '.self::REPOSITORY.' — check GH_TOKEN, and that a release exists.');
+            throw new \RuntimeException('could not reach the releases of '.self::REPOSITORY.' — check the connection, and that a release exists.');
         }
 
         return $decoded;
     }
 
     /**
-     * `curl` with the token, handed over as a config on its stdin so the token
-     * never appears in the process list.
+     * `curl`, with the token (if any) handed over as a config on its stdin so
+     * it never appears in the process list.
      *
      * @param list<string> $args
      *
@@ -208,10 +185,10 @@ final readonly class SelfUpdate
         $token = $this->token();
 
         // HTTPS only, redirects included: the token and the binary both ride it.
-        return ($this->run)(['curl', '-fsSL', '--proto', '=https', '--proto-redir', '=https', '--config', '-', ...$args], 'header = "Authorization: Bearer '.$token.'"'."\n");
+        return ($this->run)(['curl', '-fsSL', '--proto', '=https', '--proto-redir', '=https', '--config', '-', ...$args], null === $token ? '' : 'header = "Authorization: Bearer '.$token.'"'."\n");
     }
 
-    private function token(): string
+    private function token(): ?string
     {
         foreach (['GH_TOKEN', 'GITHUB_TOKEN'] as $name) {
             $token = $this->env[$name] ?? false;
@@ -220,6 +197,6 @@ final readonly class SelfUpdate
             }
         }
 
-        throw new \RuntimeException('self-update needs the gh CLI (logged in with `gh auth login`) or a GH_TOKEN with access to '.self::REPOSITORY.'.');
+        return null;
     }
 }

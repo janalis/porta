@@ -10,7 +10,7 @@ use Porta\Console\SelfUpdate;
 use Porta\Tests\Support\TempProject;
 
 /**
- * The self-update against a scripted `gh` / `curl` / `php`: no network, no
+ * The self-update against a scripted `curl` / `php`: no network, no
  * credentials — what is asserted is what it asks for and what it does with
  * the answers.
  */
@@ -18,9 +18,6 @@ final class SelfUpdateTest extends TestCase
 {
     /** @var list<array{list<string>, ?string}> every command run, with its stdin */
     private array $ran = [];
-
-    /** Whether `gh` is installed in the scripted world. */
-    private bool $gh = true;
 
     /** What the scripted release carries. */
     private string $pharBytes = 'NEW PHAR';
@@ -36,18 +33,6 @@ final class SelfUpdateTest extends TestCase
         return function (array $command, ?string $stdin = null): array {
             $this->ran[] = [$command, $stdin];
             [$bin] = $command;
-            if ('gh' === $bin && '--version' === $command[1]) {
-                return $this->gh ? [0, "gh version 2.60.0\n"] : [127, ''];
-            }
-            if ('gh' === $bin && 'view' === $command[2]) {
-                return [0, "v1.3.0\n"];
-            }
-            if ('gh' === $bin && 'download' === $command[2]) {
-                $dir = $command[\array_search('--dir', $command, strict: true) + 1];
-                $this->writeRelease($dir);
-
-                return [$this->downloadFails, ''];
-            }
             if ('curl' === $bin) {
                 return $this->curl($command);
             }
@@ -55,12 +40,6 @@ final class SelfUpdateTest extends TestCase
             // The new phar, run before it replaces anything.
             return [$this->newPharRuns, "porta v1.3.0\n"];
         };
-    }
-
-    private function writeRelease(string $dir): void
-    {
-        \file_put_contents($dir.'/porta.phar', $this->pharBytes);
-        \file_put_contents($dir.'/porta.phar.sha256', ($this->shaOverride ?? \hash('sha256', $this->pharBytes)).'  porta.phar'."\n");
     }
 
     /**
@@ -101,7 +80,7 @@ final class SelfUpdateTest extends TestCase
     private function download(array $command): array
     {
         $out = $command[\array_search('-o', $command, strict: true) + 1];
-        \file_put_contents($out, \str_ends_with($out, '.sha256') ? \hash('sha256', $this->pharBytes)."  porta.phar\n" : $this->pharBytes);
+        \file_put_contents($out, \str_ends_with($out, '.sha256') ? ($this->shaOverride ?? \hash('sha256', $this->pharBytes))."  porta.phar\n" : $this->pharBytes);
 
         return [$this->downloadFails, ''];
     }
@@ -120,55 +99,38 @@ final class SelfUpdateTest extends TestCase
         return $dir;
     }
 
-    public function testTheLatestReleaseComesFromGhWhenItIsThere(): void
+    public function testWithoutATokenTheLatestReleaseIsAskedForAnonymously(): void
     {
-        $this->assertSame('v1.3.0', new SelfUpdate($this->runner(), [])->latest());
-        $this->assertSame(['gh', 'release', 'view', '--repo', 'janalis/porta', '--json', 'tagName', '--jq', '.tagName'], $this->ran[1][0]);
+        $this->assertSame('v1.3.0', new SelfUpdate($this->runner(), ['GH_TOKEN' => ''])->latest());
+
+        [$command, $stdin] = $this->ran[0];
+        $this->assertSame('https://api.github.com/repos/janalis/porta/releases/latest', \end($command));
+        $this->assertSame('', $stdin, 'no Authorization header');
     }
 
-    public function testWithoutGhTheTokenReachesTheApiOnStdinNeverInTheArguments(): void
+    public function testATokenReachesTheApiOnStdinNeverInTheArguments(): void
     {
-        $this->gh = false;
-
         $this->assertSame('v1.3.0', new SelfUpdate($this->runner(), ['GITHUB_TOKEN' => self::fake('secret')])->latest());
 
-        [$command, $stdin] = $this->ran[1];
+        [$command, $stdin] = $this->ran[0];
         $this->assertSame('curl', $command[0]);
         $this->assertStringContainsString('--proto =https --proto-redir =https', \implode(' ', $command), 'never downgraded to plain http');
-        $this->assertStringContainsString('Authorization: Bearer '.self::fake('secret'), (string) $stdin);
+        $this->assertSame('header = "Authorization: Bearer '.self::fake('secret').'"'."\n", $stdin, 'one curl config line');
         $this->assertStringNotContainsString(self::fake('secret'), \implode(' ', $command), 'a token in argv is visible to every process list');
     }
 
     public function testGhTokenWinsOverGithubToken(): void
     {
-        $this->gh = false;
-
         new SelfUpdate($this->runner(), ['GH_TOKEN' => self::fake('gh'), 'GITHUB_TOKEN' => self::fake('github')])->latest();
 
-        $this->assertStringContainsString('Bearer '.self::fake('gh'), (string) $this->ran[1][1]);
-    }
-
-    public function testWithNeitherGhNorATokenItSaysWhatToInstall(): void
-    {
-        $this->gh = false;
-
-        $this->expectExceptionMessageIsOrContains('self-update needs the gh CLI');
-        new SelfUpdate($this->runner(), ['GH_TOKEN' => ''])->latest();
-    }
-
-    public function testAnUnreadableReleaseIsReported(): void
-    {
-        $runner = static fn (array $command, ?string $stdin = null): array => 'gh' === $command[0] && '--version' === $command[1] ? [0, ''] : [1, ''];
-
-        $this->expectExceptionMessageIsOrContains('gh could not read the latest release');
-        new SelfUpdate($runner, [])->latest();
+        $this->assertStringContainsString('Bearer '.self::fake('gh'), (string) $this->ran[0][1]);
     }
 
     public function testAnApiThatDoesNotAnswerIsReported(): void
     {
         $runner = static fn (array $command, ?string $stdin = null): array => [127, ''];
 
-        $this->expectExceptionMessageIsOrContains('could not reach the releases of janalis/porta');
+        $this->expectExceptionMessageIsOrContains('could not reach the releases of janalis/porta — check the connection, and that a release exists.');
         new SelfUpdate($runner, ['GH_TOKEN' => self::fake('t')])->latest();
     }
 
@@ -202,12 +164,11 @@ final class SelfUpdateTest extends TestCase
         $this->assertSame('/usr/bin/php', \end($this->ran)[0][0], 'the new phar ran before it went anywhere');
     }
 
-    public function testInstallWithATokenDownloadsTheTwoAssetsOnly(): void
+    public function testInstallDownloadsTheTwoAssetsOnly(): void
     {
-        $this->gh = false;
         $dir = $this->installed();
 
-        new SelfUpdate($this->runner(), ['GH_TOKEN' => self::fake('t')])->install('v1.3.0', $dir->path('porta.phar'), 'php');
+        new SelfUpdate($this->runner(), [])->install('v1.3.0', $dir->path('porta.phar'), 'php');
 
         $this->assertSame('NEW PHAR', \file_get_contents($dir->path('porta.phar')));
         $downloads = \array_filter($this->ran, static fn (array $call): bool => \in_array('-o', $call[0], strict: true));
@@ -233,7 +194,7 @@ final class SelfUpdateTest extends TestCase
             static function (self $test): void {
                 $test->downloadFails = 1;
             },
-            'could not download v1.3.0',
+            'could not download porta.phar of v1.3.0',
         ];
     }
 
@@ -265,16 +226,6 @@ final class SelfUpdateTest extends TestCase
             $this->assertStringContainsString('could not be replaced (is the disk full?); nothing was changed.', $e->getMessage());
         }
         $this->assertSame('OLD PHAR', \file_get_contents($dir->path('porta.phar')));
-    }
-
-    public function testATokenDownloadThatFailsIsReported(): void
-    {
-        $this->gh = false;
-        $this->downloadFails = 22;
-        $dir = $this->installed();
-
-        $this->expectExceptionMessageIsOrContains('could not download porta.phar of v1.3.0');
-        new SelfUpdate($this->runner(), ['GH_TOKEN' => self::fake('t')])->install('v1.3.0', $dir->path('porta.phar'), 'php');
     }
 
     public function testAPharItCannotReplaceIsRefusedUpFront(): void

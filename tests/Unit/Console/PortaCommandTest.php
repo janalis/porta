@@ -399,22 +399,27 @@ final class PortaCommandTest extends TestCase
     }
 
     /**
-     * A command whose --self-update talks to a scripted `gh` that says $latest,
-     * running as the phar in $dir.
+     * A command whose --self-update talks to a scripted `curl`: the API says
+     * $latest, and serves the two assets it lists. It runs as the phar $phar.
      */
     private function updater(string $version, string $latest, ?string $phar, int $newPharRuns = 0): PortaCommand
     {
         return new PortaCommand(
             process: static function (array $command, ?string $stdin = null) use ($latest, $newPharRuns): array {
-                if ('gh' === $command[0] && 'download' === ($command[2] ?? '')) {
-                    $dir = $command[\array_search('--dir', $command, strict: true) + 1];
-                    \file_put_contents($dir.'/porta.phar', data: 'NEW');
-                    \file_put_contents($dir.'/porta.phar.sha256', \hash('sha256', data: 'NEW')."  porta.phar\n");
+                $url = (string) \end($command);
+                $out = 'curl' === $command[0] ? \array_search('-o', $command, strict: true) : false;
+                if (false !== $out) {
+                    $file = $command[$out + 1];
+                    \file_put_contents($file, \str_ends_with($file, '.sha256') ? \hash('sha256', data: 'NEW')."  porta.phar\n" : 'NEW');
                 }
 
                 return match (true) {
-                    'gh' === $command[0] && 'view' === ($command[2] ?? '') => [0, $latest."\n"],
-                    'gh' === $command[0] => [0, ''],
+                    \str_ends_with($url, '/releases/latest') => [0, (string) \json_encode(['tag_name' => $latest], \JSON_THROW_ON_ERROR)],
+                    \str_contains($url, '/releases/tags/') => [
+                        0,
+                        (string) \json_encode(['assets' => [['name' => 'porta.phar', 'url' => 'https://api/1'], ['name' => 'porta.phar.sha256', 'url' => 'https://api/2']]], \JSON_THROW_ON_ERROR),
+                    ],
+                    'curl' === $command[0] => [0, ''],
                     default => [$newPharRuns, ''],
                 };
             },
