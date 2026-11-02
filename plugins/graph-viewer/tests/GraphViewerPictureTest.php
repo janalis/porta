@@ -548,15 +548,39 @@ final class GraphViewerPictureTest extends TestCase
         $this->assertStringContainsString('Syntax Error', self::plain($widget->render(new RenderContext(60, 12))));
     }
 
-    public function testWithoutPlantumlThePaneSaysSo(): void
+    public function testWithoutPlantumlTheEngineStillDrawsThePicture(): void
     {
         $this->plantUml->binary = null;
+        $this->plantUml->nextPng = PngFixture::bytes(120, 80);
         $widget = $this->widget();
-        $widget->show('/p/seq.puml', '@startuml');
+        $widget->show('/p/seq.puml', "@startuml\nBob -> Alice\n@enduml");
+        $this->settle();
 
-        $screen = self::plain($widget->render(new RenderContext(80, 10)));
-        $this->assertStringContainsString('plantuml not found', $screen);
-        $this->assertStringContainsString('"plantumlPath" setting', $screen, 'and says what to do about it');
+        $this->assertSame([96], $this->plantUml->renderDpis, 'the engine draws it natively, not the pane that refuses');
+        $raw = \implode("\n", $widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('▀', $raw, 'the picture paints');
+        $this->assertStringNotContainsString('not found', self::plain($widget->render(new RenderContext(80, 24))));
+    }
+
+    public function testWithoutDotADotTabIsThePictureAlone(): void
+    {
+        $this->engine->binary = null;
+        $this->engine->nextPng = PngFixture::bytes(120, 80);
+        $widget = $this->widget();
+        $widget->show('/p/g.dot', 'digraph { A -> B }');
+        $this->settle();
+
+        $this->assertSame(0, $this->engine->layoutCalls, 'no geometry without dot');
+        $this->assertSame([72], $this->engine->renderDpis, "the picture, at graphviz's own 1:1");
+        $before = \implode("\n", $widget->render(new RenderContext(80, 24)));
+        $this->assertStringContainsString('▀', $before, 'the picture paints');
+        $this->assertStringNotContainsString('graphviz not found', self::plain($widget->render(new RenderContext(80, 24))));
+        $this->assertSame('', $widget->statusInfo(), 'there are no nodes to count');
+        $this->assertStringContainsString('Fit', $widget->zoomLabel(), 'the picture established its extent');
+
+        $widget->handleInput('v'); // the cell rendering needs geometry
+        $this->settle();
+        $this->assertSame($before, \implode("\n", $widget->render(new RenderContext(80, 24))), 'the picture stays');
     }
 
     public function testADotTabAfterAPlantUmlOneStillLaysOut(): void

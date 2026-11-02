@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Graph;
 
+use Janalis\Viz\Draw\NativeRenderer;
+use Janalis\Viz\GraphViz\DotPipeline;
 use Janalis\Viz\Layout\GraphLayout;
 use Janalis\Viz\Render\Format;
+use Janalis\Viz\Render\Work;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\DotLayoutEngine;
 use Porta\ImageViewer\ImageData;
@@ -13,6 +16,7 @@ use Porta\ImageViewer\ImageDecoder;
 use Porta\Tests\Support\GraphvizBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
+use Symfony\Component\Filesystem\Filesystem;
 
 final class DotLayoutEngineTest extends TestCase
 {
@@ -124,7 +128,7 @@ final class DotLayoutEngineTest extends TestCase
         $this->assertSame(['second'], $fired, 'the superseded call went silent, latest wins');
     }
 
-    public function testMissingBinaryErrorsWithoutSpawning(): void
+    public function testWithoutABinaryTheLayoutErrorsAndTheExportIsDrawnNatively(): void
     {
         \putenv('PATH=/nonexistent');
         $engine = new DotLayoutEngine(\sys_get_temp_dir());
@@ -139,14 +143,18 @@ final class DotLayoutEngineTest extends TestCase
             },
         );
 
-        $this->assertSame('graphviz not found', $error, 'synchronous — no process was involved');
+        $this->assertSame('graphviz not found', $error, 'synchronous — geometry has no native source');
         $this->assertNull($engine->binary());
 
-        $exportError = 'unset';
-        $engine->export(self::SMALL_DOT, Format::Svg, '/tmp/never-written.svg', static function (?string $message) use (&$exportError): void {
-            $exportError = $message;
-        });
-        $this->assertSame('graphviz not found', $exportError);
+        $out = \sys_get_temp_dir().'/porta-native-'.\bin2hex(\random_bytes(6)).'.svg';
+        try {
+            $this->assertSame('', $this->awaitString(static function (\Closure $done) use ($engine, $out): void {
+                $engine->export(self::SMALL_DOT, Format::Svg, $out, static fn (?string $message) => $done($message ?? ''));
+            }));
+            $this->assertStringContainsString('calls', (string) \file_get_contents($out), 'the edge label, drawn by viz');
+        } finally {
+            new Filesystem()->remove($out);
+        }
     }
 
     public function testExplicitDotPathWinsOverDiscovery(): void
@@ -351,22 +359,53 @@ final class DotLayoutEngineTest extends TestCase
         $this->assertSame(['second'], $fired, 'the superseded render went silent, latest wins');
     }
 
-    public function testRenderWithoutABinaryErrorsWithoutSpawning(): void
+    public function testCancelStopsANativeRenderAndExport(): void
     {
         \putenv('PATH=/nonexistent');
-        $error = null;
-        new DotLayoutEngine(\sys_get_temp_dir())->render(
+        $engine = new DotLayoutEngine(\sys_get_temp_dir());
+        $fired = false;
+        $engine->render(
             self::SMALL_DOT,
             72,
-            static function (): never {
-                self::fail('onPng must not fire without a binary');
+            static function () use (&$fired): void {
+                $fired = true;
             },
-            static function (string $message) use (&$error): void {
-                $error = $message;
+            static function () use (&$fired): void {
+                $fired = true;
             },
         );
+        $engine->export(self::SMALL_DOT, Format::Png, \sys_get_temp_dir().'/porta-never-'.\bin2hex(\random_bytes(6)).'.png', static function () use (&$fired): void {
+            $fired = true;
+        });
+        $engine->cancel();
+        $this->pump(0.2);
 
-        $this->assertSame('graphviz not found', $error, 'synchronous — no process was involved');
+        $this->assertFalse($fired, 'a cancelled native render or export never reports');
+    }
+
+    public function testRenderWithoutABinaryIsDrawnNativelyAtTheSameScale(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $engine = new DotLayoutEngine(\sys_get_temp_dir());
+        $png = $this->awaitString(static function (\Closure $done) use ($engine): void {
+            $engine->render(self::SMALL_DOT, 144, $done, static function (string $message): never {
+                self::fail($message);
+            });
+        });
+        $expected = Work::run(new NativeRenderer(new DotPipeline())->image(self::SMALL_DOT, Format::Png, 192));
+        $this->assertSame($expected, $png, "dot's 144 dpi is twice its 1:1, so viz draws at twice its own 96");
+
+        $error = $this->awaitString(static function (\Closure $done) use ($engine): void {
+            $engine->render(
+                'digraph {',
+                72,
+                static function (): never {
+                    self::fail('a source that does not parse draws nothing');
+                },
+                $done,
+            );
+        });
+        $this->assertNotSame('', $error);
     }
 
     public function testRealGraphvizSmokeTest(): void

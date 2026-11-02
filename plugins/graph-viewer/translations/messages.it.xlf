@@ -58,10 +58,6 @@
         <source>%in% in · %out% out</source>
         <target>%in% in · %out% out</target>
       </trans-unit>
-      <trans-unit id="15">
-        <source>graphviz not found — install graphviz, or set the "dotPath" setting</source>
-        <target>graphviz non trovato — installare graphviz o impostare l'opzione "dotPath"</target>
-      </trans-unit>
       <trans-unit id="16">
         <source>layout…</source>
         <target>layout…</target>
@@ -113,10 +109,6 @@
       <trans-unit id="27">
         <source>PlantUML path (or .jar)</source>
         <target>Percorso di PlantUML (o .jar)</target>
-      </trans-unit>
-      <trans-unit id="28">
-        <source>plantuml not found — install it, or set the "plantumlPath" setting</source>
-        <target>plantuml non trovato — installalo o imposta l'impostazione "plantumlPath"</target>
       </trans-unit>
       <trans-unit id="29">
         <source>the graph bitmap could not be decoded</source>

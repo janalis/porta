@@ -45,7 +45,7 @@ use Symfony\Component\Tui\Tui;
  * The graph viewer tab: opening a .dot file routes it to the viewer (layout
  * via the committed fake-dot stub — no graphviz dependency), zoom/pan/focus,
  * the invalid-document banner over the last good render (via the filesystem
- * reconciler), tab reuse, and the actionable missing-binary pane.
+ * reconciler), tab reuse, and the picture viz draws when dot is missing.
  */
 final class IdeGraphViewerTest extends TestCase
 {
@@ -571,7 +571,7 @@ final class IdeGraphViewerTest extends TestCase
         );
     }
 
-    public function testWithoutPlantumlADocumentStaysText(): void
+    public function testWithoutPlantumlADocumentIsDrawnNativelyBesideItsSource(): void
     {
         \putenv('PATH=/nonexistent'); // nothing to discover, and no setting
         $project = new TempProject(['seq.puml' => "@startuml\nBob -> Alice\n@enduml\n"]);
@@ -581,17 +581,17 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('seq.puml'),
             [
                 200 => function (Tui $tui, $terminal): void {
-                    $this->frame($tui);
-                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'the text path, as before');
+                    $this->awaitPainted($tui, $terminal, '▀');
+                    $this->assertSame('editor', $tui->getFocus()?->getId(), 'the source keeps the focus');
                     $this->assertStringContainsString('@startuml', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );
     }
 
-    public function testMissingBinaryShowsTheActionablePane(): void
+    public function testWithoutDotTheGraphIsDrawnNatively(): void
     {
-        // No dotPath setting and an empty PATH: discovery finds nothing.
+        // No dotPath setting and an empty PATH: discovery finds nothing, and viz draws it.
         \putenv('PATH=/nonexistent');
         $project = new TempProject([
             'g.dot' => self::SMALL_DOT,
@@ -602,10 +602,8 @@ final class IdeGraphViewerTest extends TestCase
             $project->path('g.dot'),
             [
                 200 => function (Tui $tui, $terminal): void {
-                    $this->frame($tui);
-                    $output = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertStringContainsString('graphviz not found', $output);
-                    $this->assertStringContainsString('dotPath', $output, 'the message names the setting');
+                    $this->awaitPainted($tui, $terminal, '▀');
+                    $this->assertStringNotContainsString('graphviz not found', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

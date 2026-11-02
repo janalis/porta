@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Graph;
 
 use Janalis\Viz\PlantUML\PlantUmlCommand;
+use Janalis\Viz\PlantUML\PlantUmlPipeline;
 use Janalis\Viz\Process\Tool;
 use Janalis\Viz\Render\Format;
 use Porta\Support\SingleSlotProcess;
@@ -26,9 +27,15 @@ use Symfony\Component\Filesystem\Filesystem;
  * machine without `dot` therefore renders some of these documents and not
  * others, and the tool says so on stderr — which is what the pane's banner
  * shows.
+ *
+ * With no PlantUML installed, viz draws the diagram natively
+ * ({@see NativeDiagram}); what it does not draw — an `!include` of a file or a
+ * URL, among others — is refused with the reason, shown in the same banner.
  */
 final readonly class PlantUmlEngine implements DiagramEngine
 {
+    private NativeDiagram $native;
+
     /**
      * @param null|(\Closure(): ?string)|string $toolPath the "PlantUML" setting: a launcher, a .jar, or ''
      *                                                    to auto-discover. A CLOSURE is read per call, so a
@@ -40,7 +47,11 @@ final readonly class PlantUmlEngine implements DiagramEngine
         private SingleSlotProcess $slot = new SingleSlotProcess(),
         private SingleSlotProcess $exportSlot = new SingleSlotProcess(),
         private Filesystem $files = new Filesystem(),
-    ) {}
+        ?NativeDiagram $native = null,
+    ) {
+        // Not a parameter default: the native pipeline is built by a static call.
+        $this->native = $native ?? new NativeDiagram(PlantUmlPipeline::native(), PlantUmlCommand::BASE_DPI);
+    }
 
     public function baseDpi(): int
     {
@@ -56,7 +67,7 @@ final readonly class PlantUmlEngine implements DiagramEngine
     {
         $tool = $this->binary();
         if (null === $tool) {
-            $onError('plantuml not found');
+            $this->native->render($source, $dpi, $onPng, $onError);
 
             return;
         }
@@ -74,7 +85,7 @@ final readonly class PlantUmlEngine implements DiagramEngine
     {
         $tool = $this->binary();
         if (null === $tool) {
-            $onDone('plantuml not found');
+            $this->native->export($source, $format, $outPath, $onDone);
 
             return;
         }
@@ -102,5 +113,6 @@ final readonly class PlantUmlEngine implements DiagramEngine
     {
         $this->slot->cancel();
         $this->exportSlot->cancel();
+        $this->native->cancel();
     }
 }

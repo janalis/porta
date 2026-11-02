@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use Janalis\Viz\Process\Tool;
 use Janalis\Viz\Render\Format;
 use Porta\Config\WorkspaceTrust;
 use Porta\Editor\PaneServices;
@@ -262,18 +261,13 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
     }
 
     /**
-     * A PlantUML document is the viewer's only if the user wants it AND
-     * something can draw it — otherwise it stays the editable text it has
-     * always been. Both knobs are this plugin's own settings now: the bool
-     * toggle and the tool path.
+     * A PlantUML document is the viewer's only if the user wants it —
+     * otherwise it stays the editable text it has always been. Something can
+     * always draw it: the `plantuml` tool when installed, viz natively when not.
      */
     private function claimsPlantUml(string $path): bool
     {
-        return (
-            DiagramKind::PlantUml === DiagramKind::forPath($path)
-            && (bool) $this->api?->setting('plantuml')
-            && null !== new Tool('plantuml', self::path($this->api?->setting('plantumlPath') ?? ''))->path()
-        );
+        return DiagramKind::PlantUml === DiagramKind::forPath($path) && (bool) $this->api?->setting('plantuml');
     }
 
     /**

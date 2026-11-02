@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
-use Janalis\Viz\Mermaid\MermaidSyntaxError;
+use Janalis\Viz\Source\ParseError;
+use Janalis\Viz\Source\Unsupported;
 use Porta\Support\Clocks;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
@@ -86,7 +87,7 @@ final class MermaidTask
             }
 
             return $complete;
-        } catch (MermaidSyntaxError|\InvalidArgumentException $exception) {
+        } catch (ParseError|Unsupported|\InvalidArgumentException $exception) {
             $error($exception->getMessage());
 
             return true;

@@ -218,18 +218,6 @@ final class GraphViewerWidgetTest extends TestCase
         $this->assertStringNotContainsString('syntax error', self::plain($widget->render(new RenderContext(60, 20))), 'nor after a clear');
     }
 
-    public function testAMissingBinaryShowsTheActionableMessageWithoutSpawning(): void
-    {
-        $this->engine->binary = null;
-        $widget = $this->widget();
-        $widget->show('/p/g.dot', 'digraph {}');
-
-        $this->assertSame(0, $this->engine->layoutCalls, 'no layout attempt without a binary');
-        $screen = self::plain($widget->render(new RenderContext(80, 10)));
-        $this->assertStringContainsString('graphviz not found', $screen);
-        $this->assertStringContainsString('dotPath', $screen);
-    }
-
     public function testADeferredLayoutShowsTheProgressHint(): void
     {
         $this->engine->deferred = true;

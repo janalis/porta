@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Graph;
 
+use Janalis\Viz\Draw\NativeRenderer;
+use Janalis\Viz\PlantUML\PlantUmlPipeline;
 use Janalis\Viz\Render\Format;
+use Janalis\Viz\Render\Work;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Graph\PlantUmlEngine;
 use Porta\ImageViewer\ImageData;
@@ -117,24 +120,20 @@ final class PlantUmlEngineTest extends TestCase
         $this->assertFalse($fired, 'a cancelled render never reports');
     }
 
-    public function testWithoutTheToolItErrorsWithoutSpawning(): void
+    public function testWithoutTheToolVizDrawsItNativelyAndSaysWhatItLeavesToPlantuml(): void
     {
         \putenv('PATH=/nonexistent');
         $engine = new PlantUmlEngine(\sys_get_temp_dir());
-        $error = null;
-        $engine->render(
-            self::SMALL_UML,
-            96,
-            static function (): never {
-                self::fail('onPng must not fire without a tool');
-            },
-            static function (string $message) use (&$error): void {
-                $error = $message;
-            },
-        );
-
-        $this->assertSame('plantuml not found', $error, 'synchronous — no process was involved');
         $this->assertNull($engine->binary());
+
+        [$png, $error] = $this->render($engine, self::SMALL_UML, 96);
+        $this->assertNull($error);
+        $expected = Work::run(new NativeRenderer(PlantUmlPipeline::native())->image(self::SMALL_UML, Format::Png));
+        $this->assertSame($expected, $png, 'drawn by viz at its own 1:1, which is PlantUML\'s 96 dpi');
+
+        [$png, $error] = $this->render($engine, "@startuml\n!include local.puml\nBob -> Alice\n@enduml\n", 96);
+        $this->assertNull($png);
+        $this->assertStringContainsString('leaves !include of a file or a URL to PlantUML', (string) $error);
     }
 
     public function testAClosurePathIsReReadPerCallSoASettingsEditApplies(): void
@@ -189,14 +188,23 @@ final class PlantUmlEngineTest extends TestCase
         }
     }
 
-    public function testAnExportWithoutTheToolFailsAndACancelledOneNeverReports(): void
+    public function testAnExportWithoutTheToolIsDrawnNativelyAndACancelledOneNeverReports(): void
     {
         \putenv('PATH=/nonexistent');
-        $error = 'unset';
-        new PlantUmlEngine(\sys_get_temp_dir())->export(self::SMALL_UML, Format::Pdf, '/nonexistent/seq.pdf', static function (?string $message) use (&$error): void {
-            $error = $message;
+        $engine = new PlantUmlEngine(\sys_get_temp_dir());
+        $out = \sys_get_temp_dir().'/porta-native-'.\bin2hex(\random_bytes(6)).'.svg';
+        try {
+            $this->assertSame('', $this->awaitString(static function (\Closure $done) use ($engine, $out): void {
+                $engine->export(self::SMALL_UML, Format::Svg, $out, static fn (?string $error) => $done($error ?? ''));
+            }));
+            $this->assertStringContainsString('<svg', (string) \file_get_contents($out));
+        } finally {
+            new Filesystem()->remove($out);
+        }
+        $error = $this->awaitString(static function (\Closure $done) use ($engine): void {
+            $engine->export(self::SMALL_UML, Format::Pdf, '/nonexistent/seq.pdf', static fn (?string $error) => $done($error ?? ''));
         });
-        $this->assertSame('plantuml not found', $error);
+        $this->assertStringContainsString('/nonexistent', $error, 'a write that fails says why');
 
         $engine = new PlantUmlEngine(\sys_get_temp_dir(), self::stub());
         $fired = false;
@@ -206,5 +214,23 @@ final class PlantUmlEngineTest extends TestCase
         $engine->cancel();
         $this->pump(0.2);
         $this->assertFalse($fired, 'a cancelled export never reports');
+
+        $engine = new PlantUmlEngine(\sys_get_temp_dir());
+        $engine->export(self::SMALL_UML, Format::Png, \sys_get_temp_dir().'/porta-never-'.\bin2hex(\random_bytes(6)).'.png', static function () use (&$fired): void {
+            $fired = true;
+        });
+        $engine->render(
+            self::SMALL_UML,
+            96,
+            static function () use (&$fired): void {
+                $fired = true;
+            },
+            static function () use (&$fired): void {
+                $fired = true;
+            },
+        );
+        $engine->cancel();
+        $this->pump(0.2);
+        $this->assertFalse($fired, 'a cancelled native render or export never reports');
     }
 }

@@ -8,6 +8,8 @@ the event-loop scheduling around them.
 Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
 it as a [live preview](../../../docs/editor.md#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
+Without `dot`, viz draws the picture itself; the tab is then that picture alone, since the
+node selection, the counts and the cell rendering all come from `dot`'s layout.
 The plugin's Settings page lists the three tools it can use — `dot`, `mmdc` and
 `plantuml`, each optional — with an **Install** button that runs Homebrew (npm
 for `mmdc` when it is there), and **Update** once Porta manages the copy.
@@ -47,8 +49,10 @@ the banner instead of being drawn into the picture. What a PlantUML tab does
 *not* have is a node model, so `n`/`p`, click-select, the node counts and the
 `v` cell rendering do nothing there. PlantUML uses Graphviz for several diagram
 types (class, activity, state), so install `dot` as well if those come out
-empty. With no tool installed — or with *Preview PlantUML beside its source* off on the
-graph-viewer plugin's page — these files stay editable text.
+empty. With no tool installed, viz draws them natively, and what it leaves to PlantUML — an
+`!include` of a file or a URL, among others — is refused with the reason in the banner.
+With *Preview PlantUML beside its source* off on the graph-viewer plugin's page, these files
+stay editable text.
 
 Mermaid files (`.mmd` and `.mermaid`) open with a live preview when *Preview
 Mermaid beside its source* is enabled. Set *Mermaid CLI path* to a local `mmdc`
@@ -84,8 +88,8 @@ The graph follows the source as you type. An invalid document keeps the
 previous graph, and what `dot` says is wrong shows in the editor like any other
 error: underlined on the line it names, in the gutter and in Problems. With the
 preview shown alone, where the editor is out of sight, the first error also
-tops the picture. A failure of Graphviz itself (not installed, or answering
-nonsense) is the pane's to say, in a banner. The viewer is a bundled plugin, enabled by
+tops the picture. A failure of Graphviz itself (answering nonsense), or a document viz
+cannot draw without it, is the pane's to say, in a banner. The viewer is a bundled plugin, enabled by
 default — disabling it opens `.dot` files as plain text with no preview.
 **Plugins ▸ Project Architecture** generates a namespace-dependency graph of
 the current project into `architecture.dot` and opens it with the graph alone

@@ -6,6 +6,7 @@ namespace Porta\GraphViewer\Graph;
 
 use Janalis\Viz\GraphViz\DotCommand;
 use Janalis\Viz\GraphViz\DotJsonParser;
+use Janalis\Viz\GraphViz\DotPipeline;
 use Janalis\Viz\GraphViz\GraphParseException;
 use Janalis\Viz\Render\Format;
 use Porta\Support\SingleSlotProcess;
@@ -26,6 +27,10 @@ use Symfony\Component\Process\ExecutableFinder;
  * zoom-driven re-render cannot cancel the geometry it is about to be drawn with. Pathological output sizes are bounded upstream — the
  * viewer refuses DOT documents over {@see DotFiles::MAX_BYTES} — and by PHP's
  * own memory limit, so no separate output cap is imposed here.
+ *
+ * With no `dot` installed, the picture and the exports are drawn natively by
+ * viz ({@see NativeDiagram}); the geometry has no native source, so layout()
+ * still answers that graphviz is missing and the tab is a picture alone.
  */
 final readonly class DotLayoutEngine implements LayoutEngine
 {
@@ -41,6 +46,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
         private SingleSlotProcess $layoutSlot = new SingleSlotProcess(),
         private SingleSlotProcess $renderSlot = new SingleSlotProcess(),
         private SingleSlotProcess $exportSlot = new SingleSlotProcess(),
+        private NativeDiagram $native = new NativeDiagram(new DotPipeline(), DotCommand::BASE_DPI),
     ) {}
 
     public function baseDpi(): int
@@ -87,7 +93,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
     {
         $binary = $this->binary();
         if (null === $binary) {
-            $onError('graphviz not found');
+            $this->native->render($source, $dpi, $onPng, $onError);
 
             return;
         }
@@ -98,7 +104,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
     {
         $binary = $this->binary();
         if (null === $binary) {
-            $onDone('graphviz not found');
+            $this->native->export($dot, $format, $outPath, $onDone);
 
             return;
         }
@@ -120,5 +126,6 @@ final readonly class DotLayoutEngine implements LayoutEngine
         $this->layoutSlot->cancel();
         $this->renderSlot->cancel();
         $this->exportSlot->cancel();
+        $this->native->cancel();
     }
 }

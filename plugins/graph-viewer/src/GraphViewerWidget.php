@@ -84,6 +84,9 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private ?string $dot = null;
     /** Which tool draws it; a PlantUML tab has a picture and no geometry at all. */
     private DiagramKind $kind = DiagramKind::Dot;
+
+    /** Whether this tab has a layout to select in and draw as cells: a DOT tab, with `dot` there to lay it out. */
+    private bool $geometry = true;
     /** The picture dot rendered, or null while none has arrived for this graph. */
     private ?ImageData $bitmap = null;
     /** A native or mapped CLI picture shares the current scene geometry. */
@@ -187,7 +190,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $kind = DiagramKind::forPath($path) ?? DiagramKind::Dot;
         $hash = \hash('xxh128', $kind->name."\0".$dot);
         if ($path === $this->path && $hash === $this->dotHash) {
-            if ($this->resumePicture && !$kind->hasLayout()) {
+            if ($this->resumePicture && !$this->geometry) {
                 $this->resumePicture = false;
                 $this->showPicture();
             }
@@ -205,6 +208,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->dotHash = $hash;
         $this->dot = $dot;
         $this->kind = $kind;
+        $this->geometry = $kind->hasLayout() && null !== $this->engine->binary();
         // The previous tab's picture must not paint under this tab's geometry;
         // the cell rendering covers the gap until the new bitmap lands.
         if ($changedPath || DiagramKind::Mermaid !== $kind) {
@@ -214,9 +218,8 @@ final class GraphViewerWidget extends NavigablePaneWidget
         }
         $this->selected = null;
         match (true) {
-            !$this->kind->hasLayout() => $this->showPicture(),
+            !$this->geometry => $this->showPicture(),
             null !== ($cached = $this->layoutCache[$hash] ?? null) => $this->adopt($cached),
-            null === $this->engine->binary() => $this->showMissingBinary(),
             default => $this->startLayout($path, $dot, $hash),
         };
     }
@@ -232,8 +235,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             $this->view = null;
         }
         $this->selectionOrder = [];
-        $missing = DiagramKind::Mermaid === $this->kind ? 'missing-mermaid' : 'missing-plantuml';
-        $this->error = null === $this->drawingEngine()?->binary() ? $missing : null;
+        $this->error = DiagramKind::Mermaid === $this->kind && null === $this->drawingEngine()?->binary() ? 'missing-mermaid' : null;
         if (DiagramKind::Mermaid === $this->kind && (GraphRenderMode::Cells === $this->mode || null !== $this->error)) {
             $this->requestNative(
                 GraphRenderMode::Cells === $this->mode ? null : $this->translator->trans('mmdc not found — install mermaid-cli, or set the "mermaidPath" setting'),
@@ -242,14 +244,6 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->pending->reset();
         $this->invalidate();
         $this->scheduleRefine();
-    }
-
-    private function showMissingBinary(): void
-    {
-        $this->layout = null;
-        $this->view = null;
-        $this->error = 'missing-binary';
-        $this->invalidate();
     }
 
     private function startLayout(string $path, string $dot, string $hash): void
@@ -596,7 +590,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
             null === $this->dot
             || null === $engine
             || (DiagramKind::Mermaid === $this->kind && (GraphRenderMode::Cells === $this->mode || null === $engine->binary()))
-            || (GraphRenderMode::Cells === $this->mode && $this->kind->hasLayout())
+            || (GraphRenderMode::Cells === $this->mode && $this->geometry)
         ) {
             return; // Native cells need no external render.
         }
@@ -660,7 +654,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
         $this->nativeBitmap = null !== $mapped;
         $this->bitmap = $image;
         $this->bitmapDpi = $dpi;
-        if (!$this->kind->hasLayout()) {
+        if (!$this->geometry) {
             $this->adoptPictureExtent($image, $dpi, $engine->baseDpi());
         }
         $this->invalidate();
@@ -904,7 +898,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
     {
         return (
             !(DiagramKind::Mermaid === $this->kind && null !== $this->nativeScene && (GraphRenderMode::Cells === $this->mode || (null !== $this->error && !$this->nativeBitmap)))
-            && (!$this->kind->hasLayout() || GraphRenderMode::Bitmap === $this->mode)
+            && (!$this->geometry || GraphRenderMode::Bitmap === $this->mode)
             && null !== $this->bitmap
         );
     }
@@ -970,14 +964,12 @@ final class GraphViewerWidget extends NavigablePaneWidget
     private function statusLines(int $cols, int $rows): array
     {
         $message = match (true) {
-            'missing-binary' === $this->error => $this->translator->trans('graphviz not found — install graphviz, or set the "dotPath" setting'),
             'missing-mermaid' === $this->error => $this->translator->trans('mmdc not found — install mermaid-cli, or set the "mermaidPath" setting'),
-            'missing-plantuml' === $this->error => $this->translator->trans('plantuml not found — install it, or set the "plantumlPath" setting'),
             null !== $this->error => Text::firstLine($this->error),
             $this->layingOut => Glyphs::WORKING.' '.$this->translator->trans('layout…'),
             default => '',
         };
-        $style = 'missing-binary' === $this->error || (null !== $this->error && !$this->layingOut) ? Role::DiagError : Role::Dim;
+        $style = null !== $this->error && !$this->layingOut ? Role::DiagError : Role::Dim;
 
         return $this->messagePane($message, $style, $cols, $rows);
     }
