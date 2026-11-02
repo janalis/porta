@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-02
+
 ### Added
 
 - **Agents (MCP)**: an MCP server inside the IDE (`porta mcp`). Agents read
