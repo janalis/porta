@@ -78,24 +78,12 @@ CI builds pushes to `main` and `develop`, plus pull requests from any branch.
 Manual runs on other branches skip every job; the weekly dependency audit
 runs on the default branch.
 
-**CI uses the `porta-runners` ARC scale set** (`.github/workflows/ci.yml`),
-with `PORTA_TEST_PROCESSES: 4` and `PORTA_SHARD_PROCESSES: 4`: its ephemeral
-Linux ARM64 pods share the developer machine. The scale set allows two jobs
-at once. Take every core only on a machine nobody else is using.
+**CI runs on GitHub-hosted `ubuntu-latest` runners** (`.github/workflows/ci.yml`),
+free for a public repository. A runner is the job's alone, so the tests take
+every core (`PORTA_TEST_PROCESSES: auto`) and the plugin shards four
+(`PORTA_SHARD_PROCESSES: 4`, `coverage:plugins` takes a number).
 
-The existing ARC controller manages the repository-scoped scale set. Its Helm
-values live in `docker/ci/arc/values.yaml`; `porta-runners-github-secret` in
-`arc-runners` holds the GitHub credential under `github_token`, outside git.
-Install or update it against the current Kubernetes context with:
-
-```bash
-helm upgrade --install porta-runners --namespace arc-runners --create-namespace \
-  --version 0.14.2 -f docker/ci/arc/values.yaml \
-  oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
-```
-
-Both CI and release workflows target this scale set directly. Each job gets
-its own runner filesystem; setup-php installs PHP 8.5 and the declared
+Each job gets its own runner; setup-php installs PHP 8.5 and the declared
 extensions, including the explicit no-intl test variant.
 
 ```bash
@@ -595,13 +583,71 @@ from guesses.
 
 ## Releasing
 
-A release is a tag: `git tag v1.2.0 && git push git@github.com:janalis/porta.git
-v1.2.0`. `.github/workflows/release.yml` builds `porta.phar` from it, checks that
-`porta --version` names the tag, and publishes a GitHub release with the phar
-and `porta.phar.sha256` — the two files `porta --self-update` fetches.
-`bin/build-phar` stamps `git describe --tags --always --dirty`, so a local build
-between tags says which commit it is (`v1.2.0-3-gabc1234`), and self-update
-treats it as the tag it follows.
+Releases are cut from GitHub Actions in one click. Write user-visible changes
+under `## [Unreleased]` in `CHANGELOG.md` as you go
+([Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format, semantic
+versioning).
+
+Run **Actions → Release → Run workflow** on `main` with a version: `X.Y.Z`,
+or `patch` / `minor` / `major` to bump the latest tag. Tick *dry run* to
+build everything without publishing (the phar is kept as an artifact). The
+workflow:
+
+1. refuses to start unless CI passed on the commit (it does not run the
+   gates again);
+2. runs `bin/porta-dev release:prepare`, which turns `[Unreleased]` into
+   `[X.Y.Z] - <date>`, sets `Ide::VERSION` and extracts the release notes;
+   then commits `chore(release): vX.Y.Z`, tags it and pushes both;
+3. builds `porta.phar` from the tag, checks that `porta --version` names it,
+   and publishes a GitHub release with the phar and `porta.phar.sha256` —
+   the two files `porta --self-update` fetches;
+4. writes `Formula/porta.rb` in `janalis/homebrew-tap`;
+5. pushes each plugin's split, with the tag, to `janalis/porta-<name>`
+   (`.github/workflows/split.yml`, which also runs on every push to `main`);
+6. pings Packagist for `janalis/porta` and every plugin package, and
+   redeploys the documentation site.
+
+A failed publish can be retried with *Re-run failed jobs*; the tag is kept.
+`bin/build-phar` stamps `git describe --tags --always --dirty`, so a local
+build between tags says which commit it is (`v1.2.0-3-gabc1234`), and
+self-update treats it as the tag it follows.
+
+### Documentation site
+
+The site is built with [VitePress](https://vitepress.dev) from the same
+Markdown the F1 browser renders: `docs/` (less `docs/internals/`, which is
+for this repository only) and each plugin's `docs/`, mapped onto the site by
+`.vitepress/config.mts`. It is deployed to GitHub Pages by
+`.github/workflows/docs.yml` on every push to `main` that touches them, after
+each release, and on demand; pull requests build it without deploying, which
+catches dead links.
+
+```bash
+make docs-dev       # live preview on http://localhost:5173/porta/
+make docs           # production build in .vitepress/dist
+```
+
+### Plugin splits
+
+Every bundled plugin is also a read-only repository, `janalis/porta-<name>`,
+published on Packagist under that name — the installer drops the `porta-`,
+so it lands as `<name>`. What a split needs is in the plugin's own directory:
+its `README.md`, `LICENSE`, `.gitattributes` and the workflow that closes a
+pull request opened there (`BundledPluginSplitTest` holds every plugin to
+it). A new bundled plugin needs the same files, and its repository created
+before the next push to `main`.
+
+### One-time setup
+
+- Secrets: `SPLIT_TOKEN` (a fine-grained token with *Contents: read and
+  write* on the `janalis/porta-*` repositories), `HOMEBREW_TAP_TOKEN` (the
+  same on `janalis/homebrew-tap`), and optionally `PACKAGIST_USERNAME` and
+  `PACKAGIST_TOKEN`.
+- Create each `janalis/porta-<name>` repository (empty), and submit it and
+  `janalis/porta` on packagist.org.
+- **Settings → Pages → Build and deployment → Source: GitHub Actions.**
+- If `main` is protected, let GitHub Actions bypass the protection so the
+  release commit can be pushed.
 
 ## Conventions
 

@@ -28,16 +28,15 @@ concurrency:
 # native path and the polyfill every no-intl user actually runs.
 env:
   PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
-  # ARC pods share the developer machine; keep each suite to four workers.
-  PORTA_TEST_PROCESSES: 4
+  # A hosted runner (4 vCPUs on a public repository) is the job's alone:
+  # every core it has. coverage:plugins takes a number, not `auto`.
+  PORTA_TEST_PROCESSES: auto
   PORTA_SHARD_PROCESSES: 4
-  # setup-php installs prerequisites on the minimal ARC runner image.
-  runner: ${{ vars.CI_RUNNER && 'self-hosted' || 'github-hosted' }}
 
 jobs:
   audit:
     if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -56,7 +55,7 @@ jobs:
 
   static:
     if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -88,7 +87,7 @@ jobs:
 
   tests:
     if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -149,7 +148,7 @@ jobs:
   # rather than their sum. `coverage:check` still chains both locally.
   coverage:
     if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -185,7 +184,7 @@ jobs:
 
   coverage-plugins:
     if: github.event_name != 'schedule' && (github.event_name == 'pull_request' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -230,7 +229,7 @@ jobs:
 
   release-package:
     if: github.event_name != 'schedule'
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
