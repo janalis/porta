@@ -1,5 +1,5 @@
 {
-    "name": "porta/phpantom",
+    "name": "janalis/porta-phpantom",
     "description": "phpantom as the PHP language server, plus its fixer",
     "type": "porta-plugin",
     "license": "MIT",

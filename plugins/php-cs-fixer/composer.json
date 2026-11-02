@@ -1,5 +1,5 @@
 {
-    "name": "porta/php-cs-fixer",
+    "name": "janalis/porta-php-cs-fixer",
     "description": "Runs php-cs-fixer on the current file, or on save",
     "type": "porta-plugin",
     "license": "MIT",

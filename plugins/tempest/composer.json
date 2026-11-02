@@ -1,0 +1,9 @@
+{
+    "name": "janalis/porta-tempest",
+    "description": "Porta's built-in syntax highlighting engine, from tempest/highlight",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    }
+}

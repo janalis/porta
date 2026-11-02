@@ -1,5 +1,5 @@
 {
-    "name": "porta/custos",
+    "name": "janalis/porta-custos",
     "description": "custos, the PHP inspector and fixer, as a supplementary language server and a file fixer",
     "type": "porta-plugin",
     "license": "MIT",

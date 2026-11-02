@@ -736,12 +736,19 @@ final class PluginInstaller
         return [$name, $type];
     }
 
-    /** The plugin directory NAME half of a composer `vendor/project` package name. */
+    /**
+     * The plugin directory NAME half of a composer `vendor/project` package
+     * name, less a leading `porta-`: Packagist names are global, so a plugin
+     * package says what it is for (`janalis/porta-git`), and it still lands
+     * as `git` — the name its settings, `requires` and a shadowed bundled
+     * copy all go by.
+     */
     private function nameFromPackage(string $packageName): string
     {
         $slash = \strpos($packageName, needle: '/');
+        $project = false === $slash ? $packageName : \substr($packageName, $slash + 1);
 
-        return false === $slash ? $packageName : \substr($packageName, $slash + 1);
+        return \str_starts_with($project, 'porta-') ? \substr($project, \strlen('porta-')) : $project;
     }
 
     /**

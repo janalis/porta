@@ -1,5 +1,5 @@
 {
-    "name": "porta/diff",
+    "name": "janalis/porta-diff",
     "description": "Diffs for other plugins to show: the unified-diff model, word-level highlights and the unified or side-by-side diff pane",
     "type": "porta-plugin",
     "license": "MIT",

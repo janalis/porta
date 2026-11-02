@@ -1,5 +1,5 @@
 {
-    "name": "porta/phpactor",
+    "name": "janalis/porta-phpactor",
     "description": "phpactor as the PHP language server",
     "type": "porta-plugin",
     "license": "MIT",

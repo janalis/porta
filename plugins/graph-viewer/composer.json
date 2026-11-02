@@ -1,5 +1,5 @@
 {
-    "name": "porta/graph-viewer",
+    "name": "janalis/porta-graph-viewer",
     "description": "Renders Graphviz, PlantUML and Mermaid diagrams in editor and Markdown previews",
     "type": "porta-plugin",
     "license": "MIT",

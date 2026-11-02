@@ -240,6 +240,17 @@ final class PluginInstallerTest extends TestCase
         $this->assertTrue(\is_link($this->project->dir.'/.porta/plugins/mylint'));
     }
 
+    public function testAPortaPrefixedPackageLandsUnderItsPluginName(): void
+    {
+        $installer = $this->installer(composer: $this->fakeComposer());
+        [$error, $file] = $this->install($installer, 'janalis/porta-todo');
+
+        $this->assertNull($error);
+        $this->assertSame($this->project->dir.'/.porta/plugins/todo/plugin.php', $file, 'the name a bundled todo goes by, so it shadows it');
+        $this->assertNull($this->remove($installer, 'todo'));
+        $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/todo');
+    }
+
     public function testNameInstallGuards(): void
     {
         $installer = $this->installer(composer: $this->fakeComposer());

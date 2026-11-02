@@ -1,5 +1,5 @@
 {
-    "name": "porta/phpstan",
+    "name": "janalis/porta-phpstan",
     "description": "PHPStan analysis of the current file, or on save, as diagnostics",
     "type": "porta-plugin",
     "license": "MIT",

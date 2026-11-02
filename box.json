@@ -3,13 +3,19 @@
     "directories": [
         "src",
         "config",
-        "docs",
         "translations"
     ],
     "finder": [
         {
+            "in": "docs",
+            "exclude": [
+                "public"
+            ]
+        },
+        {
             "in": "plugins",
             "exclude": [
+                ".github",
                 "tests",
                 "vendor"
             ]

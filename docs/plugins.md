@@ -467,7 +467,11 @@ Open **Settings → Plugins** and use the form:
   `.porta/plugins/<name>` ends up a **symlink** into wherever composer
   actually installed the package. The directory name is the package's own
   `composer.json` — it must declare `"name": "vendor/name"` and
-  `"type": "porta-plugin"`, or the install is refused.
+  `"type": "porta-plugin"`, or the install is refused. A leading `porta-` is
+  dropped from the directory name, so name your package `vendor/porta-<name>`:
+  `janalis/porta-todo` installs as `todo`, the name a bundled plugin of that
+  name goes by, and shadows it. Every bundled plugin is published this way,
+  from a read-only split of its directory.
 - **Installed** lists every plugin once: its name and description, whether
   it is on or off, where it comes from (project, global or built-in), and
   any required tool it is missing (`needs dot`). **Open** goes to its page.

@@ -1,0 +1,72 @@
+name: Split
+
+# Every bundled plugin is also a read-only repository, janalis/porta-<name>,
+# which Packagist publishes: this pushes the history of plugins/<name> there
+# (splitsh-lite, as Symfony splits its components). A push to main moves each
+# split's main; the release workflow calls it with the new tag, which each
+# split gets too. A plugin needs its repository created first
+# (docs/internals/contributing.md, Releasing).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      tag:
+        description: 'The release tag to split and push to every plugin repository'
+        type: string
+        required: true
+    secrets:
+      SPLIT_TOKEN:
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: split
+  cancel-in-progress: false
+
+jobs:
+  split:
+    if: github.repository == 'janalis/porta'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag || github.sha }}
+          # The push authenticates with SPLIT_TOKEN alone.
+          persist-credentials: false
+      - name: Install splitsh-lite
+        run: |
+          curl -fsSL https://github.com/splitsh/lite/releases/download/v1.0.1/lite_linux_amd64.tar.gz | tar -xz -C "$RUNNER_TEMP"
+          "$RUNNER_TEMP/splitsh-lite" --version
+      - name: Split and push
+        env:
+          SPLIT_TOKEN: ${{ secrets.SPLIT_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ -z "$SPLIT_TOKEN" ]; then
+            echo "::error::the SPLIT_TOKEN secret is not set"
+            exit 1
+          fi
+          # The token rides an extra header, never a URL a log could print.
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$SPLIT_TOKEN" | base64 -w0)"
+          echo "::add-mask::$auth"
+          failed=0
+          for dir in plugins/*/; do
+            name=$(basename "$dir")
+            sha=$("$RUNNER_TEMP/splitsh-lite" --prefix="plugins/$name")
+            refs="$sha:refs/heads/main"
+            if [ -n "$TAG" ]; then refs="$refs $sha:refs/tags/$TAG"; fi
+            # shellcheck disable=SC2086 # $refs is a list of refspecs
+            if git -c http.extraheader="$auth" push "https://github.com/janalis/porta-$name.git" $refs; then
+              echo "porta-$name: $sha"
+            else
+              echo "::error::could not push the split of plugins/$name to janalis/porta-$name"
+              failed=1
+            fi
+          done
+          exit "$failed"

@@ -1,5 +1,5 @@
 {
-    "name": "porta/ftp",
+    "name": "janalis/porta-ftp",
     "description": "Open a project that lives on an FTP or FTPS server: browse, edit and save its files as though they were here",
     "type": "porta-plugin",
     "license": "MIT",

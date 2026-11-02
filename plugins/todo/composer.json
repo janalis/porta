@@ -1,5 +1,5 @@
 {
-    "name": "porta/todo",
+    "name": "janalis/porta-todo",
     "description": "Scans the project for TODO and FIXME comments into a dock tool",
     "type": "porta-plugin",
     "license": "MIT",

@@ -1,5 +1,5 @@
 {
-    "name": "porta/psalm",
+    "name": "janalis/porta-psalm",
     "description": "Psalm analysis of the current file, or on save, as diagnostics",
     "type": "porta-plugin",
     "license": "MIT",
