@@ -31,6 +31,9 @@ final readonly class SelfUpdate
 
     private const string ASSET = 'porta.phar';
 
+    /** curl's config on stdin for a request without the token: none. */
+    private const string ANONYMOUS = '';
+
     /**
      * @param \Closure(list<string>, ?string=): array{int, string} $run runs a command, with what to write to its
      *                                                                   stdin, returning its exit code and stdout
@@ -183,9 +186,13 @@ final readonly class SelfUpdate
     private function curl(array $args): array
     {
         $token = $this->token();
-
         // HTTPS only, redirects included: the token and the binary both ride it.
-        return ($this->run)(['curl', '-fsSL', '--proto', '=https', '--proto-redir', '=https', '--config', '-', ...$args], null === $token ? '' : 'header = "Authorization: Bearer '.$token.'"'."\n");
+        $command = ['curl', '-fsSL', '--proto', '=https', '--proto-redir', '=https', '--config', '-', ...$args];
+        $result = ($this->run)($command, null === $token ? self::ANONYMOUS : 'header = "Authorization: Bearer '.$token.'"'."\n");
+
+        // A token GitHub refuses — expired, revoked, scoped to another owner —
+        // is no reason to fail on releases anyone may read: ask again without it.
+        return 0 !== $result[0] && null !== $token ? ($this->run)($command, self::ANONYMOUS) : $result;
     }
 
     private function token(): ?string

@@ -44,9 +44,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push --json conclusion --jq '.[0].conclusion')
+          # A release commit is pushed with the workflow's own token, which
+          # starts no CI: it only touches CHANGELOG.md and Ide::VERSION, so the
+          # commit below it answers for it.
+          sha="$GITHUB_SHA"
+          if [ "$(git log -1 --format=%an "$sha")" = 'github-actions[bot]' ] && [[ "$(git log -1 --format=%s "$sha")" == 'chore(release): '* ]]; then
+            sha=$(git rev-parse "$sha^")
+          fi
+          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$sha" --event push --json conclusion --jq '.[0].conclusion')
           if [ "$conclusion" != success ]; then
-            echo "::error::CI on $GITHUB_SHA is '${conclusion:-not run}', not success: wait for it, or fix it"
+            echo "::error::CI on $sha is '${conclusion:-not run}', not success: wait for it, or fix it"
             exit 1
           fi
       - uses: shivammathur/setup-php@v2
@@ -56,6 +63,8 @@ jobs:
           extensions: ${{ env.PHP_EXTENSIONS }}
       - run: composer install --no-interaction --no-progress --prefer-dist
       - id: relprep
+        # bash -o pipefail: a refused release:prepare must fail the step, not tee.
+        shell: bash
         env:
           BUMP: ${{ inputs.version }}
         run: php bin/porta-dev release:prepare "$BUMP" "$RUNNER_TEMP/notes.md" | tee -a "$GITHUB_OUTPUT"

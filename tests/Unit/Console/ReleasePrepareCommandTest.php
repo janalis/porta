@@ -115,6 +115,16 @@ final class ReleasePrepareCommandTest extends TestCase
         $this->assertFileDoesNotExist($project->path('notes.md'));
     }
 
+    public function testOutsideAGitCheckoutItRefusesRatherThanCountFromNoTag(): void
+    {
+        $project = new TempProject(['CHANGELOG.md' => self::CHANGELOG, 'src/Ide.php' => self::IDE]);
+        $tester = self::prepare($project, 'patch');
+
+        $this->assertSame(Command::FAILURE, $tester->getStatusCode());
+        $this->assertSame('release:prepare: git could not list the tags of '.$project->dir." — the newest one is what the version must be above\n", $tester->getDisplay());
+        $this->assertSame(self::CHANGELOG, \file_get_contents($project->path('CHANGELOG.md')));
+    }
+
     /**
      * What a source checkout's `porta --version` says is the newest version
      * the changelog has released: the release workflow sets both at once, so

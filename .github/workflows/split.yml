@@ -9,6 +9,7 @@ name: Split
 on:
   push:
     branches: [main]
+    paths: ['plugins/**']
   workflow_dispatch:
   workflow_call:
     inputs:

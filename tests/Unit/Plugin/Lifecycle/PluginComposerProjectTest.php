@@ -32,6 +32,8 @@ final class PluginComposerProjectTest extends TestCase
         $this->assertSame('project', $written['type'] ?? null);
         $this->assertSame([], $written['repositories'] ?? null);
         $this->assertSame([], $written['require'] ?? null);
+        $this->assertSame('dev', $written['minimum-stability'] ?? null, 'a plugin may need what Porta itself runs on: symfony/tui has no stable 8.2');
+        $this->assertTrue($written['prefer-stable'] ?? null);
 
         // A second call is idempotent — it must not clobber an entry a
         // require/repository call already added.

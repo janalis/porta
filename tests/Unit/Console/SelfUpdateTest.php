@@ -80,6 +80,9 @@ final class SelfUpdateTest extends TestCase
     private function download(array $command): array
     {
         $out = $command[\array_search('-o', $command, strict: true) + 1];
+        if (!\str_starts_with($out, '/')) {
+            return [23, '']; // a mutant's argv: never written into the working directory
+        }
         \file_put_contents($out, \str_ends_with($out, '.sha256') ? ($this->shaOverride ?? \hash('sha256', $this->pharBytes))."  porta.phar\n" : $this->pharBytes);
 
         return [$this->downloadFails, ''];
@@ -112,11 +115,26 @@ final class SelfUpdateTest extends TestCase
     {
         $this->assertSame('v1.3.0', new SelfUpdate($this->runner(), ['GITHUB_TOKEN' => self::fake('secret')])->latest());
 
+        $this->assertCount(1, $this->ran, 'a token that works is not followed by an anonymous retry');
         [$command, $stdin] = $this->ran[0];
         $this->assertSame('curl', $command[0]);
         $this->assertStringContainsString('--proto =https --proto-redir =https', \implode(' ', $command), 'never downgraded to plain http');
         $this->assertSame('header = "Authorization: Bearer '.self::fake('secret').'"'."\n", $stdin, 'one curl config line');
         $this->assertStringNotContainsString(self::fake('secret'), \implode(' ', $command), 'a token in argv is visible to every process list');
+    }
+
+    public function testATokenGithubRefusesIsDroppedForAnAnonymousRetry(): void
+    {
+        $runner = $this->runner();
+        $sent = [];
+        $refusing = static function (array $command, ?string $stdin = null) use ($runner, &$sent): array {
+            $sent[] = $stdin;
+
+            return '' === $stdin ? $runner($command, $stdin) : [22, ''];
+        };
+
+        $this->assertSame('v1.3.0', new SelfUpdate($refusing, ['GH_TOKEN' => self::fake('stale')])->latest());
+        $this->assertSame(['header = "Authorization: Bearer '.self::fake('stale').'"'."\n", ''], $sent, 'with the token, then without');
     }
 
     public function testGhTokenWinsOverGithubToken(): void

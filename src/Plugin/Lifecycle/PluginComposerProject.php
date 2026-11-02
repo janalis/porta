@@ -49,7 +49,9 @@ final readonly class PluginComposerProject
                     'license' => 'proprietary',
                     'repositories' => new \stdClass(),
                     'require' => new \stdClass(),
-                    'minimum-stability' => 'stable',
+                    // Porta's own: a plugin may require what Porta runs on,
+                    // and symfony/tui has no stable release of the branch it does.
+                    'minimum-stability' => 'dev',
                     'prefer-stable' => true,
                     'config' => [
                         'sort-packages' => true,

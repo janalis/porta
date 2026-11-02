@@ -408,7 +408,7 @@ final class PortaCommandTest extends TestCase
             process: static function (array $command, ?string $stdin = null) use ($latest, $newPharRuns): array {
                 $url = (string) \end($command);
                 $out = 'curl' === $command[0] ? \array_search('-o', $command, strict: true) : false;
-                if (false !== $out) {
+                if (false !== $out && \str_starts_with($command[$out + 1], '/')) {
                     $file = $command[$out + 1];
                     \file_put_contents($file, \str_ends_with($file, '.sha256') ? \hash('sha256', data: 'NEW')."  porta.phar\n" : 'NEW');
                 }

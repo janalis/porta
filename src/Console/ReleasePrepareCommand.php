@@ -69,9 +69,11 @@ final class ReleasePrepareCommand extends Command
         $changelog = \is_file($changelogFile) ? (string) \file_get_contents($changelogFile) : '';
         $ide = \is_file($ideFile) ? (string) \file_get_contents($ideFile) : '';
 
-        $next = $this->nextVersion($version);
+        $tags = $this->tags();
+        $next = null === $tags ? null : self::nextVersion($version, $tags);
         $section = self::unreleased($changelog);
         $problem = match (true) {
+            null === $tags => 'release:prepare: git could not list the tags of '.$this->rootDir.' — the newest one is what the version must be above',
             null === $next => \sprintf('release:prepare: "%s" is not X.Y.Z, patch, minor or major, or is not above the newest tag', $version),
             null === $section => 'release:prepare: CHANGELOG.md has no "## [Unreleased]" section',
             '' === $section[2] => 'release:prepare: the Unreleased section of CHANGELOG.md is empty — say what this release changes',
@@ -114,13 +116,29 @@ final class ReleasePrepareCommand extends Command
         return [$start, $end, \trim(\substr($changelog, $bodyStart, $end - $bodyStart))];
     }
 
-    /** $request as the version to release, or null when it is malformed or not above the newest tag. */
-    private function nextVersion(string $request): ?string
+    /**
+     * The checkout's `v*` tags; null when git cannot list them, which must not
+     * read as "no tag yet" — that would let any version through.
+     *
+     * @return list<string>|null
+     */
+    private function tags(): ?array
     {
-        $latest = [0, 0, 0];
         $process = new Process(['git', '-C', $this->rootDir, 'tag', '--list', 'v*']);
         $process->run();
-        foreach (\explode("\n", $process->getOutput()) as $tag) {
+
+        return $process->isSuccessful() ? \explode("\n", $process->getOutput()) : null;
+    }
+
+    /**
+     * $request as the version to release, or null when it is malformed or not above the newest of $tags.
+     *
+     * @param list<string> $tags
+     */
+    private static function nextVersion(string $request, array $tags): ?string
+    {
+        $latest = [0, 0, 0];
+        foreach ($tags as $tag) {
             $parsed = self::parse(\substr($tag, offset: 1));
             if (null !== $parsed && $parsed > $latest) {
                 $latest = $parsed;
