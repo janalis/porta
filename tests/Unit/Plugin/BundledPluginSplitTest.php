@@ -16,13 +16,13 @@ use Porta\Tests\Support\DocsTree;
  * - a `janalis/porta-<name>` package name: the installer strips the `porta-`,
  *   so the package lands as `<name>` and shadows the bundled copy;
  * - the root's LICENSE, word for word;
- * - a README that says it is a read-only split, and the workflow that closes a
- *   pull request opened there with a pointer to this repository.
+ * - a README that says it is a read-only split: its issues and pull requests
+ *   are turned off on GitHub, so the README is what points people here.
  */
 final class BundledPluginSplitTest extends TestCase
 {
     /** @var list<string> */
-    private const array FILES = ['README.md', 'LICENSE', '.gitattributes', '.github/PULL_REQUEST_TEMPLATE.md', '.github/workflows/close-pull-request.yml'];
+    private const array FILES = ['README.md', 'LICENSE', '.gitattributes'];
 
     public function testEveryBundledPluginCarriesWhatItsSplitRepositoryNeeds(): void
     {

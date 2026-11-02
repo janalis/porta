@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 
 final class BinTest extends TestCase
 {
@@ -32,7 +33,7 @@ final class BinTest extends TestCase
         [$exitCode, $text] = $this->porta('--version');
 
         $this->assertSame(0, $exitCode);
-        $this->assertStringContainsString('0.1.0', $text);
+        $this->assertStringContainsString(Ide::VERSION, $text);
     }
 
     public function testMissingPathFails(): void

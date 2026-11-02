@@ -632,10 +632,18 @@ make docs           # production build in .vitepress/dist
 Every bundled plugin is also a read-only repository, `janalis/porta-<name>`,
 published on Packagist under that name — the installer drops the `porta-`,
 so it lands as `<name>`. What a split needs is in the plugin's own directory:
-its `README.md`, `LICENSE`, `.gitattributes` and the workflow that closes a
-pull request opened there (`BundledPluginSplitTest` holds every plugin to
-it). A new bundled plugin needs the same files, and its repository created
-before the next push to `main`.
+its `README.md`, `LICENSE` and `.gitattributes` (`BundledPluginSplitTest`
+holds every plugin to it). A split repository has its issues and pull
+requests turned off: reports and changes come here, as its README says. A
+new bundled plugin needs the same files, and its repository created — with
+the rest switched off — before the next push to `main`:
+
+```bash
+gh repo create janalis/porta-<name> --public --description "… — read-only split of janalis/porta" --disable-issues --disable-wiki
+gh api -X PATCH repos/janalis/porta-<name> -F has_pull_requests=false -F has_projects=false
+```
+
+Then add it to the `porta-release` token's repositories (it is `SPLIT_TOKEN`).
 
 ### One-time setup
 
@@ -643,7 +651,7 @@ before the next push to `main`.
   write* on the `janalis/porta-*` repositories), `HOMEBREW_TAP_TOKEN` (the
   same on `janalis/homebrew-tap`), and optionally `PACKAGIST_USERNAME` and
   `PACKAGIST_TOKEN`.
-- Create each `janalis/porta-<name>` repository (empty), and submit it and
+- Create each `janalis/porta-<name>` repository as above, and submit it and
   `janalis/porta` on packagist.org.
 - **Settings → Pages → Build and deployment → Source: GitHub Actions.**
 - If `main` is protected, let GitHub Actions bypass the protection so the

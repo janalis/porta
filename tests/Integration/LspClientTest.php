@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Integration;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Ide;
 use Porta\Lsp\LspClient;
 use Porta\Support\JsonRpcFramer;
 use Porta\Support\Outcome;
@@ -49,7 +50,7 @@ final class LspClientTest extends TestCase
         $this->assertSame(\getmypid(), $params['processId']);
         $this->assertSame('file:///tmp/proj', $params['rootUri']);
         $this->assertSame([['uri' => 'file:///tmp/proj', 'name' => 'proj']], $params['workspaceFolders']);
-        $this->assertSame(['name' => 'porta', 'version' => '0.1.0'], $params['clientInfo']);
+        $this->assertSame(['name' => 'porta', 'version' => Ide::VERSION], $params['clientInfo']);
         // The capability set is pinned by a GOLDEN FILE, not by a copy of
         // itself. It used to be restated here in full — seventy lines the
         // duplication gate found, and the copy carried a justification the

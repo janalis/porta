@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Ide;
 use Porta\Support\Decoded;
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
@@ -208,7 +209,7 @@ final class LspClient implements LspClientInterface
             'processId' => \getmypid(),
             'rootUri' => $rootUri,
             'workspaceFolders' => [['uri' => $rootUri, 'name' => \basename($this->rootDir)]],
-            'clientInfo' => ['name' => 'porta', 'version' => '0.1.0'],
+            'clientInfo' => ['name' => 'porta', 'version' => Ide::VERSION],
             'capabilities' => $this->clientCapabilities(),
         ];
         if (null !== $this->initializationOptions) {
