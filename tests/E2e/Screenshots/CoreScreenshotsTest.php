@@ -155,6 +155,9 @@ final class CoreScreenshotsTest extends TestCase
         \putenv('SHELL='.(\is_file('/bin/zsh') ? '/bin/zsh' : '/bin/sh'));
         $project = ShopProject::create();
         // An empty dotdir: the reader's prompt, not the machine's that built the docs.
+        // Read first, it turns off the machine's own files: Ubuntu's
+        // /etc/zsh/zshrc runs compinit, which stops on a question.
+        $project->write('../zdotdir/.zshenv', "unsetopt GLOBAL_RCS\n");
         $project->write('../zdotdir/.zshrc', "PROMPT='%1~ \$ '\n");
         \putenv('ZDOTDIR='.\dirname($project->dir).'/zdotdir');
         $this->runIde(
