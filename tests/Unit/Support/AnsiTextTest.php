@@ -186,6 +186,16 @@ final class AnsiTextTest extends TestCase
         $this->assertStringContainsString("\e[31m", $out);
     }
 
+    public function testCaretIsTheMarkersDisplayColumnAndTheMarkerItself(): void
+    {
+        $m = AnsiUtils::cursorMarker(CursorShape::Bar);
+
+        $this->assertSame([2, $m], AnsiText::caret("\e[31mab".$m.'cd'), 'escapes before it take no column');
+        $this->assertNull(AnsiText::caret('abcd'), 'no marker');
+        $this->assertNull(AnsiText::caret('ab'.AnsiUtils::CURSOR_MARKER_PREFIX.'2'), 'a marker cut off before its terminator');
+        $this->assertNull(AnsiText::caret("\x07ab"), 'a terminator with no marker');
+    }
+
     public function testScrollLineToCaretClipsAndPadsAMarkerlessLine(): void
     {
         $out = AnsiText::scrollLineToCaret('a short line', 20);

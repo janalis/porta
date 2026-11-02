@@ -30,13 +30,22 @@ final class OverlayCompositor
         // other half a blank in the row's own style, and nothing after it moves.
         $tail = AnsiUtils::sliceToWidth($line, $col + $width, $columns - $col - $width);
 
-        // sliceByColumn re-emits an APC caret marker at a tail slice's start
-        // when the marker sat before the boundary — for a compose that is
-        // always a duplicate of the marker the head (or the popup itself)
-        // already carries, and two hardware-cursor markers on one row are
-        // ambiguous. A marker genuinely inside the tail region is never
-        // re-emitted, so stripping the tail's copies is exact.
-        if (\str_contains($head.$popup, AnsiUtils::CURSOR_MARKER_PREFIX) && \str_contains($tail, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+        // The tail slice re-emits, at its start, a caret marker that sat before
+        // its boundary — after the popup, a column the caret was never at. The
+        // row's own caret belongs where it sits: in the head; at the popup's
+        // first column, which the head slice ends on and so drops — the caret
+        // right after what was typed, with a shadow cast along the row; or
+        // under the popup, which hides it. Only one past the popup is the tail's.
+        $caret = AnsiText::caret($line);
+        if (null !== $caret && $caret[0] < ($col + $width)) {
+            $tail = AnsiText::stripCursorMarkers($tail);
+            if ($caret[0] === $col && !\str_contains($popup, AnsiUtils::CURSOR_MARKER_PREFIX)) {
+                $head .= $caret[1];
+            }
+        }
+        // A popup carrying a caret of its own: the row's is a second one, and
+        // two hardware-cursor markers on one row are ambiguous.
+        if (\str_contains($popup, AnsiUtils::CURSOR_MARKER_PREFIX)) {
             $tail = AnsiText::stripCursorMarkers($tail);
         }
 

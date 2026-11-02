@@ -315,15 +315,31 @@ final class AnsiText
      */
     public static function scrollLineToCaret(string $line, int $width): string
     {
-        $pos = \strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
-        $end = false === $pos ? false : \strpos($line, needle: "\x07", offset: $pos);
-        if (false === $pos || false === $end) {
+        $caret = self::caret($line);
+        if (null === $caret) {
             return self::padRight(self::truncate($line, $width), $width);
         }
-        $marker = \substr($line, $pos, $end - $pos + 1);
-        $caretCol = AnsiUtils::visibleWidth(\substr($line, offset: 0, length: $pos));
-        $bare = \substr($line, offset: 0, length: $pos).\substr($line, $end + 1);
+        [$caretCol, $marker] = $caret;
 
-        return self::padRight(self::caretWindow($bare, $caretCol, $width, $marker), $width);
+        return self::padRight(self::caretWindow(self::stripCursorMarkers($line), $caretCol, $width, $marker), $width);
+    }
+
+    /**
+     * Where $line's hardware-cursor marker is: the display column it sits at,
+     * and the marker itself (its shape is the caller's to keep). Null when the
+     * line carries none, or only a cut-off one.
+     *
+     * @return array{int, string}|null
+     */
+    public static function caret(string $line): ?array
+    {
+        $pos = \strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
+        $end = \strpos($line, needle: "\x07", offset: (int) $pos);
+
+        return (
+            false === $pos || false === $end
+                ? null
+                : [AnsiUtils::visibleWidth(\substr($line, offset: 0, length: $pos)), \substr($line, $pos, $end - $pos + 1)]
+        );
     }
 }

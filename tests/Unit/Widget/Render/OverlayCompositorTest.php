@@ -94,6 +94,74 @@ final class OverlayCompositorTest extends TestCase
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the tail\'s own marker is not a duplicate — it must not be stripped');
     }
 
+    /** The column the hardware cursor lands on in $line, or null when no marker survived. */
+    private static function caretColumn(string $line): ?int
+    {
+        $at = \strpos($line, AnsiUtils::CURSOR_MARKER_PREFIX);
+
+        return false === $at ? null : AnsiUtils::visibleWidth(\substr($line, offset: 0, length: $at));
+    }
+
+    /**
+     * The caret right where an overlay starts — typing after `$order->` with
+     * the completion popup's shadow cast along that row. The head slice ends
+     * at the overlay's column and drops a marker sitting exactly there, and the
+     * tail re-emitted it after the overlay: the terminal cursor jumped from
+     * column 54 to column 103 of the screen.
+     */
+    public function testACaretAtTheOverlaysFirstColumnStaysThere(): void
+    {
+        $line = '$order->'.AnsiUtils::cursorMarker().\str_repeat(' ', times: 12);
+
+        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+
+        $this->assertSame(8, self::caretColumn($out), 'the caret keeps its column');
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX));
+        $this->assertSame(20, AnsiUtils::visibleWidth($out));
+    }
+
+    /** A caret the overlay covers is hidden by it — never moved past it. */
+    public function testACaretTheOverlayCoversIsNotMovedPastIt(): void
+    {
+        $line = \str_repeat('.', times: 10).AnsiUtils::cursorMarker().\str_repeat('.', times: 10);
+
+        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+
+        $this->assertNull(self::caretColumn($out), 'under the overlay, the caret is not shown at the overlay\'s far edge');
+    }
+
+    /** A caret just past the overlay is the tail's own, and stays — not a duplicate. */
+    public function testACaretJustPastTheOverlayStays(): void
+    {
+        $line = \str_repeat('.', times: 13).AnsiUtils::cursorMarker().\str_repeat('.', times: 7);
+
+        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+
+        $this->assertSame(13, self::caretColumn($out));
+    }
+
+    /** A popup with a caret of its own over the row's: the popup's is the one shown. */
+    public function testThePopupsCaretWinsOverTheRowsAtItsFirstColumn(): void
+    {
+        $line = \str_repeat('.', times: 8).AnsiUtils::cursorMarker().\str_repeat('.', times: 12);
+
+        $out = OverlayCompositor::into($line, 8, 5, 20, '##'.AnsiUtils::cursorMarker().'###');
+
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX));
+        $this->assertSame(10, self::caretColumn($out), 'inside the popup, where it put it');
+    }
+
+    /** A caret before the overlay is the head's, once. */
+    public function testACaretBeforeTheOverlayStaysOnce(): void
+    {
+        $line = \str_repeat('.', times: 3).AnsiUtils::cursorMarker().\str_repeat('.', times: 17);
+
+        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+
+        $this->assertSame(3, self::caretColumn($out));
+        $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX));
+    }
+
     /** The tail's blank for a half-covered glyph is painted in the row's own background. */
     public function testATailGlyphsBlankKeepsTheRowBackground(): void
     {

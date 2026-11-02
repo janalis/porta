@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- The cursor no longer jumps past a popup's shadow: typing with the
+  completion popup open, its shadow cast along the caret's row put the
+  terminal cursor at the shadow's far end instead of after what you typed.
+
 ## [0.1.2] - 2026-11-02
 
 ### Added
