@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-02
+
 ### Added
 
 - **Diagrams without their tools**: with no `dot` or `plantuml` installed,
