@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\Encoder;
+use Janalis\Viz\Draw\PngBackend;
 use Janalis\Viz\Mermaid\MermaidPipeline;
-use Janalis\Viz\Mermaid\MermaidPng;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\GraphViewerWidget;
@@ -156,7 +157,7 @@ final class MermaidInteractionTest extends TestCase
         $scheduler = new FakeScheduler();
         $mermaid = new FakeLayoutEngine();
         $mermaid->binary = null;
-        $native = new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPipeline(png: new MermaidPng(gdAvailable: false)));
+        $native = new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPipeline(encoder: new Encoder(new PngBackend(gdAvailable: false))));
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $mermaid, native: $native);
         $widget->show('/diagram.mmd', 'graph LR; A[Readable]');
         while ([] !== $scheduler->scheduled) {

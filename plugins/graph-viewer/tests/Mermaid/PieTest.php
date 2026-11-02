@@ -7,10 +7,10 @@ namespace Porta\GraphViewer\Tests\Mermaid;
 use Janalis\Viz\Layout\GraphNode;
 use Janalis\Viz\Mermaid\MermaidLexer;
 use Janalis\Viz\Mermaid\MermaidSyntaxError;
-use Janalis\Viz\Mermaid\MermaidWrap;
 use Janalis\Viz\Mermaid\PieDiagram;
 use Janalis\Viz\Mermaid\PieLayout;
 use Janalis\Viz\Mermaid\PieParser;
+use Janalis\Viz\Text\Wrap;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Mermaid\MermaidSceneRows;
 use Porta\GraphViewer\Mermaid\MermaidTask;
@@ -72,7 +72,7 @@ final class PieTest extends TestCase
         $result = null;
         $task = new MermaidTask($scheduler);
         $cancel = $task->run(
-            MermaidWrap::text(\str_repeat('A', times: 1000), width: 116),
+            Wrap::text(\str_repeat('A', times: 1000), width: 116),
             static function (string $value) use (&$result): void {
                 $result = $value;
             },

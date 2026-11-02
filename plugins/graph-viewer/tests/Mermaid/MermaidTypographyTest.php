@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
-use Janalis\Viz\Layout\GraphFont;
 use Janalis\Viz\Layout\GraphNode;
 use Janalis\Viz\Mermaid\MermaidCss;
-use Janalis\Viz\Mermaid\MermaidFont;
 use Janalis\Viz\Mermaid\MermaidNodeStyles;
 use Janalis\Viz\Mermaid\MermaidStatement;
 use Janalis\Viz\Render\Format;
+use Janalis\Viz\Text\Font;
+use Janalis\Viz\Text\FontFace;
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\TempProject;
 use Symfony\Component\Process\Process;
@@ -31,9 +31,9 @@ final class MermaidTypographyTest extends TestCase
         $styles = new MermaidNodeStyles('state');
         $styles->accept(new MermaidStatement('classDef default font-style:italic,font-weight:bold', offset: 0, line: 0, column: 0));
         $styles->accept(new MermaidStatement('style A font-style:normal,font-weight:normal', offset: 0, line: 0, column: 0));
-        $node = new GraphNode(0, 'A', 'Styled', 10.0, 10.0, 20.0, 8.0, null, null, dashed: false, font: GraphFont::BoldItalic);
+        $node = new GraphNode(0, 'A', 'Styled', 10.0, 10.0, 20.0, 8.0, null, null, dashed: false, font: FontFace::BoldItalic);
         $decorated = $styles->decorate($node);
-        $this->assertSame(GraphFont::Regular, $decorated->font);
+        $this->assertSame(FontFace::Regular, $decorated->font);
         $this->assertSame([$node->x, $node->y, $node->w, $node->h], [$decorated->x, $decorated->y, $decorated->w, $decorated->h]);
         foreach ([
             "classDiagram\nclass A\nstyle A font-style:italic,font-weight:bold,font-size:32px,border:1px solid red",
@@ -52,8 +52,8 @@ final class MermaidTypographyTest extends TestCase
     {
         $project = new TempProject();
         $archive = new \PharData($project->path('fonts.tar'));
-        foreach (GraphFont::cases() as $face) {
-            $archive->addFile(MermaidFont::file($face), 'IBMPlexMono-'.$face->value.'.ttf');
+        foreach (FontFace::cases() as $face) {
+            $archive->addFile(Font::file($face), 'IBMPlexMono-'.$face->value.'.ttf');
         }
         $directory = $project->path('temporary');
         \mkdir($directory);
@@ -61,10 +61,10 @@ final class MermaidTypographyTest extends TestCase
             require $argv[1].'/vendor/autoload.php';
             require $argv[1].'/tests/plugin-autoload.php';
             $marks = [
-                new Janalis\Viz\Mermaid\MermaidMark('text', [[10.0, 5.0]], 'Bold', font: Janalis\Viz\Layout\GraphFont::Bold),
-                new Janalis\Viz\Mermaid\MermaidMark('text', [[10.0, 10.0]], 'Italic', font: Janalis\Viz\Layout\GraphFont::Italic),
+                new Janalis\Viz\Draw\Mark(Janalis\Viz\Draw\MarkKind::Text, [[10.0, 5.0]], 'Bold', font: Janalis\Viz\Text\FontFace::Bold),
+                new Janalis\Viz\Draw\Mark(Janalis\Viz\Draw\MarkKind::Text, [[10.0, 10.0]], 'Italic', font: Janalis\Viz\Text\FontFace::Italic),
             ];
-            $work = new Janalis\Viz\Mermaid\MermaidPng(font: $argv[2])->render(new Janalis\Viz\Mermaid\MermaidDrawing(30, 15, $marks));
+            $work = new Janalis\Viz\Draw\PngBackend(font: $argv[2])->render(new Janalis\Viz\Draw\Drawing(30, 15, $marks));
             $work->current();
             $work->next();
             $during = count(glob(sys_get_temp_dir().'/viz-mermaid-font-*'));

@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\Mark;
+use Janalis\Viz\Draw\MarkKind;
 use Janalis\Viz\Mermaid\ErDiagram;
 use Janalis\Viz\Mermaid\ErLayout;
 use Janalis\Viz\Mermaid\ErLexer;
 use Janalis\Viz\Mermaid\ErParser;
-use Janalis\Viz\Mermaid\MermaidDrawing;
-use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Mermaid\MermaidScene;
 use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\TestCase;
@@ -53,7 +54,7 @@ final class ErTest extends TestCase
     public function testCompactRelationshipAndPinnedUpstreamExamples(): void
     {
         $edge = self::parse("erDiagram\nA||--o{B:owns")->graph->edges[0];
-        $this->assertSame(['A', 'B', '1 : 0..* · owns'], [$edge['from'], $edge['to'], $edge['label']]);
+        $this->assertSame(['A', 'B', 'owns'], [$edge['from'], $edge['to'], $edge['label']]);
         $found = \glob(__DIR__.'/../fixtures/mermaid/er/*.mmd');
         $paths = false === $found ? [] : $found;
         $this->assertCount(15, $paths);
@@ -70,11 +71,11 @@ final class ErTest extends TestCase
     {
         $source = "erDiagram\ndirection LR\nA { int id PK string name }\nA ||--o{ B : owns";
         self::scene($source);
-        $drawing = MermaidDrawing::scene(NativeFixtureScene::render($source));
+        $drawing = MermaidPainter::scene(NativeFixtureScene::render($source));
         \iterator_to_array($drawing);
         $marks = $drawing->getReturn()->marks;
         // The ring's inner disc is the entity background, white under the default redux-color theme.
-        $this->assertNotEmpty(\array_filter($marks, static fn (MermaidMark $mark): bool => 'polygon' === $mark->kind && 32 === \count($mark->points) && '#ffffff' === $mark->fill));
+        $this->assertNotEmpty(\array_filter($marks, static fn (Mark $mark): bool => MarkKind::Polygon === $mark->kind && 32 === \count($mark->points) && '#ffffff' === $mark->fill));
         $svg = NativeFixtureExport::render($source, Format::Svg);
         $this->assertStringContainsString('>PK</text>', $svg);
         $this->assertStringStartsWith("\x89PNG", NativeFixtureExport::render($source, Format::Png));

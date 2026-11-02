@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "8ce1ad7098ccc25e0a511ed319bc1570",
+    "content-hash": "4321f6b1e83c54e2c90d63d948f4853c",
     "packages": [
         {
             "name": "composer/semver",
@@ -85,16 +85,16 @@
         },
         {
             "name": "janalis/viz",
-            "version": "v0.1.1",
+            "version": "v0.2.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/janalis/viz.git",
-                "reference": "abfbef36084bca8e53f269b4aa945cd742c4a524"
+                "reference": "6a98b756368bb377d036f49f3dfb2c9d77b8d49f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/janalis/viz/zipball/abfbef36084bca8e53f269b4aa945cd742c4a524",
-                "reference": "abfbef36084bca8e53f269b4aa945cd742c4a524",
+                "url": "https://api.github.com/repos/janalis/viz/zipball/6a98b756368bb377d036f49f3dfb2c9d77b8d49f",
+                "reference": "6a98b756368bb377d036f49f3dfb2c9d77b8d49f",
                 "shasum": ""
             },
             "require": {
@@ -104,10 +104,10 @@
                 "symfony/polyfill-intl-grapheme": "^1.33",
                 "symfony/process": "^8.0",
                 "symfony/string": "^8.0",
-                "symfony/yaml": "^8.2"
+                "symfony/yaml": "^8.1"
             },
             "require-dev": {
-                "carthage-software/mago": "1.47.*",
+                "carthage-software/mago": "1.59.*",
                 "infection/infection": "^0.35.4",
                 "phpunit/phpunit": "^13.2"
             },
@@ -141,7 +141,7 @@
                 "issues": "https://github.com/janalis/viz/issues",
                 "source": "https://github.com/janalis/viz"
             },
-            "time": "2026-10-19T12:43:18+00:00"
+            "time": "2026-10-31T08:48:33+00:00"
         },
         {
             "name": "psr/clock",

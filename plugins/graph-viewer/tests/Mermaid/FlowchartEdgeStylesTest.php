@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\Mark;
+use Janalis\Viz\Draw\MarkKind;
 use Janalis\Viz\Mermaid\FlowchartParser;
-use Janalis\Viz\Mermaid\MermaidDrawing;
 use Janalis\Viz\Mermaid\MermaidLexer;
-use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Mermaid\MermaidScene;
 use Janalis\Viz\Mermaid\MermaidStatement;
 use Janalis\Viz\Mermaid\MermaidTitle;
@@ -67,21 +68,21 @@ final class FlowchartEdgeStylesTest extends TestCase
         $this->assertSame(0.4, $edge->strokeWidth);
         $this->assertSame('#008000', $edge->textColor);
         $this->assertGreaterThan($scene->graph->edges[0]->minY, $edge->minY);
-        $drawing = MermaidDrawing::graph($titled->graph, $titled->shapes);
+        $drawing = MermaidPainter::graph($titled->graph, $titled->shapes);
         \iterator_to_array($drawing);
         $marks = $drawing->getReturn()->marks;
-        $line = \array_find($marks, static fn (MermaidMark $mark): bool => 'polyline' === $mark->kind);
-        $this->assertInstanceOf(MermaidMark::class, $line);
+        $line = \array_find($marks, static fn (Mark $mark): bool => MarkKind::Polyline === $mark->kind);
+        $this->assertInstanceOf(Mark::class, $line);
         $this->assertSame(0.4, $line->strokeWidth);
         $this->assertSame('#ff0000', $line->stroke);
         $this->assertTrue($line->dashed);
-        $label = \array_find($marks, static fn (MermaidMark $mark): bool => 'Hello' === $mark->text);
-        $this->assertInstanceOf(MermaidMark::class, $label);
+        $label = \array_find($marks, static fn (Mark $mark): bool => 'Hello' === $mark->text);
+        $this->assertInstanceOf(Mark::class, $label);
         $this->assertSame('#008000', $label->stroke);
         $view = new ZoomPanModel((int) \ceil($scene->graph->width), (int) \ceil($scene->graph->height), [1.0]);
         $rows = GraphRenderer::render($scene->graph, $view, null, 80, 24, Styles::dark());
         $this->assertStringContainsString('38;2;0;128;0', \implode("\n", $rows));
-        $this->assertNotEmpty(\array_filter($marks, static fn (MermaidMark $mark): bool => 'polygon' === $mark->kind && '#ff0000' === $mark->fill));
+        $this->assertNotEmpty(\array_filter($marks, static fn (Mark $mark): bool => MarkKind::Polygon === $mark->kind && '#ff0000' === $mark->fill));
     }
 
     public function testNativeExportsAndNarrowRowsIncludeEdgeStyles(): void

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\Mark;
+use Janalis\Viz\Draw\MarkKind;
 use Janalis\Viz\Layout\GraphEdge;
 use Janalis\Viz\Layout\GraphNode;
 use Janalis\Viz\Mermaid\GitDiagram;
@@ -11,8 +13,7 @@ use Janalis\Viz\Mermaid\GitLayout;
 use Janalis\Viz\Mermaid\GitLexer;
 use Janalis\Viz\Mermaid\GitMarkers;
 use Janalis\Viz\Mermaid\GitParser;
-use Janalis\Viz\Mermaid\MermaidDrawing;
-use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -95,9 +96,9 @@ final class GitTest extends TestCase
             $this->assertNotSame($r->x, $h->x);
             $this->assertSame('BT' === $direction, $r->y > $n->y);
         }
-        $drawing = MermaidDrawing::graph($scene->graph, $scene->shapes);
+        $drawing = MermaidPainter::graph($scene->graph, $scene->shapes);
         \iterator_to_array($drawing);
-        $white = \array_filter($drawing->getReturn()->marks, static fn (MermaidMark $mark): bool => '#ffffff' === $mark->stroke && 'polyline' === $mark->kind);
+        $white = \array_filter($drawing->getReturn()->marks, static fn (Mark $mark): bool => '#ffffff' === $mark->stroke && MarkKind::Polyline === $mark->kind);
         $this->assertCount(7, $white);
         $svg = NativeFixtureExport::render($source, Format::Svg);
         $this->assertStringContainsString('>cherry-pick:h</text>', $svg, 'a cherry-pick flies its pinned tag');

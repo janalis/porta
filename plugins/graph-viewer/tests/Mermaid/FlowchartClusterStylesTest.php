@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\Mark;
 use Janalis\Viz\Mermaid\FlowchartParser;
-use Janalis\Viz\Mermaid\MermaidDrawing;
 use Janalis\Viz\Mermaid\MermaidLexer;
-use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Mermaid\MermaidScene;
 use Janalis\Viz\Mermaid\MermaidStatement;
 use Janalis\Viz\Mermaid\MermaidTitle;
@@ -44,15 +44,15 @@ final class FlowchartClusterStylesTest extends TestCase
         $this->assertSame(0.4, $group->strokeWidth);
         $this->assertTrue($group->dashed);
         $this->assertGreaterThan($scene->graph->clusters[0]->y0, $group->y0);
-        $drawing = MermaidDrawing::graph($titled->graph, $titled->shapes);
+        $drawing = MermaidPainter::graph($titled->graph, $titled->shapes);
         \iterator_to_array($drawing);
         $marks = $drawing->getReturn()->marks;
         $this->assertSame('#eeeeff', $marks[0]->fill);
         $this->assertSame('#ff0000', $marks[0]->stroke);
         $this->assertSame(0.4, $marks[0]->strokeWidth);
         $this->assertTrue($marks[0]->dashed);
-        $label = \array_find($marks, static fn (MermaidMark $mark): bool => 'Team' === $mark->text);
-        $this->assertInstanceOf(MermaidMark::class, $label);
+        $label = \array_find($marks, static fn (Mark $mark): bool => 'Team' === $mark->text);
+        $this->assertInstanceOf(Mark::class, $label);
         $this->assertSame('#008000', $label->stroke);
         $view = new ZoomPanModel((int) \ceil($scene->graph->width), (int) \ceil($scene->graph->height), [1.0]);
         $rows = \implode("\n", GraphRenderer::render($scene->graph, $view, null, 80, 24, Styles::dark()));

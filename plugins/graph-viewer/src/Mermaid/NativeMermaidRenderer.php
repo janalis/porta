@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Mermaid;
 
+use Janalis\Viz\Draw\NativeRenderer;
 use Janalis\Viz\Mermaid\MermaidPipeline;
 use Janalis\Viz\Mermaid\MermaidScene;
 use Janalis\Viz\Render\Format;
@@ -51,7 +52,7 @@ final readonly class NativeMermaidRenderer
      */
     public function export(string $source, Format $format, \Closure $success, \Closure $error): \Closure
     {
-        return $this->task->run($this->pipeline->export($source, $format), $success, $error);
+        return $this->task->run(new NativeRenderer($this->pipeline)->image($source, $format), $success, $error);
     }
 
     /**

@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\MarkKind;
 use Janalis\Viz\Layout\GraphNode;
-use Janalis\Viz\Mermaid\MermaidDrawing;
 use Janalis\Viz\Mermaid\MermaidOutline;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Mermaid\MermaidScene;
 use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -72,15 +73,15 @@ final class PieGeometryTest extends TestCase
             default => $this->assertEqualsWithDelta($cx + 2, $label->x, delta: 0.01),
         };
         $this->assertCount(3, \array_unique(\array_values($scene->elements)));
-        $drawing = MermaidDrawing::graph($scene->graph, $scene->shapes);
+        $drawing = MermaidPainter::graph($scene->graph, $scene->shapes);
         \iterator_to_array($drawing);
         $lastSector = -1;
         $firstCaption = \PHP_INT_MAX;
         foreach ($drawing->getReturn()->marks as $index => $mark) {
-            if ('polygon' === $mark->kind && \count($mark->points) > 10) {
+            if (MarkKind::Polygon === $mark->kind && \count($mark->points) > 10) {
                 $lastSector = $index;
             }
-            if ('text' === $mark->kind && '' !== $mark->text) {
+            if (MarkKind::Text === $mark->kind && '' !== $mark->text) {
                 $firstCaption = \min($firstCaption, $index);
             }
         }

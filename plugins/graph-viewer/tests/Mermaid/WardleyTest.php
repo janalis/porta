@@ -4,16 +4,17 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
-use Janalis\Viz\Layout\GraphFont;
-use Janalis\Viz\Mermaid\MermaidDrawing;
-use Janalis\Viz\Mermaid\MermaidMark;
+use Janalis\Viz\Draw\Mark;
+use Janalis\Viz\Draw\MarkKind;
 use Janalis\Viz\Mermaid\MermaidOutline;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Mermaid\WardleyDiagram;
 use Janalis\Viz\Mermaid\WardleyLayout;
 use Janalis\Viz\Mermaid\WardleyLexer;
 use Janalis\Viz\Mermaid\WardleyParser;
 use Janalis\Viz\Mermaid\WardleySymbols;
 use Janalis\Viz\Render\Format;
+use Janalis\Viz\Text\FontFace;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -66,14 +67,14 @@ final class WardleyTest extends TestCase
         $user = \array_find($scene->graph->nodes, static fn ($node): bool => 'User %% literal' === $node->name);
         $this->assertLessThan($cloud->x, $service->x);
         $this->assertLessThan($cloud->y, $service->y);
-        $this->assertSame(GraphFont::Bold, $user->font);
+        $this->assertSame(FontFace::Bold, $user->font);
         $marketMarks = WardleySymbols::marks($cloud, $scene->shapes[$cloud->id]);
-        $this->assertCount(3, \array_filter($marketMarks, static fn (MermaidMark $mark): bool => 'polygon' === $mark->kind));
-        $this->assertCount(1, \array_filter($marketMarks, static fn (MermaidMark $mark): bool => 'polyline' === $mark->kind));
+        $this->assertCount(3, \array_filter($marketMarks, static fn (Mark $mark): bool => MarkKind::Polygon === $mark->kind));
+        $this->assertCount(1, \array_filter($marketMarks, static fn (Mark $mark): bool => MarkKind::Polyline === $mark->kind));
         $this->assertSame(6, $scene->elements[$service->id]);
         $caption = \array_find($scene->graph->nodes, static fn ($node): bool => '@label:Service' === $node->name);
         $this->assertSame([$service->x - 3, $service->y + 2], [$caption->x - ($caption->w / 2), $caption->y]);
-        $drawing = MermaidDrawing::graph($scene->graph, $scene->shapes);
+        $drawing = MermaidPainter::graph($scene->graph, $scene->shapes);
         \iterator_to_array($drawing);
         $inertiaX = $service->x + ($service->w / 2) + 0.8;
         $this->assertContains([[$inertiaX, $service->y - 1.5], [$inertiaX, $service->y + 1.5]], \array_column($drawing->getReturn()->marks, 'points'));

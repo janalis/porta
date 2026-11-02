@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
-use Janalis\Viz\Mermaid\MermaidDrawing;
+use Janalis\Viz\Draw\Drawing;
+use Janalis\Viz\Draw\Encoder;
+use Janalis\Viz\Draw\PngBackend;
 use Janalis\Viz\Mermaid\MermaidPipeline;
-use Janalis\Viz\Mermaid\MermaidPng;
 use Janalis\Viz\Render\Format;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\Mermaid\MermaidTask;
@@ -55,7 +56,7 @@ final class MermaidDrawingTest extends TestCase
         $scheduler = new FakeScheduler();
         $error = null;
         new MermaidTask($scheduler)->run(
-            new MermaidPng(gdAvailable: false)->render(new MermaidDrawing(1, 1, [])),
+            new PngBackend(gdAvailable: false)->render(new Drawing(1, 1, [])),
             static function (): never {
                 self::fail('missing GD cannot produce a PNG');
             },
@@ -69,10 +70,10 @@ final class MermaidDrawingTest extends TestCase
 
     public function testMarkdownNativePreviewUsesPixelsOrReadableRowsWithoutGd(): void
     {
-        foreach ([new MermaidPng(), new MermaidPng(gdAvailable: false)] as $backend) {
+        foreach ([new PngBackend(), new PngBackend(gdAvailable: false)] as $backend) {
             $scheduler = new FakeScheduler();
             $result = null;
-            new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPipeline(png: $backend))->preview(
+            new NativeMermaidRenderer(new MermaidTask($scheduler), new MermaidPipeline(encoder: new Encoder($backend)))->preview(
                 'graph TD; A[Readable]',
                 width: 20,
                 success: static function (FenceResult $value) use (&$result): void {

@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests;
 
+use Janalis\Viz\Draw\Encoder;
+use Janalis\Viz\Draw\PngBackend;
 use Janalis\Viz\Mermaid\MermaidPipeline;
-use Janalis\Viz\Mermaid\MermaidPng;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\Mermaid\MermaidTask;
@@ -43,7 +44,7 @@ final class GraphViewerFallbackTest extends TestCase
 
     public function testWithNoMmdcAFailedRasterSaysBothAndRepaints(): void
     {
-        $widget = $this->mermaidWithoutCli(new NativeMermaidRenderer(new MermaidTask($this->scheduler), new MermaidPipeline(png: new MermaidPng(gdAvailable: false))));
+        $widget = $this->mermaidWithoutCli(new NativeMermaidRenderer(new MermaidTask($this->scheduler), new MermaidPipeline(encoder: new Encoder(new PngBackend(gdAvailable: false)))));
         $widget->show('/p/a.mmd', 'graph TD; A[Native]');
 
         $this->assertGreaterThan(0, $this->revisionsSpentOnLastTimer($widget));

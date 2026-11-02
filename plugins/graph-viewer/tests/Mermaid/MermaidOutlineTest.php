@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace Porta\GraphViewer\Tests\Mermaid;
 
 use Janalis\Viz\Layout\GraphNode;
-use Janalis\Viz\Mermaid\MermaidDrawing;
 use Janalis\Viz\Mermaid\MermaidOutline;
+use Janalis\Viz\Mermaid\MermaidPainter;
 use Janalis\Viz\Mermaid\MermaidScene;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -38,7 +38,7 @@ final class MermaidOutlineTest extends TestCase
         $node = \array_find($scene->graph->nodes, static fn (GraphNode $node): bool => 'A' === $node->name);
         $this->assertInstanceOf(GraphNode::class, $node);
         $this->assertSame($shape, $scene->shapes[$node->id]);
-        $drawing = MermaidDrawing::graph($scene->graph, $scene->shapes);
+        $drawing = MermaidPainter::graph($scene->graph, $scene->shapes);
         \iterator_to_array($drawing);
         $this->assertGreaterThanOrEqual($marks, \count($drawing->getReturn()->marks));
         $this->assertCount($marks, MermaidOutline::marks($node, $shape));

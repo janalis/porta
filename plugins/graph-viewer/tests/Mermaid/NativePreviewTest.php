@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Porta\GraphViewer\Tests\Mermaid;
 
+use Janalis\Viz\Draw\Encoder;
+use Janalis\Viz\Draw\PngBackend;
 use Janalis\Viz\Mermaid\MermaidPipeline;
-use Janalis\Viz\Mermaid\MermaidPng;
 use PHPUnit\Framework\TestCase;
 use Porta\GraphViewer\GraphViewerWidget;
 use Porta\GraphViewer\MarkdownFenceRenderer;
@@ -330,7 +331,7 @@ final class NativePreviewTest extends TestCase
         $renderer = new MarkdownFenceRenderer(
             static fn (string $key): string => 'renderMode' === $key ? 'bitmap' : '/nonexistent/mmdc',
             static fn (string $message): string => $message,
-            static fn (): NativeMermaidRenderer => new NativeMermaidRenderer(new MermaidTask(), new MermaidPipeline(png: new MermaidPng(gdAvailable: false))),
+            static fn (): NativeMermaidRenderer => new NativeMermaidRenderer(new MermaidTask(), new MermaidPipeline(encoder: new Encoder(new PngBackend(gdAvailable: false)))),
         );
         $result = null;
         $renderer(
@@ -350,7 +351,7 @@ final class NativePreviewTest extends TestCase
         }, what: 'native fence without GD');
         $this->assertNull($result->png);
         $this->assertStringContainsString('Readable', $this->plain($result->rows));
-        $this->assertSame('could not start mmdc · Native Mermaid PNG requires the PHP GD extension with FreeType support', $result->error, 'why there is no picture, then why there are only rows');
+        $this->assertSame('could not start mmdc · Native PNG requires the PHP GD extension with FreeType support', $result->error, 'why there is no picture, then why there are only rows');
         $this->assertContains(0, $result->origins);
     }
 
