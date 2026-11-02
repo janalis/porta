@@ -120,7 +120,7 @@ jobs:
       - name: Checksum
         working-directory: build
         run: sha256sum porta.phar > porta.phar.sha256
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: release-notes
           path: ${{ runner.temp }}
