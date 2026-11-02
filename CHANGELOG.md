@@ -5,6 +5,22 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Diagrams without their tools**: with no `dot` or `plantuml` installed,
+  Graphviz and PlantUML diagrams — in their tab, in Markdown fences and in
+  exports — are drawn natively by janalis/viz 0.2. A DOT tab drawn this way is
+  the picture alone: node selection, the counts and the cell rendering come
+  from `dot`'s layout. What viz leaves to PlantUML, such as an `!include` of a
+  file or a URL, is refused with the reason in the banner.
+
+### Changed
+
+- A PlantUML document opens beside its preview whenever *Preview PlantUML
+  beside its source* is on, no longer only when `plantuml` is found.
+- A Mermaid ER relationship is labelled with its role alone, as Mermaid draws
+  it (janalis/viz 0.2.2).
+
 ## [0.1.1] - 2026-11-02
 
 ### Added
