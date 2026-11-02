@@ -44,7 +44,7 @@ final class VennTest extends TestCase
             $this->assertCount(\count($expected[$key]), $diagram->{$key});
             foreach ($diagram->{$key} as $index => $item) {
                 unset($item['statement']);
-                $item = \array_filter($item, static fn ($value): bool => null !== $value);
+                $item = \array_filter($item, static fn (float|string|array|null $value): bool => null !== $value);
                 $reference = $expected[$key][$index];
                 if ('subsets' === $key) {
                     $this->assertEqualsWithDelta((float) $reference['size'], $item['size'], delta: 1.0e-12);
