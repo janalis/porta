@@ -7,10 +7,9 @@ use Rector\Php80\Rector\Ternary\TernaryToNullsafeCoalesceRector;
 use Rector\CodeQuality\Rector\BooleanNot\SimplifyDeMorganBinaryRector;
 use Rector\CodeQuality\Rector\ClassMethod\LocallyCalledStaticMethodToNonStaticRector;
 use Rector\CodeQuality\Rector\Concat\DirnameDirConcatStringToDirectStringPathRector;
-use Rector\CodeQuality\Rector\For_\ForRepeatedCountToOwnVariableRector;
 use Rector\CodeQuality\Rector\FuncCall\SortCallLikeNamedArgsRector;
+use Rector\CodeQuality\Rector\If_\ExplicitNullableObjectInstanceRector;
 use Rector\CodeQuality\Rector\Catch_\ThrowWithPreviousExceptionRector;
-use Rector\CodeQuality\Rector\Identical\FlipTypeControlToUseExclusiveTypeRector;
 use Rector\CodingStyle\Rector\ArrowFunction\ArrowFunctionDelegatingCallToFirstClassCallableRector;
 use Rector\Config\RectorConfig;
 use Rector\DeadCode\Rector\Cast\RecastingRemovalRector;
@@ -74,7 +73,7 @@ return RectorConfig::configure()
         // `null === $x` becomes `!$x instanceof Foo`: not how Symfony writes a
         // null check, no longer yoda, and each one imports a class — new
         // namespace edges for the arch gate to record, for no behaviour.
-        FlipTypeControlToUseExclusiveTypeRector::class,
+        ExplicitNullableObjectInstanceRector::class,
         FlipNegatedTernaryInstanceofRector::class,
         // A private static helper is static so a `static fn` can call it;
         // making it an instance method would force `$this` into closures
@@ -84,9 +83,6 @@ return RectorConfig::configure()
         // their evaluation, and the order they are written in is often the
         // order a reader should meet them.
         SortCallLikeNamedArgsRector::class,
-        // Hoists the count into a variable named `$counter`, which reads as
-        // a counter; the loop bound was clearer inline.
-        ForRepeatedCountToOwnVariableRector::class,
         // `\dirname(__DIR__).'/docs'` becomes `__DIR__.'/../docs'`: a different
         // string for the same directory, and paths here are compared, hashed
         // into cache keys and shown to the user.
