@@ -3,6 +3,8 @@
 Lists every `TODO`, `FIXME`, `HACK`, `XXX` and `BUG` comment in the project in
 a panel on the bottom dock. Enabled by default.
 
+![The TODO panel listing every marker in the project](/screenshots/plugin-todo.svg)
+
 **Show TODOs** (`Alt+8`, or the View menu) scans the project and opens the
 list; `Enter` on a row opens the file at that line, and `F5` scans again —
 the rest of the panel's keys are the

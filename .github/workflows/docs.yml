@@ -4,12 +4,21 @@ name: Docs
 # plugin's docs/) and deploys it to GitHub Pages. Pull requests only build it:
 # a dead link fails the build. The release workflow calls it after publishing,
 # so the changelog and the version in the nav are current.
+#
+# The screenshots are drawn here, from the IDE as it is at this commit
+# (`npm run docs:screenshots`, the E2e scenarios in tests/E2e/Screenshots),
+# and never committed — so a change to the UI rebuilds the site.
 on:
   push:
     branches: [main]
     paths:
       - 'docs/**'
-      - 'plugins/*/docs/**'
+      - 'plugins/**'
+      - 'src/**'
+      - 'config/**'
+      - 'composer.lock'
+      - 'tests/E2e/Screenshots/**'
+      - 'tests/Support/Screenshots/**'
       - 'CHANGELOG.md'
       - '.vitepress/**'
       - 'package.json'
@@ -23,6 +32,8 @@ on:
       - '.vitepress/**'
       - 'package.json'
       - 'package-lock.json'
+      - 'tests/E2e/Screenshots/**'
+      - 'tests/Support/Screenshots/**'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
   workflow_call:
@@ -38,7 +49,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,7 +60,24 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: mbstring, gd, pcntl, simplexml, ctype, intl
+      - uses: actions/cache@v6
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --no-progress
+      # zsh for the terminal screenshot: sh, with no controlling tty, opens on
+      # a job-control warning.
+      - run: sudo apt-get install -y --no-install-recommends zsh
       - run: npm ci
+      # A scenario that cannot reach its screen fails the build: a page would
+      # otherwise show a missing image.
+      - run: npm run docs:screenshots
       - run: npm run docs:build
       - if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v5

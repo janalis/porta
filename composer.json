@@ -108,6 +108,7 @@
         "custos": "custos analyse --fail-on=info",
         "container": "@php bin/porta-dev container",
         "build:phar": "@php bin/build-phar",
+        "docs:screenshots": "PORTA_SCREENSHOTS=docs/public/screenshots php vendor/bin/phpunit --testsuite=E2e --filter Screenshots",
         "verify:quick": [
             "@format:check",
             "@lint",

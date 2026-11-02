@@ -622,9 +622,14 @@ for this repository only) and each plugin's `docs/`, mapped onto the site by
 each release, and on demand; pull requests build it without deploying, which
 catches dead links.
 
+Its screenshots are drawn by the build, from the IDE at that commit, and never
+committed — so any push to `main` that touches `src/` or `plugins/` redeploys
+the site. How to add one is in [testing.md](testing.md#docs-screenshots).
+
 ```bash
-make docs-dev       # live preview on http://localhost:5173/porta/
-make docs           # production build in .vitepress/dist
+make docs-dev       # screenshots, then a live preview on http://localhost:5173/porta/
+make docs           # screenshots, then the production build in .vitepress/dist
+make docs-screenshots   # just the screenshots, into docs/public/screenshots/
 ```
 
 ### Plugin splits

@@ -5,6 +5,8 @@ Porta is a terminal IDE for PHP projects built on
 debugger, git integration and a plugin system — all on a single
 non-blocking event loop.
 
+![Porta: the project tree, a PHP file in the editor, the status bar](/screenshots/overview.svg)
+
 ## Using Porta
 
 | Guide | Contents |

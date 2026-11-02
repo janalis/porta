@@ -104,8 +104,8 @@ final class DocsIndexTest extends TestCase
             $matches = [];
             \preg_match_all('~\]\(([^)#][^)]*)\)~', (string) \file_get_contents($page), $matches);
             foreach ($matches[1] as $link) {
-                if (1 === \preg_match('~^(?:[a-z][a-z0-9+.-]*:|//)~i', $link)) {
-                    continue; // an external scheme is not ours to resolve
+                if (1 === \preg_match('~^(?:[a-z][a-z0-9+.-]*:|//|/screenshots/)~i', $link)) {
+                    continue; // an external scheme is not ours to resolve, nor a screenshot: DocsScreenshotsTest's
                 }
                 $target = \explode('#', $link)[0];
                 if ('' === $target) {

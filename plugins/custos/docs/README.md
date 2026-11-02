@@ -7,6 +7,8 @@ it finds. The plugin runs it **beside** your PHP language server
 with Porta and off by default — turn it on under **Settings → Plugins →
 custos**.
 
+![The custos page in Settings → Plugins](/screenshots/plugin-custos.svg)
+
 The plugin runs `custos` from its **custos binary** setting when you set one,
 otherwise from your `PATH`, then from `~/.porta/bin`. Its Settings page
 installs it for you: the **custos** row under **Tools** downloads the release

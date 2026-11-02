@@ -5,6 +5,8 @@ invocations, SVG/PNG/PDF export and conversion between the three languages — l
 [janalis/viz](https://github.com/janalis/viz); this plugin is the pane, the previews and
 the event-loop scheduling around them.
 
+![The project's architecture, drawn as a graph](/screenshots/plugin-graph-viewer.svg)
+
 Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
 it as a [live preview](../../../docs/editor.md#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
 fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).

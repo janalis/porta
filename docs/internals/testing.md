@@ -637,3 +637,26 @@ implementation the vendor calls (`FillsPaneTrait::isVerticallyExpanded`) or a
 timer or signal entry point (`Ide::pollFilesystem`,
 `FreezeWatchdog::heartbeat`) is production code. A method only assertions read
 is not — probe it instead.
+
+## Docs screenshots
+
+The images in the public docs and the plugin guides are E2e scenarios, in
+`tests/E2e/Screenshots/`: the real IDE, its bundled plugins on, over
+`ShopProject` (a small app named `acme-shop`, its language server the scripted
+`screenshot-lsp-server.php`, both under a `PORTA_HOME` of their own). A step
+drives the IDE to the screen a page describes, awaits it like any other
+effect, and calls `screenshot('<name>', …)`. `ScreenSvg` draws the forced
+frame as an SVG, cell for cell, a kitty picture as the PNG the IDE sent.
+
+Every suite run takes them and checks the SVG, so a scenario that stops
+reaching its screen fails the PR. Only `PORTA_SCREENSHOTS=<dir>` writes them:
+`composer docs:screenshots` (or `npm run docs:screenshots`) fills
+`docs/public/screenshots/`, which is ignored — the docs workflow draws them
+before every build, so they are never stale and never committed.
+
+To add one: name it in `Screenshots` (`SCENES`, or `SETTINGS_PAGES` for a
+plugin shown on its Settings page), write the scenario, and show it on a page
+as `![what it shows](/screenshots/<name>.svg)`. `DocsScreenshotsTest` holds
+the three together: a page cannot show a name nobody draws, a name cannot go
+unshown, a scene needs its scenario, and every bundled plugin's guide shows
+its plugin. The F1 browser draws no SVG; it shows the alt text in brackets.

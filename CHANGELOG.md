@@ -5,6 +5,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Screenshots in the docs**: the guide and every bundled plugin's page open
+  on a screenshot of the IDE, drawn from Porta itself each time the site is
+  built, so they always show the current version.
+
 ### Fixed
 
 - The cursor no longer jumps past a popup's shadow: typing with the

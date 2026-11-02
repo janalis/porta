@@ -4,6 +4,8 @@ Porta speaks the [Debug Adapter Protocol](https://microsoft.github.io/debug-adap
 over a child process's stdio, so any DAP adapter works — configuration is
 per language, no code required.
 
+![Paused at a breakpoint: the stopped line, the frames and the locals](/screenshots/debugger.svg)
+
 ## Configuring an adapter
 
 Either in **Settings → your language** ("Debug adapter" + "Launch config

@@ -8,7 +8,7 @@ PORTA_TEST_PROCESSES  ?=
 PORTA_SHARD_PROCESSES ?=
 export PORTA_TEST_PROCESSES PORTA_SHARD_PROCESSES
 
-.PHONY: install build test check fix verify docs docs-dev clean
+.PHONY: install build test check fix verify docs docs-dev docs-screenshots clean
 
 install:
 	composer install
@@ -35,14 +35,17 @@ verify:
 	composer verify
 
 # Documentation site (VitePress, Node 22+): build to .vitepress/dist, or serve
-# with live reload.
-docs:
+# with live reload. Both draw the screenshots first, from the IDE as it is.
+docs: docs-screenshots
 	npm ci
 	npm run docs:build
 
-docs-dev:
+docs-dev: docs-screenshots
 	npm install
 	npm run docs:dev
 
+docs-screenshots:
+	composer docs:screenshots
+
 clean:
-	rm -rf build/porta.phar .vitepress/dist .vitepress/cache coverage
+	rm -rf build/porta.phar .vitepress/dist .vitepress/cache coverage docs/public/screenshots

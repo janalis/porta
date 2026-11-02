@@ -3,6 +3,8 @@
 Runs [Psalm](https://psalm.dev) on the file you are editing. Bundled with
 Porta and off by default — turn it on under **Settings → Plugins → psalm**.
 
+![The psalm page in Settings → Plugins](/screenshots/plugin-psalm.svg)
+
 **Psalm: Analyse Current File** (`Ctrl+Alt+P`, or the Plugins menu) analyses
 the active file with your project's own Psalm configuration. Findings are published as editor diagnostics — inline messages, gutter and
 stripe marks, and the Problems panel (`Alt+6`), exactly like a language

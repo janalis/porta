@@ -1,5 +1,7 @@
 # Configuration
 
+![The Settings view on its General page](/screenshots/settings.svg)
+
 Porta reads two files, and the second wins:
 
 | Scope | File | For |

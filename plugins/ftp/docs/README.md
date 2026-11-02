@@ -3,6 +3,8 @@
 Opens a project that lives on an FTP or FTPS server, and edits it as though it
 were here. Enabled by default; it does nothing until a remote project is open.
 
+![The ftp page in Settings → Plugins](/screenshots/plugin-ftp.svg)
+
 ```sh
 porta ftp ftp://me@example.org/public_html
 porta ftp ftps://me@example.org:2121/site      # TLS required, on the FTP port

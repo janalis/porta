@@ -6,6 +6,8 @@ IDE itself and answers before the frame is drawn, so the colours keep up with
 your typing. It is what **Settings → Highlighting** offers as the
 built-in-quality engine, and it is enabled by default.
 
+![The tempest page in Settings → Plugins](/screenshots/plugin-tempest.svg)
+
 Tempest claims every language (`*`): one it has no grammar for renders
 uncoloured, not broken. A backend that knows a language better — chroma, for
 instance — still wins that language, by its own claim list or by your

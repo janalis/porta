@@ -7,6 +7,8 @@ and the merge view. Enabled by default, because git needs it: a project whose
 `enabledPlugins` names `git` must name `diff` too, or git is skipped with a
 warning. Disabling it disables the plugins that need it.
 
+![The merge view: ours, the result and theirs, level with one another](/screenshots/plugin-diff.svg)
+
 ## The merge view
 
 A file holding conflict markers opens as three columns: **ours** on the left,

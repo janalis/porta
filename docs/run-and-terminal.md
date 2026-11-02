@@ -16,6 +16,8 @@ process, leaving your shells and other runs alone); the tab title shows
 
 ## Integrated terminal
 
+![The integrated terminal docked under the editor](/screenshots/terminal.svg)
+
 `` Ctrl+` `` or `Alt+F12` toggles a bottom terminal panel running a real
 interactive shell (`$SHELL -i`, falling back to `/bin/sh`) on a
 pseudo-terminal. Colors and progress bars render; keystrokes are forwarded

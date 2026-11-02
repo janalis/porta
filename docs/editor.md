@@ -354,6 +354,8 @@ has no card: rest the pointer on the problem's squiggle for it.
 Each row is the name, the server's **type** and the item's kind: a method's
 signature or a property's type, in the muted pen so the name still reads first.
 
+![The completion popup listing the methods of an order](/screenshots/completion.svg)
+
 Where the type comes from depends on the server, and both are handled: some
 send it with the completion, some only answer when asked. Porta asks about the
 rows on screen — once per item, and never at all when the type is already there

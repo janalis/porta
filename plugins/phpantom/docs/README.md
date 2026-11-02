@@ -5,6 +5,8 @@ server Porta suggests: completion, diagnostics, navigation and refactoring for
 PHP, from one native binary. The Welcome screen sets it up in one keystroke;
 otherwise enable it under **Settings → Plugins → phpantom**.
 
+![The phpantom page in Settings → Plugins](/screenshots/plugin-phpantom.svg)
+
 The plugin runs `phpantom_lsp` from its **phpantom_lsp binary** setting when
 you set one, otherwise from your `PATH`. While neither resolves, PHP is simply
 left unserved and the plugin's settings page offers to install it — through

@@ -1,5 +1,7 @@
 # Getting started
 
+![Porta open on a PHP project](/screenshots/overview.svg)
+
 ## Requirements
 
 - PHP ≥ 8.5

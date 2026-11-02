@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "docs:screenshots": "PORTA_SCREENSHOTS=docs/public/screenshots php vendor/bin/phpunit --testsuite=E2e --filter Screenshots",
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview"

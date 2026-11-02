@@ -36,3 +36,7 @@ plugins/*/vendor/
 /node_modules/
 /.vitepress/cache/
 /.vitepress/dist/
+
+# The docs screenshots: drawn from the running IDE at docs build
+# (`npm run docs:screenshots`), never committed, so they are never stale.
+/docs/public/screenshots/

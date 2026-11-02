@@ -1,5 +1,7 @@
 # Search & navigation
 
+![Find Action filtering every command by name](/screenshots/find-action.svg)
+
 ## Go to…
 
 | Key | Target |
@@ -61,6 +63,8 @@ and a file **Mask** (glob). Results preview live as you type, grouped by
 file; `Shift+Enter` makes the query multiline, `Alt+↑/↓` recall recent
 queries. Full mouse support: click fields, toggles and result rows; wheel
 scrolls the preview; drag the split to resize the results pane.
+
+![Find in Files, its results grouped by file](/screenshots/find-in-project.svg)
 
 Toggles: regex (`Alt+R`), case-sensitive (`Alt+C`), whole-word (`Alt+W`),
 preserve-case on replace (`Alt+V`) and token scope (`Alt+T`).

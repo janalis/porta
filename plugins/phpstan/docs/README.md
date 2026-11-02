@@ -4,6 +4,8 @@ Runs [PHPStan](https://phpstan.org) on the file you are editing, without
 leaving the editor. Bundled with Porta and off by default — turn it on under
 **Settings → Plugins → phpstan**.
 
+![The phpstan page in Settings → Plugins](/screenshots/plugin-phpstan.svg)
+
 **PHPStan: Analyse Current File** (`Ctrl+Alt+A`, or the Plugins menu) analyses
 the active file with your project's own PHPStan configuration. Findings are published as editor diagnostics — inline messages, gutter and
 stripe marks, and the Problems panel (`Alt+6`), exactly like a language

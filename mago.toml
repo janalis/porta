@@ -74,7 +74,7 @@ includes = ["vendor"]
 # test code most worth type-checking, and they carry none of the dynamic
 # getById() idioms that justify excluding the suites. Its fixtures (broken
 # on purpose) and the standalone mock-server scripts stay out.
-excludes = ["tests/Unit", "tests/Integration", "tests/E2e", "tests/Support/fixtures", "tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php", "tests/Support/garbage-lsp-server.php", "tests/Support/chunked-lsp-server.php", "tests/Support/error-lsp-server.php", "tests/Support/lsp-stub.php", "tests/Support/logging-lsp-server.php", "tests/Support/labelled-lsp-server.php", "tests/Support/sigterm-immune-lsp-server.php", "tests/Support/flushing-lsp-server.php", "plugins/graph-viewer/tests", "plugins/image-viewer/tests", "plugins/todo/tests", "plugins/local-history/tests", "plugins/diff/tests", "plugins/git/tests", "plugins/symfony-lsp/tests", "plugins/review/tests", "plugins/mcp/tests", "plugins/assist/tests", "plugins/ssh/tests", "plugins/ftp/tests", "plugins/custos/tests"]
+excludes = ["tests/Unit", "tests/Integration", "tests/E2e", "tests/Support/fixtures", "tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/screenshot-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php", "tests/Support/garbage-lsp-server.php", "tests/Support/chunked-lsp-server.php", "tests/Support/error-lsp-server.php", "tests/Support/lsp-stub.php", "tests/Support/logging-lsp-server.php", "tests/Support/labelled-lsp-server.php", "tests/Support/sigterm-immune-lsp-server.php", "tests/Support/flushing-lsp-server.php", "plugins/graph-viewer/tests", "plugins/image-viewer/tests", "plugins/todo/tests", "plugins/local-history/tests", "plugins/diff/tests", "plugins/git/tests", "plugins/symfony-lsp/tests", "plugins/review/tests", "plugins/mcp/tests", "plugins/assist/tests", "plugins/ssh/tests", "plugins/ftp/tests", "plugins/custos/tests"]
 
 [formatter]
 # Never re-wrap: keep the author's line breaks, like php-cs-fixer does.
@@ -112,7 +112,7 @@ sort-uses = true
 # deliberately — no rule is disabled; everything runs at full strength.
 # The mock LSP/DAP servers are standalone procedural scripts, not codebase
 # code — they keep their script idioms (camelCase helpers, `global`).
-excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
+excludes = ["tests/Support/lsp-stub.php", "tests/Support/slow-reading-lsp-server.php", "tests/Support/demanding-lsp-server.php", "tests/Support/incremental-lsp-server.php", "tests/Support/mock-lsp-server.php", "tests/Support/screenshot-lsp-server.php", "tests/Support/command-lsp-server.php", "tests/Support/mock-dap-adapter.php"]
 # The symfony integration reports nothing on this codebase today (no
 # controllers, no bundles); it is on so that the day it would, it does. The
 # phpunit integration is what brings assertion-style below.

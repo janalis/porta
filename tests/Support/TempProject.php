@@ -16,6 +16,9 @@ final class TempProject
     public readonly string $dir;
     private readonly Filesystem $fs;
 
+    /** What the destructor removes: the project, or the unique parent a named one sits in. */
+    private readonly string $root;
+
     /** @var list<string> symlinks made by {@see alias()}, removed with the project */
     private array $aliases = [];
 
@@ -25,11 +28,16 @@ final class TempProject
     /** The git binary, resolved once against the pristine PATH. */
     private static ?string $git = null;
 
-    /** @param array<array-key, string> $files relative path => content — a name in digits keys as an int */
-    public function __construct(array $files = [], string $prefix = 'porta-test-')
+    /**
+     * @param array<array-key, string> $files relative path => content — a name in digits keys as an int
+     * @param string|null              $name  the project directory's own name, for a screen that shows it
+     *                                        (a docs screenshot); it then sits in a unique parent
+     */
+    public function __construct(array $files = [], string $prefix = 'porta-test-', ?string $name = null)
     {
         $this->fs = new Filesystem();
-        $this->dir = \sys_get_temp_dir().'/'.$prefix.(int) \getmypid().'-'.\bin2hex(\random_bytes(4));
+        $this->root = \sys_get_temp_dir().'/'.$prefix.(int) \getmypid().'-'.\bin2hex(\random_bytes(4));
+        $this->dir = null === $name ? $this->root : $this->root.'/'.$name;
         $this->fs->mkdir($this->dir);
         foreach ($files as $path => $content) {
             $this->write((string) $path, $content);
@@ -146,10 +154,10 @@ final class TempProject
             \chmod($dir, permissions: 0o755);
         }
         try {
-            $this->fs->remove($this->dir);
+            $this->fs->remove($this->root);
         } catch (\Throwable) {
             try {
-                $this->fs->remove($this->dir);
+                $this->fs->remove($this->root);
 
                 // @mago-expect lint:no-empty-catch-clause -- deliberately abandoned to /var/folders cleanup: a leftover dir is harmless, a crashed worker fails the suite.
             } catch (\Throwable) {
