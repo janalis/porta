@@ -4,6 +4,12 @@
     "type": "library",
     "license": "MIT",
     "keywords": ["tui", "ide", "editor", "lsp", "terminal"],
+    "homepage": "https://janalis.github.io/porta/",
+    "support": {
+        "issues": "https://github.com/janalis/porta/issues",
+        "source": "https://github.com/janalis/porta",
+        "docs": "https://janalis.github.io/porta/"
+    },
     "autoload": {
         "psr-4": {
             "Porta\\": "src/"

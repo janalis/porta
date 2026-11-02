@@ -31,3 +31,8 @@ plugins/*/vendor/
 
 # The phar and the Box binary that builds it (composer build:phar).
 /build/
+
+# The documentation site (VitePress): its packages, cache and build.
+/node_modules/
+/.vitepress/cache/
+/.vitepress/dist/

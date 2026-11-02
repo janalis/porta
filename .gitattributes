@@ -1,0 +1,31 @@
+# Packagist installs the GitHub source archive: keep what Porta runs from
+# (src/, config/, docs/ — the F1 browser links into docs/internals/ too —
+# translations/, plugins/ and the bin/ launchers) and
+# leave out what only works on Porta itself.
+/.agents             export-ignore
+/.claude             export-ignore
+/.codex              export-ignore
+/.github             export-ignore
+/.vitepress          export-ignore
+/docker              export-ignore
+/docs/public         export-ignore
+/tests               export-ignore
+/plugins/*/tests     export-ignore
+/plugins/*/.github   export-ignore
+/.gitattributes      export-ignore
+/.gitignore          export-ignore
+/.invalid            export-ignore
+/.mcp.json           export-ignore
+/.phpactor.json      export-ignore
+/.phpantom.toml      export-ignore
+/AGENTS.md           export-ignore
+/CLAUDE.md           export-ignore
+/Makefile            export-ignore
+/box.json            export-ignore
+/custos.json         export-ignore
+/infection.json5     export-ignore
+/mago.toml           export-ignore
+/package.json        export-ignore
+/package-lock.json   export-ignore
+/phpunit.xml.dist    export-ignore
+/rector.php          export-ignore

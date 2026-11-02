@@ -1,0 +1,74 @@
+name: Docs
+
+# Builds the documentation site (VitePress: .vitepress/ over docs/ and every
+# plugin's docs/) and deploys it to GitHub Pages. Pull requests only build it:
+# a dead link fails the build. The release workflow calls it after publishing,
+# so the changelog and the version in the nav are current.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'plugins/*/docs/**'
+      - 'CHANGELOG.md'
+      - '.vitepress/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'plugins/*/docs/**'
+      - 'CHANGELOG.md'
+      - '.vitepress/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Git ref to build (the release tag)'
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Tags for the version in the nav, history for "last updated".
+          fetch-depth: 0
+          ref: ${{ inputs.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run docs:build
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: .vitepress/dist
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
