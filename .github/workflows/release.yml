@@ -1,26 +1,92 @@
 name: Release
 
-# Pushing a `vX.Y.Z` tag publishes a GitHub release carrying porta.phar and its
-# SHA-256 — the two files `porta --self-update` downloads and checks.
+# Actions → Release → Run workflow (on main). Checks that CI passed on the
+# commit, moves CHANGELOG.md's [Unreleased] section to the new version and
+# sets Ide::VERSION (bin/porta-dev release:prepare), commits and tags it, then
+# publishes: the GitHub release with porta.phar and its SHA-256 (what
+# `porta --self-update` fetches), the Homebrew formula (janalis/homebrew-tap),
+# the plugin splits (janalis/porta-<name>), Packagist and the docs site.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'X.Y.Z, or patch | minor | major (bump of the latest tag)'
+        required: true
+        default: patch
+      dry_run:
+        description: 'Build everything, publish nothing'
+        type: boolean
+        default: false
 
-# Write, for `gh release create`; nothing else is touched.
+concurrency: release
+
 permissions:
   contents: write
 
 env:
   PHP_EXTENSIONS: mbstring, gd, pcntl, simplexml, ctype
-  runner: ${{ vars.CI_RUNNER && 'self-hosted' || 'github-hosted' }}
 
 jobs:
-  phar:
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 20
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.relprep.outputs.version }}
+      tag: ${{ steps.relprep.outputs.tag }}
     steps:
       - uses: actions/checkout@v7
         with:
+          fetch-depth: 0
+      # The full gates take most of an hour on a hosted runner, and the CI
+      # workflow already ran every one of them on this commit: insist on it.
+      - name: CI passed on this commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push --json conclusion --jq '.[0].conclusion')
+          if [ "$conclusion" != success ]; then
+            echo "::error::CI on $GITHUB_SHA is '${conclusion:-not run}', not success: wait for it, or fix it"
+            exit 1
+          fi
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          extensions: ${{ env.PHP_EXTENSIONS }}
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - id: relprep
+        env:
+          BUMP: ${{ inputs.version }}
+        run: php bin/porta-dev release:prepare "$BUMP" "$RUNNER_TEMP/notes.md" | tee -a "$GITHUB_OUTPUT"
+      - run: git diff
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}/notes.md
+      - if: ${{ !inputs.dry_run }}
+        env:
+          TAG: ${{ steps.relprep.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): $TAG"
+          git tag -a "$TAG" -m "Porta $TAG"
+          git push --atomic origin HEAD:main "$TAG"
+
+  # Separate job so a failed publish can be retried ("Re-run failed jobs")
+  # without cutting the release again.
+  publish:
+    needs: prepare
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TAG: ${{ needs.prepare.outputs.tag }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.dry_run && github.sha || needs.prepare.outputs.tag }}
           # bin/build-phar stamps `git describe --tags`, which needs the tags.
           fetch-depth: 0
       - uses: shivammathur/setup-php@v2
@@ -28,20 +94,107 @@ jobs:
           php-version: '8.5'
           coverage: none
           extensions: ${{ env.PHP_EXTENSIONS }}
-      # The minimal ARC image has no GitHub CLI.
-      - name: Install GitHub CLI
-        run: sudo apt-get update && sudo apt-get install -y gh
-      - name: Install
-        run: composer install --no-interaction --no-progress --prefer-dist
-      - name: Build
-        run: composer build:phar
-      - name: The phar runs, and is the tag it claims
-        run: |
-          test "$(php build/porta.phar --version)" = "porta ${GITHUB_REF_NAME}"
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: composer build:phar
+      # A dry run builds the untagged commit, which names itself.
+      - name: The phar runs, and is the version it claims
+        run: test "$(php build/porta.phar --version)" = "porta $(git describe --tags --always --dirty)"
       - name: Checksum
         working-directory: build
         run: sha256sum porta.phar > porta.phar.sha256
-      - name: Publish
+      - uses: actions/download-artifact@v7
+        with:
+          name: release-notes
+          path: ${{ runner.temp }}
+      - if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: phar
+          path: build/porta.phar*
+      - name: GitHub release
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" build/porta.phar build/porta.phar.sha256 --title "$GITHUB_REF_NAME" --generate-notes
+        run: gh release create "$TAG" build/porta.phar build/porta.phar.sha256 --title "Porta $TAG" --notes-file "$RUNNER_TEMP/notes.md" --verify-tag
+      - name: Homebrew formula
+        if: ${{ !inputs.dry_run }}
+        env:
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "::warning::HOMEBREW_TAP_TOKEN is not set; the formula was not updated"
+            exit 0
+          fi
+          sha=$(cut -d' ' -f1 build/porta.phar.sha256)
+          tap="$RUNNER_TEMP/homebrew-tap"
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/janalis/homebrew-tap.git" "$tap"
+          mkdir -p "$tap/Formula"
+          cat > "$tap/Formula/porta.rb" <<RUBY
+          class Porta < Formula
+            desc "Terminal IDE for PHP projects"
+            homepage "https://janalis.github.io/porta/"
+            url "https://github.com/janalis/porta/releases/download/${TAG}/porta.phar"
+            version "${VERSION}"
+            sha256 "${sha}"
+            license "MIT"
+
+            depends_on "php"
+
+            def install
+              bin.install "porta.phar" => "porta"
+            end
+
+            test do
+              assert_match version.to_s, shell_output("#{bin}/porta --version")
+            end
+          end
+          RUBY
+          cd "$tap"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/porta.rb
+          git commit -m "porta $TAG"
+          git push
+
+  split:
+    needs: [prepare, publish]
+    if: ${{ !inputs.dry_run }}
+    uses: ./.github/workflows/split.yml
+    with:
+      tag: ${{ needs.prepare.outputs.tag }}
+    secrets:
+      SPLIT_TOKEN: ${{ secrets.SPLIT_TOKEN }}
+
+  # Packagist's GitHub hook already picks up each tag; this makes it immediate.
+  packagist:
+    needs: split
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - env:
+          PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+          PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+        run: |
+          if [ -z "$PACKAGIST_USERNAME" ] || [ -z "$PACKAGIST_TOKEN" ]; then
+            echo "Packagist secrets not set; relying on the GitHub hook"
+            exit 0
+          fi
+          for repo in porta $(cd plugins && printf 'porta-%s ' */ | tr -d /); do
+            curl -fsS -X POST -H 'Content-Type: application/json' \
+              -H "Authorization: Bearer $PACKAGIST_USERNAME:$PACKAGIST_TOKEN" \
+              -d "{\"repository\":{\"url\":\"https://github.com/janalis/$repo\"}}" \
+              https://packagist.org/api/update-package || echo "::warning::Packagist did not take janalis/$repo"
+          done
+
+  # Refresh the documentation site (changelog, version in the nav).
+  docs:
+    needs: [prepare, publish]
+    if: ${{ !inputs.dry_run }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/docs.yml
+    with:
+      ref: ${{ needs.prepare.outputs.tag }}
