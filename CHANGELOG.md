@@ -16,6 +16,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 - The cursor no longer jumps past a popup's shadow: typing with the
   completion popup open, its shadow cast along the caret's row put the
   terminal cursor at the shadow's far end instead of after what you typed.
+- The numeric keypad types its digits and operators under the Kitty keyboard
+  protocol, where they used to be read as keys with no name and typed nothing.
 
 ## [0.1.2] - 2026-11-02
 
