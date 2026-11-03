@@ -44,7 +44,7 @@ Nine; `verify:quick` is the first seven, run as format, lint, analyze, rector, a
 
 - **Final classes, constructor injection everywhere.** No class reaches for a global.
 - **No `$this` inside injected `static fn` closures** — mago rejects it.
-- The formatter **never re-wraps lines**. Keep your own line breaks.
+- The formatter **keeps your line breaks**, but lays out a concatenation you broke as a whole (mago.toml).
 - **Never `lazy: true`** on a container definition. Every definition is shared.
 - **One-consumer interfaces are forbidden** (a test fake is no consumer: inject a `\Closure`), as is widening a role for one caller.
 - **FQCN is determined by path**, so a move is a pure rename. Grep the old namespace: zero.

@@ -51,7 +51,6 @@ final class ChangeQueue
         $this->running = true;
         $done = false;
         $change['run'](function () use ($change, &$done): void {
-            // @mago-expect analysis:impossible-condition -- $done is by reference: a SECOND call sees the first one's true
             if ($done) {
                 return;
             }

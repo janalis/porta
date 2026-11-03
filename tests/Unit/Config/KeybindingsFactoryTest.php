@@ -142,14 +142,14 @@ final class KeybindingsFactoryTest extends TestCase
     public function testAPluginKeyTheParserCannotReadIsDroppedToo(): void
     {
         $project = new TempProject(['.porta/plugins/typo/porta.php' => <<<'PHP'
-                <?php
-                return new class('typo') extends \Porta\Plugin\Api\AbstractPlugin {
-                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerCommand('go', 'Go', static function (): void {}, keys: ['ctrl+alt+g', 'ctrl+gg']);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class('typo') extends \Porta\Plugin\Api\AbstractPlugin {
+                public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerCommand('go', 'Go', static function (): void {}, keys: ['ctrl+alt+g', 'ctrl+gg']);
+                }
+            };
+            PHP]);
         [$factory, $host] = $this->factory($project);
 
         $this->assertSame(['ctrl+alt+g'], $factory->create()->getBindings('typo:go'));

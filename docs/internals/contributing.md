@@ -677,9 +677,10 @@ including the tests**.
 
 **No `$this` inside injected `static fn` closures** — mago rejects it.
 
-**The formatter never re-wraps lines.** `mago format` runs Symfony-style at
-print-width 200 with preserve-breaking. Keep your own line breaks; don't fight
-it.
+**The formatter keeps your line breaks.** `mago format` runs Symfony-style at
+print-width 200 with preserve-breaking. The one exception, since mago 1.59: a
+concatenation or assignment you already broke is laid out whole, so a call
+chain inside it goes one call per line (`mago.toml` has why). Don't fight it.
 
 **mago analyzes `src` only** (`tests` and `vendor` are excluded from
 reporting), so type annotations matter most there. `vendor` is still read for

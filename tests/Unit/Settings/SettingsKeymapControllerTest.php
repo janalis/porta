@@ -328,14 +328,14 @@ final class SettingsKeymapControllerTest extends TestCase
         // persists under the bare id, and the re-merged live map binds it. Core
         // names none of it.
         $project = new TempProject(['.porta/plugins/hex/porta.php' => <<<'PHP'
-                <?php
-                return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
-                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerActions(['hex_next_field' => 'Hex: Next Field']);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
+                public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerActions(['hex_next_field' => 'Hex: Next Field']);
+                }
+            };
+            PHP]);
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         // What boot does when it resolves Keybindings, long before a settings
         // page can exist — the registry lists the plugins that have LOADED.
@@ -361,14 +361,14 @@ final class SettingsKeymapControllerTest extends TestCase
         // pane's action as unbound — "no key" for a key that works — because a
         // pane's defaults live on the pane and nowhere else.
         $project = new TempProject(['.porta/plugins/demo/porta.php' => <<<'PHP'
-                <?php
-                return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
-                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerActions(['test_pane_step' => 'Demo: Step']);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
+                public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerActions(['test_pane_step' => 'Demo: Step']);
+                }
+            };
+            PHP]);
         $panes = new EditorPanes();
         $panes->register(new TestPane('demo'), static fn (): string => '');
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(), $panes);
@@ -386,14 +386,14 @@ final class SettingsKeymapControllerTest extends TestCase
         // both pane and ide scope (but not editor scope) must show the pane's
         // key, since that is the one that actually fires.
         $project = new TempProject(['.porta/plugins/demo/porta.php' => <<<'PHP'
-                <?php
-                return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
-                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerActions(['test_pane_step' => 'Demo: Step']);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
+                public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerActions(['test_pane_step' => 'Demo: Step']);
+                }
+            };
+            PHP]);
         $panes = new EditorPanes();
         $panes->register(new TestPane('demo'), static fn (): string => '');
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings(['test_pane_step' => ['x']]), $panes);
@@ -435,14 +435,14 @@ final class SettingsKeymapControllerTest extends TestCase
     public function testARebindOfAnActionOnlyAPaneMatchesIsLiveToo(): void
     {
         $project = new TempProject(['.porta/plugins/demo/porta.php' => <<<'PHP'
-                <?php
-                return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
-                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerActions(['test_pane_step' => 'Demo: Step']);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class('demo') extends \Porta\Plugin\Api\AbstractPlugin {
+                public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerActions(['test_pane_step' => 'Demo: Step']);
+                }
+            };
+            PHP]);
         $panes = new EditorPanes();
         $panes->register(new TestPane('demo'), static fn (): string => '');
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings(), $panes);
@@ -473,14 +473,14 @@ final class SettingsKeymapControllerTest extends TestCase
         // registerActions() takes no keys, deliberately: an action no pane
         // binds has nowhere live to land.
         $project = new TempProject(['.porta/plugins/hex/porta.php' => <<<'PHP'
-                <?php
-                return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
-                    public function activate(\Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerActions(['hex_next_field' => 'Hex: Next Field']);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class('hex') extends \Porta\Plugin\Api\AbstractPlugin {
+                public function activate(\Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerActions(['hex_next_field' => 'Hex: Next Field']);
+                }
+            };
+            PHP]);
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         $this->host->ensureLoaded();
 

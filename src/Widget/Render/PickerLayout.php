@@ -376,7 +376,12 @@ final class PickerLayout
         }
         if (!$hit->enabled) {
             $label =
-                $row->withDim()->withStrikethrough()->apply(\rtrim($label)).$row->getAnsiRestore().\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
+                $row
+                    ->withDim()
+                    ->withStrikethrough()
+                    ->apply(\rtrim($label))
+                .$row->getAnsiRestore()
+                .\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
         }
 
         return self::withHint($label, $styles->of(Role::CompletionHint)->apply($detail), $direction);

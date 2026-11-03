@@ -63,17 +63,18 @@ final class LspSession
         ?\Closure $clientFactory = null,
         ?OrphanGuard $guard = null,
     ) {
-        $this->clientFactory = $clientFactory ?? /**
-         * @param list<string>              $command
-         * @param array<string, mixed>|null $initializationOptions
-         */
-        static fn (array $command, string $rootDir, \Closure $onLog, ?array $initializationOptions): LspClientInterface => new LspClient(
-            $command,
-            $rootDir,
-            $onLog,
-            initializationOptions: $initializationOptions,
-            guard: $guard,
-        );
+        $this->clientFactory =
+            $clientFactory ?? /**
+             * @param list<string>              $command
+             * @param array<string, mixed>|null $initializationOptions
+             */
+            static fn (array $command, string $rootDir, \Closure $onLog, ?array $initializationOptions): LspClientInterface => new LspClient(
+                $command,
+                $rootDir,
+                $onLog,
+                initializationOptions: $initializationOptions,
+                guard: $guard,
+            );
     }
 
     /**

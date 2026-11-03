@@ -829,16 +829,7 @@ final class ArchitectureCheckCommand extends Command
             }
             // Only a component ROOT pops a component — Tarjan's invariant, and
             // genuinely variable at runtime: the loop above lowers $low[$v]
-            // through min() for every back-edge. The analyzer cannot follow
-            // those by-reference writes and reads the comparison as constant.
-            // Two codes for one site: suppressing the condition unmasks the comparison, which
-            // is the same false positive read a second way. Verified 2026-09-02 by removing
-            // both — the pair is needed, neither alone.
-            // @mago-expect analysis:redundant-comparison -- see below
-            // @mago-expect analysis:redundant-condition -- $low[$v] is mutated by the min()
-            // writes above, through a by-reference `use` in a recursive closure, which the
-            // analyzer does not follow. Re-checked 2026-09-02: restructuring real Tarjan to
-            // satisfy it would risk the gate everything else depends on.
+            // through min() for every back-edge.
             if ($low[$v] === $indices[$v]) {
                 $scc = self::popComponent($v, $stack, $onStack);
                 if (\count($scc) > 1) {

@@ -138,6 +138,7 @@ final class ToolCatalog
     public function probe(array $plugins, ?\Closure $then = null): void
     {
         $pending = $this->pending($plugins);
+        /** @var int $left the closures made in the loop below hold it by reference, which mago reads as mixed */
         $left = \count($pending);
         if (0 === $left) {
             $then?->__invoke();

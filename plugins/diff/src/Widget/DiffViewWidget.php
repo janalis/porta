@@ -793,7 +793,11 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
 
         return false === $cut
             ? $this->styles->of(Role::Emphasis)->withBold()->apply($path)
-            : $this->styles->of(Role::Dim)->apply(\substr($path, offset: 0, length: $cut + 1)).$this->styles->of(Role::Emphasis)->withBold()->apply(\substr($path, $cut + 1));
+            : $this->styles->of(Role::Dim)->apply(\substr($path, offset: 0, length: $cut + 1))
+            .$this->styles
+                ->of(Role::Emphasis)
+                ->withBold()
+                ->apply(\substr($path, $cut + 1));
     }
 
     /**

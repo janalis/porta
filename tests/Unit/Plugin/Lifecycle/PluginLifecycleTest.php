@@ -136,15 +136,15 @@ final class PluginLifecycleTest extends TestCase
     public function testABundledPluginTheLaunchNamesIsOn(): void
     {
         $embedded = new TempProject(['kit/porta.php' => <<<'PHP'
-                <?php
-                return new class implements Porta\Plugin\Api\PortaPlugin {
-                    public function name(): string { return 'kit'; }
-                    public function activate(Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerCommand('go', 'kit: go', static fn () => null);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class implements Porta\Plugin\Api\PortaPlugin {
+                public function name(): string { return 'kit'; }
+                public function activate(Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerCommand('go', 'kit: go', static fn () => null);
+                }
+            };
+            PHP]);
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
 
         $off = $this->boot();
@@ -164,15 +164,15 @@ final class PluginLifecycleTest extends TestCase
     public function testABundledPluginThatDisabledPluginsListsIsOffUntilEnabled(): void
     {
         $embedded = new TempProject(['kit/porta.php' => <<<'PHP'
-                <?php
-                return new class implements Porta\Plugin\Api\PortaPlugin {
-                    public function name(): string { return 'kit'; }
-                    public function activate(Porta\Plugin\Api\PluginApi $api): void
-                    {
-                        $api->registerCommand('go', 'kit: go', static fn () => null);
-                    }
-                };
-                PHP]);
+            <?php
+            return new class implements Porta\Plugin\Api\PortaPlugin {
+                public function name(): string { return 'kit'; }
+                public function activate(Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerCommand('go', 'kit: go', static fn () => null);
+                }
+            };
+            PHP]);
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $ide = $this->boot(['enabledPlugins' => ['kit'], 'disabledPlugins' => ['kit']]);
         $lifecycle = $this->lifecycle($ide);

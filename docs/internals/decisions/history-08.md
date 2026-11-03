@@ -407,3 +407,41 @@ and an ASCII word skips the grapheme measure.
 
 *Re-opens on:* a spec version whose examples the parser fails and cannot
 cheaply follow, or a parse cost the preview's 0.15 s feed cannot absorb.
+
+## The dependency refresh and mago 1.59, two commits (2026-11-03)
+
+The lock refreshed within its constraints first, mago second, each verified
+green alone — so a symfony change could never pass for a mago one.
+
+**The lock refresh surfaced three upstream changes, none caught by a gate
+before the suites.** `symfony/tui` put the Program Status Protocol on
+`TerminalInterface` (`NonBlockingTerminal` takes both methods from
+`TerminalEscapeTrait`, which writes through its own queue — re-read, as its
+docblock asks). It also reads Kitty keypad keys as the keys they stand for, so
+the keymap test's "unsupported key" became `0`. And `symfony/finder`'s
+`VcsIgnoredFilterIterator` now resolves only paths BELOW its directory to their
+real path: `GitIgnored::pruner` asked about the root itself in its `/var`
+spelling, so on macOS a project an outer repository ignores had its
+subdirectories pruned. Only the suite saw that; it is the `/tmp` realpath trap
+again, from the vendor side.
+
+**mago 1.59 found 22 things, and most were it getting better.** Four
+suppressions for by-reference closures went unfulfilled — 1.59 follows those
+writes now — and five `?->` became `->` because it narrows through `$result`
+implying `$block`, `$guest` implying `$host`. The cost of the same change: a
+counter a closure created INSIDE a loop holds by reference is read as `mixed`
+(reproduced on a ten-line file; the same closure hoisted out of the loop is
+clean). Typed with a `@var int` at its declaration rather than suppressed per
+site: one line per counter, and the day mago follows it, `redundant-docblock-type`
+says so.
+
+**The formatter now lays out a concatenation the author broke as a whole**, so
+a call chain inside it goes one call per line — 12 files, the first exception
+to "never re-wraps". Accepted: `preserve-breaking-binary-expression`, the one
+option near it, moved 37 files instead.
+
+**All nine thresholds held exactly** — each fires one below its pin. The two
+"tied" holders had dropped below by then (`GraphViewerWidget` 139,
+`SettingsFormWidgetTest` 89 methods), and mago 1.47 measures the same tree the
+same way: the code moved, not the metric. Measuring under the old binary is
+the only way to tell those apart once the files have changed since the last probe.

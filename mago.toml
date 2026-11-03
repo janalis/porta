@@ -8,9 +8,12 @@
 #
 # php-cs-fixer never reflows code, so to match it the formatter is configured
 # NOT to re-wrap: a wide print width plus "preserve breaking" keeps every line
-# exactly where it is and only normalises spacing/braces/imports.
+# exactly where it is and only normalises spacing/braces/imports. One exception
+# since 1.59: a concatenation or assignment the author already broke across
+# lines is laid out whole, so a call chain inside it goes one call per line.
+# (preserve-breaking-binary-expression makes it worse: 37 files moved, not 12.)
 #
-# mago ships no `symfony` formatter preset (1.47 offers default, psr-12, pint,
+# mago ships no `symfony` formatter preset (1.59 offers default, psr-12, pint,
 # tempest, hack and drupal), which is why the options below are spelled out.
 #
 # The linter follows the same standard (see [linter] and [linter.rules]):
@@ -136,13 +139,16 @@ integrations = ["symfony", "phpunit"]
 # train everyone to ignore the log. What sets each floor (re-bisected after
 # the round-5 tree, July 2026 — for the first time EVERY pin is production
 # code; the round-5 test split retired the E2e monolith that pinned two rules;
-# all nine re-bisected again under mago 1.45, where exactly one moved):
+# all nine re-bisected again under mago 1.45, where exactly one moved, and
+# under 1.59, where none did):
 #
-#   cyclomatic-complexity   143  Editor/Document and the graph viewer's
-#                                GraphViewerWidget, tied (re-probed 2026-10-23;
-#                                both measured and left alone in
+#   cyclomatic-complexity   143  Editor/Document alone (re-probed 2026-11-03,
+#                                under 1.47 and 1.59 alike: Lsp/LspMapper 141,
+#                                the graph viewer's GraphViewerWidget 139 —
+#                                the code moved, not the metric). The two were tied
+#                                on 2026-10-23, both measured and left alone in
 #                                decisions.md — one state component each,
-#                                complexity spread thin). MouseRouter, which
+#                                complexity spread thin. MouseRouter, which
 #                                held it until then, sits below; its history:
 #                                147 → 145 in the Rector round below. It gained the
 #                                file-tree drag: one entry in route()'s `||`
@@ -156,8 +162,11 @@ integrations = ["symfony", "phpunit"]
 #                                sums the class. (Was 145 before git left
 #                                `src/`; 220 two rounds before that, 133 before
 #                                the graph viewer's click/drag-pan routing.)
-#   too-many-methods         90  Widget/CodeEditorWidget and tests/…/
-#                                SettingsFormWidgetTest, tied (2026-10-23).
+#   too-many-methods         90  Widget/CodeEditorWidget alone (re-probed
+#                                2026-11-03, under 1.47 and 1.59 alike:
+#                                tests/…/SettingsFormWidgetTest, tied on
+#                                2026-10-23, is at 89 since the phpcpd 9.2
+#                                clone round shared its rigs).
 #                                PluginApi held it at 94 until its sixteen
 #                                buffered*() drains — public methods no plugin
 #                                may call — moved onto PluginContributions; its

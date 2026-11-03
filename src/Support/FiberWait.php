@@ -37,7 +37,6 @@ final class FiberWait
         $answer = null;
         $suspension = null;
         $start(static function (mixed $value) use (&$answered, &$answer, &$suspension): void {
-            // @mago-expect analysis:impossible-condition -- $answered is by reference: a SECOND call sees the first one's true
             if ($answered) {
                 return;
             }

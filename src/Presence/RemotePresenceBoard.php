@@ -158,6 +158,7 @@ final class RemotePresenceBoard extends PresenceBoard
         $this->known = \array_intersect_key($this->known, $files);
         // One for the loop itself: an answer that comes back at once must not
         // count as the last before the next fetch is even asked.
+        /** @var int $waiting the closures made in the loop below hold it by reference, which mago reads as mixed */
         $waiting = 1;
         $answer = function () use (&$waiting, $files, $done): void {
             if (0 !== $waiting) {

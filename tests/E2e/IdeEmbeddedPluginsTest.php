@@ -47,22 +47,22 @@ final class IdeEmbeddedPluginsTest extends TestCase
     private function embeddedFixture(): TempProject
     {
         return new TempProject(['bundled/porta.php' => <<<'PHP'
-                <?php
-                use Porta\Plugin\Api\PluginApi;
-                use Porta\Plugin\Api\PortaPlugin;
+            <?php
+            use Porta\Plugin\Api\PluginApi;
+            use Porta\Plugin\Api\PortaPlugin;
 
-                return new class implements PortaPlugin {
-                    public function name(): string { return 'bundled'; }
-                    public function activate(PluginApi $api): void
-                    {
-                        $api->registerSetting('binary', 'Tool binary', 'text', '', hint: 'path to the tool');
-                        $api->registerCommand('run', 'Bundled Run', static function () use ($api): void {
-                            $api->flash('bundled ran '.$api->setting('binary'));
-                        });
-                        $api->addMenuItem('run', static fn (): bool => '' !== $api->setting('binary'));
-                    }
-                };
-                PHP]);
+            return new class implements PortaPlugin {
+                public function name(): string { return 'bundled'; }
+                public function activate(PluginApi $api): void
+                {
+                    $api->registerSetting('binary', 'Tool binary', 'text', '', hint: 'path to the tool');
+                    $api->registerCommand('run', 'Bundled Run', static function () use ($api): void {
+                        $api->flash('bundled ran '.$api->setting('binary'));
+                    });
+                    $api->addMenuItem('run', static fn (): bool => '' !== $api->setting('binary'));
+                }
+            };
+            PHP]);
     }
 
     /** @return list<\Porta\Workbench\Menu\Menu> */

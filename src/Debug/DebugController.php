@@ -158,6 +158,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $session->scopes($frameId, static function (array $scopes) use ($session, $deliver): void {
             $result = [];
+            /** @var int $waiting the closures made in the loop below hold it by reference, which mago reads as mixed */
             $waiting = 0;
             foreach ($scopes as $index => $scope) {
                 $result[$index] = ['scope' => $scope['name'], 'variables' => []];

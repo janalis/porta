@@ -204,12 +204,13 @@ final readonly class SettingsRowLayout
             $wrapped[] = $detailLines;
             $under[] = $below;
             $controlRows = $layout->boxed ? FieldBox::ROWS : 1;
-            $heights[] = (null === $legend ? 0 : self::LEGEND_ROWS)
-            + \max(
-                $controlRows,
-                $layout->top(\count($lines)) + \count($lines),
-                null === $detailLines ? 0 : ($below ? $controlRows : $layout->top(1)) + \count($detailLines),
-            );
+            $heights[] =
+                (null === $legend ? 0 : self::LEGEND_ROWS)
+                + \max(
+                    $controlRows,
+                    $layout->top(\count($lines)) + \count($lines),
+                    null === $detailLines ? 0 : ($below ? $controlRows : $layout->top(1)) + \count($detailLines),
+                );
         }
 
         return new self($label, $layout->control, $layout->boxed, $heights, $legends, $labels, $wrapped, $under);

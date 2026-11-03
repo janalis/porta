@@ -171,6 +171,7 @@ final class NonBlockingTerminal implements TerminalInterface
             if (($this->writer->pendingBytes() + \strlen($data)) > $this->limit) {
                 $this->writer->flushBlocking(); // never drop; a failure nulls the writer below
             }
+            // @mago-expect analysis:redundant-nullsafe-operator -- flushBlocking() above can fail, and onWriteError() nulls the writer
             $this->writer?->write($data);
 
             return;

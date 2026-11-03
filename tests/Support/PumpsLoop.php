@@ -99,19 +99,21 @@ trait PumpsLoop
      */
     private function awaitOutcome(\Closure $start, float $timeout = 10.0, string $what = 'the outcome'): array
     {
-        $answer = null;
-        $start(static function (Outcome $ok, string $out) use (&$answer): void {
-            $answer = ['ok' => $ok->isOk(), 'out' => $out];
+        $ok = null;
+        $said = '';
+        $start(static function (Outcome $outcome, string $out) use (&$ok, &$said): void {
+            $ok = $outcome->isOk();
+            $said = $out;
         });
         $this->await(
-            static function () use (&$answer): bool {
-                return null !== $answer;
+            static function () use (&$ok): bool {
+                return null !== $ok;
             },
             $timeout,
             $what,
         );
 
-        return $answer ?? ['ok' => false, 'out' => ''];
+        return ['ok' => true === $ok, 'out' => $said];
     }
 
     /**

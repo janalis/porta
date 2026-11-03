@@ -484,7 +484,10 @@ final class EditorRenderer
                 // Still offered, marked as going: dim and struck through,
                 // attributes that survive --no-ansi.
                 $label =
-                    $style->withDim()->withStrikethrough()->apply(\rtrim($label))
+                    $style
+                        ->withDim()
+                        ->withStrikethrough()
+                        ->apply(\rtrim($label))
                     .$style->getAnsiRestore()
                     .\str_repeat(' ', \max(0, AnsiUtils::visibleWidth($label) - AnsiUtils::visibleWidth(\rtrim($label))));
             }

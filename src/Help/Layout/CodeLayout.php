@@ -78,10 +78,10 @@ final class CodeLayout
     private function diagram(CodeBlock $code, int $width, LayoutState $state): ?array
     {
         $block = $this->fences?->block($code);
-        $result = $block?->result;
-        if (null === $result) {
+        if (null === $block?->result) {
             return null;
         }
+        $result = $block->result;
         $room = \max(1, $width - (2 * self::INSET));
         $first = $state->lineOf($code->body->start);
 
@@ -90,7 +90,7 @@ final class CodeLayout
             : $this->nativeRows($result, $room, $first, $code);
         if (null !== $rows) {
             $links = new FenceLinks(
-                true === $block?->interactive() ? $result : null,
+                $block->interactive() ? $result : null,
                 $code->body->start,
                 $first,
                 \substr_count(\rtrim($code->literal, characters: "\n"), needle: "\n"),
