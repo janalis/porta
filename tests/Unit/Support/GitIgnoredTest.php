@@ -70,6 +70,24 @@ final class GitIgnoredTest extends TestCase
         $this->assertSame(['src/A.php', 'top.php'], self::found($finder));
     }
 
+    /**
+     * The same project opened through a symlink: the root is judged by its
+     * real path, as Finder judges everything beneath it — by its link's name
+     * the outer rule misses it, and then its subdirectories are pruned.
+     */
+    public function testAProjectOpenedThroughASymlinkIsJudgedByItsRealPath(): void
+    {
+        $outer = new TempProject(['.gitignore' => "/proj/\n", 'proj/src/A.php' => '', 'proj/top.php' => '']);
+        $outer->initGit();
+        \symlink($outer->path('proj'), $outer->path('alias'));
+        $finder = Finder::create()
+            ->files()
+            ->in($outer->path('alias'))
+            ->filter(GitIgnored::pruner($outer->path('alias')), prune: true);
+
+        $this->assertSame(['src/A.php', 'top.php'], self::found($finder));
+    }
+
     /** A .gitignore that cannot be read rules out nothing: the walk goes on. */
     public function testAnUnreadableGitignoreRulesOutNothing(): void
     {

@@ -46,7 +46,9 @@ final class GitIgnored
         // A project inside a repository that ignores it — a scratch folder in
         // a home directory kept in git with `*` ignored: that repository's
         // rules are about its own tree, and would rule out the whole project.
-        if ($ignored(new \SplFileInfo($root))) {
+        // Asked by its real path: the matcher resolves only paths BELOW the
+        // root, and a /var spelling never matches rules found under /private/var.
+        if ($ignored(new \SplFileInfo(($real = \realpath($root)) ? $real : $root))) {
             return static fn (SplFileInfo $entry): bool => true;
         }
 

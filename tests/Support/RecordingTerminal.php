@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\Tui\Terminal\ProgramStatus\ProgramStatus;
 use Symfony\Component\Tui\Terminal\TerminalInterface;
 
 /** An inner terminal that traces every call into $calls and keeps the kitty callback it was handed. */
@@ -96,6 +97,16 @@ final class RecordingTerminal implements TerminalInterface
     public function bell(): void
     {
         $this->calls[] = 'bell';
+    }
+
+    public function setProgramStatus(ProgramStatus $status): void
+    {
+        $this->calls[] = 'setProgramStatus';
+    }
+
+    public function clearProgramStatus(?string $id = null): void
+    {
+        $this->calls[] = 'clearProgramStatus';
     }
 
     public function isVirtual(): bool

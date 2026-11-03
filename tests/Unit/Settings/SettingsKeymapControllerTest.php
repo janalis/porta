@@ -304,7 +304,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
-        $controller->rebind('save', "\x1b[57399u"); // kitty keypad 0, which the parser does not name
+        $controller->rebind('save', "\x1b[57428u"); // kitty media play, which the parser does not name
 
         $this->assertStringContainsString('Unsupported key', $this->flashText($status));
         $this->assertFalse(\is_file($project->path('.porta.json')));
