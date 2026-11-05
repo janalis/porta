@@ -250,6 +250,34 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(0, $files->pending());
     }
 
+    /**
+     * A listing taken before a rename of ours and answered after it describes
+     * a server that is gone: it put the old name back as an empty placeholder
+     * and dropped the new one, and an open buffer reloaded blank. It is
+     * dropped, and the folder listed again.
+     */
+    public function testAListingOlderThanARenameOfOursIsDropped(): void
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->transport->hold = true;
+        $this->transport->actNow = true;
+
+        $files->poll(); // a listing of the root, taken now, answered later
+        $files->rename($this->cache->path('README.md'), $this->cache->path('READ.md'));
+        [$listing, $rename] = $this->transport->held;
+        $rename();
+        $listing();
+        $this->transport->hold = false;
+
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'not put back');
+        $this->assertSame("# hi\n", \file_get_contents($this->cache->path('READ.md')), 'kept, content and all');
+        $files->poll();
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'and the next listing agrees');
+        $this->assertFileExists($this->cache->path('READ.md'));
+    }
+
     public function testTheStatusBarIsToldWhenTheCellsCountOrTroubleMoves(): void
     {
         $events = new RecordingEvents();

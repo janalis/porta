@@ -70,6 +70,20 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private readonly ChangeQueue $queue;
     /** @var array<array-key, true> directories listed (or being listed) this session */
     private array $listed = [];
+    /**
+     * Each change of ours numbered as the server answers it, and the folder
+     * it touched marked with that number. A listing carries the number it was
+     * asked at: one that started before a change of ours in its folder and
+     * lands after describes a server that is gone — it put a renamed file
+     * back as an empty placeholder and dropped its new name, blanking the
+     * open buffer, whose next save then sent the blank over the real file.
+     * Such a listing is dropped, and the folder listed again.
+     */
+    private int $changes = 0;
+
+    /** @var array<array-key, int> folder => the number of the last change of ours there */
+    private array $changedAt = [];
+
     /** @var array<array-key, true> listings in flight */
     private array $listing = [];
     /** @var array<array-key, array{then: \Closure(): void, failed: (\Closure(): void)|null}> fetches in flight: what runs when each lands, or will not */
@@ -216,6 +230,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                 // send what the server refused of it: that stays unsent.
                 static fn (RemoteTransport $transport, \Closure $answered) => $transport->rename($source, $target, $answered),
                 fn (string $why) => $this->refused($target, $why),
+                $source,
             );
 
             return;
@@ -450,8 +465,14 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     private function list(RemoteTransport $transport, string $relative): void
     {
         $this->listing[$relative] = true;
-        $transport->list($relative, function (array|string $answer) use ($relative, $transport): void {
+        $asked = $this->changes;
+        $transport->list($relative, function (array|string $answer) use ($relative, $transport, $asked): void {
             unset($this->listing[$relative]);
+            if (($this->changedAt[$relative] ?? 0) > $asked) {
+                $this->wanted[$relative] = true; // out of date before it landed: the next poll asks again
+
+                return;
+            }
             if (\is_string($answer)) {
                 unset($this->listed[$relative]);
                 $this->link->failed(
@@ -807,11 +828,16 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
      * @param \Closure(RemoteTransport, \Closure(?string): void): void $attempt
      * @param \Closure(string): void                                   $refused
      */
-    private function change(string $relative, \Closure $attempt, \Closure $refused): void
+    /** @param string|null $from a rename's other side, whose folder it changes too */
+    private function change(string $relative, \Closure $attempt, \Closure $refused, ?string $from = null): void
     {
-        $this->queue->add($relative, function (\Closure $next) use ($attempt, $refused): void {
+        $this->queue->add($relative, function (\Closure $next) use ($attempt, $refused, $relative, $from): void {
             // The cell counts what is on its way: one fewer once answered.
-            $done = function () use ($next): void {
+            $done = function () use ($next, $relative, $from): void {
+                ++$this->changes;
+                foreach (null === $from ? [$relative] : [$relative, $from] as $changed) {
+                    $this->changedAt[self::parent($changed)] = $this->changes;
+                }
                 $next();
                 $this->cellChanged();
             };

@@ -37,6 +37,13 @@ final class FakeRemoteTransport extends RemoteTransport
 {
     public bool $hold = false;
 
+    /**
+     * With {@see $hold}: the server ACTS at once and only its answer waits —
+     * a listing taken now and delivered later, after other answers, which is
+     * how a reply overtakes another on a real link.
+     */
+    public bool $actNow = false;
+
     /** @var list<\Closure(): void> */
     public array $held = [];
 
@@ -262,6 +269,15 @@ final class FakeRemoteTransport extends RemoteTransport
         $error = $this->fail[$key] ?? $this->down;
         unset($this->fail[$key]);
         $reply = static fn () => $done($error ?? $work());
+        if ($this->hold && $this->actNow) {
+            // @mago-expect analysis:mixed-assignment -- what the verb answers, handed back as it is
+            $result = $error ?? $work();
+            $this->held[] = static function () use ($done, $result): void {
+                $done($result);
+            };
+
+            return;
+        }
         if ($this->hold) {
             $this->held[] = static function () use ($reply): void {
                 $reply();
