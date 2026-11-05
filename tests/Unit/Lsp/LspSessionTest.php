@@ -445,6 +445,20 @@ final class LspSessionTest extends TestCase
         $this->assertSame(['file:///porta-no-such-root/project/a.php'], $uris, "a's edit, under a's name");
     }
 
+    /** A tab closed within the debounce takes its pending edit with it: no didChange for a closed document. */
+    public function testClosingAFileDropsItsPendingEdit(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+        $session->scheduleDidChange(new Document('a'), static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
+
+        $session->notifyDidClose('/porta-no-such-root/project/a.php');
+        $session->flushPendingChange(null, null);
+
+        $this->assertSame(['textDocument/didClose'], \array_column($client->notifications, 'method'));
+    }
+
     /** An edit scheduled for another document sends the one still pending, which re-arming the timer used to drop. */
     public function testSchedulingAnotherDocumentSendsThePendingOneFirst(): void
     {

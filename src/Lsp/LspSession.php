@@ -253,6 +253,17 @@ final class LspSession
 
     public function notifyDidClose(string $path): void
     {
+        // An edit still waiting for its debounce goes with the file: fired
+        // after this, it sent a didChange for a closed document and put it
+        // back in the open set a relaunched server re-opens.
+        if (null !== $this->pendingChange && $path === $this->pendingChange[0]) {
+            $this->pendingChange = null;
+            if (null !== $this->changeDebounce) {
+                EventLoop::cancel($this->changeDebounce);
+                $this->changeDebounce = null;
+            }
+            $this->afterSync = null;
+        }
         unset($this->syncedText[$path], $this->beforeReady[$path]);
         $uri = Uri::fromPath($path);
         $this->whenReady(function () use ($uri): void {
