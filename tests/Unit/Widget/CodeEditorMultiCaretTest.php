@@ -133,6 +133,37 @@ final class CodeEditorMultiCaretTest extends TestCase
         $this->assertSame("xy! = xy! + xy!\n", $editor->getDocument()->getText());
     }
 
+    /**
+     * The carets stay where the typing left them, keystroke after keystroke:
+     * each was kept as a (line, col) taken before the edits above it moved it,
+     * so the second key landed off — `xyabc = xycba + cxbya`.
+     */
+    public function testTypingOnAtEveryCaretOfOneLineKeepsThemInStep(): void
+    {
+        $editor = $this->editor("xy = xy + xy\n");
+        $editor->getDocument()->setCursor(0, 0);
+        $editor->handleInput("\x1b[106;8u"); // ctrl+alt+shift+j: every occurrence
+
+        foreach (['a', 'b', 'c'] as $key) {
+            $editor->handleInput($key);
+        }
+
+        $this->assertSame("xyabc = xyabc + xyabc\n", $editor->getDocument()->getText());
+    }
+
+    /** A new line at an upper caret moves every caret below it down a line, and they follow. */
+    public function testANewLineAtEveryCaretKeepsTheLowerCaretsOnTheirLines(): void
+    {
+        $editor = $this->editor("aXb\naXb\n");
+        $editor->getDocument()->setCursor(0, 2);
+        $editor->handleInput("\x1b[1;7B"); // second caret at (1,2)
+
+        $editor->handleInput("\r");
+        $editor->handleInput('Z');
+
+        $this->assertSame("aX\nZb\naX\nZb\n", $editor->getDocument()->getText());
+    }
+
     public function testSelectAllOccurrencesWithNoWordIsNoOp(): void
     {
         $editor = $this->editor("   \n");
