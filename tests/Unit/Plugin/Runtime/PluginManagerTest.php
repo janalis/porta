@@ -20,6 +20,7 @@ use Porta\Plugin\Api\AbstractPlugin;
 use Porta\Plugin\Api\DisposablePlugin;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Plugin\Api\PluginException;
+use Porta\Plugin\Api\PortaPlugin;
 use Porta\Plugin\Api\ServerNotFound;
 use Porta\Plugin\Api\ServerRole;
 use Porta\Plugin\Runtime\PluginManager;
@@ -229,6 +230,28 @@ final class PluginManagerTest extends TestCase
 
         $manager->deactivate('blame', new CommandRegistry());
 
+        $this->assertSame([1 => 'kept'], $editor->decorations->lineAnnotations);
+
+        // What its own teardown publishes on the way out goes too.
+        $late = $manager->api('late', '/p', new PluginSettings('/p', []));
+        $manager->commit($late, new readonly class($late) implements PortaPlugin, DisposablePlugin {
+            public function __construct(
+                private PluginApi $api,
+            ) {}
+
+            public function name(): string
+            {
+                return 'late';
+            }
+
+            public function activate(PluginApi $api): void {}
+
+            public function deactivate(): void
+            {
+                $this->api->setLineAnnotations([2 => 'published while leaving']);
+            }
+        });
+        $manager->deactivate('late', new CommandRegistry());
         $this->assertSame([1 => 'kept'], $editor->decorations->lineAnnotations);
 
         // A retract that fails is reported, and the plugin still leaves.

@@ -399,6 +399,43 @@ final class SettingsGlobalScopeTest extends TestCase
         );
     }
 
+    /** Nor when what stays off is a plugin it needs: neither is turned on, and the toast names the one the file keeps off. */
+    public function testEnablingAPluginWhoseRequirementTheGlobalFileDisablesTurnsNothingOn(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject(['.porta/config.json' => \json_encode(['disabledPlugins' => ['zbase']], \JSON_THROW_ON_ERROR)]);
+        $source =
+            static fn (string $name): string => "<?php\nreturn new class implements Porta\\Plugin\\Api\\PortaPlugin {\n    public function name(): string { return '{$name}'; }\n    public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {}\n};\n";
+        $this->project = new TempProject([
+            'A.php' => "<?php\n",
+            '.porta/plugins/zbase/porta.php' => $source('zbase'),
+            '.porta/plugins/app/porta.php' => $source('app'),
+            '.porta/plugins/app/composer.json' => '{"extra":{"porta":{"requires":["zbase"]}}}',
+            '.porta.json' => '{"disabledPlugins":["app"]}',
+        ]);
+        \putenv('PORTA_HOME='.$this->home->dir);
+
+        $this->runIde(
+            $this->project,
+            $this->project->path('A.php'),
+            [
+                300 => function (Tui $tui, $terminal, Ide $ide): void {
+                    Services::resolve($ide, PluginLifecycle::class)->enable('app');
+                    $this->frame($tui);
+                },
+                500 => function ($tui, $terminal, Ide $ide): void {
+                    $lifecycle = Services::resolve($ide, PluginLifecycle::class);
+                    $manager = Probe::object($lifecycle, 'plugins');
+                    $this->assertInstanceOf(PluginManager::class, $manager);
+                    $this->assertFalse($manager->hasPlugin('zbase'));
+                    $this->assertFalse($manager->hasPlugin('app'), 'not turned on without what it needs');
+                    $this->assertTrue($lifecycle->isDisabled('app'));
+                    $this->assertStringContainsString('zbase stays off', \implode(' | ', Toasts::all($ide)));
+                },
+            ],
+        );
+    }
+
     /**
      * The language page's LSP and debug rows carry provenance too.
      *

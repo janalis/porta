@@ -363,16 +363,6 @@ final class PluginManager implements
         if (!\array_key_exists($name, $this->names)) {
             return;
         }
-        // What it put on screen goes first, while its API may still act:
-        // its findings, marks, statuses and annotations stayed, frozen,
-        // until each buffer was closed.
-        $api = $this->apis[$name] ?? null;
-        unset($this->apis[$name]);
-        try {
-            $api?->retractPublished();
-        } catch (\Throwable $error) {
-            $this->reportFailure($name, $error);
-        }
         unset($this->names[$name]);
 
         // Plugin-owned resources first, in the plugin's own fault barrier: a
@@ -429,6 +419,17 @@ final class PluginManager implements
         $this->settings->removeFor($name);
         // Its collaborators leave with it: nothing would ever take them out.
         $this->runtime?->participants->set(Participants::pluginSource($name), []);
+        // And what it put on screen: its findings, marks, statuses and
+        // annotations stayed, frozen, until each buffer was closed. Last, so
+        // what its own teardown or a listener published on the way out goes
+        // too.
+        $api = $this->apis[$name] ?? null;
+        unset($this->apis[$name]);
+        try {
+            $api?->retractPublished();
+        } catch (\Throwable $error) {
+            $this->reportFailure($name, $error);
+        }
         if (\count($this->tools) !== $toolCount) {
             $this->events->dispatch(new ToolsChanged());
         }

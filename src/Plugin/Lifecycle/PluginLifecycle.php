@@ -256,27 +256,30 @@ final class PluginLifecycle implements PluginLifecycleOps
         // user switched off is a worse surprise than a message.
         $required = $this->missingRequirementsOf($name);
         $targets = [...$required, $name];
-        // The choice is written to this layer first. If the OTHER file still
-        // disables it, nothing is turned on: it used to be activated anyway,
-        // running and shown On while the toast said it stays off — and off it
-        // was, at the next boot.
-        $this->persistEnabledChoice($name);
-        $blockedBy = $this->layerStillDisabling($name);
-        if (null !== $blockedBy) {
-            $this->disabled[$name] = true;
+        // PASS 1, complete and synchronous: every choice reaches .porta.json
+        // before any subprocess starts, so a crash or a quit mid-install still
+        // records what the user asked for.
+        foreach ($targets as $target) {
+            $this->persistEnabledChoice($target);
+        }
+        // If the OTHER file still disables it, or a plugin it needs, nothing
+        // is turned on: it used to be activated anyway, running and shown On
+        // while the toast said it stays off — and off it was, at the next boot.
+        foreach ($targets as $target) {
+            $blockedBy = $this->layerStillDisabling($target);
+            if (null === $blockedBy) {
+                continue;
+            }
+            foreach ($targets as $off) {
+                $this->disabled[$off] = true;
+            }
             $this->notifier->warn($this->translator->trans('%plugin% stays off — %file% disables it', [
-                '%plugin%' => $name,
+                '%plugin%' => $target,
                 '%file%' => $this->files->label($blockedBy),
             ]));
             $this->afterToggle();
 
             return;
-        }
-        // PASS 1, complete and synchronous: every choice reaches .porta.json
-        // before any subprocess starts, so a crash or a quit mid-install still
-        // records what the user asked for.
-        foreach ($required as $target) {
-            $this->persistEnabledChoice($target);
         }
         $this->activateQueue($targets, $name, $required, new EnableProgress());
     }
