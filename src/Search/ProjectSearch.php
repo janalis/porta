@@ -26,12 +26,16 @@ final class ProjectSearch
 {
     public const int MAX_RESULTS = 500;
 
+    /** Folders, by name, no project search walks — Go to File's index reads it too. */
+    public const array EXCLUDES = ['.git', 'node_modules', 'vendor', '.idea', '.vscode'];
+
     /**
-     * Folders no project search walks — Go to File's index reads it too. `.porta/`
-     * is Porta's own: local history keeps plain copies of every file there, so
-     * each hit came back once per snapshot, and Replace All rewrote them.
+     * Where local history keeps a plain copy of each saved file: searched, each
+     * hit came back once per snapshot, and Replace All rewrote them. A PATH, not
+     * a name — the rest of `.porta/` is the user's too: a project's own plugins
+     * live in `.porta/plugins`.
      */
-    public const array EXCLUDES = ['.git', '.porta', 'node_modules', 'vendor', '.idea', '.vscode'];
+    public const string HISTORY = '.porta/history';
 
     /** The largest file the PHP walk reads: 1 MiB. */
     private const int MAX_FILE_BYTES = 1_048_576;
@@ -125,9 +129,18 @@ final class ProjectSearch
         foreach (self::EXCLUDES as $dir) {
             $flags[] = '--exclude-dir='.$dir;
         }
+        // grep's --exclude-dir matches a folder's NAME, so the history folder is
+        // left out by handing grep its siblings instead. A remote project's grep
+        // runs on the server, where no local history is kept.
+        $grepPaths = null === $this->remote ? $this->withoutHistory($paths) : $paths;
+        if ([] === $grepPaths) {
+            $onDone([]); // nothing but the history there: grep with no path would read stdin
+
+            return;
+        }
         // The scope paths are arguments, not the cwd: grep still runs in $rootDir
         // (AsyncProcess below), so a `subdir/file:line` match stays root-relative.
-        $args = static fn (string $regex): array => [...$flags, $options->regex ? $regex : '-F', '--', $query, ...$paths];
+        $args = static fn (string $regex): array => [...$flags, $options->regex ? $regex : '-F', '--', $query, ...$grepPaths];
         // A remote project's cache holds only what was opened: its grep runs
         // on the server, where every file is — named `grep` there, since the
         // path found here is this machine's, and asked for ERE, since whether
@@ -409,7 +422,7 @@ final class ProjectSearch
             ->ignoreDotFiles(false)
             ->ignoreUnreadableDirs() // passed over, as grep passes it
             ->ignoreVCS(false)
-            ->exclude(self::EXCLUDES);
+            ->exclude([...self::EXCLUDES, ...(\str_starts_with(self::HISTORY.'/', $prefix) && self::HISTORY.'/' !== $prefix ? [\substr(self::HISTORY, \strlen($prefix))] : [])]);
         // The mask (an OR of basename globs, as grep's --include) and the size
         // cap are judged here, not by Finder: a file Finder turns away never
         // reaches the walk, so a tree of them — 47,000 coverage pages under a
@@ -628,5 +641,39 @@ final class ProjectSearch
         }
 
         return $this->grep;
+    }
+
+    /**
+     * $paths with every folder that holds {@see HISTORY} replaced by what is
+     * in it but the way there — `.` by the root's entries, `.porta` by its own —
+     * so a recursive grep never reaches the history folder. Unchanged when the
+     * project keeps no history.
+     *
+     * @param list<string> $paths
+     *
+     * @return list<string>
+     */
+    private function withoutHistory(array $paths): array
+    {
+        if (!\is_dir($this->rootDir.'/'.self::HISTORY)) {
+            return $paths;
+        }
+        $expanded = [];
+        foreach ($paths as $path) {
+            $prefix = '.' === $path ? '' : \rtrim($path, characters: '/').'/';
+            if (!\str_starts_with(self::HISTORY.'/', $prefix)) {
+                $expanded[] = $path;
+
+                continue;
+            }
+            if (self::HISTORY.'/' === $prefix) {
+                continue; // the history folder itself, named as the scope
+            }
+            $entries = \scandir('' === $prefix ? $this->rootDir : $this->rootDir.'/'.$prefix);
+            $children = \array_map(static fn (string $entry): string => $prefix.$entry, \array_values(\array_diff(false === $entries ? [] : $entries, ['.', '..'])));
+            \array_push($expanded, ...$this->withoutHistory($children));
+        }
+
+        return $expanded;
     }
 }

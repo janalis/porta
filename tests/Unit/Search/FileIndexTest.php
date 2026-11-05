@@ -59,7 +59,15 @@ final class FileIndexTest extends TestCase
 
     public function testExcludesVcsAndDependencyDirs(): void
     {
-        $project = new TempProject(['a.php' => '', '.git/config' => 'x', '.porta/history/ab/1.snap' => 'x', 'node_modules/lib.js' => 'x', '.idea/x.iml' => 'y', 'vendor/pkg/Lib.php' => 'z']);
+        $project = new TempProject([
+            'a.php' => '',
+            '.git/config' => 'x',
+            '.porta/history/ab/1.snap' => 'x',
+            '.porta/plugins/acme/porta.php' => '',
+            'node_modules/lib.js' => 'x',
+            '.idea/x.iml' => 'y',
+            'vendor/pkg/Lib.php' => 'z',
+        ]);
 
         $paths = \array_column(new FileIndex($project->dir)->entries(), 'path');
 
@@ -67,7 +75,8 @@ final class FileIndexTest extends TestCase
         $this->assertNotContains('.git/config', $paths);
         $this->assertStringNotContainsString('node_modules', \implode('|', $paths));
         $this->assertStringNotContainsString('.idea', \implode('|', $paths));
-        $this->assertStringNotContainsString('.porta', \implode('|', $paths), "local history's snapshots are Porta's, not the project's");
+        $this->assertStringNotContainsString('.porta/history', \implode('|', $paths), "local history's snapshots are Porta's, not the project's");
+        $this->assertContains('.porta/plugins/acme/porta.php', $paths, "a project's own plugin is the user's code");
         $this->assertStringNotContainsString('vendor', \implode('|', $paths), 'vendor/ can eat the whole file budget by itself');
     }
 

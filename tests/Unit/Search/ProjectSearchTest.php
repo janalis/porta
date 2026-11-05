@@ -124,6 +124,41 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame(1, $results[0]['line'], '0-based line index');
     }
 
+    /**
+     * Local history's snapshots are left out, and nothing else of `.porta/`:
+     * a project's own plugins live in `.porta/plugins`.
+     *
+     * @return list<string> the sorted result paths, for the whole project and scoped to `.porta`
+     */
+    private function portaPaths(SearchBackend $backend, string|array $scope): array
+    {
+        $project = new TempProject([
+            'src/A.php' => "<?php\n// needle\n",
+            '.porta/plugins/acme/porta.php' => "<?php\n// needle in a project plugin\n",
+            '.porta/history/ab12/1700000000.snap' => "<?php\n// needle in a snapshot\n",
+        ]);
+        if (SearchBackend::PhpFallback === $backend) {
+            \putenv('PATH=/nonexistent');
+        }
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: $scope), 'path');
+        \sort($paths);
+
+        return $paths;
+    }
+
+    public function testGrepLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
+    {
+        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, '.'));
+        $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::Grep, '.porta'));
+        $this->assertSame([], $this->portaPaths(SearchBackend::Grep, ['.porta/history']), 'named as the scope, it is still left out');
+    }
+
+    public function testThePhpWalkLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
+    {
+        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::PhpFallback, '.'));
+        $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::PhpFallback, '.porta'));
+    }
+
     /** @return list<string> the sorted result paths */
     private function scopedPaths(SearchBackend $backend): array
     {
@@ -599,7 +634,7 @@ final class ProjectSearchTest extends TestCase
      */
     public function testARegexIsReadAsPcreWhereGrepCanReadIt(): void
     {
-        $project = $this->fixtures();
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n"]); // no history: grep is handed `.`
         $tools = new TempProject([], 'porta-pcregrep-');
         $log = $tools->path('argv.log');
         $grep = static function (int $probe) use ($tools, $log): void {

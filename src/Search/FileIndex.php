@@ -87,7 +87,7 @@ final class FileIndex
         // PHP project it can eat the whole MAX_FILES budget by itself, so the
         // project's own files were the ones truncated away. The setting
         // re-includes it for people who go-to-file into dependencies.
-        $excludes = $this->includeVendor ? \array_values(\array_diff(ProjectSearch::EXCLUDES, ['vendor'])) : ProjectSearch::EXCLUDES;
+        $excludes = [...($this->includeVendor ? \array_values(\array_diff(ProjectSearch::EXCLUDES, ['vendor'])) : ProjectSearch::EXCLUDES), ProjectSearch::HISTORY];
         // A tree git ignores — a coverage report, a framework's cache — is not
         // walked: its files filled the budget and pushed the project's own out.
         // A single ignored file (`.env`) is kept, and so is vendor/ when asked for.
