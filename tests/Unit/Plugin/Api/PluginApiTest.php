@@ -895,6 +895,13 @@ final class PluginApiTest extends TestCase
         $this->buffers->open($at('dirty.php'), "<?php\n")->document->insert('x');
         $this->assertStringContainsString('unsaved changes', (string) $files->delete($at('dirty.php')));
         $this->assertFileExists($at('dirty.php'));
+        // A plugin may hold the other side of a symlink: the buffer is found, and its edits kept.
+        $other = new TempProject();
+        \symlink($project->dir, $other->path('repo'));
+        $this->assertNotNull($files->text($other->path('repo/dirty.php')));
+        $this->assertSame($files->text($at('dirty.php')), $files->text($other->path('repo/dirty.php')));
+        $this->assertStringContainsString('unsaved changes', (string) $files->delete($other->path('repo/dirty.php')));
+        $this->assertFileExists($at('dirty.php'));
         $this->assertStringContainsString('is a folder', (string) $files->delete($at('dir')));
         $this->assertNull($files->delete($at('empty.txt')));
         $this->assertFileDoesNotExist($at('empty.txt'));

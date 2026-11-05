@@ -76,7 +76,7 @@ final readonly class OpenBuffers
      */
     public function text(string $path): ?string
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
 
         return null === $buffer || $buffer->isViewer() ? null : $buffer->document->getText();
     }
@@ -90,7 +90,7 @@ final readonly class OpenBuffers
      */
     public function selection(string $path): ?array
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
         $range = null === $buffer || $buffer->isViewer() ? null : $buffer->document->getSelectionRange();
         if (null === $buffer || null === $range) {
             return null;
@@ -126,7 +126,7 @@ final readonly class OpenBuffers
      */
     public function edits(string $path, array $edits): ?string
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
         if (null === $buffer || $buffer->isViewer()) {
             return \sprintf('%s is not open as text', $path);
         }
@@ -158,7 +158,7 @@ final readonly class OpenBuffers
      */
     public function version(string $path): ?int
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
 
         return null === $buffer || $buffer->isViewer() ? null : $buffer->document->version;
     }
@@ -176,7 +176,7 @@ final readonly class OpenBuffers
      */
     public function delegateHistory(string $path, \Closure $undo, \Closure $redo): bool
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
         if (null === $buffer || $buffer->isViewer()) {
             return false;
         }
@@ -188,7 +188,7 @@ final readonly class OpenBuffers
     /** Give an open buffer its own undo and redo back — from now on, nothing earlier. */
     public function reclaimHistory(string $path): void
     {
-        $document = $this->buffers->get($path)?->document;
+        $document = $this->buffers->find($path)?->document;
         if (null !== $document) {
             $document->historyDelegate = null;
         }
@@ -201,7 +201,7 @@ final readonly class OpenBuffers
      */
     public function makeReadOnly(string $path): bool
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
         if (null === $buffer || $buffer->isViewer()) {
             return false;
         }
@@ -213,7 +213,7 @@ final readonly class OpenBuffers
     /** Let the user edit an open buffer again. */
     public function makeWritable(string $path): void
     {
-        $document = $this->buffers->get($path)?->document;
+        $document = $this->buffers->find($path)?->document;
         if (null !== $document) {
             $document->readOnly = false;
         }
@@ -271,7 +271,7 @@ final readonly class OpenBuffers
     {
         return match (true) {
             \is_dir($path) => \sprintf('%s is a folder — only files are deleted this way', $path),
-            true === $this->buffers->get($path)?->isDirty() => \sprintf('%s has unsaved changes in the editor — they are the user\'s to keep or drop', $path),
+            true === $this->buffers->find($path)?->isDirty() => \sprintf('%s has unsaved changes in the editor — they are the user\'s to keep or drop', $path),
             default => $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]])->refused,
         };
     }

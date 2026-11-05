@@ -6,6 +6,7 @@ namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
 use Porta\Highlight\CodeHighlighterFactory;
+use Porta\Support\Files;
 use Porta\Support\IndexMove;
 
 /**
@@ -143,6 +144,16 @@ final class BufferManager
     public function get(string $path): ?Buffer
     {
         return $this->buffers[$path] ?? null;
+    }
+
+    /**
+     * The buffer open under $path, under either spelling: buffers are keyed by
+     * the path they were opened with, and a caller may hold the other side of
+     * a symlink — the project root itself is one on macOS temp dirs.
+     */
+    public function find(string $path): ?Buffer
+    {
+        return $this->buffers[$path] ?? $this->buffers[Files::canonical($path)] ?? null;
     }
 
     public function active(): ?Buffer

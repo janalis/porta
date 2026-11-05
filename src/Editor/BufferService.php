@@ -170,7 +170,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
             $this->buffers->close($path);
             $this->openFile($target);
             if (null !== $carried) {
-                $reopened = $this->buffers->get($target) ?? $this->buffers->get(Files::canonical($target));
+                $reopened = $this->buffers->find($target);
                 $reopened?->document->replaceAll($carried);
             }
         }

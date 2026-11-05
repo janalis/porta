@@ -363,7 +363,7 @@ final readonly class WorkspaceEditor
 
     private function bufferAt(string $path): ?Buffer
     {
-        return $this->buffers->get($path) ?? $this->buffers->get(Files::canonical($path));
+        return $this->buffers->find($path);
     }
 
     private function closeBufferAt(string $path): void
