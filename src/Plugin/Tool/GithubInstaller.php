@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Tool;
 
+use Porta\Support\Files;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -163,8 +164,7 @@ final readonly class GithubInstaller
     private function prepareScratch(): ?string
     {
         $this->reapStaleScratch();
-        // @mago-expect lint:no-error-control-operator -- a blocked scratch dir is reported as 'cannot create …' through the return; the PHP warning would only repeat it in the log.
-        $ready = \is_dir($this->workDir) || @\mkdir($this->workDir, permissions: 0o755, recursive: true) || \is_dir($this->workDir);
+        $ready = Files::ensureDir($this->workDir, permissions: 0o755);
 
         return $ready ? null : 'cannot create '.$this->workDir;
     }
@@ -501,8 +501,7 @@ final readonly class GithubInstaller
      */
     private function land(string $extracted, \Closure $onSuccess, \Closure $onFailure): void
     {
-        // @mago-expect lint:no-error-control-operator -- an unwritable destination is reported through onFailure; the PHP warning would only repeat it in the log.
-        if (!\is_dir($this->binDir) && !@\mkdir($this->binDir, permissions: 0o755, recursive: true) && !\is_dir($this->binDir)) {
+        if (!Files::ensureDir($this->binDir, permissions: 0o755)) {
             $onFailure('cannot create '.$this->binDir);
 
             return;

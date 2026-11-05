@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Install;
 
+use Porta\Support\Files;
+
 /**
  * The `porta` command on PATH, as the Command line page of the settings manages
  * it: a SYMLINK to the running binary, `~/.local/bin/porta` unless one is
@@ -75,8 +77,7 @@ final readonly class CommandLink
         }
         $target = $this->target();
         $dir = \dirname($target);
-        // @mago-expect lint:no-error-control-operator -- a directory it may not create is reported by the return value below, not as a warning.
-        $ready = \is_dir($dir) || @\mkdir($dir, permissions: 0o755, recursive: true) || \is_dir($dir);
+        $ready = Files::ensureDir($dir, permissions: 0o755);
 
         return $ready ? $this->relink($dir, $target) : 'could not create '.$dir;
     }

@@ -47,6 +47,24 @@ final class FilesTest extends TestCase
         $this->assertSame('hello', Files::readWritable($project->path('a.txt')));
     }
 
+    public function testEnsureDirMakesTheDirectoryAndItsParents(): void
+    {
+        $project = new TempProject();
+
+        $this->assertTrue(Files::ensureDir($project->path('a/b/c'), permissions: 0o750));
+        $this->assertDirectoryExists($project->path('a/b/c'));
+        $this->assertSame(0o750, \fileperms($project->path('a/b/c')) & 0o777 & ~\umask(), 'the permissions asked for, less the umask');
+        $this->assertTrue(Files::ensureDir($project->path('a/b/c')), 'one that is already there is a success');
+    }
+
+    public function testEnsureDirAnswersFalseQuietlyForOneThatCannotBeMade(): void
+    {
+        $project = new TempProject(['file' => 'x']);
+
+        // failOnWarning is the other half: mkdir's warning, unsilenced, would fail this test.
+        $this->assertFalse(Files::ensureDir($project->path('file/below')), 'a file stands where the parent would be');
+    }
+
     public function testResolveIsRealpathWhereRealpathAnswers(): void
     {
         $project = new TempProject(['docs/a.md' => "a\n"]);

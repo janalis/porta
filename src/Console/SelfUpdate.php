@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Console;
 
 use Porta\Support\Decoded;
+use Porta\Support\Files;
 
 /**
  * `porta --self-update`: replace the running phar with the latest GitHub
@@ -75,8 +76,7 @@ final readonly class SelfUpdate
             throw new \RuntimeException(\sprintf('%s is not writable — rerun with the rights to replace it (sudo, if you installed it system-wide).', $phar));
         }
         $scratch = \sys_get_temp_dir().'/porta-update-'.\bin2hex(\random_bytes(6));
-        // @mago-expect lint:no-error-control-operator -- a scratch folder that cannot be made is reported by the exception, not a warning
-        if (!@\mkdir($scratch) && !\is_dir($scratch)) {
+        if (!Files::ensureDir($scratch)) {
             // an unwritable temp dir is environmental: the folder's name is fresh
             // @codeCoverageIgnoreStart
             throw new \RuntimeException(\sprintf('cannot create %s; nothing was changed.', $scratch));

@@ -6,6 +6,7 @@ namespace Porta\Lsp;
 
 use Porta\Ide;
 use Porta\Support\Decoded;
+use Porta\Support\JsonKey;
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\NonBlockingWriter;
 use Porta\Support\OrphanGuard;
@@ -570,8 +571,7 @@ final class LspClient implements LspClientInterface
                 }
                 $watchers[] = ['glob' => $watcher['globPattern'], 'kind' => \is_int($watcher['kind'] ?? null) ? $watcher['kind'] : 7];
             }
-            // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
-            $this->watcherRegistrations[(string) \json_encode($registration['id'] ?? null)] = $watchers;
+            $this->watcherRegistrations[JsonKey::of($registration['id'] ?? null)] = $watchers;
         }
 
         return null;
@@ -580,8 +580,7 @@ final class LspClient implements LspClientInterface
     private function unregister(mixed $unregistrations): null
     {
         foreach (Decoded::objects($unregistrations) as $unregistration) {
-            // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
-            unset($this->watcherRegistrations[(string) \json_encode($unregistration['id'] ?? null)]);
+            unset($this->watcherRegistrations[JsonKey::of($unregistration['id'] ?? null)]);
         }
 
         return null;

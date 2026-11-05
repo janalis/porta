@@ -30,11 +30,6 @@ final class Files
     }
 
     /**
-     * The file's bytes when it exists and is writable, or null otherwise —
-     * the guard every in-place-edit caller needs before reading a file it
-     * intends to overwrite.
-     */
-    /**
      * The text a file holds, for keeping before it goes: null for a
      * directory, a missing file, or one too large to be text.
      */
@@ -43,9 +38,30 @@ final class Files
         return \is_file($path) && (int) \filesize($path) <= self::MAX_TEXT_BYTES ? (string) \file_get_contents($path) : null;
     }
 
+    /**
+     * The file's bytes when it exists and is writable, or null otherwise —
+     * the guard every in-place-edit caller needs before reading a file it
+     * intends to overwrite.
+     */
     public static function readWritable(string $path): ?string
     {
         return \is_file($path) && \is_writable($path) ? (string) \file_get_contents($path) : null;
+    }
+
+    /**
+     * Whether $dir is a directory once this returns — made, with its parents,
+     * when it was not.
+     *
+     * Race-safe: a concurrent process (a paratest worker, a second window)
+     * that makes it first is a success, not a failure, which is why the
+     * re-check after a failed mkdir. A directory that cannot be made is the
+     * false return for the caller to report in its own words; PHP's warning
+     * would arrive first and say it worse, so it is silenced here, once.
+     */
+    public static function ensureDir(string $dir, int $permissions = 0o777): bool
+    {
+        // @mago-expect lint:no-error-control-operator -- the false return is the report; see the docblock
+        return \is_dir($dir) || @\mkdir($dir, $permissions, recursive: true) || \is_dir($dir);
     }
 
     /**

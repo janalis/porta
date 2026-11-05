@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Support;
 
+use Porta\Support\JsonKey;
+
 /**
  * The provider-closure pattern the strip widgets share: content is pulled from
  * a provider on each frame so the strip always reflects the model's state, and
@@ -36,8 +38,7 @@ trait ProviderFingerprint
     /** Repaint when the provided content changed since the last frame. */
     private function refreshFingerprint(mixed $provided): void
     {
-        // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
-        $fingerprint = (string) \json_encode($provided);
+        $fingerprint = JsonKey::of($provided);
         if ($fingerprint !== $this->lastFingerprint) {
             $this->lastFingerprint = $fingerprint;
             $this->invalidate();

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Support\Files;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -189,8 +190,7 @@ final class CoveragePluginsCommand extends Command
      */
     private function pool(SymfonyStyle $io, OutputInterface $errors, array $shards, int $concurrency, int $timeout, string $outputDir): int
     {
-        // @mago-expect lint:no-error-control-operator -- an unusable output path is reported below; the warning would arrive first and turn a clear message into a PHP notice.
-        if (!\is_dir($outputDir) && !@\mkdir($outputDir, permissions: 0o777, recursive: true) && !\is_dir($outputDir)) {
+        if (!Files::ensureDir($outputDir)) {
             $errors->writeln('coverage:plugins: could not create '.$outputDir.'.');
 
             return Command::INVALID;

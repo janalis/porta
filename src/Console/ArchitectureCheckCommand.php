@@ -263,6 +263,7 @@ final class ArchitectureCheckCommand extends Command
         'Input>Ui',
         'Input>Widget',
         'Input>Workbench',
+        'Install>Support', // Files::ensureDir: the race-safe mkdir every writer of a directory shares
         'Layout>Config',
         'Layout>Container',
         'Layout>Input',

@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\PollBackoff;
 use Porta\Support\GitIgnored;
+use Porta\Support\JsonKey;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\Glob;
@@ -143,8 +144,7 @@ final class WatchedFiles
     private function begin(): ?\Iterator
     {
         $watchers = $this->lsp->fileWatchers();
-        // @noinspection JsonEncodingApiUsageInspection -- a key, not a payload: a value that cannot be encoded maps to the same empty key, it does not throw
-        $watching = (string) \json_encode($watchers);
+        $watching = JsonKey::of($watchers);
         if ($watching !== $this->watching) {
             $this->known = null; // what is watched changed: this sweep is the new baseline
             $this->watching = $watching;
