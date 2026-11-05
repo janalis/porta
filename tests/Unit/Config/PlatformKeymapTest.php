@@ -19,12 +19,12 @@ final class PlatformKeymapTest extends TestCase
 
     public function testWindowsAndLinuxLeadWithAKeyTheirTerminalsHandOver(): void
     {
-        // Windows Terminal keeps Alt+Enter, Ctrl+Shift+V and Ctrl+Shift+K;
-        // the Linux terminals keep Ctrl+Shift+V, and Konsole Ctrl+Shift+K.
+        // Windows Terminal keeps Alt+Enter and Ctrl+Shift+V; the Linux
+        // terminals keep Ctrl+Shift+V.
         $windows = PlatformKeymap::overrides(KeymapPlatform::Windows);
         $this->assertSame(['alt+i', 'alt+enter'], $windows['code_action']);
         $this->assertSame(['alt+y', 'ctrl+shift+v'], $windows['paste_history']);
-        $this->assertSame(['alt+k', 'ctrl+shift+k'], $windows['git_push']);
+        $this->assertArrayNotHasKey('git_push', $windows, 'Alt+K everywhere: Ctrl+Shift+K is the editor\'s Delete Line');
 
         $linux = PlatformKeymap::overrides(KeymapPlatform::Linux);
         $this->assertArrayNotHasKey('code_action', $linux, 'Alt+Enter reaches the IDE there');
@@ -44,6 +44,29 @@ final class PlatformKeymapTest extends TestCase
                 $this->assertSame([], \array_values(\array_intersect($added, $taken)), $platform->value.' '.$action.' takes a key something else ships with');
             }
         }
+    }
+
+    /**
+     * An IDE key runs before the editor's, so one the editor also binds hides
+     * it — Ctrl+Shift+K pushed to the remote where the docs promised Delete
+     * Line. The pairs below are each enabled only where the editor is not
+     * reading keys: the tree has focus, or a debug session is stopped.
+     */
+    public function testNoIdeKeyHidesAnEditorKeyOutsideItsOwnContext(): void
+    {
+        $contextual = ['f7' => 'debug_step_into', 'ctrl+x' => 'tree_cut', 'ctrl+c' => 'tree_copy', 'ctrl+v' => 'tree_paste', 'delete' => 'tree_delete', 'shift+f6' => 'tree_rename'];
+        $editor = \array_merge(...\array_values(EditorKeymap::defaults()));
+        $hidden = [];
+        foreach (ActionCatalog::ideDefaults() as $action => $keys) {
+            foreach (\array_intersect($keys, $editor) as $key) {
+                if (($contextual[$key] ?? null) === $action) {
+                    continue;
+                }
+                $hidden[] = $key.' '.$action;
+            }
+        }
+
+        $this->assertSame([], $hidden);
     }
 
     public function testTheMacResetsWithItsDeleteKeyEvenWithoutCmdChords(): void

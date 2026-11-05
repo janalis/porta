@@ -69,30 +69,27 @@ final class PlatformKeymap
 
     /**
      * Windows: a key for what Windows Terminal keeps for itself. It takes
-     * Alt+Enter (full screen) and Ctrl+Shift+V (paste) and Ctrl+Shift+K
-     * (clear buffer) before the IDE sees them, so each action gains a key it
-     * does not — and leads with it, the key the hints name. The original stays
-     * for a terminal that hands it over.
+     * Alt+Enter (full screen) and Ctrl+Shift+V (paste) before the IDE sees
+     * them, so each action gains a key it does not — and leads with it, the
+     * key the hints name. The original stays for a terminal that hands it
+     * over.
      *
      * @var array<string, list<string>>
      */
     private const array WINDOWS = [
         'code_action' => ['alt+i', 'alt+enter'],
         'paste_history' => ['alt+y', 'ctrl+shift+v'],
-        'git_push' => ['alt+k', 'ctrl+shift+k'],
     ];
 
     /**
      * Linux: GNOME Terminal, GNOME Console and Konsole all keep Ctrl+Shift+V
-     * (paste), and Konsole Ctrl+Shift+K. Without the Kitty keyboard protocol
-     * neither chord could be told from its Ctrl-only form anyway — Ctrl+Shift+K
-     * arrives as Ctrl+K — so the Alt key leads here too.
+     * (paste). Without the Kitty keyboard protocol the chord could not be told
+     * from Ctrl+V anyway, so the Alt key leads here too.
      *
      * @var array<string, list<string>>
      */
     private const array LINUX = [
         'paste_history' => ['alt+y', 'ctrl+shift+v'],
-        'git_push' => ['alt+k', 'ctrl+shift+k'],
     ];
 
     /**

@@ -284,7 +284,10 @@ final class ActionCatalog
         // menu's skip-an-unregistered-adoptable rule is then exactly right —
         // the whole Git group is hidden in the same case.
         'ide_git' => ['label' => 'Git: Changes', 'keys' => ['ctrl+alt+d'], 'adoptable' => true],
-        'git_push' => ['label' => 'Git: Push', 'keys' => ['ctrl+shift+k'], 'adoptable' => true],
+        // Not Ctrl+Shift+K: that is the editor's Delete Line, and an IDE key
+        // runs before the editor's — a line deleted in a terminal that reports
+        // the chord pushed to the remote at once.
+        'git_push' => ['label' => 'Git: Push', 'keys' => ['alt+k'], 'adoptable' => true],
         'ide_settings' => ['label' => 'Settings…', 'keys' => ['ctrl+,']],
         'ide_help' => ['label' => 'Documentation', 'keys' => ['f1']],
         'ide_menu' => ['label' => 'Open Menu', 'keys' => ['f10']],

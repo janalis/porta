@@ -69,10 +69,9 @@ and the hints name that one:
 | --- | --- | --- | --- |
 | Show quick fixes | `Alt+I` (and `Alt+Enter`) | `Alt+Enter` | Windows Terminal: `Alt+Enter` is full screen |
 | Paste from history | `Alt+Y` (and `Ctrl+Shift+V`) | `Alt+Y` (and `Ctrl+Shift+V`) | every major terminal: `Ctrl+Shift+V` is its paste |
-| Git: Push | `Alt+K` (and `Ctrl+Shift+K`) | `Alt+K` (and `Ctrl+Shift+K`) | Windows Terminal and Konsole: clear the screen |
 
-Without the Kitty keyboard protocol a terminal cannot tell `Ctrl+Shift+K` from
-`Ctrl+K` at all, which is one more reason the `Alt` keys lead. Other chords a
+Without the Kitty keyboard protocol a terminal cannot tell `Ctrl+Shift+V` from
+`Ctrl+V` at all, which is one more reason the `Alt` keys lead. Other chords a
 terminal keeps — `Ctrl+Shift+F`, `Ctrl+Shift+T`, `Ctrl+Shift+N` and `Ctrl+-` in
 GNOME Terminal and Konsole, `Ctrl+Shift+A`, `Ctrl+Shift+F` and `Ctrl+,` in
 Windows Terminal — have no free key to move to; reach those actions from the
@@ -271,6 +270,7 @@ replaces in the bar, and neither surface can have both.
 | `Alt+F9` | Run to the caret's line *(while paused)* |
 | `F7` / `Shift+F7` | Next / previous merge conflict *(when not debugging)* |
 | `Alt+M` | Resolve the conflict under the caret (ours / theirs / both) |
+| `Alt+K` | Git: Push (`Ctrl+Shift+K` is the editor's Delete line) |
 | `Ctrl+Alt+Shift+↓` / `Ctrl+Alt+Shift+↑` | Next / previous change against `HEAD` (click a gutter change mark to see it and revert it) |
 
 The debugger's `F7`/`F8`/`F9`/`Shift+F8`/`Ctrl+F2` keys are gated on a
