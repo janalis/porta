@@ -92,6 +92,9 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     public private(set) array $breakpointLines = [];
 
+    /** @var (\Closure(string, Document): void)|null see {@see whenLinesMove()} */
+    private ?\Closure $linesMoved = null;
+
     /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>, owner: string}>> 0-based line => the lenses shown ABOVE it */
     private array $codeLenses = [];
 
@@ -243,6 +246,18 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * all of this. What it buys is that the marks are never silently stale in
      * between, which is the state a user spends most of their time in.
      */
+    /**
+     * Run $listener whenever an edit changes the shown file's line count —
+     * with the file and its document, for a layer kept outside this store
+     * (the debugger's breakpoints) to move with its lines.
+     *
+     * @param \Closure(string, Document): void $listener
+     */
+    public function whenLinesMove(\Closure $listener): void
+    {
+        $this->linesMoved = $listener;
+    }
+
     public function remapForEdit(int $cursorLine, int $lineCount, ?string $path = null, ?Document $document = null): void
     {
         $delta = $lineCount - $this->vcsMarkLineCount;
@@ -263,6 +278,9 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         }
         $this->remapVcsMarks($atLine, $delta);
         $this->remapCoverage($atLine, $delta);
+        if (0 !== $delta && null !== $path && null !== $document && null !== $this->linesMoved) {
+            ($this->linesMoved)($path, $document);
+        }
     }
 
     /**

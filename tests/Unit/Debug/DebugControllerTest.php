@@ -632,6 +632,29 @@ final class DebugControllerTest extends TestCase
         $this->assertSame(1000, \array_first($variableRequests)['arguments']['variablesReference']);
     }
 
+    /**
+     * A line added above a breakpoint — an auto-import, the caret far below —
+     * moves the breakpoint with its statement, in the gutter and in the live
+     * session, where it used to stay on its line number and break on the
+     * statement before.
+     */
+    public function testABreakpointFollowsItsLineWhenAnEditAddsLinesAboveIt(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+        $controller->applyEditorDecorations('/p/prog.php');
+        $controller->toggleBreakpoint('/p/prog.php', 2); // `// l3`
+        $document = $this->editor->getDocument();
+        $document->setCursor(3, 0);
+
+        $document->applyEditsKeepingCursor([['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], 'newText' => "use App\\Foo;\n"]]);
+        $this->editor->notifyChange();
+
+        $this->assertSame('// l3', $document->getLine(3), 'the statement moved down a line');
+        $this->assertSame([3], $this->editor->decorations->breakpointLines, 'and the dot with it');
+        $this->assertSame([['line' => 4]], $this->client->argumentsOf('setBreakpoints')['breakpoints'], 'and the session was told');
+    }
+
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void
     {
         $controller = $this->controller();

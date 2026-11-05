@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Debug;
 
+use Porta\Editor\LineShift;
 use Porta\Support\ProjectPaths;
 
 /**
@@ -108,6 +109,23 @@ final class BreakpointStore
      * Pure: the caller hands over canonical paths, because by the time this
      * runs `$from` is gone from disk and cannot be resolved.
      */
+    /**
+     * The file's lines moved under an edit: each breakpoint follows its line,
+     * so it still stops at the statement it was set on. Two that the edit
+     * folded onto one line keep the first's details.
+     */
+    public function shift(string $path, LineShift $shift): void
+    {
+        $moved = [];
+        foreach ($this->breakpoints[$path] ?? [] as $line => $breakpoint) {
+            $moved[$shift->map($line)] ??= $breakpoint;
+        }
+        if ([] !== $moved) {
+            \ksort($moved);
+            $this->breakpoints[$path] = $moved;
+        }
+    }
+
     public function rename(string $from, string $to): void
     {
         foreach (\array_keys($this->breakpoints) as $file) {
