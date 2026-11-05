@@ -1489,6 +1489,32 @@ $a = f();
         $this->assertStringNotContainsString('abc12345', $screen);
     }
 
+    /**
+     * Enter on a result in the file in front shows its document AGAIN, and a
+     * plugin only re-publishes on a change of file: the re-show must keep what
+     * every writer put beside and under the lines, and still drop the rest.
+     */
+    public function testReShowingTheSameDocumentKeepsWhatPluginsWrote(): void
+    {
+        $editor = $this->editor("alpha;\nbeta;\n", '/tmp/a.php');
+        $document = $editor->getDocument();
+        $editor->decorations->setLineAnnotations([0 => '✓ passed'], 'phpunit');
+        $editor->decorations->setLineAnnotations([1 => 'abc12345 tester'], 'git');
+        $editor->decorations->setLineBlocks([1 => ['a review thread']], 'review');
+        $editor->decorations->setDebugValues([0 => '$x = 1']);
+
+        $editor->showDocument('/tmp/a.php', $document);
+
+        $this->assertSame([0 => '✓ passed', 1 => 'abc12345 tester'], $editor->decorations->lineAnnotations, 'every writer\'s notes, each kept apart');
+        $this->assertSame(['phpunit' => [0 => '✓ passed'], 'git' => [1 => 'abc12345 tester']], $editor->decorations->annotationsByOwner);
+        $this->assertSame(['a review thread'], $editor->decorations->lineBlocksAt(1));
+        $this->assertSame([], $editor->decorations->debugValues, 'what is not a plugin\'s note still resets');
+
+        $editor->showDocument('/tmp/a.php', new Document("alpha;\nbeta;\n"));
+        $this->assertSame([], $editor->decorations->lineAnnotations, 'another document — even of the same path — drops them');
+        $this->assertSame([], $editor->decorations->lineBlocksAt(1));
+    }
+
     public function testShowDocumentRebuildsMultiCaretBoundToTheNewDocument(): void
     {
         $editor = $this->editor();

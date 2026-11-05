@@ -1789,9 +1789,10 @@ final class PluginApi
      * plugins annotate shows both.
      *
      * Unlike {@see setDiagnostics} this takes no path: annotations belong to
-     * whatever the editor is showing, and the widget drops them on every
-     * document show. A plugin that wants them to survive a buffer switch
-     * re-publishes from {@see onBufferSwitched}.
+     * whatever the editor is showing, and the widget drops them when it shows
+     * another document (a re-show of the same one keeps them). A plugin that
+     * wants them back after a buffer switch re-publishes from
+     * {@see onBufferSwitched}.
      *
      * @param array<int, string> $byLine 0-based line => the text shown after it
      */
@@ -1809,8 +1810,8 @@ final class PluginApi
      *
      * Active-document-only and plugin-scoped, exactly like
      * {@see setLineAnnotations}: the map replaces what THIS plugin showed, an
-     * empty array clears it, and the editor drops every block on a document
-     * show, so re-publish from {@see onBufferSwitched}.
+     * empty array clears it, and the editor drops every block when it shows
+     * another document, so re-publish from {@see onBufferSwitched}.
      *
      * @param array<int, list<string>> $byLine 0-based line => the rows under it
      */

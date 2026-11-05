@@ -48,7 +48,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      *
      * @var array<string, array<int, string>> owner => 0-based line => text
      */
-    private array $annotationsByOwner = [];
+    public private(set) array $annotationsByOwner = [];
 
     /** @var array<int, string> 0-based line => the conversation's one-line summary, for the pointer's hint */
     public private(set) array $commentMarks = [];
@@ -76,7 +76,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      *
      * @var array<string, array<int, list<string>>> owner => 0-based line => rows
      */
-    private array $blocksByOwner = [];
+    public private(set) array $blocksByOwner = [];
 
     /** @var array<int, list<string>> every writer's rows merged, 0-based line => rows */
     private array $lineBlocks = [];
