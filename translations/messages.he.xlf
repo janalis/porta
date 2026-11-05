@@ -3606,6 +3606,10 @@
         <source>The server could not be searched: only the files opened here were</source>
         <target>לא ניתן היה לחפש בשרת: נבדקו רק הקבצים שנפתחו כאן</target>
       </trans-unit>
+      <trans-unit id="1231">
+        <source>Plugin &quot;%name%&quot; needs %requires%, which is not running — not loaded</source>
+        <target>התוסף &quot;%name%&quot; צריך את %requires%, שאינו פועל — לא נטען</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

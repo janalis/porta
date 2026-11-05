@@ -129,6 +129,22 @@ final class PluginLoaderTest extends TestCase
         $this->assertStringContainsString('"zulu"', self::renderAll($manager->warnings), 'the user is told which one, and why');
     }
 
+    /** A requirement ordered first but not running — its activate() threw — keeps its dependent out. */
+    public function testAPluginWhoseRequirementFailedToStartIsNotLoaded(): void
+    {
+        $project = new TempProject([
+            '.porta/plugins/zbase/porta.php' => $this->pluginSource('zbase', 'throw new \\RuntimeException("no database");'),
+            '.porta/plugins/app/porta.php' => $this->pluginSource('app'),
+            '.porta/plugins/app/composer.json' => '{"extra":{"porta":{"requires":["zbase"]}}}',
+        ]);
+
+        $manager = $this->load($project);
+
+        $this->assertFalse($manager->hasPlugin('zbase'));
+        $this->assertFalse($manager->hasPlugin('app'), 'not loaded half-working without what it needs');
+        $this->assertStringContainsString('Plugin "app" needs zbase, which is not running', self::renderAll($manager->warnings));
+    }
+
     public function testAnUnmetPlatformRequirementDeclinesByNameAndTakesDependentsAlong(): void
     {
         $project = new TempProject([

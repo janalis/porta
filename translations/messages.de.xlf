@@ -3606,6 +3606,10 @@
         <source>The server could not be searched: only the files opened here were</source>
         <target>Der Server konnte nicht durchsucht werden: nur die hier geöffneten Dateien wurden es</target>
       </trans-unit>
+      <trans-unit id="1231">
+        <source>Plugin &quot;%name%&quot; needs %requires%, which is not running — not loaded</source>
+        <target>Plugin „%name%“ braucht %requires%, das nicht läuft — nicht geladen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -249,6 +249,23 @@ final readonly class PluginLoader
      * Load, activate and commit one plugin entry file (also used for a plugin
      * installed after boot). Returns the failure, or null on success.
      */
+    /**
+     * What $manifest requires and is not RUNNING, as a refusal — ordered first
+     * is not enough: a requirement whose install failed, or whose activate()
+     * threw, left its dependents to load without it and break wherever they
+     * first reached for it.
+     */
+    private static function notRunning(PluginManifest $manifest, PluginManager $manager): ?ConfigWarning
+    {
+        $absent = \array_values(\array_filter($manifest->requires, static fn (string $required): bool => !$manager->hasPlugin($required)));
+
+        return (
+            [] === $absent
+                ? null
+                : new ConfigWarning('Plugin "%name%" needs %requires%, which is not running — not loaded', ['%name%' => \basename($manifest->directory), '%requires%' => \implode(', ', $absent)])
+        );
+    }
+
     public function loadFile(string $file, PluginManager $manager): ?ConfigWarning
     {
         // The live path too (a just-installed or re-enabled plugin never went
@@ -258,7 +275,7 @@ final readonly class PluginLoader
         // either. Reading the manifest runs nothing.
         $manifest = PluginManifest::beside($file);
         $refusal = $this->mayLoad(\dirname($file))
-            ? $this->unmet($manifest)
+            ? $this->unmet($manifest) ?? self::notRunning($manifest, $manager)
             : new ConfigWarning('Plugin "%name%" is in an untrusted project — not loaded', ['%name%' => \basename(\dirname($file))]);
         if (null !== $refusal) {
             return $refusal;
