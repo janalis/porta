@@ -147,7 +147,7 @@ final class ProjectSearch
         // grep's --exclude-dir matches a folder's NAME, so the history folder is
         // left out by handing grep its siblings instead. A remote project's grep
         // runs on the server, where no local history is kept.
-        $grepPaths = null === $this->remote ? $this->withoutHistory($paths) : $paths;
+        $grepPaths = $this->onServer() ? $paths : $this->withoutHistory($paths);
         if ([] === $grepPaths) {
             $onDone([]); // nothing but the history there: grep with no path would read stdin
 
@@ -206,6 +206,17 @@ final class ProjectSearch
     }
 
     /**
+     * Whether this project's commands run on a server. Not whether there is a
+     * remote filesystem: the container always builds one, and for a local
+     * project it has no transport — a null check answered "remote" for every
+     * project there is.
+     */
+    private function onServer(): bool
+    {
+        return $this->remote?->isRemote() ?? false;
+    }
+
+    /**
      * The built-in engine, over the files here: for a remote project only the
      * ones opened, which {@see searchedLocalCopyOnly()} says.
      *
@@ -214,7 +225,7 @@ final class ProjectSearch
      */
     private function builtIn(\Generator $scan, callable $onDone): void
     {
-        $this->localOnly = null !== $this->remote;
+        $this->localOnly = $this->onServer();
         $this->sliced($scan, $onDone);
     }
 

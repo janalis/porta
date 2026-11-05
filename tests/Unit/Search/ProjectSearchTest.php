@@ -130,7 +130,8 @@ final class ProjectSearchTest extends TestCase
      *
      * @return list<string> the sorted result paths, for the whole project and scoped to `.porta`
      */
-    private function portaPaths(SearchBackend $backend, string|array $scope): array
+    /** @param (\Closure(string): RemoteFilesystem)|null $wiring what the search is built with, for the project's root */
+    private function portaPaths(SearchBackend $backend, string|array $scope, ?\Closure $wiring = null): array
     {
         $project = new TempProject([
             'src/A.php' => "<?php\n// needle\n",
@@ -140,10 +141,32 @@ final class ProjectSearchTest extends TestCase
         if (SearchBackend::PhpFallback === $backend) {
             \putenv('PATH=/nonexistent');
         }
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: $scope), 'path');
+        $search = new ProjectSearch($project->dir, null === $wiring ? null : $wiring($project->dir));
+        $paths = \array_column($this->awaitSearch($search, 'needle', scope: $scope), 'path');
         \sort($paths);
+        $this->assertFalse(Probe::get($search, 'localOnly'), 'a local project has no server to have missed');
 
         return $paths;
+    }
+
+    /** What the container hands a LOCAL project: a remote filesystem with no transport behind it. */
+    private static function localRemoteFilesystem(string $root): RemoteFilesystem
+    {
+        return new RemoteFilesystem(
+            new ProjectLocation(),
+            $root,
+            new readonly class implements RemoteTransportSource {
+                public function remoteTransport(RemoteSpec $spec): ?RemoteTransport
+                {
+                    return null;
+                }
+            },
+            new Notifier(new StatusBarWidget(), TestTui::create()),
+            new Translator('en'),
+            new BufferManager(),
+            new FileIndex($root),
+            new EventDispatcher(),
+        );
     }
 
     /** Handing grep the root's entries must not hand it a link out of the project: a walk of `.` never follows one. */
@@ -172,6 +195,7 @@ final class ProjectSearchTest extends TestCase
 
     public function testGrepLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
     {
+        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, '.', wiring: self::localRemoteFilesystem(...)), 'wired as the container wires it');
         $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, '.'));
         $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::Grep, '.porta'));
         $this->assertSame([], $this->portaPaths(SearchBackend::Grep, ['.porta/history']), 'named as the scope, it is still left out');
@@ -179,6 +203,11 @@ final class ProjectSearchTest extends TestCase
 
     public function testThePhpWalkLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
     {
+        $this->assertSame(
+            ['.porta/plugins/acme/porta.php', 'src/A.php'],
+            $this->portaPaths(SearchBackend::PhpFallback, '.', wiring: self::localRemoteFilesystem(...)),
+            'wired as the container wires it: no "server" warning',
+        );
         $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::PhpFallback, '.'));
         $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::PhpFallback, '.porta'));
     }

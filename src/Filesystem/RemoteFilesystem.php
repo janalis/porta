@@ -327,6 +327,12 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         }
     }
 
+    /** Whether the project lives on a server — the container builds this for a local project too. */
+    public function isRemote(): bool
+    {
+        return null !== $this->location->remote;
+    }
+
     /**
      * $argv run on the server, in the project's directory there — or null
      * when the project is not remote, no plugin serves it yet, or its
