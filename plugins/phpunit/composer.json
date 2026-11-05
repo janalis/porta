@@ -1,0 +1,32 @@
+{
+    "name": "janalis/porta-phpunit",
+    "description": "Runs PHPUnit tests from the editor: the test at the caret, the file, the suite, or the ones that failed",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5",
+        "ext-simplexml": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\PhpUnit\\": "src/"
+        }
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "phpunit",
+                    "purpose": "the test runner",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "composer",
+                            "phpunit/phpunit"
+                        ]
+                    ]
+                }
+            ]
+        }
+    }
+}

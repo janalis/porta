@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="ja" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>No failed tests to run again</source>
+        <target>再実行する失敗したテストはありません</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>✗ %count% test failing|✗ %count% tests failing</source>
+        <target>✗ 失敗中のテスト %count% 件</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>PHPUnit was stopped before it finished</source>
+        <target>PHPUnit は完了前に停止されました</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>PHPUnit exited with code %code% without a report — see its terminal tab</source>
+        <target>PHPUnit はレポートなしでコード %code% で終了しました — ターミナルタブを確認してください</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>PHPUnit ran no tests</source>
+        <target>PHPUnit はテストを実行しませんでした</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>%count% test passed|%count% tests passed</source>
+        <target>%count% 件のテストが成功しました</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>%failed% of %count% tests failed</source>
+        <target>%count% 件中 %failed% 件のテストが失敗しました</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>passed</source>
+        <target>成功</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>skipped</source>
+        <target>スキップ</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>Open a PHPUnit test file first</source>
+        <target>先に PHPUnit のテストファイルを開いてください</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>%file% declares no test class</source>
+        <target>%file% はテストクラスを宣言していません</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Tests</source>
+        <target>テスト</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>PHPUnit: Run Test at Caret</source>
+        <target>PHPUnit: カーソル位置のテストを実行</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>PHPUnit: Run Tests in File</source>
+        <target>PHPUnit: ファイル内のテストを実行</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>PHPUnit: Run All Tests</source>
+        <target>PHPUnit: すべてのテストを実行</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>PHPUnit: Rerun Failed Tests</source>
+        <target>PHPUnit: 失敗したテストを再実行</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

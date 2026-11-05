@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="es" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>No failed tests to run again</source>
+        <target>No hay pruebas fallidas que volver a ejecutar</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>✗ %count% test failing|✗ %count% tests failing</source>
+        <target>✗ %count% prueba falla|✗ %count% pruebas fallan</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>PHPUnit was stopped before it finished</source>
+        <target>PHPUnit se detuvo antes de terminar</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>PHPUnit exited with code %code% without a report — see its terminal tab</source>
+        <target>PHPUnit terminó con el código %code% sin informe — mira su pestaña de terminal</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>PHPUnit ran no tests</source>
+        <target>PHPUnit no ejecutó ninguna prueba</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>%count% test passed|%count% tests passed</source>
+        <target>%count% prueba superada|%count% pruebas superadas</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>%failed% of %count% tests failed</source>
+        <target>%failed% de %count% pruebas fallaron</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>passed</source>
+        <target>superada</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>skipped</source>
+        <target>omitida</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>Open a PHPUnit test file first</source>
+        <target>Abre primero un archivo de pruebas de PHPUnit</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>%file% declares no test class</source>
+        <target>%file% no declara ninguna clase de prueba</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Tests</source>
+        <target>Pruebas</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>PHPUnit: Run Test at Caret</source>
+        <target>PHPUnit: Ejecutar la prueba en el cursor</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>PHPUnit: Run Tests in File</source>
+        <target>PHPUnit: Ejecutar las pruebas del archivo</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>PHPUnit: Run All Tests</source>
+        <target>PHPUnit: Ejecutar todas las pruebas</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>PHPUnit: Rerun Failed Tests</source>
+        <target>PHPUnit: Volver a ejecutar las pruebas fallidas</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

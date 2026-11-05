@@ -301,6 +301,11 @@ final class ArchitectureCheckCommand extends Command
         'Overlay>Ui',
         'Overlay>Widget',
         'Overlay>Workbench',
+        // The phpunit plugin's own code (plugins/phpunit/src): the plugin API,
+        // the toast severity its run reports with, and the dock's ToolRun.
+        'PhpUnit>Overlay',
+        'PhpUnit>Plugin',
+        'PhpUnit>Workbench',
         'Plugin>Config',
         'Plugin>Container',
         'Plugin>Debug',

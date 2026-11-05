@@ -26,6 +26,7 @@ final class Screenshots
         'plugin-graph-viewer',
         'plugin-image-viewer',
         'plugin-local-history',
+        'plugin-phpunit',
         'plugin-review',
         'plugin-todo',
     ];

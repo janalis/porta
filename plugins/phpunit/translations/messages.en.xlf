@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>No failed tests to run again</source>
+        <target>No failed tests to run again</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>✗ %count% test failing|✗ %count% tests failing</source>
+        <target>✗ %count% test failing|✗ %count% tests failing</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>PHPUnit was stopped before it finished</source>
+        <target>PHPUnit was stopped before it finished</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>PHPUnit exited with code %code% without a report — see its terminal tab</source>
+        <target>PHPUnit exited with code %code% without a report — see its terminal tab</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>PHPUnit ran no tests</source>
+        <target>PHPUnit ran no tests</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>%count% test passed|%count% tests passed</source>
+        <target>%count% test passed|%count% tests passed</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>%failed% of %count% tests failed</source>
+        <target>%failed% of %count% tests failed</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>passed</source>
+        <target>passed</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>skipped</source>
+        <target>skipped</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>Open a PHPUnit test file first</source>
+        <target>Open a PHPUnit test file first</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>%file% declares no test class</source>
+        <target>%file% declares no test class</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Tests</source>
+        <target>Tests</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>PHPUnit: Run Test at Caret</source>
+        <target>PHPUnit: Run Test at Caret</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>PHPUnit: Run Tests in File</source>
+        <target>PHPUnit: Run Tests in File</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>PHPUnit: Run All Tests</source>
+        <target>PHPUnit: Run All Tests</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>PHPUnit: Rerun Failed Tests</source>
+        <target>PHPUnit: Rerun Failed Tests</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

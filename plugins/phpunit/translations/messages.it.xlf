@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="it" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>No failed tests to run again</source>
+        <target>Nessun test fallito da rieseguire</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>✗ %count% test failing|✗ %count% tests failing</source>
+        <target>✗ %count% test fallisce|✗ %count% test falliscono</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>PHPUnit was stopped before it finished</source>
+        <target>PHPUnit è stato interrotto prima di finire</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>PHPUnit exited with code %code% without a report — see its terminal tab</source>
+        <target>PHPUnit è uscito con codice %code% senza rapporto — vedi la sua scheda del terminale</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>PHPUnit ran no tests</source>
+        <target>PHPUnit non ha eseguito alcun test</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>%count% test passed|%count% tests passed</source>
+        <target>%count% test superato|%count% test superati</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>%failed% of %count% tests failed</source>
+        <target>%failed% test su %count% falliti</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>passed</source>
+        <target>superato</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>skipped</source>
+        <target>saltato</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>Open a PHPUnit test file first</source>
+        <target>Apri prima un file di test PHPUnit</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>%file% declares no test class</source>
+        <target>%file% non dichiara alcuna classe di test</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>Tests</source>
+        <target>Test</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>PHPUnit: Run Test at Caret</source>
+        <target>PHPUnit: Esegui il test al cursore</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>PHPUnit: Run Tests in File</source>
+        <target>PHPUnit: Esegui i test del file</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>PHPUnit: Run All Tests</source>
+        <target>PHPUnit: Esegui tutti i test</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>PHPUnit: Rerun Failed Tests</source>
+        <target>PHPUnit: Riesegui i test falliti</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

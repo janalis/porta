@@ -142,6 +142,66 @@ final class PluginScreenshotsTest extends TestCase
         );
     }
 
+    public function testPhpUnit(): void
+    {
+        // The shop's own OrderTest, and a second test that fails, run through
+        // this repository's PHPUnit — behind a binary outside the project, so
+        // the tree shows no vendor/, with the shop's classes autoloaded.
+        $project = ShopProject::create(
+            ['tests/OrderTest.php' => \str_replace(
+                "        self::assertSame(4900, \$order->total()->cents);\n    }\n",
+                replace: "        self::assertSame(4900, \$order->total()->cents);\n    }\n\n    public function testAMemberGetsTenPercentOff(): void\n    {\n        \$order = new Order('A-1002', new Customer('Grace', 'grace@example.com'));\n        \$order->add(new Product('MUG', 'Mug', Money::of(1200, 'EUR')), 2);\n\n        self::assertSame(2160, \$order->total()->cents);\n    }\n",
+                subject: ShopProject::files()['tests/OrderTest.php'],
+            )],
+        );
+        $binary = \dirname($project->dir).'/phpunit';
+        \file_put_contents($binary, \strtr(
+            <<<'STUB'
+                #!{php}
+                <?php
+                spl_autoload_register(static function (string $class): void {
+                    $file = {root}.'/src/'.str_replace('\\', '/', substr($class, 10)).'.php';
+                    if (str_starts_with($class, 'Acme\\Shop\\') && is_file($file)) {
+                        require $file;
+                    }
+                });
+                require {phpunit};
+
+                STUB,
+            [
+                '{php}' => \PHP_BINARY,
+                '{root}' => \var_export($project->dir, return: true),
+                '{phpunit}' => \var_export(\dirname(__DIR__, levels: 3).'/vendor/phpunit/phpunit/phpunit', return: true),
+            ],
+        ));
+        \chmod($binary, permissions: 0o755);
+        \file_put_contents(\dirname($project->dir).'/home/.porta/config.json', \json_encode(
+            [
+                'lsp' => \json_decode((string) \file_get_contents(\dirname($project->dir).'/home/.porta/config.json'), associative: true, flags: \JSON_THROW_ON_ERROR)['lsp'],
+                'enabledPlugins' => [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest', 'phpunit'],
+                'plugins' => ['phpunit' => ['binary' => $binary]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        ));
+        $this->runIde(
+            $project,
+            $project->path('tests/OrderTest.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->awaitLspReady($tui, $terminal, ShopProject::SERVER);
+                    Services::resolve($ide, CommandRegistry::class)->run('phpunit:run_file');
+                    $this->awaitPainted($tui, $terminal, '1 of 2 tests failed');
+                    $tui->handleInput("\r"); // Enter on the failure, which leads the dock: to its assertion
+                    $this->awaitPainted($tui, $terminal, 'testAMemberGetsTenPercentOff(): void');
+                    $this->awaitPainted($tui, $terminal, '✓ passed');
+                    $this->screenshot('plugin-phpunit', $tui, $terminal, $ide);
+                },
+            ],
+            columns: self::COLUMNS,
+            rows: self::ROWS,
+        );
+    }
+
     public function testLocalHistory(): void
     {
         \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // diff draws the comparison

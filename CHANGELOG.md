@@ -5,6 +5,20 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **The phpunit plugin**: run the test at the caret (`Ctrl+Shift+F10`), the
+  tests in a file, the whole suite, or only the tests that failed last time.
+  Results are listed in the dock, each failure is a diagnostic on its
+  assertion, every test method is marked passed or failed at the end of its
+  line, and the status bar counts the failing tests. Off by default.
+
+### Fixed
+
+- Blame, a review's thread notes and other plugins' notes at the end of a line
+  no longer vanish when you jump within the file you are in, such as with
+  `Enter` on a search result in it.
+
 ## [0.1.3] - 2026-11-03
 
 ### Added
