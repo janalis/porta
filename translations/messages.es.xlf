@@ -3602,6 +3602,10 @@
         <source>Listening (%language%)</source>
         <target>Escuchando (%language%)</target>
       </trans-unit>
+      <trans-unit id="1230">
+        <source>The server could not be searched: only the files opened here were</source>
+        <target>No se pudo buscar en el servidor: solo en los archivos abiertos aquí</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

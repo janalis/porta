@@ -401,6 +401,28 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertCount(1, \array_filter($transport->calls, static fn (string $call): bool => 'put a.php' === $call), 'once');
     }
 
+    /**
+     * A query across lines cannot run in the server's grep: the files here are
+     * searched — in a remote project only those opened — and the user is told,
+     * where a short list read as the whole answer.
+     */
+    public function testARemoteSearchOfTheLocalCopyOnlySaysSo(): void
+    {
+        $server = new TempProject(['a.php' => "<?php\n// needle\n"]);
+        $cache = new TempProject();
+        $remote = new FakeRemoteTransport($server->dir)->filesystem($cache->dir);
+        $remote->listed($cache->dir);
+        $controller = $this->controller($cache->dir, $remote);
+        $controller->open();
+
+        $controller->search("<?php\n// needle");
+        $this->await(fn (): bool => \str_contains($this->statusRow($this->statusBar), 'only the files opened here'), what: 'the warning');
+
+        $controller->search('needle');
+        $this->awaitModalShows('a.php');
+        $this->assertFalse(Probe::get(Probe::object($controller, 'projectSearch'), 'localOnly'), 'the server answered this one');
+    }
+
     /** A fetch that answers at once runs the replace from inside the first try — and only there, and says what it did. */
     public function testAReplaceWhoseFetchesAnswerAtOnceRunsOnce(): void
     {

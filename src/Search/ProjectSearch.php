@@ -71,6 +71,20 @@ final class ProjectSearch
         private readonly ?RemoteFilesystem $remote = null,
     ) {}
 
+    /**
+     * Whether the last search of a remote project read only the files opened
+     * here: its grep runs on the server, and when that could not answer — the
+     * link down, no grep there — or the query spans lines, which grep cannot
+     * take, the built-in engine searched the local copy, which holds only what
+     * was opened. Said, so a short list is not read as the whole answer.
+     */
+    private bool $localOnly = false;
+
+    public function searchedLocalCopyOnly(): bool
+    {
+        return $this->localOnly;
+    }
+
     /** Whether the last search hit a pattern the engine could not finish. */
     public function gaveUp(): bool
     {
@@ -85,6 +99,7 @@ final class ProjectSearch
     {
         $this->cancel();
         $this->gaveUp = false;
+        $this->localOnly = false;
         $paths = \is_array($scope) ? \array_values($scope) : [$scope];
         if ([] === $paths || '' === \trim($query)) {
             $onDone([]);
@@ -96,8 +111,8 @@ final class ProjectSearch
             // A malformed regex yields no results rather than a crash.
             $options->regex && !SearchPattern::compiles($pattern) => $onDone([]),
             // A query spanning lines can't go through line-based grep: scan whole files.
-            \str_contains($query, "\n") => $this->sliced($this->searchMultiline($pattern, $paths, $mask), $onDone),
-            null === ($grep = $this->findGrep()) => $this->sliced($this->searchWithPhp($pattern, $paths, $mask), $onDone),
+            \str_contains($query, "\n") => $this->builtIn($this->searchMultiline($pattern, $paths, $mask), $onDone),
+            null === ($grep = $this->findGrep()) => $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone),
             default => $this->grep($grep, $query, $pattern, $onDone, $options, $paths, $mask),
         };
     }
@@ -150,7 +165,7 @@ final class ProjectSearch
         // A grep that cannot answer hands the search to the built-in engine.
         // Linux's posix_spawn refuses an unrunnable binary outright; macOS
         // spawns it and reports an exit code — one fallback serves both.
-        $fallback = fn () => $this->sliced($this->searchWithPhp($pattern, $paths, $mask), $onDone);
+        $fallback = fn () => $this->builtIn($this->searchWithPhp($pattern, $paths, $mask), $onDone);
         // UTF-8, as the pattern that highlights and replaces reads it: under -i
         // grep folds É to é as that pattern does, whatever locale Porta runs in.
         $process = new AsyncProcess($command, $this->rootDir, env: [...\getenv(), 'LC_ALL' => 'C.UTF-8']);
@@ -188,6 +203,19 @@ final class ProjectSearch
             EventLoop::cancel($this->slice);
             $this->slice = null;
         }
+    }
+
+    /**
+     * The built-in engine, over the files here: for a remote project only the
+     * ones opened, which {@see searchedLocalCopyOnly()} says.
+     *
+     * @param \Generator<int, null, mixed, list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>> $scan
+     * @param callable(list<array{path: string, line: int, text: string, ranges: list<array{start: int, length: int}>}>): void                 $onDone
+     */
+    private function builtIn(\Generator $scan, callable $onDone): void
+    {
+        $this->localOnly = null !== $this->remote;
+        $this->sliced($scan, $onDone);
     }
 
     /**

@@ -676,6 +676,9 @@ final class ProjectSearchController
                 if ($this->projectSearch->gaveUp()) {
                     $this->notifier->warn($this->translator->trans('pattern too complex'));
                 }
+                if ($this->projectSearch->searchedLocalCopyOnly()) {
+                    $this->notifier->warn($this->translator->trans('The server could not be searched: only the files opened here were'));
+                }
                 $modal = $this->editor->findModal;
                 if ($modal->isOpen()) {
                     $modal->setPreview($results);
