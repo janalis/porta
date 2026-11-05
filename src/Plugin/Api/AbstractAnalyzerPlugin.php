@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Api;
 
 use Porta\Support\AsyncProcess;
+use Porta\Support\Decoded;
 
 /**
  * The base for a static analyzer that publishes editor diagnostics (phpstan,
@@ -169,10 +170,8 @@ abstract class AbstractAnalyzerPlugin extends AbstractToolPlugin
      */
     private function publish(PluginApi $api, string $file, int $code, string $stdout): void
     {
-        /** @var array<array-key, mixed>|scalar|null $report */
-        // @noinspection JsonEncodingApiUsageInspection -- another program's output that is not JSON reads as none, it does not throw
-        $report = \json_decode($stdout, associative: true);
-        if (!$this->acceptsExitCode($code) || !\is_array($report)) {
+        $report = Decoded::json($stdout);
+        if (!$this->acceptsExitCode($code) || null === $report) {
             $this->flashFailure($api, $code);
 
             return;

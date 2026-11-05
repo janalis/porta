@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Tool;
 
+use Porta\Support\Decoded;
+
 /**
  * Pure knowledge about one repository's GitHub releases: which asset fits
  * this machine ({@see GithubAsset}), where it downloads from, and how its
@@ -27,10 +29,8 @@ final readonly class GithubRelease
      */
     public function latestTag(string $json): ?string
     {
-        /** @var array{tag_name?: mixed}|bool|int|float|string|null $decoded */
-        // @noinspection JsonEncodingApiUsageInspection -- a release listing that is not JSON is no tag, not a throw: it comes off the network
-        $decoded = \json_decode($json, associative: true);
-        $tag = \is_array($decoded) && \is_string($decoded['tag_name'] ?? null) ? $decoded['tag_name'] : '';
+        $decoded = Decoded::json($json);
+        $tag = \is_string($decoded['tag_name'] ?? null) ? $decoded['tag_name'] : '';
 
         return self::validTag($tag);
     }

@@ -100,10 +100,8 @@ final class JsonRpcFramer
             $body = \substr($this->buffer, $bodyStart, $length);
             $this->offset = $bodyStart + $length;
 
-            /** @var array<array-key, mixed>|scalar|null $message */
-            // @noinspection JsonEncodingApiUsageInspection -- a peer's line that is not JSON is dropped, not thrown: it comes off the network
-            $message = \json_decode($body, associative: true);
-            if (!\is_array($message)) {
+            $message = Decoded::json($body);
+            if (null === $message) {
                 // A Content-Length that was wrong reads part of a frame as
                 // this one: what it held — maybe an answer something waits
                 // for — is lost, and a trace of that is the least owed.

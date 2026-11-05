@@ -165,10 +165,8 @@ final readonly class SelfUpdate
     private function api(string $path): array
     {
         [$code, $out] = $this->curl(['-H', 'Accept: application/vnd.github+json', 'https://api.github.com/repos/'.self::REPOSITORY.'/'.$path]);
-        // @mago-expect analysis:mixed-assignment -- json_decode is untyped; is_array() narrows it on the next line.
-        // @noinspection JsonEncodingApiUsageInspection -- another program's output that is not JSON reads as none, it does not throw
-        $decoded = 0 === $code ? \json_decode($out, associative: true) : null;
-        if (!\is_array($decoded)) {
+        $decoded = 0 === $code ? Decoded::json($out) : null;
+        if (null === $decoded) {
             throw new \RuntimeException('could not reach the releases of '.self::REPOSITORY.' — check the connection, and that a release exists.');
         }
 

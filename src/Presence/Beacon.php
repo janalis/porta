@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Presence;
 
+use Porta\Support\Decoded;
+
 /**
  * What one Porta says about itself to the others on the same project: one
  * small JSON file each, on the board they share ({@see PresenceBoard}).
@@ -82,10 +84,8 @@ final readonly class Beacon
     /** The beacon $json is, or null when it is not one. */
     public static function fromJson(string $json): ?self
     {
-        // @mago-expect analysis:mixed-assignment -- another machine's file: every field is narrowed below
-        // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
-        $data = \json_decode($json, associative: true);
-        $data = \is_array($data) ? $data : null;
+        // Another machine's file: every field is narrowed below.
+        $data = Decoded::json($json);
         $strings = null === $data ? [] : \array_map(static fn (mixed $value): ?string => \is_string($value) ? $value : null, \array_intersect_key($data, [
                 'id' => 0,
                 'name' => 0,

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Support\JsonFile;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -579,10 +580,8 @@ final class ArchitectureCheckCommand extends Command
         $roots = [];
         $manifests = \glob($pluginsDir.'/*/composer.json');
         foreach (false === $manifests ? [] : $manifests as $path) {
-            /** @var array<array-key, mixed>|scalar|null $data */
-            // @noinspection JsonEncodingApiUsageInspection -- a file that is not JSON (hand-edited, half-written) reads as none, it does not throw
-            $data = \json_decode((string) \file_get_contents($path), associative: true);
-            $autoload = \is_array($data) && \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
+            $data = JsonFile::read($path);
+            $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
             /** @var mixed $relatives */
             foreach (\is_array($autoload['psr-4'] ?? null) ? $autoload['psr-4'] : [] as $prefix => $relatives) {
                 if (!\is_string($prefix) || '' === \trim($prefix, characters: '\\')) {

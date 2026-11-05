@@ -9,6 +9,15 @@ use Porta\Support\Decoded;
 
 final class DecodedTest extends TestCase
 {
+    public function testJsonIsTheObjectOrListTheTextHoldsAndNullForAnythingElse(): void
+    {
+        $this->assertSame(['type' => 'hello'], Decoded::json('{"type":"hello"}'));
+        $this->assertSame([1, 2], Decoded::json('[1,2]'));
+        $this->assertNull(Decoded::json('not json'), 'a peer\'s garbage reads as nothing, it does not throw');
+        $this->assertNull(Decoded::json('"a bare string"'));
+        $this->assertNull(Decoded::json(''));
+    }
+
     public function testOnlyTheObjectsOfADecodedListAreKeptWhereverTheyStand(): void
     {
         // A non-object FIRST, so a loop that stopped at it instead of stepping

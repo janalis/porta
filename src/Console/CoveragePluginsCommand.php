@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Console;
 
 use Porta\Support\Files;
+use Porta\Support\JsonFile;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
 use Symfony\Component\Console\Command\Command;
@@ -250,10 +251,9 @@ final class CoveragePluginsCommand extends Command
      */
     private static function longestFirst(array $shards, string $timingsPath): array
     {
-        // @noinspection JsonEncodingApiUsageInspection -- a timings file that is not JSON is no timings: the order falls back to the names'
-        // @mago-expect analysis:mixed-assignment -- narrowed in $seconds
-        $timings = \is_file($timingsPath) ? \json_decode((string) \file_get_contents($timingsPath), associative: true) : null;
-        $seconds = static fn (string $name): float => \is_array($timings) && (\is_float($timings[$name] ?? null) || \is_int($timings[$name] ?? null)) ? $timings[$name] : \INF;
+        // A timings file that is not JSON is no timings: the order falls back to the names'.
+        $timings = JsonFile::read($timingsPath) ?? [];
+        $seconds = static fn (string $name): float => \is_float($timings[$name] ?? null) || \is_int($timings[$name] ?? null) ? $timings[$name] : \INF;
         // uksort is stable, so equal keys — every untimed shard — keep name order.
         \uksort($shards, static fn (string $a, string $b): int => $seconds($b) <=> $seconds($a));
 
