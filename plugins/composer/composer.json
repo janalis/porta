@@ -1,0 +1,31 @@
+{
+    "name": "janalis/porta-composer",
+    "description": "Composer from the editor: outdated packages listed and marked in composer.json, update, require and remove in a terminal tab",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\Composer\\": "src/"
+        }
+    },
+    "extra": {
+        "porta": {
+            "tools": [
+                {
+                    "name": "composer",
+                    "purpose": "the dependency manager",
+                    "setting": "binary",
+                    "sources": [
+                        [
+                            "brew",
+                            "composer"
+                        ]
+                    ]
+                }
+            ]
+        }
+    }
+}

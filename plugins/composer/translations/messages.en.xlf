@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Packages</source>
+        <target>Packages</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Composer: Show Outdated Packages</source>
+        <target>Composer: Show Outdated Packages</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Composer: Install</source>
+        <target>Composer: Install</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Composer: Update All</source>
+        <target>Composer: Update All</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Composer: Update Package at Caret</source>
+        <target>Composer: Update Package at Caret</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>Composer: Require Package…</source>
+        <target>Composer: Require Package…</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>Composer: Remove Package at Caret</source>
+        <target>Composer: Remove Package at Caret</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>Require (vendor/name[:constraint], --dev for a dev dependency)</source>
+        <target>Require (vendor/name[:constraint], --dev for a dev dependency)</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>composer outdated exited with code %code%</source>
+        <target>composer outdated exited with code %code%</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>composer could not be started</source>
+        <target>composer could not be started</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>Every direct dependency is on its latest release</source>
+        <target>Every direct dependency is on its latest release</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>%count% direct dependency has a newer release|%count% direct dependencies have newer releases</source>
+        <target>%count% direct dependency has a newer release|%count% direct dependencies have newer releases</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>(past the constraint)</source>
+        <target>(past the constraint)</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>abandoned</source>
+        <target>abandoned</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>abandoned, use %package%</source>
+        <target>abandoned, use %package%</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>%command% finished</source>
+        <target>%command% finished</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>%command% was stopped before it finished</source>
+        <target>%command% was stopped before it finished</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>%command% exited with code %code% — see its terminal tab</source>
+        <target>%command% exited with code %code% — see its terminal tab</target>
+      </trans-unit>
+      <trans-unit id="19">
+        <source>Put the caret on a package in composer.json's require or require-dev</source>
+        <target>Put the caret on a package in composer.json's require or require-dev</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

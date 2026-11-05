@@ -23,6 +23,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   or one its Settings page installs, checked against a pinned SHA-256 — so
   Shift+F9 debugs the PHP file in front with nothing to configure. Off by
   default.
+- **The composer plugin**: which direct dependencies have newer releases,
+  listed in the dock and marked at the end of their line in composer.json —
+  within your constraint, past it, or abandoned. Install, update all, update
+  or remove the package at the caret, and require a new one, in a terminal
+  tab of their own. Off by default.
 
 ### Fixed
 

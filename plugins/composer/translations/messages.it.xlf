@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="it" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Packages</source>
+        <target>Pacchetti</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>Composer: Show Outdated Packages</source>
+        <target>Composer: Mostra pacchetti obsoleti</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>Composer: Install</source>
+        <target>Composer: Installa</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Composer: Update All</source>
+        <target>Composer: Aggiorna tutto</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>Composer: Update Package at Caret</source>
+        <target>Composer: Aggiorna il pacchetto al cursore</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>Composer: Require Package…</source>
+        <target>Composer: Richiedi pacchetto…</target>
+      </trans-unit>
+      <trans-unit id="7">
+        <source>Composer: Remove Package at Caret</source>
+        <target>Composer: Rimuovi il pacchetto al cursore</target>
+      </trans-unit>
+      <trans-unit id="8">
+        <source>Require (vendor/name[:constraint], --dev for a dev dependency)</source>
+        <target>Richiedi (vendor/name[:vincolo], --dev per una dipendenza di sviluppo)</target>
+      </trans-unit>
+      <trans-unit id="9">
+        <source>composer outdated exited with code %code%</source>
+        <target>composer outdated è terminato con il codice %code%</target>
+      </trans-unit>
+      <trans-unit id="10">
+        <source>composer could not be started</source>
+        <target>Impossibile avviare composer</target>
+      </trans-unit>
+      <trans-unit id="11">
+        <source>Every direct dependency is on its latest release</source>
+        <target>Ogni dipendenza diretta è alla sua ultima versione</target>
+      </trans-unit>
+      <trans-unit id="12">
+        <source>%count% direct dependency has a newer release|%count% direct dependencies have newer releases</source>
+        <target>%count% dipendenza diretta ha una versione più recente|%count% dipendenze dirette hanno versioni più recenti</target>
+      </trans-unit>
+      <trans-unit id="13">
+        <source>(past the constraint)</source>
+        <target>(oltre il vincolo)</target>
+      </trans-unit>
+      <trans-unit id="14">
+        <source>abandoned</source>
+        <target>abbandonato</target>
+      </trans-unit>
+      <trans-unit id="15">
+        <source>abandoned, use %package%</source>
+        <target>abbandonato, usa %package%</target>
+      </trans-unit>
+      <trans-unit id="16">
+        <source>%command% finished</source>
+        <target>%command% completato</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>%command% was stopped before it finished</source>
+        <target>%command% è stato fermato prima di finire</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>%command% exited with code %code% — see its terminal tab</source>
+        <target>%command% è terminato con il codice %code%: vedi la sua scheda del terminale</target>
+      </trans-unit>
+      <trans-unit id="19">
+        <source>Put the caret on a package in composer.json's require or require-dev</source>
+        <target>Posiziona il cursore su un pacchetto in require o require-dev di composer.json</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

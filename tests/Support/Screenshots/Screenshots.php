@@ -21,6 +21,7 @@ final class Screenshots
         'settings',
         'terminal',
         'debugger',
+        'plugin-composer',
         'plugin-diff',
         'plugin-git',
         'plugin-graph-viewer',

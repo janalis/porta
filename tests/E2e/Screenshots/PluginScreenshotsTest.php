@@ -202,6 +202,66 @@ final class PluginScreenshotsTest extends TestCase
         );
     }
 
+    public function testComposer(): void
+    {
+        // The shop's composer.json with a few requirements, and a composer
+        // outside the project that reports them outdated as a real one would.
+        $project = ShopProject::create(['composer.json' => <<<'JSON'
+            {
+                "name": "acme/shop",
+                "type": "project",
+                "require": {
+                    "php": ">=8.4",
+                    "brick/money": "^0.10",
+                    "ramsey/uuid": "^4.7",
+                    "symfony/mailer": "^7.3"
+                },
+                "require-dev": {
+                    "phpunit/phpunit": "^12.0"
+                },
+                "autoload": {
+                    "psr-4": { "Acme\\Shop\\": "src/" }
+                }
+            }
+
+            JSON]);
+        $report = \json_encode(
+            [
+                'installed' => [
+                    ['name' => 'brick/money', 'version' => '0.10.1', 'latest' => '0.10.3', 'latest-status' => 'semver-safe-update', 'abandoned' => false],
+                    ['name' => 'symfony/mailer', 'version' => 'v7.3.4', 'latest' => 'v8.0.1', 'latest-status' => 'update-possible', 'abandoned' => false],
+                    ['name' => 'phpunit/phpunit', 'version' => '12.4.0', 'latest' => '12.5.2', 'latest-status' => 'semver-safe-update', 'abandoned' => false],
+                ],
+            ],
+            \JSON_THROW_ON_ERROR,
+        );
+        $binary = \dirname($project->dir).'/composer';
+        \file_put_contents($binary, \sprintf("#!%s\n<?php\necho %s;\n", \PHP_BINARY, \var_export($report, return: true)));
+        \chmod($binary, permissions: 0o755);
+        \file_put_contents(\dirname($project->dir).'/home/.porta/config.json', \json_encode(
+            [
+                'lsp' => \json_decode((string) \file_get_contents(\dirname($project->dir).'/home/.porta/config.json'), associative: true, flags: \JSON_THROW_ON_ERROR)['lsp'],
+                'enabledPlugins' => [...IdeConfig::DEFAULT_ENABLED_PLUGINS, 'tempest', 'composer'],
+                'plugins' => ['composer' => ['binary' => $binary]],
+            ],
+            \JSON_THROW_ON_ERROR,
+        ));
+        $this->runIde(
+            $project,
+            $project->path('composer.json'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    Services::resolve($ide, CommandRegistry::class)->run('composer:outdated');
+                    $this->awaitPainted($tui, $terminal, '⇑ v8.0.1');
+                    $this->awaitPainted($tui, $terminal, 'phpunit/phpunit 12.4.0');
+                    $this->screenshot('plugin-composer', $tui, $terminal, $ide);
+                },
+            ],
+            columns: self::COLUMNS,
+            rows: self::ROWS,
+        );
+    }
+
     public function testLocalHistory(): void
     {
         \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // diff draws the comparison

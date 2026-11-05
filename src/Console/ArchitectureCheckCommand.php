@@ -114,6 +114,13 @@ final class ArchitectureCheckCommand extends Command
         'Command>Tree',
         'Command>Widget',
         'Command>Workbench',
+        // The composer plugin's own code (plugins/composer/src): the plugin
+        // API, the toast severity it reports with, AsyncProcess for
+        // `composer outdated`, and the dock's ToolRun.
+        'Composer>Overlay',
+        'Composer>Plugin',
+        'Composer>Support',
+        'Composer>Workbench',
         'Config>Container',
         'Config>Editor',
         'Config>Plugin',

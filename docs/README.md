@@ -41,6 +41,7 @@ plugin's guide also opens from its page under **Settings → Plugins**.
 | [TODO](../plugins/todo/docs/README.md) | Every TODO and FIXME in the project, in a panel |
 | [Xdebug](../plugins/xdebug/docs/README.md) | Debug PHP with Xdebug in one step: the vscode-php-debug adapter, found or installed for you |
 | [PHPUnit](../plugins/phpunit/docs/README.md) | Run the test at the caret, the file, the suite or the failed ones; results in the dock, failures inline |
+| [Composer](../plugins/composer/docs/README.md) | Outdated dependencies listed and marked in composer.json; install, update, require and remove in a terminal tab |
 | [PHPantom](../plugins/phpantom/docs/README.md) | The suggested PHP language server, and its fixer |
 | [Phpactor](../plugins/phpactor/docs/README.md) | Phpactor as the PHP language server instead |
 | [Symfony language server](../plugins/symfony-lsp/docs/README.md) | Twig, YAML, XML, JSON and dotenv intelligence, installed and updated for you |
