@@ -275,6 +275,31 @@ final class PluginManagerTest extends TestCase
         $this->assertSame(1, $plugin->tornDown, 'teardown runs once, not per call');
     }
 
+    /** The IDE closing tears down every disposable plugin — the next project opens in this process, on this loop — each in its barrier. */
+    public function testClosingTheIdeTearsDownEveryDisposablePlugin(): void
+    {
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings);
+        $first = $this->disposablePlugin('first');
+        $manager->commit($manager->api('first', '/p', $settings), new class('broken') extends AbstractPlugin implements DisposablePlugin {
+            public function activate(PluginApi $api): void {}
+
+            public function deactivate(): void
+            {
+                throw new \RuntimeException('teardown exploded');
+            }
+        });
+        $manager->commit($manager->api('second', '/p', $settings), $first);
+        $manager->commit($manager->api('plain', '/p', $settings), new class('plain') extends AbstractPlugin {
+            public function activate(PluginApi $api): void {}
+        });
+
+        $manager->disposeAll();
+
+        $this->assertSame(1, $first->tornDown, 'torn down, though the one before it threw');
+        $this->assertStringContainsString('teardown exploded', $manager->warnings[0]->params['%message%'] ?? '');
+    }
+
     public function testAThrowingTeardownIsReportedAndTheRegistriesStillEmpty(): void
     {
         // The barrier placement is the invariant: a teardown that throws must

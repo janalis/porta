@@ -502,6 +502,25 @@ final class PluginManager implements
         }
     }
 
+    /**
+     * The IDE is closing: every plugin that started something of its own
+     * stops it ({@see DisposablePlugin}), each in its fault barrier. Another
+     * project opens in this same process next, on the same loop.
+     */
+    public function disposeAll(): void
+    {
+        foreach ($this->instances as $name => $instance) {
+            if (!$instance instanceof DisposablePlugin) {
+                continue;
+            }
+            try {
+                $instance->deactivate();
+            } catch (\Throwable $error) {
+                $this->reportFailure($name, $error);
+            }
+        }
+    }
+
     /** Run $plugin's activate() with its API, which may register but not yet act. */
     public function activate(PortaPlugin $plugin, PluginApi $api): void
     {

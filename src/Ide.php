@@ -44,6 +44,7 @@ use Porta\Lsp\WatchedFiles;
 use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Tool\RunningProcesses;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Presence\PresenceSync;
@@ -592,6 +593,9 @@ final class Ide
                 // up. The loop has stopped, so a listener that schedules work is a
                 // no-op — that is the contract IdeShuttingDown documents.
                 $this->service(EventDispatcherInterface::class)->dispatch(new IdeShuttingDown($this->rootDir));
+                // Then what plugins started of their own: the next project
+                // opens in this process, on this loop.
+                $this->service(PluginHost::class)->manager->disposeAll();
                 // Then: closing the view windows cancels their timers (the
                 // git view's 2s status-poll repeat) so nothing re-arms below.
                 $this->service(ViewRegistry::class)->closeAll();

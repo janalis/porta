@@ -15,9 +15,11 @@ namespace Porta\Plugin\Api;
  * plugin in a still-running IDE, orphaned.
  *
  * Called on live disable and removal, inside the plugin's fault barrier (a
- * throwing teardown is reported and the deactivation still completes). NOT
- * called at IDE shutdown: that is {@see PluginApi::onShutdown()}'s moment, and
- * process exit reclaims timers and children anyway.
+ * throwing teardown is reported and the deactivation still completes), and
+ * once more as the IDE closes, after {@see PluginApi::onShutdown()}'s
+ * listeners: opening another project runs in the SAME process on the same
+ * event loop, so a timer left armed kept firing into the next project's
+ * session against this one's objects. Make it safe to call twice.
  *
  * Deliberately separate from {@see PortaPlugin} — adding a method there would
  * break every existing plugin for a hook most never need — so implementors

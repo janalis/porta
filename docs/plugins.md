@@ -1094,8 +1094,10 @@ A widget translates through the `Translator` it is handed
 - Implement `Porta\Plugin\Api\DisposablePlugin` (`deactivate(): void`) if your
   plugin's own code starts things the registries cannot remove for it —
   event-loop timers, subprocesses, open handles. It runs when the plugin is
-  disabled or removed **live**, inside your fault barrier; it does NOT run at
-  IDE shutdown (that is `onShutdown()`'s moment). Without it, a live disable
+  disabled or removed **live**, inside your fault barrier, and once more as
+  the IDE closes, after `onShutdown()`: opening another project runs in the
+  same process on the same event loop, so a timer left armed would fire into
+  the next project. Make it safe to call twice. Without it, a live disable
   strips your listeners — the shutdown hook among them — and whatever you
   started keeps running in an IDE that no longer knows you.
   `AbstractSubprocessHighlighter` already implements it for its debounce
