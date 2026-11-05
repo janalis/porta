@@ -159,6 +159,17 @@ final class TerminalBuffer
             while ($end < $len && "\x1b" !== $data[$end] && \ord($data[$end]) >= 0x20) {
                 ++$end;
             }
+            // A character cut by the read boundary waits for its other bytes:
+            // written as two pieces, each counted a column, it pushed every
+            // later column on the line one to the right.
+            $cut = $end === $len ? self::cutCharacter(\substr($data, $i, $end - $i)) : 0;
+            if ($cut > 0) {
+                $this->pending = \substr($data, $end - $cut);
+                if (($end - $cut) > $i) {
+                    $this->writeText(\substr($data, $i, $end - $cut - $i));
+                }
+                break;
+            }
             $this->writeText(\substr($data, $i, $end - $i));
             $i = $end;
         }
@@ -207,6 +218,8 @@ final class TerminalBuffer
 
     private function handleEscape(string $code): void
     {
+        $move = [];
+        $moves = 1 === \preg_match('/^\x1b\[(\d*)([GCD])$/', $code, $move);
         match (true) {
             // SGR (colour) — defer and prepend to the next text so it styles what
             // follows even across a carriage-return overwrite.
@@ -219,7 +232,15 @@ final class TerminalBuffer
             // must NOT wipe the scrollback. Shells emit ESC[J when redrawing the
             // prompt after a command; treating it as a full clear is what made
             // command output vanish.
-            1 === \preg_match('/^\x1b\[[0-2]?K$/', $code) || "\x1b[J" === $code || "\x1b[0J" === $code => $this->eraseToLineEnd(),
+            "\x1b[K" === $code || "\x1b[0K" === $code || "\x1b[J" === $code || "\x1b[0J" === $code => $this->eraseToLineEnd(),
+            // Erase the start of the line through the cursor, and the whole
+            // line: both were taken for the above, so a progress bar's
+            // `ESC[2K` redraw kept the old bar's tail beside the new one.
+            "\x1b[1K" === $code => $this->eraseToCursor(),
+            "\x1b[2K" === $code => $this->eraseLine(),
+            // Cursor to a column, forward, back: a redraw's `ESC[1G` was
+            // dropped, so the bar was printed after the old one.
+            $moves => $this->moveCursor($move[2], '' === $move[1] ? 1 : (int) $move[1]),
             // Erase entire display / scrollback — reset the buffer (e.g. `clear`).
             "\x1b[2J" === $code || "\x1b[3J" === $code => $this->clear(),
             // Everything else (cursor moves incl. home, erase-above, mode sets, OSC) is dropped.
@@ -266,6 +287,49 @@ final class TerminalBuffer
             $this->curWidth = \max($this->curWidth, $this->col + $width);
         }
         $this->col += $width;
+    }
+
+    /** How many bytes at the end of $run are a UTF-8 character still missing its last bytes. */
+    private static function cutCharacter(string $run): int
+    {
+        for ($back = 1; $back <= \min(3, \strlen($run)); ++$back) {
+            $byte = \ord($run[\strlen($run) - $back]);
+            if (0x80 === ($byte & 0xC0)) {
+                continue; // a continuation byte: look further back for the lead
+            }
+            $needs = match (true) {
+                0xC0 === ($byte & 0xE0) => 2,
+                0xE0 === ($byte & 0xF0) => 3,
+                0xF0 === ($byte & 0xF8) => 4,
+                default => 1,
+            };
+
+            return $needs > $back ? $back : 0;
+        }
+
+        return 0;
+    }
+
+    private function moveCursor(string $direction, int $count): void
+    {
+        $this->col = match ($direction) {
+            'G' => \max(0, $count - 1),
+            'C' => $this->col + $count,
+            default => \max(0, $this->col - $count),
+        };
+    }
+
+    private function eraseToCursor(): void
+    {
+        $cur = $this->lines[\count($this->lines) - 1];
+        $this->lines[\count($this->lines) - 1] = \str_repeat(' ', \max(1, $this->col + 1)).AnsiText::columnsFrom($cur, $this->col + 1, $this->curWidth);
+        $this->curWidth = \max($this->curWidth, $this->col + 1);
+    }
+
+    private function eraseLine(): void
+    {
+        $this->lines[\count($this->lines) - 1] = '';
+        $this->curWidth = 0;
     }
 
     private function eraseToLineEnd(): void

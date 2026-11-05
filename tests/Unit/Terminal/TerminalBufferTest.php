@@ -135,6 +135,51 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame(3, $buffer->cursorColumn(), 'erase-to-end keeps the column');
     }
 
+    /** Symfony's ProgressBar redraws with `ESC[1G` + `ESC[2K`: one bar on the line, not two side by side. */
+    public function testAProgressBarRedrawReplacesTheLine(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed(' 1/10 [==>      ] 10%');
+        $buffer->feed("\x1b[1G\x1b[2K 2/10 [=====>   ] 20%");
+
+        $this->assertSame([' 2/10 [=====>   ] 20%'], $buffer->lines);
+    }
+
+    public function testEraseLineThenCarriageReturnLeavesNoTail(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed("Downloading long name 100%\x1b[2K\rDone");
+
+        $this->assertSame(['Done'], $buffer->lines);
+    }
+
+    public function testEraseToTheCursorBlanksTheStartOnly(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed("abcdef\x1b[3G\x1b[1K");
+
+        $this->assertSame(['   def'], $buffer->lines, 'columns 1..3 blanked, the rest kept');
+    }
+
+    public function testCursorForwardAndBackMoveTheColumn(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed("abcdef\r\x1b[2CX\x1b[1DY");
+
+        $this->assertSame(['abYdef'], $buffer->lines);
+    }
+
+    /** A character cut by the read boundary waits for its other bytes, so the columns after it stay right. */
+    public function testACharacterSplitAcrossReadsKeepsItsColumn(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed("ab\xc3");
+        $buffer->feed("\xa9");
+        $buffer->feed("\x08\x08X");
+
+        $this->assertSame(['aXé'], $buffer->lines);
+    }
+
     public function testEraseToLineEnd(): void
     {
         $b = new TerminalBuffer();
