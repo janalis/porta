@@ -625,6 +625,21 @@ final class RefactorControllerTest extends TestCase
         $this->assertTrue($request['params']['options']['insertSpaces'], 'spaces by default');
     }
 
+    /** Typed into while the server formatted: its edits are for text that is gone, and are not applied. */
+    public function testAReformatAnsweredAfterTypingChangesNothing(): void
+    {
+        [$controller] = $this->ready();
+        $doc = $this->buffers->get('/tmp/proj/a.php')->document;
+        $controller->requestReformat();
+
+        $doc->setCursor(0, 0);
+        $doc->insert('// note');
+        \end($this->client->requests)['respond']([['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]], 'newText' => '    ']], error: null);
+
+        $this->assertSame("// note<?php\n\$x = 1;\n", $doc->getText(), 'the user\'s text, untouched');
+        $this->assertStringContainsString('The file changed while the language server formatted it', $this->statusRow($this->statusBar));
+    }
+
     public function testReformatOptionsUseTabWidthWhenTabbedAndIndentSizeWhenNot(): void
     {
         [$controller] = $this->ready();

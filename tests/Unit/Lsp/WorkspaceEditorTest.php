@@ -1005,6 +1005,30 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertSame([Files::canonical($project->path('a.php'))], $outcome->skipped);
     }
 
+    /**
+     * An open buffer is edited at the version the edit was computed for, or
+     * not at all: the server's own word on it in documentChanges, else the
+     * version the caller's request saw.
+     */
+    public function testAnEditForAnOlderVersionOfAnOpenBufferIsNotApplied(): void
+    {
+        $we = $this->workspaceEditor();
+        $buffer = $this->buffers->open('/tmp/proj/a.php', "abc\n");
+        $version = $buffer->document->version;
+        $buffer->document->insert('typed ');
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+
+        $stated = $we->applyWorkspaceEdit(['documentChanges' => [['textDocument' => ['uri' => 'file:///tmp/proj/a.php', 'version' => $version], 'edits' => $edit]]]);
+        $asked = $we->applyWorkspaceEdit(['changes' => ['file:///tmp/proj/a.php' => $edit]], ['/tmp/proj/a.php' => $version]);
+
+        $this->assertSame("typed abc\n", $buffer->document->getText(), 'neither landed on the moved text');
+        $this->assertSame(['/tmp/proj/a.php'], $stated->skipped);
+        $this->assertSame(['/tmp/proj/a.php'], $asked->skipped);
+
+        $current = $we->applyWorkspaceEdit(['changes' => ['file:///tmp/proj/a.php' => $edit]], ['/tmp/proj/a.php' => $buffer->document->version]);
+        $this->assertSame(1, $current->touched, 'at the version it was asked at, it lands');
+    }
+
     public function testAWriteThatFailsAfterTheCheckIsReportedRatherThanThrown(): void
     {
         $project = new TempProject(['a.php' => "abc\n"]);

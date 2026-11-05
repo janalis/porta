@@ -30,6 +30,14 @@ final class RefactorController extends AbstractLspController implements EditorRe
     /** Which codeAction request the list on screen belongs to. */
     private int $actionGeneration = 0;
 
+    /**
+     * The file the offered actions were computed for, at the version they saw:
+     * picked after typing, an action's edits would land on moved text.
+     *
+     * @var array<string, int>
+     */
+    private array $actionsAskedAt = [];
+
     /** Servers asked by the current code-action request, and how many have answered. */
     private int $asked = 0;
 
@@ -131,17 +139,18 @@ final class RefactorController extends AbstractLspController implements EditorRe
         // language server and file are known-good here.
         $path = (string) $this->editor->getFilePath();
         $this->lsp->flushPendingChange($this->editor->getFilePath(), $this->editor->getDocument());
+        $askedAt = [$path => $this->editor->getDocument()->version];
         $this->lsp->request(
             'textDocument/rename',
             $this->positionParams($path, $line, $col, ['newName' => $newName]),
-            function (mixed $result, ?array $error): void {
+            function (mixed $result, ?array $error) use ($askedAt): void {
                 if (null !== $error || !\is_array($result)) {
                     $this->notifier->error($this->trans('Rename failed: %message%', ['%message%' => (string) ($error['message'] ?? 'no result')]));
 
                     return;
                 }
                 /** @var array<string, mixed> $result */
-                $outcome = $this->workspaceEditor->applyWorkspaceEdit($result);
+                $outcome = $this->workspaceEditor->applyWorkspaceEdit($result, $askedAt);
                 $this->flash($this->report($outcome, $this->trans('Renamed in %count% file|Renamed in %count% files', ['%count%' => $outcome->touched])));
             },
         );
@@ -333,6 +342,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
 
         $generation = ++$this->actionGeneration;
         $this->actions = [];
+        $this->actionsAskedAt = [$path => $this->editor->getDocument()->version];
         $this->answers = 0;
         $this->asked = $this->lsp->requestAll(
             'textDocument/codeAction',
@@ -508,7 +518,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         if (null !== ($action['edit'] ?? null)) {
             /** @var array<string, mixed> $edit */
             $edit = $action['edit'];
-            $outcome = $this->workspaceEditor->applyWorkspaceEdit($edit);
+            $outcome = $this->workspaceEditor->applyWorkspaceEdit($edit, $this->actionsAskedAt);
             $title = (string) ($action['title'] ?? 'fix');
             $this->flash($this->report(
                 $outcome,
@@ -585,7 +595,8 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 ],
             ];
 
-        $this->lsp->request($method, $params, function (mixed $result, ?array $error) use ($path): void {
+        $asked = $doc->version;
+        $this->lsp->request($method, $params, function (mixed $result, ?array $error) use ($path, $asked): void {
             if (null !== $error || !\is_array($result) || [] === $result) {
                 $this->flash($this->trans('Formatting not supported by %server%', ['%server%' => $this->lsp->statusFor($this->editor->getFilePath())]));
 
@@ -593,6 +604,13 @@ final class RefactorController extends AbstractLspController implements EditorRe
             }
 
             $buffer = $this->buffers->get($path);
+            if (null !== $buffer && $buffer->document->version !== $asked) {
+                // Typed into while the server formatted: its edits are for text
+                // that is gone (`    nction f() {`).
+                $this->notifier->warn($this->trans('The file changed while the language server formatted it — ask again'));
+
+                return;
+            }
             if (null !== $buffer) {
                 /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $result */
                 if (!WorkspaceEditor::applyTextEdits($buffer->document, $result)) {

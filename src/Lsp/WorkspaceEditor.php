@@ -74,11 +74,18 @@ final readonly class WorkspaceEditor
      * spec's rule, and merging both would double-apply anything a server sends
      * in each for back-compat.
      *
+     * An open buffer is edited only at the version the edit was computed
+     * against — the server's own `textDocument.version` when it sends one,
+     * else what $askedAt says the caller's request saw. Typed into since, its
+     * edits would land on moved text (`    nction f() {`), so it is named as
+     * not edited instead.
+     *
      * @param array<string, mixed> $edit
+     * @param array<string, int>   $askedAt open buffer path => its document version when the request went out
      */
-    public function applyWorkspaceEdit(array $edit): WorkspaceEditOutcome
+    public function applyWorkspaceEdit(array $edit, array $askedAt = []): WorkspaceEditOutcome
     {
-        $outcome = $this->applyEdit($edit);
+        $outcome = $this->applyEdit($edit, $askedAt);
         if (!$outcome->isRefused()) {
             // The tree may have moved — a file created, renamed, deleted or
             // rewritten on disk — and whatever computes version-control marks
@@ -96,13 +103,16 @@ final readonly class WorkspaceEditor
         return $outcome;
     }
 
-    /** @param array<string, mixed> $edit */
-    private function applyEdit(array $edit): WorkspaceEditOutcome
+    /**
+     * @param array<string, mixed> $edit
+     * @param array<string, int>   $askedAt
+     */
+    private function applyEdit(array $edit, array $askedAt): WorkspaceEditOutcome
     {
         /** @var list<array<string, mixed>> $documentChanges */
         $documentChanges = \is_array($edit['documentChanges'] ?? null) ? $edit['documentChanges'] : [];
         if ([] !== $documentChanges) {
-            return $this->applyDocumentChanges($documentChanges);
+            return $this->applyDocumentChanges($documentChanges, $askedAt);
         }
 
         /** @var array<array-key, list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}>> $changes */
@@ -111,7 +121,7 @@ final readonly class WorkspaceEditor
         $skipped = [];
         $this->undo->begin();
         foreach ($changes as $uri => $edits) {
-            $this->editOne((string) $uri, $edits, $touched, $skipped);
+            $this->editOne((string) $uri, $edits, $touched, $skipped, $askedAt);
         }
 
         return new WorkspaceEditOutcome($touched, $skipped);
@@ -122,8 +132,9 @@ final readonly class WorkspaceEditor
      * order is the contract (a file is created before it is edited).
      *
      * @param list<array<string, mixed>> $changes
+     * @param array<string, int>         $askedAt
      */
-    private function applyDocumentChanges(array $changes): WorkspaceEditOutcome
+    private function applyDocumentChanges(array $changes, array $askedAt): WorkspaceEditOutcome
     {
         $refusal = $this->refuseUnhonourable($changes);
         if (null !== $refusal) {
@@ -148,8 +159,9 @@ final readonly class WorkspaceEditor
             /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits */
             $edits = \is_array($change['edits'] ?? null) ? $change['edits'] : [];
             $uri = $this->stringOf($change['textDocument']['uri'] ?? null);
+            $version = \is_int($change['textDocument']['version'] ?? null) ? $change['textDocument']['version'] : null;
             if (null !== $uri) {
-                $this->editOne($uri, $edits, $touched, $skipped);
+                $this->editOne($uri, $edits, $touched, $skipped, $askedAt, $version);
             }
         }
 
@@ -384,8 +396,10 @@ final readonly class WorkspaceEditor
      *
      * @param list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits
      * @param list<string>                                                                                                                  $skipped
+     * @param array<string, int>                                                                                                            $askedAt
+     * @param int|null                                                                                                                      $version the server's own word on which version it edited
      */
-    private function editOne(string $uri, array $edits, int &$touched, array &$skipped): void
+    private function editOne(string $uri, array $edits, int &$touched, array &$skipped, array $askedAt, ?int $version = null): void
     {
         $target = Uri::toPath($uri);
         if (null === $target || [] === $edits) {
@@ -393,12 +407,13 @@ final readonly class WorkspaceEditor
         }
 
         $buffer = $this->bufferAt($target);
-        if (null !== $buffer) {
-            $this->editBuffer($buffer, $target, $edits, $touched, $skipped);
-
-            return;
-        }
-        $this->editFile($target, $edits, $touched, $skipped);
+        $expected = null === $buffer ? null : $version ?? $askedAt[$buffer->path] ?? null;
+        match (true) {
+            null === $buffer => $this->editFile($target, $edits, $touched, $skipped),
+            // Typed into since the server looked: its edits are for text that moved.
+            null !== $expected && $expected !== $buffer->document->version => $skipped[] = $target,
+            default => $this->editBuffer($buffer, $target, $edits, $touched, $skipped),
+        };
     }
 
     /**

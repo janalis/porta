@@ -3610,6 +3610,10 @@
         <source>Plugin &quot;%name%&quot; needs %requires%, which is not running — not loaded</source>
         <target>התוסף &quot;%name%&quot; צריך את %requires%, שאינו פועל — לא נטען</target>
       </trans-unit>
+      <trans-unit id="1232">
+        <source>The file changed while the language server formatted it — ask again</source>
+        <target>הקובץ השתנה בזמן ששרת השפה עיצב אותו — בקשו שוב</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
