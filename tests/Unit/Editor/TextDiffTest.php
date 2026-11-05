@@ -53,6 +53,12 @@ final class TextDiffTest extends TestCase
         $this->assertSame('c', $change['text']);
     }
 
+    public function testTheRangeLengthIsInUtf16UnitsNotBytes(): void
+    {
+        $this->assertSame(1, TextDiff::incrementalChange('café', 'caf')['rangeLength'], 'é: two bytes, one unit');
+        $this->assertSame(2, TextDiff::incrementalChange('a😀', 'a')['rangeLength'], 'an emoji: four bytes, two units');
+    }
+
     public function testIdenticalTextProducesEmptyChangeAtEnd(): void
     {
         $change = TextDiff::incrementalChange('same', 'same');

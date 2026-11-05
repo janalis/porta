@@ -54,7 +54,9 @@ final class TextDiff
                 'start' => self::offsetToPosition($old, $startOffset),
                 'end' => self::offsetToPosition($old, $endOffset),
             ],
-            'rangeLength' => $endOffset - $startOffset,
+            // UTF-16 units, as LSP measures it — not bytes: `é` is one, an
+            // emoji two. Deprecated in the spec, and still read by some.
+            'rangeLength' => \intdiv(\strlen((string) \mb_convert_encoding(\substr($old, $startOffset, $endOffset - $startOffset), to_encoding: 'UTF-16LE', from_encoding: 'UTF-8')), num2: 2),
             'text' => \substr($new, $prefix, $newLen - $suffix - $prefix),
         ];
     }
