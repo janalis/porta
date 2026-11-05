@@ -149,6 +149,9 @@
             "dynamicRegistration": false
         },
         "applyEdit": true,
+        "fileOperations": {
+            "willRename": true
+        },
         "workspaceEdit": {
             "documentChanges": true,
             "resourceOperations": [

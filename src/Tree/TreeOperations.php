@@ -11,6 +11,7 @@ use Porta\Editor\OpenFocus;
 use Porta\Editor\PromptTone;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
+use Porta\Event\ReferencesFollowRequested;
 use Porta\Event\TreeDropRequested;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Filesystem\LocalFilesystem;
@@ -367,6 +368,7 @@ final class TreeOperations
             // path resolves now that it exists.
             $newKey = ($resolvedNew = \realpath($new)) ? $resolvedNew : $new;
             $this->events->dispatch(new FileRenamed($oldKey, $newKey));
+            $this->events->dispatch(new ReferencesFollowRequested($oldKey, $newKey));
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);
             $this->notifier->success($success);

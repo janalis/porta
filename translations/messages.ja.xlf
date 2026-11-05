@@ -3590,6 +3590,14 @@
         <source>off — project not trusted</source>
         <target>オフ — 信頼されていないプロジェクト</target>
       </trans-unit>
+      <trans-unit id="1227">
+        <source>%file% moved; its references were not updated: %message%</source>
+        <target>%file% を移動しましたが、参照は更新されませんでした: %message%</target>
+      </trans-unit>
+      <trans-unit id="1228">
+        <source>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</source>
+        <target>移動に合わせて %count% 件のファイルを更新しました — 最後のリファクタリングを元に戻すで取り消せます</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

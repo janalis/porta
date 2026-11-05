@@ -3590,6 +3590,14 @@
         <source>off — project not trusted</source>
         <target>off — project not trusted</target>
       </trans-unit>
+      <trans-unit id="1227">
+        <source>%file% moved; its references were not updated: %message%</source>
+        <target>%file% moved; its references were not updated: %message%</target>
+      </trans-unit>
+      <trans-unit id="1228">
+        <source>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</source>
+        <target>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

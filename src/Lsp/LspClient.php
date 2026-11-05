@@ -339,6 +339,9 @@ final class LspClient implements LspClientInterface
                 'workspaceFolders' => true,
                 'symbol' => ['dynamicRegistration' => false],
                 'applyEdit' => true,
+                // A file moved in the tree is announced, so a server can move
+                // what names it along ({@see FileMoveFollower}).
+                'fileOperations' => ['willRename' => true],
                 // Declared only because WorkspaceEditor honours them: a server
                 // told we handle resource operations will send them, and a
                 // client that then drops them half-applies the refactoring.

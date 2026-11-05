@@ -3590,6 +3590,14 @@
         <source>off — project not trusted</source>
         <target>כבוי — הפרויקט אינו מהימן</target>
       </trans-unit>
+      <trans-unit id="1227">
+        <source>%file% moved; its references were not updated: %message%</source>
+        <target>%file% הועבר; ההפניות אליו לא עודכנו: %message%</target>
+      </trans-unit>
+      <trans-unit id="1228">
+        <source>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</source>
+        <target>קובץ %count% עודכן בעקבות ההעברה — בטל את הריפקטורינג האחרון מחזיר זאת|%count% קבצים עודכנו בעקבות ההעברה — בטל את הריפקטורינג האחרון מחזיר זאת</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

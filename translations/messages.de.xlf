@@ -3590,6 +3590,14 @@
         <source>off — project not trusted</source>
         <target>aus — Projekt nicht vertraut</target>
       </trans-unit>
+      <trans-unit id="1227">
+        <source>%file% moved; its references were not updated: %message%</source>
+        <target>%file% verschoben; seine Verweise wurden nicht aktualisiert: %message%</target>
+      </trans-unit>
+      <trans-unit id="1228">
+        <source>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</source>
+        <target>%count% Datei für das Verschieben aktualisiert — Letztes Refactoring rückgängig machen nimmt es zurück|%count% Dateien für das Verschieben aktualisiert — Letztes Refactoring rückgängig machen nimmt es zurück</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

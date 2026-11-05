@@ -14,6 +14,10 @@ versions follow [Semantic Versioning](https://semver.org/).
   line, and the status bar counts the failing tests. **Run All Tests with
   Coverage** marks each statement in the change strip — green where it ran,
   red where no test reached — until **Hide Coverage**. Off by default.
+- **Moving a PHP file moves its namespace**: with a language server that
+  offers it (phpactor), a file moved or renamed in the tree has its namespace
+  and every `use` of its class updated, as one refactoring Undo Last
+  Refactoring takes back.
 
 ### Fixed
 

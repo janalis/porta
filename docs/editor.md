@@ -692,6 +692,13 @@ breakpoints, recent files, saved search scopes, edit and jump history, local
 history — follows too, whether the file moved from here or from a language
 server's refactoring.
 
+A PHP file moved or renamed here — with **Rename…**, a drag or cut and paste —
+also takes its code along when your language server offers that: its
+namespace changes to match the new folder, and every `use` of the class is
+updated, open files as unsaved edits and the rest on disk. **Undo Last
+Refactoring** (`Ctrl+Alt+Z`) takes it back. Phpactor offers it; PHPantom does
+not yet, and with it a move changes only where the file is.
+
 ### Dragging files
 
 Drag a row onto a folder to **move** it there. Dropping onto a *file* means its
