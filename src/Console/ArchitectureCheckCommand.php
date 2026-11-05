@@ -179,6 +179,7 @@ final class ArchitectureCheckCommand extends Command
         'FtpPlugin>Config', // PortaHome: where passwords and caches are kept
         'FtpPlugin>Filesystem', // the transport core asks for, and the spec it serves
         'FtpPlugin>Plugin',
+        'FtpPlugin>Support', // Files::ensureDir() for the password folder
         // The graph-viewer plugin's own classes (plugins/graph-viewer/src): the
         // architecture scanner reaches core's AsyncProcess and JsonFile. A
         // plugin depending on core is the allowed direction — core depending on
@@ -406,6 +407,7 @@ final class ArchitectureCheckCommand extends Command
         'SshPlugin>Config', // PortaHome: where shared connections and caches are kept
         'SshPlugin>Filesystem', // the transport core asks for, and the spec it serves
         'SshPlugin>Plugin',
+        'SshPlugin>Support', // Files::ensureDir() for the shared-connection folder
         'Support>Container',
         'Support>Ui',
         // The symfony-lsp plugin's core reaches: ServerNotFound, so a claimed

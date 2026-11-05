@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\FtpPlugin;
 
 use Porta\Filesystem\RemoteSpec;
+use Porta\Support\Files;
 
 /**
  * Where an FTP server's password is kept: a netrc file per server project,
@@ -37,8 +38,7 @@ final class Credentials
         try {
             $dir = \dirname($file);
             $stored = null;
-            // @mago-expect lint:no-error-control-operator -- a directory that cannot be made warns; the null return is what is reported
-            if (\is_dir($dir) || @\mkdir($dir, permissions: 0o700, recursive: true) || \is_dir($dir)) {
+            if (Files::ensureDir($dir, permissions: 0o700)) {
                 $line = \sprintf("machine %s login %s password %s\n", self::token($spec->host), self::token((string) $spec->user), self::token($password));
                 // @mago-expect lint:no-error-control-operator -- an unwritable directory warns; the null return is what is reported
                 if (false !== @\file_put_contents($file.'.tmp', $line)) {
