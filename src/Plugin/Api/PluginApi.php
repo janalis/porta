@@ -6,6 +6,7 @@ namespace Porta\Plugin\Api;
 
 use Porta\Config\ActionCatalog;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\CoverageMark;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\OpenFocus;
@@ -1780,6 +1781,28 @@ final class PluginApi
             $known[\max(0, $line)] = $summary;
         }
         $runtime->changeMarks->applyCommentMarks($path, $known, $this->pluginName);
+    }
+
+    /**
+     * Show which lines of a file a test run executed: a green bar on each
+     * covered line and a heavier red one on each that never ran, in the
+     * change strip — in its place, for as long as the file has any. Lines
+     * left out (a brace, a signature) show nothing. The map replaces the
+     * file's coverage, so an empty array clears it and gives the strip back to
+     * the change marks. Path-keyed like {@see setDiagnostics}: a path with no
+     * open buffer is a silent no-op, so publish again from {@see onFileOpened}.
+     * Edits move the bars with their lines; an edited line loses its own.
+     *
+     * @param array<int, bool> $lines 0-based line => whether it ran
+     */
+    public function setCoverage(string $path, array $lines): void
+    {
+        $runtime = ($this->runtime)();
+        $marks = [];
+        foreach ($lines as $line => $covered) {
+            $marks[\max(0, $line)] = $covered ? CoverageMark::Covered : CoverageMark::Uncovered;
+        }
+        $runtime->changeMarks->applyCoverage($path, $marks);
     }
 
     /**

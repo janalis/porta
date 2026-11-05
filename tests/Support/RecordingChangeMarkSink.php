@@ -6,6 +6,7 @@ namespace Porta\Tests\Support;
 
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\ChangeMarkSink;
+use Porta\Editor\CoverageMark;
 
 /** Records every published change-mark and comment-mark batch. */
 final class RecordingChangeMarkSink implements ChangeMarkSink
@@ -24,5 +25,13 @@ final class RecordingChangeMarkSink implements ChangeMarkSink
     public function applyCommentMarks(string $path, array $marks, string $owner): void
     {
         $this->comments[] = ['path' => $path, 'marks' => $marks, 'owner' => $owner];
+    }
+
+    /** @var list<array{path: string, marks: array<int, CoverageMark>}> */
+    public array $coverage = [];
+
+    public function applyCoverage(string $path, array $marks): void
+    {
+        $this->coverage[] = ['path' => $path, 'marks' => $marks];
     }
 }

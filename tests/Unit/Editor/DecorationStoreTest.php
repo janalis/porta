@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\CoverageMark;
 use Porta\Editor\DecorationStore;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
@@ -95,6 +96,34 @@ final class DecorationStoreTest extends TestCase
      * changed file left every mark below pointing three lines wrong — and the
      * marker column and the stripe read the same map, so both lied together.
      */
+    public function testCoverageMovesWithItsLinesAndLeavesWhatTheRunNeverSaw(): void
+    {
+        $store = new DecorationStore(static function (): void {});
+        $store->resetForBuffer([], lineCount: 10);
+        $store->setCoverage([1 => CoverageMark::Covered, 5 => CoverageMark::Uncovered, 8 => CoverageMark::Covered]);
+
+        $store->remapForEdit(cursorLine: 5, lineCount: 10);
+        $this->assertSame([1 => CoverageMark::Covered, 5 => CoverageMark::Uncovered, 8 => CoverageMark::Covered], $store->coverage, 'typing within a line moves nothing');
+
+        // Two lines added at line 3: the caret ends on line 5.
+        $store->remapForEdit(cursorLine: 5, lineCount: 12);
+        $this->assertSame([1 => CoverageMark::Covered, 7 => CoverageMark::Uncovered, 10 => CoverageMark::Covered], $store->coverage, 'above stays, below moves down two');
+
+        // Lines 7 and 8 removed, the caret left on line 6.
+        $store->remapForEdit(cursorLine: 6, lineCount: 10);
+        $this->assertSame([1 => CoverageMark::Covered, 8 => CoverageMark::Covered], $store->coverage, "line 7's mark went with it; line 10 moved up two");
+
+        // An insertion ON a marked line: that line is edited, so its mark goes.
+        $store->remapForEdit(cursorLine: 2, lineCount: 11);
+        $this->assertSame([9 => CoverageMark::Covered], $store->coverage, 'the edited line 1 lost its mark; line 8 moved down one');
+
+        $store->resetForBuffer([], lineCount: 4);
+        $this->assertSame([], $store->coverage, 'another buffer starts with none');
+        $store->setCoverage([0 => CoverageMark::Covered]);
+        $store->resetForReshow([], lineCount: 4);
+        $this->assertSame([], $store->coverage, 'a re-show replays the buffer\'s own, so the store starts empty');
+    }
+
     public function testMarksBelowAnInsertionMoveDownAndTheNewLinesAreMarked(): void
     {
         $store = new DecorationStore(static function (): void {});

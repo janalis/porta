@@ -227,6 +227,12 @@ final class Glyphs
     public const string VCS_MODIFIED = '┆';
     public const string VCS_DELETED = '▁';
 
+    // Coverage, in the change strip while it is shown. COVERAGE_COVERED is
+    // VCS_ADDED's value — disjoint in time: coverage takes the strip's place —
+    // and the heavier bar is the line that never ran.
+    public const string COVERAGE_COVERED = '▎';
+    public const string COVERAGE_UNCOVERED = '▌';
+
     // Toggles — the mark between two rails, drawn by FieldBox::checkbox():
     // brackets at rest, the box a browser draws, and the field border's
     // vertical in every other state (FieldState::checkboxRails()), so on/off

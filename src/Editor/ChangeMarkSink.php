@@ -32,4 +32,12 @@ interface ChangeMarkSink
      * @param array<int, string> $marks 0-based line => one-line summary; an empty array clears
      */
     public function applyCommentMarks(string $path, array $marks, string $owner): void;
+
+    /**
+     * Show which lines a test run executed, in the change strip — in place of
+     * the change marks, for as long as it is not empty.
+     *
+     * @param array<int, CoverageMark> $marks 0-based line => mark; an empty array clears
+     */
+    public function applyCoverage(string $path, array $marks): void;
 }

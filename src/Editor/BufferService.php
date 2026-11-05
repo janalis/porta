@@ -506,6 +506,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         $this->editor->showDocument($buffer->path, $buffer->document, $buffer->diagnostics, $buffer->highlighter, $buffer->editorConfig);
         $this->editor->decorations->setVcsMarks($buffer->vcsMarks, $buffer->document->getLineCount());
         $this->editor->decorations->setCommentMarks($buffer->commentMarks());
+        $this->editor->decorations->setCoverage($buffer->coverage);
         $this->feeder->feed($buffer);
         $this->dispatcher->dispatch(new BufferSwitched($buffer));
         $this->tui->requestRender();
@@ -978,6 +979,46 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
     }
 
     /**
+     * Store a file's coverage and, if it is on screen, paint it. A path with
+     * no open buffer is a silent no-op: the writer publishes again when it
+     * opens.
+     *
+     * @param array<int, CoverageMark> $marks 0-based line => mark
+     */
+    #[\Override]
+    public function applyCoverage(string $path, array $marks): void
+    {
+        $this->publish(
+            $path,
+            static function (Buffer $buffer) use ($marks): void {
+                $buffer->coverage = $marks;
+            },
+            fn (Buffer $buffer) => $this->editor->decorations->setCoverage($buffer->coverage),
+        );
+    }
+
+    /**
+     * What comment marks and coverage share: keep it on the file's buffer, and
+     * paint it only when that buffer is on screen — a switch back replays it.
+     * A path with no open buffer is a silent no-op.
+     *
+     * @param \Closure(Buffer): void $keep
+     * @param \Closure(Buffer): void $paint
+     */
+    private function publish(string $path, \Closure $keep, \Closure $paint): void
+    {
+        $buffer = $this->buffers->get($path);
+        if (null === $buffer) {
+            return;
+        }
+        $keep($buffer);
+        if ($buffer === $this->buffers->active()) {
+            $paint($buffer);
+        }
+        $this->tui->requestRender();
+    }
+
+    /**
      * Store an owner's comment marks for a file and, if it is on screen, paint
      * the merge. A path with no open buffer is a silent no-op, as for change
      * marks.
@@ -987,15 +1028,11 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
     #[\Override]
     public function applyCommentMarks(string $path, array $marks, string $owner): void
     {
-        $buffer = $this->buffers->get($path);
-        if (null === $buffer) {
-            return;
-        }
-        $buffer->publishCommentMarks($owner, $marks);
-        if ($buffer === $this->buffers->active()) {
-            $this->editor->decorations->setCommentMarks($buffer->commentMarks());
-        }
-        $this->tui->requestRender();
+        $this->publish(
+            $path,
+            static fn (Buffer $buffer) => $buffer->publishCommentMarks($owner, $marks),
+            fn (Buffer $buffer) => $this->editor->decorations->setCommentMarks($buffer->commentMarks()),
+        );
     }
 
     #[\Override]

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferService;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\CoverageMark;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\OpenFocus;
 use Porta\History\BookmarkPersistence;
@@ -265,6 +266,37 @@ final class IdeDockToolsTest extends TestCase
                     // And it was stored, not dropped: switching back replays it.
                     self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
                     $this->assertSame([0 => ChangeMarkKind::Added, 1 => ChangeMarkKind::Deleted], $decorations->vcsMarks, 'the switch back replays what arrived while it was hidden');
+                },
+            ],
+        );
+    }
+
+    public function testCoverageIsKeptPerFileAndFollowsTheActiveBuffer(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['a.php' => "<?php\n\$x = 1;\n", 'b.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                200 => function (Tui $tui, $terminal, $ide) use ($project): void {
+                    $decorations = Widgets::editor($tui)->decorations;
+                    $a = (string) \realpath($project->path('a.php'));
+
+                    self::bufferService($ide)->applyCoverage($a, [1 => CoverageMark::Covered]);
+                    $this->assertSame([1 => CoverageMark::Covered], $decorations->coverage, 'the file on screen paints at once');
+
+                    self::bufferService($ide)->applyCoverage($project->path('nope.php'), [0 => CoverageMark::Uncovered]);
+                    $this->assertSame([1 => CoverageMark::Covered], $decorations->coverage, 'a file with no buffer is a no-op');
+
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->coverage, 'b.php has none of its own');
+                    self::bufferService($ide)->applyCoverage($a, [1 => CoverageMark::Uncovered]);
+                    $this->assertSame([], $decorations->coverage, 'a background publish does not paint over the file on screen');
+
+                    self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
+                    $this->assertSame([1 => CoverageMark::Uncovered], $decorations->coverage, 'the switch back replays it');
                 },
             ],
         );

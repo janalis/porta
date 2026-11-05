@@ -546,7 +546,16 @@ final readonly class EditorRowAssembler
     /** The one-column git change strip, or '' when the gutter marks are disabled. */
     private function vcsCell(int $line): string
     {
-        return $this->vcsGutter ? EditorRenderer::vcsCell($this->store->vcsMarks[$line] ?? null, $this->styles) : '';
+        if (!$this->vcsGutter) {
+            return '';
+        }
+        $coverage = $this->store->coverage[$line] ?? null;
+
+        return match (true) {
+            null !== $coverage => $this->styles->of($coverage->role())->apply($coverage->glyph()),
+            [] !== $this->store->coverage => ' ', // coverage holds the strip: no git mark shows through
+            default => EditorRenderer::vcsCell($this->store->vcsMarks[$line] ?? null, $this->styles),
+        };
     }
 
     /**

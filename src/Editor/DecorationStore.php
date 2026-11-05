@@ -25,6 +25,14 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     public private(set) array $vcsMarks = [];
 
     /**
+     * Which lines the last coverage run executed. Not empty, it takes the
+     * change strip's place: the strip shows these instead of the git marks.
+     *
+     * @var array<int, CoverageMark>
+     */
+    public private(set) array $coverage = [];
+
+    /**
      * The document's line count as of the last edit, for {@see
      * remapForEdit()} — nothing reports how many lines an edit added or
      * removed, so it is the difference from this. Rebased by {@see
@@ -150,6 +158,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         $this->recountDiagnostics();
         $this->inlayHints = [];
         $this->commentMarks = [];
+        $this->coverage = [];
         $this->debugValues = [];
         $this->breakpointLines = [];
         $this->bookmarkLines = [];
@@ -173,6 +182,13 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      *                                              remap baseline; null leaves it, for a caller that is
      *                                              clearing the marks rather than answering about a file
      */
+    /** @param array<int, CoverageMark> $byLine 0-based line => mark; [] gives the strip back to the change marks */
+    public function setCoverage(array $byLine): void
+    {
+        $this->coverage = $byLine;
+        ($this->invalidate)();
+    }
+
     public function setVcsMarks(array $byLine, ?int $lineCount = null): void
     {
         $this->vcsMarks = $byLine;
@@ -234,6 +250,29 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
             $this->remeasureRemoteLines($path, $document);
         }
         $this->remapVcsMarks($atLine, $delta);
+        $this->remapCoverage($atLine, $delta);
+    }
+
+    /**
+     * Coverage moves with its lines as the change marks do, and a removed
+     * line takes its mark with it. A line the edit added or changed gets
+     * none: the run never saw it.
+     */
+    private function remapCoverage(int $atLine, int $lineDelta): void
+    {
+        if ([] === $this->coverage || 0 === $lineDelta) {
+            return;
+        }
+        $moved = [];
+        foreach ($this->coverage as $line => $mark) {
+            match (true) {
+                $line < $atLine => $moved[$line] = $mark,
+                $line > ($atLine - \min(0, $lineDelta)) => $moved[$line + $lineDelta] = $mark,
+                default => null, // the edited line, or one the edit removed
+            };
+        }
+        $this->coverage = $moved;
+        ($this->invalidate)();
     }
 
     /**

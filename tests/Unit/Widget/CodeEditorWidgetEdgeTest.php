@@ -10,6 +10,7 @@ use Porta\Config\IndentStyle;
 use Porta\Config\LanguageIndent;
 use Porta\Editor\ChangeMarkKind;
 use Porta\Editor\CompletionItem;
+use Porta\Editor\CoverageMark;
 use Porta\Editor\DiagnosticMessageMode;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
@@ -891,6 +892,37 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         foreach ($rendered as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line));
         }
+    }
+
+    /**
+     * Coverage takes the strip's place while a file has any: a bar per line
+     * the run saw, nothing on a line it did not report, and no git mark
+     * through it — the strip is coverage's until it is cleared.
+     */
+    public function testCoverageTakesTheChangeStripsPlace(): void
+    {
+        $editor = $this->editor("<?php\n\$a = 1;\n\$b = 2;\n\$c = 3;\n");
+        $editor->decorations->setVcsMarks([0 => ChangeMarkKind::Modified, 3 => ChangeMarkKind::Added]);
+        $editor->decorations->setCoverage([1 => CoverageMark::Covered, 2 => CoverageMark::Uncovered]);
+
+        $rendered = $editor->render(new RenderContext(60, 6));
+        $this->assertSame(' ', \mb_substr(AnsiUtils::stripAnsiCodes($rendered[0]), start: 0, length: 1), 'a git mark does not show through');
+        $this->assertStringContainsString("\x1b[38;5;114m▎", $rendered[1], 'covered: the green bar');
+        $this->assertStringContainsString("\x1b[38;5;203m▌", $rendered[2], 'never ran: the heavier red one');
+        $this->assertSame(' ', \mb_substr(AnsiUtils::stripAnsiCodes($rendered[3]), start: 0, length: 1), 'a line the run did not report shows nothing');
+        $this->assertFalse($editor->changeMarkAt(0, 3), 'and a click there opens no change it cannot see');
+        foreach ($rendered as $line) {
+            $this->assertSame(60, AnsiUtils::visibleWidth($line));
+        }
+
+        $editor->decorations->setCoverage([]);
+        $rendered = $editor->render(new RenderContext(60, 6));
+        $this->assertStringContainsString("\x1b[38;5;75m┆", $rendered[0], 'cleared, the strip is the change marks\' again');
+        $this->assertTrue($editor->changeMarkAt(0, 3));
+
+        $editor->setVcsGutter(false);
+        $editor->decorations->setCoverage([1 => CoverageMark::Covered]);
+        $this->assertStringNotContainsString('▎', \implode('', $editor->render(new RenderContext(60, 6))), 'with no strip, nowhere to show it');
     }
 
     public function testSignatureHintOnFirstLineRendersBelow(): void

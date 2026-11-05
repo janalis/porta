@@ -44,6 +44,9 @@ final class Buffer
     /** @var array<int, ChangeMarkKind> 0-based line => kind vs git HEAD */
     public array $vcsMarks = [];
 
+    /** @var array<int, CoverageMark> 0-based line => whether the last coverage run executed it; empty while none is shown */
+    public array $coverage = [];
+
     /**
      * The lines a conversation hangs on, by who published them — a review
      * plugin's threads — so they survive a tab switch like {@see $vcsMarks}.

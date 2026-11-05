@@ -12,6 +12,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferSaver;
 use Porta\Editor\ChangeMarkKind;
+use Porta\Editor\CoverageMark;
 use Porta\Editor\DiagnosticSeverity;
 use Porta\Editor\Document;
 use Porta\Editor\EditorDisplayOptions;
@@ -458,6 +459,7 @@ final class PluginApiTest extends TestCase
             static fn () => $api->setLineBlocks([]),
             static fn () => $api->setChangeMarks('/x', []),
             static fn () => $api->setCommentMarks('/x', []),
+            static fn () => $api->setCoverage('/x', []),
             static fn () => $api->emit(new WorkingTreeChanged()),
             static fn () => $api->openView('git'),
             static fn () => $api->closeView('git'),
@@ -1013,6 +1015,19 @@ final class PluginApiTest extends TestCase
         $this->assertSame(
             [['path' => '/p/a.php', 'marks' => [2 => 'alice: rename', 0 => 'clamped'], 'owner' => 'demo']],
             $this->changeMarks->comments,
+        );
+    }
+
+    public function testSetCoverageMarksEachLineAndReachesTheSink(): void
+    {
+        $api = $this->api();
+
+        $api->setCoverage('/p/a.php', [3 => true, 4 => false, -1 => true]);
+
+        $this->assertSame(
+            [['path' => '/p/a.php', 'marks' => [3 => CoverageMark::Covered, 4 => CoverageMark::Uncovered, 0 => CoverageMark::Covered]]],
+            $this->changeMarks->coverage,
+            'a line that ran, one that did not, and a negative line clamped to the first',
         );
     }
 

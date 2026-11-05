@@ -552,7 +552,7 @@ final class CodeEditorWidget extends AbstractWidget implements
     /** Whether a gutter cell is a version-control change mark: the strip's column, on a line that has one. */
     public function changeMarkAt(int $col, int $docLine): bool
     {
-        return 0 === $col && $this->display->vcsGutter && \array_key_exists($docLine, $this->decorations->vcsMarks);
+        return 0 === $col && $this->display->vcsGutter && [] === $this->decorations->coverage && \array_key_exists($docLine, $this->decorations->vcsMarks);
     }
 
     /**
