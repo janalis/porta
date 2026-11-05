@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Highlight\DarkTerminalTheme;
 use Porta\Highlight\PlainTerminalTheme;
 use Porta\Highlight\SemanticTokenStyle;
+use Porta\Lsp\LspClient;
 use Porta\Ui\Sgr;
 use Tempest\Highlight\Tokens\TokenTypeEnum;
 
@@ -61,6 +62,15 @@ final class SemanticTokenStyleTest extends TestCase
         $theme = new DarkTerminalTheme();
 
         $this->assertSame($theme->before($expected), SemanticTokenStyle::open($type, [], $theme));
+    }
+
+    /** The join with what the client advertises: a type added there and not mapped here would paint plain. */
+    public function testEveryAdvertisedTypeIsPainted(): void
+    {
+        $theme = new DarkTerminalTheme();
+        foreach (LspClient::SEMANTIC_TOKEN_TYPES as $type) {
+            $this->assertNotSame('', SemanticTokenStyle::open($type, [], $theme), $type);
+        }
     }
 
     public static function mappedTypes(): \Generator

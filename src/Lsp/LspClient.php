@@ -24,6 +24,37 @@ use Revolt\EventLoop;
  */
 final class LspClient implements LspClientInterface
 {
+    /**
+     * The semantic token types this client knows how to paint, as the
+     * capabilities advertise them — {@see \Porta\Highlight\SemanticTokenStyle}
+     * maps each one, and its test walks this list.
+     */
+    public const array SEMANTIC_TOKEN_TYPES = [
+        'namespace',
+        'type',
+        'class',
+        'enum',
+        'interface',
+        'struct',
+        'typeParameter',
+        'parameter',
+        'variable',
+        'property',
+        'enumMember',
+        'event',
+        'function',
+        'method',
+        'macro',
+        'keyword',
+        'modifier',
+        'comment',
+        'string',
+        'number',
+        'regexp',
+        'operator',
+        'decorator',
+    ];
+
     /** Seconds a request may go unanswered before it fails — and is cancelled at the server. */
     public const float REQUEST_TIMEOUT = 30.0;
 
@@ -292,31 +323,7 @@ final class LspClient implements LspClientInterface
                 // knows how to paint — a server is entitled to drop the rest.
                 'semanticTokens' => [
                     'requests' => ['full' => true, 'range' => false],
-                    'tokenTypes' => [
-                        'namespace',
-                        'type',
-                        'class',
-                        'enum',
-                        'interface',
-                        'struct',
-                        'typeParameter',
-                        'parameter',
-                        'variable',
-                        'property',
-                        'enumMember',
-                        'event',
-                        'function',
-                        'method',
-                        'macro',
-                        'keyword',
-                        'modifier',
-                        'comment',
-                        'string',
-                        'number',
-                        'regexp',
-                        'operator',
-                        'decorator',
-                    ],
+                    'tokenTypes' => self::SEMANTIC_TOKEN_TYPES,
                     'tokenModifiers' => ['declaration', 'definition', 'readonly', 'static', 'deprecated', 'abstract', 'async', 'modification', 'documentation', 'defaultLibrary'],
                     'formats' => ['relative'],
                 ],
