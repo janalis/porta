@@ -37,6 +37,27 @@ final class AutoPairServiceTest extends TestCase
         $this->assertFalse(new AutoPairService()->handle($doc, "'"), "b' is an apostrophe, not the start of a string");
     }
 
+    /**
+     * Typing through an auto-pair and over its closer is one run of typing:
+     * the step back inside the pair moved the caret off where the typed text
+     * ended, and every bracket split the run into another Ctrl+Z.
+     */
+    public function testTypingThroughAPairIsOneUndoStep(): void
+    {
+        $doc = new Document('');
+        $pairs = new AutoPairService();
+        foreach (\str_split('f($x)') as $key) {
+            if ($pairs->handle($doc, $key)) {
+                continue;
+            }
+            $doc->insert($key);
+        }
+        $this->assertSame('f($x)', $doc->getText());
+
+        $doc->undo();
+        $this->assertSame('', $doc->getText());
+    }
+
     /** Wrapping a selection is one edit: a single undo takes both brackets back out. */
     public function testWrappingASelectionIsUndoneInOneStep(): void
     {

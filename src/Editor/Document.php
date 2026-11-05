@@ -1059,6 +1059,16 @@ final class Document
 
     // --- Mutation ---------------------------------------------------------
 
+    /**
+     * The caret is where the typing goes on: an auto-pair steps back inside
+     * the pair it typed, a type-over steps over the closer, and the next key
+     * belongs to the same undo step as the ones before.
+     */
+    public function typingGoesOnHere(): void
+    {
+        $this->typedTo = [$this->cursorLine, $this->cursorCol];
+    }
+
     public function insert(string $text): void
     {
         if ('' === $text) {

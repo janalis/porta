@@ -45,10 +45,12 @@ final class AutoPairService
         $pairs = !$typesOver && $isOpen && self::pairs($keys, $line, $doc->cursorCol, $nextChar);
         if ($typesOver) {
             $doc->moveRight();
+            $doc->typingGoesOnHere();
         }
         if ($pairs) {
             $doc->insert($keys.self::PAIRS[$keys]);
             $doc->moveLeft();
+            $doc->typingGoesOnHere(); // inside the pair is where the typing is
         }
 
         return $typesOver || $pairs;
