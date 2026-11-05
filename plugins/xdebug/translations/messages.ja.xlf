@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="ja" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Xdebug: Install the php-debug Adapter</source>
+        <target>Xdebug: php-debug アダプターをインストール</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>The php-debug adapter is already being installed</source>
+        <target>php-debug アダプターはすでにインストール中です</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>No home directory to install the php-debug adapter into</source>
+        <target>php-debug アダプターをインストールするホームディレクトリがありません</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Installing the php-debug adapter %version%…</source>
+        <target>php-debug アダプター %version% をインストール中…</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>php-debug %version% installed: Shift+F9 debugs the PHP file in front</source>
+        <target>php-debug %version% をインストールしました: Shift+F9 で手前の PHP ファイルをデバッグします</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>The php-debug adapter was not installed: %reason%</source>
+        <target>php-debug アダプターはインストールされませんでした: %reason%</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

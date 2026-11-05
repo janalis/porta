@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="de" datatype="plaintext" original="messages">
+    <body>
+      <trans-unit id="1">
+        <source>Xdebug: Install the php-debug Adapter</source>
+        <target>Xdebug: php-debug-Adapter installieren</target>
+      </trans-unit>
+      <trans-unit id="2">
+        <source>The php-debug adapter is already being installed</source>
+        <target>Der php-debug-Adapter wird bereits installiert</target>
+      </trans-unit>
+      <trans-unit id="3">
+        <source>No home directory to install the php-debug adapter into</source>
+        <target>Kein Home-Verzeichnis, in das der php-debug-Adapter installiert werden kann</target>
+      </trans-unit>
+      <trans-unit id="4">
+        <source>Installing the php-debug adapter %version%…</source>
+        <target>php-debug-Adapter %version% wird installiert…</target>
+      </trans-unit>
+      <trans-unit id="5">
+        <source>php-debug %version% installed: Shift+F9 debugs the PHP file in front</source>
+        <target>php-debug %version% installiert: Shift+F9 debuggt die PHP-Datei im Vordergrund</target>
+      </trans-unit>
+      <trans-unit id="6">
+        <source>The php-debug adapter was not installed: %reason%</source>
+        <target>Der php-debug-Adapter wurde nicht installiert: %reason%</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

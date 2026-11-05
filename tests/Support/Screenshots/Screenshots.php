@@ -51,6 +51,7 @@ final class Screenshots
         'ssh',
         'symfony-lsp',
         'tempest',
+        'xdebug',
     ];
 
     /** @return list<string> */

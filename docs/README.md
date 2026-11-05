@@ -39,6 +39,7 @@ plugin's guide also opens from its page under **Settings → Plugins**.
 | [Image viewer](../plugins/image-viewer/docs/README.md) | Images and SVG drawings as pictures — zoom, pan, pixel-exact where the terminal allows |
 | [Graph viewer](../plugins/graph-viewer/docs/README.md) | Graphviz and PlantUML diagrams drawn beside their source, the project's architecture graph |
 | [TODO](../plugins/todo/docs/README.md) | Every TODO and FIXME in the project, in a panel |
+| [Xdebug](../plugins/xdebug/docs/README.md) | Debug PHP with Xdebug in one step: the vscode-php-debug adapter, found or installed for you |
 | [PHPUnit](../plugins/phpunit/docs/README.md) | Run the test at the caret, the file, the suite or the failed ones; results in the dock, failures inline |
 | [PHPantom](../plugins/phpantom/docs/README.md) | The suggested PHP language server, and its fixer |
 | [Phpactor](../plugins/phpactor/docs/README.md) | Phpactor as the PHP language server instead |

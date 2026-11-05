@@ -18,6 +18,11 @@ versions follow [Semantic Versioning](https://semver.org/).
   offers it (phpactor), a file moved or renamed in the tree has its namespace
   and every `use` of its class updated, as one refactoring Undo Last
   Refactoring takes back.
+- **The xdebug plugin**: PHP debugging with Xdebug in one step. It supplies
+  the vscode-php-debug adapter — the one VS Code, Cursor or VSCodium installed,
+  or one its Settings page installs, checked against a pinned SHA-256 — so
+  Shift+F9 debugs the PHP file in front with nothing to configure. Off by
+  default.
 
 ### Fixed
 

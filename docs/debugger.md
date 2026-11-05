@@ -30,9 +30,11 @@ Either in **Settings → your language** ("Debug adapter" + "Launch config
   `stopOnEntry = false`. The placeholders `${file}` and `${workspaceRoot}`
   are substituted anywhere in your overrides.
 
-Changes apply to the next debug session. For PHP, the
-[vscode-php-debug](https://github.com/xdebug/vscode-php-debug) adapter with
-Xdebug is a good fit.
+Changes apply to the next debug session. For PHP, the bundled
+[xdebug plugin](../plugins/xdebug/docs/README.md) does all of this for you: it
+finds the [vscode-php-debug](https://github.com/xdebug/vscode-php-debug)
+adapter an editor of the VS Code family installed, or installs it, and
+supplies it — an adapter set here still wins.
 
 ## A session
 

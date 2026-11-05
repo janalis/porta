@@ -1,0 +1,14 @@
+{
+    "name": "janalis/porta-xdebug",
+    "description": "Debugs PHP with Xdebug: the vscode-php-debug adapter, found or installed for you",
+    "type": "porta-plugin",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Porta\\Xdebug\\": "src/"
+        }
+    }
+}

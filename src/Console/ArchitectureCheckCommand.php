@@ -468,6 +468,12 @@ final class ArchitectureCheckCommand extends Command
         'Workbench>Tree',
         'Workbench>Ui',
         'Workbench>Widget',
+        // The xdebug plugin's own code (plugins/xdebug/src): the plugin API, the
+        // toast severity its install reports with, and AsyncProcess for curl
+        // and unzip. Its porta.php reads Config\PortaHome, outside the graph.
+        'Xdebug>Overlay',
+        'Xdebug>Plugin',
+        'Xdebug>Support',
     ];
 
     /**
