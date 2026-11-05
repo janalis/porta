@@ -110,7 +110,9 @@ final class TestRunner
     /** Put a file's failures on it when it opens: diagnostics only land on an open buffer. */
     public function opened(string $path): void
     {
-        $this->diagnose($path);
+        if ([] !== $this->results->brokenIn($path)) {
+            $this->diagnose($path);
+        }
     }
 
     /** @param list<string> $arguments */
@@ -134,23 +136,20 @@ final class TestRunner
         });
     }
 
+    /**
+     * Show what the run left. A run with no report — stopped, crashed, or
+     * refused by its own configuration — still replaces the last one: what
+     * stays on screen would otherwise be older than the run the tab shows.
+     */
     private function finished(int $code, string $xml): void
     {
         try {
             $outcomes = JunitReport::parse($xml, $this->api->projectRoot());
         } catch (\RuntimeException) {
-            $this->api->updateList(self::TOOL, []);
-            $this->api->notify(
-                -1 === $code
-                    ? $this->api->trans('PHPUnit was stopped before it finished')
-                    : $this->api->trans('PHPUnit exited with code %code% without a report — see its terminal tab', ['%code%' => $code]),
-                ToastSeverity::Error,
-                5.0,
-            );
-
-            return;
+            $outcomes = null;
         }
-        $this->publish($outcomes);
+        $this->publish($outcomes ?? []);
+        $this->report($code, $outcomes);
     }
 
     /** @param list<TestOutcome> $outcomes */
@@ -168,7 +167,6 @@ final class TestRunner
         }
         $this->annotate();
         $this->api->refreshStatusSegments();
-        $this->report();
     }
 
     private function diagnose(string $file): void
@@ -183,16 +181,32 @@ final class TestRunner
         $this->api->setDiagnostics($file, $diagnostics);
     }
 
-    private function report(): void
+    /**
+     * The run's verdict. The exit code has the last word over a report of
+     * passes: PHPUnit fails a run on warnings, deprecations or risky tests
+     * the project's configuration names, and the log records none of them.
+     *
+     * @param list<TestOutcome>|null $outcomes null when the run wrote no report
+     */
+    private function report(int $code, ?array $outcomes): void
     {
-        $outcomes = $this->results->outcomes;
         $broken = \count($this->results->broken());
-        $params = ['%count%' => \count($outcomes), '%failed%' => $broken];
-        match (true) {
-            [] === $outcomes => $this->api->notify($this->api->trans('PHPUnit ran no tests'), ToastSeverity::Warn, 4.0),
-            0 === $broken => $this->api->notify($this->api->trans('%count% test passed|%count% tests passed', $params), ToastSeverity::Success, 4.0),
-            default => $this->api->notify($this->api->trans('%failed% of %count% tests failed', $params), ToastSeverity::Error, 5.0),
+        $params = ['%count%' => \count($outcomes ?? []), '%failed%' => $broken, '%code%' => $code];
+        [$message, $severity] = match (true) {
+            null === $outcomes && -1 === $code => [$this->api->trans('PHPUnit was stopped before it finished'), ToastSeverity::Error],
+            null === $outcomes => [$this->api->trans('PHPUnit exited with code %code% without a report — see its terminal tab', $params), ToastSeverity::Error],
+            [] === $outcomes => [$this->api->trans('PHPUnit ran no tests'), ToastSeverity::Warn],
+            0 === $broken && 0 !== $code => [
+                $this->api->trans(
+                    '%count% test passed, but PHPUnit exited with code %code% — see its terminal tab|%count% tests passed, but PHPUnit exited with code %code% — see its terminal tab',
+                    $params,
+                ),
+                ToastSeverity::Warn,
+            ],
+            0 === $broken => [$this->api->trans('%count% test passed|%count% tests passed', $params), ToastSeverity::Success],
+            default => [$this->api->trans('%failed% of %count% tests failed', $params), ToastSeverity::Error],
         };
+        $this->api->notify($message, $severity, 5.0);
     }
 
     /** @return array{path: string, line: int, text: string} */
@@ -203,12 +217,16 @@ final class TestRunner
         return ['path' => $outcome->file, 'line' => $outcome->at, 'text' => '' === $outcome->message ? $text : $text.' — '.$outcome->message];
     }
 
-    /** $path when it is a PHP file, saved first if it has edits PHPUnit would not see; else null after saying why. */
+    /** $path when it is a PHP file, saved first if it is open with edits PHPUnit would not see; else null after saying why. */
     private function testFile(?string $path): ?string
     {
-        $refusal = null === $path || !\str_ends_with($path, '.php')
-            ? $this->api->trans('Open a PHPUnit test file first')
-            : $this->api->openBuffers()->save($path);
+        // Only an open file can have edits to save: one right-clicked in the
+        // tree is already what is on disk.
+        $refusal = match (true) {
+            null === $path || !\str_ends_with($path, '.php') => $this->api->trans('Open a PHPUnit test file first'),
+            null === $this->api->openBuffers()->text($path) => null,
+            default => $this->api->openBuffers()->save($path),
+        };
         if (null !== $refusal) {
             $this->api->flash($refusal, 4.0);
         }

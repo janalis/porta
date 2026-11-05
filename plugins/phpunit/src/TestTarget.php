@@ -15,6 +15,8 @@ namespace Porta\PhpUnit;
  */
 final readonly class TestTarget
 {
+    private const string CLASS_DECLARATION = '~^\s*(?:(?:final|abstract|readonly)\s+)*class\s+(\w+)~';
+
     private const string FUNCTION = '~^\s*(?:(?:public|protected|private|static|final|abstract)\s+)*function\s+&?(\w+)\s*\(~';
 
     public function __construct(
@@ -25,20 +27,38 @@ final readonly class TestTarget
     /** The target at 0-based $line of $text, or null when the text declares no class. */
     public static function at(string $text, int $line): ?self
     {
-        $class = self::className($text);
+        $lines = \explode("\n", $text);
+        $row = self::row($lines, $line);
+        $class = self::className($text, $lines, $row);
 
-        return null === $class ? null : new self($class, self::method(\explode("\n", $text), $line));
+        return null === $class ? null : new self($class, self::method($lines, $row));
     }
 
     /**
-     * The test method declared at or above $line — the last `function` the
+     * Where to start looking up from: the caret's line — or, on a method's
+     * attributes or docblock, the declaration under them, which they belong to.
+     *
+     * @param list<string> $lines
+     */
+    private static function row(array $lines, int $line): int
+    {
+        $row = \min($line, \count($lines) - 1);
+        $below = $row;
+        while ($below < (\count($lines) - 1) && self::decorates($lines[$below])) {
+            ++$below;
+        }
+
+        return 1 === \preg_match(self::FUNCTION, $lines[$below]) ? $below : $row;
+    }
+
+    /**
+     * The test method declared at or above $row — the last `function` the
      * caret passed — or null when that is no test, or there is none.
      *
      * @param list<string> $lines
      */
-    private static function method(array $lines, int $line): ?string
+    private static function method(array $lines, int $row): ?string
     {
-        $row = \min($line, \count($lines) - 1);
         $match = [];
         while ($row >= 0 && 1 !== \preg_match(self::FUNCTION, $lines[$row], $match)) {
             --$row;
@@ -47,15 +67,30 @@ final readonly class TestTarget
         return $row >= 0 && self::isTest($lines, $row, $match[1]) ? $match[1] : null;
     }
 
-    /** The class's fully qualified name: its `namespace`, then the first `class` it declares. */
-    private static function className(string $text): ?string
+    /**
+     * The test class's fully qualified name: its `namespace`, then the class
+     * the caret is in — the last one declared above it. Above every class,
+     * the first whose name ends in `Test`, else the first: a fixture declared
+     * before the test class is not what is meant.
+     *
+     * @param list<string> $lines
+     */
+    private static function className(string $text, array $lines, int $row): ?string
     {
-        $class = [];
+        $declared = [];
+        foreach ($lines as $index => $source) {
+            $class = [];
+            if (1 === \preg_match(self::CLASS_DECLARATION, $source, $class)) {
+                $declared[$index] = $class[1];
+            }
+        }
+        $above = \array_filter($declared, static fn (int $index): bool => $index <= $row, \ARRAY_FILTER_USE_KEY);
+        $tests = \array_filter($declared, static fn (string $name): bool => \str_ends_with($name, 'Test'));
+        $name = ([] !== $above ? [\end($above)] : [...$tests, ...$declared])[0] ?? null;
         $match = [];
-        $named = 1 === \preg_match('~^\s*(?:(?:final|abstract|readonly)\s+)*class\s+(\w+)~m', $text, $class);
         $namespace = 1 === \preg_match('~^\s*namespace\s+([\w\\\\]+)\s*[;{]~m', $text, $match) ? $match[1].'\\' : '';
 
-        return $named ? $namespace.$class[1] : null;
+        return null === $name ? null : $namespace.$name;
     }
 
     /**

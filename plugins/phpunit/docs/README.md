@@ -27,12 +27,17 @@ read in full. What it found shows up in four places:
   the same tests again.
 - Each failure is a diagnostic on the assertion that failed. It shows inline,
   on the scroll stripe and in the Problems panel (`Alt+6`).
-- Each test method of the file in front of you is marked `✓ passed`,
-  `✗ failed` or `⊘ skipped` at the end of its line.
+- Each test method of the file in front of you is marked `✓ test passed`,
+  `✗ test failed` or `⊘ test skipped` at the end of its line; a method
+  with data sets takes the worst of them.
 - The status bar counts the failing tests until a run comes back green.
 
 Each run replaces what the last one showed, so a run of one test clears the
-failures of the suite before it.
+failures of the suite before it — and so does a run that ends with no report
+(stopped, or refused by its configuration). When every test passed but
+PHPUnit still exits with an error — a `failOnWarning` or `failOnDeprecation`
+in your `phpunit.xml`, say — you are told so rather than shown a green run:
+those findings are in the terminal tab, not in the results.
 
 The plugin finds `phpunit` through its **phpunit binary** setting when you
 set one, then `vendor/bin/phpunit`, then your `PATH`. While none of those

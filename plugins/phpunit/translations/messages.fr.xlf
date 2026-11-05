@@ -31,12 +31,12 @@
         <target>%failed% tests sur %count% en échec</target>
       </trans-unit>
       <trans-unit id="8">
-        <source>passed</source>
-        <target>réussi</target>
+        <source>test passed</source>
+        <target>test réussi</target>
       </trans-unit>
       <trans-unit id="9">
-        <source>skipped</source>
-        <target>ignoré</target>
+        <source>test skipped</source>
+        <target>test ignoré</target>
       </trans-unit>
       <trans-unit id="10">
         <source>Open a PHPUnit test file first</source>
@@ -65,6 +65,14 @@
       <trans-unit id="16">
         <source>PHPUnit: Rerun Failed Tests</source>
         <target>PHPUnit : Relancer les tests en échec</target>
+      </trans-unit>
+      <trans-unit id="17">
+        <source>test failed</source>
+        <target>test en échec</target>
+      </trans-unit>
+      <trans-unit id="18">
+        <source>%count% test passed, but PHPUnit exited with code %code% — see its terminal tab|%count% tests passed, but PHPUnit exited with code %code% — see its terminal tab</source>
+        <target>%count% test réussi, mais PHPUnit s’est arrêté avec le code %code% — voir son onglet de terminal|%count% tests réussis, mais PHPUnit s’est arrêté avec le code %code% — voir son onglet de terminal</target>
       </trans-unit>
     </body>
   </file>

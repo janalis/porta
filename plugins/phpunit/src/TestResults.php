@@ -22,17 +22,30 @@ final readonly class TestResults
     /** @var list<TestOutcome> failures and errors, then skipped, then passed — each group in the order PHPUnit ran it */
     public array $outcomes;
 
+    /** @var list<TestOutcome> the failures and errors, in that order */
+    private array $broken;
+
+    /**
+     * Each outcome's file as the file system resolves it, by its index in
+     * {@see $outcomes} — resolved once, since every buffer switch asks.
+     *
+     * @var list<string>
+     */
+    private array $real;
+
     /** @param list<TestOutcome> $outcomes */
     public function __construct(array $outcomes = [])
     {
         \usort($outcomes, static fn (TestOutcome $a, TestOutcome $b): int => self::ORDER[$a->status] <=> self::ORDER[$b->status]);
         $this->outcomes = $outcomes;
+        $this->broken = \array_values(\array_filter($outcomes, static fn (TestOutcome $outcome): bool => $outcome->broken()));
+        $this->real = \array_map(static fn (TestOutcome $outcome): string => self::real($outcome->file), $outcomes);
     }
 
     /** @return list<TestOutcome> the failures and errors */
     public function broken(): array
     {
-        return \array_values(\array_filter($this->outcomes, static fn (TestOutcome $outcome): bool => $outcome->broken()));
+        return $this->broken;
     }
 
     /** @return list<string> the files the broken tests are in, each once */
@@ -45,8 +58,15 @@ final readonly class TestResults
     public function brokenIn(string $file): array
     {
         $file = self::real($file);
+        $in = [];
+        foreach ($this->outcomes as $index => $outcome) {
+            if (!$outcome->broken() || $this->real[$index] !== $file) {
+                continue;
+            }
+            $in[] = $outcome;
+        }
 
-        return \array_values(\array_filter($this->broken(), static fn (TestOutcome $outcome): bool => self::real($outcome->file) === $file));
+        return $in;
     }
 
     /**
@@ -59,8 +79,8 @@ final readonly class TestResults
     {
         $file = null === $file ? null : self::real($file);
         $worst = [];
-        foreach ($this->outcomes as $outcome) {
-            if (self::real($outcome->file) !== $file) {
+        foreach ($this->outcomes as $index => $outcome) {
+            if ($this->real[$index] !== $file) {
                 continue;
             }
             $was = $worst[$outcome->line] ?? TestOutcome::PASSED;

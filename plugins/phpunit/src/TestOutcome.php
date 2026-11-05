@@ -54,9 +54,9 @@ final readonly class TestOutcome
     public static function verdict(string $status): string
     {
         return match ($status) {
-            self::PASSED => 'passed',
-            self::SKIPPED => 'skipped',
-            default => 'failed',
+            self::PASSED => 'test passed',
+            self::SKIPPED => 'test skipped',
+            default => 'test failed',
         };
     }
 

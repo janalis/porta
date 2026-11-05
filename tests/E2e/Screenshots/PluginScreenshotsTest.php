@@ -193,7 +193,7 @@ final class PluginScreenshotsTest extends TestCase
                     $this->awaitPainted($tui, $terminal, '1 of 2 tests failed');
                     $tui->handleInput("\r"); // Enter on the failure, which leads the dock: to its assertion
                     $this->awaitPainted($tui, $terminal, 'testAMemberGetsTenPercentOff(): void');
-                    $this->awaitPainted($tui, $terminal, '✓ passed');
+                    $this->awaitPainted($tui, $terminal, '✓ test passed');
                     $this->screenshot('plugin-phpunit', $tui, $terminal, $ide);
                 },
             ],

@@ -20,6 +20,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Tests\Support\Widgets;
+use Porta\Workbench\Menu\MenuFileContext;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -89,6 +90,20 @@ final class IdePhpUnitPluginTest extends TestCase
         return $project;
     }
 
+    /** A `vendor/bin/phpunit` that writes a report of $cases where it is asked to, and exits $code. */
+    private static function reporter(TempProject $project, string $cases, int $code): void
+    {
+        $project->write(
+            'vendor/bin/phpunit',
+            \sprintf(
+                "#!%s\n<?php\n".'$at = array_search(\'--log-junit\', $argv, true); file_put_contents($argv[$at + 1], %s); exit(%d);',
+                \PHP_BINARY,
+                \var_export('<testsuites><testsuite name="x">'.$cases.'</testsuite></testsuites>', return: true),
+                $code,
+            ),
+        );
+    }
+
     /** Run one of the plugin's commands, on a fresh output buffer so an await sees only what it caused. */
     private function command(Ide $ide, VirtualTerminal $terminal, string $id): void
     {
@@ -123,9 +138,20 @@ final class IdePhpUnitPluginTest extends TestCase
                     $this->assertStringContainsString('✗ App\Tests\DemoTest::testFails — Failed asserting that 2 is identical to 1.', $screen, 'the failure leads the dock');
                     $this->assertStringContainsString('✓ App\Tests\DemoTest::testPasses', $screen);
                     $this->assertStringNotContainsString('OtherTest', $screen, 'the file, not the suite');
-                    $this->assertStringContainsString('✓ passed', $screen, 'the passing method is marked');
-                    $this->assertStringContainsString('✗ failed', $screen, 'the failing method is marked');
+                    $this->assertStringContainsString('✓ test passed', $screen, 'the passing method is marked');
+                    $this->assertStringContainsString('✗ test failed', $screen, 'the failing method is marked');
                     $this->assertStringContainsString('✗ 1 test failing', $screen, 'the status bar keeps count');
+                },
+                120 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    // Right-clicked in the tree, a file that is not open: it
+                    // has no edits to save, and runs as it is on disk.
+                    $terminal->consumeOutput();
+                    Services::resolve($ide, MenuFileContext::class)->with(
+                        $project->path('tests/OtherTest.php'),
+                        static fn () => Services::resolve($ide, CommandRegistry::class)->run('phpunit:run_file'),
+                    );
+                    $this->awaitPainted($tui, $terminal, '1 of 1 tests failed');
+                    $this->assertStringContainsString('✗ App\Tests\OtherTest::testBroken', $this->screen($tui, $terminal));
                 },
                 150 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->command($ide, $terminal, 'run_all');
@@ -139,7 +165,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     // Back on the first file, its marks are put back.
                     $terminal->consumeOutput();
                     Services::resolve($ide, BufferService::class)->openFile($project->path('tests/DemoTest.php'));
-                    $this->awaitPainted($tui, $terminal, '✓ passed');
+                    $this->awaitPainted($tui, $terminal, '✓ test passed');
                 },
                 175 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->command($ide, $terminal, 'rerun_failed');
@@ -155,7 +181,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     $screen = $this->screen($tui, $terminal);
                     $this->assertStringNotContainsString('failing', $screen, 'a green run clears the count');
                     $this->assertStringNotContainsString('testFails: Failed asserting', $screen, 'and the failure it no longer ran');
-                    $this->assertStringNotContainsString('✗ failed', $screen);
+                    $this->assertStringNotContainsString('✗ test failed', $screen);
                     $other = Services::resolve($ide, BufferManager::class)->get((string) \realpath($project->path('tests/OtherTest.php')));
                     $this->assertSame([], $other?->diagnostics, 'the file behind, failing no more as far as anyone knows, is cleared too');
                 },
@@ -181,7 +207,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     // the count stays, since it is about the project.
                     Services::resolve($ide, BufferService::class)->openFile($project->path('README.md'));
                     $screen = $this->screen($tui, $terminal);
-                    $this->assertStringNotContainsString('✗ failed', $screen);
+                    $this->assertStringNotContainsString('✗ test failed', $screen);
                     $this->assertStringContainsString('✗ 2 tests failing', $screen);
                 },
             ],
@@ -226,8 +252,20 @@ final class IdePhpUnitPluginTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'PHPUnit exited with code 1');
                     $this->assertFalse(Probe::get($tui->getById('results'), 'searching'), 'the tab says the run is over');
                 },
+                350 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    // Every test passed and PHPUnit still failed the run (a
+                    // failOnWarning, say): the exit code has the last word.
+                    self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/>', 1);
+                    $this->command($ide, $terminal, 'run_all');
+                    $this->awaitPainted($tui, $terminal, '1 test passed, but');
+
+                    self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"><failure>ATest::testA'."\n".'No.</failure></testcase>', 1);
+                    $this->command($ide, $terminal, 'run_all');
+                    $this->awaitPainted($tui, $terminal, '✗ 1 test failing');
+                },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    // Its tab closed under it, a run reports no code at all.
+                    // Its tab closed under it, a run reports no code at all —
+                    // and takes the last run's failures off the screen with it.
                     $project->write('vendor/bin/phpunit', '#!'.\PHP_BINARY."\n<?php\nsleep(30);\n");
                     $this->command($ide, $terminal, 'run_all');
                     $runs = Services::resolve($ide, RunController::class);
@@ -237,6 +275,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     $this->assertIsInt($index, 'the run has a tab of its own');
                     $runs->closeSession($index);
                     $this->awaitPainted($tui, $terminal, 'PHPUnit was stopped');
+                    $this->assertStringNotContainsString('test failing', $this->screen($tui, $terminal));
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     \unlink($project->path('vendor/bin/phpunit'));

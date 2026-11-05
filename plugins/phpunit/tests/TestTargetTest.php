@@ -92,6 +92,26 @@ final class TestTargetTest extends TestCase
         $this->assertSame('New\\Place\\DemoTest', $commented?->class, 'a namespace or a class named in a comment is not the declaration');
     }
 
+    public function testTheCaretOnAMethodsAttributesOrDocblockMeansThatMethod(): void
+    {
+        $text = "<?php\nclass ATest {\npublic function testA() {}\n\n/**\n * Checks B.\n */\n#[Test]\n#[DataProvider('rows')]\npublic function testB() {}\n/** a comment, then code */\n\$x = 1;\n}\n";
+
+        foreach ([4 => 'testB', 5 => 'testB', 7 => 'testB', 8 => 'testB', 9 => 'testB', 3 => 'testA', 10 => 'testB', 11 => 'testB'] as $line => $method) {
+            $this->assertSame($method, TestTarget::at($text, $line)?->method, 'line '.$line);
+        }
+        $this->assertSame('testB', TestTarget::at("<?php\nclass ATest {\n#[Test]\npublic function testB() {}", 2)?->method, 'an attribute on the last lines still reaches its method');
+    }
+
+    public function testTheClassIsTheOneAroundTheCaret(): void
+    {
+        $text = "<?php\nnamespace App;\n\nfinal class FakeClock {}\n\nfinal class ClockTest extends TestCase {\npublic function testA() {}\n}\n\nfinal class Helper {}\n";
+
+        $this->assertSame('App\\ClockTest', TestTarget::at($text, 6)?->class, 'not the fixture declared before it');
+        $this->assertSame('App\\FakeClock', TestTarget::at($text, 3)?->class, 'on a class, that class');
+        $this->assertSame('App\\ClockTest', TestTarget::at($text, 1)?->class, 'above every class: the one named like a test');
+        $this->assertSame('App\\Helper', TestTarget::at("<?php\nnamespace App;\nfinal class Helper {}\nfinal class Other {}\n", 0)?->class, 'and with none named so, the first');
+    }
+
     public function testTheFilterRunsEachMethodWithEveryDataSet(): void
     {
         $filter = TestTarget::filter([

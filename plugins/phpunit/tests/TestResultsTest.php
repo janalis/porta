@@ -95,7 +95,7 @@ final class TestResultsTest extends TestCase
     public function testEachStatusHasItsGlyphAndWord(): void
     {
         $this->assertSame(
-            [['✓', 'passed'], ['⊘', 'skipped'], ['✗', 'failed'], ['✗', 'failed']],
+            [['✓', 'test passed'], ['⊘', 'test skipped'], ['✗', 'test failed'], ['✗', 'test failed']],
             \array_map(
                 static fn (string $status): array => [TestOutcome::glyph($status), TestOutcome::verdict($status)],
                 [TestOutcome::PASSED, TestOutcome::SKIPPED, TestOutcome::FAILED, TestOutcome::ERRORED],
