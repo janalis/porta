@@ -6,6 +6,7 @@ namespace Porta\PhpUnit;
 
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
+use Porta\Support\Files;
 use Porta\Workbench\Dock\ToolRun;
 
 /**
@@ -316,7 +317,7 @@ final class TestRunner
     /** The test class $file declares, read from its buffer when open; null after saying it has none. */
     private function target(string $file, int $line): ?TestTarget
     {
-        $text = $this->api->openBuffers()->text($file) ?? (string) \file_get_contents($file);
+        $text = $this->api->openBuffers()->text($file) ?? Files::read($file);
         $target = TestTarget::at($text, $line);
         if (null === $target) {
             $this->api->flash($this->api->trans('%file% declares no test class', ['%file%' => \basename($file)]));

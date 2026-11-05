@@ -313,6 +313,7 @@ final class ArchitectureCheckCommand extends Command
         // the toast severity its run reports with, and the dock's ToolRun.
         'PhpUnit>Overlay',
         'PhpUnit>Plugin',
+        'PhpUnit>Support', // Files::read() for a test file not open in the editor
         'PhpUnit>Workbench',
         'Plugin>Config',
         'Plugin>Container',

@@ -4,7 +4,8 @@ Porta's built-in syntax highlighting engine, from
 [tempest/highlight](https://github.com/tempestphp/highlight). It runs in the
 IDE itself and answers before the frame is drawn, so the colours keep up with
 your typing. It is what **Settings → Highlighting** offers as the
-built-in-quality engine, and it is enabled by default.
+built-in-quality engine. It is off until you turn it on: the welcome screen
+and that page recommend it.
 
 ![The tempest page in Settings → Plugins](/screenshots/plugin-tempest.svg)
 
