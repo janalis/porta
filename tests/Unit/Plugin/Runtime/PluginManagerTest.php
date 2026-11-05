@@ -230,6 +230,13 @@ final class PluginManagerTest extends TestCase
         $manager->deactivate('blame', new CommandRegistry());
 
         $this->assertSame([1 => 'kept'], $editor->decorations->lineAnnotations);
+
+        // A retract that fails is reported, and the plugin still leaves.
+        $other->setLineAnnotations([1 => 'again']);
+        Probe::set($manager, 'runtime', null);
+        $manager->deactivate('other', new CommandRegistry());
+        $this->assertFalse($manager->hasPlugin('other'));
+        $this->assertNotSame([], $manager->warnings, 'the failure was said');
     }
 
     public function testADisposablePluginIsTornDownExactlyOnceOnDeactivate(): void

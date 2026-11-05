@@ -1185,6 +1185,7 @@ final class PluginApiTest extends TestCase
         $api->setDiagnostics('/p/a.php', [['line' => 0, 'message' => 'boom']]);
         $api->setDiagnostics('/p/b.php', [['line' => 1, 'message' => 'bang']]);
         $api->setLineAnnotations([0 => 'blame']);
+        $api->setLineBlocks([0 => ['a block']]);
 
         $api->retractPublished();
 
