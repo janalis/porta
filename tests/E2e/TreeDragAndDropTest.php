@@ -659,6 +659,32 @@ final class TreeDragAndDropTest extends TestCase
         );
     }
 
+    /** Ctrl+C, Ctrl+V on a file's own folder is how a duplicate is asked for. */
+    public function testACopyIntoItsOwnFolderTakesAFreeName(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = $this->project();
+
+        $this->runIde(
+            $project,
+            $project->path('top.php'),
+            [
+                200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $this->frame($tui);
+                    Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new TreeDropRequested(
+                        [$project->path('src/A.php')],
+                        $project->path('src'),
+                        action: DropAction::Copy,
+                    ));
+                    $this->assertFileEquals($project->path('src/A.php'), $project->path('src/A (2).php'), 'the copy sits beside its original');
+                    // Not a question about colliding with itself first.
+                    $this->assertFalse(EditorState::pickerOpen($tui->getById('editor')));
+                },
+            ],
+            columns: 120,
+        );
+    }
+
     /**
      * Several files, several collisions: ONE question naming the count, not a
      * modal per file, and no Rename… — it has no single answer for a set.

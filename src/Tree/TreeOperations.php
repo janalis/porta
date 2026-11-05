@@ -500,9 +500,12 @@ final class TreeOperations
      *
      * Order matters and each guard answers a different question:
      *
-     * 1. Anything already in the target is dropped from the set. Dragging a
-     *    file a few rows within its own folder is a slip, not an instruction,
-     *    and a "moved" flash for a file that did not move is a lie.
+     * 1. A MOVE of anything already in the target is dropped from the set.
+     *    Dragging a file a few rows within its own folder is a slip, not an
+     *    instruction, and a "moved" flash for a file that did not move is a
+     *    lie. A COPY into its own folder is how a duplicate is asked for (a
+     *    Ctrl+C, Ctrl+V on the same row): it takes a free name, never a
+     *    question about colliding with itself.
      * 2. A directory cannot go inside itself or its own descendant. Nothing
      *    else in the codebase guards this, because nothing else could reach
      *    it: the rename is confined to `dirname($old)` and a language server
@@ -520,14 +523,14 @@ final class TreeOperations
     private function dropOnto(array $sources, string $targetDir, DropAction $action, DropConflict $conflict): void
     {
         $keepBoth = DropConflict::KeepBoth === $conflict;
-        $moving = $keepBoth ? $sources : \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
+        $moving = $keepBoth || DropAction::Copy === $action ? $sources : \array_values(\array_filter($sources, static fn (string $path): bool => \dirname($path) !== $targetDir));
         $into = \array_find($moving, static fn (string $path): bool => $targetDir === $path || ProjectPaths::isUnder($targetDir, $path));
         if (null !== $into) {
             $this->notifier->error($this->translator->trans('Cannot move %name% into itself', ['%name%' => \basename($into)]));
 
             return;
         }
-        $taken = $keepBoth ? [] : \array_values(\array_filter($moving, static fn (string $path): bool => \file_exists($targetDir.'/'.\basename($path))));
+        $taken = $keepBoth ? [] : \array_values(\array_filter($moving, static fn (string $path): bool => \dirname($path) !== $targetDir && \file_exists($targetDir.'/'.\basename($path))));
         match (true) {
             [] !== $taken => $this->askThenMove($moving, $taken, $targetDir, $action),
             [] !== $moving => $this->moveEach($moving, $targetDir, $action, conflict: $conflict),
@@ -591,7 +594,8 @@ final class TreeOperations
 
         try {
             foreach ($moving as $path) {
-                $target = DropConflict::KeepBoth === $conflict ? FreeName::for($path, $targetDir) : $targetDir.'/'.\basename($path);
+                // Into its own folder only a copy gets here: never onto itself.
+                $target = DropConflict::KeepBoth === $conflict || \dirname($path) === $targetDir ? FreeName::for($path, $targetDir) : $targetDir.'/'.\basename($path);
                 $this->moveOne($path, $target, $action, $overwrite);
             }
         } finally {
