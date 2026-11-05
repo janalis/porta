@@ -246,10 +246,6 @@ final readonly class PluginLoader
     }
 
     /**
-     * Load, activate and commit one plugin entry file (also used for a plugin
-     * installed after boot). Returns the failure, or null on success.
-     */
-    /**
      * What $manifest requires and is not RUNNING, as a refusal — ordered first
      * is not enough: a requirement whose install failed, or whose activate()
      * threw, left its dependents to load without it and break wherever they
@@ -266,6 +262,10 @@ final readonly class PluginLoader
         );
     }
 
+    /**
+     * Load, activate and commit one plugin entry file (also used for a plugin
+     * installed after boot). Returns the failure, or null on success.
+     */
     public function loadFile(string $file, PluginManager $manager): ?ConfigWarning
     {
         // The live path too (a just-installed or re-enabled plugin never went

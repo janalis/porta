@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Porta\Debug;
 
 use Porta\Container\AsIdeService;
-use Porta\Editor\Document;
 use Porta\Editor\FileOpener;
 use Porta\Editor\LineShift;
 use Porta\Event\DebugFrameSelected;
@@ -43,15 +42,6 @@ use Symfony\Component\Tui\Tui;
 final class DebugController implements DebugSessionObserver, StatusSegment
 {
     private ?DapSession $session = null;
-
-    /**
-     * Each file's lines as its breakpoints last matched them — copied when it
-     * is shown and after each move; a PHP array copy costs nothing until one
-     * side is written.
-     *
-     * @var array<string, array<array-key, string>>
-     */
-    private array $linesSeen = [];
 
     /** @var array<int, array{id: int, name: string, path: string, line: int}> live frames by id (absolute paths) */
     private array $frames = [];
@@ -105,14 +95,16 @@ final class DebugController implements DebugSessionObserver, StatusSegment
      * above (an auto-import) put the dot on the previous statement, and the
      * adapter broke there — or never, on a blank line.
      */
-    private function linesMoved(string $path, Document $document): void
+    /**
+     * @param array<array-key, string> $before
+     * @param array<array-key, string> $after
+     */
+    private function linesMoved(string $path, array $before, array $after): void
     {
-        $before = $this->linesSeen[$path] ?? null;
-        $this->linesSeen[$path] = $document->lines;
-        if (null === $before || [] === $this->breakpoints->linesFor($path)) {
+        if ([] === $this->breakpoints->linesFor($path)) {
             return;
         }
-        $this->breakpoints->shift($path, LineShift::between($before, $document->lines));
+        $this->breakpoints->shift($path, LineShift::between($before, $after));
         $this->syncBreakpoints($path);
     }
 
@@ -340,8 +332,6 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     /** Re-apply this file's debug decorations (breakpoints + stopped line) on buffer switch. */
     public function applyEditorDecorations(string $path): void
     {
-        // The lines its breakpoints were set on, for the next edit to move them from.
-        $this->linesSeen[$path] = $this->editor->getDocument()->lines;
         $this->decorations->apply($path);
     }
 

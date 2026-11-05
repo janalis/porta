@@ -92,8 +92,14 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     /** @var list<int> 0-based lines with a breakpoint (● in the gutter) */
     public private(set) array $breakpointLines = [];
 
-    /** @var (\Closure(string, Document): void)|null see {@see whenLinesMove()} */
+    /** @var (\Closure(string, array<array-key, string>, array<array-key, string>): void)|null see {@see whenLinesMove()} */
     private ?\Closure $linesMoved = null;
+
+    /** The document on display, and its lines as the last line-count change left them. */
+    private ?Document $linesOf = null;
+
+    /** @var array<array-key, string> */
+    private array $linesBefore = [];
 
     /** @var array<int, list<array{title: string, command: string, arguments: list<mixed>, owner: string}>> 0-based line => the lenses shown ABOVE it */
     private array $codeLenses = [];
@@ -219,6 +225,29 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
     }
 
     /**
+     * Run $listener whenever an edit changes the shown file's line count —
+     * with the file and its lines before and after, for a layer kept outside
+     * this store (the debugger's breakpoints) to move with its lines.
+     *
+     * @param \Closure(string, array<array-key, string>, array<array-key, string>): void $listener
+     */
+    public function whenLinesMove(\Closure $listener): void
+    {
+        $this->linesMoved = $listener;
+    }
+
+    /**
+     * $document is now on display: its lines are what the next edit moves
+     * them FROM. Taken here, not at the first edit — that edit's lines are
+     * already the moved ones.
+     */
+    public function showing(Document $document): void
+    {
+        $this->linesOf = $document;
+        $this->linesBefore = $document->lines;
+    }
+
+    /**
      * Move the gutter marks with an edit, so they keep pointing at the lines
      * they describe between one `git diff` and the next.
      *
@@ -246,18 +275,6 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      * all of this. What it buys is that the marks are never silently stale in
      * between, which is the state a user spends most of their time in.
      */
-    /**
-     * Run $listener whenever an edit changes the shown file's line count —
-     * with the file and its document, for a layer kept outside this store
-     * (the debugger's breakpoints) to move with its lines.
-     *
-     * @param \Closure(string, Document): void $listener
-     */
-    public function whenLinesMove(\Closure $listener): void
-    {
-        $this->linesMoved = $listener;
-    }
-
     public function remapForEdit(int $cursorLine, int $lineCount, ?string $path = null, ?Document $document = null): void
     {
         $delta = $lineCount - $this->vcsMarkLineCount;
@@ -278,8 +295,13 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         }
         $this->remapVcsMarks($atLine, $delta);
         $this->remapCoverage($atLine, $delta);
-        if (0 !== $delta && null !== $path && null !== $document && null !== $this->linesMoved) {
-            ($this->linesMoved)($path, $document);
+        if (0 !== $delta && null !== $document) {
+            if (null !== $path && null !== $this->linesMoved && $document === $this->linesOf) {
+                ($this->linesMoved)($path, $this->linesBefore, $document->lines);
+            }
+            // Kept at line-count changes only: a copy per keystroke would cost
+            // the document a copy of its whole line array at the next write.
+            $this->showing($document);
         }
     }
 

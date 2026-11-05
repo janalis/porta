@@ -642,8 +642,7 @@ final class DebugControllerTest extends TestCase
     public function testABreakpointFollowsItsLineWhenAnEditAddsLinesAboveIt(): void
     {
         $controller = $this->controller();
-        $this->pauseAtBreakpoint($controller);
-        $controller->applyEditorDecorations('/p/prog.php');
+        $this->pauseAtBreakpoint($controller); // the file was shown the ordinary way: nothing hands the debugger its lines
         $controller->toggleBreakpoint('/p/prog.php', 2); // `// l3`
         $document = $this->editor->getDocument();
         $document->setCursor(3, 0);

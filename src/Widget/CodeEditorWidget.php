@@ -365,6 +365,7 @@ final class CodeEditorWidget extends AbstractWidget implements
         }
         $reset = $reshown ? $this->decorations->resetForReshow(...) : $this->decorations->resetForBuffer(...);
         $reset($diagnostics, $document->getLineCount());
+        $this->decorations->showing($document);
         $this->multiCaret = $this->newMultiCaret($document);
         // Let undo/redo snapshots capture and restore this document's secondary
         // carets (bound to this specific MultiCaret, not whichever is active later).

@@ -105,11 +105,6 @@ final class BreakpointStore
     }
 
     /**
-     * Follow a renamed file, keeping its breakpoints and their conditions.
-     * Pure: the caller hands over canonical paths, because by the time this
-     * runs `$from` is gone from disk and cannot be resolved.
-     */
-    /**
      * The file's lines moved under an edit: each breakpoint follows its line,
      * so it still stops at the statement it was set on. Two that the edit
      * folded onto one line keep the first's details.
@@ -126,6 +121,11 @@ final class BreakpointStore
         }
     }
 
+    /**
+     * Follow a renamed file, keeping its breakpoints and their conditions.
+     * Pure: the caller hands over canonical paths, because by the time this
+     * runs `$from` is gone from disk and cannot be resolved.
+     */
     public function rename(string $from, string $to): void
     {
         foreach (\array_keys($this->breakpoints) as $file) {
