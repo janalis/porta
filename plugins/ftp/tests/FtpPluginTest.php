@@ -88,6 +88,12 @@ final class FtpPluginTest extends TestCase
         $transport = $plugin->remoteTransport($spec);
         $this->assertInstanceOf(FtpTransport::class, $transport, 'its scheme');
         $board = $plugin->remoteTransport($spec); // the presence board asks for one of its own, later
+        $elsewhere = $plugin->remoteTransport(new RemoteSpec('ftp', 'other.example.org', '/site', 'me'));
+        $this->assertInstanceOf(FtpTransport::class, $elsewhere);
+        $retriedElsewhere = 0;
+        $elsewhere->onRetry(static function () use (&$retriedElsewhere): void {
+            ++$retriedElsewhere;
+        });
         $refused = Probe::get($transport, 'refused');
         $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
         $retried = 0;
@@ -110,6 +116,7 @@ final class FtpPluginTest extends TestCase
         $this->assertSame('Password kept — the server is asked again shortly', $this->flashText($this->status));
         $this->assertSame(1, $retried, 'and it is: now, not after the pause a refused login waits — the project\'s, though the board\'s was made last');
         $this->assertInstanceOf(FtpTransport::class, $board);
+        $this->assertSame(0, $retriedElsewhere, "another server's login is not retried with a password it was not given");
 
         $refused(); // the kept one was wrong: asked again
         $this->assertTrue(EditorState::promptOpen($this->editor));

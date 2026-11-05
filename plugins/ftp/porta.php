@@ -41,12 +41,14 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
     private const float ASK_AGAIN = 60.0;
 
     /**
-     * Every transport handed out, to tell each that a password was kept: the
-     * project's and the presence board's are two, and keeping only the last
-     * told the board while the project waited out its five-minute pause.
+     * Every transport handed out, with the file its password is kept in, to
+     * tell each one whose password was just kept: the project's and the
+     * presence board's are two, and keeping only the last told the board
+     * while the project waited out its five-minute pause. Another server's
+     * transport is not told — it would retry a login refused a moment ago.
      * Weak, so a closed project's goes with it.
      *
-     * @var \WeakMap<FtpTransport, true>|null
+     * @var \WeakMap<FtpTransport, string>|null
      */
     private ?\WeakMap $transports = null;
 
@@ -64,9 +66,10 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
         }
         $binary = \trim((string) $this->api?->setting('binary'));
 
-        $transport = new FtpTransport($spec, Credentials::file($home, $spec), '' === $binary ? 'curl' : $binary, fn () => $this->askPassword($spec, $home));
+        $kept = Credentials::file($home, $spec);
+        $transport = new FtpTransport($spec, $kept, '' === $binary ? 'curl' : $binary, fn () => $this->askPassword($spec, $home));
         $this->transports ??= new \WeakMap();
-        $this->transports[$transport] = true;
+        $this->transports[$transport] = $kept;
 
         return $transport;
     }
@@ -92,7 +95,10 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
                 }
                 $this->asked = null;
                 $api->flash($api->trans('Password kept — the server is asked again shortly'));
-                foreach ($this->transports ?? [] as $transport => $_) {
+                foreach ($this->transports ?? [] as $transport => $kept) {
+                    if ($kept !== Credentials::file($home, $spec)) {
+                        continue;
+                    }
                     $transport->passwordGiven();
                 }
             },
