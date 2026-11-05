@@ -3618,6 +3618,10 @@
         <source>Also stopped, as they need it: %names%</source>
         <target>También detenidos, porque lo necesitan: %names%</target>
       </trans-unit>
+      <trans-unit id="1234">
+        <source>%plugin% stays on — %file% turns it on</source>
+        <target>%plugin% sigue activo — %file% lo activa</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

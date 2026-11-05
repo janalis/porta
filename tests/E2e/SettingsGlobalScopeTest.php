@@ -399,6 +399,64 @@ final class SettingsGlobalScopeTest extends TestCase
         );
     }
 
+    /**
+     * A bundled plugin is on by `enabledPlugins`, and a project's list
+     * REPLACES the global one: toggled in Global scope against a project list,
+     * it used to say "disabled" or "enabled", act live, and be back at the
+     * next boot. It says the project's file decides instead, and acts not.
+     */
+    public function testABundledToggleTheProjectListOverrulesSaysSoAndDoesNothing(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $this->home = new TempProject();
+        $embedded = new TempProject([
+            'bundled/porta.php' => "<?php\nreturn new class implements Porta\\Plugin\\Api\\PortaPlugin {\n    public function name(): string { return 'bundled'; }\n    public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {}\n};\n",
+        ]);
+        \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
+        $this->project = new TempProject(['A.php' => "<?php\n", '.porta.json' => '{"enabledPlugins":["bundled"]}']);
+        \putenv('PORTA_HOME='.$this->home->dir);
+
+        try {
+            $this->runIde(
+                $this->project,
+                $this->project->path('A.php'),
+                [
+                    300 => function (Tui $tui, $terminal, Ide $ide): void {
+                        Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
+                        Services::resolve($ide, PluginLifecycle::class)->disable('bundled');
+                        $this->frame($tui);
+                    },
+                    500 => function ($tui, $terminal, Ide $ide): void {
+                        $manager = Probe::object(Services::resolve($ide, PluginLifecycle::class), 'plugins');
+                        $this->assertInstanceOf(PluginManager::class, $manager);
+                        $this->assertTrue($manager->hasPlugin('bundled'), 'still on: the project list turns it on');
+                        $this->assertStringContainsString('bundled stays on', \implode(' | ', Toasts::all($ide)));
+                    },
+                ],
+            );
+            \file_put_contents($this->project->path('.porta.json'), data: '{"enabledPlugins":[]}');
+            $this->runIde(
+                $this->project,
+                $this->project->path('A.php'),
+                [
+                    300 => function (Tui $tui, $terminal, Ide $ide): void {
+                        Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Global);
+                        Services::resolve($ide, PluginLifecycle::class)->enable('bundled');
+                        $this->frame($tui);
+                    },
+                    500 => function ($tui, $terminal, Ide $ide): void {
+                        $manager = Probe::object(Services::resolve($ide, PluginLifecycle::class), 'plugins');
+                        $this->assertInstanceOf(PluginManager::class, $manager);
+                        $this->assertFalse($manager->hasPlugin('bundled'), 'still off: the project list leaves it out');
+                        $this->assertStringContainsString('bundled stays off', \implode(' | ', Toasts::all($ide)));
+                    },
+                ],
+            );
+        } finally {
+            \putenv('PORTA_EMBEDDED_PLUGINS=/nonexistent');
+        }
+    }
+
     /** Nor when what stays off is a plugin it needs: neither is turned on, and the toast names the one the file keeps off. */
     public function testEnablingAPluginWhoseRequirementTheGlobalFileDisablesTurnsNothingOn(): void
     {

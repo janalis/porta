@@ -215,6 +215,18 @@ final class PluginLifecycle implements PluginLifecycleOps
         // counterpart of enable()'s auto-enable, and for the same reason: the
         // user acted on one plugin, and the honest answer names what followed.
         $dependents = $this->dependentsOf($name);
+        $this->persistDisabledChoice($name);
+        $keptOnBy = $this->layerStillEnabling($name);
+        if (null !== $keptOnBy) {
+            $this->enabled[$name] = true;
+            $this->notifier->warn($this->translator->trans('%plugin% stays on — %file% turns it on', [
+                '%plugin%' => $name,
+                '%file%' => $this->files->label($keptOnBy),
+            ]));
+            $this->afterToggle();
+
+            return;
+        }
         foreach ([$name, ...$dependents] as $target) {
             $this->persistDisabledChoice($target);
             $wasProvider = $this->plugins->providesLanguageServer($target);
@@ -755,10 +767,31 @@ final class PluginLifecycle implements PluginLifecycleOps
      */
     private function layerStillDisabling(string $name): ?ConfigScope
     {
-        if (!\in_array($name, IdeConfig::load($this->files->rootDir())->disabledPlugins, strict: true)) {
-            return null;
-        }
+        $effective = IdeConfig::load($this->files->rootDir());
+        // A bundled plugin is on only when the effective `enabledPlugins` names
+        // it — and a project's explicit list REPLACES the global one, so an
+        // enable written globally changes nothing there.
+        $off = \in_array($name, $effective->disabledPlugins, strict: true) || ($this->isBundled($name) && !\in_array($name, $effective->enabledPlugins, strict: true));
 
+        return $off ? $this->otherLayer() : null;
+    }
+
+    /**
+     * The OTHER config file that still turns bundled $name on, or null: a
+     * project's `enabledPlugins` list replaces the global one, so a disable
+     * written globally changes nothing there — it said "disabled", went off
+     * live, and was back at the next boot.
+     */
+    private function layerStillEnabling(string $name): ?ConfigScope
+    {
+        $effective = IdeConfig::load($this->files->rootDir());
+        $on = $this->isBundled($name) && \in_array($name, $effective->enabledPlugins, strict: true) && !\in_array($name, $effective->disabledPlugins, strict: true);
+
+        return $on ? $this->otherLayer() : null;
+    }
+
+    private function otherLayer(): ConfigScope
+    {
         return ConfigScope::Project === $this->scope->current() ? ConfigScope::Global : ConfigScope::Project;
     }
 
