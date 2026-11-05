@@ -364,25 +364,25 @@ final class MultiCaret
         // processed.
         $walk = \array_reverse($records, preserve_keys: true);
 
-        // Each caret is kept as its distance from the END of the text: every
-        // later edit lands above it, so that distance holds where a (line, col)
-        // taken at the time would drift — `xy = xy` typed `abc` at two carets
-        // read `xyabc = xycba`.
-        $end = static fn (): int => $doc->offsetAt(\PHP_INT_MAX, \PHP_INT_MAX);
+        // Each caret is kept by what follows it — lines to the last one, bytes
+        // to the end of its own — since every later edit lands above it or to
+        // its left on its line, which moves neither, where a (line, col) taken
+        // at the time drifts: `xy = xy` typed `abc` at two carets read
+        // `xyabc = xycba`. Constant work per caret: no walk of the text.
         $fromEnd = [];
-        $doc->transact(function () use ($doc, $walk, $op, $end, &$fromEnd): void {
+        $doc->transact(function () use ($doc, $walk, $op, &$fromEnd): void {
             foreach ($walk as $index => $record) {
                 // Restore each caret's selection so insert/delete replace it; a
                 // point caret just moves the cursor.
                 $this->restore($record);
                 $op($doc, $index);
-                $fromEnd[] = $end() - $doc->offsetAt($doc->cursorLine, $doc->cursorCol);
+                $fromEnd[] = [$doc->getLineCount() - $doc->cursorLine, \strlen($doc->getLine($doc->cursorLine)) - $doc->cursorCol];
             }
         });
-        $results = \array_map(static function (int $distance) use ($doc, $end): array {
-            $at = $doc->positionAt($end() - $distance);
+        $results = \array_map(static function (array $after) use ($doc): array {
+            $line = $doc->getLineCount() - $after[0];
 
-            return [$at['line'], $at['col']];
+            return [$line, \strlen($doc->getLine($line)) - $after[1]];
         }, $fromEnd);
 
         $this->rebuildFromPositions($results);
