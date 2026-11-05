@@ -616,6 +616,17 @@ final class DocumentTest extends TestCase
         $this->assertSame(0, $doc->cursorCol, 'second stop: column 0');
     }
 
+    public function testSmartHomeStopsAtTheCodeOfATabIndentedLine(): void
+    {
+        $doc = new Document("\t\tcode");
+        $doc->moveToLineEnd();
+
+        $doc->moveToLineStart();
+        $this->assertSame(2, $doc->cursorCol, 'first stop: after the tabs');
+        $doc->moveToLineStart();
+        $this->assertSame(0, $doc->cursorCol);
+    }
+
     public function testVerticalMovementKeepsGoalColumn(): void
     {
         $doc = new Document("longer line here\nab\nanother long line");

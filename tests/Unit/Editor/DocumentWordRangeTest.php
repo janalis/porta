@@ -25,6 +25,15 @@ final class DocumentWordRangeTest extends TestCase
         $this->assertSame(['startCol' => 6, 'endCol' => 9], $doc->wordRangeAt(0, 7), 'inside bar');
     }
 
+    /** A letter of any script is part of the word: byte by byte, `$café` stopped at `$caf` and `名前` was no word. */
+    public function testALetterOfAnyScriptIsPartOfTheWord(): void
+    {
+        $doc = new Document('echo $café; 名前 = 1;');
+
+        $this->assertSame(['startCol' => 5, 'endCol' => 11], $doc->wordRangeAt(0, 7));
+        $this->assertSame(['startCol' => 13, 'endCol' => 19], $doc->wordRangeAt(0, 16), 'from the middle of a CJK word, at a character boundary');
+    }
+
     public function testOnWhitespaceIsNull(): void
     {
         $doc = new Document('  foo');

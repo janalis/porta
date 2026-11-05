@@ -480,14 +480,14 @@ final class Document
         $len = \strlen($text);
         $col = IntMath::clamp($col, 0, $len);
 
-        $start = $col;
-        while ($start > 0 && 1 === \preg_match('/[\w$]/', $text[$start - 1])) {
-            --$start;
-        }
-        $end = $col;
-        while ($end < $len && 1 === \preg_match('/[\w$]/', $text[$end])) {
-            ++$end;
-        }
+        // Matched as UTF-8, so `\w` is a letter of any script: byte by byte,
+        // double-clicking `$café` selected `$caf`, and `名前` nothing.
+        $before = [];
+        $after = [];
+        \preg_match('/[\w$]*$/u', \substr($text, offset: 0, length: $col), $before);
+        \preg_match('/^[\w$]*/u', \substr($text, $col), $after);
+        $start = $col - \strlen($before[0] ?? '');
+        $end = $col + \strlen($after[0] ?? '');
 
         return $end > $start ? ['startCol' => $start, 'endCol' => $end] : null;
     }
@@ -984,7 +984,7 @@ final class Document
         $this->goalCol = null;
         // Smart home: first non-blank, then column 0
         $line = $this->lines[$this->cursorLine];
-        $indent = \strlen($line) - \strlen(\ltrim($line, characters: ' '));
+        $indent = \strlen($line) - \strlen(\ltrim($line, characters: " \t")); // a tab-indented line has an indent too
         $target = $this->cursorCol === $indent || \strlen($line) === $indent ? 0 : $indent;
         if ($this->cursorCol === $target) {
             return false;
