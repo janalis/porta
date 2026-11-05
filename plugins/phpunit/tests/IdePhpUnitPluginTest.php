@@ -90,13 +90,16 @@ final class IdePhpUnitPluginTest extends TestCase
         return $project;
     }
 
-    /** A `vendor/bin/phpunit` that writes a report of $cases where it is asked to, and exits $code. */
+    /**
+     * A `vendor/bin/phpunit` that writes a report of $cases where it is asked
+     * to, notes in `log-path` where that was, and exits $code.
+     */
     private static function reporter(TempProject $project, string $cases, int $code): void
     {
         $project->write(
             'vendor/bin/phpunit',
             \sprintf(
-                "#!%s\n<?php\n".'$at = array_search(\'--log-junit\', $argv, true); file_put_contents($argv[$at + 1], %s); exit(%d);',
+                "#!%s\n<?php\n".'$at = array_search(\'--log-junit\', $argv, true); file_put_contents($argv[$at + 1], %s); file_put_contents(\'log-path\', $argv[$at + 1]); exit(%d);',
                 \PHP_BINARY,
                 \var_export('<testsuites><testsuite name="x">'.$cases.'</testsuite></testsuites>', return: true),
                 $code,
@@ -258,6 +261,9 @@ final class IdePhpUnitPluginTest extends TestCase
                     self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/>', 1);
                     $this->command($ide, $terminal, 'run_all');
                     $this->awaitPainted($tui, $terminal, '1 test passed, but');
+                    $log = (string) \file_get_contents($project->path('log-path'));
+                    $this->assertStringStartsWith(\sys_get_temp_dir().'/porta-phpunit-', $log, 'the report goes to a file of its own under the temp dir');
+                    $this->assertFileDoesNotExist($log, 'and is removed once read');
 
                     self::reporter($project, '<testcase name="testA" file="/x/ATest.php" line="3" class="ATest"><failure>ATest::testA'."\n".'No.</failure></testcase>', 1);
                     $this->command($ide, $terminal, 'run_all');
