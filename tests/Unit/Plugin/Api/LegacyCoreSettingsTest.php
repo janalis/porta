@@ -19,7 +19,7 @@ final class LegacyCoreSettingsTest extends TestCase
     private function legacy(array $porta): LegacyCoreSettings
     {
         $project = new TempProject(['.porta.json' => \json_encode($porta, \JSON_THROW_ON_ERROR)]);
-        $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'coreToggle', 'path' => 'corePath']);
+        $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'gitShowBranch', 'path' => 'gitPath']);
         // The decode happens in the constructor, so the TempProject may go.
         unset($project);
 
@@ -33,7 +33,7 @@ final class LegacyCoreSettingsTest extends TestCase
 
     public function testAPreMoveValueIsAdoptedForAKeyNobodyHasWritten(): void
     {
-        $legacy = $this->legacy(['settings' => ['coreToggle' => false]]);
+        $legacy = $this->legacy(['settings' => ['gitShowBranch' => false]]);
 
         $seed = $legacy->seed($this->defaults());
         $this->assertFalse($seed['toggle'], 'the old value carried over');
@@ -46,8 +46,8 @@ final class LegacyCoreSettingsTest extends TestCase
         // bool, int and string are each a legitimate pre-move value (git's map
         // carries all three), and adoption walks the WHOLE map — dropping to
         // the first entry would strand every later key silently.
-        $project = new TempProject(['.porta.json' => (string) \json_encode(['settings' => ['coreToggle' => true, 'corePath' => '/opt/tool', 'coreSize' => 9]], \JSON_THROW_ON_ERROR)]);
-        $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'coreToggle', 'path' => 'corePath', 'size' => 'coreSize']);
+        $project = new TempProject(['.porta.json' => (string) \json_encode(['settings' => ['gitShowBranch' => true, 'gitPath' => '/opt/tool', 'gitRefreshInterval' => 9]], \JSON_THROW_ON_ERROR)]);
+        $legacy = new LegacyCoreSettings($project->dir, 'demo', ['toggle' => 'gitShowBranch', 'path' => 'gitPath', 'size' => 'gitRefreshInterval']);
 
         $this->assertSame(['toggle' => true, 'path' => '/opt/tool', 'size' => 9], $legacy->adoptions());
     }
@@ -57,7 +57,7 @@ final class LegacyCoreSettingsTest extends TestCase
         // A file mid-migration: adopting the old key here would undo whatever
         // the user did most recently under the new one.
         $legacy = $this->legacy([
-            'settings' => ['coreToggle' => false],
+            'settings' => ['gitShowBranch' => false],
             'plugins' => ['demo' => ['toggle' => true]],
         ]);
 
@@ -69,14 +69,14 @@ final class LegacyCoreSettingsTest extends TestCase
     {
         // An absent key and a key set to its default are the same VALUE; only
         // the file distinguishes them, which is why this reads the file.
-        $this->assertSame(['toggle' => true], $this->legacy(['settings' => ['coreToggle' => true]])->adoptions());
+        $this->assertSame(['toggle' => true], $this->legacy(['settings' => ['gitShowBranch' => true]])->adoptions());
     }
 
     public function testNoFileAndMalformedAndTopLevelValuesAdoptNothing(): void
     {
         $this->assertSame([], $this->legacy([])->adoptions(), 'a fresh project has nothing to adopt');
-        $this->assertSame([], $this->legacy(['settings' => ['coreToggle' => ['yes']]])->adoptions(), 'a hand-edited array is ignored, not coerced');
-        $this->assertSame([], $this->legacy(['coreToggle' => false])->adoptions(), 'the top level is not where the pre-move writer wrote');
+        $this->assertSame([], $this->legacy(['settings' => ['gitShowBranch' => ['yes']]])->adoptions(), 'a hand-edited array is ignored, not coerced');
+        $this->assertSame([], $this->legacy(['gitShowBranch' => false])->adoptions(), 'the top level is not where the pre-move writer wrote');
         $this->assertTrue($this->legacy([])->seed($this->defaults())['toggle'], 'the registered default stands');
     }
 
@@ -85,7 +85,7 @@ final class LegacyCoreSettingsTest extends TestCase
         // The written-under-the-new-name check is scoped to THIS plugin's
         // block — a namesake key in someone else's says nothing about ours.
         $legacy = $this->legacy([
-            'settings' => ['coreToggle' => false],
+            'settings' => ['gitShowBranch' => false],
             'plugins' => ['other' => ['toggle' => true]],
         ]);
 

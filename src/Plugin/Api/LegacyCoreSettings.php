@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Api;
 
+use Porta\Config\IdeConfig;
 use Porta\Config\WorkspaceTrust;
 use Porta\Support\JsonFile;
 
@@ -38,6 +39,9 @@ final readonly class LegacyCoreSettings
         private string $plugin,
         private array $renamed,
     ) {
+        // Core must skip each adopted key without warning: one missing from its
+        // list warned "Unknown setting" at every load, about a value this read.
+        \assert([] === \array_diff($renamed, IdeConfig::LEGACY_SETTINGS), description: 'a core key a plugin adopts is one IdeConfig::LEGACY_SETTINGS skips');
         $file = JsonFile::read($rootDir.'/.porta.json') ?? [];
         // The pre-plugin keys named binaries too (`gitPath`, `dotPath`): an
         // untrusted project's are not adopted.
