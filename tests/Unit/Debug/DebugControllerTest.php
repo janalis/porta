@@ -11,6 +11,7 @@ use Porta\Debug\DapClientInterface;
 use Porta\Debug\DebugAdapters;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugSessionState;
+use Porta\Debug\DebugState;
 use Porta\Debug\EditorDecorations;
 use Porta\Debug\ExceptionFilterStore;
 use Porta\Debug\InlineValues;
@@ -653,6 +654,21 @@ final class DebugControllerTest extends TestCase
         $this->assertSame('// l3', $document->getLine(3), 'the statement moved down a line');
         $this->assertSame([3], $this->editor->decorations->breakpointLines, 'and the dot with it');
         $this->assertSame([['line' => 4]], $this->client->argumentsOf('setBreakpoints')['breakpoints'], 'and the session was told');
+    }
+
+    /** The stack of a stop the user already resumed from is not painted: it would say Paused over a running program. */
+    public function testAStackTraceAnsweredAfterTheUserResumedIsDropped(): void
+    {
+        $controller = $this->controller();
+        $this->pauseAtBreakpoint($controller);
+        $frames = $this->client->responses['stackTrace'][0];
+        unset($this->client->responses['stackTrace']);
+        $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]); // its stack is asked for, and held
+
+        $controller->continueRun();
+        $this->client->respond('stackTrace', $frames);
+
+        $this->assertSame(DebugState::Running, Probe::get($this->panel, 'state'), 'still running, as the program is');
     }
 
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void

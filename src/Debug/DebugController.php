@@ -602,6 +602,12 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         }
         $this->revealPanel();
         $session->stackTrace(function (array $frames) use ($session): void {
+            // Answered after the user resumed (F9, F8 pressed before it came)
+            // or after the session ended: the frames are of a stop that is
+            // over, and painting them said Paused over a running program.
+            if ($session !== $this->session || DebugState::Paused !== $session->state()) {
+                return;
+            }
             $this->frames = \array_column($frames, null, 'id');
             $display = \array_map(fn (array $frame): array => [...$frame, 'path' => $this->paths->relative($frame['path'])], $frames);
             $top = $frames[0] ?? null;
