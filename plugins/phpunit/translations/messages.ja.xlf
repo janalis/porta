@@ -74,6 +74,18 @@
         <source>%count% test passed, but PHPUnit exited with code %code% — see its terminal tab|%count% tests passed, but PHPUnit exited with code %code% — see its terminal tab</source>
         <target>%count% 件のテストが成功しましたが、PHPUnit はコード %code% で終了しました — ターミナルタブを確認してください</target>
       </trans-unit>
+      <trans-unit id="19">
+        <source>PHPUnit: Run All Tests with Coverage</source>
+        <target>PHPUnit: カバレッジ付きですべてのテストを実行</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>PHPUnit: Hide Coverage</source>
+        <target>PHPUnit: カバレッジを非表示</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>No coverage: PHPUnit measures it with pcov or Xdebug, for what &lt;source&gt; in phpunit.xml names</source>
+        <target>カバレッジなし: PHPUnit は pcov または Xdebug で、phpunit.xml の &lt;source&gt; が指定する対象を計測します</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -74,6 +74,18 @@
         <source>%count% test passed, but PHPUnit exited with code %code% — see its terminal tab|%count% tests passed, but PHPUnit exited with code %code% — see its terminal tab</source>
         <target>בדיקה %count% עברה, אך PHPUnit הסתיים בקוד %code% — ראו את לשונית המסוף שלו|%count% בדיקות עברו, אך PHPUnit הסתיים בקוד %code% — ראו את לשונית המסוף שלו</target>
       </trans-unit>
+      <trans-unit id="19">
+        <source>PHPUnit: Run All Tests with Coverage</source>
+        <target>PHPUnit: הרצת כל הבדיקות עם כיסוי</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>PHPUnit: Hide Coverage</source>
+        <target>PHPUnit: הסתרת כיסוי</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>No coverage: PHPUnit measures it with pcov or Xdebug, for what &lt;source&gt; in phpunit.xml names</source>
+        <target>אין כיסוי: PHPUnit מודד אותו עם pcov או Xdebug, עבור מה ש-&lt;source&gt; ב-phpunit.xml מציין</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

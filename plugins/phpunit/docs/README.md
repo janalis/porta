@@ -6,7 +6,7 @@ default — turn it on under **Settings → Plugins → phpunit**.
 
 ![A test file after a run: the failure inline, each test marked, the results in the dock](/screenshots/plugin-phpunit.svg)
 
-Four commands, in the Plugins menu and the command palette:
+Six commands, in the Plugins menu and the command palette:
 
 - **PHPUnit: Run Test at Caret** (`Ctrl+Shift+F10`, or right-click in the
   editor) runs the test method the caret is in, every data set of it. Outside
@@ -17,6 +17,9 @@ Four commands, in the Plugins menu and the command palette:
 - **PHPUnit: Run All Tests** runs the suite your `phpunit.xml` describes.
 - **PHPUnit: Rerun Failed Tests** runs again only the tests that failed or
   errored in the last run.
+- **PHPUnit: Run All Tests with Coverage** runs the suite and measures which
+  lines it runs — see [Coverage](#coverage).
+- **PHPUnit: Hide Coverage** takes the coverage away.
 
 A file you run is saved first, so PHPUnit tests what you see. The test run
 gets a **PHPUnit** terminal tab of its own, so PHPUnit's output is there to
@@ -38,6 +41,26 @@ failures of the suite before it — and so does a run that ends with no report
 PHPUnit still exits with an error — a `failOnWarning` or `failOnDeprecation`
 in your `phpunit.xml`, say — you are told so rather than shown a green run:
 those findings are in the terminal tab, not in the results.
+
+## Coverage
+
+**PHPUnit: Run All Tests with Coverage** marks, in each file the run measured,
+every statement in the change strip at the left of the line numbers: a thin
+green bar on a line that ran, a heavier red one on a line no test reached.
+Lines that are not statements — braces, signatures — show nothing. While a
+file shows coverage, the strip is coverage's: git's change marks come back
+when you run **PHPUnit: Hide Coverage**.
+
+Editing a file moves its bars with their lines, and a line you change loses
+its bar. Saving the file takes its coverage away, since the run measured the
+code that was there before. `F5` on the **Tests** tab measures again.
+
+PHPUnit measures coverage with [pcov](https://github.com/krakjoe/pcov) or
+[Xdebug](https://xdebug.org) in the PHP that runs it, over what `<source>` in
+your `phpunit.xml` names. Without them, the tests still run and you are told
+there is no coverage. The strip is shown while git's **Change marks in the
+gutter** setting is on, as it is by default; with it off, there is nowhere to
+show coverage.
 
 The plugin finds `phpunit` through its **phpunit binary** setting when you
 set one, then `vendor/bin/phpunit`, then your `PATH`. While none of those

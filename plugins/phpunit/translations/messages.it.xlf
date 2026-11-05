@@ -74,6 +74,18 @@
         <source>%count% test passed, but PHPUnit exited with code %code% — see its terminal tab|%count% tests passed, but PHPUnit exited with code %code% — see its terminal tab</source>
         <target>%count% test superato, ma PHPUnit è uscito con codice %code% — vedi la sua scheda del terminale|%count% test superati, ma PHPUnit è uscito con codice %code% — vedi la sua scheda del terminale</target>
       </trans-unit>
+      <trans-unit id="19">
+        <source>PHPUnit: Run All Tests with Coverage</source>
+        <target>PHPUnit: Esegui tutti i test con copertura</target>
+      </trans-unit>
+      <trans-unit id="20">
+        <source>PHPUnit: Hide Coverage</source>
+        <target>PHPUnit: Nascondi copertura</target>
+      </trans-unit>
+      <trans-unit id="21">
+        <source>No coverage: PHPUnit measures it with pcov or Xdebug, for what &lt;source&gt; in phpunit.xml names</source>
+        <target>Nessuna copertura: PHPUnit la misura con pcov o Xdebug, per ciò che &lt;source&gt; in phpunit.xml indica</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

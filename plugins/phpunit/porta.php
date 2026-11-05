@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Porta\PhpUnit\CoverageView;
 use Porta\PhpUnit\TestRunner;
 use Porta\Plugin\Api\AbstractToolPlugin;
 use Porta\Plugin\Api\PluginApi;
@@ -25,23 +26,31 @@ return new class('phpunit', 'phpunit') extends AbstractToolPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $runner = new TestRunner($api, fn (): ?string => $this->acquire($api), $this->release(...));
+        $coverage = new CoverageView($api);
+        $runner = new TestRunner($api, fn (): ?string => $this->acquire($api), $this->release(...), $coverage);
 
         $api->registerListTool(TestRunner::TOOL, 'Tests', rerun: $runner->rerun(...));
         $api->registerCommand('run_at_caret', 'PHPUnit: Run Test at Caret', $runner->runAtCaret(...), ['ctrl+shift+f10']);
         $api->registerCommand('run_file', 'PHPUnit: Run Tests in File', $runner->runFile(...));
         $api->registerCommand('run_all', 'PHPUnit: Run All Tests', $runner->runAll(...));
         $api->registerCommand('rerun_failed', 'PHPUnit: Rerun Failed Tests', $runner->rerunFailed(...));
+        $api->registerCommand('run_with_coverage', 'PHPUnit: Run All Tests with Coverage', $runner->runWithCoverage(...));
+        $api->registerCommand('hide_coverage', 'PHPUnit: Hide Coverage', $coverage->hide(...));
 
         $available = $this->binaryAvailable($api);
-        foreach (['run_at_caret', 'run_file', 'run_all', 'rerun_failed'] as $command) {
+        foreach (['run_at_caret', 'run_file', 'run_all', 'rerun_failed', 'run_with_coverage'] as $command) {
             $api->addMenuItem($command, $available);
         }
+        $api->addMenuItem('hide_coverage', $coverage->shown(...));
         $api->addMenuItem('run_at_caret', $available, MenuSurface::EditorContext);
         $api->addMenuItem('run_file', $available, MenuSurface::FileContext);
 
         $api->registerStatusSegment($runner->status(...));
         $api->onBufferSwitched(static fn (string $path) => $runner->annotate());
-        $api->onFileOpened($runner->opened(...));
+        $api->onFileOpened(static function (string $path) use ($runner, $coverage): void {
+            $runner->opened($path);
+            $coverage->opened($path);
+        });
+        $api->onFileSaved($coverage->saved(...));
     }
 };

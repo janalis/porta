@@ -30,6 +30,9 @@ final class TestRunner
     /** @var list<string> what the last run ran after the binary and its log, for F5 */
     private array $last = [];
 
+    /** Whether the last run measured coverage, so F5 measures it again. */
+    private bool $lastMeasured = false;
+
     /** @var list<string> the files this plugin has diagnostics on, to clear them on the next run */
     private array $diagnosed = [];
 
@@ -41,6 +44,7 @@ final class TestRunner
         private readonly PluginApi $api,
         private readonly \Closure $acquire,
         private readonly \Closure $release,
+        private readonly CoverageView $coverage,
     ) {
         $this->results = new TestResults();
     }
@@ -84,9 +88,24 @@ final class TestRunner
         $this->run(['--filter', TestTarget::filter($tests), ...$this->results->brokenFiles()]);
     }
 
+    /**
+     * The suite, measuring which lines it runs — what PHPUnit's `<source>`
+     * names, with pcov or Xdebug in the PHP that runs it. Each file it
+     * measured shows that in its change strip until the coverage is hidden.
+     */
+    public function runWithCoverage(): void
+    {
+        $this->start([], \sys_get_temp_dir().'/porta-phpunit-'.\bin2hex(\random_bytes(6)).'.clover.xml');
+    }
+
     /** F5 on the tab: the last run again, or the suite when there has been none. */
     public function rerun(): void
     {
+        if ($this->lastMeasured) {
+            $this->runWithCoverage();
+
+            return;
+        }
         $this->run($this->last);
     }
 
@@ -118,22 +137,53 @@ final class TestRunner
     /** @param list<string> $arguments */
     private function run(array $arguments): void
     {
+        $this->start($arguments, null);
+    }
+
+    /**
+     * @param list<string> $arguments
+     * @param string|null  $clover    where PHPUnit is to write coverage, null for a run that measures none
+     */
+    private function start(array $arguments, ?string $clover): void
+    {
         $binary = ($this->acquire)();
         if (null === $binary) {
             return;
         }
         $this->last = $arguments;
+        $this->lastMeasured = null !== $clover;
         $log = \sys_get_temp_dir().'/porta-phpunit-'.\bin2hex(\random_bytes(6)).'.xml';
+        $measure = null === $clover ? [] : ['--coverage-clover', $clover];
         $this->api->showList(self::TOOL, [], ToolRun::Running);
-        $this->api->runs()->start(self::TITLE, [$binary, '--log-junit', $log, ...$arguments], function (int $code) use ($log): void {
+        $this->api->runs()->start(self::TITLE, [$binary, '--log-junit', $log, ...$measure, ...$arguments], function (int $code) use ($log, $clover): void {
             ($this->release)();
-            $xml = '';
-            if (\is_file($log)) {
-                $xml = (string) \file_get_contents($log);
-                \unlink($log);
+            $this->finished($code, self::take($log));
+            if (null !== $clover) {
+                $this->measured(self::take($clover));
             }
-            $this->finished($code, $xml);
         });
+    }
+
+    /** What a report file holds, the file removed: '' when the run wrote none. */
+    private static function take(string $file): string
+    {
+        $text = '';
+        if (\is_file($file)) {
+            $text = (string) \file_get_contents($file);
+            \unlink($file);
+        }
+
+        return $text;
+    }
+
+    /** Show the coverage a run wrote, or say why there is none. */
+    private function measured(string $xml): void
+    {
+        try {
+            $this->coverage->show(CloverReport::parse($xml));
+        } catch (\RuntimeException) {
+            $this->api->notify($this->api->trans('No coverage: PHPUnit measures it with pcov or Xdebug, for what <source> in phpunit.xml names'), ToastSeverity::Warn, 6.0);
+        }
     }
 
     /**

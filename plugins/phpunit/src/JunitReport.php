@@ -26,16 +26,10 @@ final class JunitReport
      */
     public static function parse(string $xml, string $root): array
     {
-        $previous = \libxml_use_internal_errors(true);
-        $report = \simplexml_load_string($xml, options: \LIBXML_NONET);
-        \libxml_clear_errors();
-        \libxml_use_internal_errors($previous);
-        if (false === $report || 'testsuites' !== $report->getName()) {
-            throw new \RuntimeException('Not a JUnit report');
-        }
+        $report = Xml::load($xml, 'testsuites', 'JUnit report');
         $real = \realpath($root);
         $outcomes = [];
-        foreach (self::all($report, '//testcase') as $case) {
+        foreach (Xml::all($report, '//testcase') as $case) {
             $outcomes[] = self::outcome($case, $root, false === $real ? $root : $real);
         }
 
@@ -48,7 +42,7 @@ final class JunitReport
         $file = (string) $case['file'];
         $local = \str_starts_with($file, $real.'/') ? $root.\substr($file, \strlen($real)) : $file;
         $line = \max(0, (int) $case['line'] - 1);
-        $verdict = self::all($case, 'failure|error|skipped')[0] ?? null;
+        $verdict = Xml::all($case, 'failure|error|skipped')[0] ?? null;
         $status = match ($verdict?->getName()) {
             'failure' => TestOutcome::FAILED,
             'error' => TestOutcome::ERRORED,
@@ -88,13 +82,5 @@ final class JunitReport
         $at = $match[1] ?? null;
 
         return '' === $file || null === $at ? null : (int) $at - 1;
-    }
-
-    /** @return list<\SimpleXMLElement> what $path selects from $node, none when it selects nothing */
-    private static function all(\SimpleXMLElement $node, string $path): array
-    {
-        $found = $node->xpath($path);
-
-        return \is_array($found) ? \array_values($found) : [];
     }
 }

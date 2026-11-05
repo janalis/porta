@@ -8,7 +8,10 @@ use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\CoverageMark;
+use Porta\Editor\OpenFocus;
 use Porta\Ide;
+use Porta\Plugin\Runtime\PluginHost;
 use Porta\Run\RunController;
 use Porta\Terminal\TerminalSessions;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -105,6 +108,31 @@ final class IdePhpUnitPluginTest extends TestCase
                 $code,
             ),
         );
+    }
+
+    /**
+     * A `vendor/bin/phpunit` that reports one passing test and, asked for
+     * coverage, writes $clover there — `{root}` standing for the directory it
+     * runs in, by its real path as PHPUnit names files. Each call's arguments
+     * are appended to `calls`.
+     */
+    private static function measurer(TempProject $project, ?string $clover): void
+    {
+        $project->write('vendor/bin/phpunit', \sprintf(
+            "#!%s\n<?php\n".<<<'PHP'
+                file_put_contents('calls', implode(' ', $argv)."\n", FILE_APPEND);
+                $at = array_search('--log-junit', $argv, true);
+                file_put_contents($argv[$at + 1], '<testsuites><testsuite name="x"><testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/></testsuite></testsuites>');
+                $clover = %s;
+                $to = array_search('--coverage-clover', $argv, true);
+                if (false !== $to && null !== $clover) {
+                    file_put_contents($argv[$to + 1], str_replace('{root}', getcwd(), $clover));
+                }
+
+                PHP,
+            \PHP_BINARY,
+            \var_export($clover, return: true),
+        ));
     }
 
     /** Run one of the plugin's commands, on a fresh output buffer so an await sees only what it caused. */
@@ -216,6 +244,100 @@ final class IdePhpUnitPluginTest extends TestCase
             ],
             rows: 40,
         );
+    }
+
+    public function testCoverageShowsInTheStripUntilItIsHiddenOrTheFileSaved(): void
+    {
+        $project = self::project([
+            'src/Calc.php' => "<?php\n\nfinal class Calc\n{\n    public function add(int \$a, int \$b): int\n    {\n        return \$a + \$b;\n    }\n}\n",
+            'src/Other.php' => "<?php\n\$x = 1;\n",
+        ]);
+        $both =
+            '<coverage><project><file name="{root}/src/Calc.php"><line num="5" type="method" count="1"/><line num="7" type="stmt" count="1"/><line num="9" type="stmt" count="0"/></file>'
+            .'<file name="{root}/src/Other.php"><line num="2" type="stmt" count="1"/></file></project></coverage>';
+        self::measurer($project, $both);
+        $calc = [6 => CoverageMark::Covered, 8 => CoverageMark::Uncovered];
+        $other = [1 => CoverageMark::Covered];
+
+        $this->runIde(
+            $project,
+            $project->path('src/Calc.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $calc, $other): void {
+                    $decorations = Widgets::editor($tui)->decorations;
+                    $this->assertFalse(self::hideOffered($ide), 'nothing to hide yet');
+                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->await(static fn (): bool => $calc === $decorations->coverage, what: 'the file in front to show its coverage');
+                    $this->assertStringContainsString('--coverage-clover', (string) \file_get_contents($project->path('calls')));
+                    $this->assertTrue(self::hideOffered($ide));
+
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('src/Other.php'));
+                    $this->assertSame($other, $decorations->coverage, 'a file opened after the run shows its own');
+                },
+                200 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
+                    // F5 measures again, as the run it repeats did — and this
+                    // time measures Calc only, so Other's bars go.
+                    self::measurer($project, '<coverage><project><file name="{root}/src/Calc.php"><line num="7" type="stmt" count="1"/></file></project></coverage>');
+                    $results = $tui->getById('results');
+                    $tui->setFocus($results);
+                    $terminal->consumeOutput();
+                    $tui->handleInput("\x1b[15~");
+                    $this->assertTrue(Probe::get($results, 'searching'), 'the rerun is under way');
+                    $this->await(static fn (): bool => !Probe::get($results, 'searching'), what: 'the rerun to finish');
+                    $this->assertSame(2, \substr_count((string) \file_get_contents($project->path('calls')), needle: '--coverage-clover'), 'it measured again');
+                    $this->assertSame([], Widgets::editor($tui)->decorations->coverage, 'a file the new run did not measure shows none of the old');
+                },
+                300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $decorations = Widgets::editor($tui)->decorations;
+                    $buffers = Services::resolve($ide, BufferService::class);
+                    $buffers->openFile($project->path('src/Calc.php'), OpenFocus::Editor);
+                    $this->assertSame([6 => CoverageMark::Covered], $decorations->coverage);
+
+                    // Saved, the file is not what the run measured — for good,
+                    // not until it is opened again.
+                    Widgets::editor($tui)->getDocument()->insert('// edited ');
+                    $tui->handleInput("\x13"); // ctrl+s
+                    $this->await(static fn (): bool => [] === $decorations->coverage, what: 'the save to take the file\'s coverage away');
+                    $buffers->closeTab((string) \realpath($project->path('src/Calc.php')));
+                    $buffers->openFile($project->path('src/Calc.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->coverage, 'reopened, it has none');
+                    $this->assertFalse(self::hideOffered($ide), 'and with no file left to show, Hide is dimmed');
+                },
+                400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $both, $other): void {
+                    $decorations = Widgets::editor($tui)->decorations;
+                    $buffers = Services::resolve($ide, BufferService::class);
+                    self::measurer($project, $both);
+                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->await(static fn (): bool => [] !== $decorations->coverage, what: 'the coverage to come back');
+                    $buffers->openFile($project->path('src/Other.php'), OpenFocus::Editor);
+                    $this->assertSame($other, $decorations->coverage);
+
+                    $this->command($ide, $terminal, 'hide_coverage');
+                    $this->assertSame([], $decorations->coverage, 'hidden');
+                    $this->assertFalse(self::hideOffered($ide));
+                    $buffers->closeTab((string) \realpath($project->path('src/Other.php')));
+                    $buffers->openFile($project->path('src/Other.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->coverage, 'and gone, not waiting for the file to open again');
+                },
+                500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    self::measurer($project, null); // no driver: PHPUnit writes no Clover report
+                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->awaitPainted($tui, $terminal, 'No coverage');
+                },
+            ],
+        );
+    }
+
+    /** Whether the Plugins menu offers Hide Coverage, or shows it dimmed. */
+    private static function hideOffered(Ide $ide): bool
+    {
+        foreach (Services::resolve($ide, PluginHost::class)->manager->menuSpecs() as $spec) {
+            if ('i:phpunit:hide_coverage' === $spec->spec) {
+                return null !== $spec->when && ($spec->when)();
+            }
+        }
+
+        return false;
     }
 
     public function testWhatItRefusesAndWhatItCannotRead(): void
