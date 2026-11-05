@@ -11,7 +11,9 @@ namespace Porta\Lsp;
  * A server that only answers this way publishes nothing at all — phpantom
  * advertises `diagnosticProvider` and never sends `publishDiagnostics` — so an
  * editor that only listens shows none of its findings. Each answer goes down
- * the same path a publish does, so the editor cannot tell the two apart.
+ * the same path a publish does, marked `pulled`: a server that also publishes
+ * — rust-analyzer pushes its cargo check — keeps the two apart, rather than
+ * each wiping the other.
  *
  * One file is asked about when it is opened or changed; every open file when
  * the server asks for a refresh, or on a save when a file's findings depend on
@@ -23,6 +25,13 @@ final class DiagnosticPull
 {
     /** @var array<string, int> uri => the number of the latest question about it */
     private array $asked = [];
+
+    /**
+     * Questions asked so far, of every file. One count for all, never reset:
+     * a file closed and reopened must not ask a question numbered like one
+     * still being answered about its old text.
+     */
+    private int $questions = 0;
 
     /** @var array<string, string> uri => the server's id for the findings it last sent */
     private array $resultIds = [];
@@ -46,7 +55,7 @@ final class DiagnosticPull
 
     public function pull(string $uri): void
     {
-        $question = ($this->asked[$uri] ?? 0) + 1;
+        $question = ++$this->questions;
         $this->asked[$uri] = $question;
         $params = ['textDocument' => ['uri' => $uri]];
         if (\is_string($this->provider['identifier'] ?? null)) {
@@ -64,7 +73,7 @@ final class DiagnosticPull
             if (\is_string($result['resultId'] ?? null)) {
                 $this->resultIds[$uri] = $result['resultId'];
             }
-            ($this->publish)(['uri' => $uri, 'diagnostics' => \is_array($result['items'] ?? null) ? \array_values($result['items']) : []]);
+            ($this->publish)(['uri' => $uri, 'diagnostics' => \is_array($result['items'] ?? null) ? \array_values($result['items']) : [], 'pulled' => true]);
         });
     }
 
@@ -78,6 +87,6 @@ final class DiagnosticPull
             return;
         }
         unset($this->asked[$uri], $this->resultIds[$uri]);
-        ($this->publish)(['uri' => $uri, 'diagnostics' => []]);
+        ($this->publish)(['uri' => $uri, 'diagnostics' => [], 'pulled' => true]);
     }
 }

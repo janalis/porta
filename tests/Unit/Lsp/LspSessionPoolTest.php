@@ -280,6 +280,8 @@ final class LspSessionPoolTest extends TestCase
         $pool->notifyDidOpen('/tmp/proj/a.php', 'a', 'php', 1);
         $client = $this->clients[0]['client'];
         $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///tmp/proj/a.php', 'diagnostics' => [['message' => 'x']]]);
+        // What the session hands on from a pull (DiagnosticPull marks it): its own slot, not the published one's.
+        $client->notificationHandlers['textDocument/publishDiagnostics'](['uri' => 'file:///tmp/proj/a.php', 'diagnostics' => [['message' => 'y'], ['message' => 'z']], 'pulled' => true]);
         $report = $client->notificationHandlers['$/progress'];
         foreach ([[1, 'begin'], [2, 'begin'], [2, 'end']] as [$id, $kind]) {
             $report(['token' => $id, 'value' => ['kind' => $kind, 'title' => 'Indexing']]);
@@ -290,10 +292,13 @@ final class LspSessionPoolTest extends TestCase
 
         $this->assertSame(
             [
-                ['php-ls', 'file:///tmp/proj/a.php', 1],
-                ['php-ls', 'file:///tmp/proj/a.php', 0],
+                ['php-ls',          'file:///tmp/proj/a.php', 1],
+                ['php-ls (pulled)', 'file:///tmp/proj/a.php', 2],
+                ['php-ls',          'file:///tmp/proj/a.php', 0],
+                ['php-ls (pulled)', 'file:///tmp/proj/a.php', 0],
             ],
             $published,
+            'published and pulled kept apart, and both cleared',
         );
         $this->assertSame('begin', $progress[0][1]);
         $this->assertSame("php-ls\0null\0".'1', $progress[0][0], 'tokens are the server\'s own, kept apart from any other\'s');

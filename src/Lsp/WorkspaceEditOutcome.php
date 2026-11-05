@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\I18n\Translator;
+
 /**
  * What applying a {@see WorkspaceEditor} payload actually did.
  *
@@ -30,5 +32,27 @@ final readonly class WorkspaceEditOutcome
     public function isRefused(): bool
     {
         return null !== $this->refused;
+    }
+
+    /** Nothing to say: nothing refused, touched or left behind — an edit that changed nothing. */
+    public function isEmpty(): bool
+    {
+        return !$this->isRefused() && 0 === $this->touched && [] === $this->skipped;
+    }
+
+    /**
+     * What to tell the user: $success when it all applied, else that it was
+     * refused, or which part could not be written.
+     */
+    public function report(Translator $translator, string $success): string
+    {
+        return match (true) {
+            $this->isRefused() => $translator->trans('Refused: %reason% — nothing was changed', ['%reason%' => (string) $this->refused]),
+            [] === $this->skipped => $success,
+            default => $translator->trans(
+                'Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written',
+                ['%count%' => $this->touched, '%skipped%' => \count($this->skipped)],
+            ),
+        };
     }
 }

@@ -54,10 +54,13 @@ final class PestTestsTest extends TestCase
         );
     }
 
-    public function testALineIsLookedUpByName(): void
+    public function testEachLineByName(): void
     {
-        $this->assertSame(14, PestTests::lineOf(self::FILE, '`outer` → it says "hi"'));
-        $this->assertNull(PestTests::lineOf(self::FILE, 'says "hi"'));
+        $this->assertSame(
+            ['adds numbers' => 2, 'it fails (on purpose)' => 6, "`outer` → `inner's` → deep" => 12, '`outer` → it says "hi"' => 14, 'it has data' => 17, 'is skipped' => 21],
+            PestTests::lines(self::FILE),
+        );
+        $this->assertSame(['twice' => 1], PestTests::lines("<?php\ntest('twice', fn () => 1);\ntest('twice', fn () => 2);\n"), 'a name declared twice: its first');
         $this->assertSame([], PestTests::in("<?php\nfinal class FooTest {}\n"));
     }
 }

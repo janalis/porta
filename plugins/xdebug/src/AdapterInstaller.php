@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Xdebug;
 
 use Porta\Support\AsyncProcess;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -38,7 +39,13 @@ final readonly class AdapterInstaller
     public function install(\Closure $done): void
     {
         $scratch = $this->target.'.part-'.\bin2hex(\random_bytes(4));
-        $this->fs->mkdir($scratch);
+        try {
+            $this->fs->mkdir($scratch);
+        } catch (IOExceptionInterface $error) {
+            $done($error->getMessage()); // nothing made yet to clean up
+
+            return;
+        }
         $archive = $scratch.'/php-debug.vsix';
         $fail = function (string $why) use ($scratch, $done): void {
             $this->fs->remove($scratch);
@@ -56,8 +63,16 @@ final readonly class AdapterInstaller
 
                     return;
                 }
-                $this->fs->remove($this->target);
-                $this->fs->rename($scratch.'/unpacked', $this->target);
+                // An adapter running from the old copy, a target on another
+                // device: said, and the button freed, rather than thrown into the loop.
+                try {
+                    $this->fs->remove($this->target);
+                    $this->fs->rename($scratch.'/unpacked', $this->target);
+                } catch (IOExceptionInterface $error) {
+                    $fail($error->getMessage());
+
+                    return;
+                }
                 $this->fs->remove($scratch);
                 $done(null);
             });

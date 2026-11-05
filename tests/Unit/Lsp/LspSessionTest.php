@@ -588,7 +588,7 @@ final class LspSessionTest extends TestCase
         $this->assertCount(1, $pulls(), 'asked as it opens');
         $uri = 'file:///porta-no-such-root/project/a.php';
         $pulls()[0]['respond'](['kind' => 'full', 'items' => [['message' => 'Class not found']]]);
-        $this->assertSame([['uri' => $uri, 'diagnostics' => [['message' => 'Class not found']]]], $published);
+        $this->assertSame([['uri' => $uri, 'diagnostics' => [['message' => 'Class not found']], 'pulled' => true]], $published);
 
         $session->notifyFullChange('/porta-no-such-root/project/a.php', new Document("<?php\nnew A();\n"));
         $this->assertCount(2, $pulls(), 'and again as it changes');
@@ -599,7 +599,7 @@ final class LspSessionTest extends TestCase
         $this->assertCount(3, $pulls(), 'the server asked for every open file again');
 
         $session->notifyDidClose('/porta-no-such-root/project/a.php');
-        $this->assertSame(['uri' => $uri, 'diagnostics' => []], \end($published), 'closed, it is cleared');
+        $this->assertSame(['uri' => $uri, 'diagnostics' => [], 'pulled' => true], \end($published), 'closed, it is cleared');
         $client->notificationHandlers['workspace/diagnostic/refresh']([]);
         $this->assertCount(3, $pulls(), 'and no longer asked about');
     }

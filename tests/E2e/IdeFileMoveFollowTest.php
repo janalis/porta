@@ -12,6 +12,7 @@ use Porta\Ide;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Workbench\DropAction;
@@ -29,6 +30,7 @@ final class IdeFileMoveFollowTest extends TestCase
     use ClearsPortaLsp;
     use PreservesPath;
     use RunsIde;
+    use ScreenReads;
 
     protected function setUp(): void
     {
@@ -102,7 +104,7 @@ final class IdeFileMoveFollowTest extends TestCase
 
     public function testASilentOrFailingServerLeavesTheMoveAsItIs(): void
     {
-        foreach (['none' => null, 'error' => 'Foo.php moved;', 'refused' => 'Refused:'] as $mode => $said) {
+        foreach (['none' => null, 'empty' => null, 'error' => 'Foo.php moved;', 'refused' => 'Refused:'] as $mode => $said) {
             $project = self::project($mode);
 
             $this->runIde(
@@ -118,6 +120,41 @@ final class IdeFileMoveFollowTest extends TestCase
                         }
                         $this->pump(0.2); // a genuine negative: the answer, if any, has landed
                         $this->assertSame("<?php\nnamespace App;\nfinal class Foo {}\n", (string) \file_get_contents($project->path('src/Sub/Foo.php')), 'moved, and nothing else');
+                        $this->assertStringNotContainsString('Updated 0', \implode("\n", $this->screenGrid($tui, $terminal)), 'an edit of nothing says nothing');
+                    },
+                ],
+            );
+        }
+    }
+
+    /**
+     * The protocol has the edit applied before the move, so a server may
+     * address the moved file by its old path: that edit lands on the file
+     * where it now is. One that cannot be written is said, not hidden.
+     */
+    public function testAnEditForTheOldPathLandsAndOneThatCannotIsSaid(): void
+    {
+        $moved = [
+            'old' => "<?php\nnamespace App\\Sub;\nfinal class Foo {}\n",
+            'partial' => "<?php\nnamespace App\\Sub;\nfinal class Foo {}\n",
+            'changes' => "<?php\nnamespace App\\Sub;\n// moved\nfinal class Foo {}\n",
+        ];
+        foreach (['old' => 'Updated 2 files for the move', 'partial' => 'Applied to 1 file, 1 could not be', 'changes' => 'Updated 2 files for the move'] as $mode => $said) {
+            $project = self::project($mode);
+
+            $this->runIde(
+                $project,
+                $project->path('src/Bar.php'),
+                [
+                    100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $said, $moved, $mode): void {
+                        $this->awaitLspReady($tui, $terminal, 'file-rename-lsp-server');
+                        self::move($ide, $project, 'src/Foo.php');
+                        $this->awaitPainted($tui, $terminal, $said);
+                        $this->assertSame(
+                            $moved[$mode],
+                            (string) \file_get_contents($project->path('src/Sub/Foo.php')),
+                            'the moved file took its new namespace — every edit of it, whichever path named it',
+                        );
                     },
                 ],
             );

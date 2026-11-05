@@ -137,6 +137,11 @@ final class TestTargetTest extends TestCase
         $this->assertEquals(new TestTarget('', null), TestTarget::at($file, 5), 'between two: the whole file');
         $this->assertEquals(new TestTarget('', null), TestTarget::at($file, 10), 'in a group, outside its tests: the whole file');
         $this->assertNull(TestTarget::at("<?php\nfunction helper() {}\n", 1), 'neither a class nor a test');
+        $this->assertEquals(
+            new TestTarget('', 'it charges'),
+            TestTarget::at("<?php\nfinal class FakeGateway {}\n\nit('charges', function () {\n    expect(1)->toBe(1);\n});\n", 4),
+            'a Pest file that declares a fake of its own is still Pest\'s',
+        );
     }
 
     public function testAPestTestIsFilteredByItsNameUnderAnyClass(): void

@@ -38,12 +38,12 @@ final class DiagnosticPullTest extends TestCase
         $this->assertSame('textDocument/diagnostic', $this->requests[0]['method']);
         $this->assertSame(['textDocument' => ['uri' => 'file:///a.php'], 'identifier' => 'phpantom'], $this->requests[0]['params']);
         $this->requests[0]['respond'](['kind' => 'full', 'resultId' => 'r1', 'items' => ['x' => ['message' => 'Class not found']]]);
-        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => [['message' => 'Class not found']]]], $this->published);
+        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => [['message' => 'Class not found']], 'pulled' => true]], $this->published);
 
         $pull->pull('file:///a.php');
         $this->assertSame('r1', $this->requests[1]['params']['previousResultId'] ?? null, 'the server may answer "unchanged" against it');
         $this->requests[1]['respond'](['kind' => 'full', 'items' => []]);
-        $this->assertSame(['uri' => 'file:///a.php', 'diagnostics' => []], $this->published[1], 'a full answer with none clears');
+        $this->assertSame(['uri' => 'file:///a.php', 'diagnostics' => [], 'pulled' => true], $this->published[1], 'a full answer with none clears');
 
         $pull->pull('file:///a.php');
         $this->assertArrayNotHasKey('previousResultId', $this->requests[2]['params'], 'an answer with no id forgets the old one');
@@ -64,7 +64,7 @@ final class DiagnosticPullTest extends TestCase
             $this->requests[$i]['respond']($answer);
         }
 
-        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => []]], $this->published, 'only the full one, its items unreadable, counts');
+        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => [], 'pulled' => true]], $this->published, 'only the full one, its items unreadable, counts');
     }
 
     public function testOnlyTheLatestQuestionAboutAFileIsAnswered(): void
@@ -89,7 +89,7 @@ final class DiagnosticPullTest extends TestCase
 
         $pull->pull('file:///a.php');
         $pull->forget('file:///a.php');
-        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => []]], $this->published);
+        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => [], 'pulled' => true]], $this->published);
 
         $this->requests[0]['respond'](['kind' => 'full', 'items' => [['message' => 'late']]]);
         $this->assertCount(1, $this->published, 'an answer arriving after the close does not bring it back');
@@ -100,5 +100,18 @@ final class DiagnosticPullTest extends TestCase
         $this->assertTrue($this->pull(['interFileDependencies' => true])->dependsOnOtherFiles());
         $this->assertFalse($this->pull(['interFileDependencies' => 1])->dependsOnOtherFiles());
         $this->assertFalse($this->pull()->dependsOnOtherFiles());
+    }
+
+    public function testAnAnswerAboutAFileBeforeItWasClosedIsNotTakenForOneAfter(): void
+    {
+        $pull = $this->pull();
+        $pull->pull('file:///a.php');
+        $pull->forget('file:///a.php');
+        $pull->pull('file:///a.php'); // reopened
+
+        $this->requests[0]['respond'](['kind' => 'full', 'items' => [['message' => 'about the old text']]]);
+        $this->assertSame([['uri' => 'file:///a.php', 'diagnostics' => [], 'pulled' => true]], $this->published, 'only the close\'s clearing');
+        $this->requests[1]['respond'](['kind' => 'full', 'items' => [['message' => 'now']]]);
+        $this->assertSame([['message' => 'now']], \array_last($this->published)['diagnostics'] ?? null);
     }
 }

@@ -325,12 +325,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     /** Shift+F9: launch the active file under its language's debug adapter. */
     public function startForCurrentFile(): void
     {
-        if (true === $this->localOnly?->refused()) {
-            return;
-        }
-        if ($this->isActive()) {
-            $this->notifier->flash($this->translator->trans('Debugger already running — stop it first (Ctrl+F2)'));
-
+        if (true === $this->localOnly?->refused() || $this->alreadyRunning()) {
             return;
         }
         $path = $this->editor->getFilePath();
@@ -345,12 +340,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
      */
     public function listenFor(string $languageId): void
     {
-        if (true === $this->localOnly?->refused()) {
-            return;
-        }
-        if ($this->isActive()) {
-            $this->notifier->flash($this->translator->trans('Debugger already running — stop it first (Ctrl+F2)'));
-
+        if (true === $this->localOnly?->refused() || $this->alreadyRunning()) {
             return;
         }
         $this->begin(
@@ -358,6 +348,16 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             $this->translator->trans('Listening (%language%)', ['%language%' => $languageId]),
             fn (DebugConfig $config): array => LaunchArguments::listen($this->paths->root(), $config->launch),
         );
+    }
+
+    /** Whether a session runs already — said, if so: one at a time. */
+    private function alreadyRunning(): bool
+    {
+        if ($this->isActive()) {
+            $this->notifier->flash($this->translator->trans('Debugger already running — stop it first (Ctrl+F2)'));
+        }
+
+        return $this->isActive();
     }
 
     /** Launch $path under its language's debug adapter, or say there is none. */

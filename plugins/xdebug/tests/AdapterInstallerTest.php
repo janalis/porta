@@ -86,4 +86,26 @@ final class AdapterInstallerTest extends TestCase
         $this->assertSame('the good one', \file_get_contents($this->target().'/extension/out/phpDebug.js'), 'a failure leaves the last good install');
         $this->assertSame([], $this->leftovers(), 'and no scratch behind it');
     }
+
+    public function testADirectoryThatCannotBeMadeIsSaidNotThrown(): void
+    {
+        $this->home->write('tools/php-debug', 'a file where the folder goes');
+
+        $this->assertStringContainsString('Failed to create', (string) $this->install(self::FIXTURES.'/php-debug.vsix'));
+    }
+
+    public function testAnOldCopyThatCannotGoIsSaidAndTheScratchRemoved(): void
+    {
+        $this->home->write('tools/php-debug/1.40.2/locked/held.js', 'in use');
+        \chmod($this->home->path('tools/php-debug/1.40.2/locked'), permissions: 0o555);
+        try {
+            $failure = $this->install(self::FIXTURES.'/php-debug.vsix');
+        } finally {
+            \chmod($this->home->path('tools/php-debug/1.40.2/locked'), permissions: 0o755);
+        }
+
+        $this->assertStringContainsString('held.js', (string) $failure, 'what could not be removed, named');
+        $this->assertSame([], $this->leftovers(), 'and nothing half-made left beside it');
+        $this->assertFileExists($this->home->path('tools/php-debug/1.40.2/locked/held.js'), 'the old copy, as much as was left of it, stays');
+    }
 }

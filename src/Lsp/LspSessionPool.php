@@ -77,7 +77,7 @@ final class LspSessionPool
     /** @var array<string, array<string, true>> server signature => progress tokens begun and not ended */
     private array $progress = [];
 
-    /** @var array<string, array<string, true>> server signature => URIs it has published diagnostics for */
+    /** @var array<string, array<string, array<string, true>>> server signature => URI => the owners its diagnostics there went under */
     private array $published = [];
 
     private bool $disabled = false;
@@ -703,11 +703,14 @@ final class LspSessionPool
             null === $onDiagnostics
                 ? static function (array $params): void {}
                 : function (array $params) use ($onDiagnostics, $server, $signature): void {
+                    // Asked for and published are kept apart, so a server doing both
+                    // does not wipe the one with the other.
+                    $owner = true === ($params['pulled'] ?? null) ? $server['name'].' (pulled)' : $server['name'];
                     // Remembered, so a server that dies takes its findings with it.
                     if (\is_string($params['uri'] ?? null)) {
-                        $this->published[$signature][$params['uri']] = true;
+                        $this->published[$signature][$params['uri']][$owner] = true;
                     }
-                    $onDiagnostics($params, $server['name']);
+                    $onDiagnostics($params, $owner);
                 },
             $this->onApplyEdit ?? static fn (array $edit): bool => false,
             function (Outcome $ok) use ($server, $signature, $session): void {
@@ -834,18 +837,12 @@ final class LspSessionPool
     /** Clear what a gone server left on screen: its diagnostics and its progress. */
     private function forget(string $signature): void
     {
-        $name = null;
-        foreach ($this->servers as $list) {
-            foreach ($list as $candidate) {
-                $name = self::signature($candidate) === $signature ? $candidate['name'] : $name;
-            }
-        }
         $published = $this->published[$signature] ?? [];
         $progress = $this->progress[$signature] ?? [];
         unset($this->published[$signature], $this->progress[$signature]);
-        if (null !== $this->onDiagnostics && null !== $name) {
-            foreach (\array_keys($published) as $uri) {
-                ($this->onDiagnostics)(['uri' => $uri, 'diagnostics' => []], $name);
+        foreach ($published as $uri => $owners) {
+            foreach (\array_keys($owners) as $owner) {
+                $this->onDiagnostics?->__invoke(['uri' => $uri, 'diagnostics' => []], $owner);
             }
         }
         if (null !== $this->onProgress) {

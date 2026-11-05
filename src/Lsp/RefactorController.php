@@ -499,14 +499,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
      */
     private function report(WorkspaceEditOutcome $outcome, string $success): string
     {
-        return match (true) {
-            $outcome->isRefused() => $this->trans('Refused: %reason% — nothing was changed', ['%reason%' => (string) $outcome->refused]),
-            [] === $outcome->skipped => $success,
-            default => $this->trans(
-                'Applied to %count% file, %skipped% could not be written|Applied to %count% files, %skipped% could not be written',
-                ['%count%' => $outcome->touched, '%skipped%' => \count($outcome->skipped)],
-            ),
-        };
+        return $outcome->report($this->translator, $success);
     }
 
     private function applyCodeAction(array $action): void

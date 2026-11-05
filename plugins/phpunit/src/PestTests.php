@@ -56,16 +56,20 @@ final class PestTests
         return $tests;
     }
 
-    /** The 0-based line of the test Pest reports as $name, or null when the text declares none of that name. */
-    public static function lineOf(string $text, string $name): ?int
+    /**
+     * Each test's 0-based line by the name Pest reports it under — the first
+     * of a name declared twice.
+     *
+     * @return array<string, int>
+     */
+    public static function lines(string $text): array
     {
+        $lines = [];
         foreach (self::in($text) as $test) {
-            if ($name === $test['name']) {
-                return $test['line'];
-            }
+            $lines[$test['name']] ??= $test['line'];
         }
 
-        return null;
+        return $lines;
     }
 
     /**

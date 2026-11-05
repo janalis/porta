@@ -43,7 +43,7 @@ final class JunitReport
      * so its call is looked for in the file — and a failure ends
      * `at tests/X.php:8` rather than in a trace.
      *
-     * @param array<string, string> $sources Pest files read so far, by path
+     * @param array<string, array<string, int>> $sources Pest files read so far, by path: each test's line by name
      */
     private static function outcome(\SimpleXMLElement $case, string $root, string $real, array &$sources): TestOutcome
     {
@@ -78,13 +78,14 @@ final class JunitReport
      * The 0-based line of the Pest test called $name in $file, 0 when it
      * cannot be found there.
      *
-     * @param array<string, string> $sources
+     * @param array<string, array<string, int>> $sources
      */
     private static function declared(string $file, string $name, array &$sources): int
     {
-        $sources[$file] ??= \is_file($file) ? (string) \file_get_contents($file) : '';
+        // Read once per file, not per test: a report lists each of its tests.
+        $sources[$file] ??= PestTests::lines(\is_file($file) ? (string) \file_get_contents($file) : '');
 
-        return PestTests::lineOf($sources[$file], $name) ?? 0;
+        return $sources[$file][$name] ?? 0;
     }
 
     /**

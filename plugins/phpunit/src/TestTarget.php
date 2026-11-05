@@ -30,24 +30,22 @@ final readonly class TestTarget
 
     /**
      * The target at 0-based $line of $text, or null when the text declares
-     * neither a class nor a Pest test.
+     * neither a Pest test nor a class. Pest's calls are looked for first: a
+     * Pest file may well declare a class — a fake, a fixture — of its own.
      */
     public static function at(string $text, int $line): ?self
     {
+        $tests = PestTests::in($text);
+        if ([] !== $tests) {
+            $around = \array_filter($tests, static fn (array $test): bool => $test['line'] <= $line && $line <= $test['end']);
+
+            return new self('', [] === $around ? null : \end($around)['name']);
+        }
         $lines = \explode("\n", $text);
         $row = self::row($lines, $line);
         $class = self::className($text, $lines, $row);
 
-        return null === $class ? self::pest($text, $line) : new self($class, self::method($lines, $row));
-    }
-
-    /** The Pest test whose call spans $line — every test in the file outside one — or null with none. */
-    private static function pest(string $text, int $line): ?self
-    {
-        $tests = PestTests::in($text);
-        $around = \array_filter($tests, static fn (array $test): bool => $test['line'] <= $line && $line <= $test['end']);
-
-        return [] === $tests ? null : new self('', [] === $around ? null : \end($around)['name']);
+        return null === $class ? null : new self($class, self::method($lines, $row));
     }
 
     /**

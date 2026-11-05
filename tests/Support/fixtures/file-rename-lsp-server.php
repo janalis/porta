@@ -8,8 +8,12 @@ declare(strict_types=1);
  * `workspace/willRenameFiles` the way phpactor answered a probe — the moved
  * file's namespace, and the `use` of it in Bar.php beside it.
  *
- * argv[1] picks the answer: `edit` (that edit), `none` (null: nothing names
- * the file), `refused` (an edit the editor refuses) or `error`. Every request it receives is appended, by method, to
+ * argv[1] picks the answer: `edit` (that edit), `old` (the same edit, the
+ * moved file addressed by its OLD path, as the protocol allows), `partial`
+ * (the moved file's edit and one to a file that is not there), `changes` (the
+ * `changes` form, addressing the moved file by both paths), `empty` (an
+ * edit of nothing), `none` (null: nothing names the file), `refused` (an edit
+ * the editor refuses) or `error`. Every request it receives is appended, by method, to
  * `requests.log` in the directory it runs in, so a test can prove one was
  * never sent.
  */
@@ -37,9 +41,24 @@ foreach (readFrames(\STDIN) as $message) {
                 'workspace' => ['fileOperations' => ['willRename' => ['filters' => [['pattern' => ['glob' => '**/*.php']], ['pattern' => ['glob' => '**/*.php', 'matches' => 'folder']]]]]],
             ],
         ],
-        'workspace/willRenameFiles' === $method && 'edit' === $mode => [
+        'workspace/willRenameFiles' === $method && 'empty' === $mode => ['documentChanges' => []],
+        // The `changes` form, both of the moved file's edits addressed to it — one by its old path, one by its new.
+        'workspace/willRenameFiles' === $method && 'changes' === $mode => [
+            'changes' => [
+                $file['oldUri'] => [['range' => $range(line: 1, from: 10, to: 13), 'newText' => 'App\\Sub']],
+                $file['newUri'] => [['range' => $range(line: 2, from: 0, to: 0), 'newText' => '// moved'."\n"]],
+                \dirname((string) $file['oldUri']).'/Bar.php' => [['range' => $range(line: 2, from: 4, to: 11), 'newText' => 'App\\Sub\\Foo']],
+            ],
+        ],
+        'workspace/willRenameFiles' === $method && 'partial' === $mode => [
             'documentChanges' => [
                 ['textDocument' => ['uri' => $file['newUri'], 'version' => null], 'edits' => [['range' => $range(line: 1, from: 10, to: 13), 'newText' => 'App\\Sub']]],
+                ['textDocument' => ['uri' => \dirname((string) $file['oldUri']).'/Missing.php', 'version' => null], 'edits' => [['range' => $range(line: 0, from: 0, to: 0), 'newText' => 'x']]],
+            ],
+        ],
+        'workspace/willRenameFiles' === $method && \in_array($mode, ['edit', 'old'], strict: true) => [
+            'documentChanges' => [
+                ['textDocument' => ['uri' => $file['old' === $mode ? 'oldUri' : 'newUri'], 'version' => null], 'edits' => [['range' => $range(line: 1, from: 10, to: 13), 'newText' => 'App\\Sub']]],
                 [
                     'textDocument' => ['uri' => \dirname((string) $file['oldUri']).'/Bar.php', 'version' => null],
                     'edits' => [['range' => $range(line: 2, from: 4, to: 11), 'newText' => 'App\\Sub\\Foo']],
