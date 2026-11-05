@@ -10,6 +10,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\CoverageMark;
 use Porta\Editor\OpenFocus;
+use Porta\Event\FileRewritten;
 use Porta\Ide;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Run\RunController;
@@ -24,6 +25,7 @@ use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Porta\Tests\Support\Widgets;
 use Porta\Workbench\Menu\MenuFileContext;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
 
@@ -80,6 +82,11 @@ final class IdePhpUnitPluginTest extends TestCase
         \putenv('PATH=/nonexistent');
     }
 
+    protected function tearDown(): void
+    {
+        \putenv('XDEBUG_MODE');
+    }
+
     /** @param array<string, string> $files */
     private static function project(array $files, string $phpunit = "require '%s/vendor/phpunit/phpunit/phpunit';"): TempProject
     {
@@ -120,7 +127,7 @@ final class IdePhpUnitPluginTest extends TestCase
     {
         $project->write('vendor/bin/phpunit', \sprintf(
             "#!%s\n<?php\n".<<<'PHP'
-                file_put_contents('calls', implode(' ', $argv)."\n", FILE_APPEND);
+                file_put_contents('calls', implode(' ', $argv).' XDEBUG_MODE='.getenv('XDEBUG_MODE')."\n", FILE_APPEND);
                 $at = array_search('--log-junit', $argv, true);
                 file_put_contents($argv[$at + 1], '<testsuites><testsuite name="x"><testcase name="testA" file="/x/ATest.php" line="3" class="ATest"/></testsuite></testsuites>');
                 $clover = %s;
@@ -248,6 +255,7 @@ final class IdePhpUnitPluginTest extends TestCase
 
     public function testCoverageShowsInTheStripUntilItIsHiddenOrTheFileSaved(): void
     {
+        \putenv('XDEBUG_MODE=debug'); // the IDE started on a machine set up for debugging
         $project = self::project([
             'src/Calc.php' => "<?php\n\nfinal class Calc\n{\n    public function add(int \$a, int \$b): int\n    {\n        return \$a + \$b;\n    }\n}\n",
             'src/Other.php' => "<?php\n\$x = 1;\n",
@@ -271,6 +279,7 @@ final class IdePhpUnitPluginTest extends TestCase
                     $this->command($ide, $terminal, 'run_with_coverage');
                     $this->await(static fn (): bool => $calc === $decorations->coverage, what: 'the file in front to show its coverage');
                     $this->assertStringContainsString('--coverage-clover', (string) \file_get_contents($project->path('calls')));
+                    $this->assertStringEndsWith(" XDEBUG_MODE=debug,coverage\n", (string) \file_get_contents($project->path('calls')), 'Xdebug, if that is the driver, collects — its own mode kept');
                     $this->assertTrue(self::hideOffered($ide));
 
                     Services::resolve($ide, BufferService::class)->openFile($project->path('src/Other.php'));
@@ -350,6 +359,43 @@ final class IdePhpUnitPluginTest extends TestCase
                     self::measurer($project, null); // no driver: PHPUnit writes no Clover report
                     $this->command($ide, $terminal, 'run_with_coverage');
                     $this->awaitPainted($tui, $terminal, 'No coverage');
+                },
+            ],
+        );
+    }
+
+    public function testAReloadOrARewriteTakesAFilesCoverageAway(): void
+    {
+        $project = self::project([
+            'src/Calc.php' => "<?php\n\$a = 1;\n",
+            'src/Other.php' => "<?php\n\$x = 1;\n",
+        ]);
+        self::measurer(
+            $project,
+            '<coverage><project><file name="{root}/src/Calc.php"><line num="2" type="stmt" count="1"/></file>'
+            .'<file name="{root}/src/Other.php"><line num="2" type="stmt" count="1"/></file></project></coverage>',
+        );
+
+        $this->runIde(
+            $project,
+            $project->path('src/Calc.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $decorations = Widgets::editor($tui)->decorations;
+                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $this->await(static fn (): bool => [1 => CoverageMark::Covered] === $decorations->coverage, what: 'the coverage to show');
+                    $this->assertStringEndsWith(" XDEBUG_MODE=coverage\n", (string) \file_get_contents($project->path('calls')), 'with no mode of its own, coverage alone');
+
+                    // Changed outside the editor, the clean buffer reloads.
+                    $project->write('src/Calc.php', "<?php\n\$a = 2000;\n"); // another size: the poller compares size and time
+                    $ide->pollFilesystem();
+                    $this->await(static fn (): bool => [] === $decorations->coverage, what: 'the reload to take the coverage away');
+
+                    // A refactoring rewrote Other, not open, on disk — the
+                    // event alone, its time on disk left as the run saw it.
+                    Services::resolve($ide, EventDispatcherInterface::class)->dispatch(new FileRewritten((string) \realpath($project->path('src/Other.php')), "<?php\n"));
+                    Services::resolve($ide, BufferService::class)->openFile($project->path('src/Other.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->coverage, 'rewritten, it opens with none');
                 },
             ],
         );

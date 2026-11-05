@@ -153,9 +153,12 @@ final class TestRunner
         $this->last = $arguments;
         $this->lastMeasured = null !== $clover;
         $log = \sys_get_temp_dir().'/porta-phpunit-'.\bin2hex(\random_bytes(6)).'.xml';
-        $measure = null === $clover ? [] : ['--coverage-clover', $clover];
+        $command = [$binary, '--log-junit', $log, ...$arguments];
+        if (null !== $clover) {
+            $command = [...self::measuring(), $binary, '--log-junit', $log, '--coverage-clover', $clover, ...$arguments];
+        }
         $this->api->showList(self::TOOL, [], ToolRun::Running);
-        $this->api->runs()->start(self::TITLE, [$binary, '--log-junit', $log, ...$measure, ...$arguments], function (int $code) use ($log, $clover): void {
+        $this->api->runs()->start(self::TITLE, $command, function (int $code) use ($log, $clover): void {
             ($this->release)();
             $reported = $this->finished($code, self::take($log));
             $measured = null === $clover ? '' : self::take($clover);
@@ -163,6 +166,21 @@ final class TestRunner
                 $this->measured($measured);
             }
         });
+    }
+
+    /**
+     * What a run that measures coverage starts under: Xdebug collects it only
+     * in its `coverage` mode, which a machine set up for debugging is not in,
+     * so the run adds it to whatever mode the IDE was started with. pcov
+     * needs nothing: loaded, it collects.
+     *
+     * @return list<string>
+     */
+    private static function measuring(): array
+    {
+        $mode = \getenv('XDEBUG_MODE');
+
+        return ['/usr/bin/env', 'XDEBUG_MODE='.(\is_string($mode) && '' !== $mode ? $mode.',' : '').'coverage'];
     }
 
     /** What a report file holds, the file removed: '' when the run wrote none. */

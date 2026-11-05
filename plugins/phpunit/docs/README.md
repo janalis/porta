@@ -57,8 +57,11 @@ code that was there before. `F5` on the **Tests** tab measures again.
 
 PHPUnit measures coverage with [pcov](https://github.com/krakjoe/pcov) or
 [Xdebug](https://xdebug.org) in the PHP that runs it, over what `<source>` in
-your `phpunit.xml` names. Without them, the tests still run and you are told
-there is no coverage. The strip is shown while git's **Change marks in the
+your `phpunit.xml` names — either will do. Xdebug collects coverage only in
+its `coverage` mode, so a coverage run adds that mode for you: it starts
+PHPUnit with `XDEBUG_MODE` set to `coverage`, after any mode you already set
+(`debug,coverage`). pcov needs nothing. With neither, the tests still run and
+you are told there is no coverage. The strip is shown while git's **Change marks in the
 gutter** setting is on, as it is by default; with it off, there is nowhere to
 show coverage.
 
