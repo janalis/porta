@@ -19,19 +19,35 @@ final readonly class TestTarget
 
     private const string FUNCTION = '~^\s*(?:(?:public|protected|private|static|final|abstract)\s+)*function\s+&?(\w+)\s*\(~';
 
+    /**
+     * @param string      $class  '' for a Pest file, whose tests belong to no class it declares
+     * @param string|null $method the test's name as the run reports it; null for every test in the file
+     */
     public function __construct(
         public string $class,
         public ?string $method,
     ) {}
 
-    /** The target at 0-based $line of $text, or null when the text declares no class. */
+    /**
+     * The target at 0-based $line of $text, or null when the text declares
+     * neither a class nor a Pest test.
+     */
     public static function at(string $text, int $line): ?self
     {
         $lines = \explode("\n", $text);
         $row = self::row($lines, $line);
         $class = self::className($text, $lines, $row);
 
-        return null === $class ? null : new self($class, self::method($lines, $row));
+        return null === $class ? self::pest($text, $line) : new self($class, self::method($lines, $row));
+    }
+
+    /** The Pest test whose call spans $line — every test in the file outside one — or null with none. */
+    private static function pest(string $text, int $line): ?self
+    {
+        $tests = PestTests::in($text);
+        $around = \array_filter($tests, static fn (array $test): bool => $test['line'] <= $line && $line <= $test['end']);
+
+        return [] === $tests ? null : new self('', [] === $around ? null : \end($around)['name']);
     }
 
     /**
@@ -127,12 +143,20 @@ final readonly class TestTarget
      * The `--filter` that runs exactly these methods of these classes, every
      * data set of each included.
      *
-     * @param list<array{0: string, 1: string}> $tests [class, method] pairs
+     * A Pest test has no class of its own to name: Pest names one after the
+     * file, and the file is given beside the filter — so any class will do.
+     *
+     * @param list<array{0: string, 1: string}> $tests [class, method] pairs; class '' for a Pest test
      */
     public static function filter(array $tests): string
     {
-        $names = \array_map(static fn (array $test): string => \preg_quote($test[0].'::'.$test[1], delimiter: '/'), $tests);
+        $names = \array_map(
+            static fn (array $test): string => ('' === $test[0] ? '[^:]*' : \preg_quote($test[0], delimiter: '/')).'::'.\preg_quote($test[1], delimiter: '/'),
+            $tests,
+        );
 
-        return '/^(?:'.\implode('|', \array_values(\array_unique($names))).')(?:\s|$)/';
+        // Exactly the name, or the name with a data set: a Pest name has spaces,
+        // so any space would let `it adds` run `it adds twice` too.
+        return '/^(?:'.\implode('|', \array_values(\array_unique($names))).')(?: with data set |$)/';
     }
 }

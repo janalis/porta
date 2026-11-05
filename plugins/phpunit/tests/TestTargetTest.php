@@ -120,10 +120,32 @@ final class TestTargetTest extends TestCase
             ['App\Other',    'testB'],
         ]);
 
-        $this->assertSame('/^(?:App\\\\DemoTest\:\:testA|App\\\\Other\:\:testB)(?:\s|$)/', $filter, 'a pair named twice is one alternative');
+        $this->assertSame('/^(?:App\\\\DemoTest::testA|App\\\\Other::testB)(?: with data set |$)/', $filter, 'a pair named twice is one alternative');
         $this->assertMatchesRegularExpression($filter, 'App\DemoTest::testA');
         $this->assertMatchesRegularExpression($filter, 'App\DemoTest::testA with data set "two"');
         $this->assertDoesNotMatchRegularExpression($filter, 'App\DemoTest::testAB');
         $this->assertDoesNotMatchRegularExpression($filter, 'Other\App\DemoTest::testA');
+    }
+
+    public function testInAPestFileTheTestCallAroundTheCaret(): void
+    {
+        $file = PestTestsTest::FILE;
+
+        $this->assertEquals(new TestTarget('', 'it fails (on purpose)'), TestTarget::at($file, 7), 'inside its closure');
+        $this->assertEquals(new TestTarget('', 'it fails (on purpose)'), TestTarget::at($file, 6), 'on its first line');
+        $this->assertEquals(new TestTarget('', '`outer` → it says "hi"'), TestTarget::at($file, 14), 'in a group');
+        $this->assertEquals(new TestTarget('', null), TestTarget::at($file, 5), 'between two: the whole file');
+        $this->assertEquals(new TestTarget('', null), TestTarget::at($file, 10), 'in a group, outside its tests: the whole file');
+        $this->assertNull(TestTarget::at("<?php\nfunction helper() {}\n", 1), 'neither a class nor a test');
+    }
+
+    public function testAPestTestIsFilteredByItsNameUnderAnyClass(): void
+    {
+        $filter = TestTarget::filter([['', '`outer` → it says "hi"']]);
+
+        $this->assertMatchesRegularExpression($filter, 'Tests\\ExampleTest::`outer` → it says "hi"');
+        $this->assertMatchesRegularExpression($filter, 'P\\Tests\\ExampleTest::`outer` → it says "hi" with data set "(1)"');
+        $this->assertDoesNotMatchRegularExpression($filter, 'Tests\\ExampleTest::`outer` → it says "hi" again');
+        $this->assertDoesNotMatchRegularExpression($filter, 'Tests\\ExampleTest::it says "hi"');
     }
 }

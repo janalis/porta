@@ -11,7 +11,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   tests in a file, the whole suite, or only the tests that failed last time.
   Results are listed in the dock, each failure is a diagnostic on its
   assertion, every test method is marked passed or failed at the end of its
-  line, and the status bar counts the failing tests. **Run All Tests with
+  line, and the status bar counts the failing tests. A Pest project runs its
+  `test()` and `it()` tests with Pest the same way. **Run All Tests with
   Coverage** marks each statement in the change strip — green where it ran,
   red where no test reached — until **Hide Coverage**. Off by default.
 - **Moving a PHP file moves its namespace**: with a language server that

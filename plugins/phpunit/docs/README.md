@@ -42,6 +42,16 @@ PHPUnit still exits with an error — a `failOnWarning` or `failOnDeprecation`
 in your `phpunit.xml`, say — you are told so rather than shown a green run:
 those findings are in the terminal tab, not in the results.
 
+## Pest
+
+A project with [Pest](https://pestphp.com) — a `vendor/bin/pest` — runs its
+tests with Pest instead, through the same commands: Pest reads PHPUnit's
+options and writes the same report. **Run Test at Caret** runs the `test()` or
+`it()` call the caret is in, under any `describe()` groups; outside every call
+it runs the file. A failure lands on the line Pest names, and each test's mark
+on its call. A **phpunit binary** you set in the settings is what runs, Pest
+project or not.
+
 ## Coverage
 
 **PHPUnit: Run All Tests with Coverage** marks, in each file the run measured,

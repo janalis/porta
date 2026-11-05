@@ -166,4 +166,49 @@ final class JunitReportTest extends TestCase
         }
         $this->assertSame([], JunitReport::parse('<testsuites/>', self::ROOT), 'a run of no tests is a report');
     }
+
+    /**
+     * What Pest 5.3 wrote for the file in {@see PestTestsTest}: files relative
+     * and suffixed with the test's name, no line, and the failure's line in an
+     * `at` after a message run into the name.
+     */
+    public function testAPestReportIsPlacedByTheTestCallsInItsFile(): void
+    {
+        $project = new TempProject(['tests/ExampleTest.php' => PestTestsTest::FILE]);
+        $xml = <<<'XML'
+            <?xml version="1.0" encoding="UTF-8"?>
+            <testsuites>
+              <testsuite name="t" tests="4">
+                <testsuite name="Tests\ExampleTest" file="tests/ExampleTest.php" tests="4">
+                  <testcase name="adds numbers" file="tests/ExampleTest.php::adds numbers" class="Tests\ExampleTest" classname="Tests.ExampleTest" assertions="1" time="0.006820"/>
+                  <testcase name="it fails (on purpose)" file="tests/ExampleTest.php::it fails (on purpose)" class="Tests\ExampleTest" classname="Tests.ExampleTest" assertions="1" time="0.008586">
+                    <failure type="PHPUnit\Framework\ExpectationFailedException">it fails (on purpose)Failed asserting that 1 is identical to 2.
+            at tests/ExampleTest.php:8</failure>
+                  </testcase>
+                  <testsuite name="it has data" tests="2">
+                    <testcase name="it has data with data set &quot;(5)&quot;" file="tests/ExampleTest.php::it has data with data set &quot;(5)&quot;" class="Tests\ExampleTest" classname="Tests.ExampleTest" assertions="1" time="0.000210">
+                      <failure type="PHPUnit\Framework\ExpectationFailedException">it has data with data set "(5)"Failed asserting that 5 is less than 2.
+            at tests/ExampleTest.php:19</failure>
+                    </testcase>
+                  </testsuite>
+                  <testcase name="gone" file="tests/ExampleTest.php::gone" class="Tests\ExampleTest" classname="Tests.ExampleTest" assertions="0" time="0.0"/>
+                  <testcase name="elsewhere" file="tests/Missing.php::elsewhere" class="Tests\Missing" classname="Tests.Missing" assertions="0" time="0.0"/>
+                </testsuite>
+              </testsuite>
+            </testsuites>
+            XML;
+
+        $file = $project->path('tests/ExampleTest.php');
+        $this->assertEquals(
+            [
+                new TestOutcome('Tests\ExampleTest', 'adds numbers', 'adds numbers', $file, 2, TestOutcome::PASSED, '', 2),
+                new TestOutcome('Tests\ExampleTest', 'it fails (on purpose)', 'it fails (on purpose)', $file, 6, TestOutcome::FAILED, 'Failed asserting that 1 is identical to 2.', 7),
+                new TestOutcome('Tests\ExampleTest', 'it has data', 'it has data with data set "(5)"', $file, 17, TestOutcome::FAILED, 'Failed asserting that 5 is less than 2.', 18),
+                new TestOutcome('Tests\ExampleTest', 'gone', 'gone', $file, 0, TestOutcome::PASSED, '', 0),
+                new TestOutcome('Tests\Missing', 'elsewhere', 'elsewhere', $project->path('tests/Missing.php'), 0, TestOutcome::PASSED, '', 0),
+            ],
+            JunitReport::parse($xml, $project->dir),
+            'the file under the root, each test on its call, each failure on its line; a name the file lacks, on its first',
+        );
+    }
 }

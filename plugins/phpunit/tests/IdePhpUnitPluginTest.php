@@ -413,6 +413,72 @@ final class IdePhpUnitPluginTest extends TestCase
         return false;
     }
 
+    /**
+     * A Pest project: its tests run with vendor/bin/pest — a stand-in here
+     * that notes its arguments and reports what Pest 5.3 reported for this
+     * file — and each lands on its `it()` call, which no `line` names.
+     */
+    public function testAPestProjectRunsPestAndItsTestsLandOnTheirCalls(): void
+    {
+        $project = self::project(['tests/ExampleTest.php' => PestTestsTest::FILE]);
+        $report =
+            '<testsuites><testsuite name="Tests\ExampleTest" file="tests/ExampleTest.php">'
+            .'<testcase name="adds numbers" file="tests/ExampleTest.php::adds numbers" class="Tests\ExampleTest"/>'
+            .'<testcase name="it fails (on purpose)" file="tests/ExampleTest.php::it fails (on purpose)" class="Tests\ExampleTest">'
+            ."<failure>it fails (on purpose)Failed asserting that 1 is identical to 2.\nat tests/ExampleTest.php:8</failure></testcase>"
+            .'</testsuite></testsuites>';
+        $project->write('vendor/bin/pest', \sprintf(
+            "#!%s\n<?php\n"
+            .'$at = array_search(\'--log-junit\', $argv, true); file_put_contents($argv[$at + 1], %s); file_put_contents(\'calls\', implode(\' \', array_slice($argv, 1)).PHP_EOL, FILE_APPEND); exit(1);',
+            \PHP_BINARY,
+            \var_export($report, return: true),
+        ));
+        \chmod($project->path('vendor/bin/pest'), permissions: 0o755);
+
+        $this->runIde(
+            $project,
+            $project->path('tests/ExampleTest.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    Widgets::editor($tui)->jumpTo(7, 0); // inside it('fails (on purpose)')
+                    $this->command($ide, $terminal, 'run_at_caret');
+                    $this->awaitPainted($tui, $terminal, '1 of 2 tests failed');
+                    $calls = (string) \file_get_contents($project->path('calls'));
+                    $this->assertStringContainsString('--filter /^(?:[^:]*::it fails \(on purpose\))(?: with data set |$)/ ', $calls, 'Pest ran, filtered to the test at the caret');
+                    $this->assertStringEndsWith('tests/ExampleTest.php'."\n", $calls);
+                    $this->assertEquals(
+                        [2 => '✓ test passed', 6 => '✗ test failed'],
+                        Widgets::editor($tui)->decorations->lineAnnotations,
+                        'each mark on its call',
+                    );
+                    $diagnostics = Services::resolve($ide, BufferManager::class)->get((string) \realpath($project->path('tests/ExampleTest.php')))?->diagnostics;
+                    $this->assertSame([7], \array_keys($diagnostics ?? []), 'the failure on the line Pest names');
+                },
+            ],
+        );
+    }
+
+    public function testABinaryNamedInTheSettingsRunsEvenInAPestProject(): void
+    {
+        $project = self::project(['tests/ExampleTest.php' => PestTestsTest::FILE]);
+        $project->write('vendor/bin/pest', '#!'.\PHP_BINARY."\n<?php\nfile_put_contents('pest-ran', '');\n");
+        \chmod($project->path('vendor/bin/pest'), permissions: 0o755);
+        self::reporter($project, '', 0);
+        $project->write('.porta.json', (string) \json_encode(['enabledPlugins' => ['phpunit'], 'plugins' => ['phpunit' => ['binary' => $project->path('vendor/bin/phpunit')]]], \JSON_THROW_ON_ERROR));
+
+        $this->runIde(
+            $project,
+            $project->path('tests/ExampleTest.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    $this->command($ide, $terminal, 'run_all');
+                    $this->awaitPainted($tui, $terminal, 'PHPUnit ran no tests');
+                    $this->assertFileDoesNotExist($project->path('pest-ran'));
+                },
+            ],
+        );
+    }
+
     public function testWhatItRefusesAndWhatItCannotRead(): void
     {
         $project = self::project([

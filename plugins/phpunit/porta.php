@@ -27,7 +27,19 @@ return new class('phpunit', 'phpunit') extends AbstractToolPlugin {
     {
         $this->registerBinarySetting($api);
         $coverage = new CoverageView($api);
-        $runner = new TestRunner($api, fn (): ?string => $this->acquire($api), $this->release(...), $coverage);
+        $runner = new TestRunner(
+            $api,
+            function () use ($api): ?string {
+                $binary = $this->acquire($api);
+                // A Pest project runs its tests with Pest — its own vendor/bin/phpunit
+                // cannot read them — unless a binary was named.
+                $pest = $api->projectRoot().'/vendor/bin/pest';
+
+                return null !== $binary && '' === $api->setting('binary') && \is_file($pest) ? $pest : $binary;
+            },
+            $this->release(...),
+            $coverage,
+        );
 
         $api->registerListTool(TestRunner::TOOL, 'Tests', rerun: $runner->rerun(...));
         $api->registerCommand('run_at_caret', 'PHPUnit: Run Test at Caret', $runner->runAtCaret(...), ['ctrl+shift+f10']);
