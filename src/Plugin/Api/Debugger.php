@@ -97,6 +97,17 @@ final readonly class Debugger
         $this->debug->stepOut();
     }
 
+    /**
+     * Start $languageId's debug adapter listening for a debuggee to connect —
+     * for PHP, Xdebug in a web request or a CLI run started elsewhere — as
+     * Shift+F9 starts it on the file in front. Says so, rather than starting,
+     * while a session runs or with no adapter for the language.
+     */
+    public function listen(string $languageId): void
+    {
+        $this->debug->listenFor($languageId);
+    }
+
     /** End the session. */
     public function stop(): void
     {

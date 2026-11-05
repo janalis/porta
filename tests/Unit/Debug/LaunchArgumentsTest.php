@@ -60,4 +60,20 @@ final class LaunchArgumentsTest extends TestCase
         $this->assertSame('php8.4', $arguments['runtimeExecutable'], 'an explicit launch override beats the run command');
         $this->assertSame(['php-cli'], $arguments['runtimeArgs'], 'but the run command still contributes runtimeArgs');
     }
+
+    public function testListeningStartsNothingAndKeepsTheRestOfTheOverrides(): void
+    {
+        $this->assertSame(['stopOnEntry' => false], LaunchArguments::listen('/p', []), 'no program: the adapter waits for a connection');
+        $this->assertSame(
+            ['stopOnEntry' => false, 'port' => 9004, 'pathMappings' => ['/var/www' => '/p']],
+            LaunchArguments::listen('/p', [
+                'program' => '${file}',
+                'runtimeExecutable' => 'php',
+                'runtimeArgs' => ['-dxdebug.start_with_request=yes'],
+                'port' => 9004,
+                'pathMappings' => ['/var/www' => '${workspaceRoot}'],
+            ]),
+            'what would run a file goes; a port and path mappings stay',
+        );
+    }
 }

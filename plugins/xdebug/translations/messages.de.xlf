@@ -26,6 +26,10 @@
         <source>The php-debug adapter was not installed: %reason%</source>
         <target>Der php-debug-Adapter wurde nicht installiert: %reason%</target>
       </trans-unit>
+      <trans-unit id="7">
+        <source>Xdebug: Start Listening for Connections</source>
+        <target>Xdebug: Auf Verbindungen lauschen</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

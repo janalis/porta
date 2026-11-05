@@ -3598,6 +3598,10 @@
         <source>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</source>
         <target>移動に合わせて %count% 件のファイルを更新しました — 最後のリファクタリングを元に戻すで取り消せます</target>
       </trans-unit>
+      <trans-unit id="1229">
+        <source>Listening (%language%)</source>
+        <target>待ち受け中 (%language%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

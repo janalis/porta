@@ -339,10 +339,45 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             : $this->startFor($path);
     }
 
+    /**
+     * Start $languageId's debug adapter listening for a debuggee to connect —
+     * a web request, a CLI run started elsewhere — rather than running a file.
+     */
+    public function listenFor(string $languageId): void
+    {
+        if (true === $this->localOnly?->refused()) {
+            return;
+        }
+        if ($this->isActive()) {
+            $this->notifier->flash($this->translator->trans('Debugger already running — stop it first (Ctrl+F2)'));
+
+            return;
+        }
+        $this->begin(
+            $languageId,
+            $this->translator->trans('Listening (%language%)', ['%language%' => $languageId]),
+            fn (DebugConfig $config): array => LaunchArguments::listen($this->paths->root(), $config->launch),
+        );
+    }
+
     /** Launch $path under its language's debug adapter, or say there is none. */
     private function startFor(string $path): void
     {
-        $languageId = ProjectPaths::languageId($path);
+        $this->begin(
+            ProjectPaths::languageId($path),
+            \basename($path),
+            fn (DebugConfig $config): array => LaunchArguments::build($path, $this->paths->root(), $config->launch, $config->runCommandArgv),
+        );
+    }
+
+    /**
+     * Start $languageId's adapter with the `launch` request $arguments builds,
+     * the session's tabs named $label — or say there is no adapter.
+     *
+     * @param \Closure(DebugConfig): array<string, mixed> $arguments
+     */
+    private function begin(string $languageId, string $label, \Closure $arguments): void
+    {
         $config = $this->adapters->adapterFor($languageId);
         if (null === $config) {
             $this->notifier->flash($this->translator->trans('No debug adapter configured for %language% — set one in Settings', ['%language%' => $languageId]));
@@ -358,12 +393,12 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         // Not 'Debug: …': that is the debug panel's own tab, beside this one
         // on the same strip — two tabs of one name, and the output was the
         // one nobody could tell apart.
-        $session->title = $this->translator->trans('Debug output: %label%', ['%label%' => \basename($path)]);
+        $session->title = $this->translator->trans('Debug output: %label%', ['%label%' => $label]);
         // The debuggee's output session is created and made active but NOT
         // shown — the dock shows the debug panel; the output sits one
         // terminal-toggle away (ctrl+`).
         $this->sessions->makeActive($session);
-        $this->panelTitle = \basename($path);
+        $this->panelTitle = $label;
         $this->panel->open($this->panelTitle);
         $this->panel->setWatches($this->watches->expressions);
 
@@ -374,7 +409,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             $this,
             fn (array $advertised): array => $this->exceptionFilters->enabledFor($advertised),
         );
-        if (!$this->session->start(LaunchArguments::build($path, $this->paths->root(), $config->launch, $config->runCommandArgv))) {
+        if (!$this->session->start($arguments($config))) {
             $this->session = null;
             $this->panel->setSessionState(DebugState::Terminated, null);
             $this->notifier->error($this->translator->trans('Could not start the debug adapter'));

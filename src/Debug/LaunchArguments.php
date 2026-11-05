@@ -35,6 +35,24 @@ final class LaunchArguments
     }
 
     /**
+     * The `launch` request that starts nothing and WAITS: an adapter given no
+     * program to run listens for the debuggee to connect — vscode-php-debug's
+     * "Listen for Xdebug", the shape a web request or a CLI run started
+     * elsewhere is debugged in. The user's overrides apply (a port, path
+     * mappings into a container) except what would start a program after all.
+     *
+     * @param array<string, mixed> $overrides
+     *
+     * @return array<string, mixed>
+     */
+    public static function listen(string $rootDir, array $overrides): array
+    {
+        $arguments = \array_diff_key(\array_replace(['stopOnEntry' => false], $overrides), \array_flip(['program', 'runtimeExecutable', 'runtimeArgs']));
+
+        return self::substitute($arguments, '', $rootDir);
+    }
+
+    /**
      * @param array<string, mixed> $values
      *
      * @return array<string, mixed>

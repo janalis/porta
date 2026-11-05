@@ -1016,6 +1016,7 @@ $api->on(DebugStatusChanged::class, function () use ($api): void {
 | `children(int $reference, \Closure $deliver)` | What that variable holds, an array's items or an object's properties, `$deliver(list<array{name: string, value: string, reference: int}>)`; empty unless paused |
 | `continue()` / `stepOver()` / `stepIn()` / `stepOut()` | Step it as the Run menu does. Not paused, the user is told so and nothing happens |
 | `pause()` | Stop a running session where it is; `DebugStatusChanged` follows once it has. Not running, the user is told so |
+| `listen(string $languageId)` | Start that language's adapter waiting for a debuggee to connect — Xdebug in a web request, a CLI run started elsewhere — instead of running a file. A session already running, or no adapter, and the user is told so |
 | `stop()` | End the session |
 
 ### Asking about the code

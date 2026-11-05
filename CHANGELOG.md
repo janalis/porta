@@ -21,8 +21,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 - **The xdebug plugin**: PHP debugging with Xdebug in one step. It supplies
   the vscode-php-debug adapter — the one VS Code, Cursor or VSCodium installed,
   or one its Settings page installs, checked against a pinned SHA-256 — so
-  Shift+F9 debugs the PHP file in front with nothing to configure. Off by
-  default.
+  Shift+F9 debugs the PHP file in front with nothing to configure, and
+  **Xdebug: Start Listening for Connections** debugs web requests and
+  anything else started with Xdebug elsewhere. Off by default.
 - **The composer plugin**: which direct dependencies have newer releases,
   listed in the dock and marked at the end of their line in composer.json —
   within your constraint, past it, or abandoned. Install, update all, update

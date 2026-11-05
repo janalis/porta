@@ -163,6 +163,28 @@ final class DebugControllerTest extends TestCase
     }
 
     /** @param array<string, mixed> $capabilities extra initialize capabilities to advertise */
+    public function testListeningStartsTheAdapterWithNoProgramToRun(): void
+    {
+        $controller = $this->controller(withFile: Presence::Without);
+
+        TestRuns::create(debug: $controller)->debugger()->listen('php'); // as the xdebug plugin asks for it
+        $this->client->respond('initialize', ['supportsConfigurationDoneRequest' => true]);
+
+        $launch = \array_values(\array_filter($this->client->requests, static fn (array $r): bool => 'launch' === $r['command']));
+        $this->assertSame([['command' => 'launch', 'arguments' => ['stopOnEntry' => false]]], $launch, 'no file needed, and none run');
+        $this->assertTrue($controller->isActive());
+        $this->assertSame('Listening (php)', $this->panel->getTitle());
+        $this->assertSame('Debug output: Listening (php)', $this->sessions->find('debug')?->title);
+
+        $controller->listenFor('php');
+        $this->assertStringContainsString('Debugger already running', $this->statusRow($this->statusBar));
+        $this->assertCount(1, \array_filter($this->client->commands(), static fn (string $c): bool => 'initialize' === $c), 'one session at a time');
+
+        $controller = $this->controller(withAdapter: Presence::Without);
+        $controller->listenFor('php');
+        $this->assertStringContainsString('No debug adapter configured for php', $this->statusRow($this->statusBar));
+    }
+
     private function pauseAtBreakpoint(DebugController $controller, int $line = 2, array $capabilities = []): void
     {
         $this->client->responses['stackTrace'] = [

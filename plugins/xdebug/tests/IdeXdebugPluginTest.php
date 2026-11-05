@@ -12,6 +12,7 @@ use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\RunsIde;
+use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UntrustsProjects;
@@ -29,6 +30,7 @@ final class IdeXdebugPluginTest extends TestCase
     use PreservesPath;
     use PreservesPortaHome;
     use RunsIde;
+    use ScreenReads;
     use UntrustsProjects;
     use UsesBundledPlugins;
 
@@ -97,6 +99,12 @@ final class IdeXdebugPluginTest extends TestCase
                     $this->assertSame([['self', 'install']], $installer['via']);
                     $this->assertTrue($installer['available']());
                     $this->assertSame('1.38.0 (.cursor)', ($installer['describe'] ?? static fn (): string => '')());
+
+                    // Listening starts that adapter with no file to run: here its node is not there, and it says so.
+                    $terminal->consumeOutput();
+                    Services::resolve($ide, CommandRegistry::class)->run('xdebug:listen');
+                    $this->awaitPainted($tui, $terminal, 'Could not start the debug adapter');
+                    $this->assertStringContainsString('Listening (php)', \implode("\n", $this->screenGrid($tui, $terminal)), 'the debug panel says what it is doing');
 
                     \unlink($home->path('.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js'));
                     $this->assertSame([], $manager->debugAdapters(), 'with none found, php has no adapter from here');

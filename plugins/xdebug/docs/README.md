@@ -31,6 +31,34 @@ copy, which is how to repair it.
 An adapter you name in `.porta.json` under `languages.php.debug` still wins
 over this plugin's.
 
+## Listening for a web request
+
+**Xdebug: Start Listening for Connections** (Plugins menu, command palette)
+starts the adapter without running anything: it waits on Xdebug's port, 9003,
+for PHP to connect. Load a page in the browser, run a script from your own
+shell, or start a queue worker, with Xdebug in debug mode and told to start —
+`xdebug.start_with_request=yes`, or a browser extension that sets
+`XDEBUG_SESSION` — and the request stops at your breakpoints as a Shift+F9
+run would. Every request that connects is debugged, one after another, until
+**Ctrl+F2** stops listening.
+
+What you set in the launch config under `languages.php.debug.launch` applies
+here too, but for what would run a file (`program`, `runtimeExecutable`,
+`runtimeArgs`): `port` to listen elsewhere, and `pathMappings` when PHP runs
+in a container and sees your files under another path —
+
+```json
+{
+    "languages": {
+        "php": {
+            "debug": {
+                "launch": {"pathMappings": {"/var/www/html": "${workspaceRoot}"}}
+            }
+        }
+    }
+}
+```
+
 ## Settings
 
 | Setting | Default | What it does |

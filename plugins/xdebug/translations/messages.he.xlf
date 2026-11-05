@@ -26,6 +26,10 @@
         <source>The php-debug adapter was not installed: %reason%</source>
         <target>מתאם php-debug לא הותקן: %reason%</target>
       </trans-unit>
+      <trans-unit id="7">
+        <source>Xdebug: Start Listening for Connections</source>
+        <target>Xdebug: האזנה לחיבורים</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

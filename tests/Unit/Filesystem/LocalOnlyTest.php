@@ -78,6 +78,9 @@ final class LocalOnlyTest extends TestCase
         $debug = TestDebugController::create(localOnly: $gate);
         $debug->startForCurrentFile();
         $this->assertSame('', $this->flashText(Probe::object($debug, 'notifier', 'statusBar')), 'the debugger stopped at the gate, before saying anything of its own');
+        $debug->listenFor('php');
+        $this->assertFalse($debug->isActive(), 'nor does it listen for one');
+        $this->assertSame('', $this->flashText(Probe::object($debug, 'notifier', 'statusBar')), 'and says nothing of its own then either');
         $this->assertStringContainsString('example.org', $this->flashText($this->status));
     }
 }

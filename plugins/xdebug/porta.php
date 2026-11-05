@@ -42,6 +42,9 @@ return new class('xdebug') extends AbstractPlugin {
             return null === $script ? null : [(string) $api->setting('nodeBinary'), $script];
         });
         $api->registerCommand('install', 'Xdebug: Install the php-debug Adapter', $setup->install(...));
+        // A web request, or a CLI run started elsewhere, connects to the adapter: nothing is run for it.
+        $api->registerCommand('listen', 'Xdebug: Start Listening for Connections', static fn () => $api->runs()->debugger()->listen('php'));
+        $api->addMenuItem('listen');
         $api->registerInstaller('php-debug', static fn (): bool => null !== $locate()->script(), [[PluginApi::INSTALL_SELF, 'install']], static fn (): string => $locate()->describe());
     }
 };

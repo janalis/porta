@@ -3598,6 +3598,10 @@
         <source>Updated %count% file for the move — Undo Last Refactoring takes it back|Updated %count% files for the move — Undo Last Refactoring takes it back</source>
         <target>%count% Datei für das Verschieben aktualisiert — Letztes Refactoring rückgängig machen nimmt es zurück|%count% Dateien für das Verschieben aktualisiert — Letztes Refactoring rückgängig machen nimmt es zurück</target>
       </trans-unit>
+      <trans-unit id="1229">
+        <source>Listening (%language%)</source>
+        <target>Lauscht (%language%)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
