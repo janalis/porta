@@ -46,6 +46,17 @@ final class PortaJsonWriterTest extends TestCase
         $this->assertSame(['already-off', 'newly-off'], IdeConfig::load($project->dir)->disabledPlugins);
     }
 
+    /** One setting changed is one line changed: the person's `{}` and two-space indent stay theirs. */
+    public function testAWriteKeepsTheFilesOwnShape(): void
+    {
+        $before = "{\n  \"env\": {},\n  \"settings\": {\n    \"theme\": \"dark\"\n  },\n  \"tasks\": []\n}\n";
+        $project = new TempProject(['.porta.json' => $before]);
+
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'theme', value: 'light'));
+
+        $this->assertSame(\str_replace('dark', replace: 'light', subject: $before), \file_get_contents($project->path('.porta.json')));
+    }
+
     public function testWrittenFileEndsWithATrailingNewline(): void
     {
         $project = new TempProject();

@@ -84,18 +84,80 @@ final class JsonFile
      * `composer.json` — which ends in a newline the way an editor leaves it,
      * so the next hand edit's diff is not a "no newline at end of file".
      *
+     * And which keeps the shape the person gave it, so changing one setting
+     * changes one line: an empty object the file had (`"env": {}`) stays an
+     * object — decoded to an array, it would come back `[]`, which reads as a
+     * list and which composer refuses — and the file's own indent stays its
+     * own, where PHP only knows four spaces.
+     *
      * @param array<array-key, mixed> $data
      */
     public static function writeEditable(Filesystem $fs, string $path, array $data): bool
     {
-        return self::dump($fs, $path, $data, \PHP_EOL);
+        $before = \is_file($path) ? (string) \file_get_contents($path) : '';
+        try {
+            $shape = self::node(\json_decode($before, associative: false, flags: \JSON_THROW_ON_ERROR));
+        } catch (\JsonException) {
+            $shape = null;
+        }
+        $m = [];
+        $indent = 1 === \preg_match('/^\{\R([ \t]+)"/', $before, $m) ? $m[1] : '    ';
+
+        return self::dump($fs, $path, self::shaped($data, $shape), \PHP_EOL, $indent);
     }
 
-    /** @param array<array-key, mixed> $data */
-    private static function dump(Filesystem $fs, string $path, array $data, string $tail): bool
+    /**
+     * $data with an empty array turned back into an object wherever $shape —
+     * the same document as it was decoded with objects — held one.
+     *
+     * @param array<array-key, mixed>|\stdClass|null $shape
+     */
+    private static function shaped(mixed $data, array|\stdClass|null $shape): mixed
+    {
+        return match (true) {
+            [] === $data && $shape instanceof \stdClass => new \stdClass(),
+            \is_array($data) => self::shapedChildren($data, $shape),
+            default => $data,
+        };
+    }
+
+    /**
+     * @param array<array-key, mixed>          $data
+     * @param array<array-key, mixed>|\stdClass|null $shape
+     *
+     * @return array<array-key, mixed>
+     */
+    private static function shapedChildren(array $data, array|\stdClass|null $shape): array
+    {
+        $children = $shape instanceof \stdClass ? \get_object_vars($shape) : $shape ?? [];
+        foreach (\array_keys($data) as $key) {
+            $data[$key] = self::shaped($data[$key], self::node($children[$key] ?? null));
+        }
+
+        return $data;
+    }
+
+    /**
+     * A decoded value as {@see shaped()} walks it: what can hold children.
+     *
+     * @return array<array-key, mixed>|\stdClass|null
+     */
+    private static function node(mixed $value): array|\stdClass|null
+    {
+        return $value instanceof \stdClass || \is_array($value) ? $value : null;
+    }
+
+    private static function dump(Filesystem $fs, string $path, mixed $data, string $tail, string $indent = '    '): bool
     {
         try {
-            $fs->dumpFile($path, \json_encode($data, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES).$tail);
+            $json = \json_encode($data, \JSON_THROW_ON_ERROR | \JSON_PRETTY_PRINT | \JSON_UNESCAPED_SLASHES);
+            if ('    ' !== $indent) {
+                // Every line break in the output is structure — a newline in a
+                // string is escaped — so each run of leading four-space steps is
+                // one level deep.
+                $json = (string) \preg_replace_callback('/^(?:    )+/m', static fn (array $m): string => \str_replace('    ', $indent, $m[0]), $json);
+            }
+            $fs->dumpFile($path, $json.$tail);
         } catch (IOExceptionInterface|\JsonException) {
             return false;
         }
