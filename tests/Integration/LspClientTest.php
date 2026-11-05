@@ -39,6 +39,16 @@ final class LspClientTest extends TestCase
 
     private const string CAPABILITIES_GOLDEN = __DIR__.'/../Support/golden/lsp-client-capabilities.json';
 
+    /** A root with `#` or a space in its name is percent-encoded, as every document URI under it is. */
+    public function testTheWorkspaceRootIsAnEncodedUri(): void
+    {
+        $params = Probe::invoke(new LspClient(['unused'], '/porta-no-such-root/C# Projects/app'), 'initializeParams');
+
+        $this->assertSame('file:///porta-no-such-root/C%23%20Projects/app', $params['rootUri'], 'not read as a fragment, `C` and the rest');
+        $this->assertSame('file:///porta-no-such-root/C%23%20Projects/app', $params['workspaceFolders'][0]['uri']);
+        $this->assertSame('app', $params['workspaceFolders'][0]['name']);
+    }
+
     public function testInitializeParamsAdvertiseTheFullClientCapabilitySet(): void
     {
         // No process spawned: initializeParams()/clientCapabilities() are pure,

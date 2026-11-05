@@ -235,7 +235,10 @@ final class LspClient implements LspClientInterface
      */
     private function initializeParams(): array
     {
-        $rootUri = 'file://'.\str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $this->rootDir);
+        // Spelled as every document's URI is: percent-encoded (a root with `#`
+        // in it read as a fragment, `C#` cut to `C`) and resolved, so a
+        // document's URI starts with the root's.
+        $rootUri = Uri::fromPath($this->rootDir);
 
         $params = [
             'processId' => \getmypid(),
