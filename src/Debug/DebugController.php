@@ -43,6 +43,9 @@ final class DebugController implements DebugSessionObserver, StatusSegment
 {
     private ?DapSession $session = null;
 
+    /** Stops so far: a stack trace is painted only for the latest. */
+    private int $stops = 0;
+
     /** @var array<int, array{id: int, name: string, path: string, line: int}> live frames by id (absolute paths) */
     private array $frames = [];
     /** The frame the panel last selected — watches and evaluate run against it. */
@@ -591,11 +594,13 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             return;
         }
         $this->revealPanel();
-        $session->stackTrace(function (array $frames) use ($session): void {
-            // Answered after the user resumed (F9, F8 pressed before it came)
-            // or after the session ended: the frames are of a stop that is
-            // over, and painting them said Paused over a running program.
-            if ($session !== $this->session || DebugState::Paused !== $session->state()) {
+        $stop = ++$this->stops;
+        $session->stackTrace(function (array $frames) use ($session, $stop): void {
+            // Answered after the user resumed (F9, F8 pressed before it came),
+            // after a later stop, or after the session ended: the frames are of
+            // a stop that is over — painted, they said Paused over a running
+            // program, or showed the previous stop's line and frame ids.
+            if ($session !== $this->session || DebugState::Paused !== $session->state() || $stop !== $this->stops) {
                 return;
             }
             $this->frames = \array_column($frames, null, 'id');

@@ -668,6 +668,16 @@ final class DebugControllerTest extends TestCase
         $this->client->respond('stackTrace', $frames);
 
         $this->assertSame(DebugState::Running, Probe::get($this->panel, 'state'), 'still running, as the program is');
+
+        // Stopped again before the first answer came: that answer is the old stop's.
+        $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
+        $this->client->emit('stopped', ['reason' => 'step', 'threadId' => 1]);
+        $old = $frames;
+        $old['stackFrames'][0]['line'] = 1;
+        $this->client->respond('stackTrace', $old);
+        $this->assertNotSame('prog.php:1', Probe::get($this->panel, 'location'), "the earlier stop's line is not painted");
+        $this->client->respond('stackTrace', $frames);
+        $this->assertSame('prog.php:3', Probe::get($this->panel, 'location'), 'the latest is');
     }
 
     public function testBreakpointTogglesSyncTheLiveSessionAndOtherFiles(): void
