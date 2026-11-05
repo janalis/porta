@@ -70,6 +70,11 @@ final class PluginManager implements
     TokenSpanProvider,
     ViewerProviderSource
 {
+    private const string NOT_IN_ACTIVATE = 'IDE actions are unavailable during activate() — call them from a command handler or event hook';
+
+    /** @var array<string, true> plugins whose activate() is running now ({@see activate()}) */
+    private array $activating = [];
+
     /** @var list<array{plugin: string, id: string, label: string, handler: \Closure(): void, keys: list<string>}> */
     private array $commands = [];
     /** @var array<string, list<string>> namespaced command id => default key specs */
@@ -192,7 +197,12 @@ final class PluginManager implements
         ?ToolLocator $locator = null,
         array $declaredTools = [],
     ): PluginApi {
-        return new PluginApi($name, $this->runtime(...), $this->tools(...), $this->dispatch(...), $rootDir, $settings, $syntaxTheme, $display, $locator, $declaredTools);
+        // Never while its activate() runs, live or at boot alike: gated on the
+        // wiring alone, an action in activate() worked on a live enable and
+        // failed the plugin at every boot after.
+        $runtime = fn (): PluginRuntime => \array_key_exists($name, $this->activating) ? throw new PluginException(self::NOT_IN_ACTIVATE) : $this->runtime();
+
+        return new PluginApi($name, $runtime, $this->tools(...), $this->dispatch(...), $rootDir, $settings, $syntaxTheme, $display, $locator, $declaredTools);
     }
 
     /**
@@ -353,6 +363,16 @@ final class PluginManager implements
         if (!\array_key_exists($name, $this->names)) {
             return;
         }
+        // What it put on screen goes first, while its API may still act:
+        // its findings, marks, statuses and annotations stayed, frozen,
+        // until each buffer was closed.
+        $api = $this->apis[$name] ?? null;
+        unset($this->apis[$name]);
+        try {
+            $api?->retractPublished();
+        } catch (\Throwable $error) {
+            $this->reportFailure($name, $error);
+        }
         unset($this->names[$name]);
 
         // Plugin-owned resources first, in the plugin's own fault barrier: a
@@ -366,15 +386,6 @@ final class PluginManager implements
             } catch (\Throwable $error) {
                 $this->reportFailure($name, $error);
             }
-        }
-        // What it put on screen goes too: its findings, marks, statuses and
-        // annotations stayed, frozen, until each buffer was closed.
-        $api = $this->apis[$name] ?? null;
-        unset($this->apis[$name]);
-        try {
-            $api?->retractPublished();
-        } catch (\Throwable $error) {
-            $this->reportFailure($name, $error);
         }
 
         $removed = [];
@@ -490,6 +501,17 @@ final class PluginManager implements
         }
     }
 
+    /** Run $plugin's activate() with its API, which may register but not yet act. */
+    public function activate(PortaPlugin $plugin, PluginApi $api): void
+    {
+        $this->activating[$api->pluginName()] = true;
+        try {
+            $plugin->activate($api);
+        } finally {
+            unset($this->activating[$api->pluginName()]);
+        }
+    }
+
     public function wireRuntime(PluginRuntime $runtime): void
     {
         $this->runtime = $runtime;
@@ -512,7 +534,7 @@ final class PluginManager implements
     /** The live IDE seams; guarded so activate()-time action calls fail as plugin errors. */
     public function runtime(): PluginRuntime
     {
-        return $this->runtime ?? throw new PluginException('IDE actions are unavailable during activate() — call them from a command handler or event hook');
+        return $this->runtime ?? throw new PluginException(self::NOT_IN_ACTIVATE);
     }
 
     /**

@@ -297,7 +297,7 @@ final readonly class PluginLoader
             }
 
             $api = $manager->api($name, $this->rootDir, $this->settings, $this->syntaxTheme, $this->display, $this->locator, $manifest->tools);
-            $plugin->activate($api);
+            $manager->activate($plugin, $api);
             $manager->commit($api, $plugin); // atomic: a throwing activate() lands nothing
             if (\is_dir($manifest->directory.'/translations')) {
                 $this->translator?->addCatalogDirectory($manifest->directory.'/translations');

@@ -12,6 +12,10 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\TestPluginRuntime;
+use Porta\Tests\Support\TestTui;
+use Porta\Widget\CodeEditorWidget;
+use Porta\Widget\StatusBarWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 final class PluginLoaderTest extends TestCase
@@ -127,6 +131,24 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('alpha'), 'the healthy one loaded');
         $this->assertFalse($manager->hasPlugin('zulu'), 'and the other could not');
         $this->assertStringContainsString('"zulu"', self::renderAll($manager->warnings), 'the user is told which one, and why');
+    }
+
+    /**
+     * An IDE action in activate() fails the plugin on a live enable too, as
+     * it does at boot: gated on the wiring alone, it worked from Settings and
+     * failed the plugin at every boot after.
+     */
+    public function testAnIdeActionInActivateFailsTheLoadLiveAsAtBoot(): void
+    {
+        $project = new TempProject(['.porta/plugins/eager/porta.php' => $this->pluginSource('eager', '$api->flash("hello");')]);
+        $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
+        $manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget(), TestTui::create(80, 24)));
+
+        $warning = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []))->loadFile($project->path('.porta/plugins/eager/porta.php'), $manager);
+
+        $this->assertInstanceOf(ConfigWarning::class, $warning);
+        $this->assertStringContainsString('IDE actions are unavailable during activate()', self::render($warning));
+        $this->assertFalse($manager->hasPlugin('eager'));
     }
 
     /** A requirement ordered first but not running — its activate() threw — keeps its dependent out. */
