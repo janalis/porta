@@ -417,6 +417,49 @@ final class LspSessionTest extends TestCase
     }
 
     /**
+     * The pending edit goes to the server under the file it was made in. The
+     * editor widget is shared by every buffer, so the path read when the
+     * debounce fired was the next tab's after a switch — a.php's text sent as
+     * b.php — and a flush for b.php diffed b against itself, dropping a's edit.
+     */
+    public function testAPendingEditIsSentForItsOwnFileAfterASwitch(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+        $a = new Document('A-original');
+        $b = new Document('B-original');
+        $current = '/porta-no-such-root/project/a.php';
+
+        $session->scheduleDidChange(
+            $a,
+            static function () use (&$current): ?string {
+                return $current;
+            },
+            static function (): void {},
+        );
+        $current = '/porta-no-such-root/project/b.php'; // the user switched tabs
+        $session->ready($current, $b);
+
+        $uris = \array_map(static fn (array $sent): mixed => $sent['params']['textDocument']['uri'] ?? null, $client->notifications);
+        $this->assertSame(['file:///porta-no-such-root/project/a.php'], $uris, "a's edit, under a's name");
+    }
+
+    /** An edit scheduled for another document sends the one still pending, which re-arming the timer used to drop. */
+    public function testSchedulingAnotherDocumentSendsThePendingOneFirst(): void
+    {
+        $client = new FakeLspClient();
+        $session = $this->session($client);
+        $this->start($session);
+
+        $session->scheduleDidChange(new Document('a'), static fn (): ?string => '/porta-no-such-root/project/a.php', static function (): void {});
+        $session->scheduleDidChange(new Document('b'), static fn (): ?string => '/porta-no-such-root/project/b.php', static function (): void {});
+
+        $uris = \array_map(static fn (array $sent): mixed => $sent['params']['textDocument']['uri'] ?? null, $client->notifications);
+        $this->assertSame(['file:///porta-no-such-root/project/a.php'], $uris, 'a went at once; b waits its debounce');
+    }
+
+    /**
      * A flush sends the edit early, and what was to follow it still follows.
      *
      * The follow-up is the inlay-hint re-request. Every feature request

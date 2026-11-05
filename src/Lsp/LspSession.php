@@ -42,6 +42,16 @@ final class LspSession
     private ?string $changeDebounce = null;
 
     /**
+     * The file the armed debounce is for, and its document — both taken as
+     * the edit is scheduled. The editor widget is shared by every buffer, so
+     * a path read when the timer fired was the NEXT tab's after a switch, and
+     * one file's text went to the server under the other's name.
+     *
+     * @var array{string, Document}|null
+     */
+    private ?array $pendingChange = null;
+
+    /**
      * What the armed debounce runs after its didChange (the inlay-hint
      * re-request). Held apart from the timer so a FLUSH, which cancels the
      * timer and sends the edit itself, can still run it.
@@ -148,6 +158,7 @@ final class LspSession
             EventLoop::cancel($this->changeDebounce);
             $this->changeDebounce = null;
         }
+        $this->pendingChange = null;
         $this->afterSync = null;
         $this->client?->stop();
     }
@@ -291,55 +302,56 @@ final class LspSession
     }
 
     /**
-     * Debounce a didChange for $doc; resolve the file path at fire time (so a
-     * mid-debounce buffer switch is respected) and run $afterSync afterwards.
+     * Debounce a didChange for $doc, under the path it has NOW, and run
+     * $afterSync afterwards. An edit still pending for another document is
+     * sent first: re-arming the timer used to drop it.
      *
-     * @param \Closure(): ?string $resolvePath current file path, evaluated on fire
+     * @param \Closure(): ?string $resolvePath $doc's file path, asked as the edit is scheduled
      * @param \Closure(): void    $afterSync   e.g. re-request inlay hints
      */
     public function scheduleDidChange(Document $doc, \Closure $resolvePath, \Closure $afterSync): void
     {
-        if (null === $this->client) {
+        $path = $resolvePath();
+        if (null === $this->client || null === $path) {
             return;
+        }
+        if (null !== $this->pendingChange && $this->pendingChange[1] !== $doc) {
+            $this->flushPendingChange(null, null);
         }
         if (null !== $this->changeDebounce) {
             EventLoop::cancel($this->changeDebounce);
         }
 
         $this->afterSync = $afterSync;
-        $this->changeDebounce = EventLoop::delay(0.3, function () use ($doc, $resolvePath): void {
-            $this->changeDebounce = null;
-            $path = $resolvePath();
-            if (null === $path) {
-                $this->afterSync = null;
-
-                return;
-            }
-            $this->sendDidChange($path, $doc);
-            $this->runAfterSync();
-        });
+        $this->pendingChange = [$path, $doc];
+        $this->changeDebounce = EventLoop::delay(0.3, fn () => $this->flushPendingChange(null, null));
     }
 
-    /** Send any pending debounced edit immediately (before a feature request). */
+    /**
+     * Send any pending debounced edit immediately (before a feature request) —
+     * the document it was scheduled for, under its own path, whatever the
+     * caller is about to ask about: flushing the caller's diffed that file
+     * against itself and dropped the edit made in the other.
+     */
     public function flushPendingChange(?string $path, ?Document $document): void
     {
-        if (null === $this->changeDebounce || null === $this->client) {
+        $pending = $this->pendingChange;
+        $this->pendingChange = null;
+        if (null === $this->changeDebounce || null === $this->client || null === $pending) {
             return;
         }
         EventLoop::cancel($this->changeDebounce);
         $this->changeDebounce = null;
-        if (null !== $path && null !== $document) {
-            // The same route the debounce itself takes: a minimal incremental
-            // change when the server syncs incrementally, full text otherwise.
-            // Ready() flushes before every feature request — completion fires
-            // on `->` — so a full-text flush here shipped the whole file per
-            // trigger character and left the diff path nearly unreachable.
-            $this->sendDidChange($path, $document);
-            // And what the debounce would have run after it. Every feature
-            // request flushes — document highlight on each caret move — so
-            // dropping this meant an edit almost never refreshed the hints.
-            $this->runAfterSync();
-        }
+        // The same route the debounce itself takes: a minimal incremental
+        // change when the server syncs incrementally, full text otherwise.
+        // Ready() flushes before every feature request — completion fires
+        // on `->` — so a full-text flush here shipped the whole file per
+        // trigger character and left the diff path nearly unreachable.
+        $this->sendDidChange(...$pending);
+        // And what the debounce would have run after it. Every feature
+        // request flushes — document highlight on each caret move — so
+        // dropping this meant an edit almost never refreshed the hints.
+        $this->runAfterSync();
     }
 
     /** Run, once, what the pending edit was to be followed by. */
