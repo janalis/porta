@@ -317,6 +317,34 @@ final class IdeTerminalRunTest extends TestCase
         );
     }
 
+    public function testARunSavesTheEditsOnScreenFirst(): void
+    {
+        \putenv('PATH='.\PORTA_TEST_PRISTINE_PATH); // needs php + a shell
+        $project = new TempProject(['hello.php' => "<?php\necho \"as-on-disk\\n\";\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('hello.php'),
+            [
+                300 => function (Tui $tui): void {
+                    // Typed, not saved: the run is of what the editor shows.
+                    Widgets::editor($tui)->getDocument()->insert('<?php echo "as-edited\n"; ?>');
+                    $tui->handleInput("\x1b[114;6u"); // ctrl+shift+r run menu
+                    $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')));
+                },
+                400 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    $this->awaitPainted($tui, $terminal, 'Run current file: hello.php');
+                    $tui->handleInput("\r");
+                },
+                900 => function (Tui $tui, VirtualTerminal $terminal) use ($project): void {
+                    $this->awaitPainted($tui, $terminal, 'as-edited');
+                    $this->assertStringContainsString('as-edited', (string) \file_get_contents($project->path('hello.php')));
+                    $this->assertFalse(Widgets::editor($tui)->getDocument()->isDirty());
+                },
+            ],
+        );
+    }
+
     public function testRunLastRepeatsAndEmptyGuards(): void
     {
         $project = new TempProject(['hello.php' => "<?php\necho \"second-run\\n\";\n"]);

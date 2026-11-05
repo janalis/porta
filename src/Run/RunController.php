@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Run;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\BufferManager;
+use Porta\Editor\BufferService;
 use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Event\TerminalSessionCycleRequested;
@@ -65,6 +67,9 @@ final class RunController
         private readonly string $rootDir,
         private readonly TerminalSessions $sessions,
         private readonly ?LocalOnly $localOnly = null,
+        // Optional trailing: a bare construction runs what is on disk.
+        private readonly ?BufferService $saver = null,
+        private readonly ?BufferManager $buffers = null,
     ) {}
 
     public function openRunMenu(): void
@@ -210,6 +215,14 @@ final class RunController
      */
     private function runInTerminal(array $command, string $title): void
     {
+        // What runs is what is on disk: the file being run, a test, a script
+        // reading the project — unsaved, the edits on screen were not what ran.
+        foreach ($this->buffers?->all() ?? [] as $buffer) {
+            if (!$buffer->isDirty()) {
+                continue;
+            }
+            $this->saver?->saveBuffer($buffer);
+        }
         $this->spawn($this->sessionFor($title), $command);
     }
 

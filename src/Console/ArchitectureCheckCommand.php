@@ -366,6 +366,7 @@ final class ArchitectureCheckCommand extends Command
         'ReviewPlugin>Workbench',
         'Run>Event',
         'Run>Container',
+        'Run>Editor', // a run saves the open buffers first: it runs what is on disk
         'Run>Filesystem', // runs and terminals run the project here: LocalOnly refuses a remote one
         'Run>Support',
         'Run>Terminal',
