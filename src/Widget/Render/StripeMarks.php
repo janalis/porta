@@ -71,7 +71,7 @@ final readonly class StripeMarks
 
         return new self(
             $severity,
-            $vcsGutter ? $store->vcsMarks : [],
+            $vcsGutter ? $store->shownChangeMarks() : [],
             $search,
             $store->breakpointLines,
             $store->bookmarkedLines(),

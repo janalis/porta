@@ -176,12 +176,6 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
-    /**
-     * @param array<int, ChangeMarkKind> $byLine    0-based line => kind
-     * @param int|null                   $lineCount the document these marks describe, which REBASES the
-     *                                              remap baseline; null leaves it, for a caller that is
-     *                                              clearing the marks rather than answering about a file
-     */
     /** @param array<int, CoverageMark> $byLine 0-based line => mark; [] gives the strip back to the change marks */
     public function setCoverage(array $byLine): void
     {
@@ -189,6 +183,24 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
         ($this->invalidate)();
     }
 
+    /**
+     * The change marks the strip shows: none while coverage holds it. What
+     * draws, hints at or clicks a change in the strip or on the stripe reads
+     * this, so nothing acts on a mark the user cannot see.
+     *
+     * @return array<int, ChangeMarkKind>
+     */
+    public function shownChangeMarks(): array
+    {
+        return [] === $this->coverage ? $this->vcsMarks : [];
+    }
+
+    /**
+     * @param array<int, ChangeMarkKind> $byLine    0-based line => kind
+     * @param int|null                   $lineCount the document these marks describe, which REBASES the
+     *                                              remap baseline; null leaves it, for a caller that is
+     *                                              clearing the marks rather than answering about a file
+     */
     public function setVcsMarks(array $byLine, ?int $lineCount = null): void
     {
         $this->vcsMarks = $byLine;
@@ -260,7 +272,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      */
     private function remapCoverage(int $atLine, int $lineDelta): void
     {
-        if ([] === $this->coverage || 0 === $lineDelta) {
+        if ([] === $this->coverage) {
             return;
         }
         $moved = [];

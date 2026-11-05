@@ -53,7 +53,7 @@ final readonly class GutterPointer
         return [
             $docLine,
             match (true) {
-                0 === $relCol && $this->vcsGutter && [] === $this->decorations->coverage && \array_key_exists($docLine, $this->decorations->vcsMarks) => GutterPart::Change,
+                0 === $relCol && $this->vcsGutter && \array_key_exists($docLine, $this->decorations->shownChangeMarks()) => GutterPart::Change,
                 $relCol === ($this->viewport->gutterWidth - 3) => GutterPart::Marker, // then the fold column, then a space
                 default => null,
             },

@@ -482,6 +482,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
 
     public function showBuffer(Buffer $buffer): void
     {
+        $this->keepCoverage();
         $pane = $this->panes->paneFor((string) $buffer->paneId);
         if (null !== $pane) {
             // Neutralize the editor so any jumpTo() fired after openFile()
@@ -995,6 +996,19 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
             },
             fn (Buffer $buffer) => $this->editor->decorations->setCoverage($buffer->coverage),
         );
+    }
+
+    /**
+     * Hand the coverage on screen back to the buffer it belongs to before the
+     * editor shows a buffer again: edits moved the bars in the editor, and the
+     * buffer's own copy is what the next show replays.
+     */
+    private function keepCoverage(): void
+    {
+        $shown = $this->buffers->get((string) $this->editor->getFilePath());
+        if (null !== $shown) {
+            $shown->coverage = $this->editor->decorations->coverage;
+        }
     }
 
     /**

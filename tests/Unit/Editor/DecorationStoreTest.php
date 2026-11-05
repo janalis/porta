@@ -100,10 +100,12 @@ final class DecorationStoreTest extends TestCase
     {
         $store = new DecorationStore(static function (): void {});
         $store->resetForBuffer([], lineCount: 10);
-        $store->setCoverage([1 => CoverageMark::Covered, 5 => CoverageMark::Uncovered, 8 => CoverageMark::Covered]);
+        $store->setCoverage([1 => CoverageMark::Covered, 4 => CoverageMark::Covered, 5 => CoverageMark::Uncovered, 8 => CoverageMark::Covered]);
+        $store->setVcsMarks([2 => ChangeMarkKind::Added]);
+        $this->assertSame([], $store->shownChangeMarks(), 'while coverage holds the strip, no change mark is on show');
 
-        $store->remapForEdit(cursorLine: 5, lineCount: 10);
-        $this->assertSame([1 => CoverageMark::Covered, 5 => CoverageMark::Uncovered, 8 => CoverageMark::Covered], $store->coverage, 'typing within a line moves nothing');
+        $store->remapForEdit(cursorLine: 4, lineCount: 10);
+        $this->assertSame([1 => CoverageMark::Covered, 5 => CoverageMark::Uncovered, 8 => CoverageMark::Covered], $store->coverage, 'typing within a line drops that line\'s mark and moves nothing');
 
         // Two lines added at line 3: the caret ends on line 5.
         $store->remapForEdit(cursorLine: 5, lineCount: 12);
@@ -119,6 +121,8 @@ final class DecorationStoreTest extends TestCase
 
         $store->resetForBuffer([], lineCount: 4);
         $this->assertSame([], $store->coverage, 'another buffer starts with none');
+        $store->setVcsMarks([2 => ChangeMarkKind::Added]);
+        $this->assertSame([2 => ChangeMarkKind::Added], $store->shownChangeMarks(), 'and the strip is the change marks\' again');
         $store->setCoverage([0 => CoverageMark::Covered]);
         $store->resetForReshow([], lineCount: 4);
         $this->assertSame([], $store->coverage, 'a re-show replays the buffer\'s own, so the store starts empty');

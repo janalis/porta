@@ -18,7 +18,7 @@ final class GutterHint
     public static function for(DecorationStore $store, int $line, GutterPart $part, bool $clickShowsChange, Translator $translator): ?string
     {
         if (GutterPart::Change === $part) {
-            $label = match ($store->vcsMarks[$line] ?? null) {
+            $label = match ($store->shownChangeMarks()[$line] ?? null) {
                 null => null,
                 ChangeMarkKind::Added => $translator->trans('Added'),
                 ChangeMarkKind::Modified => $translator->trans('Modified'),

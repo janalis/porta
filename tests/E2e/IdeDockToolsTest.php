@@ -297,6 +297,17 @@ final class IdeDockToolsTest extends TestCase
 
                     self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
                     $this->assertSame([1 => CoverageMark::Uncovered], $decorations->coverage, 'the switch back replays it');
+
+                    // Lines added above move the bar — and it stays moved
+                    // across a switch, where the buffer's copy is replayed.
+                    $editor = Widgets::editor($tui);
+                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->handleInput("\r");
+                    $editor->handleInput("\r");
+                    $this->assertSame([3 => CoverageMark::Uncovered], $decorations->coverage);
+                    self::bufferService($ide)->openFile($project->path('b.php'), OpenFocus::Editor);
+                    self::bufferService($ide)->openFile($project->path('a.php'), OpenFocus::Editor);
+                    $this->assertSame([3 => CoverageMark::Uncovered], $decorations->coverage, 'the switch back replays where the edits put it');
                 },
             ],
         );

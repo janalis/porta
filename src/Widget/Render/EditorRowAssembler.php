@@ -553,8 +553,7 @@ final readonly class EditorRowAssembler
 
         return match (true) {
             null !== $coverage => $this->styles->of($coverage->role())->apply($coverage->glyph()),
-            [] !== $this->store->coverage => ' ', // coverage holds the strip: no git mark shows through
-            default => EditorRenderer::vcsCell($this->store->vcsMarks[$line] ?? null, $this->styles),
+            default => EditorRenderer::vcsCell($this->store->shownChangeMarks()[$line] ?? null, $this->styles),
         };
     }
 
