@@ -162,18 +162,17 @@ final class Files
     }
 
     /**
-     * The spelling {@see canonical()} gave a file that is gone now — a rename's
-     * old side, a deleted file: its FOLDER resolved and its name put back.
-     * realpath() answers false once nothing is at the path, and on a tree
-     * reached through a symlink (/var on macOS, a symlinked checkout) the
-     * given spelling is not the one buffers and stores were keyed by while
-     * the file was there. $path as given when the folder is gone too.
+     * {@see canonical()} for a file that may be gone — a rename's old side, a
+     * deleted file: when nothing is left to resolve, its FOLDER is resolved and
+     * its name put back. On a tree reached through a symlink (/var on macOS, a
+     * symlinked checkout) that is the spelling buffers and stores were keyed
+     * by while the file was there. $path as given when the folder is gone too.
      */
     public static function canonicalGone(string $path): string
     {
-        $folder = \realpath(\dirname($path));
+        $folder = self::resolve(\dirname($path));
 
-        return false === $folder ? $path : $folder.\DIRECTORY_SEPARATOR.\basename($path);
+        return self::resolve($path) ?? (null === $folder ? $path : $folder.\DIRECTORY_SEPARATOR.\basename($path));
     }
 
     /**

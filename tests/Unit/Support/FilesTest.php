@@ -118,6 +118,7 @@ final class FilesTest extends TestCase
 
         $this->assertSame(\realpath($project->path('real')).'/gone.txt', Files::canonicalGone($project->path('link/gone.txt')), 'the spelling the file had while it was there');
         $this->assertSame($project->path('nowhere/gone.txt'), Files::canonicalGone($project->path('nowhere/gone.txt')), 'its folder gone too: as given');
+        $this->assertSame(\realpath($project->path('real/kept.txt')), Files::canonicalGone($project->path('link/kept.txt')), 'one still there is canonical()');
     }
 
     public function testThroughLinkFindsALinkAtTheFileOrAnyFolderBelowTheRoot(): void
