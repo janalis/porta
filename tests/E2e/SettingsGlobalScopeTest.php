@@ -10,6 +10,7 @@ use Porta\Config\ConfigScope;
 use Porta\Config\IdeConfig;
 use Porta\Ide;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
+use Porta\Plugin\Runtime\PluginManager;
 use Porta\Settings\SettingsScope;
 use Porta\Tests\Support\ClearsPortaLsp;
 use Porta\Tests\Support\NavigatesSettings;
@@ -385,6 +386,10 @@ final class SettingsGlobalScopeTest extends TestCase
                         $shown,
                         'and never claimed success',
                     );
+                    $manager = Probe::object(Services::resolve($ide, PluginLifecycle::class), 'plugins');
+                    $this->assertInstanceOf(PluginManager::class, $manager);
+                    $this->assertFalse($manager->hasPlugin('noisy'), 'nor loaded it: it stays off now, not only after a restart');
+                    $this->assertTrue(Services::resolve($ide, PluginLifecycle::class)->isDisabled('noisy'), 'and its toggle reads off');
                     $this->assertFileDoesNotExist(
                         $this->project->path('.porta.json'),
                         'and no empty config file was left behind for it',

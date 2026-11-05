@@ -248,10 +248,26 @@ final class PluginLifecycle implements PluginLifecycleOps
         // user switched off is a worse surprise than a message.
         $required = $this->missingRequirementsOf($name);
         $targets = [...$required, $name];
+        // The choice is written to this layer first. If the OTHER file still
+        // disables it, nothing is turned on: it used to be activated anyway,
+        // running and shown On while the toast said it stays off — and off it
+        // was, at the next boot.
+        $this->persistEnabledChoice($name);
+        $blockedBy = $this->layerStillDisabling($name);
+        if (null !== $blockedBy) {
+            $this->disabled[$name] = true;
+            $this->notifier->warn($this->translator->trans('%plugin% stays off — %file% disables it', [
+                '%plugin%' => $name,
+                '%file%' => $this->files->label($blockedBy),
+            ]));
+            $this->afterToggle();
+
+            return;
+        }
         // PASS 1, complete and synchronous: every choice reaches .porta.json
         // before any subprocess starts, so a crash or a quit mid-install still
         // records what the user asked for.
-        foreach ($targets as $target) {
+        foreach ($required as $target) {
             $this->persistEnabledChoice($target);
         }
         $this->activateQueue($targets, $name, $required, new EnableProgress());
@@ -356,15 +372,14 @@ final class PluginLifecycle implements PluginLifecycleOps
 
             return;
         }
-        // A write that another layer overrules must not report success:
-        // "enabled" would be the only thing on screen, and it would be false.
-        $blockedBy = $this->layerStillDisabling($name);
+        // One another layer still disables never got here: enable() said so
+        // and turned nothing on ({@see layerStillDisabling()}).
         $message = match (true) {
-            $progress->activated && null === $blockedBy => 'Plugin "%name%" enabled',
+            $progress->activated => 'Plugin "%name%" enabled',
             !$progress->reported => 'Plugin "%name%" is not installed',
             default => null, // an error, or the warning below, already named the reason
         };
-        $missing = null === $message || null !== $blockedBy ? [] : $this->missingTools($name);
+        $missing = null === $message ? [] : $this->missingTools($name);
         match (true) {
             // Enabled, and unable to do its job: the one line on screen says
             // both, and where the fix is.
@@ -378,13 +393,6 @@ final class PluginLifecycle implements PluginLifecycleOps
             null !== $message => $this->notifier->flash($this->translator->trans($message, ['%name%' => $name])),
             default => null,
         };
-        if (null !== $blockedBy) {
-            // Notifier::notify() already requests a render.
-            $this->notifier->warn($this->translator->trans('%plugin% stays off — %file% disables it', [
-                '%plugin%' => $name,
-                '%file%' => $this->files->label($blockedBy),
-            ]));
-        }
         $this->flashCompanions('Also enabled: %names%', $required);
         $this->afterToggle();
     }
