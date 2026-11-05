@@ -354,6 +354,29 @@ final class SettingsControllerTest extends TestCase
     }
 
     /**
+     * A choice row cycles through what `.porta.json` accepts, no more and no
+     * less: a value the row offers that the parser rejects would save and then
+     * be dropped with a warning at the next load, and one the parser accepts
+     * that the row lacks could never be picked.
+     */
+    public function testEveryChoiceRowOffersExactlyWhatTheConfigAccepts(): void
+    {
+        $project = new TempProject();
+        $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
+
+        $checked = [];
+        foreach ([...$controller->formRows(), ...$controller->interfaceRows()] as $row) {
+            if (null === $row->options) {
+                continue;
+            }
+            $this->assertArrayHasKey($row->key, IdeConfig::CHOICE_SETTINGS, $row->key.' is a choice the parser knows');
+            $this->assertSame(IdeConfig::CHOICE_SETTINGS[$row->key], $row->options, $row->key);
+            $checked[] = $row->key;
+        }
+        $this->assertEqualsCanonicalizing(\array_keys(IdeConfig::CHOICE_SETTINGS), $checked, 'every closed setting has its row');
+    }
+
+    /**
      * A Bool-kind row's value must be a strict bool and a non-Bool row's value
      * a strict string, even when the underlying setting was stored as some
      * other scalar (e.g. a hand-edited .porta.json) — rowsForGroup()'s casts

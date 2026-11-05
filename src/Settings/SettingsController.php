@@ -90,7 +90,7 @@ final class SettingsController
                 'fieldset' => 'Display',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyCursorShape((string) $v),
-                'options' => ['bar', 'block', 'underline'],
+                'options' => IdeConfig::CHOICE_SETTINGS['cursorShape'],
             ],
             'pixelRatio' => [
                 'label' => 'Display pixel ratio',
@@ -108,7 +108,7 @@ final class SettingsController
                 'fieldset' => 'Layout',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyTabBarPosition((string) $v),
-                'options' => ['top', 'bottom', 'left', 'right'],
+                'options' => IdeConfig::CHOICE_SETTINGS['tabBarPosition'],
             ],
             'breadcrumbs' => [
                 'label' => 'Breadcrumbs bar',
@@ -125,7 +125,7 @@ final class SettingsController
                 'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setLineNumbers(LineNumberMode::tryFrom((string) $v) ?? LineNumberMode::Absolute),
-                'options' => ['off', 'absolute', 'relative'],
+                'options' => IdeConfig::CHOICE_SETTINGS['lineNumbers'],
             ],
             'stickyScroll' => [
                 'label' => 'Sticky scroll',
@@ -174,7 +174,7 @@ final class SettingsController
                 'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setDiagnosticMessages(DiagnosticMessageMode::tryFrom((string) $v) ?? DiagnosticMessageMode::Inline),
-                'options' => ['none', 'inline', 'menu'],
+                'options' => IdeConfig::CHOICE_SETTINGS['diagnosticMessages'],
             ],
             'inlayHints' => [
                 'label' => 'Inlay hints',
@@ -183,7 +183,7 @@ final class SettingsController
                 'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyInlayHints((string) $v),
-                'options' => ['none', 'inline', 'tooltip'],
+                'options' => IdeConfig::CHOICE_SETTINGS['inlayHints'],
             ],
             'inlayParameterHints' => [
                 'label' => 'Parameter name hints',
@@ -192,7 +192,7 @@ final class SettingsController
                 'fieldset' => 'Editor',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v): bool => $editor->setInlayParameterHints(InlayParameterHints::tryFrom((string) $v) ?? InlayParameterHints::Literals),
-                'options' => ['none', 'literals', 'all'],
+                'options' => IdeConfig::CHOICE_SETTINGS['inlayParameterHints'],
             ],
             'inlayTypeHints' => [
                 'label' => 'Type hints',
@@ -245,7 +245,7 @@ final class SettingsController
                 'fieldset' => 'Editing',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $applier->applyKeymapPlatform((string) $v),
-                'options' => ['auto', 'macos', 'windows', 'linux'],
+                'options' => IdeConfig::CHOICE_SETTINGS['keymapPlatform'],
             ],
             'searchIncludeVendor' => [
                 'label' => 'Search vendor/ files',
