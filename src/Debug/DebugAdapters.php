@@ -31,13 +31,13 @@ final class DebugAdapters
         array $languages,
         private readonly ?DebugAdapterProvider $plugins = null,
     ) {
+        // A language's launch overrides and run command are kept whether or not
+        // its adapter is the user's: with a plugin's adapter (Xdebug's) the
+        // documented `debug.launch.pathMappings` used to be dropped here.
         foreach ($languages as $languageId => $entry) {
-            $adapter = ($entry['debug'] ?? [])['adapter'] ?? null;
-            if (null !== $adapter) {
-                $runCommand = $entry['runCommand'] ?? '';
-                $runCommandArgv = '' !== $runCommand ? self::split($runCommand) : [];
-                $this->configs[$languageId] = new DebugConfig(self::split($adapter), $entry['debug']['launch'] ?? [], $runCommandArgv);
-            }
+            $debug = $entry['debug'] ?? [];
+            $runCommand = $entry['runCommand'] ?? '';
+            $this->configs[$languageId] = new DebugConfig(self::split($debug['adapter'] ?? ''), $debug['launch'] ?? [], '' !== $runCommand ? self::split($runCommand) : []);
         }
     }
 
@@ -47,13 +47,10 @@ final class DebugAdapters
      */
     public function adapterFor(string $languageId): ?DebugConfig
     {
-        $configured = $this->configs[$languageId] ?? null;
-        if (null !== $configured) {
-            return $configured;
-        }
-        $argv = $this->plugins?->debugAdapters()[$languageId] ?? null;
+        $configured = $this->configs[$languageId] ?? new DebugConfig([]);
+        $argv = [] !== $configured->adapterArgv ? $configured->adapterArgv : $this->plugins?->debugAdapters()[$languageId] ?? [];
 
-        return null === $argv || [] === $argv ? null : new DebugConfig($argv, [], []);
+        return [] === $argv ? null : new DebugConfig($argv, $configured->launch, $configured->runCommandArgv);
     }
 
     /** The configured adapter command as one string ('' when unset), for the settings row. */
@@ -73,21 +70,16 @@ final class DebugAdapters
     }
 
     /**
-     * Record a settings edit: a blank command clears the language's adapter.
+     * Record a settings edit: a blank command clears the language's adapter,
+     * handing it back to a plugin's, and keeps its launch overrides.
      *
      * @param array<string, mixed> $launch
      */
     public function set(string $languageId, string $adapterCommand, array $launch): void
     {
-        $adapterCommand = \trim($adapterCommand);
-        if ('' === $adapterCommand) {
-            unset($this->configs[$languageId]);
-
-            return;
-        }
         // Preserve the language's runCommand (edited in the language section, not here).
         $runCommandArgv = ($this->configs[$languageId] ?? null)->runCommandArgv ?? [];
-        $this->configs[$languageId] = new DebugConfig(self::split($adapterCommand), $launch, $runCommandArgv);
+        $this->configs[$languageId] = new DebugConfig(self::split(\trim($adapterCommand)), $launch, $runCommandArgv);
     }
 
     /**

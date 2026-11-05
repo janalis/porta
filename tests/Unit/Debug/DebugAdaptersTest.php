@@ -106,4 +106,31 @@ final class DebugAdaptersTest extends TestCase
 
         $this->assertSame(['node', '/Users/x/Application Support/phpDebug.js'], $adapters->adapterFor('php')?->adapterArgv);
     }
+
+    /**
+     * Xdebug's README documents `languages.php.debug.launch.pathMappings` with
+     * no adapter of the user's: the launch block, the run command and a
+     * Settings edit of the launch config all ride on the plugin's adapter.
+     */
+    public function testAPluginsAdapterKeepsTheUsersLaunchAndRunCommand(): void
+    {
+        $plugins = new class implements DebugAdapterProvider {
+            public function debugAdapters(): array
+            {
+                return ['php' => ['xdebug-dap']];
+            }
+        };
+        $adapters = new DebugAdapters(['php' => ['debug' => ['launch' => ['port' => 9010]], 'runCommand' => 'frankenphp php-cli']], $plugins);
+
+        $php = $adapters->adapterFor('php');
+        $this->assertSame(['xdebug-dap'], $php?->adapterArgv);
+        $this->assertSame(['port' => 9010], $php?->launch, 'the launch block without an adapter is kept');
+        $this->assertSame(['frankenphp', 'php-cli'], $php?->runCommandArgv);
+        $this->assertSame(['port' => 9010], $adapters->launchOverrides('php'), 'and the Settings row reads it');
+
+        // The Settings launch row saves with the (blank) adapter command it reads.
+        $adapters->set('php', $adapters->adapterCommand('php'), ['pathMappings' => ['/var/www' => '${workspaceRoot}']]);
+        $this->assertSame(['pathMappings' => ['/var/www' => '${workspaceRoot}']], $adapters->adapterFor('php')?->launch, 'a live launch edit reaches the next run');
+        $this->assertSame(['frankenphp', 'php-cli'], $adapters->adapterFor('php')?->runCommandArgv);
+    }
 }
