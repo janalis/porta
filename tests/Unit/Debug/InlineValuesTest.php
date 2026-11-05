@@ -279,6 +279,21 @@ final class InlineValuesTest extends TestCase
         $this->assertSame([1 => '$count = 41'], $this->painted(), 'the name came from the token text, with its $');
     }
 
+    /** The token's columns are UTF-16 units: an emoji before the name is two of them, and the name is still read whole. */
+    public function testATokenAfterAnEmojiIsReadByItsUtf16Columns(): void
+    {
+        $values = $this->withoutInlineValueSupport("<?php\n'😀'; \$count = 41;\n");
+        $this->editor->decorations
+            ->setSemanticTokens([
+                1 => [['col' => 6, 'endCol' => 12, 'type' => 'variable', 'modifiers' => []]],
+            ]);
+
+        $values->stoppedAt('/p/a.php', 1, frameId: 1);
+        $values->addVariables([['name' => '$count', 'value' => '41', 'variablesReference' => 0]]);
+
+        $this->assertStringContainsString('41', $this->painted()[1] ?? '', 'found under $count, not `count `');
+    }
+
     public function testAPROPERTYTokenIsNotALocalAndIsSkipped(): void
     {
         // `$this->name` types `name` as a property — no `$`, and not a key the

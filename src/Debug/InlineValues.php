@@ -6,6 +6,7 @@ namespace Porta\Debug;
 
 use Porta\Container\AsIdeService;
 use Porta\Editor\EditorDecorationSink;
+use Porta\Editor\TextMetrics;
 use Porta\Lsp\InlineValueRequest;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\Tui\Tui;
@@ -100,7 +101,12 @@ final class InlineValues
                 if ('variable' !== $token['type'] && 'parameter' !== $token['type']) {
                     continue;
                 }
-                $name = \mb_substr($document->getLine($line), $token['col'], $token['endCol'] - $token['col']);
+                // The token's columns are the server's UTF-16 units; mb_substr
+                // counts code points, and an emoji earlier on the line (two
+                // units, one code point) read `name;` for `$name`.
+                $text = $document->getLine($line);
+                $start = TextMetrics::utf16ColToByteCol($text, $token['col']);
+                $name = \substr($text, $start, TextMetrics::utf16ColToByteCol($text, $token['endCol']) - $start);
                 if ('' === $name) {
                     continue;
                 }
