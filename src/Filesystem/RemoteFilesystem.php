@@ -139,6 +139,8 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             function (array $root) use ($host): void {
                 $this->troubled(null);
                 $this->notifier->flash($this->translator->trans('Back in touch with %host%', ['%host%' => $host]), 2.5, self::SLOT);
+                // Applied as it is: whatever was changed while the link was
+                // down is still queued, which ours() leaves alone.
                 $this->reconcile('', $root);
             },
             $this->cellChanged(...),
@@ -419,8 +421,9 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             return false;
         }
         $this->walked = true;
+        $asked = $this->changes;
 
-        return $transport->walk('', self::WALK_SKIP, function (array|string $answer) use ($transport): void {
+        return $transport->walk('', self::WALK_SKIP, function (array|string $answer) use ($transport, $asked): void {
             if (\is_string($answer)) {
                 // Asked again: by the next poll once the link is back.
                 $this->link->failed(
@@ -435,7 +438,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                 return;
             }
             /** @var list<RemoteEntry> $answer */
-            $this->landWalked($answer);
+            $this->landWalked($answer, $asked);
         });
     }
 
@@ -447,10 +450,10 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
      *
      * @param list<RemoteEntry> $entries
      */
-    private function landWalked(array $entries): void
+    private function landWalked(array $entries, int $asked): void
     {
         foreach (\array_splice($entries, offset: 0, length: self::WALK_CHUNK) as $entry) {
-            if (!self::syncable($entry->name) || $this->ours($entry->name)) {
+            if (!self::syncable($entry->name) || $this->ours($entry->name) || $this->changedSince($entry->name, $asked)) {
                 continue;
             }
             $entry->isDir ? $this->landDirectory($entry->name) : $this->landFile($entry->name, $entry->stamp);
@@ -461,7 +464,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
 
             return;
         }
-        EventLoop::defer(fn () => $this->landWalked($entries));
+        EventLoop::defer(fn () => $this->landWalked($entries, $asked));
     }
 
     /**
@@ -474,7 +477,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         $asked = $this->changes;
         $transport->list($relative, function (array|string $answer) use ($relative, $transport, $asked): void {
             unset($this->listing[$relative]);
-            if (($this->changedAt[$relative] ?? 0) > $asked) {
+            if ($this->changedSince($relative, $asked)) {
                 $this->wanted[$relative] = true; // out of date before it landed: the next poll asks again
 
                 return;
@@ -834,16 +837,39 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
      * @param \Closure(RemoteTransport, \Closure(?string): void): void $attempt
      * @param \Closure(string): void                                   $refused
      */
+    /**
+     * Number a change of ours, and mark each path it touches and the folder
+     * holding it with that number.
+     *
+     * @param list<string> $relatives
+     */
+    private function mark(array $relatives): void
+    {
+        ++$this->changes;
+        foreach ($relatives as $relative) {
+            $this->changedAt[$relative] = $this->changes;
+            $this->changedAt[self::parent($relative)] = $this->changes;
+        }
+    }
+
+    /** Whether $relative, or the folder holding it, saw a change of ours after answer number $asked was asked. */
+    private function changedSince(string $relative, int $asked): bool
+    {
+        return ($this->changedAt[$relative] ?? 0) > $asked || ($this->changedAt[self::parent($relative)] ?? 0) > $asked;
+    }
+
     /** @param string|null $from a rename's other side, whose folder it changes too */
     private function change(string $relative, \Closure $attempt, \Closure $refused, ?string $from = null): void
     {
-        $this->queue->add($relative, function (\Closure $next) use ($attempt, $refused, $relative, $from): void {
+        // Marked as it is queued, and again as it is answered: a listing asked
+        // before either describes a server this change is about to make, or
+        // has made, out of date.
+        $touched = null === $from ? [$relative] : [$relative, $from];
+        $this->mark($touched);
+        $this->queue->add($relative, function (\Closure $next) use ($attempt, $refused, $touched): void {
             // The cell counts what is on its way: one fewer once answered.
-            $done = function () use ($next, $relative, $from): void {
-                ++$this->changes;
-                foreach (null === $from ? [$relative] : [$relative, $from] as $changed) {
-                    $this->changedAt[self::parent($changed)] = $this->changes;
-                }
+            $done = function () use ($next, $touched): void {
+                $this->mark($touched);
                 $next();
                 $this->cellChanged();
             };

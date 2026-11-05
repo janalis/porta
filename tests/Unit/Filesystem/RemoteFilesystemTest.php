@@ -251,6 +251,26 @@ final class RemoteFilesystemTest extends TestCase
     }
 
     /**
+     * A listing of the root taken now, then a rename of README.md: both
+     * already done on the server, both answers held.
+     *
+     * @return array{RemoteFilesystem, \Closure(): void, \Closure(): void} the files, the listing's answer, then the rename's
+     */
+    private function aListingThenARename(): array
+    {
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->transport->hold = true;
+        $this->transport->actNow = true;
+        $files->poll();
+        $files->rename($this->cache->path('README.md'), $this->cache->path('READ.md'));
+        [$listing, $rename] = $this->transport->held;
+
+        return [$files, $listing, $rename];
+    }
+
+    /**
      * A listing taken before a rename of ours and answered after it describes
      * a server that is gone: it put the old name back as an empty placeholder
      * and dropped the new one, and an open buffer reloaded blank. It is
@@ -258,15 +278,7 @@ final class RemoteFilesystemTest extends TestCase
      */
     public function testAListingOlderThanARenameOfOursIsDropped(): void
     {
-        $files = $this->files();
-        $files->listed($this->cache->dir);
-        $files->available($this->cache->path('README.md'), static fn (): null => null);
-        $this->transport->hold = true;
-        $this->transport->actNow = true;
-
-        $files->poll(); // a listing of the root, taken now, answered later
-        $files->rename($this->cache->path('README.md'), $this->cache->path('READ.md'));
-        [$listing, $rename] = $this->transport->held;
+        [$files, $listing, $rename] = $this->aListingThenARename();
         $rename();
         $listing();
         $this->transport->hold = false;
@@ -276,6 +288,43 @@ final class RemoteFilesystemTest extends TestCase
         $files->poll();
         $this->assertFileDoesNotExist($this->cache->path('README.md'), 'and the next listing agrees');
         $this->assertFileExists($this->cache->path('READ.md'));
+    }
+
+    /** Out of date the moment the rename is queued, not only once it is answered: a listing landing in between is dropped too. */
+    public function testAListingThatLandsWhileARenameIsOnItsWayIsDropped(): void
+    {
+        [$files, $listing, $rename] = $this->aListingThenARename();
+        $listing();
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'not put back while the rename is on its way');
+        $rename();
+        $this->transport->hold = false;
+        $this->assertSame("# hi\n", \file_get_contents($this->cache->path('READ.md')));
+    }
+
+    /** The first walk of a tree is a listing too: one taken before a rename of ours is not landed over it. */
+    public function testAWalkOlderThanARenameOfOursDoesNotBringTheOldNameBack(): void
+    {
+        $this->transport->walks = true;
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->available($this->cache->path('README.md'), static fn (): null => null);
+        $this->transport->hold = true;
+        $this->transport->actNow = true;
+
+        $files->poll(); // the walk, taken now
+        $files->rename($this->cache->path('README.md'), $this->cache->path('READ.md'));
+        $held = $this->transport->held;
+        $this->transport->held = [];
+        $this->transport->hold = false;
+        \array_pop($held)(); // the rename answers first
+        foreach ($held as $answer) {
+            $answer(); // then the walk
+        }
+        $this->turn();
+
+        $this->assertFileDoesNotExist($this->cache->path('README.md'), 'not brought back');
+        $this->assertFileExists($this->cache->path('READ.md'));
+        $files->close();
     }
 
     public function testTheStatusBarIsToldWhenTheCellsCountOrTroubleMoves(): void
