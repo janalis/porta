@@ -68,6 +68,7 @@ final class ProjectSearchTest extends TestCase
             'src/A.php' => "<?php\nclass A { public \$needle = 1; }\n",
             'src/B.php' => "<?php\n// needle here too\n",
             'vendor/lib/C.php' => "<?php\n// needle in vendor is excluded\n",
+            '.porta/history/ab12/1700000000.snap' => "<?php\n// needle in a local-history snapshot\n",
             'README.md' => "no match\n",
         ]);
     }

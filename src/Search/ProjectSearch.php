@@ -25,7 +25,13 @@ use Symfony\Component\Tui\Ansi\AnsiUtils;
 final class ProjectSearch
 {
     public const int MAX_RESULTS = 500;
-    private const array EXCLUDES = ['.git', 'node_modules', 'vendor', '.idea', '.vscode'];
+
+    /**
+     * Folders no project search walks — Go to File's index reads it too. `.porta/`
+     * is Porta's own: local history keeps plain copies of every file there, so
+     * each hit came back once per snapshot, and Replace All rewrote them.
+     */
+    public const array EXCLUDES = ['.git', '.porta', 'node_modules', 'vendor', '.idea', '.vscode'];
 
     /** The largest file the PHP walk reads: 1 MiB. */
     private const int MAX_FILE_BYTES = 1_048_576;
