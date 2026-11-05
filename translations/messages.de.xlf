@@ -3614,6 +3614,10 @@
         <source>The file changed while the language server formatted it — ask again</source>
         <target>Die Datei hat sich geändert, während der Sprachserver sie formatierte — bitte erneut</target>
       </trans-unit>
+      <trans-unit id="1233">
+        <source>Also stopped, as they need it: %names%</source>
+        <target>Ebenfalls angehalten, da sie es brauchen: %names%</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

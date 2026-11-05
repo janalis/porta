@@ -183,6 +183,20 @@ final class PluginLifecycle implements PluginLifecycleOps
         // Its server stops, as disable() stops one: removed, it kept running
         // and publishing. Or the fallback copy's starts.
         $this->reconfigureLspIf($wasProvider || $this->plugins->providesLanguageServer($name));
+        // What needs it stops too, with no copy left to take its place — not
+        // written off, as disable() writes them: the user removed one plugin,
+        // and the next boot refuses the rest by name.
+        if (!$this->plugins->hasPlugin($name)) {
+            $stopped = \array_values(\array_filter($this->dependentsOf($name), $this->plugins->hasPlugin(...)));
+            foreach ($stopped as $dependent) {
+                $provides = $this->plugins->providesLanguageServer($dependent);
+                $this->plugins->deactivate($dependent, $this->commands);
+                $this->panes->forget($dependent);
+                $this->retractContributionsOf($dependent);
+                $this->reconfigureLspIf($provides);
+            }
+            $this->flashCompanions('Also stopped, as they need it: %names%', $stopped);
+        }
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();

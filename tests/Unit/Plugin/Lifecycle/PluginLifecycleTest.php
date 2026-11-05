@@ -408,6 +408,25 @@ final class PluginLifecycleTest extends TestCase
         $this->assertStringNotContainsString('acme-ls', $servers(), 'and gone once it is removed');
     }
 
+    /** Removed with nothing to take its place, a plugin takes what needs it along: stopped, and said so — not written off. */
+    public function testRemovingAPluginStopsTheOnesThatNeedIt(): void
+    {
+        $ide = $this->boot();
+        $this->writePlugin('zbase');
+        $this->writePlugin('app', ['zbase']);
+        $lifecycle = $this->lifecycle($ide);
+        $lifecycle->enable('zbase');
+        $lifecycle->enable('app');
+        $manager = Probe::object($lifecycle, 'plugins');
+        $this->assertTrue($manager->hasPlugin('app'), 'the premise: both running');
+
+        new Filesystem()->remove($this->project->dir.'/.porta/plugins/zbase');
+        $lifecycle->deactivate('zbase');
+
+        $this->assertFalse($manager->hasPlugin('app'), 'not left running without what it needs');
+        $this->assertFalse($lifecycle->isDisabled('app'), 'stopped, not switched off: the choice is still the user\'s');
+    }
+
     public function testRefreshNavSyncsTheSidebarWithTheListedNames(): void
     {
         $ide = $this->boot();
