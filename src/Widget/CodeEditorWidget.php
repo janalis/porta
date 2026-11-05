@@ -353,10 +353,8 @@ final class CodeEditorWidget extends AbstractWidget implements
      */
     public function showDocument(string $path, Document $document, array $diagnostics = [], ?CodeHighlighter $highlighter = null, ?ResolvedEditorConfig $editorConfig = null): void
     {
-        // A re-show of the document already on screen — Enter on a result in
-        // the file in front — keeps what plugins wrote beside and under its
-        // lines: they publish on a CHANGE of file and would not hear of it.
-        $reshown = $document === $this->document;
+        // The document already on screen, under the same name: a re-show.
+        $reshown = $document === $this->document && $path === ($this->filePath ?? '');
         $this->filePath = '' !== $path ? $path : null;
         $this->document = $document;
         $this->currentEditorConfig = $editorConfig;
@@ -365,15 +363,8 @@ final class CodeEditorWidget extends AbstractWidget implements
         if (null === $highlighter) {
             $this->highlighter->setFile($path);
         }
-        $annotations = $reshown ? $this->decorations->annotationsByOwner : [];
-        $blocks = $reshown ? $this->decorations->blocksByOwner : [];
-        $this->decorations->resetForBuffer($diagnostics, $document->getLineCount());
-        foreach ($annotations as $owner => $byLine) {
-            $this->decorations->setLineAnnotations($byLine, $owner);
-        }
-        foreach ($blocks as $owner => $byLine) {
-            $this->decorations->setLineBlocks($byLine, $owner);
-        }
+        $reset = $reshown ? $this->decorations->resetForReshow(...) : $this->decorations->resetForBuffer(...);
+        $reset($diagnostics, $document->getLineCount());
         $this->multiCaret = $this->newMultiCaret($document);
         // Let undo/redo snapshots capture and restore this document's secondary
         // carets (bound to this specific MultiCaret, not whichever is active later).

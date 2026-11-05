@@ -48,7 +48,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      *
      * @var array<string, array<int, string>> owner => 0-based line => text
      */
-    public private(set) array $annotationsByOwner = [];
+    private array $annotationsByOwner = [];
 
     /** @var array<int, string> 0-based line => the conversation's one-line summary, for the pointer's hint */
     public private(set) array $commentMarks = [];
@@ -76,7 +76,7 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      *
      * @var array<string, array<int, list<string>>> owner => 0-based line => rows
      */
-    public private(set) array $blocksByOwner = [];
+    private array $blocksByOwner = [];
 
     /** @var array<int, list<string>> every writer's rows merged, 0-based line => rows */
     private array $lineBlocks = [];
@@ -128,15 +128,28 @@ final class DecorationStore implements EditorDecorationSink, LineAnnotationSink
      */
     public function resetForBuffer(array $diagnostics, int $lineCount = 0): void
     {
+        $this->resetForReshow($diagnostics, $lineCount);
+        $this->lineAnnotations = [];
+        $this->annotationsByOwner = [];
+        $this->blocksByOwner = [];
+        $this->lineBlocks = [];
+    }
+
+    /**
+     * The buffer on screen is shown AGAIN — Enter on a result in the file in
+     * front. Everything resets as for a new buffer except what plugins wrote
+     * beside and under the lines: they publish on a CHANGE of file, so they
+     * would not hear of this one and the notes would be gone for good.
+     *
+     * @param array<int, list<array{severity: DiagnosticSeverity, message: string, col: int, endCol?: int, code?: int|string, source?: string, tags?: list<int>, data?: mixed}>> $diagnostics
+     */
+    public function resetForReshow(array $diagnostics, int $lineCount = 0): void
+    {
         $this->vcsMarkLineCount = $lineCount;
         $this->diagnostics = $diagnostics;
         $this->recountDiagnostics();
         $this->inlayHints = [];
-        $this->lineAnnotations = [];
-        $this->annotationsByOwner = [];
         $this->commentMarks = [];
-        $this->blocksByOwner = [];
-        $this->lineBlocks = [];
         $this->debugValues = [];
         $this->breakpointLines = [];
         $this->bookmarkLines = [];

@@ -1505,12 +1505,20 @@ $a = f();
 
         $editor->showDocument('/tmp/a.php', $document);
 
-        $this->assertSame([0 => '✓ passed', 1 => 'abc12345 tester'], $editor->decorations->lineAnnotations, 'every writer\'s notes, each kept apart');
-        $this->assertSame(['phpunit' => [0 => '✓ passed'], 'git' => [1 => 'abc12345 tester']], $editor->decorations->annotationsByOwner);
+        $this->assertSame([0 => '✓ passed', 1 => 'abc12345 tester'], $editor->decorations->lineAnnotations, 'every writer\'s notes');
+        $editor->decorations->setLineAnnotations([], 'phpunit');
+        $this->assertSame([1 => 'abc12345 tester'], $editor->decorations->lineAnnotations, 'each still kept apart, so one writer clears only its own');
+        $editor->decorations->setLineAnnotations([0 => '✓ passed'], 'phpunit');
         $this->assertSame(['a review thread'], $editor->decorations->lineBlocksAt(1));
         $this->assertSame([], $editor->decorations->debugValues, 'what is not a plugin\'s note still resets');
 
-        $editor->showDocument('/tmp/a.php', new Document("alpha;\nbeta;\n"));
+        $editor->showDocument('/tmp/b.php', $document);
+        $this->assertSame([], $editor->decorations->lineAnnotations, 'the same document under another name — a rename — drops them: they were about the old file');
+        $this->assertSame([], $editor->decorations->lineBlocksAt(1));
+
+        $editor->decorations->setLineAnnotations([0 => '✓ passed'], 'phpunit');
+        $editor->decorations->setLineBlocks([1 => ['a review thread']], 'review');
+        $editor->showDocument('/tmp/b.php', new Document("alpha;\nbeta;\n"));
         $this->assertSame([], $editor->decorations->lineAnnotations, 'another document — even of the same path — drops them');
         $this->assertSame([], $editor->decorations->lineBlocksAt(1));
     }
