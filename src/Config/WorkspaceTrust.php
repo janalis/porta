@@ -55,7 +55,16 @@ final readonly class WorkspaceTrust
     private const string RUNNABLE_SETTING = '/(?:path|binary|command|converter|dir|folder)$|^allow/i';
 
     /** Runnable plugin settings whose names do not say so. */
-    private const array RUNNABLE_SETTINGS = ['plantuml', 'runtime-indexing', 'args', 'hosts', 'provider', 'mailbox', 'transit'];
+    private const array RUNNABLE_SETTINGS = ['runtime-indexing', 'args', 'hosts', 'provider', 'mailbox', 'transit'];
+
+    /**
+     * Runnable pre-plugin core keys whose names do not say so: `settings.plantuml`
+     * was PlantUML's path, which graph-viewer adopts as `plantumlPath`. Core only —
+     * graph-viewer's own `plantuml` is the "Preview PlantUML" toggle.
+     *
+     * @var list<string>
+     */
+    private const array RUNNABLE_CORE_SETTINGS = [...self::RUNNABLE_SETTINGS, 'plantuml'];
 
     /** @param list<string> $folders trusted with everything beneath them */
     public function __construct(
@@ -131,7 +140,7 @@ final readonly class WorkspaceTrust
             unset($config[$key]);
         }
         $config['plugins'] = \array_map(
-            static fn (mixed $settings): mixed => \is_array($settings) ? self::withoutRunnable($settings) : $settings,
+            static fn (mixed $settings): mixed => \is_array($settings) ? self::withoutRunnable($settings, self::RUNNABLE_SETTINGS) : $settings,
             \is_array($config['plugins'] ?? null) ? $config['plugins'] : [],
         );
         $config['languages'] = \array_map(
@@ -139,7 +148,7 @@ final readonly class WorkspaceTrust
             \is_array($config['languages'] ?? null) ? $config['languages'] : [],
         );
         if (\is_array($config['settings'] ?? null)) {
-            $config['settings'] = self::withoutRunnable($config['settings']);
+            $config['settings'] = self::withoutRunnable($config['settings'], self::RUNNABLE_CORE_SETTINGS);
         }
 
         return $config;
@@ -147,14 +156,15 @@ final readonly class WorkspaceTrust
 
     /**
      * @param array<array-key, mixed> $settings
+     * @param list<string>            $named    the runnable keys the shape does not catch
      *
      * @return array<array-key, mixed>
      */
-    private static function withoutRunnable(array $settings): array
+    private static function withoutRunnable(array $settings, array $named): array
     {
         return \array_filter(
             $settings,
-            static fn (int|string $key): bool => 1 !== \preg_match(self::RUNNABLE_SETTING, (string) $key) && !\in_array($key, self::RUNNABLE_SETTINGS, strict: true),
+            static fn (int|string $key): bool => 1 !== \preg_match(self::RUNNABLE_SETTING, (string) $key) && !\in_array($key, $named, strict: true),
             \ARRAY_FILTER_USE_KEY,
         );
     }

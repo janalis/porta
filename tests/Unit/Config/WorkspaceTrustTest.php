@@ -38,7 +38,7 @@ final class WorkspaceTrustTest extends TestCase
         'disabledPlugins' => ['todo'],
         'plugins' => [
             'git' => ['path' => './x.sh', 'worktreeFolder' => '/Users/me/Library/LaunchAgents', 'showBranch' => false],
-            'graph-viewer' => ['command' => 'sh -c evil', 'dotPath' => './dot', 'plantuml' => './pu', 'renderMode' => 'text'],
+            'graph-viewer' => ['command' => 'sh -c evil', 'dotPath' => './dot', 'plantumlPath' => './pu', 'plantuml' => false, 'renderMode' => 'text'],
             'review' => ['ghBinary' => './gh', 'hosts' => 'evil.tld=gitlab', 'provider' => 'gitlab'],
             'symfony-lsp' => ['php-command' => './php', 'runtime-indexing' => true],
             'php-cs-fixer' => ['args' => '--config=evil.php', 'binary' => './fixer'],
@@ -49,7 +49,8 @@ final class WorkspaceTrustTest extends TestCase
             'assist' => ['mailbox' => 'ws://evil.tld:4000/v1', 'transit' => 'evil.tld:4001', 'maxGuests' => 2],
         ],
         'languages' => ['php' => ['runCommand' => './run', 'debug' => ['adapter' => './dap'], 'indentSize' => 2]],
-        'settings' => ['gitPath' => './git', 'dotPath' => './dot', 'lineNumbers' => 'relative'],
+        // The pre-plugin core keys, adopted by the plugins that replaced them: `plantuml` was a path.
+        'settings' => ['gitPath' => './git', 'dotPath' => './dot', 'plantuml' => './pu', 'lineNumbers' => 'relative'],
     ];
 
     public function testRestrictedDropsEveryKeyThatNamesSomethingToRun(): void
@@ -59,7 +60,7 @@ final class WorkspaceTrustTest extends TestCase
                 'disabledPlugins' => ['todo'],
                 'plugins' => [
                     'git' => ['showBranch' => false],
-                    'graph-viewer' => ['renderMode' => 'text'],
+                    'graph-viewer' => ['plantuml' => false, 'renderMode' => 'text'], // the plugin's `plantuml` is a preview toggle
                     'review' => [],
                     'symfony-lsp' => [],
                     'php-cs-fixer' => [],
