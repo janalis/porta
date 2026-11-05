@@ -165,6 +165,20 @@ final class CodeIntelligenceTest extends TestCase
         $this->assertSame("<?php\nclass A {}\n", $buffer->document->getText());
     }
 
+    public function testAFormatFindsTheBufferUnderTheOtherSpellingOfItsPath(): void
+    {
+        $code = $this->code();
+        $buffer = $this->open($this->path('src/A.php'));
+        $other = new TempProject();
+        \symlink($this->project->dir, $other->path('repo'));
+
+        $code->format($other->path('repo/src/A.php'), $this->keep());
+        $this->answer(0, [self::edit(1, 0, 0, '// ')]);
+
+        $this->assertSame([[1, null]], $this->said);
+        $this->assertSame("<?php\n// class A {}\n", $buffer->document->getText());
+    }
+
     public function testAFormatSaysWhyItChangedNothing(): void
     {
         $code = $this->code();

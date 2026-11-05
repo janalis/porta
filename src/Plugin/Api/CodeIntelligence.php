@@ -212,7 +212,7 @@ final readonly class CodeIntelligence
      */
     public function format(string $path, \Closure $onDone): void
     {
-        $buffer = $this->buffers->get($path);
+        $buffer = $this->buffers->find($path);
         if (null === $buffer || $buffer->isViewer()) {
             $onDone(0, \sprintf('%s is not open as text', $path));
 

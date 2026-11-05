@@ -902,6 +902,12 @@ final class PluginApiTest extends TestCase
         $this->assertSame($files->text($at('dirty.php')), $files->text($other->path('repo/dirty.php')));
         $this->assertStringContainsString('unsaved changes', (string) $files->delete($other->path('repo/dirty.php')));
         $this->assertFileExists($at('dirty.php'));
+        $saved = [];
+        $this->events->addListener(BufferSaveRequested::class, static function (BufferSaveRequested $event) use (&$saved): void {
+            $saved[] = $event->path;
+        });
+        $files->save($other->path('repo/dirty.php'));
+        $this->assertSame([$at('dirty.php')], $saved, 'saved under it, by the key it is open under');
         $this->assertStringContainsString('is a folder', (string) $files->delete($at('dir')));
         $this->assertNull($files->delete($at('empty.txt')));
         $this->assertFileDoesNotExist($at('empty.txt'));
