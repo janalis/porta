@@ -1027,6 +1027,22 @@ final class WorkspaceEditorTest extends TestCase
 
         $current = $we->applyWorkspaceEdit(['changes' => ['file:///tmp/proj/a.php' => $edit]], ['/tmp/proj/a.php' => $buffer->document->version]);
         $this->assertSame(1, $current->touched, 'at the version it was asked at, it lands');
+        // Two entries for the one buffer at one version: the first moves the
+        // version, and the second is still for the text the edit began with.
+        $now = $buffer->document->version;
+        $both = $we->applyWorkspaceEdit([
+            'documentChanges' => [
+                [
+                    'textDocument' => ['uri' => 'file:///tmp/proj/a.php', 'version' => $now],
+                    'edits' => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], '1')],
+                ],
+                [
+                    'textDocument' => ['uri' => 'file:///tmp/proj/a.php', 'version' => $now],
+                    'edits' => [self::edit(['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], '2')],
+                ],
+            ],
+        ]);
+        $this->assertSame([], $both->skipped, 'neither half skipped');
     }
 
     public function testAWriteThatFailsAfterTheCheckIsReportedRatherThanThrown(): void
