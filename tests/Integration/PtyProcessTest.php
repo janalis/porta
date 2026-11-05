@@ -90,6 +90,77 @@ final class PtyProcessTest extends TestCase
      * — never a -1 guessed after a fixed spin, which made a waiter for exit 0
      * wait forever.
      */
+    /**
+     * A run is a process group of its own: stopping it stops what it started.
+     * In Porta's group, a `php -S` a composer script started survived its tab
+     * holding its port.
+     */
+    public function testStoppingARunStopsWhatItStarted(): void
+    {
+        $marker = 'porta-grandchild-'.\bin2hex(\random_bytes(4));
+        $said = '';
+        $p = new PtyProcess(['/bin/sh', '-c', "exec -a {$marker} sleep 60 & echo started; wait"], __DIR__);
+        $this->procs[] = $p;
+        $p->onOutput(static function (string $chunk) use (&$said): void {
+            $said .= $chunk;
+        });
+        $this->assertTrue($p->start());
+        $this->await(static function () use (&$said): bool {
+            return \str_contains($said, 'started');
+        }, what: 'the background child');
+        $alive = static fn (): bool => '' !== \trim((string) \shell_exec('pgrep -f '.\escapeshellarg($marker)));
+        $this->assertTrue($alive(), 'the premise: the grandchild runs');
+
+        $p->stop();
+
+        $this->await(static fn (): bool => !$alive(), what: 'the grandchild gone with its run');
+    }
+
+    /** Ctrl+C interrupts the run: the terminal is no controlling tty, so Porta signals the group itself. */
+    public function testCtrlCInterruptsTheRun(): void
+    {
+        $said = '';
+        $exit = null;
+        $p = new PtyProcess(['/bin/sh', '-c', "trap 'echo interrupted; exit 130' INT; echo ready; while :; do sleep 1; done"], __DIR__);
+        $this->procs[] = $p;
+        $p->onOutput(static function (string $chunk) use (&$said): void {
+            $said .= $chunk;
+        })->onExit(static function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+        $this->assertTrue($p->start());
+        $this->await(static function () use (&$said): bool {
+            return \str_contains($said, 'ready');
+        });
+
+        $p->write("\x03");
+
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        }, what: 'the run to stop on Ctrl+C');
+        $this->assertStringContainsString('interrupted', $said);
+    }
+
+    /** The terminal has a size, not `0 0`: what reads it (stty, a pager) sees the panel's rows and columns. */
+    public function testTheTerminalHasTheRunsSize(): void
+    {
+        $said = '';
+        $exit = null;
+        $p = new PtyProcess(['/bin/sh', '-c', 'stty size'], __DIR__, columns: 100, rows: 24);
+        $this->procs[] = $p;
+        $p->onOutput(static function (string $chunk) use (&$said): void {
+            $said .= $chunk;
+        })->onExit(static function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+        $this->assertTrue($p->start());
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        });
+
+        $this->assertStringContainsString('24 100', $said);
+    }
+
     public function testAChildStillAliveAtTheTerminalsEofReportsItsRealExitCode(): void
     {
         $exit = null;

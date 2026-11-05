@@ -88,7 +88,7 @@ final class PtyProcess
         // @mago-expect lint:no-error-control-operator -- proc_open warns when the system refuses a PTY or cannot spawn the binary; either way the false return drives the pipe fallback below, which answers the second case for good.
         // Irreducible without lying about the descriptor. Re-checked 2026-09-02.
         // @mago-expect analysis:possibly-invalid-argument
-        $process = @\proc_open($this->command, $ptyDescriptors, $pipes, $cwd, $env);
+        $process = @\proc_open($this->inItsOwnSession(), $ptyDescriptors, $pipes, $cwd, $env);
         $this->pty = \is_resource($process);
 
         // Pipe fallback only runs where PTYs are unavailable; unreachable on
@@ -152,6 +152,42 @@ final class PtyProcess
     public function write(string $data): void
     {
         $this->input?->write($data);
+        // The terminal is no controlling tty of the run's (macOS offers no way
+        // to make it one without TIOCSCTTY), so its line discipline sends no
+        // SIGINT: Ctrl+C only echoed ^C. Porta sends it to the run's group.
+        if ("\x03" === $data) {
+            $this->signalGroup(\SIGINT);
+        }
+    }
+
+    /**
+     * The command, started in a session of its own through a few lines of
+     * PHP that size the terminal and then become it (`pcntl_exec`, same pid):
+     * the run and everything it starts are one process group Porta can
+     * interrupt and stop whole. Run in Porta's own group, a `php -S` a
+     * composer script started outlived its tab, its re-run and the project,
+     * holding its port.
+     *
+     * @return list<string>
+     */
+    private function inItsOwnSession(): array
+    {
+        $shim = \sprintf(
+            '@exec("stty rows %d cols %d 2>/dev/null"); if (function_exists("posix_setsid")) { posix_setsid(); } pcntl_exec("/usr/bin/env", array_slice($argv, 1)); exit(127);',
+            $this->rows,
+            $this->columns,
+        );
+
+        return \function_exists('pcntl_exec') && \is_executable('/usr/bin/env') ? [\PHP_BINARY, '-r', $shim, '--', ...$this->command] : $this->command;
+    }
+
+    /** Send $signal to the run's whole process group, when it has one of its own. */
+    private function signalGroup(int $signal): void
+    {
+        $pid = \is_resource($this->process) ? \proc_get_status($this->process)['pid'] : 0;
+        if ($pid > 0 && \function_exists('posix_kill') && \function_exists('posix_getpgid') && \posix_getpgid($pid) === $pid) {
+            \posix_kill(-$pid, $signal);
+        }
     }
 
     public function stop(): void
@@ -170,6 +206,8 @@ final class PtyProcess
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
         }
+        // The whole group: a server the run started goes with it.
+        $this->signalGroup(\SIGKILL);
         if (\is_resource($this->process)) {
             \proc_terminate($this->process, \SIGKILL);
             \proc_close($this->process);
