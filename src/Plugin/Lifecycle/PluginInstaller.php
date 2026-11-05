@@ -65,17 +65,17 @@ final class PluginInstaller
     private ?AsyncProcess $running = null;
 
     /**
-     * @param null|(\Closure(): ?string)|string $gitBinary      resolved at each use, as is $composerBinary: one installed
-     *                                                         mid-session (from the composer plugin's Tools row, say) works with no restart
-     * @param null|(\Closure(): ?string)|string $composerBinary
+     * @param (\Closure(): ?string)|null $gitBinary      looked up at each use, as is $composerBinary: one installed
+     *                                                  mid-session (from the composer plugin's Tools row, say) works with no restart
+     * @param (\Closure(): ?string)|null $composerBinary
      */
     public function __construct(
         private readonly string $rootDir,
         private readonly ?string $globalBase,
         private readonly Translator $translator,
-        private readonly \Closure|string|null $gitBinary,
+        private readonly ?\Closure $gitBinary,
         private readonly ?string $embeddedDir = null,
-        private readonly \Closure|string|null $composerBinary = null,
+        private readonly ?\Closure $composerBinary = null,
         private readonly PluginComposerProject $project = new PluginComposerProject(),
         private readonly Filesystem $fs = new Filesystem(),
         /** @var (\Closure(): bool)|null whether the project is trusted; null asks {@see WorkspaceTrust} */
@@ -108,12 +108,12 @@ final class PluginInstaller
 
     private function git(): ?string
     {
-        return $this->gitBinary instanceof \Closure ? ($this->gitBinary)() : $this->gitBinary;
+        return null === $this->gitBinary ? null : ($this->gitBinary)();
     }
 
     private function composer(): ?string
     {
-        return $this->composerBinary instanceof \Closure ? ($this->composerBinary)() : $this->composerBinary;
+        return null === $this->composerBinary ? null : ($this->composerBinary)();
     }
 
     /**
@@ -325,7 +325,7 @@ final class PluginInstaller
             env: ['GIT_TERMINAL_PROMPT' => '0'] + \getenv(),
             timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT,
         );
-        $started = $this->running->start(function (int $code) use ($scratch, $base, $root, $source, $onDone): void {
+        $started = $this->running->start(function (int $code) use ($git, $scratch, $base, $root, $source, $onDone): void {
             $this->running = null;
             if (0 !== $code) {
                 $this->fs->remove($scratch);
@@ -348,7 +348,7 @@ final class PluginInstaller
 
                 return;
             }
-            $this->readBranch($scratch, function (?string $branch) use ($scratch, $base, $root, $packageName, $source, $onDone): void {
+            $this->readBranch($git, $scratch, function (?string $branch) use ($scratch, $base, $root, $packageName, $source, $onDone): void {
                 $this->fs->remove($scratch);
                 if (null === $branch) {
                     // A remote whose HEAD is genuinely unresolvable to a
@@ -411,9 +411,9 @@ final class PluginInstaller
      *
      * @param \Closure(?string): void $onBranch
      */
-    private function readBranch(string $scratch, \Closure $onBranch): void
+    private function readBranch(string $git, string $scratch, \Closure $onBranch): void
     {
-        $this->running = new AsyncProcess([(string) $this->git(), 'rev-parse', '--abbrev-ref', 'HEAD'], $scratch);
+        $this->running = new AsyncProcess([$git, 'rev-parse', '--abbrev-ref', 'HEAD'], $scratch);
         $started = $this->running->start(function (int $code, string $stdout) use ($onBranch): void {
             $this->running = null;
             $branch = \trim($stdout);
@@ -499,13 +499,11 @@ final class PluginInstaller
         // never disagree about whether an install is owed: a composer.json
         // whose only requirement is `php` asks for nothing, and shelling out
         // for it would be a subprocess to answer no.
-        $composer = $this->composer();
-
+        // composer is looked up in the last arm only: NotNeeded and Busy answer without a PATH walk.
         return match (true) {
             !PluginManifest::beside($pluginDir.'/porta.php')->needsInstall() => DependencyInstall::NotNeeded,
             null !== $this->running => DependencyInstall::Busy,
-            null === $composer => DependencyInstall::NoComposer,
-            default => $this->runComposerInstall($composer, $pluginDir, $onExit),
+            default => $this->runComposerInstall($this->composer(), $pluginDir, $onExit),
         };
     }
 
@@ -514,8 +512,11 @@ final class PluginInstaller
      *
      * @param \Closure(int): void $onExit composer's exit code
      */
-    private function runComposerInstall(string $composerBinary, string $pluginDir, \Closure $onExit): DependencyInstall
+    private function runComposerInstall(?string $composerBinary, string $pluginDir, \Closure $onExit): DependencyInstall
     {
+        if (null === $composerBinary) {
+            return DependencyInstall::NoComposer;
+        }
         $this->running = new AsyncProcess([$composerBinary, 'install', '--no-dev', '--no-interaction'], $pluginDir, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         // The slot is cleared BEFORE the callback runs, with no loop turn in
         // between, so a caller draining a queue can start the next install from

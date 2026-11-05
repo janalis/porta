@@ -35,9 +35,22 @@ final class PluginInstallerTest extends TestCase
         $this->global = new TempProject();
     }
 
+    /** @return \Closure(): string a lookup that finds $binary */
+    private static function found(string $binary): \Closure
+    {
+        return static fn (): string => $binary;
+    }
+
     private function installer(?string $globalBase = 'own', ?string $git = null, ?string $composer = null): PluginInstaller
     {
-        return new PluginInstaller($this->project->dir, 'own' === $globalBase ? $this->global->dir : $globalBase, new Translator('en'), $git, null, $composer);
+        return new PluginInstaller(
+            $this->project->dir,
+            'own' === $globalBase ? $this->global->dir : $globalBase,
+            new Translator('en'),
+            null === $git ? null : static fn (): string => $git,
+            null,
+            null === $composer ? null : static fn (): string => $composer,
+        );
     }
 
     /**
@@ -224,7 +237,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testATrustTheCallerNamesIsTheOneAsked(): void
     {
-        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, null, $this->fakeComposer(), trust: static fn (): bool => false);
+        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, null, self::found($this->fakeComposer()), trust: static fn (): bool => false);
 
         [$error] = $this->install($installer, 'acme/mylint');
 
@@ -588,7 +601,7 @@ final class PluginInstallerTest extends TestCase
         $embedded = new TempProject(['bundled/porta.php' => "<?php\n"]);
         $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir);
         $source = $this->sourceDir('mine');
-        $withComposer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir, $this->fakeComposer());
+        $withComposer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $embedded->dir, self::found($this->fakeComposer()));
         $this->install($withComposer, $source);
 
         $this->assertSame(
@@ -777,6 +790,10 @@ final class PluginInstallerTest extends TestCase
 
         $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nodeps', '{"require":{"php":">=8.4"}}'), $never));
         $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nomanifest', '{}'), $never));
+        $unasked = new PluginInstaller($this->project->dir, null, new Translator('en'), null, null, static function (): never {
+            self::fail('composer looked up for a plugin that owes nothing: a PATH walk per plugin of a chain');
+        });
+        $this->assertSame(DependencyInstall::NotNeeded, $unasked->installDependencies($this->pluginDir('nodeps2', '{"require":{"php":">=8.4"}}'), $never));
         $this->assertSame(
             DependencyInstall::NoComposer,
             $this->installer()->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), $never),

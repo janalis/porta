@@ -91,7 +91,7 @@ final class SettingsPluginsControllerTest extends TestCase
             $this->helpPages[] = $event->path;
         });
 
-        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, $this->composerBinary);
+        $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, $this->embeddedDir, fn (): ?string => $this->composerBinary);
         $notifier = new Notifier($this->status, $tui);
         $real = ProcessRunner::default();
         $this->tools = new TestTools(
