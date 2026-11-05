@@ -180,6 +180,15 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame(['aXé'], $buffer->lines);
     }
 
+    /** Four bytes, the last three continuations: complete, nothing held back for the next read. */
+    public function testAFourByteCharacterEndingAReadIsWhole(): void
+    {
+        $buffer = new TerminalBuffer();
+        $buffer->feed("a\u{1F600}");
+
+        $this->assertSame(["a\u{1F600}"], $buffer->lines, 'on screen now, not with the next read');
+    }
+
     public function testEraseToLineEnd(): void
     {
         $b = new TerminalBuffer();
