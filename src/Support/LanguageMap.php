@@ -54,6 +54,7 @@ final class LanguageMap
         'twig' => ['twig', 'twig'],
         'blade' => ['blade', null],
         'md' => ['markdown', 'markdown'],
+        'markdown' => ['markdown', 'markdown'], // the preview claims both (CorePanes::MARKDOWN_EXTENSIONS)
         'yaml' => ['yaml', 'yaml'],
         'yml' => ['yaml', 'yaml'],
         'sql' => ['sql', null],

@@ -36,6 +36,7 @@ final class LanguageMapTest extends TestCase
         yield 'html' => ['a.html', 'html', 'html'];
         yield 'htm' => ['a.htm', 'html', 'html'];
         yield 'markdown' => ['a.md', 'markdown', 'markdown'];
+        yield 'markdown long ext' => ['README.markdown', 'markdown', 'markdown'];
         yield 'yaml' => ['a.yaml', 'yaml', 'yaml'];
         yield 'yml' => ['a.yml', 'yaml', 'yaml'];
         yield 'twig' => ['a.twig', 'twig', 'twig'];
