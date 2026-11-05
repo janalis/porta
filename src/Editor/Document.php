@@ -47,6 +47,16 @@ final class Document
     private readonly UndoHistory $history;
 
     /**
+     * Where the last typed text ended. Typing merges into one undo step only
+     * when it goes on from there: typed within the second but somewhere else,
+     * it used to merge too, and one Ctrl+Z took both and put the caret back
+     * at the first place.
+     *
+     * @var array{int, int}|null
+     */
+    private ?array $typedTo = null;
+
+    /**
      * Secondary-caret state lives on the widget ({@see \Porta\Editor\MultiCaret});
      * these hooks let a snapshot capture/restore it so undo brings the carets back.
      * $captureCarets returns the current extra carets; $restoreCarets applies them.
@@ -1055,6 +1065,9 @@ final class Document
             return;
         }
         $coalesce = null === $this->getSelectionRange() && \strlen($text) <= 4 && !\str_contains($text, "\n") ? 'type' : null;
+        if (null !== $coalesce && [$this->cursorLine, $this->cursorCol] !== $this->typedTo) {
+            $this->history->checkpoint();
+        }
         $this->pushUndo($coalesce);
         $this->removeSelectedText();
         $text = \str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
@@ -1067,6 +1080,7 @@ final class Document
         if (1 === \count($parts)) {
             $this->lines[$this->cursorLine] = $before.$text.$after;
             $this->cursorCol += \strlen($text);
+            $this->typedTo = [$this->cursorLine, $this->cursorCol];
             $this->touch();
 
             return;

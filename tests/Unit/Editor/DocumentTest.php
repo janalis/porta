@@ -147,6 +147,22 @@ final class DocumentTest extends TestCase
         $this->assertSame('', $doc->getText());
     }
 
+    /** Typing somewhere else within the second is a step of its own. */
+    public function testTypingInAnotherPlaceIsItsOwnUndoStep(): void
+    {
+        $doc = new Document("one\ntwo\nthree");
+        $doc->setCursor(0, 3);
+        $doc->insert('A');
+        $doc->setCursor(2, 5);
+        $doc->insert('B');
+
+        $doc->undo();
+        $this->assertSame("oneA\ntwo\nthree", $doc->getText(), 'only the B');
+        $this->assertSame([2, 5], [$doc->cursorLine, $doc->cursorCol]);
+        $doc->undo();
+        $this->assertSame("one\ntwo\nthree", $doc->getText());
+    }
+
     public function testUndoRestoresTheSelection(): void
     {
         $doc = new Document('hello world');
