@@ -229,7 +229,9 @@ final class PtyProcessTest extends TestCase
         // Raw before a byte is written: a canonical line holds 1 KiB and drops
         // the rest, and head then waits forever. A fixed pause raced the
         // session shim's own start-up.
-        $this->await(static fn (): bool => \str_contains($said, 'raw'), what: 'the terminal in raw mode');
+        $this->await(static function () use (&$said): bool {
+            return \str_contains($said, 'raw');
+        }, what: 'the terminal in raw mode');
 
         $p->write(\str_repeat('x', $size));
 
