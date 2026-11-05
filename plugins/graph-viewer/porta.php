@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use Janalis\Viz\Render\Format;
-use Porta\Config\WorkspaceTrust;
 use Porta\Editor\PaneServices;
 use Porta\GraphViewer\ArchitectureArtifact;
 use Porta\GraphViewer\Graph\DiagramKind;
@@ -276,7 +275,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
      */
     private static function browserConfig(PluginApi $api): ?string
     {
-        return WorkspaceTrust::fromEnvironment()->isTrusted($api->projectRoot()) ? null : MermaidEngine::OFFLINE;
+        return $api->projectTrusted() ? null : MermaidEngine::OFFLINE;
     }
 
     /** @param \Closure(string): (bool|int|string) $setting */

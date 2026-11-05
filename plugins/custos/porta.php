@@ -33,7 +33,7 @@ return new class('custos', 'custos', BinarySearch::PathOnly) extends AbstractToo
     public function activate(PluginApi $api): void
     {
         $config = new ServerConfig();
-        $api->registerSetting('binary', 'custos binary', 'text', '', hint: 'empty = custos on PATH');
+        $this->registerBinarySetting($api);
         $api->registerSetting('php', 'Target PHP version', 'text', '', hint: 'e.g. 8.3; empty = the project config (custos.json, composer.json)');
         $api->registerSetting(
             'comparisonStyle',

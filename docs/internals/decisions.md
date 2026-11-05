@@ -322,8 +322,10 @@ untrusted project opens restricted (`Config/WorkspaceTrust`). Trust is per
 project and asked once; `PORTA_TRUSTED_FOLDERS` exists for CI and the suite.
 The runnable-key filter matches by NAME (`…path|binary|command|converter`,
 plus a short list), so a third-party plugin's setting named that way is
-covered without a new descriptor flag. `PluginApi` did not grow a
-`projectTrusted()`: the one caller, `AbstractToolPlugin`, is core. *Re-opens on:* a plugin setting that runs
+covered without a new descriptor flag. `PluginApi::projectTrusted()` came
+later (2026-11-05), once mcp, symfony-lsp and graph-viewer each read
+`WorkspaceTrust` themselves from `porta.php`; git's process classes still read it
+directly, since review and blame build them with no API at hand. *Re-opens on:* a plugin setting that runs
 something and cannot be named to match; that one would need the flag.
 
 **`registerWelcomeStep()` — designed and rejected.** The plugins worth
