@@ -28,10 +28,9 @@ use Symfony\Component\Process\Process;
  * merge-free reports, and `coverage:check` unions them. So the pass keeps its
  * guarantee and stops being one process on a sixteen-core box.
  *
- * The shard list is DERIVED, not written down: one shard per immediate
- * subdirectory of a plugin's `tests/`, plus one for the files directly in it.
- * That covers every `*Test.php` by construction — the loose files and, through
- * the subdirectories, everything else, recursively — which is the point. A
+ * The shard list is DERIVED, not written down: one shard per `*Test.php` under
+ * a plugin's `tests/`, recursively. That covers every test file by
+ * construction, which is the point. A
  * written-down list is a second place to add a plugin, and forgetting it would
  * stop running those tests while the gate stayed green on them; the coverage
  * threshold is only a partial backstop, since it catches a dropped shard only
@@ -61,6 +60,12 @@ final class CoveragePluginsCommand extends Command
 
     /** The exit code a shard gets when it outlives its budget, matching the `timeout` utility. */
     public const int WEDGED = 124;
+
+    /**
+     * The file, beside the reports, where each run leaves how long every shard
+     * took — read back by the next run to start the longest first.
+     */
+    public const string TIMINGS = 'shard-seconds.json';
 
     /**
      * Shards at once when `--processes` is omitted.
@@ -196,7 +201,7 @@ final class CoveragePluginsCommand extends Command
             \unlink($report);
         }
 
-        $queue = $shards;
+        $queue = self::longestFirst($shards, $outputDir.'/'.self::TIMINGS);
         /** @var array<string, array{process: Process, started: int}> $running */
         $running = [];
         /** @var array<string, array{seconds: float, exit: int}> $results */
@@ -226,7 +231,33 @@ final class CoveragePluginsCommand extends Command
             }
         }
 
+        \file_put_contents($outputDir.'/'.self::TIMINGS, \json_encode(\array_map(static fn (array $result): float => $result['seconds'], $results), \JSON_THROW_ON_ERROR));
+
         return $this->report($io, $errors, $results, (\hrtime(as_number: true) - $wall) / 1_000_000_000);
+    }
+
+    /**
+     * The shards in the order to start them: a shard the last run never timed
+     * first (it may be anything), then the timed ones longest first.
+     *
+     * A pool is only as fast as its tail, and name order started the longest
+     * shards — ssh's real-server runs — last, so the pass waited on them alone.
+     * With no timings at all (a fresh checkout, CI) the order is the names'.
+     *
+     * @param array<string, list<string>> $shards sorted by name
+     *
+     * @return array<string, list<string>>
+     */
+    private static function longestFirst(array $shards, string $timingsPath): array
+    {
+        // @noinspection JsonEncodingApiUsageInspection -- a timings file that is not JSON is no timings: the order falls back to the names'
+        // @mago-expect analysis:mixed-assignment -- narrowed in $seconds
+        $timings = \is_file($timingsPath) ? \json_decode((string) \file_get_contents($timingsPath), associative: true) : null;
+        $seconds = static fn (string $name): float => \is_array($timings) && (\is_float($timings[$name] ?? null) || \is_int($timings[$name] ?? null)) ? $timings[$name] : \INF;
+        // uksort is stable, so equal keys — every untimed shard — keep name order.
+        \uksort($shards, static fn (string $a, string $b): int => $seconds($b) <=> $seconds($a));
+
+        return $shards;
     }
 
     /**

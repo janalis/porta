@@ -232,6 +232,36 @@ final class CoveragePluginsCommandTest extends TestCase
         $this->assertSame('on', $process->getEnv()['PORTA_CONTAINER_CACHE'] ?? null);
     }
 
+    public function testTheLastRunsTimingsStartTheLongestShardFirst(): void
+    {
+        // A pool is only as fast as its tail: name order started the longest
+        // shards last. A shard the last run never timed goes first, since it
+        // may be the longest of all.
+        $project = $this->project();
+        $project->write('out/'.CoveragePluginsCommand::TIMINGS, \json_encode(['alpha-foo' => 1.0, 'beta-baz' => 30.0], flags: \JSON_THROW_ON_ERROR));
+        $seen = [];
+
+        $this->tester($project, $this->spawning($seen))->execute(['--output-dir' => $project->path('out'), '--processes' => 1]);
+
+        $this->assertSame(['alpha-sub-bar.xml', 'beta-baz.xml', 'alpha-foo.xml'], \array_keys($seen));
+    }
+
+    public function testEveryRunLeavesItsShardTimingsForTheNext(): void
+    {
+        $project = $this->project();
+        $project->write('out/'.CoveragePluginsCommand::TIMINGS, 'not json');
+        $seen = [];
+
+        $status = $this->tester($project, $this->spawning($seen))->execute(['--output-dir' => $project->path('out')]);
+
+        $this->assertSame(Command::SUCCESS, $status, 'unreadable timings are no timings, not a failure');
+        $this->assertSame(['alpha-foo.xml', 'alpha-sub-bar.xml', 'beta-baz.xml'], \array_keys($seen), 'with no timings, the order is the names\'');
+        $timings = \json_decode((string) \file_get_contents($project->path('out/'.CoveragePluginsCommand::TIMINGS)), associative: true, flags: \JSON_THROW_ON_ERROR);
+        $this->assertIsArray($timings);
+        $this->assertEqualsCanonicalizing(['alpha-foo', 'alpha-sub-bar', 'beta-baz'], \array_keys($timings));
+        $this->assertContainsOnlyFloat($timings);
+    }
+
     public function testTwoTestFilesWithTheSameNameGetTwoShards(): void
     {
         // The shard name comes from the path inside tests/, not the basename:

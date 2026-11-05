@@ -463,7 +463,13 @@ time, each writing its own report. `PORTA_SHARD_PROCESSES` sets how many at
 once, defaulting to **three quarters of the cores** rather than half — a shard
 is one wait-bound process, and the file-level split only pays when there are
 lanes to hide 68 phpunit boots in (`plugin-system.md` has the table). The run
-names its slowest shard, because that is the floor. `coverage:check` grades the directory as
+names its slowest shard, because that is the floor. A test file that would be
+the floor alone is split into several: the Mermaid upstream corpus is dealt over
+six `UpstreamCorpusPart<N>Test` files (as one it was the whole pass's floor, at
+twice the rest of the pass under load). Each run leaves its shard times in
+`coverage/plugins/shard-seconds.json`, and the next run starts the longest first,
+so a slow shard does not start last and run alone; untimed shards start before
+everything else, and with no file, as on CI, the order is the names'. `coverage:check` grades the directory as
 one report, merged per line. See `plugin-system.md` for why that is legal where
 parallel paratest is not.
 
