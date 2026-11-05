@@ -90,6 +90,34 @@ final class PhpCsFixerPluginTest extends TestCase
         );
     }
 
+    /** The `args` setting is split as a shell would: a quoted path with a space is ONE argument. */
+    public function testExtraArgumentsKeepTheirQuoting(): void
+    {
+        $project = $this->project(stubExitCode: null);
+        $stub = '#!'.\PHP_BINARY.' -n'."\n<?php\nfile_put_contents(__DIR__.'/../../argv.json', json_encode(array_slice(\$argv, 1)));\n";
+        \mkdir($project->path('vendor/bin'), permissions: 0o777, recursive: true);
+        \file_put_contents($project->path('vendor/bin/php-cs-fixer'), $stub);
+        \chmod($project->path('vendor/bin/php-cs-fixer'), permissions: 0o755);
+        $project->write('.porta.json', \json_encode(['plugins' => ['php-cs-fixer' => ['args' => '--config="my rules.php" --dry-run']]], \JSON_THROW_ON_ERROR));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => static function (Tui $tui): void {
+                    $tui->handleInput("\x1b\x06"); // ctrl+alt+f → php-cs-fixer:fix
+                },
+                300 => function () use ($project): void {
+                    $this->await(static fn (): bool => \is_file($project->path('argv.json')));
+                    $this->assertSame(
+                        ['fix', '--config=my rules.php', '--dry-run', (string) \realpath($project->path('a.php'))],
+                        \json_decode((string) \file_get_contents($project->path('argv.json')), associative: true, flags: \JSON_THROW_ON_ERROR),
+                    );
+                },
+            ],
+        );
+    }
+
     public function testFixOnSaveToggleRunsTheFixerAfterEverySave(): void
     {
         $project = $this->project();
