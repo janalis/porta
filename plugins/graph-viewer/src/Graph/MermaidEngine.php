@@ -33,13 +33,16 @@ final class MermaidEngine implements DiagramEngine
 
     private ?string $directory = null;
 
-    /** @param null|(\Closure(): ?string)|string $toolPath resolved for each render */
+    /**
+     * @param null|(\Closure(): ?string)|string $toolPath      resolved for each render
+     * @param null|(\Closure(): ?string)|string $browserConfig resolved for each render too: a project trusted or restricted mid-session takes effect at the next one
+     */
     public function __construct(
         private readonly \Closure|string|null $toolPath = null,
         private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
         private readonly Filesystem $files = new Filesystem(),
         private readonly ExecutableFinder $finder = new ExecutableFinder(),
-        private readonly ?string $browserConfig = null,
+        private readonly \Closure|string|null $browserConfig = null,
     ) {}
 
     public function baseDpi(): int
@@ -85,10 +88,11 @@ final class MermaidEngine implements DiagramEngine
         $this->files->dumpFile($directory.'/'.self::CONFIG_STOP, '{}');
         $this->directory = $directory;
         $output = $directory.'/diagram.'.$format->extension();
+        $browserConfig = $this->browserConfig instanceof \Closure ? ($this->browserConfig)() : $this->browserConfig;
         $this->slot->run(
-            null === $this->browserConfig
+            null === $browserConfig
                 ? MermaidCommand::render($tool, $format, $output, $dpi)
-                : [...MermaidCommand::render($tool, $format, $output, $dpi), '--puppeteerConfigFile', $this->browserConfig],
+                : [...MermaidCommand::render($tool, $format, $output, $dpi), '--puppeteerConfigFile', $browserConfig],
             // Never the project: puppeteer loads a `.puppeteerrc.cjs` from the
             // working directory and RUNS it — a repository's own JavaScript,
             // on opening a diagram (driven with a canary). The render's private

@@ -83,17 +83,37 @@ final class MermaidEngineTest extends TestCase
         $plugin->deactivate();
     }
 
-    public function testThePluginKeepsTheBrowserOfAProjectNotTrustedOffTheNetwork(): void
+    /**
+     * Trust is asked at each render, not once at activation: a project
+     * restricted from another window has its next diagram kept off the
+     * network, with no restart.
+     */
+    public function testThePluginAsksForTrustAtEachRender(): void
     {
         $project = new TempProject();
-        $settings = new PluginSettings($project->dir, []);
+        $settings = new PluginSettings($project->dir, ['graph-viewer' => ['mermaidPath' => self::stub()]]);
         $api = new PluginManager(new EventDispatcher(), $settings)->api('graph-viewer', $project->dir, $settings);
         $plugin = require \dirname(__DIR__, levels: 2).'/porta.php';
+        $plugin->activate($api);
+        $engine = Probe::get($plugin, 'mermaid');
+        $this->assertInstanceOf(MermaidEngine::class, $engine);
 
-        $this->assertNull(Probe::invokeStatic($plugin::class, 'browserConfig', $api), 'trusted (as the suite\'s projects are): remote images load');
+        $this->assertSame(self::stub(), $engine->binary());
+        $this->render($engine, 'flowchart LR');
+        $this->assertArrayNotHasKey('--puppeteerConfigFile', $this->mermaidOptions(), 'trusted (as the suite\'s projects are): remote images load');
 
         $this->untrustProjects();
-        $this->assertSame(MermaidEngine::OFFLINE, Probe::invokeStatic($plugin::class, 'browserConfig', $api));
+        $this->render($engine, 'flowchart LR');
+        $this->assertSame(MermaidEngine::OFFLINE, $this->mermaidOptions()['--puppeteerConfigFile'] ?? null);
+        $plugin->deactivate();
+    }
+
+    /** @return array<string, mixed> the options the fake mmdc was last run with */
+    private function mermaidOptions(): array
+    {
+        [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
+
+        return $options;
     }
 
     public function testBothExtensionsResolveOnlyToMermaid(): void
@@ -145,8 +165,7 @@ final class MermaidEngineTest extends TestCase
         [, $error] = $this->render($engine, 'flowchart LR');
 
         $this->assertNull($error);
-        [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
-        $this->assertSame(MermaidEngine::OFFLINE, $options['--puppeteerConfigFile'] ?? null);
+        $this->assertSame(MermaidEngine::OFFLINE, $this->mermaidOptions()['--puppeteerConfigFile'] ?? null);
         $config = \json_decode((string) \file_get_contents(MermaidEngine::OFFLINE), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>'], $config['args'], 'every request, loopback too, to a proxy that does not answer');
     }

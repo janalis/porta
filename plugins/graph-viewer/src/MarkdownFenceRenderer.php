@@ -26,13 +26,14 @@ final readonly class MarkdownFenceRenderer
      * @param \Closure(string): string $translate
      * @param null|(\Closure(): NativeMermaidRenderer) $nativeFactory
      * @param null|(\Closure(string, string, FenceResult): list<FenceAction>) $actionFactory
+     * @param null|(\Closure(): ?string) $browserConfig resolved for each fence, so a trust change applies at the next render
      */
     public function __construct(
         private \Closure $setting,
         private \Closure $translate,
         ?\Closure $nativeFactory = null,
         private ?\Closure $actionFactory = null,
-        private ?string $browserConfig = null,
+        private ?\Closure $browserConfig = null,
     ) {
         $this->nativeFactory = $nativeFactory ?? static fn (): NativeMermaidRenderer => new NativeMermaidRenderer();
     }
@@ -67,8 +68,9 @@ final readonly class MarkdownFenceRenderer
         if ('cells' === ($this->setting)('renderMode')) {
             return $native->rows($source, $width, $accept, $error);
         }
-        $engine = new MermaidEngine(fn (): ?string => $this->path('mermaidPath'), browserConfig: $this->browserConfig);
-        $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer(\dirname($path), $engine->binary(...), browserConfig: $this->browserConfig));
+        $browserConfig = null === $this->browserConfig ? null : ($this->browserConfig)();
+        $engine = new MermaidEngine(fn (): ?string => $this->path('mermaidPath'), browserConfig: $browserConfig);
+        $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer(\dirname($path), $engine->binary(...), browserConfig: $browserConfig));
         $fallback = function (string $message) use ($source, $width, $accept, $error, $native): void {
             $translated = ($this->translate)($message);
             $native->preview(

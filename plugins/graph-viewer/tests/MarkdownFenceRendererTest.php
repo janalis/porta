@@ -34,7 +34,7 @@ final class MarkdownFenceRendererTest extends TestCase
         $renderer = new MarkdownFenceRenderer(
             static fn (string $key): string => 'renderMode' === $key ? 'bitmap' : $support.'fake-mmdc',
             static fn (string $text): string => $text,
-            browserConfig: MermaidEngine::OFFLINE, // a project not trusted
+            browserConfig: static fn (): string => MermaidEngine::OFFLINE, // a project not trusted
         );
         $result = null;
         $cancel = $renderer(

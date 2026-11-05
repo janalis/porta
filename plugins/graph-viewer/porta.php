@@ -94,7 +94,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
         // restart — the AbstractToolPlugin::binary() idiom.
         $dot = new DotLayoutEngine($api->projectRoot(), static fn (): ?string => self::path($setting('dotPath')));
         $plantUml = new PlantUmlEngine($api->projectRoot(), static fn (): ?string => self::path($setting('plantumlPath')));
-        $mermaid = new MermaidEngine(static fn (): ?string => self::path($api->setting('mermaidPath')), browserConfig: self::browserConfig($api));
+        $mermaid = new MermaidEngine(static fn (): ?string => self::path($api->setting('mermaidPath')), browserConfig: static fn (): ?string => self::browserConfig($api));
         $this->mermaid = $mermaid;
         $exports = new NativeMermaidExport();
         $this->exports = $exports;
@@ -293,7 +293,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
                 $api->flash(...),
                 $api->pick(...),
             )->actions(),
-            browserConfig: self::browserConfig($api),
+            browserConfig: static fn (): ?string => self::browserConfig($api),
         );
         $api->registerMarkdownFence(['mermaid', 'dot', 'graphviz', 'plantuml', 'puml'], $fences(...));
     }
