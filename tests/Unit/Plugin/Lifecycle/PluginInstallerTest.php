@@ -14,6 +14,7 @@ use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Tests\Support\FakeComposer;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Presence;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UntrustsProjects;
@@ -23,6 +24,7 @@ final class PluginInstallerTest extends TestCase
     use GitBinary;
     use PumpsLoop;
     use UntrustsProjects;
+    use PreservesPath;
 
     private TempProject $project;
     private TempProject $global;
@@ -780,6 +782,29 @@ final class PluginInstallerTest extends TestCase
             $this->installer()->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), $never),
             'no composer on this machine',
         );
+    }
+
+    /** composer installed mid-session — from the composer plugin's Tools row, say — is found with no restart. */
+    public function testTheProductionWiringFindsAComposerInstalledAfterBoot(): void
+    {
+        $bin = new TempProject(['.keep' => '']);
+        \symlink(\PHP_BINARY, $bin->path('php')); // the fake composer is a php script
+        \putenv('PATH='.$bin->dir);
+        $installer = PluginInstaller::create($this->project->dir, new Translator('en'));
+        $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
+        $code = null;
+        $onExit = static function (int $exit) use (&$code): void {
+            $code = $exit;
+        };
+
+        $this->assertSame(DependencyInstall::NoComposer, $installer->installDependencies($dir, $onExit));
+
+        \symlink($this->fakeComposer(), $bin->path('composer'));
+        $this->assertSame(DependencyInstall::Started, $installer->installDependencies($dir, $onExit));
+        $this->await(static function () use (&$code): bool {
+            return null !== $code;
+        }, what: "composer's exit");
+        $this->assertSame(0, $code);
     }
 
     public function testInstallingDependenciesRunsComposerAndReportsItsExitCode(): void

@@ -64,13 +64,18 @@ final class PluginInstaller
     /** Single-flight: the git/composer subprocess in progress, if any. */
     private ?AsyncProcess $running = null;
 
+    /**
+     * @param null|(\Closure(): ?string)|string $gitBinary      resolved at each use, as is $composerBinary: one installed
+     *                                                         mid-session (from the composer plugin's Tools row, say) works with no restart
+     * @param null|(\Closure(): ?string)|string $composerBinary
+     */
     public function __construct(
         private readonly string $rootDir,
         private readonly ?string $globalBase,
         private readonly Translator $translator,
-        private readonly ?string $gitBinary,
+        private readonly \Closure|string|null $gitBinary,
         private readonly ?string $embeddedDir = null,
-        private readonly ?string $composerBinary = null,
+        private readonly \Closure|string|null $composerBinary = null,
         private readonly PluginComposerProject $project = new PluginComposerProject(),
         private readonly Filesystem $fs = new Filesystem(),
         /** @var (\Closure(): bool)|null whether the project is trusted; null asks {@see WorkspaceTrust} */
@@ -98,7 +103,17 @@ final class PluginInstaller
     {
         $finder = new ExecutableFinder();
 
-        return new self($rootDir, PortaHome::base(), $translator, $finder->find('git'), PluginLoader::embeddedDir(), $finder->find('composer'));
+        return new self($rootDir, PortaHome::base(), $translator, static fn (): ?string => $finder->find('git'), PluginLoader::embeddedDir(), static fn (): ?string => $finder->find('composer'));
+    }
+
+    private function git(): ?string
+    {
+        return $this->gitBinary instanceof \Closure ? ($this->gitBinary)() : $this->gitBinary;
+    }
+
+    private function composer(): ?string
+    {
+        return $this->composerBinary instanceof \Closure ? ($this->composerBinary)() : $this->composerBinary;
     }
 
     /**
@@ -297,14 +312,15 @@ final class PluginInstaller
      */
     private function requireByGitUrl(string $source, string $base, string $root, \Closure $onDone): void
     {
-        if (null === $this->gitBinary) {
+        $git = $this->git();
+        if (null === $git) {
             $this->fail($onDone, $this->translator->trans('git is not available'));
 
             return;
         }
         $scratch = \sys_get_temp_dir().'/porta-plugin-peek-'.\bin2hex(\random_bytes(8));
         $this->running = new AsyncProcess(
-            [$this->gitBinary, 'clone', '--depth', '1', '--', $source, $scratch],
+            [$git, 'clone', '--depth', '1', '--', $source, $scratch],
             $this->rootDir,
             env: ['GIT_TERMINAL_PROMPT' => '0'] + \getenv(),
             timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT,
@@ -397,7 +413,7 @@ final class PluginInstaller
      */
     private function readBranch(string $scratch, \Closure $onBranch): void
     {
-        $this->running = new AsyncProcess([(string) $this->gitBinary, 'rev-parse', '--abbrev-ref', 'HEAD'], $scratch);
+        $this->running = new AsyncProcess([(string) $this->git(), 'rev-parse', '--abbrev-ref', 'HEAD'], $scratch);
         $started = $this->running->start(function (int $code, string $stdout) use ($onBranch): void {
             $this->running = null;
             $branch = \trim($stdout);
@@ -483,11 +499,13 @@ final class PluginInstaller
         // never disagree about whether an install is owed: a composer.json
         // whose only requirement is `php` asks for nothing, and shelling out
         // for it would be a subprocess to answer no.
+        $composer = $this->composer();
+
         return match (true) {
             !PluginManifest::beside($pluginDir.'/porta.php')->needsInstall() => DependencyInstall::NotNeeded,
             null !== $this->running => DependencyInstall::Busy,
-            null === $this->composerBinary => DependencyInstall::NoComposer,
-            default => $this->runComposerInstall($this->composerBinary, $pluginDir, $onExit),
+            null === $composer => DependencyInstall::NoComposer,
+            default => $this->runComposerInstall($composer, $pluginDir, $onExit),
         };
     }
 
@@ -811,10 +829,11 @@ final class PluginInstaller
      */
     private function startComposer(string $cwd, array $args, \Closure $onExit): bool
     {
-        if (null === $this->composerBinary) {
+        $composer = $this->composer();
+        if (null === $composer) {
             return false;
         }
-        $this->running = new AsyncProcess([$this->composerBinary, ...$args], $cwd, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
+        $this->running = new AsyncProcess([$composer, ...$args], $cwd, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
         $started = $this->running->start(function (int $code) use ($onExit): void {
             $this->running = null;
             $onExit($code);
