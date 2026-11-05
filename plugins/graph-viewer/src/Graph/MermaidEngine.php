@@ -36,14 +36,14 @@ final class MermaidEngine implements DiagramEngine
 
     /**
      * @param null|(\Closure(): ?string)|string $toolPath      resolved for each render
-     * @param null|(\Closure(): ?string)|string $browserConfig resolved for each render too: a project trusted or restricted mid-session takes effect at the next one
+     * @param null|(\Closure(): ?string)        $browserConfig asked at each render too: a project trusted or restricted mid-session takes effect at the next one
      */
     public function __construct(
         private readonly \Closure|string|null $toolPath = null,
         private readonly SingleSlotProcess $slot = new SingleSlotProcess(),
         private readonly Filesystem $files = new Filesystem(),
         private readonly ExecutableFinder $finder = new ExecutableFinder(),
-        private readonly \Closure|string|null $browserConfig = null,
+        private readonly ?\Closure $browserConfig = null,
     ) {}
 
     public function baseDpi(): int
@@ -89,7 +89,7 @@ final class MermaidEngine implements DiagramEngine
         $this->files->dumpFile($directory.'/'.self::CONFIG_STOP, '{}');
         $this->directory = $directory;
         $output = $directory.'/diagram.'.$format->extension();
-        $browserConfig = $this->browserConfig instanceof \Closure ? ($this->browserConfig)() : $this->browserConfig;
+        $browserConfig = null === $this->browserConfig ? null : ($this->browserConfig)();
         $this->slot->run(
             null === $browserConfig
                 ? MermaidCommand::render($tool, $format, $output, $dpi)

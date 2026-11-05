@@ -68,9 +68,8 @@ final readonly class MarkdownFenceRenderer
         if ('cells' === ($this->setting)('renderMode')) {
             return $native->rows($source, $width, $accept, $error);
         }
-        $browserConfig = null === $this->browserConfig ? null : ($this->browserConfig)();
-        $engine = new MermaidEngine(fn (): ?string => $this->path('mermaidPath'), browserConfig: $browserConfig);
-        $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer(\dirname($path), $engine->binary(...), browserConfig: $browserConfig));
+        $engine = new MermaidEngine(fn (): ?string => $this->path('mermaidPath'), browserConfig: $this->browserConfig);
+        $cli = new MermaidCliRenderer($engine, new MermaidSvgRasterizer(\dirname($path), $engine->binary(...), browserConfig: $this->browserConfig));
         $fallback = function (string $message) use ($source, $width, $accept, $error, $native): void {
             $translated = ($this->translate)($message);
             $native->preview(

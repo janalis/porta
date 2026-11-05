@@ -670,7 +670,13 @@ final class ProjectSearch
                 continue; // the history folder itself, named as the scope
             }
             $entries = \scandir('' === $prefix ? $this->rootDir : $this->rootDir.'/'.$prefix);
-            $children = \array_map(static fn (string $entry): string => $prefix.$entry, \array_values(\array_diff(false === $entries ? [] : $entries, ['.', '..'])));
+            // A link is never handed over: grep -r follows a link named on its
+            // command line, which a walk of `.` passes over — one aimed at `/`
+            // would have searched, and Replace All rewritten, outside the project.
+            $children = \array_values(\array_filter(
+                \array_map(static fn (string $entry): string => $prefix.$entry, \array_diff(false === $entries ? [] : $entries, ['.', '..'])),
+                fn (string $child): bool => !\is_link($this->rootDir.'/'.$child),
+            ));
             \array_push($expanded, ...$this->withoutHistory($children));
         }
 

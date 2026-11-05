@@ -146,6 +146,30 @@ final class ProjectSearchTest extends TestCase
         return $paths;
     }
 
+    /** Handing grep the root's entries must not hand it a link out of the project: a walk of `.` never follows one. */
+    public function testLeavingOutHistoryNeverHandsGrepALinkOutOfTheProject(): void
+    {
+        $outside = new TempProject(['secret.txt' => "needle outside\n"]);
+        $project = new TempProject(['src/A.php' => "<?php\n// needle\n", '.porta/history/ab/1.snap' => "needle\n"]);
+        \symlink($outside->dir, $project->path('escape'));
+        \symlink($outside->dir, $project->path('.porta/escape'));
+
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle'), 'path');
+        $this->assertSame(['src/A.php'], $paths);
+
+        // ugrep and BSD grep follow no link under -r; GNU grep follows one on
+        // its command line. What grep is HANDED is what decides it on Linux.
+        $tools = new TempProject([], 'porta-argvgrep-');
+        $log = $tools->path('argv.log');
+        $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
+        \chmod($tools->path('grep'), permissions: 0o755);
+        \putenv('PATH='.$tools->dir.':/bin');
+        $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $argv = (string) \file_get_contents($log);
+        $this->assertStringContainsString(' src', $argv, 'the premise: the root is handed over by its entries');
+        $this->assertStringNotContainsString('escape', $argv);
+    }
+
     public function testGrepLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
     {
         $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, '.'));

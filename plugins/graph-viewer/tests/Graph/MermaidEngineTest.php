@@ -160,7 +160,7 @@ final class MermaidEngineTest extends TestCase
 
     public function testAProjectNotTrustedKeepsTheBrowserOffTheNetwork(): void
     {
-        $engine = new MermaidEngine(self::stub(), browserConfig: MermaidEngine::OFFLINE);
+        $engine = new MermaidEngine(self::stub(), browserConfig: static fn (): string => MermaidEngine::OFFLINE);
 
         [, $error] = $this->render($engine, 'flowchart LR');
 

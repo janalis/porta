@@ -151,7 +151,7 @@ return new class('graph-viewer') extends AbstractPlugin implements DisposablePlu
                     // editor, as every other analyser's errors do.
                     $api->setDiagnostics(...),
                     $mermaid,
-                    cli: new MermaidCliRenderer($mermaid, new MermaidSvgRasterizer($api->projectRoot(), $mermaid->binary(...), browserConfig: self::browserConfig($api))),
+                    cli: new MermaidCliRenderer($mermaid, new MermaidSvgRasterizer($api->projectRoot(), $mermaid->binary(...), browserConfig: static fn (): ?string => self::browserConfig($api))),
                 );
             },
             // The pane's payload is the DOT (or PlantUML) source. The size guard

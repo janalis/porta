@@ -128,15 +128,24 @@ final class MermaidSvgRasterizerTest extends TestCase
         }
     }
 
+    /** Asked at each conversion: a standing pane follows a trust change made in another window. */
     public function testAProjectNotTrustedHandsTheBrowserItsOfflineConfig(): void
     {
         $project = new TempProject();
-        $rasterizer = new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), self::support('fake-mermaid-browser'), browserConfig: MermaidEngine::OFFLINE);
+        $config = null; // trusted, at first
+        $rasterizer = new MermaidSvgRasterizer($project->dir, self::support('fake-mmdc'), self::support('fake-mermaid-browser'), browserConfig: static function () use (&$config): ?string {
+            return $config;
+        });
+        $rest = function () use ($rasterizer): array {
+            $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', 1.0, $success, self::fail(...)));
+            [, , , , , , , $rest] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
 
-        $this->awaitString(static fn (\Closure $success) => $rasterizer->rasterize('<svg/>', 1.0, $success, self::fail(...)));
+            return $rest;
+        };
 
-        [, , , , , , , $rest] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-browser-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
-        $this->assertSame([$project->dir, MermaidEngine::OFFLINE], $rest);
+        $this->assertSame([$project->dir], $rest());
+        $config = MermaidEngine::OFFLINE;
+        $this->assertSame([$project->dir, MermaidEngine::OFFLINE], $rest());
     }
 
     public function testBundledProgramUsesTheCliBrowserProtocolAndRejectsOversizedRasters(): void
@@ -152,7 +161,7 @@ final class MermaidSvgRasterizerTest extends TestCase
             'cli/node_modules/puppeteer/index.cjs' => (string) \file_get_contents(__DIR__.'/../fixtures/mermaid/cli-browser.cjs'),
         ]);
         $this->fakeReports->write('fixture.png', PngFixture::bytes(100, height: 50));
-        $offline = new MermaidSvgRasterizer($project->dir, $project->path('cli/bin/mmdc.js'), $node, browserConfig: MermaidEngine::OFFLINE);
+        $offline = new MermaidSvgRasterizer($project->dir, $project->path('cli/bin/mmdc.js'), $node, browserConfig: static fn (): string => MermaidEngine::OFFLINE);
         $this->awaitString(static fn (\Closure $success) => $offline->rasterize('<svg viewBox="0 0 10 10"/>', 1.0, $success, self::fail(...)));
         $launch = \json_decode((string) \file_get_contents($this->fakeReports->path('browser-protocol.json')), associative: true, flags: \JSON_THROW_ON_ERROR)['launch'];
         $this->assertSame(['headless' => 'shell', 'args' => ['--proxy-server=127.0.0.1:9', '--proxy-bypass-list=<-loopback>']], $launch, 'a project not trusted: off the network');
