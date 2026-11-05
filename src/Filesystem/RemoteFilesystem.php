@@ -68,39 +68,39 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
 
     private readonly RemoteIndex $index;
     private readonly ChangeQueue $queue;
-    /** @var array<string, true> directories listed (or being listed) this session */
+    /** @var array<array-key, true> directories listed (or being listed) this session */
     private array $listed = [];
-    /** @var array<string, true> listings in flight */
+    /** @var array<array-key, true> listings in flight */
     private array $listing = [];
-    /** @var array<string, array{then: \Closure(): void, failed: (\Closure(): void)|null}> fetches in flight: what runs when each lands, or will not */
+    /** @var array<array-key, array{then: \Closure(): void, failed: (\Closure(): void)|null}> fetches in flight: what runs when each lands, or will not */
     private array $fetching = [];
-    /** @var array<string, int> uploads queued and not started, by path — a later save rides the same one */
+    /** @var array<array-key, int> uploads queued and not started, by path — a later save rides the same one */
     private array $uploading = [];
     /** @var array<int, string> what each queued upload will send */
     private array $bytes = [];
-    /** @var array<string, int> the upload on its way to the server, by path */
+    /** @var array<array-key, int> the upload on its way to the server, by path */
     private array $sending = [];
     /** @var array<int, true> uploads whose path moved or went before they were answered */
     private array $sealed = [];
     private int $uploads = 0;
-    /** @var array<string, true> paths whose next upload overwrites what the server has */
+    /** @var array<array-key, true> paths whose next upload overwrites what the server has */
     private array $force = [];
     private ?RemoteTransport $transport = null;
     /** The last thing the server refused, until it next answers yes. */
     private ?string $trouble = null;
     /** Whether "no plugin serves this" was said: once is enough. */
     private bool $complained = false;
-    /** @var array<string, true> directories asked for before a transport was there: the first poll lists them */
+    /** @var array<array-key, true> directories asked for before a transport was there: the first poll lists them */
     private array $wanted = [];
     private int $pollCursor = 0;
     /** Whether the whole tree was asked for this session. */
     private bool $walked = false;
     private int $polls = 0;
-    /** @var array<string, int> directories the server refused to list, and the poll that asks again */
+    /** @var array<array-key, int> directories the server refused to list, and the poll that asks again */
     private array $retry = [];
     private readonly string $realRoot;
     private readonly RemoteLink $link;
-    /** @var array<string, string> changes the server refused, and why: here, not there, until saved again */
+    /** @var array<array-key, string> changes the server refused, and why: here, not there, until saved again */
     private array $unsent = [];
 
     public function __construct(
@@ -360,7 +360,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             unset($this->retry[$dir]);
             $this->wanted[$dir] = true;
         }
-        $wanted = \array_keys($this->wanted);
+        $wanted = self::paths($this->wanted);
         $this->wanted = [];
         foreach ($wanted as $dir) {
             $this->listed[$dir] = true;
@@ -376,7 +376,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                 $dirs[] = self::parent($relative);
             }
         }
-        $others = \array_keys($this->listed);
+        $others = self::paths($this->listed);
         $count = \count($others);
         for ($i = 0; $i < \min($count, self::POLL_BATCH); ++$i) {
             $dirs[] = $others[($this->pollCursor + $i) % $count];
@@ -662,7 +662,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         }
         foreach ([$this->uploading, $this->sending] as $uploads) {
             foreach ($uploads as $path => $id) {
-                if (null === RemoteIndex::moved($path, $relative, $relative)) {
+                if (null === RemoteIndex::moved((string) $path, $relative, $relative)) {
                     continue;
                 }
                 $this->sealed[$id] = true;
@@ -868,7 +868,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     /** Whether anything unsent is at or under $relative: removing it would lose it. */
     private function holdsUnsent(string $relative): bool
     {
-        return \array_any(\array_keys($this->unsent), static fn (string $path): bool => null !== RemoteIndex::moved($path, $relative, $relative));
+        return \array_any(self::paths($this->unsent), static fn (string $path): bool => null !== RemoteIndex::moved($path, $relative, $relative));
     }
 
     /** The last thing the server refused, or null once it answered yes: the cell says it, so a change is said. */
@@ -1015,17 +1015,31 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     }
 
     /**
+     * The relative paths an array is keyed by, as strings: PHP turns a key of
+     * digits — a top-level `2024/` — into an int, which strict types then
+     * refused where a path was asked for, throwing in the middle of a rename.
+     *
+     * @param array<array-key, mixed> $keyed
+     *
+     * @return list<string>
+     */
+    private static function paths(array $keyed): array
+    {
+        return \array_map(static fn (int|string $key): string => (string) $key, \array_keys($keyed));
+    }
+
+    /**
      * @template T
      *
-     * @param array<string, T> $keys
+     * @param array<array-key, T> $keys keyed by paths, a path of digits an int
      *
-     * @return array<string, T>
+     * @return array<array-key, T>
      */
     private static function movedKeys(array $keys, string $from, string $to): array
     {
         $moved = [];
         foreach ($keys as $key => $value) {
-            $moved[RemoteIndex::moved($key, $from, $to) ?? $key] = $value;
+            $moved[RemoteIndex::moved((string) $key, $from, $to) ?? $key] = $value;
         }
 
         return $moved;

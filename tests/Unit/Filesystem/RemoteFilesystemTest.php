@@ -228,6 +228,28 @@ final class RemoteFilesystemTest extends TestCase
         $this->assertSame(0, $files->pending());
     }
 
+    /**
+     * A folder named by digits — `2024/` at the root of a site — is an int key
+     * to PHP: a rename threw before the server was told, and the poll's
+     * round-robin over the listed folders threw at every turn.
+     */
+    public function testAFolderNamedByDigitsDoesNotStopRenamesOrThePoll(): void
+    {
+        $this->server->write('2024/post.md', "# post\n");
+        $files = $this->files();
+        $files->listed($this->cache->dir);
+        $files->listed($this->cache->path('2024'));
+
+        $files->rename($this->cache->path('README.md'), $this->cache->path('READ.md'));
+        $this->assertFileExists($this->server->path('READ.md'), 'the server was told');
+        $files->rename($this->cache->path('2024'), $this->cache->path('2025'));
+        $this->assertFileExists($this->server->path('2025/post.md'));
+        foreach (\range(1, end: 4) as $turn) {
+            $files->poll();
+        }
+        $this->assertSame(0, $files->pending());
+    }
+
     public function testTheStatusBarIsToldWhenTheCellsCountOrTroubleMoves(): void
     {
         $events = new RecordingEvents();

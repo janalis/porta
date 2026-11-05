@@ -23,7 +23,7 @@ use Symfony\Component\Filesystem\Filesystem;
  */
 final class RemoteIndex
 {
-    /** @var array<string, array{dir: bool, size: int, mtime: int, fetched: bool}>|null null until first asked */
+    /** @var array<array-key, array{dir: bool, size: int, mtime: int, fetched: bool}>|null null until first asked; a path of digits is an int key */
     private ?array $entries = null;
 
     public function __construct(
@@ -68,7 +68,7 @@ final class RemoteIndex
     public function move(string $from, string $to): void
     {
         foreach ($this->entries() as $relative => $entry) {
-            $moved = self::moved($relative, $from, $to);
+            $moved = self::moved((string) $relative, $from, $to); // a folder named `2024` is an int key
             if (null !== $moved) {
                 unset($this->entries[$relative]);
                 $this->entries[$moved] = $entry;
@@ -79,7 +79,7 @@ final class RemoteIndex
     /** $relative, and everything under it, is gone. */
     public function forget(string $relative): void
     {
-        $this->entries = \array_filter($this->entries(), static fn (string $known): bool => null === self::moved($known, $relative, $relative), \ARRAY_FILTER_USE_KEY);
+        $this->entries = \array_filter($this->entries(), static fn (int|string $known): bool => null === self::moved((string) $known, $relative, $relative), \ARRAY_FILTER_USE_KEY);
     }
 
     /** $relative re-rooted from $from to $to, or null when it is not $from or under it. */
@@ -101,7 +101,7 @@ final class RemoteIndex
         JsonFile::write($this->fs, $this->file, $this->entries ?? []);
     }
 
-    /** @return array<string, array{dir: bool, size: int, mtime: int, fetched: bool}> */
+    /** @return array<array-key, array{dir: bool, size: int, mtime: int, fetched: bool}> */
     private function entries(): array
     {
         if (null !== $this->entries) {
@@ -110,7 +110,8 @@ final class RemoteIndex
         $this->entries = [];
         // @mago-expect analysis:mixed-assignment -- a decoded file: each entry is narrowed below
         foreach (JsonFile::read($this->file) ?? [] as $relative => $entry) {
-            if (!\is_string($relative) || !\is_array($entry)) {
+            // A path of digits (`2024/`) decodes as an int key, and is a path all the same.
+            if (!\is_array($entry)) {
                 continue;
             }
             $this->entries[$relative] = [

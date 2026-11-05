@@ -68,8 +68,25 @@ final class RemoteIndexTest extends TestCase
 
         $this->assertSame(['dir' => false, 'size' => 0, 'mtime' => 0, 'fetched' => true], $index->get('a'));
         $this->assertNull($index->get('b'));
-        $this->assertNull($index->get('0'), 'a numeric key is not a path it wrote');
+        $this->assertSame(['dir' => true, 'size' => 0, 'mtime' => 0, 'fetched' => false], $index->get('0'), 'a path of digits is a path: JSON hands it back as an int key');
         $this->assertNull(new RemoteIndex($dir->path('missing.json'))->get('a'));
+    }
+
+    /** A top-level folder named by digits — `2024/` in a site's uploads — moves and is forgotten like any other. */
+    public function testAPathOfDigitsMovesAndIsForgotten(): void
+    {
+        $dir = new TempProject();
+        $index = new RemoteIndex($dir->path('index.json'));
+        $index->directory('2024');
+        $index->file('a.txt', new RemoteStamp(1, 1), fetched: true);
+
+        $index->move('a.txt', 'b.txt');
+        $index->move('2024', '2025');
+        $this->assertNull($index->get('a.txt'));
+        $this->assertNotNull($index->get('b.txt'));
+        $this->assertNotNull($index->get('2025'));
+        $index->forget('2025');
+        $this->assertNull($index->get('2025'));
     }
 
     /** A write before any read keeps what the file already held. */
