@@ -40,7 +40,15 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
 
     private const float ASK_AGAIN = 60.0;
 
-    private ?FtpTransport $transport = null;
+    /**
+     * Every transport handed out, to tell each that a password was kept: the
+     * project's and the presence board's are two, and keeping only the last
+     * told the board while the project waited out its five-minute pause.
+     * Weak, so a closed project's goes with it.
+     *
+     * @var \WeakMap<FtpTransport, true>|null
+     */
+    private ?\WeakMap $transports = null;
 
     public function activate(PluginApi $api): void
     {
@@ -56,7 +64,11 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
         }
         $binary = \trim((string) $this->api?->setting('binary'));
 
-        return $this->transport = new FtpTransport($spec, Credentials::file($home, $spec), '' === $binary ? 'curl' : $binary, fn () => $this->askPassword($spec, $home));
+        $transport = new FtpTransport($spec, Credentials::file($home, $spec), '' === $binary ? 'curl' : $binary, fn () => $this->askPassword($spec, $home));
+        $this->transports ??= new \WeakMap();
+        $this->transports[$transport] = true;
+
+        return $transport;
     }
 
     /** The server refused the login: ask for the password, once, and keep what is given. */
@@ -80,7 +92,9 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
                 }
                 $this->asked = null;
                 $api->flash($api->trans('Password kept — the server is asked again shortly'));
-                $this->transport?->passwordGiven();
+                foreach ($this->transports ?? [] as $transport => $_) {
+                    $transport->passwordGiven();
+                }
             },
             TextEcho::Masked,
         );

@@ -84,8 +84,10 @@ final class FtpPluginTest extends TestCase
         $home = new TempProject();
         \putenv('PORTA_HOME='.$home->dir);
         $spec = new RemoteSpec('ftp', 'example.org', '/site', 'me');
-        $transport = $this->plugin()->remoteTransport($spec);
+        $plugin = $this->plugin();
+        $transport = $plugin->remoteTransport($spec);
         $this->assertInstanceOf(FtpTransport::class, $transport, 'its scheme');
+        $board = $plugin->remoteTransport($spec); // the presence board asks for one of its own, later
         $refused = Probe::get($transport, 'refused');
         $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
         $retried = 0;
@@ -106,7 +108,8 @@ final class FtpPluginTest extends TestCase
 
         $this->assertStringContainsString('password s3cret', (string) \file_get_contents(Credentials::file($home->dir, $spec)));
         $this->assertSame('Password kept — the server is asked again shortly', $this->flashText($this->status));
-        $this->assertSame(1, $retried, 'and it is: now, not after the pause a refused login waits');
+        $this->assertSame(1, $retried, 'and it is: now, not after the pause a refused login waits — the project\'s, though the board\'s was made last');
+        $this->assertInstanceOf(FtpTransport::class, $board);
 
         $refused(); // the kept one was wrong: asked again
         $this->assertTrue(EditorState::promptOpen($this->editor));
