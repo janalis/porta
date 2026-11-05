@@ -295,3 +295,4 @@ its one-line row in [Settled questions](../decisions.md).
 - The gutter's tint is the severity's own colour (2026-10-07)
 - Markdown is parsed by Porta's own CommonMark + GFM parser (2026-10-08)
 - The dependency refresh and mago 1.59, two commits (2026-11-03)
+- Pull diagnostics, and the 2026-09-02 probe re-run (2026-11-05)

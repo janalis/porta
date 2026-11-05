@@ -26,6 +26,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- phpantom's errors and warnings show in the editor: it reports them only
+  when asked (LSP pull diagnostics), and Porta now asks — as a file opens,
+  as it is edited, and when the server says they changed. Its call hierarchy
+  (`Ctrl+Shift+H`) works too.
 - Blame, a review's thread notes and other plugins' notes at the end of a line
   no longer vanish when you jump within the file you are in, such as with
   `Enter` on a search result in it.

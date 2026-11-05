@@ -249,6 +249,9 @@ final class LspClient implements LspClientInterface
                     'relatedInformation' => false,
                     'tagSupport' => ['valueSet' => [DiagnosticTag::Unnecessary->value, DiagnosticTag::Deprecated->value]],
                 ],
+                // Findings asked for, not only published: a server that answers
+                // only when asked (phpantom) otherwise shows none at all.
+                'diagnostic' => ['dynamicRegistration' => false, 'relatedDocumentSupport' => false],
                 'hover' => ['contentFormat' => ['plaintext', 'markdown']],
                 'definition' => ['linkSupport' => false],
                 'references' => ['dynamicRegistration' => false],
@@ -342,6 +345,9 @@ final class LspClient implements LspClientInterface
                 // A file moved in the tree is announced, so a server can move
                 // what names it along ({@see FileMoveFollower}).
                 'fileOperations' => ['willRename' => true],
+                // The server may ask for every open file's findings again
+                // ({@see DiagnosticPull}).
+                'diagnostics' => ['refreshSupport' => true],
                 // Declared only because WorkspaceEditor honours them: a server
                 // told we handle resource operations will send them, and a
                 // client that then drops them half-applies the refactoring.
@@ -515,6 +521,8 @@ final class LspClient implements LspClientInterface
                     'workspace/applyEdit' => [
                         'applied' => null !== $this->applyEditHandler && ($this->applyEditHandler)($message['params']['edit'] ?? []),
                     ],
+                    // Asks for nothing back: the handler, if any, acts on it.
+                    'workspace/diagnostic/refresh' => $this->handOver($message['method'], $message['params'] ?? []),
                     default => null,
                 };
             } catch (\Throwable $error) {
@@ -528,10 +536,19 @@ final class LspClient implements LspClientInterface
         }
 
         // Notification from the server (one without a method returned above).
-        $handler = $this->notificationHandlers[$message['method']] ?? null;
+        $this->handOver($message['method'], $message['params'] ?? []);
+    }
+
+    /** Give $method's params to whoever registered for it, if anyone did. */
+    /** @param array<array-key, mixed> $params */
+    private function handOver(string $method, array $params): null
+    {
+        $handler = $this->notificationHandlers[$method] ?? null;
         if (null !== $handler) {
-            $handler($message['params'] ?? []);
+            $handler($params);
         }
+
+        return null;
     }
 
     /**

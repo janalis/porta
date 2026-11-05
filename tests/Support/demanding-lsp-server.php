@@ -75,11 +75,16 @@ foreach (readFrames($in) as $message) {
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1003, 'method' => 'mock/unknownRequest', 'params' => []]);
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1005, 'method' => 'window/workDoneProgress/create', 'params' => ['token' => 't']]);
         sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1006, 'method' => 'client/registerCapability', 'params' => ['registrations' => []]]);
+        // A request that asks for nothing back but a re-pull of diagnostics.
+        sendMessage($out, ['jsonrpc' => '2.0', 'id' => 1009, 'method' => 'workspace/diagnostic/refresh']);
         continue;
     }
 
     // Client replies to our requests
     if (isset($message['id']) && !isset($message['method'])) {
+        if (1009 === $message['id']) {
+            sendMessage($out, ['jsonrpc' => '2.0', 'method' => 'mock/refreshAnswered', 'params' => ['answered' => \array_key_exists('result', $message)]]);
+        }
         $replies[$message['id']] = $message['result'] ?? null;
         if (3 === count($replies)) {
             sendMessage($out, [

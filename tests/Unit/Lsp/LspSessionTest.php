@@ -561,4 +561,94 @@ final class LspSessionTest extends TestCase
         $sent = \array_column($client->notifications, 'method');
         $this->assertNotContains('textDocument/didChange', $sent, 'a closed buffer sends no didChange');
     }
+
+    /**
+     * A server that answers diagnostics only when asked: each file is asked
+     * about as it opens and changes, and what it says reaches the same sink
+     * a publish does. Closing it clears it.
+     */
+    public function testAPullServerIsAskedAboutEachFileAsItOpensAndChanges(): void
+    {
+        $client = new FakeLspClient(['diagnosticProvider' => ['interFileDependencies' => false]]);
+        $session = $this->session($client);
+        $published = [];
+        $noop = static function (): void {};
+        $session->start(
+            ['fake'],
+            $noop,
+            static function (array $params) use (&$published): void {
+                $published[] = $params;
+            },
+            static fn (array $e): bool => false,
+            $noop,
+        );
+        $pulls = static fn (): array => \array_values(\array_filter($client->requests, static fn (array $r): bool => 'textDocument/diagnostic' === $r['method']));
+
+        $session->notifyDidOpen('/porta-no-such-root/project/a.php', "<?php\n", 'php', 1);
+        $this->assertCount(1, $pulls(), 'asked as it opens');
+        $uri = 'file:///porta-no-such-root/project/a.php';
+        $pulls()[0]['respond'](['kind' => 'full', 'items' => [['message' => 'Class not found']]]);
+        $this->assertSame([['uri' => $uri, 'diagnostics' => [['message' => 'Class not found']]]], $published);
+
+        $session->notifyFullChange('/porta-no-such-root/project/a.php', new Document("<?php\nnew A();\n"));
+        $this->assertCount(2, $pulls(), 'and again as it changes');
+        $session->notifyDidSave('/porta-no-such-root/project/a.php');
+        $this->assertCount(2, $pulls(), 'a save changes no other file\'s findings here');
+
+        $client->notificationHandlers['workspace/diagnostic/refresh']([]);
+        $this->assertCount(3, $pulls(), 'the server asked for every open file again');
+
+        $session->notifyDidClose('/porta-no-such-root/project/a.php');
+        $this->assertSame(['uri' => $uri, 'diagnostics' => []], \end($published), 'closed, it is cleared');
+        $client->notificationHandlers['workspace/diagnostic/refresh']([]);
+        $this->assertCount(3, $pulls(), 'and no longer asked about');
+    }
+
+    public function testWhenFindingsDependOnOtherFilesASaveAsksAboutEveryOpenFile(): void
+    {
+        $client = new FakeLspClient(['diagnosticProvider' => ['interFileDependencies' => true]]);
+        $session = $this->session($client);
+        $this->start($session);
+        $session->notifyDidOpen('/porta-no-such-root/project/a.php', "<?php\n", 'php', 1);
+        $session->notifyDidOpen('/porta-no-such-root/project/b.php', "<?php\n", 'php', 1);
+
+        $session->notifyDidSave('/porta-no-such-root/project/a.php');
+
+        $asked = \array_map(
+            static fn (array $r): mixed => $r['params']['textDocument']['uri'] ?? null,
+            \array_values(\array_filter($client->requests, static fn (array $r): bool => 'textDocument/diagnostic' === $r['method'])),
+        );
+        $this->assertSame(
+            ['file:///porta-no-such-root/project/a.php', 'file:///porta-no-such-root/project/b.php', 'file:///porta-no-such-root/project/a.php', 'file:///porta-no-such-root/project/b.php'],
+            $asked,
+        );
+    }
+
+    public function testAChangeMadeWhileTheServerStartsIsAskedAboutOnceItIsUp(): void
+    {
+        $client = new FakeLspClient(['diagnosticProvider' => []]);
+        $client->deferReady = true;
+        $session = $this->session($client);
+        $this->start($session);
+        $session->notifyFullChange('/porta-no-such-root/project/a.php', new Document("<?php\n"));
+
+        $client->ready();
+
+        $this->assertSame(['textDocument/diagnostic'], \array_column($client->requests, 'method'));
+    }
+
+    public function testAServerThatOnlyPublishesIsNeverAsked(): void
+    {
+        $client = new FakeLspClient(['diagnosticProvider' => true]);
+        $session = $this->session($client);
+        $this->start($session);
+
+        $session->notifyDidOpen('/porta-no-such-root/project/a.php', "<?php\n", 'php', 1);
+        $session->notifyFullChange('/porta-no-such-root/project/a.php', new Document("<?php\n"));
+        $client->notificationHandlers['workspace/diagnostic/refresh']([]);
+        $session->notifyDidSave('/porta-no-such-root/project/a.php');
+        $session->notifyDidClose('/porta-no-such-root/project/a.php');
+
+        $this->assertSame([], $client->requests);
+    }
 }

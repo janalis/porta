@@ -1015,6 +1015,12 @@ which had spoken last. It cannot be fixed by ignoring empty publishes, because
 LSP requires an empty list to mean "I have cleared mine" — only the owner tells
 "nothing to say" from "nothing any more".
 
+**Pulled diagnostics take the same path.** A server advertising
+`diagnosticProvider` is asked (`textDocument/diagnostic`, `Lsp/DiagnosticPull`)
+on each open and synced change, and each `full` answer is handed to the
+session's publish hook as `publishDiagnostics` params, so ownership and the
+dead-server sweep need nothing new. phpantom answers only this way.
+
 Feature controllers extend `Lsp/AbstractLspController`.
 `NavigationController`'s position-bound verbs ride one private scaffold —
 `requestAt` for ready-guard plus position params, `requestForDocument` for

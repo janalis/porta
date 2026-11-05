@@ -50,6 +50,11 @@ final class LspSession
      */
     private ?\Closure $afterSync = null;
 
+    /** @var (\Closure(array<string, mixed>): void)|null where findings go, published or pulled */
+    private ?\Closure $onDiagnostics = null;
+
+    private ?DiagnosticPull $diagnosticPull = null;
+
     /** @var \Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface */
     private readonly \Closure $clientFactory;
 
@@ -100,7 +105,13 @@ final class LspSession
         ?\Closure $onProgress = null,
     ): void {
         $this->client = ($this->clientFactory)($command, $this->rootDir, $onLog, $initializationOptions);
+        $this->onDiagnostics = $onDiagnostics;
         $this->client->onNotification('textDocument/publishDiagnostics', $onDiagnostics);
+        // A request, not a notification — answered for it by the client — but
+        // all it asks is that every open file be asked about again.
+        $this->client->onNotification('workspace/diagnostic/refresh', function (): void {
+            $this->pullOpen();
+        });
         // Many servers log through LSP rather than stderr — same sink.
         $this->client->onNotification('window/logMessage', static function (array $params) use ($onLog): void {
             $onLog(\is_string($params['message'] ?? null) ? $params['message'] : '');
@@ -205,14 +216,17 @@ final class LspSession
     {
         $this->syncedText[$path] = $text; // baseline for incremental didChange
         $uri = Uri::fromPath($path);
-        $this->whenReady(fn () => $this->client?->notify('textDocument/didOpen', [
-            'textDocument' => [
-                'uri' => $uri,
-                'languageId' => $languageId,
-                'version' => $version,
-                'text' => $text,
-            ],
-        ]));
+        $this->whenReady(function () use ($uri, $languageId, $version, $text): void {
+            $this->client?->notify('textDocument/didOpen', [
+                'textDocument' => [
+                    'uri' => $uri,
+                    'languageId' => $languageId,
+                    'version' => $version,
+                    'text' => $text,
+                ],
+            ]);
+            $this->pulled()?->pull($uri);
+        });
     }
 
     /**
@@ -229,10 +243,13 @@ final class LspSession
     public function notifyDidClose(string $path): void
     {
         unset($this->syncedText[$path], $this->beforeReady[$path]);
-        $doc = Uri::textDocument($path);
-        $this->whenReady(fn () => $this->client?->notify('textDocument/didClose', [
-            'textDocument' => $doc,
-        ]));
+        $uri = Uri::fromPath($path);
+        $this->whenReady(function () use ($uri): void {
+            $this->client?->notify('textDocument/didClose', [
+                'textDocument' => ['uri' => $uri],
+            ]);
+            $this->pulled()?->forget($uri);
+        });
     }
 
     /**
@@ -262,9 +279,15 @@ final class LspSession
     public function notifyDidSave(string $path): void
     {
         $doc = Uri::textDocument($path);
-        $this->whenReady(fn () => $this->client?->notify('textDocument/didSave', [
-            'textDocument' => $doc,
-        ]));
+        $this->whenReady(function () use ($doc): void {
+            $this->client?->notify('textDocument/didSave', [
+                'textDocument' => $doc,
+            ]);
+            // What the save changed for the files that use this one.
+            if (true === $this->pulled()?->dependsOnOtherFiles()) {
+                $this->pullOpen();
+            }
+        });
     }
 
     /**
@@ -371,10 +394,13 @@ final class LspSession
         $uri = Uri::fromPath($path);
         if (null === $this->client || $this->isInitialized()) {
             $version = $document->version;
-            $this->whenReady(fn () => $this->client?->notify('textDocument/didChange', [
-                'textDocument' => ['uri' => $uri, 'version' => $version],
-                'contentChanges' => $changes,
-            ]));
+            $this->whenReady(function () use ($uri, $version, $changes): void {
+                $this->client?->notify('textDocument/didChange', [
+                    'textDocument' => ['uri' => $uri, 'version' => $version],
+                    'contentChanges' => $changes,
+                ]);
+                $this->pulled()?->pull($uri);
+            });
 
             return;
         }
@@ -394,6 +420,7 @@ final class LspSession
                     'textDocument' => ['uri' => $uri, 'version' => $change['version']],
                     'contentChanges' => [['text' => $change['text']]],
                 ]);
+                $this->pulled()?->pull($uri);
             }
         });
     }
@@ -420,6 +447,31 @@ final class LspSession
     public function serverCapability(string $name): mixed
     {
         return $this->client?->serverCapabilities[$name] ?? null;
+    }
+
+    /**
+     * Pull diagnostics, when the server answers them — null when it only
+     * publishes, or is not up. Asked only once it is: the capability is
+     * what decides.
+     */
+    private function pulled(): ?DiagnosticPull
+    {
+        // @mago-expect analysis:mixed-assignment -- a decoded capability, narrowed below
+        $provider = $this->serverCapability('diagnosticProvider');
+        if (!\is_array($provider) || null === $this->onDiagnostics) {
+            return null;
+        }
+
+        return $this->diagnosticPull ??= new DiagnosticPull($provider, $this->request(...), $this->onDiagnostics);
+    }
+
+    /** Ask again about every file the server was told is open. */
+    private function pullOpen(): void
+    {
+        $pull = $this->pulled();
+        foreach (\array_keys($this->syncedText) as $path) {
+            $pull?->pull(Uri::fromPath($path));
+        }
     }
 
     /** Whether the language server declared incremental (kind 2) document sync. */

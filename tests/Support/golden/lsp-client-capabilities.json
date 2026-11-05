@@ -27,6 +27,10 @@
                 ]
             }
         },
+        "diagnostic": {
+            "dynamicRegistration": false,
+            "relatedDocumentSupport": false
+        },
         "hover": {
             "contentFormat": [
                 "plaintext",
@@ -151,6 +155,9 @@
         "applyEdit": true,
         "fileOperations": {
             "willRename": true
+        },
+        "diagnostics": {
+            "refreshSupport": true
         },
         "workspaceEdit": {
             "documentChanges": true,

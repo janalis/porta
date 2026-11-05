@@ -445,3 +445,27 @@ option near it, moved 37 files instead.
 `SettingsFormWidgetTest` 89 methods), and mago 1.47 measures the same tree the
 same way: the code moved, not the metric. Measuring under the old binary is
 the only way to tell those apart once the files have changed since the last probe.
+
+## Pull diagnostics, and the 2026-09-02 probe re-run (2026-11-05)
+
+Re-probed both PHP servers against the capability table of 2026-09-02:
+
+| capability | phpantom_lsp 6fb245f | phpactor |
+| --- | --- | --- |
+| `callHierarchyProvider` | ✅ (new) | — |
+| `typeHierarchyProvider` | — | — |
+| `diagnosticProvider` | ✅ `interFileDependencies`, `workspaceDiagnostics` (new) | — |
+
+**Type hierarchy stays dropped**: still no server to ask. **Call hierarchy now
+works with phpantom** with no change here — the feature was gated on the
+capability, which is what the gate was for.
+
+**phpantom answers diagnostics only when asked.** Over raw stdio, a file with
+two undefined names drew no `publishDiagnostics` in 6 s; a
+`textDocument/diagnostic` at 0.5 s after `didOpen` answered both. So Porta,
+which only listened, showed none of phpantom's findings. `Lsp/DiagnosticPull`
+asks on open and on each synced change, every open file on
+`workspace/diagnostic/refresh` and — with `interFileDependencies` — on save,
+and feeds each `full` answer down the publish path, owner and all.
+`workspace/diagnostic` (the whole-project pull) was left out: the Problems
+panel lists open buffers, and nothing else here would read the answer.

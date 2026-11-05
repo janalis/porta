@@ -338,6 +338,27 @@ final class LspClientTest extends TestCase
         $this->assertNull($echoed['unknown'], 'unknown request answered with null result');
     }
 
+    public function testADiagnosticRefreshReachesItsHandlerAndIsAnswered(): void
+    {
+        $client = $this->client('demanding-lsp-server.php');
+        $refreshed = 0;
+        $client->onNotification('workspace/diagnostic/refresh', static function () use (&$refreshed): void {
+            ++$refreshed;
+        });
+        $answered = null;
+        $client->onNotification('mock/refreshAnswered', static function (array $params) use (&$answered): void {
+            $answered = $params['answered'];
+        });
+
+        $client->start(static fn (): null => null);
+
+        $this->await(static function () use (&$answered): bool {
+            return null !== $answered;
+        }, 3.0);
+        $this->assertSame(1, $refreshed, 'the refresh reached its handler');
+        $this->assertTrue($answered, 'and the server was answered, so it does not wait');
+    }
+
     public function testInitializeErrorReportsNotReady(): void
     {
         $client = $this->client('error-lsp-server.php', static function (): void {});
