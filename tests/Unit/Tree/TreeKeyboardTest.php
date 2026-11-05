@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Unit\Tree;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
@@ -172,6 +173,71 @@ final class TreeKeyboardTest extends TestCase
         $this->assertFileExists($this->project->path('b.phpx'));
     }
 
+    /** @return iterable<string, array{string}> */
+    public static function namesThatAreNotAName(): iterable
+    {
+        yield 'up a folder' => ['../Moved.php'];
+        yield 'down a folder' => ['lib/Moved.php'];
+        yield 'the parent' => ['..'];
+        yield 'the folder itself' => ['.'];
+    }
+
+    #[DataProvider('namesThatAreNotAName')]
+    public function testARenameTakesAName(string $name): void
+    {
+        \mkdir($this->project->path('src/lib'));
+        $this->walkTo('src');
+        $this->tui()->handleInput("\x1b[C"); // open it: its files are rows
+        $this->walkTo('src/A.php');
+
+        $this->renameTo($name);
+
+        $this->assertFileExists($this->project->path('src/A.php'), 'still where it was');
+        $this->assertFileDoesNotExist($this->project->path('Moved.php'));
+        $this->assertFileDoesNotExist($this->project->path('src/lib/Moved.php'));
+        $this->assertSame($name.' is not a usable name here', Toasts::last($this->ide));
+    }
+
+    public function testACaseOnlyRenameRenames(): void
+    {
+        if (!\file_exists($this->project->path('B.php'))) {
+            $this->markTestSkipped('a case-sensitive disk has no collision to step around');
+        }
+        $this->walkTo('b.php');
+
+        $this->renameTo('B.php');
+
+        $names = \scandir($this->project->path(''));
+        $this->assertIsArray($names);
+        $this->assertContains('B.php', $names);
+        $this->assertNotContains('b.php', $names);
+        $this->assertSame('Renamed to B.php', Toasts::last($this->ide));
+    }
+
+    public function testNewFileStaysBelowItsFolder(): void
+    {
+        $this->walkTo('src');
+
+        $this->tui()->handleInput(self::ALT_INSERT);
+        $this->type("\r"); // New File…
+        $this->type("../escape.php\r");
+
+        $this->assertFileDoesNotExist($this->project->path('escape.php'));
+        $this->assertSame('../escape.php is not a usable name here', Toasts::last($this->ide));
+    }
+
+    public function testNewFolderOnATakenNameSaysSo(): void
+    {
+        $this->walkTo('a.php');
+
+        $this->tui()->handleInput(self::CTRL_N);
+        $this->tui()->handleInput(self::DOWN);
+        $this->type("\r"); // New Folder…
+        $this->type("src\r");
+
+        $this->assertSame('Cannot create src', Toasts::last($this->ide));
+    }
+
     public function testRenameOrDeleteWithNothingSelectedDoesNothing(): void
     {
         Probe::set($this->tree(), 'visible', []);
@@ -218,6 +284,13 @@ final class TreeKeyboardTest extends TestCase
             $this->tui()->handleInput(self::DOWN);
         }
         $this->assertSame($this->project->path($relative), $this->tree()->selectedNode()?->path, 'the walk reached the row');
+    }
+
+    private function renameTo(string $name): void
+    {
+        $this->tui()->handleInput(self::SHIFT_F6);
+        $this->type(\str_repeat("\x7f", times: 20)); // the prompt starts from the old name
+        $this->type($name."\r");
     }
 
     private function type(string $keys): void

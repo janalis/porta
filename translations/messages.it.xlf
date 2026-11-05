@@ -3622,6 +3622,10 @@
         <source>%plugin% stays on — %file% turns it on</source>
         <target>%plugin% resta attivo — %file% lo attiva</target>
       </trans-unit>
+      <trans-unit id="1235">
+        <source>%name% is not a usable name here</source>
+        <target>%name% non è un nome utilizzabile qui</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

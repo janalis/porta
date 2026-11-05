@@ -258,37 +258,42 @@ final class TreeOperations
 
     private function treeNewFile(FileTreeNode $node): void
     {
-        $dir = $node->folder();
-        $this->promptName($this->translator->trans('New File'), '', function (string $name) use ($dir): void {
-            if ('' === ($name = \trim($name))) {
-                return;
-            }
-            $path = $dir.'/'.$name;
-            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path): void {
-                // `dumpFile()` truncates: a taken name would come back empty.
-                if (\file_exists($path)) {
-                    throw new IOException(\sprintf('%s already exists', $path));
-                }
-                $this->fs->dumpFile($path, '');
-                $this->tree->refresh();
-                $this->bufferService->openFile($path, focus: OpenFocus::Editor);
-                $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->paths->relative($path)]));
-            });
+        $this->createIn($node, $this->translator->trans('New File'), function (string $path): void {
+            $this->fs->dumpFile($path, '');
+            $this->tree->refresh();
+            $this->bufferService->openFile($path, focus: OpenFocus::Editor);
         });
     }
 
     private function treeNewFolder(FileTreeNode $node): void
     {
+        $this->createIn($node, $this->translator->trans('New Folder'), function (string $path): void {
+            $this->fs->mkdir($path);
+            $this->tree->refresh();
+            $this->tui->setFocus($this->tree);
+        });
+    }
+
+    /**
+     * Ask for a name in $node's folder and $make it there — never over what
+     * already holds the name: `dumpFile()` would truncate a file to empty,
+     * and `mkdir()` of a folder that is there succeeds, so "Created" would lie.
+     *
+     * @param \Closure(string): void $make
+     */
+    private function createIn(FileTreeNode $node, string $title, \Closure $make): void
+    {
         $dir = $node->folder();
-        $this->promptName($this->translator->trans('New Folder'), '', function (string $name) use ($dir): void {
-            if ('' === ($name = \trim($name))) {
+        $this->promptName($title, '', function (string $name) use ($dir, $make): void {
+            if ('' === ($name = \trim($name)) || !$this->usable($name, EntryName::isBelow($name))) {
                 return;
             }
             $path = $dir.'/'.$name;
-            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path): void {
-                $this->fs->mkdir($path);
-                $this->tree->refresh();
-                $this->tui->setFocus($this->tree);
+            $this->withFs($this->translator->trans('Cannot create %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $make): void {
+                if (\file_exists($path)) {
+                    throw new IOException(\sprintf('%s already exists', $path));
+                }
+                $make($path);
                 $this->notifier->success($this->translator->trans('Created %file%', ['%file%' => $this->paths->relative($path)]));
             });
         });
@@ -299,14 +304,18 @@ final class TreeOperations
         $old = $node->path;
         $this->promptName($this->translator->trans('Rename'), $node->name, function (string $name) use ($old): void {
             $name = \trim($name);
-            if ('' === $name || \basename($old) === $name) {
+            if ('' === $name || \basename($old) === $name || !$this->usable($name, EntryName::isPlain($name))) {
                 return;
             }
+            $new = \dirname($old).'/'.$name;
             $this->moveInto(
                 $old,
-                \dirname($old).'/'.$name,
+                $new,
                 $this->translator->trans('Cannot rename %file%', ['%file%' => $this->paths->relative($old)]),
                 $this->translator->trans('Renamed to %name%', ['%name%' => $name]),
+                // `a.php` to `A.php` on a case-insensitive disk: the "taken"
+                // name is the file itself, and the rename is all it takes.
+                overwrite: self::sameEntry($old, $new),
             );
         });
     }
@@ -677,6 +686,28 @@ final class TreeOperations
      * the tree, and asking git is how anyone finds out what actually landed.
      * The no-op cases never reach here; they return at their own guard.
      */
+    // @mago-expect lint:no-boolean-flag-parameter -- $usable is the verdict on $name; the method only says it.
+    private function usable(string $name, bool $usable): bool
+    {
+        if (!$usable) {
+            $this->notifier->error($this->translator->trans('%name% is not a usable name here', ['%name%' => $name]));
+        }
+
+        return $usable;
+    }
+
+    /** Two spellings of one entry — only ever a difference of case. */
+    private static function sameEntry(string $old, string $new): bool
+    {
+        if (\strtolower($old) !== \strtolower($new) || !\file_exists($new)) {
+            return false;
+        }
+        $a = \stat($old);
+        $b = \stat($new);
+
+        return false !== $a && false !== $b && $a['dev'] === $b['dev'] && $a['ino'] === $b['ino'];
+    }
+
     private function withFs(string $failMessage, callable $op): void
     {
         try {
