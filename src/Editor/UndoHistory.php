@@ -69,6 +69,19 @@ final class UndoHistory
         ++$this->compoundDepth;
     }
 
+    /**
+     * Begin a group that JOINS the last undo step instead of taking one of its
+     * own — for an edit that finishes the one before it, arriving later (a
+     * completion's import, resolved after the accept). Undone, the two go
+     * together. Closed by endCompound(); a fresh group when there is nothing
+     * to join.
+     */
+    public function beginAmend(): void
+    {
+        $this->beginCompound();
+        $this->compoundSnapshotted = $this->compoundSnapshotted || [] !== $this->undoStack;
+    }
+
     public function endCompound(): void
     {
         if ($this->compoundDepth > 0) {

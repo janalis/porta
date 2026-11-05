@@ -267,7 +267,9 @@ final class CompletionController extends AbstractLspController implements Editor
         // saw the item is at best an error response, and at worst a server
         // acting on an id that means something else to it.
         [$owner, $item] = ServerOwner::take($item);
-        $this->lsp->requestTo($owner, 'completionItem/resolve', $item, function (mixed $result) use ($path, $document): void {
+        // Asked as the item is accepted: the version now is the accept's.
+        $accepted = $document->version;
+        $this->lsp->requestTo($owner, 'completionItem/resolve', $item, function (mixed $result) use ($path, $document, $accepted): void {
             /** @var list<array{range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}, newText: string}> $edits */
             $edits = \is_array($result) ? $result['additionalTextEdits'] ?? [] : [];
             if ([] === $edits) {
@@ -276,7 +278,10 @@ final class CompletionController extends AbstractLspController implements Editor
             // Imports may insert lines above an active snippet; drop the session
             // rather than let its tab stops drift.
             $this->editor->clearSnippetSession();
-            $document->applyEditsKeepingCursor($edits);
+            // Nothing typed since: the import is the accept's, and one undo takes
+            // both. Typed since, it is a step of its own, as the typing is.
+            $apply = static fn () => $document->applyEditsKeepingCursor($edits);
+            $accepted === $document->version ? $document->amendLastStep($apply) : $apply();
             $this->editor->invalidate();
             $this->lsp->notifyFullChange($path, $document);
             $this->tui->requestRender();

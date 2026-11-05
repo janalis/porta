@@ -428,6 +428,30 @@ final class CompletionControllerTest extends TestCase
         $this->assertSame('textDocument/didChange', \end($this->client->notifications)['method'] ?? null, 'the buffer resync notifies the server');
     }
 
+    /** The import the resolve brings is the accept's: one Ctrl+Z takes back both — unless the user typed in between. */
+    public function testADeferredImportUndoesWithTheAcceptItFinishes(): void
+    {
+        $controller = $this->controller();
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$x = new ;\n");
+        $document = $this->editor->getDocument();
+        $import = ['additionalTextEdits' => [['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], 'newText' => "use App\\Foo;\n"]]];
+
+        $document->setCursor(1, 9);
+        $document->insert('Foo'); // the accept
+        $controller->resolveCompletion(['label' => 'Foo']);
+        $this->client->requests[0]['respond']($import);
+        $document->undo();
+        $this->assertSame("<?php\n\$x = new ;\n", $document->getText(), 'the import and the accept, in one step');
+
+        $document->setCursor(1, 9);
+        $document->insert('Foo');
+        $controller->resolveCompletion(['label' => 'Foo']);
+        $document->insert('(');
+        $this->client->requests[1]['respond']($import);
+        $document->undo();
+        $this->assertSame("<?php\n\$x = new Foo(;\n", $document->getText(), 'typed since: the import is a step of its own');
+    }
+
     public function testResolveCompletionDetailAnswersWithTheServersType(): void
     {
         // phpactor's real answer, measured: its completion RESPONSE carries no

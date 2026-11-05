@@ -1530,6 +1530,20 @@ final class Document
     }
 
     /**
+     * Run $fn as part of the last undo step rather than a step of its own:
+     * one Ctrl+Z takes back both ({@see UndoHistory::beginAmend()}).
+     */
+    public function amendLastStep(callable $fn): void
+    {
+        $this->history->beginAmend();
+        try {
+            $fn();
+        } finally {
+            $this->endCompound();
+        }
+    }
+
+    /**
      * Run $fn as a single atomic (compound) edit — every mutation inside it
      * collapses into one undo step, even if $fn throws.
      */
