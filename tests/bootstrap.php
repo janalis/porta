@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Porta\Support\Files;
 use Porta\Tests\Support\LoopErrors;
 use Revolt\EventLoop;
+use Symfony\Component\Filesystem\Filesystem;
 
 require __DIR__.'/../vendor/autoload.php';
 
@@ -52,6 +54,19 @@ file_put_contents(__DIR__.'/Support/fixtures/home/.porta/tool-updates.json', jso
 $portaTrustedFolders = (string) realpath(sys_get_temp_dir());
 define('PORTA_TEST_TRUSTED_FOLDERS', $portaTrustedFolders);
 putenv('PORTA_TRUSTED_FOLDERS='.$portaTrustedFolders);
+
+// The mcp plugin is bundled with `claudeCode` on, so every booted Ide that
+// enables it writes a lock file where the claude CLI looks for editors — the
+// developer's real ~/.claude/ide, where a live Claude Code would see the
+// suite's IDEs, and where a test that reads the folder raced the real
+// sessions' locks. Each worker gets its own, made here and removed at exit.
+$claudeConfigDir = sys_get_temp_dir().'/porta-test-claude-'.bin2hex(random_bytes(6));
+Files::ensureDir($claudeConfigDir.'/ide', permissions: 0o700);
+putenv('CLAUDE_CONFIG_DIR='.$claudeConfigDir);
+$_ENV['CLAUDE_CONFIG_DIR'] = $claudeConfigDir;
+register_shutdown_function(static function () use ($claudeConfigDir): void {
+    new Filesystem()->remove($claudeConfigDir);
+});
 
 // Every Ide boot in the suite shares one container dump here instead of each
 // recompiling (~124 ms) or touching the developer's real ~/.cache/porta.
