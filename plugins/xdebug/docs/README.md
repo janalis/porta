@@ -37,3 +37,6 @@ over this plugin's.
 | --- | --- | --- |
 | php-debug adapter script | empty | The adapter's `phpDebug.js`; empty finds it as above |
 | node binary | `node` | What runs the adapter |
+
+Both name a program the debugger runs, so a project you have not trusted
+cannot set them in its own `.porta.json`: only your own configuration can.

@@ -23,9 +23,13 @@ use Porta\Xdebug\AdapterSetup;
 return new class('xdebug') extends AbstractPlugin {
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('adapter', 'php-debug adapter script', 'text', '', hint: 'empty = installed here, then the php-debug of VS Code, Cursor or VSCodium');
-        $api->registerSetting('node', 'node binary', 'text', 'node', hint: 'runs the adapter');
-        $locate = static fn (): AdapterLocator => new AdapterLocator(PortaHome::base(), PortaHome::expand((string) $api->setting('adapter')));
+        // Named …Path and …Binary on purpose: both name a program the debugger
+        // runs, and WorkspaceTrust drops settings so named from a restricted
+        // project's own .porta.json — a project the user has not trusted
+        // must not choose what runs.
+        $api->registerSetting('adapterPath', 'php-debug adapter script', 'text', '', hint: 'empty = installed here, then the php-debug of VS Code, Cursor or VSCodium');
+        $api->registerSetting('nodeBinary', 'node binary', 'text', 'node', hint: 'runs the adapter');
+        $locate = static fn (): AdapterLocator => new AdapterLocator(PortaHome::base(), PortaHome::expand((string) $api->setting('adapterPath')));
         $setup = new AdapterSetup(
             $api,
             $locate,
@@ -35,7 +39,7 @@ return new class('xdebug') extends AbstractPlugin {
         $api->registerDebugAdapter('php', static function () use ($api, $locate): ?array {
             $script = $locate()->script();
 
-            return null === $script ? null : [(string) $api->setting('node'), $script];
+            return null === $script ? null : [(string) $api->setting('nodeBinary'), $script];
         });
         $api->registerCommand('install', 'Xdebug: Install the php-debug Adapter', $setup->install(...));
         $api->registerInstaller('php-debug', static fn (): bool => null !== $locate()->script(), [[PluginApi::INSTALL_SELF, 'install']], static fn (): string => $locate()->describe());

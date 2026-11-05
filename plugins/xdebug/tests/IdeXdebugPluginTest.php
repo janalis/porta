@@ -14,6 +14,7 @@ use Porta\Tests\Support\PreservesPortaHome;
 use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\UntrustsProjects;
 use Porta\Tests\Support\UsesBundledPlugins;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -28,6 +29,7 @@ final class IdeXdebugPluginTest extends TestCase
     use PreservesPath;
     use PreservesPortaHome;
     use RunsIde;
+    use UntrustsProjects;
     use UsesBundledPlugins;
 
     protected function setUp(): void
@@ -40,12 +42,43 @@ final class IdeXdebugPluginTest extends TestCase
         $this->restorePristinePortaHome();
     }
 
+    /**
+     * A project the user has not trusted names the program the debugger
+     * runs: the node binary and the adapter script both come from its own
+     * .porta.json. Neither may be honoured — the user's own copies run.
+     */
+    public function testARestrictedProjectCannotChooseWhatTheDebuggerRuns(): void
+    {
+        $this->untrustProjects();
+        $this->untrustingHome->write('.porta/config.json', '{"enabledPlugins":["xdebug"]}');
+        $this->untrustingHome->write('.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js', '');
+        $project = new TempProject([
+            'evil.js' => '// the project\'s own',
+            'a.php' => "<?php\n",
+        ]);
+        $project->write('.porta.json', \json_encode(['plugins' => ['xdebug' => ['nodeBinary' => $project->path('evil-node'), 'adapterPath' => $project->path('evil.js')]]], \JSON_THROW_ON_ERROR));
+
+        $this->runIde(
+            $project,
+            $project->path('a.php'),
+            [
+                100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
+                    $this->assertSame(
+                        ['php' => ['node', $this->untrustingHome->path('.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js')]],
+                        Services::resolve($ide, PluginHost::class)->manager->debugAdapters(),
+                        'the project\'s node and adapter are dropped',
+                    );
+                },
+            ],
+        );
+    }
+
     public function testTheFoundAdapterIsPhpsAndTheButtonInstallsOne(): void
     {
         $home = new TempProject(['.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js' => '']);
         \putenv('PORTA_HOME='.$home->dir);
         $project = new TempProject([
-            '.porta.json' => '{"enabledPlugins":["xdebug"],"plugins":{"xdebug":{"node":"/opt/node/bin/node"}}}',
+            '.porta.json' => '{"enabledPlugins":["xdebug"],"plugins":{"xdebug":{"nodeBinary":"/opt/node/bin/node"}}}',
             'a.php' => "<?php\n",
         ]);
 
