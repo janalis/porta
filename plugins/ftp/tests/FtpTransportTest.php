@@ -92,6 +92,21 @@ final class FtpTransportTest extends TestCase
         $this->assertEquals($this->stampOf($this->server, 'deep/er/Found.php'), $byPath['deep/er/Found.php']->stamp);
     }
 
+    /** A folder the server will not open is passed over; the rest of the tree stands. */
+    public function testAWalkPassesOverAFolderTheServerWillNotOpen(): void
+    {
+        if (!$this->server->lock('mysql-data')) {
+            $this->markTestSkipped('this user reads every directory');
+        }
+
+        $entries = $this->answer(fn (\Closure $done): bool => $this->transport->walk('', [], $done));
+
+        $this->assertIsArray($entries, 'not refused');
+        $names = \array_map(static fn (RemoteEntry $entry): string => $entry->name, $entries);
+        $this->assertContains('src/App.php', $names);
+        $this->assertContains('mysql-data', $names, 'listed by its parent; only its own listing was refused');
+    }
+
     public function testAWalkThatCannotListSaysWhy(): void
     {
         $this->assertIsString($this->answer(fn (\Closure $done): bool => $this->transport->walk('nope', [], $done)));

@@ -118,7 +118,7 @@ if ($opt['upload']) {
     clearstatcache();
     $out = 'Last-Modified: '.gmdate('D, d M Y H:i:s', (int) filemtime($path))." GMT\r\nContent-Length: ".filesize($path)."\r\nAccept-ranges: bytes\r\n";
 } elseif ($isDir) {
-    is_dir($path) || fail(9, 'Server denied you to change to the given directory');
+    (is_dir($path) && is_readable($path)) || fail(9, 'Server denied you to change to the given directory');
     if ($opt['mlsd']) {
         $out = "type=cdir;modify=20240101000000; .\r\ntype=pdir;modify=20240101000000; ..\r\n";
         foreach (array_diff(scandir($path), ['.', '..']) as $name) {

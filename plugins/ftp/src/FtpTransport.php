@@ -35,6 +35,9 @@ final class FtpTransport extends CommandTransport
     /** What curl answers when the server refuses the login. */
     private const int LOGIN_DENIED = 67;
 
+    /** curl's "the server denied you that directory": a folder you may not enter, not a link gone wrong. */
+    private const int DIRECTORY_DENIED = 9;
+
     /** What curl answers when the file is not there: could not RETR it, or not found. */
     private const array GONE = [19, 78];
 
@@ -161,13 +164,22 @@ final class FtpTransport extends CommandTransport
 
             return;
         }
-        $this->list(self::join($root, $dir), function (array|string $entries) use ($pending, $root, $skip, $found, $dir, $done): void {
-            if (\is_string($entries)) {
-                $done($entries);
+        $this->curl(['-X', 'MLSD'], $this->directoryUrl(self::join($root, $dir)), function (int $code, string $out, string $err) use ($pending, $root, $skip, $found, $dir, $done): void {
+            // A folder below the root the server will not open — another
+            // user's — is passed over, as find passes it over on ssh: aborting
+            // there threw the whole tree away for the session. Anything else
+            // (the link, the root itself) still fails the walk.
+            if (self::DIRECTORY_DENIED === $code && '' !== $dir) {
+                $this->walkFrom($pending, $root, $skip, $found, $done);
 
                 return;
             }
-            foreach (self::listed($entries) as $entry) {
+            if (0 !== $code) {
+                $done(self::failure($code, $err));
+
+                return;
+            }
+            foreach (self::listed(self::entries($out)) as $entry) {
                 if ($entry->isDir && \in_array($entry->name, $skip, strict: true)) {
                     continue;
                 }
