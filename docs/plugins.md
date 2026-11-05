@@ -548,7 +548,7 @@ use Porta\Plugin\Api\PortaPlugin;
 return new class implements PortaPlugin {
     public function name(): string
     {
-        return 'hello'; // /^[a-z0-9][a-z0-9_-]*$/i
+        return 'hello'; // for messages; the plugin's identity is its folder's name
     }
 
     public function activate(PluginApi $api): void

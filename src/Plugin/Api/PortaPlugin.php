@@ -16,7 +16,12 @@ namespace Porta\Plugin\Api;
  */
 interface PortaPlugin
 {
-    /** Stable identifier (/^[a-z0-9][a-z0-9_-]*$/i) — also the keymap namespace (`<name>:<command>`). */
+    /**
+     * The plugin's name for people — in messages and tool labels. Its
+     * IDENTITY is its folder's name: that is what `enabledPlugins`, `requires`,
+     * `plugins.<name>.*` and the keymap namespace (`<folder>:<command>`) use.
+     * Return the folder's name here unless there is a reason not to.
+     */
     public function name(): string;
 
     /** Register commands, keybindings, menu items and event hooks. Called once at boot. */

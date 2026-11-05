@@ -288,7 +288,11 @@ final readonly class PluginLoader
             if (!$plugin instanceof PortaPlugin) {
                 throw new PluginException('porta.php must return a PortaPlugin instance');
             }
-            $name = $plugin->name();
+            // Its FOLDER names it, whatever name() says: disable, removal, its
+            // Settings page, `requires` and the config files all key on the
+            // folder, and a plugin registered under a different name() was
+            // one none of them could find — disabled, it ran on until restart.
+            $name = \basename($manifest->directory);
             if (1 !== \preg_match(self::NAME_PATTERN, $name)) {
                 throw new PluginException(\sprintf('invalid plugin name "%s" (expected /^[a-z0-9][a-z0-9_-]*$/i)', $name));
             }

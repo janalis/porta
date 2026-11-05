@@ -11,6 +11,7 @@ use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Tests\Support\PreservesPortaHome;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestPluginRuntime;
 use Porta\Tests\Support\TestTui;
@@ -284,23 +285,43 @@ final class PluginLoaderTest extends TestCase
         $this->assertTrue($manager->hasPlugin('typo'), 'the plugin still loads on the defaults');
     }
 
+    /**
+     * A plugin is named by its folder, whatever name() returns: an installed
+     * `acme/porta-lint` lands in `lint` and may call itself `acme-lint`, and
+     * registered under that it was one disable, removal, its Settings page and
+     * `requires` — which all key on the folder — could never find.
+     */
+    public function testAPluginIsNamedByItsFolderWhateverItsNameSays(): void
+    {
+        $project = new TempProject(['.porta/plugins/lint/porta.php' => $this->pluginSource('acme-lint')]);
+
+        $manager = $this->load($project);
+
+        $this->assertTrue($manager->hasPlugin('lint'));
+        $this->assertFalse($manager->hasPlugin('acme-lint'));
+        $this->assertSame(['lint:hello' => ['f8']], $manager->defaultKeys, 'its keymap namespace is the folder too');
+    }
+
     public function testFailuresAreContainedPerPluginAndSiblingsStillLoad(): void
     {
         $project = new TempProject([
             '.porta/plugins/a-parse-error/porta.php' => '<?php this is not php at all {{{',
             '.porta/plugins/b-wrong-return/porta.php' => '<?php return 42;',
-            '.porta/plugins/c-bad-name/porta.php' => $this->badNameSource(),
+            '.porta/plugins/c bad name/porta.php' => $this->pluginSource('fine'),
             '.porta/plugins/d-activate-throws/porta.php' => $this->pluginSource('thrower', 'throw new \RuntimeException("mid-activate");'),
             '.porta/plugins/e-action-during-activate/porta.php' => $this->pluginSource('eager', '$api->flash("too soon");'),
-            '.porta/plugins/f-good/porta.php' => $this->pluginSource('good'),
-            '.porta/plugins/g-duplicate/porta.php' => $this->pluginSource('good'),
+            '.porta/plugins/good/porta.php' => $this->pluginSource('good'),
         ]);
         $manager = $this->load($project);
+        // The same plugin loaded twice — an install over a name already running.
+        $duplicate = new PluginLoader($project->dir, null, new PluginSettings($project->dir, []))->loadFile($project->path('.porta/plugins/good/porta.php'), $manager);
+        $this->assertInstanceOf(ConfigWarning::class, $duplicate);
+        $manager->addWarning($duplicate);
 
         $warnings = self::renderAll($manager->warnings);
         $this->assertStringContainsString('Plugin "a-parse-error" failed to load', $warnings);
         $this->assertStringContainsString('Plugin "b-wrong-return" failed to load: porta.php must return a PortaPlugin instance', $warnings);
-        $this->assertStringContainsString('invalid plugin name "bad:name"', $warnings);
+        $this->assertStringContainsString('invalid plugin name "c bad name"', $warnings, 'the FOLDER is the name, and it is checked');
         $this->assertStringContainsString('Plugin "d-activate-throws" failed to load: mid-activate', $warnings);
         $this->assertStringContainsString('unavailable during activate()', $warnings);
         $this->assertStringContainsString('duplicate plugin name "good"', $warnings);
@@ -395,10 +416,12 @@ final class PluginLoaderTest extends TestCase
         // Bundled plugins are off by default; only 'own' is opted into enabledPlugins.
         new PluginLoader($project->dir, $global->dir, new PluginSettings($project->dir, []), $embedded->dir, [], ['own'])->loadInto($manager);
 
-        $this->assertTrue($manager->hasPlugin('demo'), 'the project copy loads (and shadowed the embedded one)');
-        $this->assertFalse($manager->hasPlugin('embeddeddemo'));
-        $this->assertTrue($manager->hasPlugin('globalextra'), 'the global copy loads (and shadowed the embedded one)');
-        $this->assertFalse($manager->hasPlugin('embeddedextra'));
+        // Each is named by its folder; which COPY won shows in what it registered.
+        $labels = \array_column(Probe::get($manager, 'commands'), 'label', 'id');
+        $this->assertSame('Hello from demo', $labels['hello'] ?? $labels['demo:hello'] ?? null, 'the project copy loads (and shadowed the embedded one)');
+        $this->assertTrue($manager->hasPlugin('extra'));
+        $this->assertContains('Hello from globalextra', $labels, 'the global copy loads (and shadowed the embedded one)');
+        $this->assertNotContains('Hello from embeddedextra', $labels);
         $this->assertTrue($manager->hasPlugin('own'), 'the opted-in embedded plugin loads');
     }
 
@@ -417,20 +440,6 @@ final class PluginLoaderTest extends TestCase
         $on = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         new PluginLoader($project->dir, null, new PluginSettings($project->dir, []), $embedded->dir, [], ['bundled'])->loadInto($on);
         $this->assertTrue($on->hasPlugin('bundled'), 'enabledPlugins opts it in');
-    }
-
-    private function badNameSource(): string
-    {
-        return <<<'PHP'
-            <?php
-            use Porta\Plugin\Api\PluginApi;
-            use Porta\Plugin\Api\PortaPlugin;
-
-            return new class implements PortaPlugin {
-                public function name(): string { return 'bad:name'; }
-                public function activate(PluginApi $api): void {}
-            };
-            PHP;
     }
 
     public function testAPluginThatHasNotInstalledItsDependenciesIsDeclinedByName(): void
