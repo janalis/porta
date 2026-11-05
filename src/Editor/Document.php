@@ -486,20 +486,7 @@ final class Document
      */
     public function wordRangeAt(int $line, int $col): ?array
     {
-        $text = $this->lines[$line] ?? '';
-        $len = \strlen($text);
-        $col = IntMath::clamp($col, 0, $len);
-
-        // Matched as UTF-8, so `\w` is a letter of any script: byte by byte,
-        // double-clicking `$café` selected `$caf`, and `名前` nothing.
-        $before = [];
-        $after = [];
-        \preg_match('/[\w$]*$/u', \substr($text, offset: 0, length: $col), $before);
-        \preg_match('/^[\w$]*/u', \substr($text, $col), $after);
-        $start = $col - \strlen($before[0] ?? '');
-        $end = $col + \strlen($after[0] ?? '');
-
-        return $end > $start ? ['startCol' => $start, 'endCol' => $end] : null;
+        return WordRange::at($this->lines[$line] ?? '', $col);
     }
 
     public function deleteSelection(): bool

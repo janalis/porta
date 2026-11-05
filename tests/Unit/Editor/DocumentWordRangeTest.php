@@ -34,6 +34,14 @@ final class DocumentWordRangeTest extends TestCase
         $this->assertSame(['startCol' => 13, 'endCol' => 19], $doc->wordRangeAt(0, 16), 'from the middle of a CJK word, at a character boundary');
     }
 
+    /** A line that is not UTF-8 — a Latin-1 file — still has its ASCII words. */
+    public function testALineThatIsNotUtf8StillHasItsWords(): void
+    {
+        $doc = new Document("\$nom = 'caf\xE9';");
+
+        $this->assertSame(['startCol' => 0, 'endCol' => 4], $doc->wordRangeAt(0, 2));
+    }
+
     public function testOnWhitespaceIsNull(): void
     {
         $doc = new Document('  foo');
