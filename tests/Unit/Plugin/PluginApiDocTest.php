@@ -31,7 +31,8 @@ final class PluginApiDocTest extends TestCase
      * Methods that are public because the RUNTIME calls them, not a plugin.
      *
      * `contributions()` and the `buffered*` family are how the loader drains
-     * what `activate()` registered; `pluginName()` is how it labels the result. They sit under
+     * what `activate()` registered; `pluginName()` is how it labels the result, and
+     * `retractPublished()` how it takes back what the plugin put on screen. They sit under
      * PluginApi's own "Loader/manager plumbing" banner, and documenting them
      * would invite a plugin to call them.
      *
@@ -39,7 +40,7 @@ final class PluginApiDocTest extends TestCase
      */
     private static function plumbing(): array
     {
-        $internal = ['contributions', 'pluginName'];
+        $internal = ['contributions', 'pluginName', 'retractPublished'];
         foreach (\get_class_methods(PluginApi::class) as $method) {
             if (!\str_starts_with($method, 'buffered')) {
                 continue;
@@ -88,6 +89,7 @@ final class PluginApiDocTest extends TestCase
                 'bufferedSettings',
                 'contributions',
                 'pluginName',
+                'retractPublished',
             ],
             self::plumbing(),
             'the loader surface changed: a new extension point belongs on PluginContributions, anything else needs documenting instead',

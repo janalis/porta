@@ -215,6 +215,23 @@ final class PluginManagerTest extends TestCase
         $this->assertSame(2, $announced, 'a plugin with no tools leaving changes nothing');
     }
 
+    /** Deactivated, a plugin's annotations leave the editor with it — another plugin's stay. */
+    public function testDeactivateTakesBackWhatThePluginPutOnScreen(): void
+    {
+        $manager = $this->wiredManager(new EventDispatcher());
+        $editor = Probe::get(Probe::get($manager, 'runtime'), 'editor');
+        $blame = $manager->api('blame', '/p', new PluginSettings('/p', []));
+        $manager->commit($blame);
+        $other = $manager->api('other', '/p', new PluginSettings('/p', []));
+        $manager->commit($other);
+        $blame->setLineAnnotations([0 => 'pierre, 2 days ago']);
+        $other->setLineAnnotations([1 => 'kept']);
+
+        $manager->deactivate('blame', new CommandRegistry());
+
+        $this->assertSame([1 => 'kept'], $editor->decorations->lineAnnotations);
+    }
+
     public function testADisposablePluginIsTornDownExactlyOnceOnDeactivate(): void
     {
         $settings = new PluginSettings('/p', []);

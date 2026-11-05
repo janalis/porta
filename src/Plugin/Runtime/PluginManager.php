@@ -124,6 +124,9 @@ final class PluginManager implements
      * @var array<string, PortaPlugin>
      */
     private array $instances = [];
+
+    /** @var array<string, PluginApi> committed plugin => its API, to take back what it published */
+    private array $apis = [];
     /**
      * The WRAPPED listeners each plugin registered, so deactivate() can hand
      * the same instances back to removeListener().
@@ -201,6 +204,7 @@ final class PluginManager implements
     {
         $name = $api->pluginName();
         $this->names[$name] = true;
+        $this->apis[$name] = $api;
         if (null !== $plugin) {
             $this->instances[$name] = $plugin;
         }
@@ -362,6 +366,15 @@ final class PluginManager implements
             } catch (\Throwable $error) {
                 $this->reportFailure($name, $error);
             }
+        }
+        // What it put on screen goes too: its findings, marks, statuses and
+        // annotations stayed, frozen, until each buffer was closed.
+        $api = $this->apis[$name] ?? null;
+        unset($this->apis[$name]);
+        try {
+            $api?->retractPublished();
+        } catch (\Throwable $error) {
+            $this->reportFailure($name, $error);
         }
 
         $removed = [];

@@ -117,6 +117,9 @@ final class PluginApi
     /** Where this plugin's tools are found — shared with Settings, so the two agree. */
     private readonly ToolLocator $locator;
 
+    /** What this plugin has put on screen, for {@see retractPublished()}. */
+    private readonly PublishedLayers $published;
+
     /**
      * Built by {@see PluginManager::api()}, which hands over the three things
      * the API asks of it as closures — so the API names no manager, and the
@@ -142,6 +145,7 @@ final class PluginApi
     ) {
         $this->locator = $locator ?? ToolLocator::forProject($rootDir, $settings);
         $this->contributions = new PluginContributions();
+        $this->published = new PublishedLayers();
     }
 
     /**
@@ -1624,6 +1628,7 @@ final class PluginApi
         // Owned by the plugin, so a save-time analyser and a keystroke-time
         // language server stop wiping each other's findings for the file.
         $runtime->diagnostics->applyDiagnostics(Uri::fromPath($path), $byLine, $this->pluginName);
+        $this->published->record(PublishedLayer::Diagnostics, $path);
         $runtime->tui->requestRender();
     }
 
@@ -1724,6 +1729,7 @@ final class PluginApi
             $known[\max(0, $line)] = $parsed;
         }
         $runtime->changeMarks->applyChangeMarks($path, $known);
+        $this->published->record(PublishedLayer::ChangeMarks, $path);
     }
 
     /**
@@ -1753,6 +1759,7 @@ final class PluginApi
             $known[$path] = $parsed;
         }
         $runtime->fileStatuses->applyFileStatuses($known);
+        $this->published->record(PublishedLayer::FileStatuses);
     }
 
     /**
@@ -1772,6 +1779,7 @@ final class PluginApi
     {
         $runtime = ($this->runtime)();
         $runtime->editorView->setVcsGutter($on);
+        $this->published->record(PublishedLayer::ChangeGutter);
         $runtime->tui->requestRender();
     }
 
@@ -1796,6 +1804,7 @@ final class PluginApi
             $known[\max(0, $line)] = $summary;
         }
         $runtime->changeMarks->applyCommentMarks($path, $known, $this->pluginName);
+        $this->published->record(PublishedLayer::CommentMarks, $path);
     }
 
     /**
@@ -1818,6 +1827,7 @@ final class PluginApi
             $marks[\max(0, $line)] = $covered ? CoverageMark::Covered : CoverageMark::Uncovered;
         }
         $runtime->changeMarks->applyCoverage($path, $marks);
+        $this->published->record(PublishedLayer::Coverage, $path);
     }
 
     /**
@@ -1838,6 +1848,7 @@ final class PluginApi
     {
         $runtime = ($this->runtime)();
         $runtime->annotations->setLineAnnotations($byLine, $this->pluginName);
+        $this->published->record(PublishedLayer::LineAnnotations);
         $runtime->tui->requestRender();
     }
 
@@ -1857,10 +1868,32 @@ final class PluginApi
     {
         $runtime = ($this->runtime)();
         $runtime->annotations->setLineBlocks($byLine, $this->pluginName);
+        $this->published->record(PublishedLayer::LineBlocks);
         $runtime->tui->requestRender();
     }
 
     // --- Loader/manager plumbing ---------------------------------------------
+
+    /**
+     * Take back everything this plugin put on screen — it is being switched
+     * off. Each layer is cleared the way the plugin itself would clear it.
+     */
+    public function retractPublished(): void
+    {
+        $this->published->retract(function (PublishedLayer $layer, string $path): void {
+            match ($layer) {
+                PublishedLayer::Diagnostics => $this->setDiagnostics($path, []),
+                PublishedLayer::ChangeMarks => $this->setChangeMarks($path, []),
+                PublishedLayer::CommentMarks => $this->setCommentMarks($path, []),
+                PublishedLayer::Coverage => $this->setCoverage($path, []),
+                PublishedLayer::FileStatuses => $this->setFileStatuses([]),
+                PublishedLayer::ChangeGutter => $this->showChangeMarkGutter(false),
+                PublishedLayer::LineAnnotations => $this->setLineAnnotations([]),
+                PublishedLayer::LineBlocks => $this->setLineBlocks([]),
+            };
+        });
+        $this->published->retract(static function (): void {}); // what clearing just recorded
+    }
 
     public function pluginName(): string
     {

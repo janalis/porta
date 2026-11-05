@@ -1174,6 +1174,32 @@ final class PluginApiTest extends TestCase
         $this->assertSame([], $this->diagnostics->published[1]['byLine']);
     }
 
+    /**
+     * Switched off, a plugin takes back what it put on screen — each layer
+     * cleared once, as the plugin itself would clear it — where its findings
+     * and annotations used to stay, frozen, until each buffer closed.
+     */
+    public function testWhatAPluginPublishedIsTakenBackWhenItIsSwitchedOff(): void
+    {
+        $api = $this->api();
+        $api->setDiagnostics('/p/a.php', [['line' => 0, 'message' => 'boom']]);
+        $api->setDiagnostics('/p/b.php', [['line' => 1, 'message' => 'bang']]);
+        $api->setLineAnnotations([0 => 'blame']);
+
+        $api->retractPublished();
+
+        $cleared = \array_slice($this->diagnostics->published, offset: 2);
+        $this->assertSame(
+            [['file:///p/a.php', []], ['file:///p/b.php', []]],
+            \array_map(static fn (array $sent): array => [$sent['uri'], $sent['byLine']], $cleared),
+            'each file it spoke about, cleared',
+        );
+        $this->assertSame([], $this->editor->decorations->lineAnnotations);
+
+        $api->retractPublished();
+        $this->assertCount(4, $this->diagnostics->published, 'once: clearing records nothing to take back again');
+    }
+
     public function testTheRULEThatFiredTravelsAsItsOwnFieldOrNotAtAll(): void
     {
         // Its own field so the Problems panel can put it at the END of the row.
