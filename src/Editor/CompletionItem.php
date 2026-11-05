@@ -28,6 +28,15 @@ final readonly class CompletionItem
         public string $documentation = '',
         /** The server marked it deprecated: drawn struck through, still offered. */
         public bool $deprecated = false,
+        /**
+         * Where the server's textEdit starts (UTF-16, as sent), when it gave
+         * one: the text from there to the caret is what the item replaces —
+         * not only the word before the caret, which stops at `-`, `\`, `@` or
+         * `.`, and left `background-` in front of `background-color`.
+         *
+         * @var array{line: int, character: int}|null
+         */
+        public ?array $replaceFrom = null,
     ) {}
 
     /**

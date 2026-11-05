@@ -377,6 +377,9 @@ final class EditorCompletion
         /** @var list<array{newText: string, range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}}> $additional */
         $additional = $item->additionalTextEdits;
 
+        // Read before the imports move the caret down: the server's range is
+        // on the line it was asked about.
+        $replaced = $this->replaced($doc, $item);
         $doc->beginCompound();
         // Apply inline auto-imports first so the caret (and any snippet stops
         // computed below) sit at their final line.
@@ -384,9 +387,7 @@ final class EditorCompletion
             $doc->applyEditsKeepingCursor($additional);
         }
 
-        $prefix = $doc->getWordBeforeCursor();
-
-        $this->expandOrInsert($doc, $item, $item->snippet, $prefix);
+        $this->expandOrInsert($doc, $item, $item->snippet, $replaced);
 
         ($this->notifyChange)();
 
@@ -395,6 +396,20 @@ final class EditorCompletion
         if ([] === $additional && [] !== $item->raw) {
             ($this->resolveCompletion)($item->raw);
         }
+    }
+
+    /**
+     * The text before the caret the item replaces: from the server's textEdit
+     * start when it is on this line and not past the caret, else the word.
+     */
+    private function replaced(Document $doc, CompletionItem $item): string
+    {
+        $from = $item->replaceFrom;
+        $start = null !== $from && $from['line'] === $doc->cursorLine ? $doc->utf16ColToByteCol($doc->cursorLine, $from['character']) : null;
+
+        return null !== $start && $start <= $doc->cursorCol
+            ? \substr($doc->getLine($doc->cursorLine), $start, $doc->cursorCol - $start)
+            : $doc->getWordBeforeCursor();
     }
 
     /**

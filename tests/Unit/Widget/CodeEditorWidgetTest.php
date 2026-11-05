@@ -542,6 +542,26 @@ final class CodeEditorWidgetTest extends TestCase
         $this->assertStringNotContainsString('use function str_replace;', $doc->getText());
     }
 
+    /** The item replaces what its textEdit range covers, not only the word before the caret, which stops at `-`. */
+    public function testACompletionReplacesFromWhereItsTextEditStarts(): void
+    {
+        $editor = $this->editor();
+        $doc = $editor->getDocument();
+        $doc->setCursor(2, 0);
+        $doc->insert('a { background-co');
+
+        $editor->showCompletions([new CompletionItem(
+            label: 'background-color',
+            insertText: 'background-color',
+            kind: 'property',
+            detail: '',
+            replaceFrom: ['line' => 2, 'character' => 4],
+        )]);
+        $editor->handleInput("\r");
+
+        $this->assertStringStartsWith('a { background-color', $doc->getLine(2), 'not a { background-background-color');
+    }
+
     public function testCompletionWithoutInlineEditsRequestsResolve(): void
     {
         $editor = $this->editor();

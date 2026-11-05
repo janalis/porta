@@ -658,6 +658,27 @@ final class LspMapperTest extends TestCase
         $this->assertSame('', $items[0]->documentation);
     }
 
+    public function testACompletionsTextEditStartIsKeptForTheAccept(): void
+    {
+        $items = LspMapper::mapCompletionItems([
+            ['label' => 'a', 'sortText' => '1', 'textEdit' => ['range' => ['start' => ['line' => 2, 'character' => 4], 'end' => ['line' => 2, 'character' => 17]], 'newText' => 'background-color']],
+            [
+                'label' => 'b',
+                'sortText' => '2',
+                'textEdit' => [
+                    'insert' => ['start' => ['line' => 0, 'character' => 1], 'end' => ['line' => 0, 'character' => 3]],
+                    'replace' => ['start' => ['line' => 0, 'character' => 1], 'end' => ['line' => 0, 'character' => 5]],
+                    'newText' => 'bb',
+                ],
+            ],
+            ['label' => 'c', 'sortText' => '3'],
+        ]);
+
+        $this->assertSame(['line' => 2, 'character' => 4], $items[0]->replaceFrom);
+        $this->assertSame(['line' => 0, 'character' => 1], $items[1]->replaceFrom, "an InsertReplaceEdit's insert range");
+        $this->assertNull($items[2]->replaceFrom, 'no textEdit: the word before the caret, as before');
+    }
+
     public function testAPLAINSTRINGDocumentationIsTakenAsItIs(): void
     {
         // The spec allows `string | MarkupContent`, and older servers send the

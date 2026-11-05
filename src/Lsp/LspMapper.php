@@ -124,6 +124,7 @@ final class LspMapper
                 raw: $item,
                 documentation: self::documentationText($item['documentation'] ?? null) ?? '',
                 deprecated: CompletionDeprecation::of($item),
+                replaceFrom: CompletionEditStart::of($item),
             );
         }
 
