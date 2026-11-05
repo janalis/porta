@@ -51,6 +51,8 @@ return new class('phpunit', 'phpunit') extends AbstractToolPlugin {
             $runner->opened($path);
             $coverage->opened($path);
         });
-        $api->onFileSaved($coverage->saved(...));
+        $api->onFileSaved($coverage->forget(...));
+        $api->onFileReloaded($coverage->forget(...));
+        $api->onFileRewritten($coverage->forget(...)); // the text it replaced is not needed
     }
 };

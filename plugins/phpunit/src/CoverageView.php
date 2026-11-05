@@ -11,14 +11,19 @@ use Porta\Plugin\Api\PluginApi;
  * coverage only while it is open, so it is published to each open file now
  * and to each one as it opens.
  *
- * A file loses its coverage when it is saved: the run measured the code that
- * was there, and the bars would otherwise go on claiming lines ran that the
- * run never saw. Until then, edits move the bars with their lines.
+ * A file loses its coverage once its text is no longer what the run measured:
+ * saved, reloaded or rewritten from outside, or changed on disk before it is
+ * opened. A file open with unsaved edits gets none at all — the run measured
+ * the disk, whose lines are not the buffer's. Until then, edits move the bars
+ * with their lines.
  */
 final class CoverageView
 {
     /** @var array<string, array<int, bool>> real path => 0-based line => whether it ran */
     private array $files = [];
+
+    /** When the shown run's report arrived: a file changed on disk after it is not what it measured. */
+    private int $measuredAt = 0;
 
     public function __construct(
         private readonly PluginApi $api,
@@ -32,10 +37,14 @@ final class CoverageView
     public function show(array $files): void
     {
         $this->hide();
-        foreach ($files as $file => $lines) {
-            $this->files[self::real($file)] = $lines;
-        }
-        foreach ($this->api->openBuffers()->files() as ['path' => $path]) {
+        $this->files = $files; // PHPUnit names files by their real path already
+        $this->measuredAt = \time();
+        foreach ($this->api->openBuffers()->files() as ['path' => $path, 'dirty' => $dirty]) {
+            if ($dirty) {
+                $this->forget($path);
+
+                continue;
+            }
             $this->opened($path);
         }
     }
@@ -60,13 +69,17 @@ final class CoverageView
 
     public function opened(string $path): void
     {
+        \clearstatcache(true, $path);
         $lines = $this->files[self::real($path)] ?? null;
-        if (null !== $lines) {
-            $this->api->setCoverage($path, $lines);
-        }
+        match (true) {
+            null === $lines => null,
+            (int) \filemtime($path) > $this->measuredAt => $this->forget($path),
+            default => $this->api->setCoverage($path, $lines),
+        };
     }
 
-    public function saved(string $path): void
+    /** Saved, reloaded or rewritten: the file's text is not what the run measured any more. */
+    public function forget(string $path): void
     {
         $real = self::real($path);
         if (\array_key_exists($real, $this->files)) {

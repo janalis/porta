@@ -157,9 +157,10 @@ final class TestRunner
         $this->api->showList(self::TOOL, [], ToolRun::Running);
         $this->api->runs()->start(self::TITLE, [$binary, '--log-junit', $log, ...$measure, ...$arguments], function (int $code) use ($log, $clover): void {
             ($this->release)();
-            $this->finished($code, self::take($log));
-            if (null !== $clover) {
-                $this->measured(self::take($clover));
+            $reported = $this->finished($code, self::take($log));
+            $measured = null === $clover ? '' : self::take($clover);
+            if (null !== $clover && $reported) {
+                $this->measured($measured);
             }
         });
     }
@@ -176,12 +177,20 @@ final class TestRunner
         return $text;
     }
 
-    /** Show the coverage a run wrote, or say why there is none. */
+    /**
+     * Show the coverage a run that reported its tests wrote, or say why there
+     * is none: no report, or one that measured no file. A run that never got
+     * as far as its tests has said so already.
+     */
     private function measured(string $xml): void
     {
         try {
-            $this->coverage->show(CloverReport::parse($xml));
+            $files = CloverReport::parse($xml);
         } catch (\RuntimeException) {
+            $files = [];
+        }
+        $this->coverage->show($files);
+        if ([] === $files) {
             $this->api->notify($this->api->trans('No coverage: PHPUnit measures it with pcov or Xdebug, for what <source> in phpunit.xml names'), ToastSeverity::Warn, 6.0);
         }
     }
@@ -191,7 +200,7 @@ final class TestRunner
      * refused by its own configuration — still replaces the last one: what
      * stays on screen would otherwise be older than the run the tab shows.
      */
-    private function finished(int $code, string $xml): void
+    private function finished(int $code, string $xml): bool
     {
         try {
             $outcomes = JunitReport::parse($xml, $this->api->projectRoot());
@@ -200,6 +209,8 @@ final class TestRunner
         }
         $this->publish($outcomes ?? []);
         $this->report($code, $outcomes);
+
+        return null !== $outcomes;
     }
 
     /** @param list<TestOutcome> $outcomes */

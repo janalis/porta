@@ -251,10 +251,12 @@ final class IdePhpUnitPluginTest extends TestCase
         $project = self::project([
             'src/Calc.php' => "<?php\n\nfinal class Calc\n{\n    public function add(int \$a, int \$b): int\n    {\n        return \$a + \$b;\n    }\n}\n",
             'src/Other.php' => "<?php\n\$x = 1;\n",
+            'src/Third.php' => "<?php\n\$y = 2;\n",
         ]);
         $both =
             '<coverage><project><file name="{root}/src/Calc.php"><line num="5" type="method" count="1"/><line num="7" type="stmt" count="1"/><line num="9" type="stmt" count="0"/></file>'
-            .'<file name="{root}/src/Other.php"><line num="2" type="stmt" count="1"/></file></project></coverage>';
+            .'<file name="{root}/src/Other.php"><line num="2" type="stmt" count="1"/></file>'
+            .'<file name="{root}/src/Third.php"><line num="2" type="stmt" count="0"/></file></project></coverage>';
         self::measurer($project, $both);
         $calc = [6 => CoverageMark::Covered, 8 => CoverageMark::Uncovered];
         $other = [1 => CoverageMark::Covered];
@@ -303,21 +305,46 @@ final class IdePhpUnitPluginTest extends TestCase
                     $this->assertSame([], $decorations->coverage, 'reopened, it has none');
                     $this->assertFalse(self::hideOffered($ide), 'and with no file left to show, Hide is dimmed');
                 },
-                400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $both, $other): void {
+                400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project, $both): void {
                     $decorations = Widgets::editor($tui)->decorations;
                     $buffers = Services::resolve($ide, BufferService::class);
                     self::measurer($project, $both);
+                    // Calc, in front, has an unsaved edit: the run measures
+                    // the disk, whose lines are not the buffer's.
+                    $buffers->openFile($project->path('src/Calc.php'), OpenFocus::Editor);
+                    Widgets::editor($tui)->getDocument()->insert("// more\n");
                     $this->command($ide, $terminal, 'run_with_coverage');
-                    $this->await(static fn (): bool => [] !== $decorations->coverage, what: 'the coverage to come back');
-                    $buffers->openFile($project->path('src/Other.php'), OpenFocus::Editor);
-                    $this->assertSame($other, $decorations->coverage);
+                    $results = $tui->getById('results');
+                    $this->await(static fn (): bool => !Probe::get($results, 'searching'), what: 'the run to finish');
+                    $this->assertSame([], $decorations->coverage, 'a buffer with unsaved edits gets none');
 
+                    // Other changed on disk after the run, before it opened.
+                    $buffers->closeTab((string) \realpath($project->path('src/Other.php')));
+                    \touch($project->path('src/Other.php'), \time() + 5);
+                    $buffers->openFile($project->path('src/Other.php'), OpenFocus::Editor);
+                    $this->assertSame([], $decorations->coverage, 'a file changed since the run gets none');
+
+                    $buffers->openFile($project->path('src/Third.php'), OpenFocus::Editor);
+                    $this->assertSame([1 => CoverageMark::Uncovered], $decorations->coverage);
+                    $this->assertTrue(self::hideOffered($ide));
                     $this->command($ide, $terminal, 'hide_coverage');
                     $this->assertSame([], $decorations->coverage, 'hidden');
                     $this->assertFalse(self::hideOffered($ide));
-                    $buffers->closeTab((string) \realpath($project->path('src/Other.php')));
-                    $buffers->openFile($project->path('src/Other.php'), OpenFocus::Editor);
+                    $buffers->closeTab((string) \realpath($project->path('src/Third.php')));
+                    $buffers->openFile($project->path('src/Third.php'), OpenFocus::Editor);
                     $this->assertSame([], $decorations->coverage, 'and gone, not waiting for the file to open again');
+                },
+                450 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
+                    // Stopped before its tests reported, a run says so — not
+                    // that coverage needs a driver.
+                    $project->write('vendor/bin/phpunit', '#!'.\PHP_BINARY."\n<?php\nsleep(30);\n");
+                    $this->command($ide, $terminal, 'run_with_coverage');
+                    $runs = Services::resolve($ide, RunController::class);
+                    $sessions = Probe::get($runs, 'sessions');
+                    $this->assertInstanceOf(TerminalSessions::class, $sessions);
+                    $runs->closeSession((int) \array_search($sessions->find('run:PHPUnit'), $sessions->sessions, strict: true));
+                    $this->awaitPainted($tui, $terminal, 'PHPUnit was stopped');
+                    $this->assertStringNotContainsString('No coverage', $this->screen($tui, $terminal));
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     self::measurer($project, null); // no driver: PHPUnit writes no Clover report
