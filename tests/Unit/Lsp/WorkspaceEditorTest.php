@@ -13,6 +13,8 @@ use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
 use Porta\Event\WorkingTreeChanged;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
@@ -947,6 +949,88 @@ final class WorkspaceEditorTest extends TestCase
      * read-only mount, a race. Uncaught, this escaped the LSP response callback
      * into the event loop with earlier files already written.
      */
+    /**
+     * Every file it makes, moves or removes goes through the PROJECT's files:
+     * in a remote project that is what tells the server. A plugin's create,
+     * move or delete (an agent's, a pairing guest's) used to change only the
+     * local cache, and come back at the next listing.
+     */
+    public function testFileOperationsGoThroughTheProjectsFiles(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        $files = new class implements ProjectFilesystem {
+            /** @var list<string> */
+            public array $did = [];
+            private readonly LocalFilesystem $local;
+
+            public function __construct()
+            {
+                $this->local = new LocalFilesystem();
+            }
+
+            public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
+            {
+                return true;
+            }
+
+            public function listed(string $dir): bool
+            {
+                return true;
+            }
+
+            public function dumpFile(string $path, string $content): void
+            {
+                $this->did[] = 'write '.\basename($path);
+                $this->local->dumpFile($path, $content);
+            }
+
+            public function mkdir(string $path): void
+            {
+                $this->local->mkdir($path);
+            }
+
+            public function rename(string $from, string $to, bool $overwrite = false): void
+            {
+                $this->did[] = 'rename '.\basename($from).' '.\basename($to);
+                $this->local->rename($from, $to, $overwrite);
+            }
+
+            public function remove(string $path): void
+            {
+                $this->did[] = 'remove '.\basename($path);
+                $this->local->remove($path);
+            }
+
+            public function copy(string $source, string $target): void
+            {
+                $this->local->copy($source, $target);
+            }
+
+            public function pending(): int
+            {
+                return 0;
+            }
+        };
+        $we = new WorkspaceEditor(
+            new BufferManager(),
+            new CodeEditorWidget(),
+            new LspSessionPool($project->dir, new FixedActiveFile(), new Translator('en')),
+            new EventDispatcher(),
+            new RefactoringUndo(new BufferManager(), new EventDispatcher()),
+            $files,
+        );
+
+        $we->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'create', 'uri' => Uri::fromPath($project->path('c.php'))],
+                ['kind' => 'rename', 'oldUri' => Uri::fromPath($project->path('a.php')), 'newUri' => Uri::fromPath($project->path('moved.php'))],
+                ['kind' => 'delete', 'uri' => Uri::fromPath($project->path('b.php'))],
+            ],
+        ]);
+
+        $this->assertSame(['write c.php', 'rename a.php moved.php', 'remove b.php'], $files->did);
+    }
+
     public function testAWriteThatFailsAfterTheCheckIsReportedRatherThanThrown(): void
     {
         $project = new TempProject(['a.php' => "abc\n"]);
@@ -963,7 +1047,7 @@ final class WorkspaceEditorTest extends TestCase
             new LspSessionPool(\sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             new EventDispatcher(),
             new RefactoringUndo(new BufferManager(), new EventDispatcher()),
-            $throwing,
+            new LocalFilesystem($throwing),
         );
 
         $outcome = $we->applyWorkspaceEdit([

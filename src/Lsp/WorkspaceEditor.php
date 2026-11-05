@@ -15,12 +15,13 @@ use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
 use Porta\Event\WorkingTreeChanged;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Support\Files;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
-use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Filesystem\Path;
 
 /**
@@ -59,7 +60,9 @@ final readonly class WorkspaceEditor
         private LspSessionPool $lsp,
         private EventDispatcherInterface $events,
         private RefactoringUndo $undo,
-        private Filesystem $fs = new Filesystem(),
+        // The project's files, not the disk's: in a remote project a plugin's
+        // create, move or delete reaches the server only through this.
+        private ProjectFilesystem $fs = new LocalFilesystem(),
         /** Nullable so a bare test construction stays one `new`, the FindBarWidget idiom. */
         private ?Notifier $notifier = null,
         private Translator $translator = new Translator(),

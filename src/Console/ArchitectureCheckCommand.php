@@ -280,6 +280,7 @@ final class ArchitectureCheckCommand extends Command
         'Lsp>Config',
         'Lsp>Container',
         'Lsp>Editor',
+        'Lsp>Filesystem', // a workspace edit's create, move and delete go through the project's files
         'Lsp>Event',
         'Lsp>Support',
         'Lsp>Ui',
