@@ -85,7 +85,7 @@ final class JunitReport
     private static function declared(string $file, string $name, array &$sources): int
     {
         // Read once per file, not per test: a report lists each of its tests.
-        $sources[$file] ??= PestTests::lines(\is_file($file) ? (string) \file_get_contents($file) : '');
+        $sources[$file] ??= PestTests::lines(Files::read($file));
 
         return $sources[$file][$name] ?? 0;
     }

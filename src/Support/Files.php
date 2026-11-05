@@ -29,6 +29,14 @@ final class Files
         return \is_file($path) ? (string) \file_get_contents($path) : '';
     }
 
+    /** The file's bytes, or null when there is no file to read — for a caller to whom '' is a real answer. */
+    public static function tryRead(string $path): ?string
+    {
+        $bytes = \is_file($path) ? \file_get_contents($path) : false;
+
+        return false === $bytes ? null : $bytes;
+    }
+
     /**
      * The text a file holds, for keeping before it goes: null for a
      * directory, a missing file, or one too large to be text.

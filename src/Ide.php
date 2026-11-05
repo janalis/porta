@@ -690,9 +690,9 @@ final class Ide
     /** Whether $path is readable and holds no conflict block, nor a marker line one left behind. */
     private static function resolved(string $path): bool
     {
-        $text = \is_file($path) ? \file_get_contents($path) : false;
+        $text = Files::tryRead($path);
 
-        return false !== $text && !ConflictMarkers::unresolved(\explode("\n", $text));
+        return null !== $text && !ConflictMarkers::unresolved(\explode("\n", $text));
     }
 
     private function openFile(string $path): void

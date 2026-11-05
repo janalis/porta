@@ -247,6 +247,6 @@ final class ComposerRunner
     /** As the editor has it, unsaved edits and all, else as it is on disk; '' when there is none. */
     private function manifestText(string $path): string
     {
-        return $this->api->openBuffers()->text($path) ?? (\is_file($path) ? (string) \file_get_contents($path) : '');
+        return $this->api->openBuffers()->text($path) ?? Files::read($path);
     }
 }

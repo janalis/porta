@@ -6,6 +6,7 @@ namespace Porta\Search;
 
 use Porta\Editor\BreadcrumbScanner;
 use Porta\Editor\CodeScopeKind;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 
 /**
@@ -139,9 +140,8 @@ final readonly class SuperMethodNavigator
     private function read(string $relative): ?string
     {
         $absolute = $this->paths->absolute($relative);
-        $source = \is_file($absolute) ? \file_get_contents($absolute) : false;
 
-        return false === $source ? null : $source;
+        return Files::tryRead($absolute);
     }
 
     /**

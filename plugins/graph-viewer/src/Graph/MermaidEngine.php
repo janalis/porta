@@ -6,6 +6,7 @@ namespace Porta\GraphViewer\Graph;
 
 use Janalis\Viz\Mermaid\MermaidCommand;
 use Janalis\Viz\Render\Format;
+use Porta\Support\Files;
 use Porta\Support\SingleSlotProcess;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\ExecutableFinder;
@@ -104,7 +105,7 @@ final class MermaidEngine implements DiagramEngine
                 if ($directory !== $this->directory) {
                     return;
                 }
-                $png = \is_file($output) ? (string) \file_get_contents($output) : '';
+                $png = Files::read($output);
                 $this->cleanup();
                 if ('' === $png) {
                     $onError('mmdc produced no '.\strtoupper($format->extension()));

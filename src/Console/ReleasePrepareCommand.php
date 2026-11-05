@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Support\Files;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Attribute\Option;
@@ -66,8 +67,8 @@ final class ReleasePrepareCommand extends Command
         $errors = self::errorOutput($output);
         $changelogFile = $this->rootDir.'/CHANGELOG.md';
         $ideFile = $this->rootDir.'/src/Ide.php';
-        $changelog = \is_file($changelogFile) ? (string) \file_get_contents($changelogFile) : '';
-        $ide = \is_file($ideFile) ? (string) \file_get_contents($ideFile) : '';
+        $changelog = Files::read($changelogFile);
+        $ide = Files::read($ideFile);
 
         $tags = $this->tags();
         $next = null === $tags ? null : self::nextVersion($version, $tags);

@@ -7,6 +7,7 @@ namespace Porta\Plugin\Api;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Support\AsyncProcess;
+use Porta\Support\Files;
 
 /**
  * The base for a plugin that drives an external binary (php-cs-fixer, mago,
@@ -186,8 +187,8 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         if (null === $before || $api->activeFile() !== $file) {
             return; // the user moved on; the file on disk is still correct
         }
-        $formatted = \is_file($file) ? \file_get_contents($file) : false;
-        if (false === $formatted || $formatted === $before || $api->documentText() !== $before) {
+        $formatted = Files::tryRead($file);
+        if (null === $formatted || $formatted === $before || $api->documentText() !== $before) {
             return; // unreadable, unchanged, or typed into while the tool ran
         }
         $api->replaceDocument($formatted);

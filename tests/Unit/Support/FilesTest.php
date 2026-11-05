@@ -23,6 +23,16 @@ final class FilesTest extends TestCase
         $this->assertSame('hello', Files::read($project->path('a.txt')));
     }
 
+    public function testTryReadTellsAMissingFileFromAnEmptyOne(): void
+    {
+        $project = new TempProject(['empty.txt' => '', 'a.txt' => 'bytes', 'dir/x' => '']);
+
+        $this->assertNull(Files::tryRead($project->path('missing.txt')));
+        $this->assertNull(Files::tryRead($project->path('dir')), 'a folder is no file to read');
+        $this->assertSame('', Files::tryRead($project->path('empty.txt')));
+        $this->assertSame('bytes', Files::tryRead($project->path('a.txt')));
+    }
+
     public function testReadWritableReturnsNullForAMissingFile(): void
     {
         $project = new TempProject();
