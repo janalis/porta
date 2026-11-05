@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Tests\E2e;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
+use Porta\Editor\BufferManager;
 use Porta\Ide;
 use Porta\Run\RunController;
 use Porta\Tests\Support\ClearsPortaLsp;
@@ -16,6 +18,7 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Tests\Support\Toasts;
 use Porta\Tests\Support\Widgets;
 use Porta\Ui\Glyphs;
 use Porta\Widget\TerminalPanelWidget;
@@ -340,6 +343,56 @@ final class IdeTerminalRunTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'as-edited');
                     $this->assertStringContainsString('as-edited', (string) \file_get_contents($project->path('hello.php')));
                     $this->assertFalse(Widgets::editor($tui)->getDocument()->isDirty());
+                },
+            ],
+        );
+    }
+
+    /**
+     * Changed on disk under the edits: the keyboard asks before overwriting,
+     * and a run is no answer to that — nothing is saved, nothing runs.
+     */
+    public function testARunDoesNotOverwriteAFileThatChangedOnDisk(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['hello.php' => "<?php\necho \"theirs\\n\";\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('hello.php'),
+            [
+                300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
+                    Widgets::editor($tui)->getDocument()->insert('// mine');
+                    $buffer = Services::resolve($ide, BufferManager::class)->active();
+                    $this->assertInstanceOf(Buffer::class, $buffer);
+                    $buffer->diskChangedUnderEdit = true; // what the reconciler records
+
+                    Services::resolve($ide, RunController::class)->runInBackground(['php', 'hello.php'], 'tests');
+
+                    $this->assertSame("<?php\necho \"theirs\\n\";\n", \file_get_contents($project->path('hello.php')), 'their write kept');
+                    $this->assertNull(Services::resolve($ide, RunController::class)->runSession('tests'), 'and nothing ran');
+                    $this->assertSame('Not run: hello.php has edits that could not be saved', Toasts::last($ide));
+                },
+            ],
+        );
+    }
+
+    /** A plugin's run (a test at the caret) is a run too: it saves first. */
+    public function testABackgroundRunSavesFirst(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $project = new TempProject(['hello.php' => "<?php\n"]);
+
+        $this->runIde(
+            $project,
+            $project->path('hello.php'),
+            [
+                300 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
+                    Widgets::editor($tui)->getDocument()->insert('// edited ');
+
+                    Services::resolve($ide, RunController::class)->runInBackground(['true'], 'tests');
+
+                    $this->assertStringContainsString('// edited', (string) \file_get_contents($project->path('hello.php')));
                 },
             ],
         );

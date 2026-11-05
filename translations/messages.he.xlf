@@ -3626,6 +3626,10 @@
         <source>%name% is not a usable name here</source>
         <target>%name% אינו שם שמיש כאן</target>
       </trans-unit>
+      <trans-unit id="1236">
+        <source>Not run: %file% has edits that could not be saved</source>
+        <target>לא הורץ: ב-%file% יש שינויים שלא ניתן היה לשמור</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

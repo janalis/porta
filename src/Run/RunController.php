@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace Porta\Run;
 
 use Porta\Container\AsIdeService;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
-use Porta\Editor\BufferService;
+use Porta\Editor\BufferSaver;
 use Porta\Event\TerminalRevealRequested;
 use Porta\Event\TerminalSessionCloseRequested;
 use Porta\Event\TerminalSessionCycleRequested;
@@ -68,7 +69,7 @@ final class RunController
         private readonly TerminalSessions $sessions,
         private readonly ?LocalOnly $localOnly = null,
         // Optional trailing: a bare construction runs what is on disk.
-        private readonly ?BufferService $saver = null,
+        private readonly ?BufferSaver $saver = null,
         private readonly ?BufferManager $buffers = null,
     ) {}
 
@@ -126,7 +127,7 @@ final class RunController
      */
     public function runInBackground(array $command, string $title, ?\Closure $onExit = null): void
     {
-        if (true === $this->localOnly?->refused()) {
+        if (true === $this->localOnly?->refused() || !$this->savedFirst()) {
             $onExit?->__invoke(-1);
 
             return;
@@ -215,15 +216,31 @@ final class RunController
      */
     private function runInTerminal(array $command, string $title): void
     {
-        // What runs is what is on disk: the file being run, a test, a script
-        // reading the project — unsaved, the edits on screen were not what ran.
-        foreach ($this->buffers?->all() ?? [] as $buffer) {
-            if (!$buffer->isDirty()) {
-                continue;
-            }
-            $this->saver?->saveBuffer($buffer);
+        if ($this->savedFirst()) {
+            $this->spawn($this->sessionFor($title), $command);
         }
-        $this->spawn($this->sessionFor($title), $command);
+    }
+
+    /**
+     * Save every buffer with unsaved edits, or say which one could not be.
+     *
+     * What runs is what is on disk — the file being run, a test, a script
+     * reading the project — so unsaved, the edits on screen were not what ran.
+     * The save is {@see BufferSaver}'s, which never overwrites a file that
+     * changed on disk under the edits: the keyboard's save asks "again to
+     * overwrite", and a second run is no answer to that. Nothing runs then.
+     */
+    private function savedFirst(): bool
+    {
+        $refused = \array_find(
+            $this->buffers?->all() ?? [],
+            fn (Buffer $buffer): bool => $buffer->isDirty() && null !== $this->saver?->save($buffer->path),
+        );
+        if (null !== $refused) {
+            $this->notifier->error($this->translator->trans('Not run: %file% has edits that could not be saved', ['%file%' => \basename($refused->path)]));
+        }
+
+        return null === $refused;
     }
 
     /** The `run:<title>` session, emptied for a new run — or a new one. */

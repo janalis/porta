@@ -3626,6 +3626,10 @@
         <source>%name% is not a usable name here</source>
         <target>%name% non è un nome utilizzabile qui</target>
       </trans-unit>
+      <trans-unit id="1236">
+        <source>Not run: %file% has edits that could not be saved</source>
+        <target>Non eseguito: %file% ha modifiche che non è stato possibile salvare</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
