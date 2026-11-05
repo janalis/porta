@@ -439,7 +439,9 @@ final class IdeMousePrimitivesTest extends TestCase
                 300 => static function ($tui): void {
                     $tui->tick();
                     $tui->handleInput("\x1b[<0;41;4M"); // press inside "hello"
+                    $tui->handleInput("\x1b[<0;41;4m"); // its release
                     $tui->handleInput("\x1b[<0;41;4M"); // second press same cell -> word
+                    $tui->handleInput("\x1b[<0;41;4m"); // and its release keeps the word
                 },
                 400 => function (Tui $tui): void {
                     $this->assertSame('hello', Widgets::editor($tui)->getDocument()->getSelectedText());
@@ -462,6 +464,7 @@ final class IdeMousePrimitivesTest extends TestCase
                     $tui->handleInput("\x1b[<0;43;4M");
                     $tui->handleInput("\x1b[<0;43;4M");
                     $tui->handleInput("\x1b[<0;43;4M"); // third press -> whole line
+                    $tui->handleInput("\x1b[<0;43;4m"); // and its release keeps the line
                 },
                 400 => function (Tui $tui): void {
                     $this->assertSame('hello world', Widgets::editor($tui)->getDocument()->getSelectedText());

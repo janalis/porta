@@ -56,6 +56,12 @@ final class MouseRouter
 {
     /** True while a left-drag started in the editor is extending a text selection. */
     private bool $mouseSelecting = false;
+    /**
+     * A double or triple click selected a whole word or line: its release keeps
+     * that selection, where extending to the release cell cut `hello` to `he`.
+     * A drag after it extends as any drag does.
+     */
+    private bool $unitSelected = false;
     /** True while an Alt+Shift left-drag is building a column (rectangular) selection. */
     private bool $columnSelecting = false;
     /** True while a left-drag started on a tab is reordering it; $tabDragPath is the dragged buffer. */
@@ -304,12 +310,14 @@ final class MouseRouter
         if (!$this->mouseSelecting || (!$mouse->isLeftDrag() && !$mouse->isLeftRelease())) {
             return false;
         }
-        if (null !== $editorRect) {
+        $this->unitSelected = $this->unitSelected && $mouse->isLeftRelease();
+        if (null !== $editorRect && !$this->unitSelected) {
             $rel = $this->clampedRelative($editorRect, $mouse);
             $this->panes->editor->extendSelectionTo($rel['row'], $rel['col']);
         }
         if ($mouse->isLeftRelease()) {
             $this->mouseSelecting = false;
+            $this->unitSelected = false;
         }
         $this->tui->requestRender();
 
@@ -794,5 +802,6 @@ final class MouseRouter
             $editor->beginSelectionAt($row, $col);
         }
         $this->mouseSelecting = true;
+        $this->unitSelected = !$mouse->shift && $count >= 2;
     }
 }
