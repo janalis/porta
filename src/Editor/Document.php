@@ -1358,13 +1358,7 @@ final class Document
             }
         }
 
-        // Apply bottom-up so earlier positions stay valid as we mutate.
-        \usort(
-            $edits,
-            static fn (array $a, array $b): int => (
-                [$b['range']['start']['line'] ?? 0, $b['range']['start']['character'] ?? 0] <=> [$a['range']['start']['line'] ?? 0, $a['range']['start']['character'] ?? 0]
-            ),
-        );
+        $edits = TextEditOrder::bottomUp($edits);
 
         $this->beginCompound();
         foreach ($edits as $edit) {

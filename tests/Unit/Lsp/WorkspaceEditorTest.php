@@ -113,7 +113,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
 
-        $this->assertSame("ZY01234X56789\n", $doc->getText());
+        $this->assertSame("YZ01234X56789\n", $doc->getText(), 'Y and Z both start at (0, 0), and read in the order sent');
     }
 
     public function testMissingLineOnAMultiLineDocumentTargetsLineZeroNotLineOne(): void

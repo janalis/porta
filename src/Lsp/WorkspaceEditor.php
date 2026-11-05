@@ -10,6 +10,7 @@ use Porta\Editor\BufferManager;
 use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
+use Porta\Editor\TextEditOrder;
 use Porta\Event\BufferRepointRequested;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
@@ -479,13 +480,7 @@ final readonly class WorkspaceEditor
             return false;
         }
 
-        // Bottom-up so earlier positions stay valid
-        \usort(
-            $edits,
-            static fn (array $a, array $b): int => (
-                [$b['range']['start']['line'] ?? 0, $b['range']['start']['character'] ?? 0] <=> [$a['range']['start']['line'] ?? 0, $a['range']['start']['character'] ?? 0]
-            ),
-        );
+        $edits = TextEditOrder::bottomUp($edits);
 
         // One compound so a rename / reformat / code-action is a single undo step.
         $document->transact(static function () use ($document, $edits): void {
