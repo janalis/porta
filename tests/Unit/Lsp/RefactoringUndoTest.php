@@ -7,12 +7,14 @@ namespace Porta\Tests\Unit\Lsp;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferManager;
 use Porta\Event\FileRewritten;
+use Porta\Filesystem\LocalFilesystem;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Tests\Support\FixedActiveFile;
+use Porta\Tests\Support\RecordingProjectFiles;
 use Porta\Tests\Support\TempProject;
 use Porta\Widget\CodeEditorWidget;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -215,6 +217,21 @@ final class RefactoringUndoTest extends TestCase
         $this->assertFalse($this->undo->hasPending(), 'and nothing is offered to take it back');
     }
 
+    /** The restore goes through the project's files, as the refactoring's writes did — in a remote project, to the server. */
+    public function testARestoreGoesThroughTheProjectsFiles(): void
+    {
+        $project = new TempProject(['a.php' => 'after']);
+        $files = new RecordingProjectFiles();
+        $undo = new RefactoringUndo(new BufferManager(), new EventDispatcher(), $files);
+        $undo->begin();
+        $undo->recordFile($project->path('a.php'), 'before', 'after');
+
+        $undo->undo();
+
+        $this->assertSame(['write a.php'], $files->did);
+        $this->assertSame('before', \file_get_contents($project->path('a.php')));
+    }
+
     /**
      * A restore that cannot be written names the file rather than throwing.
      *
@@ -236,7 +253,7 @@ final class RefactoringUndoTest extends TestCase
         // guard blocks first and the write is never attempted — which would
         // pass this test without exercising the catch at all.
         $project = new TempProject(['a.php' => 'after']);
-        $undo = new RefactoringUndo(new BufferManager(), new EventDispatcher(), $throwing);
+        $undo = new RefactoringUndo(new BufferManager(), new EventDispatcher(), new LocalFilesystem($throwing));
         $undo->begin();
         $undo->recordFile($project->path('a.php'), 'before', 'after');
 

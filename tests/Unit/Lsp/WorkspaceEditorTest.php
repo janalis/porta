@@ -14,7 +14,6 @@ use Porta\Event\FileRenamed;
 use Porta\Event\FileRewritten;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Filesystem\LocalFilesystem;
-use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
@@ -23,6 +22,7 @@ use Porta\Lsp\WorkspaceEditor;
 use Porta\Support\Files;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\RecordingProjectFiles;
 use Porta\Tests\Support\StatusReads;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
@@ -959,59 +959,7 @@ final class WorkspaceEditorTest extends TestCase
     public function testFileOperationsGoThroughTheProjectsFiles(): void
     {
         $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
-        $files = new class implements ProjectFilesystem {
-            /** @var list<string> */
-            public array $did = [];
-            private readonly LocalFilesystem $local;
-
-            public function __construct()
-            {
-                $this->local = new LocalFilesystem();
-            }
-
-            public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
-            {
-                return true;
-            }
-
-            public function listed(string $dir): bool
-            {
-                return true;
-            }
-
-            public function dumpFile(string $path, string $content): void
-            {
-                $this->did[] = 'write '.\basename($path);
-                $this->local->dumpFile($path, $content);
-            }
-
-            public function mkdir(string $path): void
-            {
-                $this->local->mkdir($path);
-            }
-
-            public function rename(string $from, string $to, bool $overwrite = false): void
-            {
-                $this->did[] = 'rename '.\basename($from).' '.\basename($to);
-                $this->local->rename($from, $to, $overwrite);
-            }
-
-            public function remove(string $path): void
-            {
-                $this->did[] = 'remove '.\basename($path);
-                $this->local->remove($path);
-            }
-
-            public function copy(string $source, string $target): void
-            {
-                $this->local->copy($source, $target);
-            }
-
-            public function pending(): int
-            {
-                return 0;
-            }
-        };
+        $files = new RecordingProjectFiles();
         $we = new WorkspaceEditor(
             new BufferManager(),
             new CodeEditorWidget(),
@@ -1029,50 +977,15 @@ final class WorkspaceEditorTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(['write c.php', 'rename a.php moved.php', 'remove b.php'], $files->did);
+        $this->assertSame(['write c.php', 'rename a.php moved.php', 'remove b.php'], \array_values(\array_filter($files->did, static fn (string $did): bool => !\str_starts_with($did, 'available'))));
     }
 
     /** A file whose content is not here yet — a remote one never fetched — is left alone, never edited from its placeholder. */
     public function testAFileNotFetchedYetIsSkippedNotEditedBlind(): void
     {
         $project = new TempProject(['a.php' => '']); // the placeholder
-        $asked = [];
-        $files = new class($asked) implements ProjectFilesystem {
-            /** @param list<string> $asked */
-            public function __construct(
-                private array &$asked,
-            ) {}
-
-            public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
-            {
-                $this->asked[] = \basename($path);
-
-                return false;
-            }
-
-            public function listed(string $dir): bool
-            {
-                return true;
-            }
-
-            public function dumpFile(string $path, string $content): void
-            {
-                throw new \LogicException('written from a placeholder');
-            }
-
-            public function mkdir(string $path): void {}
-
-            public function rename(string $from, string $to, bool $overwrite = false): void {}
-
-            public function remove(string $path): void {}
-
-            public function copy(string $source, string $target): void {}
-
-            public function pending(): int
-            {
-                return 0;
-            }
-        };
+        $files = new RecordingProjectFiles();
+        $files->notFetched = ['a.php'];
         $we = new WorkspaceEditor(
             new BufferManager(),
             new CodeEditorWidget(),
@@ -1088,7 +1001,7 @@ final class WorkspaceEditorTest extends TestCase
             ],
         ]);
 
-        $this->assertSame(['a.php'], $asked, 'its fetch is started');
+        $this->assertSame(['available a.php'], $files->did, 'its fetch is started, and nothing written');
         $this->assertSame([Files::canonical($project->path('a.php'))], $outcome->skipped);
     }
 

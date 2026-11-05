@@ -7,10 +7,11 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Event\FileRewritten;
+use Porta\Filesystem\LocalFilesystem;
+use Porta\Filesystem\ProjectFilesystem;
 use Porta\Support\Files;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
-use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * Takes back the last multi-file refactoring, whole.
@@ -57,7 +58,9 @@ final class RefactoringUndo
     public function __construct(
         private readonly BufferManager $bufferManager,
         private readonly EventDispatcherInterface $events,
-        private readonly Filesystem $fs = new Filesystem(),
+        // The project's files: a refactoring's writes reach the server, and so
+        // must the undo of them, or the cache and the server part silently.
+        private readonly ProjectFilesystem $fs = new LocalFilesystem(),
     ) {}
 
     /**
