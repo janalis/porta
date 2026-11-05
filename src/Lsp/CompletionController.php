@@ -123,11 +123,14 @@ final class CompletionController extends AbstractLspController implements Editor
             'textDocument/completion',
             $this->positionParams($path, $line, $utf16Col),
             'completionProvider',
-            function (mixed $result, ?array $error, string $owner) use ($generation): void {
+            function (mixed $result, ?array $error, string $owner) use ($generation, $path): void {
                 // Two different reasons to drop an answer, kept apart: one is
                 // about WHEN it arrived, the other about what it says.
                 if ($generation !== $this->completionGeneration) {
                     return; // a later request is what the user is waiting on
+                }
+                if ($path !== $this->editor->getFilePath()) {
+                    return; // the user switched tabs: these are another file's words
                 }
                 if (null !== $error || null === $result) {
                     // Still an answer: with nothing in hand yet, the popup

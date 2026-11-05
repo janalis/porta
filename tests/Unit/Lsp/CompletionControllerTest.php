@@ -300,6 +300,19 @@ final class CompletionControllerTest extends TestCase
         $this->assertStringContainsString('bar', $screen);
     }
 
+    /** Answered after a tab switch, completions are the other file's: no popup opens over this one. */
+    public function testCompletionsAnsweredAfterATabSwitchAreDropped(): void
+    {
+        $controller = $this->controller(['completionProvider' => ['resolveProvider' => true]]);
+        $this->readyOn($controller, '/p/a.php', "<?php\n\$a->fo\n");
+        $controller->requestCompletion(1, 6);
+
+        $this->editor->showDocument('/p/b.php', new Document("<?php\n"));
+        $this->client->requests[0]['respond'](['items' => [['label' => 'foo']]], error: null);
+
+        $this->assertFalse($this->editor->isCompletionOpen());
+    }
+
     public function testRequestCompletionGuardsOnAnUnreadySession(): void
     {
         $controller = $this->controller(); // no file open: ready() is null

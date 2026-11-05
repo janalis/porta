@@ -84,7 +84,10 @@ final readonly class LspBootstrapper
                     );
                 }
 
-                return $outcome->touched > 0;
+                // Nothing refused, nothing left: applied — a create, rename or
+                // delete with no text edit too, which a count of edited files
+                // answered `applied: false` for.
+                return true;
             },
             function (array $params): void {
                 /** @var array<string, mixed> $params */

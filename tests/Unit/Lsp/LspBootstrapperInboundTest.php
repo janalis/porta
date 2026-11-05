@@ -16,6 +16,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\ServerMessageReporter;
 use Porta\Lsp\ServerProgress;
+use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Tests\Support\FakeLspClient;
@@ -152,6 +153,18 @@ final class LspBootstrapperInboundTest extends TestCase
 
         $this->assertSame(1, $this->launched);
         $this->assertStringStartsWith('assist', $pool->statusFor($project->dir.'/a.php'));
+    }
+
+    /** An applyEdit of resource operations only — a file created — is applied, and answered so. */
+    public function testAnApplyEditOfOnlyAFileCreatedAnswersApplied(): void
+    {
+        $project = new TempProject(['a.php' => '<?php']);
+        $this->boot($project->dir);
+
+        $applied = ($this->client->applyEditHandler)(['documentChanges' => [['kind' => 'create', 'uri' => Uri::fromPath($project->path('b.php'))]]]);
+
+        $this->assertTrue($applied);
+        $this->assertFileExists($project->path('b.php'));
     }
 
     public function testAServerMessageBecomesAToastAttributedToThatServer(): void
