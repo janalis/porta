@@ -130,7 +130,11 @@ final class PluginLifecycle implements PluginLifecycleOps
         $this->plugins->registerCommands($this->commands);
         // Identity is the plugin's directory basename — the same convention
         // enabledPlugins, requires and the installer's listing all key on.
-        $this->registerContributionsOf(\basename(\dirname($file)));
+        $name = \basename(\dirname($file));
+        $this->registerContributionsOf($name);
+        // A server it brings starts now, as enable() starts one, not at the
+        // next unrelated reconfigure.
+        $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
@@ -152,6 +156,7 @@ final class PluginLifecycle implements PluginLifecycleOps
         // name the user had already turned off was not loaded, and reviving a
         // lower-precedence copy of it would undo the persisted choice.
         $wasActive = $this->plugins->hasPlugin($name);
+        $wasProvider = $this->plugins->providesLanguageServer($name);
         $this->plugins->deactivate($name, $this->commands);
         $this->panes->forget($name);
         $this->retractContributionsOf($name);
@@ -175,6 +180,9 @@ final class PluginLifecycle implements PluginLifecycleOps
                 break;
             }
         }
+        // Its server stops, as disable() stops one: removed, it kept running
+        // and publishing. Or the fallback copy's starts.
+        $this->reconfigureLspIf($wasProvider || $this->plugins->providesLanguageServer($name));
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();

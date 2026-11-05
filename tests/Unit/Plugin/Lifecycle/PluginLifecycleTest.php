@@ -380,6 +380,34 @@ final class PluginLifecycleTest extends TestCase
         $this->assertStringContainsString('acme-ls-2', $servers(), 'the provider\'s server is re-resolved');
     }
 
+    /** Installed, a plugin's language server starts at once; removed, it stops — as enable and disable do. */
+    public function testInstallingAndRemovingAServerProviderReconfiguresTheServers(): void
+    {
+        $ide = $this->boot();
+        $dir = $this->project->dir.'/.porta/plugins/acme-ls';
+        \mkdir($dir, permissions: 0o777, recursive: true);
+        \file_put_contents($dir.'/porta.php', data: <<<'PHP'
+            <?php
+            return new class implements Porta\Plugin\Api\PortaPlugin {
+                public function name(): string { return 'acme-ls'; }
+                public function activate(Porta\Plugin\Api\PluginApi $api): void
+                {
+                    $api->registerLanguageServer('acme', 'acme-ls', static fn (): array => ['/opt/acme-ls']);
+                }
+            };
+            PHP);
+        $lifecycle = $this->lifecycle($ide);
+        $pool = Services::resolve($ide, LspSessionPool::class);
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'), \JSON_THROW_ON_ERROR);
+
+        $this->assertNull($lifecycle->activateInstalled($dir.'/porta.php'));
+        $this->assertStringContainsString('acme-ls', $servers(), 'its server is known at once');
+
+        new Filesystem()->remove($dir); // removed from disk first, as a removal does
+        $lifecycle->deactivate('acme-ls');
+        $this->assertStringNotContainsString('acme-ls', $servers(), 'and gone once it is removed');
+    }
+
     public function testRefreshNavSyncsTheSidebarWithTheListedNames(): void
     {
         $ide = $this->boot();
