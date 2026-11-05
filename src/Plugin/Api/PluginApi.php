@@ -117,9 +117,6 @@ final class PluginApi
     /** Where this plugin's tools are found — shared with Settings, so the two agree. */
     private readonly ToolLocator $locator;
 
-    /** {@see projectTrusted()}'s answer, once asked. */
-    private ?bool $trusted = null;
-
     /**
      * Built by {@see PluginManager::api()}, which hands over the three things
      * the API asks of it as closures — so the API names no manager, and the
@@ -185,12 +182,13 @@ final class PluginApi
      * configuration must not choose what runs: gate anything that executes
      * project code, or a program or server the project names, on this.
      *
-     * Asked once and kept, like everything else that decides what a project may
-     * run: the answer must not change under a session another window re-answered.
+     * The answer as it stands NOW: a plugin that must not change its mind
+     * mid-session (another window re-answering) keeps its first answer itself,
+     * as {@see AbstractToolPlugin} does.
      */
     public function projectTrusted(): bool
     {
-        return $this->trusted ??= WorkspaceTrust::fromEnvironment()->isTrusted($this->rootDir);
+        return WorkspaceTrust::fromEnvironment()->isTrusted($this->rootDir);
     }
 
     // --- Registration (buffered until the loader commits) --------------------

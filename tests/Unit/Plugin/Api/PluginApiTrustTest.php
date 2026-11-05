@@ -17,9 +17,8 @@ use Porta\Tests\Support\UntrustsProjects;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /**
- * `projectTrusted()`: what a plugin gates a project-chosen program on, asked
- * once — a window that re-answers mid-session does not change what this one
- * already decided.
+ * `projectTrusted()`: what a plugin gates a project-chosen program on — the
+ * answer as it stands, so a project trusted mid-session is trusted from then on.
  */
 final class PluginApiTrustTest extends TestCase
 {
@@ -41,7 +40,7 @@ final class PluginApiTrustTest extends TestCase
         $this->assertTrue($this->api($project)->projectTrusted());
     }
 
-    public function testAnUntrustedProjectIsNotAndTheAnswerIsKeptOnceAsked(): void
+    public function testAnUntrustedProjectIsNotUntilItIsTrusted(): void
     {
         $this->untrustProjects();
         $project = new TempProject();
@@ -50,8 +49,6 @@ final class PluginApiTrustTest extends TestCase
         $this->assertFalse($api->projectTrusted());
 
         WorkspaceTrust::fromEnvironment()->trust($project->dir);
-        $this->assertTrue(WorkspaceTrust::fromEnvironment()->isTrusted($project->dir), 'the answer really changed on disk');
-        $this->assertFalse($api->projectTrusted(), 'asked once per session, like the rest of what decides what a project may run');
-        $this->assertTrue($this->api($project)->projectTrusted(), 'a new session reads the new answer');
+        $this->assertTrue($api->projectTrusted(), 'the answer as it stands, not the first one');
     }
 }

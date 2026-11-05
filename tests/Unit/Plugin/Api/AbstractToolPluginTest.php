@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Plugin\Api;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
+use Porta\Config\WorkspaceTrust;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferSaver;
 use Porta\Filesystem\ProjectLocation;
@@ -206,6 +207,12 @@ final class AbstractToolPluginTest extends TestCase
         $api->changeSetting('binary', \PHP_BINARY);
         $this->assertNull($untrusted->callAcquire($api));
         $this->assertStringContainsString('demo runs code of the project\'s own: trust the project to use it', $this->flashText($this->status));
+
+        // Asked once per session: another window trusting the project now does
+        // not change what this session already decided.
+        WorkspaceTrust::fromEnvironment()->trust($this->project->dir);
+        $this->assertTrue($api->projectTrusted(), 'the project is trusted now');
+        $this->assertNull($untrusted->callAcquire($api), 'but this session keeps its first answer');
     }
 
     public function testPathOnlySearchSkipsTheVendorShim(): void

@@ -33,6 +33,9 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     /** The single-flight slot: one run of this tool at a time. */
     private bool $running = false;
 
+    /** Whether the project may run code of its own — see {@see trusted()}. */
+    private ?bool $trusted = null;
+
     public function __construct(
         string $name,
         private readonly string $binaryName,
@@ -74,7 +77,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         $remote = ProjectLocation::forRoot($api->projectRoot())->remote;
         $refusal = match (true) {
             null !== $remote => $api->trans('This project is on %host%: running it needs it on this machine', ['%host%' => $remote->host]),
-            $this->runsProjectCode() && !$api->projectTrusted() => $api->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => $this->name()]),
+            $this->runsProjectCode() && !$this->trusted($api) => $api->trans('%tool% runs code of the project\'s own: trust the project to use it', ['%tool%' => $this->name()]),
             default => null,
         };
         if (null === $refusal && $this->running) {
@@ -100,6 +103,16 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     protected function runsProjectCode(): bool
     {
         return false;
+    }
+
+    /**
+     * Asked once per session, like everything else that decides what a
+     * project may run: binary() answers every menu predicate, and the answer
+     * must not change under a session another window re-answered.
+     */
+    private function trusted(PluginApi $api): bool
+    {
+        return $this->trusted ??= $api->projectTrusted();
     }
 
     /** Free the single-flight slot — call it from the process's exit callback (or after the last one in a chain). */
