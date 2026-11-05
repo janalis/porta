@@ -10,6 +10,7 @@ use Porta\Event\AgentActivity;
 use Porta\Event\AgentLeft;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
+use Porta\Support\Files;
 use Porta\Support\ProjectPaths;
 use Porta\Support\Scheduler;
 use Porta\Ui\Glyphs;
@@ -52,7 +53,7 @@ final class AgentPresence
     #[AsEventListener]
     public function onAgentActivity(AgentActivity $event): void
     {
-        $path = self::canonical($event->path);
+        $path = Files::canonical($event->path);
         $this->slots[$event->agent] ??= $this->freeSlot();
         $previous = $this->files[$path][$event->agent]['timer'] ?? null;
         if (null !== $previous) {
@@ -206,13 +207,5 @@ final class AgentPresence
     private function changed(): void
     {
         $this->tui->requestRender();
-    }
-
-    /** Buffers are keyed by realpath; a file already gone keeps the path it was given. */
-    private static function canonical(string $path): string
-    {
-        $real = \realpath($path);
-
-        return false === $real ? $path : $real;
     }
 }

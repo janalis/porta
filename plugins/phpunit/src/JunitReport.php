@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\PhpUnit;
 
+use Porta\Support\Files;
+
 /**
  * Reads the report `--log-junit` writes, rather than the run's console
  * output: the console is for the reader and changes with every PHPUnit
@@ -27,11 +29,11 @@ final class JunitReport
     public static function parse(string $xml, string $root): array
     {
         $report = Xml::load($xml, 'testsuites', 'JUnit report');
-        $real = \realpath($root);
+        $real = Files::canonical($root);
         $outcomes = [];
         $sources = [];
         foreach (Xml::all($report, '//testcase') as $case) {
-            $outcomes[] = self::outcome($case, $root, false === $real ? $root : $real, $sources);
+            $outcomes[] = self::outcome($case, $root, $real, $sources);
         }
 
         return $outcomes;

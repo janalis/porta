@@ -101,6 +101,15 @@ final class FilesTest extends TestCase
         $this->assertSame(PharFixture::root().'/outside.md', Files::canonical(PharFixture::root().'/docs/../outside.md'));
     }
 
+    public function testCanonicalGoneResolvesTheFolderOfAFileNoLongerThere(): void
+    {
+        $project = new TempProject(['real/kept.txt' => '']);
+        \symlink($project->path('real'), $project->path('link'));
+
+        $this->assertSame(\realpath($project->path('real')).'/gone.txt', Files::canonicalGone($project->path('link/gone.txt')), 'the spelling the file had while it was there');
+        $this->assertSame($project->path('nowhere/gone.txt'), Files::canonicalGone($project->path('nowhere/gone.txt')), 'its folder gone too: as given');
+    }
+
     public function testThroughLinkFindsALinkAtTheFileOrAnyFolderBelowTheRoot(): void
     {
         $outside = new TempProject(['x.json' => '']);

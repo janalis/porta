@@ -428,7 +428,7 @@ final class ProjectSearchController
             // content, and a replace over a file touches many lines of it.
             $approved = $this->languageFilter->approvedSpans($relPath, $this->lastSearchQuery, $this->searchOptions);
             $abs = $this->paths->absolute($relPath);
-            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs);
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(Files::canonical($abs));
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
@@ -471,7 +471,7 @@ final class ProjectSearchController
         $paths = [];
         foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
             $abs = $this->paths->absolute($relPath);
-            if (null === ($this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs))) {
+            if (null === ($this->buffers->get($abs) ?? $this->buffers->get(Files::canonical($abs)))) {
                 $paths[] = $abs;
             }
         }
@@ -511,7 +511,7 @@ final class ProjectSearchController
         $touched = 0;
         foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
             $abs = $this->paths->absolute($relPath);
-            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs);
+            $buffer = $this->buffers->get($abs) ?? $this->buffers->get(Files::canonical($abs));
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);

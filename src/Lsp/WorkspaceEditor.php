@@ -340,7 +340,7 @@ final readonly class WorkspaceEditor
             $this->closeBufferAt($path);
             // Canonical, and resolved BEFORE the removal — afterwards there is
             // nothing left for realpath() to resolve. FileDeleted's contract.
-            $key = ($resolved = \realpath($path)) ? $resolved : $path;
+            $key = Files::canonical($path);
             $this->fs->remove($path);
             $this->events->dispatch(new FileDeleted($key, $previous));
 
@@ -353,14 +353,8 @@ final readonly class WorkspaceEditor
         // made before, a refused move would leave it behind, wherever it was.
         $this->fs->mkdir(\dirname($to));
         $this->fs->rename($from, $to, overwrite: true);
-        // Canonical both sides, per FileRenamed's contract. $from is already
-        // gone, so its DIRECTORY is what resolves — the same trick
-        // BufferService::onBufferRepointRequested needs, for the same reason.
-        $directory = \realpath(\dirname($from));
-        $this->events->dispatch(new FileRenamed(
-            false === $directory ? $from : $directory.\DIRECTORY_SEPARATOR.\basename($from),
-            ($resolvedTo = \realpath($to)) ? $resolvedTo : $to,
-        ));
+        // Canonical both sides, per FileRenamed's contract; $from is already gone.
+        $this->events->dispatch(new FileRenamed(Files::canonicalGone($from), Files::canonical($to)));
         // Dispatched rather than done here: re-opening needs BufferService,
         // which reaches this class back through FormatOnSave. A command event
         // is the sanctioned way out of a real container cycle, and this one is.
@@ -369,7 +363,7 @@ final readonly class WorkspaceEditor
 
     private function bufferAt(string $path): ?Buffer
     {
-        return $this->buffers->get($path) ?? $this->buffers->get(($resolved = \realpath($path)) ? $resolved : $path);
+        return $this->buffers->get($path) ?? $this->buffers->get(Files::canonical($path));
     }
 
     private function closeBufferAt(string $path): void

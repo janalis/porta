@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Lsp;
 
+use Porta\Support\Files;
+
 /**
  * Conversion between local filesystem paths and `file://` LSP document URIs.
  *
@@ -15,8 +17,7 @@ final class Uri
 {
     public static function fromPath(string $path): string
     {
-        $resolved = \realpath($path);
-        $real = $resolved ? $resolved : $path;
+        $real = Files::canonical($path);
 
         return 'file://'.\implode(separator: '/', array: \array_map(rawurlencode(...), \explode(separator: '/', string: \str_replace(\DIRECTORY_SEPARATOR, replace: '/', subject: $real))));
     }

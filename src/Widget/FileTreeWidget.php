@@ -15,6 +15,7 @@ use Porta\Filesystem\ProjectFilesystem;
 use Porta\I18n\Translator;
 use Porta\Layout\ResizableSidebar;
 use Porta\Support\AnsiText;
+use Porta\Support\Files;
 use Porta\Tree\FileDecorations;
 use Porta\Tree\FileTreeNode;
 use Porta\Ui\ClickIntent;
@@ -186,7 +187,7 @@ final class FileTreeWidget extends AbstractWidget implements FocusableInterface,
     ) {
         $this->width = $width;
         $this->initStyles($styles);
-        $this->realRoot = ($resolved = \realpath($rootDir)) ? $resolved : $rootDir;
+        $this->realRoot = Files::canonical($rootDir);
         $this->list = new ListSelection();
         $this->selection = new MultiSelection();
         $this->addStyleClass('list'); // the theme's .list::selected(:focus) rules style the selection

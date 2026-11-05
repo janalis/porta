@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\PhpUnit;
 
+use Porta\Support\Files;
+
 /**
  * One run's outcomes, failures first, and the questions the screen asks of
  * them: which failed, which files they are in, how each test line did.
@@ -39,7 +41,7 @@ final readonly class TestResults
         \usort($outcomes, static fn (TestOutcome $a, TestOutcome $b): int => self::ORDER[$a->status] <=> self::ORDER[$b->status]);
         $this->outcomes = $outcomes;
         $this->broken = \array_values(\array_filter($outcomes, static fn (TestOutcome $outcome): bool => $outcome->broken()));
-        $this->real = \array_map(static fn (TestOutcome $outcome): string => self::real($outcome->file), $outcomes);
+        $this->real = \array_map(static fn (TestOutcome $outcome): string => Files::canonical($outcome->file), $outcomes);
     }
 
     /** @return list<TestOutcome> the failures and errors */
@@ -57,7 +59,7 @@ final readonly class TestResults
     /** @return list<TestOutcome> the failures and errors in $file */
     public function brokenIn(string $file): array
     {
-        $file = self::real($file);
+        $file = Files::canonical($file);
         $in = [];
         foreach ($this->outcomes as $index => $outcome) {
             if (!$outcome->broken() || $this->real[$index] !== $file) {
@@ -77,7 +79,7 @@ final readonly class TestResults
      */
     public function lines(?string $file): array
     {
-        $file = null === $file ? null : self::real($file);
+        $file = null === $file ? null : Files::canonical($file);
         $worst = [];
         foreach ($this->outcomes as $index => $outcome) {
             if ($this->real[$index] !== $file) {
@@ -88,12 +90,5 @@ final readonly class TestResults
         }
 
         return $worst;
-    }
-
-    private static function real(string $path): string
-    {
-        $real = \realpath($path);
-
-        return false === $real ? $path : $real;
     }
 }

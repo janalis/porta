@@ -138,11 +138,9 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
     #[AsEventListener]
     public function onBufferRepointRequested(BufferRepointRequested $event): void
     {
-        // realpath() the DIRECTORY, not the file: by the time this runs the
-        // rename has already happened, so the old path no longer resolves —
-        // and buffers were keyed by the canonical path when they opened.
-        $directory = \realpath(\dirname($event->from));
-        $from = false === $directory ? $event->from : $directory.\DIRECTORY_SEPARATOR.\basename($event->from);
+        // By the time this runs the rename has happened: the old path no
+        // longer resolves, and buffers were keyed by its canonical spelling.
+        $from = Files::canonicalGone($event->from);
         // Collected before anything is closed: closing re-enters this class,
         // and a walk over a list being mutated underneath it is its own bug.
         $moved = [];
@@ -172,7 +170,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
             $this->buffers->close($path);
             $this->openFile($target);
             if (null !== $carried) {
-                $reopened = $this->buffers->get($target) ?? $this->buffers->get(($real = \realpath($target)) ? $real : $target);
+                $reopened = $this->buffers->get($target) ?? $this->buffers->get(Files::canonical($target));
                 $reopened?->document->replaceAll($carried);
             }
         }
@@ -181,7 +179,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
     #[\Override]
     public function openFile(string $path, OpenFocus $focus = OpenFocus::Keep, OpenAs $as = OpenAs::Viewer): void
     {
-        $path = ($resolved = \realpath($path)) ? $resolved : $path;
+        $path = Files::canonical($path);
         // A remote file whose content was never fetched is an empty
         // placeholder: opening it now would show nothing, and a save would
         // write that nothing back. The open is asked again once it is here.

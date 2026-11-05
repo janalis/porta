@@ -7,6 +7,7 @@ namespace Porta\Composer;
 use Porta\Overlay\State\ToastSeverity;
 use Porta\Plugin\Api\PluginApi;
 use Porta\Support\AsyncProcess;
+use Porta\Support\Files;
 use Porta\Workbench\Dock\ToolRun;
 
 /**
@@ -240,10 +241,7 @@ final class ComposerRunner
      */
     private function manifestPath(): string
     {
-        $path = $this->api->projectRoot().'/composer.json';
-        $real = \realpath($path);
-
-        return false === $real ? $path : $real;
+        return Files::canonical($this->api->projectRoot().'/composer.json');
     }
 
     /** As the editor has it, unsaved edits and all, else as it is on disk; '' when there is none. */

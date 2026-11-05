@@ -154,6 +154,21 @@ final class Files
     }
 
     /**
+     * The spelling {@see canonical()} gave a file that is gone now — a rename's
+     * old side, a deleted file: its FOLDER resolved and its name put back.
+     * realpath() answers false once nothing is at the path, and on a tree
+     * reached through a symlink (/var on macOS, a symlinked checkout) the
+     * given spelling is not the one buffers and stores were keyed by while
+     * the file was there. $path as given when the folder is gone too.
+     */
+    public static function canonicalGone(string $path): string
+    {
+        $folder = \realpath(\dirname($path));
+
+        return false === $folder ? $path : $folder.\DIRECTORY_SEPARATOR.\basename($path);
+    }
+
+    /**
      * Each immediate subdirectory's $name file, in name order —
      * `glob("$dir/*\/$name")` as a directory walk.
      *

@@ -48,7 +48,7 @@ final class GitIgnored
         // rules are about its own tree, and would rule out the whole project.
         // Asked by its real path: the matcher resolves only paths BELOW the
         // root, and a /var spelling never matches rules found under /private/var.
-        if ($ignored(new \SplFileInfo(($real = \realpath($root)) ? $real : $root))) {
+        if ($ignored(new \SplFileInfo(Files::canonical($root)))) {
             return static fn (SplFileInfo $entry): bool => true;
         }
 

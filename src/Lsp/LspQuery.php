@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\BufferManager;
 use Porta\Editor\LineTextReader;
+use Porta\Support\Files;
 use Porta\Support\JsonRpcTransport;
 use Porta\Support\OrphanGuard;
 use Porta\Support\ProjectPaths;
@@ -165,7 +166,7 @@ final class LspQuery
                 }
                 $symbols = [];
                 foreach (WorkspaceSymbolClient::map($result, $paths) as $symbol) {
-                    $symbols[] = ['path' => self::canonical($paths->absolute($symbol['path']))] + $symbol;
+                    $symbols[] = ['path' => Files::canonical($paths->absolute($symbol['path']))] + $symbol;
                 }
                 $fine = null;
                 $onDone($symbols, $fine);
@@ -191,7 +192,10 @@ final class LspQuery
                 if (null === $target) {
                     continue;
                 }
-                $target = self::canonical($target);
+                // The one spelling buffers are keyed by: a server echoes URIs under
+                // the root as IT was given it, and macOS's temp directories are
+                // behind a symlink, so one file came back under two names.
+                $target = Files::canonical($target);
                 /** @var array{line?: int, character?: int} $start */
                 $start = \is_array($location['range']['start'] ?? null) ? $location['range']['start'] : [];
                 $at = (int) ($start['line'] ?? 0);
@@ -258,19 +262,6 @@ final class LspQuery
         if (null === $this->buffers->get($path)) {
             $this->lsp->notifyDidClose($path);
         }
-    }
-
-    /**
-     * The one spelling of a path the rest of the IDE uses — buffers are keyed
-     * by realpath. A server echoes URIs under the root as IT was given it, and
-     * on macOS the temp directories are behind a symlink, so without this one
-     * file came back under two names.
-     */
-    private static function canonical(string $path): string
-    {
-        $real = \realpath($path);
-
-        return false === $real ? $path : $real;
     }
 
     /** @param array<array-key, mixed> $error a JSON-RPC error object */

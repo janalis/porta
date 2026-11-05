@@ -11,6 +11,7 @@ use Porta\Event\AgentLeft;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteTransportSource;
 use Porta\Support\Backoff;
+use Porta\Support\Files;
 use Porta\Workbench\AgentActivityKind;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Revolt\EventLoop;
@@ -117,7 +118,7 @@ final class PresenceSync
         private readonly EventDispatcherInterface $events,
         private readonly ?\Closure $clock = null,
     ) {
-        $this->root = ($real = \realpath($rootDir)) ? $real : $rootDir;
+        $this->root = Files::canonical($rootDir);
         $spec = $location->remote;
         $this->board = null === $spec ? new LocalPresenceBoard($this->root) : new RemotePresenceBoard($spec, $transports);
         $this->id = Beacon::newId();

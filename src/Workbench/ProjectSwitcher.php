@@ -14,6 +14,7 @@ use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteSpec;
 use Porta\History\RecentProjectsStore;
 use Porta\I18n\Translator;
+use Porta\Support\Files;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Workbench\Menu\MenuItem;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -105,7 +106,7 @@ final readonly class ProjectSwitcher
      */
     public function siblingItems(): array
     {
-        $root = ($real = \realpath($this->rootDir)) ? $real : $this->rootDir;
+        $root = Files::canonical($this->rootDir);
         $items = [];
         if (null === ProjectLocation::forRoot($this->rootDir)->remote) {
             $parent = \dirname($root);
@@ -188,7 +189,7 @@ final readonly class ProjectSwitcher
             // this service was handed is canonical — and on macOS a temp path is
             // `/var/...` while its realpath is `/private/var/...`, so a raw
             // comparison would call the project you are in a different one.
-            $root === (($mine = \realpath($this->rootDir)) ? $mine : $this->rootDir) => $this->translator->trans('Already open'),
+            $root === Files::canonical($this->rootDir) => $this->translator->trans('Already open'),
             default => null,
         };
         if (null !== $refusal) {

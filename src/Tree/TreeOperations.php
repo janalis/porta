@@ -327,8 +327,7 @@ final class TreeOperations
     {
         // Buffers are keyed by realpath(); resolve the old path the same way
         // so an open file's buffer is re-pointed at the new name.
-        $resolvedOld = \realpath($old);
-        $oldKey = $resolvedOld ? $resolvedOld : $old;
+        $oldKey = Files::canonical($old);
         $this->withFs($failure, function () use ($old, $new, $oldKey, $success, $overwrite): void {
             // Write BEFORE the rename, or the edits are gone: the move closes
             // each affected buffer and re-opens it from disk, and
@@ -366,7 +365,7 @@ final class TreeOperations
             // Canonical both sides, per FileRenamed's contract: $oldKey was
             // resolved BEFORE the rename (it cannot be, after), and the new
             // path resolves now that it exists.
-            $newKey = ($resolvedNew = \realpath($new)) ? $resolvedNew : $new;
+            $newKey = Files::canonical($new);
             $this->events->dispatch(new FileRenamed($oldKey, $newKey));
             $this->events->dispatch(new ReferencesFollowRequested($oldKey, $newKey));
             $this->tree->refresh();
@@ -452,8 +451,7 @@ final class TreeOperations
     private function deleteOne(string $path): void
     {
         // buffers are keyed by realpath()
-        $resolved = \realpath($path);
-        $key = $resolved ? $resolved : $path;
+        $key = Files::canonical($path);
         $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
             // Read before it goes: the text a recovery restores, the open
             // buffer's when there is one — unsaved edits are the user's too.
@@ -642,7 +640,7 @@ final class TreeOperations
             // A copy reads from DISK, so an unsaved edit would be missing from
             // the copy while staying in the original — the same surprise as
             // losing it, wearing a different face.
-            $this->saveDirtyUnder(($resolved = \realpath($source)) ? $resolved : $source);
+            $this->saveDirtyUnder(Files::canonical($source));
             $this->fs->copy($source, $target);
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);

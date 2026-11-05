@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\GraphViewer;
 
 use Porta\Support\AsyncProcess;
+use Porta\Support\Files;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
@@ -114,6 +115,6 @@ final class ArchitectureArtifact
 
             return;
         }
-        $done(null, ($resolved = \realpath($path)) ? $resolved : $path);
+        $done(null, Files::canonical($path));
     }
 }

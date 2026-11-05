@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Editor;
 
 use Porta\Container\AsIdeService;
+use Porta\Support\Files;
 
 /**
  * A file's line as text, from the open buffer when there is one and from disk
@@ -37,7 +38,7 @@ final readonly class LineTextReader
         // Both spellings, because buffers are keyed by the path they were
         // opened with and a caller may hold the other side of a symlink — the
         // project root itself is one on macOS temp dirs.
-        $document = ($this->buffers->get($path) ?? $this->buffers->get(($resolved = \realpath($path)) ? $resolved : $path))?->document;
+        $document = ($this->buffers->get($path) ?? $this->buffers->get(Files::canonical($path)))?->document;
         if (null !== $document) {
             return $document->getLine(...);
         }

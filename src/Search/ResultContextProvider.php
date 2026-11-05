@@ -25,7 +25,7 @@ final readonly class ResultContextProvider
     public function around(string $relativePath, int $line): array
     {
         $abs = $this->paths->absolute($relativePath);
-        $buffer = $this->buffers->get($abs) ?? $this->buffers->get(($real = \realpath($abs)) ? $real : $abs);
+        $buffer = $this->buffers->get($abs) ?? $this->buffers->get(Files::canonical($abs));
         $lines = $buffer?->document->lines ?? \explode("\n", Files::read($abs));
 
         $context = [];

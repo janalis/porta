@@ -38,8 +38,7 @@ final class ProjectPaths
     public function __construct(
         private readonly string $rootDir,
     ) {
-        $realRoot = \realpath($rootDir);
-        $this->realRoot = \rtrim($realRoot ? $realRoot : $rootDir, characters: '/');
+        $this->realRoot = \rtrim(Files::canonical($rootDir), characters: '/');
     }
 
     /** The project root this instance is bound to, for the callers that hand it on raw. */

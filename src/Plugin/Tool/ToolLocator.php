@@ -8,6 +8,7 @@ use Porta\Config\PortaHome;
 use Porta\Config\WorkspaceTrust;
 use Porta\Plugin\Api\BinarySearch;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Support\Files;
 use Symfony\Component\Process\ExecutableFinder;
 
 /**
@@ -97,8 +98,7 @@ final class ToolLocator
      */
     public function sourceOf(ToolRequirement $tool, string $path): ?ToolSource
     {
-        $real = \realpath($path);
-        $real = false === $real ? $path : $real;
+        $real = Files::canonical($path);
         $manager = match (true) {
             \str_starts_with($path, $this->rootDir.'/vendor/') => ToolManager::Composer,
             null !== $this->binDir && \str_starts_with($path, $this->binDir.'/') => ToolManager::Github,

@@ -10,6 +10,7 @@ use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\PreviewMode;
+use Porta\Support\Files;
 use Porta\Workbench\EditorArea;
 use Symfony\Component\Tui\Tui;
 
@@ -58,8 +59,7 @@ final readonly class SessionRestorer
 
         $activePath = $data['active'];
         if ($opened && null !== $activePath) {
-            $resolved = \realpath($activePath);
-            $key = $resolved ? $resolved : $activePath;
+            $key = Files::canonical($activePath);
             if ($this->buffers->has($key)) {
                 /** @var Buffer $active */
                 $active = $this->buffers->setActive($key);

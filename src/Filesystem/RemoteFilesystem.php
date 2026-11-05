@@ -114,7 +114,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         private readonly EventDispatcherInterface $events,
         private readonly Filesystem $fs = new Filesystem(),
     ) {
-        $this->realRoot = ($resolved = \realpath($rootDir)) ? $resolved : $rootDir;
+        $this->realRoot = Files::canonical($rootDir);
         $this->index = new RemoteIndex($this->realRoot.'/'.self::INDEX, $fs);
         $this->queue = new ChangeQueue();
         $host = $location->remote->host ?? '';

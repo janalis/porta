@@ -18,8 +18,7 @@ final class EditorConfigResolver
 {
     public function resolve(string $absoluteFilePath): ResolvedEditorConfig
     {
-        $real = \realpath($absoluteFilePath);
-        $file = false !== $real ? $real : $absoluteFilePath;
+        $file = Files::canonical($absoluteFilePath);
 
         // Collect (dir, parsed) walking up, nearest first, until a root file.
         $collected = [];

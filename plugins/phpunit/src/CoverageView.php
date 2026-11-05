@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\PhpUnit;
 
 use Porta\Plugin\Api\PluginApi;
+use Porta\Support\Files;
 
 /**
  * The last coverage run, on the files it measured: core shows a file's
@@ -53,7 +54,7 @@ final class CoverageView
     public function hide(): void
     {
         foreach ($this->api->openBuffers()->files() as ['path' => $path]) {
-            if (!\array_key_exists(self::real($path), $this->files)) {
+            if (!\array_key_exists(Files::canonical($path), $this->files)) {
                 continue;
             }
             $this->api->setCoverage($path, []);
@@ -70,7 +71,7 @@ final class CoverageView
     public function opened(string $path): void
     {
         \clearstatcache(true, $path);
-        $lines = $this->files[self::real($path)] ?? null;
+        $lines = $this->files[Files::canonical($path)] ?? null;
         match (true) {
             null === $lines => null,
             (int) \filemtime($path) > $this->measuredAt => $this->forget($path),
@@ -81,17 +82,10 @@ final class CoverageView
     /** Saved, reloaded or rewritten: the file's text is not what the run measured any more. */
     public function forget(string $path): void
     {
-        $real = self::real($path);
+        $real = Files::canonical($path);
         if (\array_key_exists($real, $this->files)) {
             unset($this->files[$real]);
             $this->api->setCoverage($path, []);
         }
-    }
-
-    private static function real(string $path): string
-    {
-        $real = \realpath($path);
-
-        return false === $real ? $path : $real;
     }
 }
