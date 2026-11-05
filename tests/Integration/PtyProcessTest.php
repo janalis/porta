@@ -216,14 +216,20 @@ final class PtyProcessTest extends TestCase
         // Past the 8 MiB a NonBlockingWriter queues by default: an overflow
         // used to kill the writer, and every later keystroke with it.
         $size = 9_000_000;
-        $p = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; exec head -c '.$size.' > '.$out], __DIR__);
+        $p = new PtyProcess(['/bin/sh', '-c', 'stty raw -echo; echo raw; exec head -c '.$size.' > '.$out], __DIR__);
         $this->procs[] = $p;
         $exit = null;
-        $p->onExit(static function (int $c) use (&$exit): void {
+        $said = '';
+        $p->onOutput(static function (string $chunk) use (&$said): void {
+            $said .= $chunk;
+        })->onExit(static function (int $c) use (&$exit): void {
             $exit = $c;
         });
         $this->assertTrue($p->start());
-        $this->pump(0.2); // stty has run
+        // Raw before a byte is written: a canonical line holds 1 KiB and drops
+        // the rest, and head then waits forever. A fixed pause raced the
+        // session shim's own start-up.
+        $this->await(static fn (): bool => \str_contains($said, 'raw'), what: 'the terminal in raw mode');
 
         $p->write(\str_repeat('x', $size));
 
