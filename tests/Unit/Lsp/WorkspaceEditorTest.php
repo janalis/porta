@@ -20,6 +20,7 @@ use Porta\Lsp\LspSessionPool;
 use Porta\Lsp\RefactoringUndo;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Support\Files;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\StatusReads;
@@ -1029,6 +1030,66 @@ final class WorkspaceEditorTest extends TestCase
         ]);
 
         $this->assertSame(['write c.php', 'rename a.php moved.php', 'remove b.php'], $files->did);
+    }
+
+    /** A file whose content is not here yet — a remote one never fetched — is left alone, never edited from its placeholder. */
+    public function testAFileNotFetchedYetIsSkippedNotEditedBlind(): void
+    {
+        $project = new TempProject(['a.php' => '']); // the placeholder
+        $asked = [];
+        $files = new class($asked) implements ProjectFilesystem {
+            /** @param list<string> $asked */
+            public function __construct(
+                private array &$asked,
+            ) {}
+
+            public function available(string $path, \Closure $then, ?\Closure $failed = null): bool
+            {
+                $this->asked[] = \basename($path);
+
+                return false;
+            }
+
+            public function listed(string $dir): bool
+            {
+                return true;
+            }
+
+            public function dumpFile(string $path, string $content): void
+            {
+                throw new \LogicException('written from a placeholder');
+            }
+
+            public function mkdir(string $path): void {}
+
+            public function rename(string $from, string $to, bool $overwrite = false): void {}
+
+            public function remove(string $path): void {}
+
+            public function copy(string $source, string $target): void {}
+
+            public function pending(): int
+            {
+                return 0;
+            }
+        };
+        $we = new WorkspaceEditor(
+            new BufferManager(),
+            new CodeEditorWidget(),
+            new LspSessionPool($project->dir, new FixedActiveFile(), new Translator('en')),
+            new EventDispatcher(),
+            new RefactoringUndo(new BufferManager(), new EventDispatcher()),
+            $files,
+        );
+
+        $outcome = $we->applyWorkspaceEdit([
+            'changes' => [
+                Uri::fromPath($project->path('a.php')) => [self::edit(['start' => ['line' => 3, 'character' => 0], 'end' => ['line' => 3, 'character' => 3]], 'Bar')],
+            ],
+        ]);
+
+        $this->assertSame(['a.php'], $asked, 'its fetch is started');
+        $this->assertSame([Files::canonical($project->path('a.php'))], $outcome->skipped);
     }
 
     public function testAWriteThatFailsAfterTheCheckIsReportedRatherThanThrown(): void

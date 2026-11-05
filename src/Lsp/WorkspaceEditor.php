@@ -428,7 +428,11 @@ final readonly class WorkspaceEditor
         // An open buffer is the user's, wherever it lives; a file written
         // unseen on disk is the server's doing, and stays inside the project
         // like its creates and deletes.
-        $contents = $this->outside($target) ? null : Files::readWritable($target);
+        // A remote file not fetched yet is an empty placeholder here: edited,
+        // the few bytes the edit inserts would have replaced the whole file on
+        // the server. Its fetch starts, and it is named as not done this time.
+        $here = !$this->outside($target) && $this->fs->available($target, static function (): void {});
+        $contents = $here ? Files::readWritable($target) : null;
         if (null === $contents) {
             $skipped[] = $target;
 
