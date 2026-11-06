@@ -43,6 +43,9 @@ use Symfony\Component\Tui\Tui;
  */
 final class TreeOperations
 {
+    /** Files of a deleted folder whose text is kept, at most: the rest go as files do outside Porta. */
+    private const int KEPT_ON_DELETE = 500;
+
     /**
      * Depth of a batch of filesystem verbs announcing as one.
      *
@@ -457,18 +460,54 @@ final class TreeOperations
         });
     }
 
+    /** The text a recovery restores: the open buffer's when there is one — unsaved edits are the user's too. */
+    private function textToKeep(string $key, string $path): ?string
+    {
+        $buffer = $this->buffers->get($key);
+
+        return null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
+    }
+
+    /**
+     * Every file under the folder $dir with the text to keep of it, read
+     * before the folder goes. Bounded: a deleted `vendor/` is not a reason to
+     * read ten thousand files, and a repository's own `.git` is not the
+     * project's text.
+     *
+     * @return array<string, ?string> canonical path => its text
+     */
+    private function textsInside(string $dir): array
+    {
+        $texts = [];
+        $walk = new \RecursiveIteratorIterator(new \RecursiveCallbackFilterIterator(
+            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+            static fn (mixed $entry): bool => !$entry instanceof \SplFileInfo || (!$entry->isLink() && '.git' !== $entry->getFilename()),
+        ));
+        foreach (new \LimitIterator($walk, offset: 0, limit: self::KEPT_ON_DELETE) as $file) {
+            /** @var \SplFileInfo $file */
+            $path = $file->getPathname();
+            $texts[$path] = $this->textToKeep($path, $path);
+        }
+
+        return $texts;
+    }
+
     private function deleteOne(string $path): void
     {
         // buffers are keyed by realpath()
         $key = Files::canonical($path);
         $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
-            // Read before it goes: the text a recovery restores, the open
-            // buffer's when there is one — unsaved edits are the user's too.
-            $buffer = $this->buffers->get($key);
-            $previous = null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
+            // Read before it goes.
+            $previous = $this->textToKeep($key, $path);
+            // A folder's files too: each goes with it, and what keeps a
+            // deleted file (local history) is told of each, with its text.
+            $inside = \is_dir($path) ? $this->textsInside($key) : [];
             $this->fs->remove($path);
             // $key was resolved before the removal, which is the only time
             // it could be — the same reason the rename above resolves early.
+            foreach ($inside as $file => $text) {
+                $this->events->dispatch(new FileDeleted($file, $text));
+            }
             $this->events->dispatch(new FileDeleted($key, $previous));
             if ($this->buffers->has($key)) {
                 $next = $this->buffers->close($key);

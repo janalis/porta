@@ -8,6 +8,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
+use Porta\Event\FileDeleted;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
@@ -102,6 +103,46 @@ final class TreeKeyboardTest extends TestCase
 
         $this->assertDirectoryDoesNotExist($this->project->path('src'));
         $this->assertFileExists($this->project->path('a.php'));
+    }
+
+    /** Each file of a deleted folder is told of with its text — an open one's unsaved text — for what keeps it. */
+    public function testAFoldersFilesGoWithTheirText(): void
+    {
+        $this->project->write('src/deep/B.php', "<?php // b\n");
+        $this->project->write('src/.git/HEAD', "ref: refs/heads/main\n"); // a repository's own, not the project's text
+        $deleted = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$deleted): void {
+            $deleted[\basename($event->path)] = $event->previousText;
+        });
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $buffers->openFile($this->project->path('src/A.php'), focus: OpenFocus::Editor);
+        $this->editor()->getDocument()->insert('// unsaved ');
+        $this->tui()->setFocus($this->tree());
+        $this->walkTo('src');
+
+        $this->tui()->handleInput(self::DELETE);
+        $this->type("y\r");
+
+        \ksort($deleted); // the order the disk lists them in is the disk's
+        $this->assertSame(['A.php' => "// unsaved <?php\n", 'B.php' => "<?php // b\n", 'src' => null], $deleted);
+    }
+
+    /** A deleted vendor/ is not a reason to read every file in it: past the cap, they go as files do outside Porta. */
+    public function testAHugeFoldersFilesAreKeptOnlyUpToTheCap(): void
+    {
+        for ($i = 0; $i <= 500; ++$i) {
+            $this->project->write("src/many/f{$i}.txt", "x\n");
+        }
+        $kept = 0;
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$kept): void {
+            $kept += null === $event->previousText ? 0 : 1;
+        });
+        $this->walkTo('src');
+
+        $this->tui()->handleInput(self::DELETE);
+        $this->type("y\r");
+
+        $this->assertSame(500, $kept);
     }
 
     public function testInTheEditorDeleteIsTheEditorsOwn(): void
