@@ -661,6 +661,43 @@ final class ProjectSearchControllerTest extends TestCase
         yield 'multiline' => ["no\nmatch"];
     }
 
+    /** A confirm is for the results it was asked over: a new search, not the next Alt+A, follows it. */
+    public function testAnArmedEmptyReplaceDoesNotOutliveANewSearch(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n\$other = 2;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+        $controller->replaceAll(''); // armed
+
+        $controller->search('other');
+        $this->awaitModalShows('$other = 2;');
+        $controller->replaceAll('');
+
+        $this->assertStringContainsString('$other = 2;', (string) \file_get_contents($project->path('src/A.php')), 'asked again, not deleted');
+
+        // Armed now, over these results. Esc, and back: asked again.
+        $controller->open();
+        $controller->replaceAll('');
+        $this->assertStringContainsString('$other = 2;', (string) \file_get_contents($project->path('src/A.php')), 'reopened, it asks again');
+    }
+
+    /** A multi-line query's empty replacement deletes as much: it asks first too. */
+    public function testAnEmptyMultilineReplaceAsksFirst(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search("foo()\n{");
+        $this->awaitModalShows('foo()');
+
+        $controller->replaceAll('');
+
+        $this->assertStringContainsString("foo()\n{", (string) \file_get_contents($project->path('src/A.php')));
+        $this->assertStringContainsString('Alt+A again to DELETE', $this->statusRow($this->statusBar));
+    }
+
     public function testReplaceAllMultilineRewritesTheWholeFile(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n"]);

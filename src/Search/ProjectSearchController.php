@@ -413,14 +413,9 @@ final class ProjectSearchController
         // footer advertises Alt+A before anything has been typed. So it
         // confirms, the way quitting with unsaved buffers does, and the confirm
         // lives beside the code that deletes rather than in the modal that asks.
-        if ('' === $replacement && !$this->armedEmptyReplace) {
-            $this->armedEmptyReplace = true;
-            $this->notifier->warn($this->translator->trans('Alt+A again to DELETE every match — the replacement is empty'));
-            $this->tui->requestRender();
-
+        if (!$this->deletionConfirmed($replacement)) {
             return;
         }
-        $this->armedEmptyReplace = false;
 
         $touched = 0;
         $skipped = [];
@@ -511,6 +506,25 @@ final class ProjectSearchController
         return $current && 0 === $missing;
     }
 
+    /**
+     * Whether a replace may go ahead: at once with a replacement, and with an
+     * empty one — which DELETES every match — only on the second ask. Armed
+     * for the very next Alt+A only: any search disarms it ({@see run()}, which
+     * reopening runs too), or a confirm given once deleted another query's
+     * matches later without a word.
+     */
+    private function deletionConfirmed(string $replacement): bool
+    {
+        $confirmed = '' !== $replacement || $this->armedEmptyReplace;
+        $this->armedEmptyReplace = !$confirmed;
+        if (!$confirmed) {
+            $this->notifier->warn($this->translator->trans('Alt+A again to DELETE every match — the replacement is empty'));
+            $this->tui->requestRender();
+        }
+
+        return $confirmed;
+    }
+
     /** Replace every match of a multiline query across matched files' whole text. */
     private function replaceAllMultiline(string $replacement): void
     {
@@ -518,6 +532,9 @@ final class ProjectSearchController
             $this->notifier->flash($this->translator->trans('Nothing to replace'));
             $this->tui->requestRender();
 
+            return;
+        }
+        if (!$this->deletionConfirmed($replacement)) {
             return;
         }
 
@@ -672,6 +689,7 @@ final class ProjectSearchController
 
     private function run(string $query): void
     {
+        $this->armedEmptyReplace = false; // a confirm is for the results it was asked over
         // A completion landing after the user switched tabs updates the
         // captured tab's model only — never whichever tool is now on display.
         $tab = $this->paneTab();
