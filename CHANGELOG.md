@@ -7,39 +7,101 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **The phpunit plugin**: run the test at the caret (`Ctrl+Shift+F10`), the
-  tests in a file, the whole suite, or only the tests that failed last time.
-  Results are listed in the dock, each failure is a diagnostic on its
-  assertion, every test method is marked passed or failed at the end of its
-  line, and the status bar counts the failing tests. A Pest project runs its
-  `test()` and `it()` tests with Pest the same way. **Run All Tests with
-  Coverage** marks each statement in the change strip — green where it ran,
-  red where no test reached — until **Hide Coverage**. Off by default.
+- **The phpunit plugin**: run the test at the caret (`Ctrl+Shift+F10`), a
+  file's tests, the whole suite, or the tests that failed last time. Failures
+  are diagnostics on their assertion, each test method is marked passed or
+  failed, and the status bar counts the failures. Pest projects run with Pest.
+  **Run All Tests with Coverage** marks what ran and what no test reached in
+  the change strip. Off by default.
+- **The xdebug plugin**: PHP debugging with Xdebug in one step. It uses the
+  vscode-php-debug adapter from VS Code, Cursor or VSCodium, or installs it
+  (checked against a pinned SHA-256): `Shift+F9` debugs the PHP file in front,
+  and **Xdebug: Start Listening for Connections** debugs web requests and
+  anything else started with Xdebug. Off by default.
+- **The composer plugin**: direct dependencies with newer releases — within
+  your constraint, past it, or abandoned — listed in the dock and marked in
+  `composer.json`. Install, update, require and remove run in a terminal tab
+  of their own. Off by default.
 - **Moving a PHP file moves its namespace**: with a language server that
   offers it (phpactor), a file moved or renamed in the tree has its namespace
-  and every `use` of its class updated, as one refactoring Undo Last
-  Refactoring takes back.
-- **The xdebug plugin**: PHP debugging with Xdebug in one step. It supplies
-  the vscode-php-debug adapter — the one VS Code, Cursor or VSCodium installed,
-  or one its Settings page installs, checked against a pinned SHA-256 — so
-  Shift+F9 debugs the PHP file in front with nothing to configure, and
-  **Xdebug: Start Listening for Connections** debugs web requests and
-  anything else started with Xdebug elsewhere. Off by default.
-- **The composer plugin**: which direct dependencies have newer releases,
-  listed in the dock and marked at the end of their line in composer.json —
-  within your constraint, past it, or abandoned. Install, update all, update
-  or remove the package at the caret, and require a new one, in a terminal
-  tab of their own. Off by default.
+  and every `use` of its class updated, as one step Undo Last Refactoring
+  takes back.
+
+### Changed
+
+- **Git: Push** is `Alt+K` on every platform. Its `Ctrl+Shift+K` is the
+  editor's Delete Line, and in a terminal that reports the chord (kitty,
+  Ghostty, WezTerm) deleting a line pushed.
+- Plugin authors: a plugin is named by its folder, whatever `name()` returns;
+  a core key a plugin adopts must be one core skips; an IDE action called in
+  `activate()` fails the plugin when it is turned on live, as it does at
+  startup; `projectTrusted()` answers as the project stands now.
 
 ### Fixed
 
-- phpantom's errors and warnings show in the editor: it reports them only
-  when asked (LSP pull diagnostics), and Porta now asks — as a file opens,
-  as it is edited, and when the server says they changed. Its call hierarchy
-  (`Ctrl+Shift+H`) works too.
-- Blame, a review's thread notes and other plugins' notes at the end of a line
-  no longer vanish when you jump within the file you are in, such as with
-  `Enter` on a search result in it.
+- **Editor**: a caret placed by a reload, a selection or a click lands on a
+  character, never inside one; typing at several carets keeps them in step
+  and stays fast; typing somewhere else, or through an auto-pair, is one undo
+  step; words are letters of any script, Latin-1 lines included, and `Home`
+  stops after tabs; uncomment takes the space commenting added, not the
+  indent; occurrence carets match whole identifiers; a CRLF or BOM file keeps
+  its line endings through whole-text edits and no longer looks changed on
+  disk after a formatter; a double or triple click keeps its word or line;
+  blame and other notes at the end of a line survive a jump within the file.
+- **Find and replace**: a regex replace expands its references in place,
+  however far into a long line; a multi-line query matches a CRLF file and
+  replaces with the file's own line ending. In Find in Files, `Alt+A` waits
+  for the search to land and replaces only the results shown; a buffer with
+  unsaved edits is left alone and named; local history in `.porta/` is no
+  longer searched, nor offered by Go to File.
+- **Files and local history**: rename takes a name, never a path, and renames
+  across case or Unicode spellings; New Folder over a taken name says so; a
+  copy pasted into its own folder takes a free name; deleting or renaming a
+  folder keeps its files' history; deleting a link to a folder leaves the
+  target alone; Compare with Snapshot works under a coloured git config and
+  with binary files. A `.markdown` file is Markdown everywhere.
+- **Git**: a conflict is never discarded, and discard never deletes a nested
+  repository or worktree; discarding a staged change goes back to HEAD; a
+  refused commit says why in one line; a file name is never read as a
+  pattern; commands that write the index take turns; a first push goes to the
+  repository's only remote and its offer names that remote; a project below
+  the repository's root is told which folder to open; reverting a deletion or
+  a CRLF change works; a changed binary file says the files differ; the last
+  line of a file without a final newline diffs correctly.
+- **Run and terminal**: a run saves the edited buffers first, and runs
+  nothing if a save is refused; a run is its own process group — `Ctrl+C`
+  interrupts it and closing its tab stops what it started; progress bars
+  redraw in place; a colour lasts until a reset; a 9 MB paste no longer stalls.
+- **Language servers**: phpantom's errors and warnings show — Porta asks for
+  them, as phpantom only reports when asked — and its call hierarchy
+  (`Ctrl+Shift+H`) works. Rename, reformat and code actions never land on
+  text typed since, edits apply in the order sent and to the right file, and
+  a completion replaces the whole range its server gives.
+- **Debugger**: a breakpoint moves with its line as you edit; a stack or a
+  *Paused* answered after you resumed is not painted; an inline value after
+  an emoji shows; a plugin's adapter keeps the language's launch config.
+- **Plugins**: enabling or disabling one respects the other config file and
+  the plugins it requires; a plugin whose requirement is not running is not
+  loaded, and removing one stops those that need it; a plugin switched off
+  takes back what it showed and stops its timers; installing a
+  language-server plugin starts its server; php-cs-fixer's extra arguments
+  keep their quoting; a restricted project can still turn graph-viewer's
+  PlantUML preview off.
+- **Remote projects (SSH, FTP)**: a plugin's create, move and delete, and an
+  undone refactoring, reach the server; a listing older than your own change
+  is dropped; one folder the server refuses no longer empties the tree; a new
+  file gets the server's usual mode, and a link is written through; a typed
+  FTP password is used by its own server only.
+- **Agents (MCP)**: Claude Code's save obeys *Let agents save files*; undo
+  after an agent's edit returns to your version.
+- **Settings and session**: writing a setting keeps the file's formatting;
+  two windows on one project keep each other's bookmarks, breakpoints and
+  session; a copied project reopens its own files.
+
+### Security
+
+- graph-viewer asks whether the project is trusted at each Mermaid render,
+  not once when it starts.
 
 ## [0.1.3] - 2026-11-03
 

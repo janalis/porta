@@ -4,8 +4,9 @@ Open a project that lives on an FTP or FTPS server: browse, edit and save its fi
 
 This is `janalis/porta-ftp`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
-ships it already: turn it on under **Settings → Plugins**. Install this
-package only to run a copy of your own, which shadows the bundled one.
+ships it already, on by default: turn it off under **Settings → Plugins**.
+Install this package only to run a copy of your own, which shadows the bundled
+one.
 
 - [Documentation](https://janalis.github.io/porta/plugins/ftp/)
 - [Writing a plugin](https://janalis.github.io/porta/plugins)

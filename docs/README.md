@@ -37,10 +37,10 @@ plugin's guide also opens from its page under **Settings → Plugins**.
 | [FTP](../plugins/ftp/docs/README.md) | Open a project on an FTP or FTPS server: browse, edit, save |
 | [Local history](../plugins/local-history/docs/README.md) | A snapshot on every save, independent of git: compare, restore, recover deleted files |
 | [Image viewer](../plugins/image-viewer/docs/README.md) | Images and SVG drawings as pictures — zoom, pan, pixel-exact where the terminal allows |
-| [Graph viewer](../plugins/graph-viewer/docs/README.md) | Graphviz and PlantUML diagrams drawn beside their source, the project's architecture graph |
+| [Graph viewer](../plugins/graph-viewer/docs/README.md) | Graphviz, PlantUML and Mermaid diagrams drawn beside their source, the project's architecture graph |
 | [TODO](../plugins/todo/docs/README.md) | Every TODO and FIXME in the project, in a panel |
 | [Xdebug](../plugins/xdebug/docs/README.md) | Debug PHP with Xdebug in one step: the vscode-php-debug adapter, found or installed for you |
-| [PHPUnit](../plugins/phpunit/docs/README.md) | Run the test at the caret, the file, the suite or the failed ones; results in the dock, failures inline |
+| [PHPUnit](../plugins/phpunit/docs/README.md) | Run the test at the caret, the file, the suite or the failed ones, with PHPUnit or Pest; results in the dock, failures inline, line coverage in the editor |
 | [Composer](../plugins/composer/docs/README.md) | Outdated dependencies listed and marked in composer.json; install, update, require and remove in a terminal tab |
 | [PHPantom](../plugins/phpantom/docs/README.md) | The suggested PHP language server, and its fixer |
 | [Phpactor](../plugins/phpactor/docs/README.md) | Phpactor as the PHP language server instead |

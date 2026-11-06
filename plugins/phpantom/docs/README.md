@@ -2,8 +2,9 @@
 
 [PHPantom](https://github.com/PHPantom-dev/phpantom_lsp) is the PHP language
 server Porta suggests: completion, diagnostics, navigation and refactoring for
-PHP, from one native binary. The Welcome screen sets it up in one keystroke;
-otherwise enable it under **Settings → Plugins → phpantom**.
+PHP, from one native binary. Bundled with Porta and off by default — turn it
+on under **Settings → Plugins → phpantom**, or let the Welcome screen set it up
+in one keystroke.
 
 ![The phpantom page in Settings → Plugins](/screenshots/plugin-phpantom.svg)
 

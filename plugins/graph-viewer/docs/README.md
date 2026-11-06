@@ -9,7 +9,7 @@ the event-loop scheduling around them.
 
 Opening a `.dot` or `.gv` file shows its source with the Graphviz graph beside
 it as a [live preview](../../../docs/editor.md#live-preview), **the picture `dot` itself draws** — real splines, arrowheads,
-fills and fonts (install graphviz, or point the graph-viewer plugin's `dotPath` setting at it).
+fills and fonts (install graphviz, or point the **Graphviz dot path** setting at it).
 Without `dot`, viz draws the picture itself; the tab is then that picture alone, since the
 node selection, the counts and the cell rendering all come from `dot`'s layout.
 The plugin's Settings page lists the three tools it can use — `dot`, `mmdc` and
@@ -39,7 +39,7 @@ like — dot's own splines, arrowheads and fonts — and **cells** draws the nod
 labels as real terminal text, which stays readable at a pane size where the
 bitmap's type is a few pixels tall. Cells is also what paints when dot cannot
 produce a bitmap at all (no libgd) or has not answered yet, and the standing
-preference is the graph-viewer plugin's `renderMode` setting. A PlantUML
+preference is the **Graph rendering** setting. A PlantUML
 picture has no layout to draw from, so it ignores the toggle.
 
 The same tab opens **PlantUML** documents — `.puml`, `.plantuml`, `.pu`,
@@ -82,7 +82,7 @@ disable old interactions; delayed picker selections cannot act on replaced resul
 
 `v` switches to a **cell rendering** that draws node labels as terminal text
 — less faithful, but readable when the picture's own type is only a few
-pixels tall. The *Graph rendering* setting (Settings ▸ General) picks which
+pixels tall. The **Graph rendering** setting picks which
 one new tabs open with. It is also what you get automatically if your
 graphviz was built without PNG support, with the reason in the banner.
 
@@ -93,7 +93,7 @@ preview shown alone, where the editor is out of sight, the first error also
 tops the picture. A failure of Graphviz itself (answering nonsense), or a document viz
 cannot draw without it, is the pane's to say, in a banner. The viewer is a bundled plugin, enabled by
 default — disabling it opens `.dot` files as plain text with no preview.
-**Plugins ▸ Project Architecture** generates a namespace-dependency graph of
+**Plugins → Project Architecture** generates a namespace-dependency graph of
 the current project into `architecture.dot` and opens it with the graph alone
 on screen (`Ctrl+Alt+V` brings its DOT back). The
 plugin's *Architecture output directory* setting picks where that file goes —
@@ -102,23 +102,6 @@ is taken as given, and the directory is created if it does not exist. (Its
 *Architecture command* setting supplies the DOT instead — that command's stdout
 wins.) `Graph: Export SVG/PNG/PDF` in the palette renders the active graph —
 Graphviz, PlantUML or Mermaid — beside its file.
-
-## Keys
-
-When a `.dot`, `.gv` or PlantUML tab is active. The zoom keys match the image
-viewer's, but zooming in re-renders the graph at a higher resolution rather
-than magnifying pixels.
-
-| Key | Action |
-| --- | --- |
-| `=` / `-` | Zoom in / out (also `Ctrl+wheel`, anchored at the pointer) |
-| `0` / `f` | Fit to window |
-| `1` | Actual size |
-| Arrows / `Shift+arrows` | Pan (also the wheel, or dragging) |
-| `n` / `p` | Select the next / previous node, framing it and naming it in the status bar |
-| `/` | Find a node by name — a filterable list of every node with its in/out degree; picking one selects it and pans to it |
-| `v` | Toggle bitmap / cell rendering — the picture `dot` draws, or node labels as real terminal text, which stays readable when the bitmap's type is a few pixels tall (no effect on a PlantUML picture, which has no layout to draw from) |
-
 
 ## Mermaid and Markdown
 
@@ -511,3 +494,32 @@ criteria. Colored cards occupy chronological role lanes; data compartments,
 source navigation and SVG/PNG export are native. Long comment streams remain
 cancellable. Browser typography of embedded
 data is a non-goal; notes and criteria are readable metadata.
+
+## Settings
+
+| Setting | Default | What it does |
+| --- | --- | --- |
+| Preview Mermaid beside its source | on | Off, Mermaid files open as plain text |
+| Mermaid CLI path | empty | The `mmdc` to run; empty finds it on the `PATH` |
+| Preview PlantUML beside its source | on | Off, PlantUML files open as plain text |
+| Graphviz dot path | empty | The `dot` to run; empty finds it on the `PATH` |
+| Graph rendering | `bitmap` | `bitmap` or `cells`: the rendering a new tab opens with (`v` toggles it) |
+| PlantUML path (or .jar) | empty | A launcher, or a `plantuml.jar` run with `java -jar`; empty finds `plantuml` on the `PATH` |
+| Architecture command (stdout = DOT) | empty | A command whose output is the architecture graph; empty uses the built-in PHP namespace scanner |
+| Architecture output directory | empty | Where `architecture.dot` goes; empty is the project root, a relative path resolves from it |
+
+## Keys
+
+When a `.dot`, `.gv` or PlantUML tab is active. The zoom keys match the image
+viewer's, but zooming in re-renders the graph at a higher resolution rather
+than magnifying pixels.
+
+| Key | Action |
+| --- | --- |
+| `=` / `-` | Zoom in / out (also `Ctrl+wheel`, anchored at the pointer) |
+| `0` / `f` | Fit to window |
+| `1` | Actual size |
+| Arrows / `Shift+arrows` | Pan (also the wheel, or dragging) |
+| `n` / `p` | Select the next / previous node, framing it and naming it in the status bar |
+| `/` | Find a node by name — a filterable list of every node with its in/out degree; picking one selects it and pans to it |
+| `v` | Toggle bitmap / cell rendering — the picture `dot` draws, or node labels as real terminal text, which stays readable when the bitmap's type is a few pixels tall (no effect on a PlantUML picture, which has no layout to draw from) |

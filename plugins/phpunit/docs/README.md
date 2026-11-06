@@ -21,9 +21,11 @@ Six commands, in the Plugins menu and the command palette:
   lines it runs — see [Coverage](#coverage).
 - **PHPUnit: Hide Coverage** takes the coverage away.
 
-A file you run is saved first, so PHPUnit tests what you see. The test run
-gets a **PHPUnit** terminal tab of its own, so PHPUnit's output is there to
-read in full. What it found shows up in four places:
+Every file with unsaved edits is saved first, so PHPUnit tests what you see.
+When a save is refused — the file changed on disk under your edits, say —
+nothing runs, and you are told which file. The test run gets a **PHPUnit**
+terminal tab of its own, so PHPUnit's output is there to read in full. What it
+found shows up in four places:
 
 - The **Tests** tab in the bottom dock lists each test, failures first, with
   the message. `Enter` jumps to the line a failure points at, and `F5` runs

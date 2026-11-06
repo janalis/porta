@@ -9,10 +9,15 @@
 2. **Composer scripts** — every entry under `scripts` in `composer.json`
 3. **Makefile targets** — every column-0 `target:` in the project Makefile
 
-`Shift+F10` repeats the last run. Each run configuration gets its own
-terminal tab (reused across re-runs — re-running replaces only that tab's
-process, leaving your shells and other runs alone); the tab title shows
-`… — exited (<code>)` when the process ends.
+`Shift+F10` repeats the last run. A run first saves every buffer with unsaved
+edits; if a save is refused (the file changed on disk), nothing runs.
+
+Each run configuration gets its own terminal tab (reused across re-runs —
+re-running replaces only that tab's process, leaving your shells and other
+runs alone); the tab title gains the exit code,
+`<name> (<code>)`, when the process ends.
+`Ctrl+C` in the tab interrupts the run. Re-running, or closing the tab, stops
+the run's whole process group, servers it started included.
 
 ## Integrated terminal
 
@@ -32,7 +37,7 @@ closing the last closes the panel. Click a tab to switch to it, drag it to
 reorder your sessions, or right-click it (or press `Ctrl+F10` in the panel)
 for a New Session / Close Session menu; each session keeps its own
 scrollback and process.
-Debugger output appears as its own `Debug: <file>` tab, so a debug session
+Debugger output appears as its own `Debug output: <label>` tab, so a debug session
 and your shells coexist.
 
 It is a line-oriented scrollback panel, not a full-screen VT host — running

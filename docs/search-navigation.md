@@ -6,7 +6,7 @@
 
 | Key | Target |
 | --- | --- |
-| `Ctrl+Shift+N` / `Ctrl+P` | File (fuzzy, camel-hump aware). A folder git ignores — a coverage report, `var/cache/` — is left out, so it never crowds out your own files; a single ignored file such as `.env` is still found, and `vendor/` too once `searchIncludeVendor` is on |
+| `Ctrl+Shift+N` / `Ctrl+P` | File (fuzzy, camel-hump aware). A folder git ignores — a coverage report, `var/cache/` — is left out, so it never crowds out your own files; a single ignored file such as `.env` is still found, and `vendor/` too once `searchIncludeVendor` is on. Local history (`.porta/history`) is left out; project plugins under `.porta/plugins` are found |
 | `Ctrl+Alt+Shift+N` | Symbol in project (`workspace/symbol`, live-filtered) |
 | `Ctrl+F12` | Symbol in the current file (file structure popup) |
 | `Ctrl+G` | Line |
@@ -97,10 +97,14 @@ Search Scopes" pins one so it is never evicted.
   `F5` re-runs the shown tab's query.
 - **Replace**: with Replace filled, each match previews as `old → new`
   with an exclude checkbox (`Delete` toggles). `Alt+A` applies to every
-  kept match — open buffers as one undoable edit, other files on disk.
+  kept match — open buffers as one undoable edit, other files on disk. A
+  buffer with unsaved edits is skipped and named ("Not replaced in …"): the
+  matches are the disk's lines, so save it and search again.
 
-The search runs as async `grep` streamed through the event loop; the UI
-never blocks.
+Like Go to File, the search leaves out local history (`.porta/history`) but
+not project plugins under `.porta/plugins`. It runs as async `grep` streamed
+through the event loop; the UI never blocks. A multi-line query, or a machine
+without `grep`, uses the built-in engine instead.
 
 ## Structure panel (`Alt+7`)
 

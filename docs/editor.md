@@ -270,7 +270,7 @@ The receiver can be a variable, a property or static chain, a call or an index
 (`$this->rows`, `Foo::bar`, `count($x)`, `$rows[0]`).
 
 Define your own under `languages.<id>.templates` in `.porta.json` — see
-[configuration.md](configuration.md#languageslangid). Yours replace a built-in of
+[configuration.md](configuration.md#languagesid). Yours replace a built-in of
 the same name, and an empty body switches one off.
 
 `Tab` is still `Tab`: with no template at the caret it indents as it always did,
@@ -681,7 +681,7 @@ come from open buffers, because nothing walks the project on a frame. Info and
 hint diagnostics are left unmarked, so the marks mean "something here needs
 you", and directories are never marked.
 
-**Select Opened File in Tree** (`Alt+F1`, or View ▸ Select Opened File in Tree)
+**Select Opened File in Tree** (`Alt+F1`, or View → Select Opened File in Tree)
 expands the tree down to the file you are editing, selects it and moves focus
 there, so you can carry on navigating from where the caret already was.
 
@@ -838,7 +838,7 @@ it. An edit keeps your place in a long preview.
 
 - **Editor / Split / Preview** — the toggles at the right end of the
   breadcrumbs bar choose the text alone, both, or the picture alone.
-  `Ctrl+Alt+V` steps through the three, and *View ▸ Editor Only / Editor and
+  `Ctrl+Alt+V` steps through the three, and *View → Editor Only / Editor and
   Preview / Preview Only* do the same. Each tab keeps its own choice.
 - **Resize** by dragging the divider between the two, or with
   `Shift+F11`/`Shift+F12` from either half. The page rewraps as it goes and

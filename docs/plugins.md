@@ -109,7 +109,9 @@ before there was one.
   means the plugin's own root.
 - **`extra.porta.requires`** — plugin **names** (directory names) that must load,
   and load **first**. A plugin whose requirement is missing or disabled does not
-  activate, and says which requirement in a startup warning. Dependency cycles
+  activate, and says which requirement in a startup warning. Nor does one whose
+  requirement is not *running* — its `composer install` failed, or its
+  `activate()` threw — at startup and on a live enable alike. Dependency cycles
   are reported rather than resolved: no member of a cycle loads, because picking
   one to go first would make the bug intermittent.
 
@@ -503,7 +505,9 @@ re-merges on every plugin toggle). **Removal deactivates the plugin live** —
 its menu entries, palette commands, key dispatch and hooks all die
 immediately, and the same name can be reinstalled without a restart. When a
 removed project plugin was shadowing a global or bundled copy of the same
-name, that copy reactivates in its place.
+name, that copy reactivates in its place. Otherwise the running plugins that
+require it stop too, and are named ("Also stopped, as they need it: …"); they
+are not written off in your config, and the next launch declines them by name.
 
 Every plugin — bundled ones included — also has an **Enabled** toggle at the
 top of its settings page (each installed plugin appears as a sub-item under
@@ -982,7 +986,7 @@ $runs->start('phpunit', ['vendor/bin/phpunit'], function (int $code) use ($runs)
 | Method | Purpose |
 | --- | --- |
 | `configurations(): list<array>` | What the Run menu would offer now — the active PHP file, composer scripts, Makefile targets — as `['label' => …, 'command' => list<string>]` |
-| `start(string $title, array $command, ?\Closure $onExit = null)` | Run `$command` in the `run:<title>` terminal session. The tab appears, but the panel is not opened and focus stays where the user left it. A run of the same title already going is replaced. `$onExit(int $code)` gets the exit code, or `-1` when the run is replaced or closed before it ends |
+| `start(string $title, array $command, ?\Closure $onExit = null)` | Run `$command` in the `run:<title>` terminal session, after saving every buffer with unsaved edits — a refused save runs nothing and calls `$onExit(-1)`. The tab appears, but the panel is not opened and focus stays where the user left it. A run of the same title already going is replaced. `$onExit(int $code)` gets the exit code, or `-1` when the run is replaced or closed before it ends |
 | `output(string $title): ?array` | What that run printed, as plain text (its last 400 lines), whether it is still `running`, and its `exitCode` once it ended by itself; null when there has been no such run |
 | `terminals(): list<array>` | Every terminal tab — a shell, a run, the debugger's output — as `['id' => 'shell:1' \| 'run:<title>' \| …, 'title' => …, 'running' => bool]` |
 | `scrollback(string $id): ?string` | What a terminal shows, as it would be printed again — colours kept, lines ended with CR LF; null without such a tab |

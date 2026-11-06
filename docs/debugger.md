@@ -45,20 +45,25 @@ supplies it — an adapter set here still wins.
 | --- | --- |
 | `Shift+F9` | Start debugging the current file |
 | `Ctrl+F8` (or click the gutter) | Toggle a breakpoint on the caret's line |
-| `Ctrl+Shift+F8` | Edit the caret line's breakpoint condition |
+| `Ctrl+Shift+F8` | Edit the caret line's breakpoint condition, hit count or log message |
 | `Ctrl+Shift+F9` | Add a watch expression |
 | `Alt+F9` | Run to cursor (paused only) |
 | `F8` | Step over |
 | `F7` | Step into |
 | `Shift+F8` | Step out |
 | `F9` | Resume |
+| `Ctrl+F9` | Pause the running program |
+| `Alt+F8` | Evaluate an expression (paused only) |
+| `Ctrl+Shift+F5` | Restart |
 | `Ctrl+F2` | Stop |
 
-Breakpoints render as gutter dots (`●`, or `◆` when conditional) and
-survive buffer switches. `Ctrl+Shift+F8` prompts for a condition and a hit
-count (leave both empty to make the breakpoint unconditional again; using it
-on a bare line creates the breakpoint). Conditions are passed through to
-the adapter verbatim — if it doesn't advertise support, they're stripped
+Breakpoints render as gutter dots (`●`, `◆` when conditional, `◇` with a log
+message), survive buffer switches, and move with their line as you add or
+remove lines above it. `Ctrl+Shift+F8` prompts for a condition, a hit count
+and a log message (leave them empty to make the breakpoint plain again; using
+it on a bare line creates the breakpoint). A breakpoint with a log message is
+a logpoint: it writes the message to the debug output instead of pausing.
+Conditions are passed through to the adapter verbatim — if it doesn't advertise support, they're stripped
 with a warning in the debug output. The
 step/resume/stop keys only capture input while a session runs (paused for
 stepping) — otherwise they keep their editor meanings (`F7`/`Shift+F7`

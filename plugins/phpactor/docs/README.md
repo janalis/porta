@@ -2,8 +2,8 @@
 
 Uses [Phpactor](https://phpactor.readthedocs.io) as the PHP language server
 (`phpactor language-server`) instead of PHPantom. Bundled with Porta and off
-by default — enable it under **Settings → Plugins → phpactor**, and disable
-phpantom so the two do not both claim PHP. How Porta picks between language
+by default — turn it on under **Settings → Plugins → phpactor**, and turn
+phpantom off so the two do not both claim PHP. How Porta picks between language
 servers is in [Getting started](../../../docs/getting-started.md#language-server).
 
 ![The phpactor page in Settings → Plugins](/screenshots/plugin-phpactor.svg)

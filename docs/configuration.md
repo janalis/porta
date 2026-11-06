@@ -12,8 +12,7 @@ Porta reads two files, and the second wins:
 Both use the same format, described below. The global file is optional and
 does not exist until something writes it. Neither is required.
 
-`PORTA_HOME` overrides `HOME` when resolving the global file, which is also
-how the global plugin directory is found — the two are siblings.
+`~` is your home directory, or [`PORTA_HOME`](#environment-variables) when set.
 
 ## How the two are merged
 
@@ -76,11 +75,12 @@ report a success that is not one, Porta says so:
 | --- | --- | --- |
 | Saved to the global file | the project sets that key | *Saved to ~/.porta/config.json — .porta.json overrides it in this project* |
 | Pressed `r` on a global value | the project still sets that key | *Cleared from ~/.porta/config.json — .porta.json still overrides it here* |
-| Enabled a plugin | the other file lists it in `disabledPlugins` | *&lt;plugin&gt; stays off — &lt;file&gt; disables it* |
+| Enabled a plugin | the other file lists it in `disabledPlugins`, or its `enabledPlugins` leaves out a bundled plugin | *&lt;plugin&gt; stays off — &lt;file&gt; disables it* |
+| Disabled a bundled plugin | the other file's `enabledPlugins` turns it on | *&lt;plugin&gt; stays on — &lt;file&gt; turns it on* |
 | Rebound an action | the other file binds that action | *&lt;action&gt; keeps its binding — &lt;file&gt; sets it* |
 
-In the last two the operation reports nothing else — no "enabled", no
-"rebound" — because it did not happen.
+In the last three the operation reports nothing else — no "enabled", no
+"disabled", no "rebound" — because it did not happen.
 
 Refusing these edits was considered and rejected: setting a personal default
 for a key that some open project happens to pin is a reasonable thing to do,
@@ -93,6 +93,10 @@ that shadows it.
 none has to invent one. It starts from **the list already in effect**, not from
 the shipped default — otherwise turning one plugin off in a project would
 silently turn back on every plugin you had turned off globally.
+
+With no `enabledPlugins` in either file, a small default set is on — see
+[plugins.md](plugins.md) for the list. An explicit list, even `[]`, replaces
+that default, so a list written before a bundled plugin existed leaves it off.
 
 ## Trusting a project
 
@@ -200,7 +204,8 @@ else in it.
 ### `keymap`
 
 `action id → key or list of keys`; see [keybindings.md](keybindings.md).
-Applied on the next launch. Plugin command ids (containing `:`) bypass the
+An edit to the file applies on the next launch; **Settings → Keybindings**
+applies its own at once. Plugin command ids (containing `:`) bypass the
 catalog validation and bind if the plugin loads.
 
 ### `settings`
@@ -327,8 +332,13 @@ language. The folders open and close as the file tree's do (`←`, `→`, `Enter
 or a click). Each page's header is its trail — `Settings › Plugins › git` —
 and a click on `Settings` or `Plugins` goes to that page.
 
-- **General** — the `settings` table above, edited live (theme and language
-  switch immediately, including a full RTL re-layout for Hebrew).
+- **General** — the behaviour keys of the `settings` table: `autoPairs`,
+  `formatOnSave`, `keymapPlatform`, `searchIncludeVendor`, `displayName`,
+  `sharePresence` and `toolUpdateCheck`, edited live.
+- **Interface** — the rest of that table: `language`, `theme`, the cursor,
+  the layout, the editor's gutter and guides, diagnostics, inlay hints and
+  tooltips, edited live (theme and language switch immediately, including a
+  full RTL re-layout for Hebrew).
 - **Keybindings** — every action with its current binding; `Enter` arms a
   capture, the next keypress becomes the binding (persisted to `.porta.json`
   and applied live — IDE-level dispatch and menu shortcut labels re-merge
@@ -365,23 +375,36 @@ The IDE writes a `.porta/` directory into the project you open:
 
 | Path | Contents |
 | --- | --- |
-| `.porta/session.json` | Open buffers, cursor positions, pins and each previewed tab's Editor / Split / Preview arrangement, restored when you launch without a file argument |
+| `.porta/session.json` | Open buffers, cursor positions, pins and each previewed tab's Editor / Split / Preview arrangement, restored when you launch without a file argument. A file in the project is stored relative to it, here and in `recent-files.json`, so a copied project reopens its own files |
 | `.porta/recent-files.json` | The files this project has had open, newest first, capped at 32 — what `Ctrl+E` offers below the open tabs |
+| `.porta/bookmarks.json` | Bookmarked lines |
+| `.porta/debug.json` | Breakpoints with their conditions, watch expressions and the exception-filter choice |
+| `.porta/search-history.json`, `search-prefs.json`, `search-scopes.json` | Find in Files' recent queries, last options and saved scopes |
+| `.porta/onboarding.json` | That the Welcome screen has been shown |
+| `.porta/presence/` | Each Porta open on this project: its user's name, open file and caret — yours only while `sharePresence` is on |
+| `.porta/*.log` | `error.log`, `perf.log`, `freeze.log` and `dap.log` — evidence for a bug report |
 | `.porta/layout.json` | Pane proportions (sidebar widths, bottom-panel height, git view splits, the editor's share beside a live preview) — hand-editable |
 | `.porta/history/` | Local-history snapshots (see below) |
 | `.porta/reviews/` | Local code reviews an agent writes and you answer — see [review.md](../plugins/review/docs/README.md#local-reviews-the-format-an-agent-writes) |
 | `.porta/plugins/` | Installed project-scope plugins |
-| `enabledPlugins` (in `.porta.json`) | Bundled plugins to load. When the key is ABSENT, `image-viewer`, `graph-viewer`, `todo`, `local-history`, `diff`, `git`, `ssh` and `ftp` are on by default; an explicit list (even `[]`) replaces that default entirely, so a list written before one of them existed silently leaves it off — TODO scanning and local-history snapshots are the two that go quiet, and a list naming `git` but not `diff` (which git needs since diff moved out of it) skips git with a warning |
+| `.porta/composer.json`, `.porta/vendor/` | The composer project those plugins are installed through |
 
-Add it to your project's `.gitignore` (keep `plugins/` if you want to
-version your project plugins):
+Add it to your project's `.gitignore`:
 
 ```gitignore
 /.porta/
 ```
 
-Local history snapshots every save (capped at 25 per file) independently of
-git; restore any snapshot with `Ctrl+Alt+H`.
+To version your project plugins, ignore everything else instead:
+
+```gitignore
+/.porta/*
+!/.porta/plugins/
+```
+
+Local history snapshots every save independently of git, keeping 25 per file
+by default (the plugin's `maxPerFile`, 1–500); restore any snapshot with
+`Ctrl+Alt+H`.
 
 ## Environment variables
 
@@ -390,4 +413,4 @@ git; restore any snapshot with `Ctrl+Alt+H`.
 | `PORTA_LSP` | LSP server command (same format as the `lsp` config key) |
 | `PORTA_KEYMAP_PLATFORM` | `macos`, `windows` or `linux`: the platform the `auto` keymap takes for the one you type on, instead of detecting it — for a shell profile on a server you reach from several machines |
 | `PORTA_TRUSTED_FOLDERS` | `:`-separated folders whose every project is trusted without asking — for a CI box or a sandbox ([Trusting a project](#trusting-a-project)) |
-| `PORTA_HOME` | Overrides the home directory used for global plugins (`~/.porta/plugins`) and scratch files (`~/.porta/scratches`) |
+| `PORTA_HOME` | Overrides `HOME` for everything Porta keeps under `~/.porta/`: the global config file, global plugins (`~/.porta/plugins`), scratch files (`~/.porta/scratches`), the trusted-projects list and the tools Porta installs (`~/.porta/bin`) |
