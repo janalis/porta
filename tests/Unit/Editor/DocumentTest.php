@@ -915,6 +915,19 @@ final class DocumentTest extends TestCase
         $this->assertSame(0, $doc->clampCol(99, 99), 'an out-of-range line is clamped first');
     }
 
+    /** A caret carried from other text — a restored session's — lands on a character, never inside one. */
+    public function testACaretLandsOnACharacterNotInsideOne(): void
+    {
+        $doc = new Document("€€€\n");
+
+        $doc->setCursor(0, 4); // inside the second € (bytes 3–5)
+        $this->assertSame(3, $doc->cursorCol);
+        $doc->insert('x');
+
+        $this->assertSame("€x€€\n", $doc->getText());
+        $this->assertTrue(\mb_check_encoding($doc->getText(), encoding: 'UTF-8'));
+    }
+
     public function testGetTextInRange(): void
     {
         $doc = new Document("one\ntwo\nthree\n");

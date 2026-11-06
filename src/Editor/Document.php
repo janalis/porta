@@ -895,7 +895,10 @@ final class Document
     public function setCursor(int $line, int $col, SelectionMode $selection = SelectionMode::Clear): void
     {
         $this->cursorLine = $this->clampLine($line);
-        $this->cursorCol = $this->clampCol($this->cursorLine, $col);
+        // On a character's first byte: a column carried from other text — a
+        // restored session's caret, after the line changed on disk — could
+        // land inside `€`, and the next keystroke split it into invalid UTF-8.
+        $this->cursorCol = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->cursorLine], $col);
         $this->goalCol = null;
         if (SelectionMode::Clear === $selection) {
             $this->selection->clear();
