@@ -268,6 +268,28 @@ final class FlakeScanCommandTest extends TestCase
         $this->assertStringContainsString('3/3 runs green', $tester->getDisplay());
     }
 
+    /** Each run's log goes when the run is read, and so does the empty name tempnam() made for it. */
+    public function testEachRunLeavesNothingInTheTempDir(): void
+    {
+        $logs = [];
+        $tester = new CommandTester(new FlakeScanCommand(
+            static function (string $log) use (&$logs): int {
+                $logs[] = $log;
+                \file_put_contents($log, data: '<?xml version="1.0"?><testsuites/>');
+
+                return 0;
+            },
+        ));
+
+        $tester->execute(['--runs' => 2]);
+
+        $this->assertCount(2, $logs);
+        foreach ($logs as $log) {
+            $this->assertFileDoesNotExist($log);
+            $this->assertFileDoesNotExist(\substr($log, offset: 0, length: -\strlen('.xml')));
+        }
+    }
+
     /**
      * The distinction the whole instrument exists to draw, and the doctrine's
      * own words: a different handful each run is load, the same test every run
@@ -492,6 +514,11 @@ final class FlakeScanCommandTest extends TestCase
         $this->assertStringContainsString('WEDGED', $display);
         $this->assertStringContainsString('killed at the budget', $display);
         $this->assertStringNotContainsString('[OK]', $display);
+        // The TREE goes: killing only the shell the run was started through
+        // left paratest running the whole suite on, beside whatever ran next,
+        // and writing its log into the temp dir when it was done.
+        $survivors = \trim((string) \shell_exec("pgrep -f -- '--log-junit=.*porta-flake-' 2>/dev/null"));
+        $this->assertSame('', $survivors, 'no paratest of the killed run is left');
     }
 
     /** The worker count is echoed, because a rate is meaningless without it. */

@@ -120,7 +120,10 @@ final class FlakeScanCommand extends Command
         $red = 0;
 
         for ($run = 1; $run <= $runs; ++$run) {
-            $log = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-flake-').'.xml';
+            // tempnam() makes the name it hands out — the reserved, empty file
+            // goes with the log, or every run left one behind for good.
+            $name = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-flake-');
+            $log = $name.'.xml';
             $leaksBefore = \is_file($leakLog) ? (int) \filesize($leakLog) : 0;
             $started = \hrtime(as_number: true);
             $exit = ($this->runner)($log, $processes, $testsuite, $timeout);
@@ -128,8 +131,11 @@ final class FlakeScanCommand extends Command
 
             $failed = $this->failedTests($log);
             $leaks += $this->leaksSince($leakLog, $leaksBefore);
-            if (\is_file($log)) {
-                \unlink($log);
+            foreach ([$log, $name] as $file) {
+                if (!\is_file($file)) {
+                    continue;
+                }
+                \unlink($file);
             }
             if ([] !== $failed || 0 !== $exit) {
                 ++$red;
@@ -232,12 +238,42 @@ final class FlakeScanCommand extends Command
                 return $exit;
             }
             // Kill the tree: paratest's workers do not die with it, and orphans
-            // would poison every later run in the scan.
+            // would poison every later run in the scan. The handle is the shell
+            // the command line went through, so killing only it left paratest
+            // itself running the suite on — every descendant goes, then it.
+            \array_map(static fn (int $pid): bool => \posix_kill($pid, signal: 9), self::descendants(\proc_get_status($process)['pid']));
             \proc_terminate($process, signal: 9);
             \proc_close($process);
         }
 
         return self::WEDGED;
+    }
+
+    /**
+     * Every process below $root, as `ps` lists them now: children, theirs,
+     * and so on down. Read whole before anything is killed, since a killed
+     * parent's children are handed to init and no longer look like its own.
+     *
+     * @return list<int>
+     */
+    private static function descendants(int $root): array
+    {
+        $children = [];
+        foreach (\explode("\n", (string) \shell_exec('ps -A -o pid= -o ppid=')) as $row) {
+            $pair = \preg_split('/\s+/', \trim($row));
+            if (false !== $pair && 2 === \count($pair)) {
+                $children[(int) $pair[1]][] = (int) $pair[0];
+            }
+        }
+        $found = [];
+        for ($queue = [$root]; [] !== $queue;) {
+            foreach ($children[\array_shift($queue)] ?? [] as $child) {
+                $found[] = $child;
+                $queue[] = $child;
+            }
+        }
+
+        return $found;
     }
 
     /**
