@@ -89,6 +89,34 @@ final class BookmarkStoreTest extends TestCase
     }
 
     /**
+     * Two windows on one project: each loaded the file once, each writes on
+     * quit. The second to quit keeps what the first wrote — an idle one by
+     * writing nothing, a busy one by putting in only its own changes.
+     */
+    public function testTwoWindowsKeepEachOthersBookmarks(): void
+    {
+        $project = new TempProject();
+        $a = $project->write('src/A.php', "<?php\n");
+        $b = $project->write('src/B.php', "<?php\n");
+        $store = new BookmarkStore($project->dir);
+        $store->save([$a => [1]]);
+        [$first, $firstMarks] = [new BookmarkPersistence($store, $m1 = new Bookmarks()), $m1];
+        [$second, $secondMarks] = [new BookmarkPersistence($store, $m2 = new Bookmarks()), $m2];
+        $first->restore();
+        $second->restore();
+
+        $firstMarks->toggle($a, 5);
+        $first->save();
+        $second->save();
+        $this->assertSame([$a => [1, 5]], $store->load(), 'the idle window took nothing away');
+
+        $secondMarks->toggle($b, 2);
+        $secondMarks->toggle($a, 1); // removes the one it loaded
+        $second->save();
+        $this->assertSame([$a => [5], $b => [2]], $store->load(), 'its own changes, over the other\'s');
+    }
+
+    /**
      * Line 0 is a real bookmark — the first line of a file. Rejecting it here
      * would silently lose a mark that {@see \Porta\Editor\Bookmarks} was happy
      * to set, and only for that one line.

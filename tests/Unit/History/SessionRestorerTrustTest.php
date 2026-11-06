@@ -77,6 +77,22 @@ final class SessionRestorerTrustTest extends TestCase
         $this->assertCount(2, $this->restored($named), 'the file elsewhere came back too');
     }
 
+    /** A window that left the session as it found it writes nothing: the other window's save stands. */
+    public function testAnIdleWindowDoesNotOverwriteTheSession(): void
+    {
+        $this->bootIde(['composer.json' => '{}', 'src/A.php' => "<?php\n", 'src/B.php' => "<?php\n"]);
+        $store = new SessionStore($this->project->dir);
+        $store->save([['path' => $this->own(), 'line' => 0, 'col' => 0]], null);
+        $restorer = Services::resolve($this->ide, SessionRestorer::class);
+        $restorer->restore();
+
+        $other = [['path' => (string) \realpath($this->project->path('src/B.php')), 'line' => 0, 'col' => 0, 'pinned' => false]];
+        $store->save($other, null); // the other window quit first
+        $restorer->save();
+
+        $this->assertSame([(string) \realpath($this->project->path('src/B.php'))], \array_column($store->load()['buffers'] ?? [], 'path'));
+    }
+
     private function own(): string
     {
         return (string) \realpath($this->project->path('src/A.php'));

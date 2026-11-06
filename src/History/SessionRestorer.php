@@ -20,22 +20,33 @@ use Symfony\Component\Tui\Tui;
  * skipped on save — a restored help path would reopen as editable source.
  */
 #[AsIdeService]
-final readonly class SessionRestorer
+final class SessionRestorer
 {
+    /** @var array{0: list<array{'col': int, 'line': int, 'path': string, 'pinned': bool, 'preview'?: string}>, 1: ?string}|null what restore() left open, in the shape save() writes */
+    private ?array $restored = null;
+
     public function __construct(
-        private SessionStore $store,
-        private BufferManager $buffers,
-        private BufferService $bufferService,
-        private EditorArea $editorArea,
-        private Tui $tui,
-        private IdeConfig $config,
-        private string $rootDir,
+        private readonly SessionStore $store,
+        private readonly BufferManager $buffers,
+        private readonly BufferService $bufferService,
+        private readonly EditorArea $editorArea,
+        private readonly Tui $tui,
+        private readonly IdeConfig $config,
+        private readonly string $rootDir,
     ) {}
 
     /**
      * Reopen the previous session's buffers. Returns true if any were opened.
      */
     public function restore(): bool
+    {
+        $opened = $this->reopen();
+        $this->restored = $this->now();
+
+        return $opened;
+    }
+
+    private function reopen(): bool
     {
         $data = $this->store->load();
         if (null === $data || [] === $data['buffers']) {
@@ -104,7 +115,21 @@ final readonly class SessionRestorer
         }
     }
 
+    /**
+     * Write the session — unless this window left it as it found it: two
+     * windows on one project each write on quit, and an idle second one put
+     * back (or, with nothing open, deleted) what the first had just saved.
+     */
     public function save(): void
+    {
+        $now = $this->now();
+        if ($now !== $this->restored) {
+            $this->store->save(...$now);
+        }
+    }
+
+    /** @return array{0: list<array{'col': int, 'line': int, 'path': string, 'pinned': bool, 'preview'?: string}>, 1: ?string} the open buffers and the active one, as the store takes them */
+    private function now(): array
     {
         $buffers = [];
         foreach ($this->buffers->all() as $buffer) {
@@ -116,6 +141,7 @@ final readonly class SessionRestorer
                     'pinned' => $buffer->pinned,
                 ] + (null === ($mode = $buffer->previewArrangement()) ? [] : ['preview' => $mode->value]);
         }
-        $this->store->save($buffers, $this->buffers->active()?->path);
+
+        return [$buffers, $this->buffers->active()?->path];
     }
 }

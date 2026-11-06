@@ -150,6 +150,42 @@ final class DebugStateStoreTest extends TestCase
         $this->assertSame([], $reloaded['watches']);
     }
 
+    /** Two windows on one project keep each other's breakpoints and watches; only a changed filter choice is written. */
+    public function testTwoWindowsKeepEachOthersDebugState(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
+        [$a, $b] = [$project->path('a.php'), $project->path('b.php')];
+        $store = new DebugStateStore($project->dir);
+        $store->save([$a => [['line' => 3, 'condition' => null, 'hitCondition' => null, 'logMessage' => null]]], ['$x'], ['exception']);
+        $window = static function () use ($store): array {
+            $parts = [new BreakpointStore(), new WatchStore(), new ExceptionFilterStore()];
+            $persistence = new DebugStatePersistence($store, ...$parts);
+            $persistence->restore();
+
+            return [$persistence, ...$parts];
+        };
+        [$first, $firstBreakpoints, $firstWatches, $firstFilters] = $window();
+        [$second, $secondBreakpoints, $secondWatches, $secondFilters] = $window();
+
+        $firstBreakpoints->toggle($a, 1);
+        $firstWatches->add('$y');
+        $firstFilters->setSelection(['uncaught']);
+        $first->save();
+        $second->save();
+        $this->assertSame([1, 3], \array_column($store->load()['breakpoints'][$a] ?? [], 'line'), 'the idle window took nothing away, in line order');
+
+        $secondBreakpoints->toggle($b, 7);
+        $secondBreakpoints->toggle($a, 3); // removes the one it loaded
+        $secondWatches->add('$z');
+        $secondFilters->setSelection(['exception']); // the same choice: not a change of its own
+        $second->save();
+        $reloaded = $store->load();
+        $this->assertSame([1], \array_column($reloaded['breakpoints'][$a] ?? [], 'line'));
+        $this->assertSame([7], \array_column($reloaded['breakpoints'][$b] ?? [], 'line'));
+        $this->assertSame(['$x', '$y', '$z'], $reloaded['watches']);
+        $this->assertSame(['uncaught'], $reloaded['exceptionFilters'], 'the first window\'s choice: the second chose nothing new');
+    }
+
     public function testAnUnencodablePayloadDegradesToFalseInsteadOfThrowing(): void
     {
         // A breakpoint path or watch expression can carry invalid UTF-8;
