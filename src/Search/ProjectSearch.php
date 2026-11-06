@@ -419,7 +419,7 @@ final class ProjectSearch
     private function multilineResult(string $rel, string $content, string $match, int $offset): array
     {
         $line = \substr_count(\substr($content, offset: 0, length: $offset), needle: "\n");
-        $firstLine = \explode("\n", $match)[0];
+        $firstLine = \rtrim(\explode("\n", $match)[0], characters: "\r"); // a CRLF line's ending is not text
         $preview = \str_contains($match, "\n") ? $firstLine.' ⏎…' : $firstLine;
         $width = AnsiUtils::visibleWidth($firstLine);
         $ranges = 0 === $width ? [] : [['start' => 0, 'length' => $width]];
@@ -554,6 +554,9 @@ final class ProjectSearch
     public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options): string
     {
         $pattern = SearchPattern::fit($this->pattern($query, $options), $content);
+        // Line breaks go in as the file's own: a CRLF file given `\n` by a
+        // multi-line replacement came back with its endings mixed.
+        $replacement = self::inFilesEndings($replacement, $content);
         // Preserve-case (literal replace only): map each match's casing onto the
         // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
         if ($options->preserveCase && !$options->regex) {
@@ -572,6 +575,19 @@ final class ProjectSearch
         \restore_error_handler();
 
         return $result ?? $content;
+    }
+
+    /** $text with its `\n` breaks as $content's first one is — CRLF, or a lone CR (a document's rule). */
+    private static function inFilesEndings(string $text, string $content): string
+    {
+        $ending = \substr($content, \strcspn($content, characters: "\r\n"), length: 2);
+        $eol = match (true) {
+            "\r\n" === $ending => "\r\n",
+            \str_starts_with($ending, "\r") => "\r",
+            default => "\n",
+        };
+
+        return "\n" === $eol ? $text : \str_replace("\n", replace: $eol, subject: $text);
     }
 
     /**
@@ -631,12 +647,17 @@ final class ProjectSearch
     /** Build a PCRE pattern mirroring the grep flags, for the PHP fallback. */
     private function pattern(string $query, SearchOptions $options): string
     {
-        return SearchPattern::build(
+        $pattern = SearchPattern::build(
             $query,
             $options->regex ? MatchMode::Regex : MatchMode::Literal,
             $options->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
             $options->caseSensitive ? CaseMode::Sensitive : CaseMode::Insensitive,
         );
+
+        // A line break typed into a multi-line query is the file's, whichever
+        // it is: the scan reads the disk's bytes, where a CRLF file's `\n`
+        // never stands alone. (Only a typed break — a regex's `\n` is its own.)
+        return \str_replace("\n", replace: '\r?\n', subject: $pattern);
     }
 
     /** A file's contents as a string, or '' when it is not a readable file. */

@@ -372,6 +372,27 @@ final class ProjectSearchTest extends TestCase
         $this->assertSame([['start' => 0, 'length' => 5]], $results[0]['ranges'], 'the first-line portion is highlighted');
     }
 
+    /** A typed line break is the file's own: a CRLF file's `\r\n` matches it too. */
+    public function testMultilineQueryMatchesACrlfFile(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\r\nfunction foo()\r\n{\r\n    return 1;\r\n}\r\n"]);
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), "foo()\n{");
+
+        $this->assertCount(1, $results);
+        $this->assertSame(1, $results[0]['line']);
+        $this->assertSame('foo() ⏎…', $results[0]['text'], 'no stray CR in the preview');
+    }
+
+    /** A multi-line replacement goes into a CRLF file with CRLF breaks, not mixed endings. */
+    public function testAMultilineReplacementTakesTheFilesLineEnding(): void
+    {
+        $search = new ProjectSearch('/p');
+
+        $this->assertSame("a\r\nX\r\nY\r\nc\r\n", $search->applyReplacement("a\r\nb\r\nc\r\n", "\nb\n", "\nX\nY\n", new SearchOptions()));
+        $this->assertSame("a\nX\nY\nc\n", $search->applyReplacement("a\nb\nc\n", "\nb\n", "\nX\nY\n", new SearchOptions()), 'an LF file stays LF');
+        $this->assertSame("a\rX\rY\rc\r", $search->applyReplacement("a\rb\rc\r", "\rb\r", "\nX\nY\n", new SearchOptions()), 'and a CR file, CR');
+    }
+
     public function testMultilineScanDeduplicatesSkipsBinaryAndCaps(): void
     {
         $project = new TempProject([
