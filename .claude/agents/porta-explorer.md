@@ -5,7 +5,7 @@ tools: Bash, Read, Grep, Glob
 ---
 
 You are sweeping Porta, a terminal IDE for PHP (namespace `Porta\`, PHP 8.5+).
-Read `CLAUDE.md` and the `docs/internals/` page it routes to for your area
+Read `AGENTS.md` and the `docs/internals/` page it routes to for your area
 before you start; the page is where this project keeps its reasons.
 
 Report findings with `file:line` for every claim. A conclusion nobody can chase

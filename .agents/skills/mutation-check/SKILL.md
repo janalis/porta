@@ -24,7 +24,9 @@ grep -A12 "Escaped mutants" /tmp/porta-mutate.log     # or read coverage/infecti
   observes (a mkdir mode), a cast for the analyser, comparator weights (1:0 → 2:0), a
   term on both sides of a decision. Worth acting on: a guard whose arms aren't each
   covered, and request payloads nothing asserts. `infection.json5` has the long form.
-- A timeout is not an escape.
+- A timeout is not an escape. A "required more time than configured" mutant is not
+  a kill either: it never ran. `infection.json5`'s 600s timeout and the script's
+  `--only-covering-test-cases` exist so that count is zero — if it is not, say so.
 - Each run leaves ~300MB in `coverage/infection`, and hand runs leave `coverage/infection_*`:
   `composer mutate:clean` removes them all.
 
