@@ -436,8 +436,11 @@ final class ProjectSearchController
             // content, and a replace over a file touches many lines of it.
             $approved = $this->languageFilter->approvedSpans($relPath, $this->lastSearchQuery, $this->searchOptions);
             if (null !== $buffer) {
-                $old = $buffer->document->getText();
-                $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
+                // Replaced in the DISK's bytes, which the matches and the
+                // scope's spans were measured in, then held as the buffer holds
+                // them: the clean buffer is the same text, but without the
+                // byte-order mark that put every span on line 0 three bytes late.
+                $new = DiskText::asHeld($this->replaceLines(Files::read($abs), $lineIndices, $replacement, $approved));
                 if ($this->replacer->replace($buffer, $new)) {
                     ++$touched;
                 }
@@ -602,7 +605,7 @@ final class ProjectSearchController
                 continue;
             }
             if (null !== $approved) {
-                $lines[$index] = self::spliceSpans($lines[$index], $approved[$index] ?? [], DiskText::inEnding($replacement, $eol));
+                $lines[$index] = $this->projectSearch->replaceSpans($lines[$index], $approved[$index] ?? [], $this->lastSearchQuery, $replacement, $this->searchOptions, $eol);
 
                 continue;
             }
@@ -611,25 +614,6 @@ final class ProjectSearchController
         }
 
         return \implode("\n", $lines);
-    }
-
-    /**
-     * Rewrite only $spans of $line, right-to-left so the earlier offsets stay
-     * valid as the string changes length under them.
-     *
-     * @param list<array{start: int, length: int}> $spans
-     */
-    private static function spliceSpans(string $line, array $spans, string $replacement): string
-    {
-        \usort($spans, static fn (array $a, array $b): int => $b['start'] <=> $a['start']);
-        foreach ($spans as $span) {
-            // max(0,…) on both: the analyzer cannot see that a match offset and
-            // a match length are non-negative by construction, and a negative
-            // either way would splice from the END of the line.
-            $line = \substr_replace($line, $replacement, \max(0, $span['start']), \max(0, $span['length']));
-        }
-
-        return $line;
     }
 
     /**

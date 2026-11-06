@@ -582,6 +582,56 @@ final class ProjectSearch
     }
 
     /**
+     * $line with only the matches starting at $spans rewritten, each as
+     * {@see applyReplacement()} rewrites it: a regex's `$1` expanded from
+     * THAT match's groups, preserve-case recast to that match's case. Every
+     * other match is left as it stands — the token scope approved only these.
+     *
+     * The match is found again rather than spliced at the span: its groups
+     * exist only in a match, and lookarounds and anchors only in the line.
+     *
+     * @param list<array{start: int, length: int}> $spans
+     */
+    public function replaceSpans(string $line, array $spans, string $query, string $replacement, SearchOptions $options, string $eol): string
+    {
+        $starts = \array_column($spans, column_key: 'start');
+        $replacement = DiskText::inEnding($replacement, $eol);
+        \set_error_handler(static fn (): bool => true);
+        try {
+            $result = \preg_replace_callback(
+                SearchPattern::fit($this->pattern($query, $options), $line),
+                fn (array $match): string => $this->spanReplacement($match, $starts, $replacement, $options),
+                $line,
+                flags: \PREG_OFFSET_CAPTURE,
+            );
+        } finally {
+            \restore_error_handler();
+        }
+
+        return $result ?? $line;
+    }
+
+    /**
+     * One match's rewrite under {@see replaceSpans()}: itself unless it starts
+     * at an approved span.
+     *
+     * @param array<array-key, mixed> $match  as PREG_OFFSET_CAPTURE hands it: each group a [text, offset] pair
+     * @param list<int>               $starts
+     */
+    private function spanReplacement(array $match, array $starts, string $replacement, SearchOptions $options): string
+    {
+        $groups = \array_map(static fn (mixed $group): string => \is_array($group) && \is_string($group[0] ?? null) ? $group[0] : '', $match);
+        $whole = \is_array($match[0] ?? null) ? $match[0] : [];
+
+        return match (true) {
+            !\in_array($whole[1] ?? null, $starts, strict: true) => $groups[0] ?? '',
+            $options->regex => Backreferences::expand($replacement, $groups),
+            $options->preserveCase => $this->applyCasePattern($groups[0] ?? '', $replacement),
+            default => $replacement,
+        };
+    }
+
+    /**
      * Recast $replacement to match $match's case pattern: all-lowercase → lower,
      * ALL-UPPERCASE → upper, Titlecase → Title, anything else → verbatim.
      */

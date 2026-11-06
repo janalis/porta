@@ -565,6 +565,63 @@ final class ProjectSearchControllerTest extends TestCase
     }
 
     /**
+     * A scoped regex replace expands each approved match's own groups, as the
+     * plain one does: the scope's splice wrote the replacement raw, so `b$1r`
+     * landed in the file as `b$1r`.
+     */
+    public function testAScopedRegexReplaceExpandsEachMatchsOwnGroups(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'foo' . 'fxo';\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption(SearchOption::Regex);
+        $controller->toggleOption(SearchOption::Tokens); // in comments/strings
+        $controller->search('f(.)o');
+        $this->awaitModalShows("\$foo = 'foo' . 'fxo';");
+
+        $controller->replaceAll('<$1>');
+
+        $this->assertSame("<?php\n\$foo = '<o>' . '<x>';\n", (string) \file_get_contents($project->path('src/A.php')), 'each string from its own match, the variable untouched');
+    }
+
+    /** And preserve-case, the other per-match replacement, follows each match's case under the scope too. */
+    public function testAScopedPreserveCaseReplaceFollowsEachMatchsCase(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$foo = 'Foo' . 'FOO';\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption(SearchOption::PreserveCase);
+        $controller->toggleOption(SearchOption::Tokens); // in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'Foo' . 'FOO';");
+
+        $controller->replaceAll('bar');
+
+        $this->assertSame("<?php\n\$foo = 'Bar' . 'BAR';\n", (string) \file_get_contents($project->path('src/A.php')));
+    }
+
+    /**
+     * An open, clean buffer of a file with a byte-order mark: the scope's spans
+     * are the disk's, where line 0 carries the mark's three bytes, and the
+     * buffer's text does not — spliced there, they landed three bytes late.
+     */
+    public function testAScopedReplaceInAnOpenBufferOfAMarkedFileLandsOnTheMatch(): void
+    {
+        $bytes = "\u{FEFF}<?php \$foo = 'foo';\n";
+        $project = new TempProject(['src/A.php' => $bytes]);
+        $controller = $this->controller($project->dir);
+        $buffer = $this->buffers->open((string) \realpath($project->path('src/A.php')), $bytes);
+        $controller->open();
+        $controller->toggleOption(SearchOption::Tokens); // in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'foo';");
+
+        $controller->replaceAll('bar');
+
+        $this->assertSame("<?php \$foo = 'bar';\n", $buffer->document->getText());
+    }
+
+    /**
      * An EMPTY replacement deletes every match across open buffers and on disk,
      * and the modal closes afterwards. It is a legitimate operation and stays
      * available — refusing would make a real verb a dead key — but it is the one
