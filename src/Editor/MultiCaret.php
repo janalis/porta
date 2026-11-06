@@ -198,16 +198,23 @@ final class MultiCaret
             return;
         }
         $doc = $this->document;
-        $current = [$doc->cursorLine, $doc->cursorCol];
+        $length = \strlen($word);
+        $occurrences = $this->findOccurrences($word);
+        $here = [$doc->cursorLine, $doc->cursorCol];
+        // The occurrence the caret stands in: the caret it leaves behind goes
+        // to that word's end, where every added one lands — or a caret at its
+        // start typed in front of the first word and behind the others.
+        $own = \array_find($occurrences, static fn (array $at): bool => $at[0] === $here[0] && $at[1] <= $here[1] && $here[1] <= ($at[1] + $length));
+        $kept = null === $own ? Caret::point(...$here) : Caret::point($own[0], $own[1] + $length);
 
         // Forward-only scan; the primary always advances, so occurrences never
         // repeat and no explicit dedupe against existing carets is needed.
-        foreach ($this->findOccurrences($word) as [$line, $col]) {
-            if ([$line, $col] <= $current) {
+        foreach ($occurrences as [$line, $col]) {
+            if ([$line, $col] <= $here) {
                 continue;
             }
-            $this->extraCarets[] = Caret::point($doc->cursorLine, $doc->cursorCol);
-            $doc->setCursor($line, $col + \strlen($word));
+            $this->extraCarets[] = $kept;
+            $doc->setCursor($line, $col + $length);
             $this->dedupeCarets();
             ($this->onInvalidate)();
 
@@ -613,18 +620,23 @@ final class MultiCaret
     }
 
     /**
-     * All start positions of $word in the document, in reading order.
+     * All start positions of $word in the document, in reading order — as a
+     * whole identifier: `$id` is not in `$idx`, nor `id` in `$id` (the word is
+     * {@see CaretWord}'s, whose sigil counts on the left only).
      *
      * @return list<array{0: int, 1: int}> [line, startCol]
      */
     private function findOccurrences(string $word): array
     {
         $result = [];
+        $body = '(?<![\\w$])'.\preg_quote($word, delimiter: '/').'(?!\\w)';
         foreach ($this->document->lines as $lineIndex => $line) {
-            $offset = 0;
-            while (false !== ($pos = \strpos($line, $word, $offset))) {
-                $result[] = [(int) $lineIndex, $pos];
-                $offset = $pos + \max(1, \strlen($word));
+            $found = [];
+            // Byte for byte where the line is not UTF-8, which /u refuses.
+            $pattern = '/'.$body.'/'.(\mb_check_encoding($line, encoding: 'UTF-8') ? 'u' : '');
+            \preg_match_all($pattern, $line, $found, \PREG_OFFSET_CAPTURE);
+            foreach ($found[0] as $hit) {
+                $result[] = [(int) $lineIndex, (int) $hit[1]]; // PREG_OFFSET_CAPTURE: [text, byte offset]
             }
         }
 

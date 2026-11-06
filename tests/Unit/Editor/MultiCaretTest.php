@@ -140,6 +140,39 @@ final class MultiCaretTest extends TestCase
         $this->assertSame(7, $doc->cursorCol, 'the occurrence at the cursor is not itself "next"; the scan advances past it');
     }
 
+    /** Every caret at its word's end — the one it started from too — so typing edits each the same way. */
+    public function testAddNextOccurrenceLeavesEveryCaretAtItsWordsEnd(): void
+    {
+        $doc = new Document("foo foo foo\n");
+        $doc->setCursor(0, 0);
+        $mc = new MultiCaret($doc, $this->noop(), $this->noop());
+
+        $mc->addNextOccurrence();
+        $mc->addNextOccurrence();
+
+        $this->assertSame([3, 7], \array_map(static fn (Caret $c): int => $c->col, $mc->carets()));
+        $this->assertSame(11, $doc->cursorCol);
+    }
+
+    /** An occurrence is the whole identifier: `$id` is not in `$idx`. */
+    public function testOccurrencesAreWholeIdentifiers(): void
+    {
+        $doc = new Document("\$id = 1; \$idx = 2; \$id;\n");
+        $doc->setCursor(0, 1);
+        $mc = new MultiCaret($doc, $this->noop(), $this->noop());
+
+        $mc->selectAllOccurrences();
+
+        $this->assertSame(3, $doc->cursorCol);
+        $this->assertSame([22], \array_map(static fn (Caret $c): int => $c->col, $mc->carets()), 'not 13, the end of $idx');
+
+        $doc = new Document("id = \$id;\n");
+        $doc->setCursor(0, 1);
+        $mc = new MultiCaret($doc, $this->noop(), $this->noop());
+        $mc->selectAllOccurrences();
+        $this->assertSame([], $mc->carets(), 'nor `id` in `$id`');
+    }
+
     public function testAddNextOccurrenceRequestsExactlyOneRedraw(): void
     {
         $doc = new Document("foo foo\n");
@@ -156,8 +189,9 @@ final class MultiCaretTest extends TestCase
         $mc = new MultiCaret($doc, $this->noop(), $this->noop());
 
         // An extra already sits exactly where the (old) primary is about to be
-        // pushed to; growing the set must not leave that position doubled up.
-        $mc->setExtras([Caret::point(0, 0)]);
+        // pushed to — its word's end; growing the set must not leave that
+        // position doubled up.
+        $mc->setExtras([Caret::point(0, 3)]);
 
         $mc->addNextOccurrence();
 
