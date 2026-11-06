@@ -30,6 +30,8 @@ final class RecentFilesStore
     private const int MAX = 32;
 
     private readonly string $file;
+    /** A file in the project is stored by where it sits in it: a copy of the project lists its own. */
+    private readonly ProjectPaths $projectPaths;
     /** @var list<string> absolute paths, most-recent-first */
     public private(set) array $paths;
 
@@ -38,6 +40,7 @@ final class RecentFilesStore
         private readonly Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/recent-files.json';
+        $this->projectPaths = new ProjectPaths($rootDir);
         $this->paths = $this->load();
     }
 
@@ -121,7 +124,7 @@ final class RecentFilesStore
                 continue;
             }
 
-            $paths[] = $entry;
+            $paths[] = $this->projectPaths->resolved($entry);
         }
 
         return \array_slice($paths, offset: 0, length: self::MAX);
@@ -130,6 +133,6 @@ final class RecentFilesStore
     private function save(): void
     {
         // Best-effort persistence; a recent-files list is non-critical.
-        JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['paths' => $this->paths]);
+        JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['paths' => \array_map($this->projectPaths->relative(...), $this->paths)]);
     }
 }

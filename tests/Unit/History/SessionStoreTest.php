@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\History;
 use PHPUnit\Framework\TestCase;
 use Porta\History\SessionStore;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Filesystem\Filesystem;
 
 final class SessionStoreTest extends TestCase
 {
@@ -31,6 +32,28 @@ final class SessionStoreTest extends TestCase
             'a tab with no preview has no arrangement to keep',
         );
         $this->assertSame('/p/b.php', $loaded['active']);
+    }
+
+    /** `cp -r p p2`: the copy reopens its own files, and one outside the project stays where it is. */
+    public function testACopiedProjectReopensItsOwnFiles(): void
+    {
+        $original = new TempProject(['src/A.php' => "<?php\n"]);
+        $outside = new TempProject(['notes.md' => "# notes\n"]);
+        $file = (string) \realpath($original->path('src/A.php'));
+        $elsewhere = (string) \realpath($outside->path('notes.md'));
+        new SessionStore($original->dir)->save([
+            ['path' => $file, 'line' => 1, 'col' => 0, 'pinned' => false],
+            ['path' => $elsewhere, 'line' => 0, 'col' => 0, 'pinned' => false],
+        ], $file);
+        $copy = new TempProject();
+        new Filesystem()->mirror($original->dir, $copy->dir, options: ['override' => true]);
+
+        $loaded = new SessionStore($copy->dir)->load();
+
+        $own = (string) \realpath($copy->path('src/A.php'));
+        $this->assertSame([$own, $elsewhere], \array_column($loaded['buffers'] ?? [], 'path'));
+        $this->assertSame($own, $loaded['active'] ?? null);
+        $this->assertStringContainsString('"src/A.php"', (string) \file_get_contents($copy->path('.porta/session.json')), 'stored by where it sits in the project');
     }
 
     public function testLoadWhenNoSessionReturnsNull(): void

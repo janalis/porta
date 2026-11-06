@@ -6,6 +6,7 @@ namespace Porta\History;
 
 use Porta\Container\AsIdeService;
 use Porta\Support\JsonFile;
+use Porta\Support\ProjectPaths;
 use Symfony\Component\Filesystem\Filesystem;
 
 /**
@@ -17,11 +18,15 @@ final readonly class SessionStore
 {
     private string $file;
 
+    /** A file in the project is stored by where it sits in it: a copy of the project reopens its own. */
+    private ProjectPaths $paths;
+
     public function __construct(
         private string $rootDir,
         private Filesystem $fs = new Filesystem(),
     ) {
         $this->file = $rootDir.'/.porta/session.json';
+        $this->paths = new ProjectPaths($rootDir);
     }
 
     /**
@@ -35,7 +40,9 @@ final readonly class SessionStore
             return true;
         }
 
-        return JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['buffers' => $buffers, 'active' => $activePath]);
+        $stored = \array_map(fn (array $buffer): array => ['path' => $this->paths->relative($buffer['path'])] + $buffer, $buffers);
+
+        return JsonFile::writeInProject($this->fs, $this->rootDir, $this->file, ['buffers' => $stored, 'active' => null === $activePath ? null : $this->paths->relative($activePath)]);
     }
 
     /**
@@ -57,7 +64,9 @@ final readonly class SessionStore
             }
 
             $buffers[] = [
-                'path' => $buffer['path'],
+                // An absolute one — outside the project, or written before
+                // sessions were stored relative — reads as it was.
+                'path' => $this->paths->resolved($buffer['path']),
                 'line' => (int) ($buffer['line'] ?? 0),
                 'col' => (int) ($buffer['col'] ?? 0),
                 // Absent in sessions written before pinning existed, which is
@@ -69,6 +78,6 @@ final readonly class SessionStore
             ];
         }
 
-        return ['buffers' => $buffers, 'active' => \is_string($data['active'] ?? null) ? $data['active'] : null];
+        return ['buffers' => $buffers, 'active' => \is_string($data['active'] ?? null) ? $this->paths->resolved($data['active']) : null];
     }
 }

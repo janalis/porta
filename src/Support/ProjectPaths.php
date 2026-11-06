@@ -78,6 +78,18 @@ final class ProjectPaths
         return \str_starts_with($relative, '/') ? $relative : $this->rootDir.'/'.$relative;
     }
 
+    /**
+     * {@see absolute()} against the root's REAL path — the form an open
+     * buffer's path is keyed by — for a path read back from where it was
+     * stored relative ({@see relative()}): a session or a recent-files list
+     * that names the project's files by where they sit in it, so a copy of
+     * the project reopens its own files, not the original's.
+     */
+    public function resolved(string $stored): string
+    {
+        return \str_starts_with($stored, '/') ? $stored : $this->realRoot.'/'.$stored;
+    }
+
     /** LSP languageId for a file, by extension. See {@see LanguageMap}. */
     public static function languageId(string $path): string
     {

@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\History;
 use PHPUnit\Framework\TestCase;
 use Porta\History\RecentFilesStore;
 use Porta\Tests\Support\TempProject;
+use Symfony\Component\Filesystem\Filesystem;
 
 /**
  * The list that outlives the tab: what the Ctrl+E switcher and Search
@@ -23,6 +24,17 @@ final class RecentFilesStoreTest extends TestCase
         $store->record('/a.php'); // revisited: back to the front, not twice
 
         $this->assertSame(['/a.php', '/b.php'], $store->paths);
+    }
+
+    /** The copy of a project lists its own files, not the original's. */
+    public function testACopiedProjectListsItsOwnFiles(): void
+    {
+        $original = new TempProject(['src/A.php' => "<?php\n"]);
+        new RecentFilesStore($original->dir)->record((string) \realpath($original->path('src/A.php')));
+        $copy = new TempProject();
+        new Filesystem()->mirror($original->dir, $copy->dir, options: ['override' => true]);
+
+        $this->assertSame([(string) \realpath($copy->path('src/A.php'))], new RecentFilesStore($copy->dir)->paths);
     }
 
     public function testRESHOWINGTheSameFileIsNotAVisit(): void
