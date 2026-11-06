@@ -411,8 +411,9 @@ final class IdeFindInProjectTest extends TestCase
                         $tui->handleInput($ch);
                     }
                 },
-                600 => static function ($tui): void {
-                    $tui->tick();
+                600 => function (Tui $tui, VirtualTerminal $terminal): void {
+                    // Alt+A waits for the search to land, so the step does too.
+                    $this->awaitPainted($tui, $terminal, '0 results');
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput('x');
                     $tui->handleInput("\x1ba"); // alt+a with a multiline query but no matches
