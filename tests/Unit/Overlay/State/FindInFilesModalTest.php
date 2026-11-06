@@ -363,6 +363,21 @@ final class FindInFilesModalTest extends TestCase
         $this->assertSame(['bar', []], $replaced, 'a re-included match is not reported as excluded');
     }
 
+    /** The field says the new query, the results are still the last one's: no replace until they land. */
+    public function testReplaceAllWaitsForTheSearchToLand(): void
+    {
+        $replaced = null;
+        $modal = $this->modalTypedForReplaceAll($replaced);
+        $modal->setSearching();
+
+        $modal->handleInput("\x1ba", $this->kb);
+        $this->assertNull($replaced, 'nothing replaced from the old results');
+
+        $modal->setPreview($this->results());
+        $modal->handleInput("\x1ba", $this->kb);
+        $this->assertSame(['bar', []], $replaced, 'and once they land, it replaces');
+    }
+
     /** Every option tag says what it does and its key; the token scope says which of its three states it is in. */
     public function testTheOptionTagsExplainThemselves(): void
     {

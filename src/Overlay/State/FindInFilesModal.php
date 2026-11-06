@@ -314,7 +314,10 @@ final class FindInFilesModal
                 ($modal->invalidate)();
             },
             'replace_all' => static function (self $modal): void {
-                if (null !== $modal->callbacks->onReplaceAll) {
+                // Not while the results are still the last query's — the field
+                // already says the new one, and "searching…" says why nothing
+                // happened: a replace now rewrote what the old query matched.
+                if (!$modal->searching && null !== $modal->callbacks->onReplaceAll) {
                     ($modal->callbacks->onReplaceAll)($modal->replace->value(), $modal->excludedIndices());
                 }
             },
