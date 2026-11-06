@@ -159,7 +159,11 @@ final class PtyProcess
     {
         $this->input?->write($data);
         if ("\x03" === $data && $this->interruptsWithoutAKernel()) {
-            $this->signalGroup(\SIGINT); // @codeCoverageIgnore -- only where the session has no controlling tty, which macOS always gives it
+            // Only where the session has no controlling tty, which macOS always gives it.
+            // @codeCoverageIgnoreStart
+            $this->signalGroup(\SIGINT);
+
+            // @codeCoverageIgnoreEnd
         }
     }
 
