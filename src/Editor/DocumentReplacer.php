@@ -189,7 +189,8 @@ final readonly class DocumentReplacer
     }
 
     /**
-     * Whether $text is byte-for-byte what the file holds.
+     * Whether $text is what the file holds, as a document holds it
+     * ({@see DiskText}): a CRLF or BOM file is never byte-for-byte its text.
      *
      * The size is checked first because it decides the common case for nothing:
      * a project-wide replace deliberately leaves the buffer diverged from disk,
@@ -200,7 +201,8 @@ final readonly class DocumentReplacer
     {
         $size = \is_file($buffer->path) ? \filesize($buffer->path) : false;
 
-        return \strlen($text) === $size && \file_get_contents($buffer->path) === $text;
+        // Never shorter than the text: the ending and the mark only add bytes.
+        return false !== $size && $size >= \strlen($text) && DiskText::asHeld((string) \file_get_contents($buffer->path)) === $text;
     }
 
     /**

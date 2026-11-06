@@ -1406,7 +1406,7 @@ final class Document
             default => "\n",
         };
 
-        return \str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
+        return DiskText::asHeld($text);
     }
 
     /**

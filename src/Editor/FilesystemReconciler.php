@@ -133,7 +133,7 @@ final class FilesystemReconciler
 
             return;
         }
-        $saved = $content === $buffer->document->getText();
+        $saved = DiskText::asHeld($content) === $buffer->document->getText();
         if ($saved) {
             // Written with the very text the buffer holds — by whoever the
             // edits came from (an agent's accepted proposal): saved, not a clash.

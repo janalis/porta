@@ -134,6 +134,17 @@ final class DocumentReplacerTest extends TestCase
         $this->assertSame($buffer->diskStampNow(), Probe::get($buffer, 'diskStamp'), 'and the poller will recognise it');
     }
 
+    /** A formatter that wrote a CRLF, BOM file: its text is the buffer's, in the file's own shape. */
+    public function testACrlfFileWithAMarkMatchesItsBufferToo(): void
+    {
+        $project = new TempProject(['a.php' => "\u{FEFF}formatted\r\n"]);
+        $replacer = $this->replacer();
+        $buffer = $this->buffers->open($project->path('a.php'), "\u{FEFF}unformatted\r\n");
+
+        $this->assertTrue($replacer->replace($buffer, "formatted\n"));
+        $this->assertFalse($buffer->document->isDirty(), 'the buffer IS what is on disk');
+    }
+
     public function testABufferThatDivergesFromDiskStaysModified(): void
     {
         // The project-replace case: the buffer is edited, disk is not.

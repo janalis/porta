@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Editor;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\CloseMode;
@@ -76,6 +77,24 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $document = Services::resolve($this->ide, BufferManager::class)->get($a)?->document;
         $this->assertSame("<?php\n// a, converted\n", $document?->getText());
         $this->assertSame("\n", $document->eol);
+    }
+
+    /** Someone wrote exactly the unsaved text, CRLF and all: saved, not a clash. */
+    public function testACrlfFileWrittenWithTheBuffersTextIsSaved(): void
+    {
+        $a = (string) \realpath($this->project->write('a.php', "<?php\r\n"));
+        $buffers = $this->buffers();
+        $buffers->openFile($a, focus: OpenFocus::Editor);
+        $buffer = Services::resolve($this->ide, BufferManager::class)->get($a);
+        $this->assertInstanceOf(Buffer::class, $buffer);
+        $buffer->document->insert('// mine ');
+
+        \file_put_contents($a, data: "// mine <?php\r\n");
+        \touch($a, \time() + 2);
+        $buffers->pollFilesystemSlice();
+
+        $this->assertFalse($buffer->document->isDirty(), 'saved by whoever wrote it');
+        $this->assertFalse($buffer->diskChangedUnderEdit, 'no "changed on disk" to refuse the next save over');
     }
 
     public function testAStoodDownPollStatsNothingUntilItsGapHasPassed(): void
