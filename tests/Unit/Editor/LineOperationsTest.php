@@ -43,7 +43,8 @@ final class LineOperationsTest extends TestCase
 
     public function testCommentToggledRemovesThePrefixWhenAllLinesCarryIt(): void
     {
-        $this->assertSame(['a', '', 'b'], LineOperations::commentToggled(['// a', '', '//  b'], '//'));
+        $this->assertSame(['a', '', ' b', 'c'], LineOperations::commentToggled(['// a', '', '//  b', '//c'], '//'));
+        $this->assertSame(['   foo();'], LineOperations::commentToggled(['//    foo();'], '//'), 'only the space commenting adds goes: the code keeps the rest of its indent');
     }
 
     public function testStatementTargetWithDeltaZeroTakesThePositiveBranch(): void

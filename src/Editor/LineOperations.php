@@ -103,7 +103,9 @@ final class LineOperations
             $indent = \strlen($line) - \strlen($trimmed);
             if ($allCommented) {
                 $rest = \substr($trimmed, \strlen($prefix));
-                $out[] = \substr($line, offset: 0, length: $indent).\ltrim($rest, characters: ' ');
+                // One space: the one commenting adds. The rest is the line's own
+                // indent, kept when a comment at column 0 sits on indented code.
+                $out[] = \substr($line, offset: 0, length: $indent).(\str_starts_with($rest, ' ') ? \substr($rest, offset: 1) : $rest);
 
                 continue;
             }
