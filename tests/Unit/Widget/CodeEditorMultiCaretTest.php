@@ -583,12 +583,12 @@ final class CodeEditorMultiCaretTest extends TestCase
     public function testAddNextOccurrenceDedupesAgainstAPreExistingExtraAtTheSameSpot(): void
     {
         $editor = $this->editor("foo foo foo\n");
-        EditorState::multiCaret($editor)->setExtras([Caret::point(0, 0)]); // pre-seed an extra where the primary already sits
+        EditorState::multiCaret($editor)->setExtras([Caret::point(0, 3)]); // pre-seed an extra where the old primary will be kept: its word's end
         $editor->getDocument()->setCursor(0, 0);
 
-        $editor->handleInput("\x1bj"); // alt+j: old primary (0,0) joins extras, colliding with the pre-seeded one
+        $editor->handleInput("\x1bj"); // alt+j: old primary joins extras at (0,3), colliding with the pre-seeded one
 
-        $this->assertCount(1, EditorState::multiCaret($editor)->carets(), 'the duplicate at (0,0) was deduped away');
+        $this->assertCount(1, EditorState::multiCaret($editor)->carets(), 'the duplicate at (0,3) was deduped away');
     }
 
     public function testEscapeClearsThePrimarySelectionAsWellAsTheExtraCarets(): void
