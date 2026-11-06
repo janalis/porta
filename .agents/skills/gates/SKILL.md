@@ -20,9 +20,10 @@ composer verify > /tmp/porta-verify.log 2>&1; echo "exit=$?"          # ~140–2
   It overwrites `coverage/clover.xml`; the real gate re-runs it anyway.
 - **`test:unit` skips** Integration, E2e and Plugins — anything about wiring, focus,
   rendering or a plugin. Run `composer test:e2e` / `test:plugins` when you touched those.
-- **There is no "tests for my diff" command, on purpose**: only half of `src/` has a
-  same-path test, so a derived selection reports green over nothing
-  (`docs/internals/contributing.md`, "The inner loop").
+- **Tests for the diff**: `composer test:affected` (`-- --list` to see the selection,
+  `-- --coverage` for each changed source's uncovered lines). It selects by NAME; a
+  changed file no test names, or a non-PHP change, runs the whole suite and says
+  which. Not a gate (`docs/internals/contributing.md`, "The inner loop").
 - **Read the log, not the rtk summary.** rtk can print `PHPUnit: ok` over a crash:
   `grep -E "FAIL|Error|Fatal|exit=" /tmp/porta-*.log`, or run through `rtk proxy`.
 

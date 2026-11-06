@@ -469,3 +469,37 @@ asks on open and on each synced change, every open file on
 and feeds each `full` answer down the publish path, owner and all.
 `workspace/diagnostic` (the whole-project pull) was left out: the Problems
 panel lists open buffers, and nothing else here would read the answer.
+
+## Tests for the diff, by name (2026-11-06)
+
+contributing.md said "there is deliberately no 'test what I touched' mapper",
+for one measured reason: 49% of `src/` classes have a same-path test, so a
+path-derived selection runs nothing for half the tree and reports green. That
+reason is about PATHS. A name search was never measured, so it was.
+
+- **Reach.** 1122 of 1356 class names under `src/` and `plugins/*/src` (83%)
+  appear as a whole word in some test file of the four suites.
+- **Size.** Twelve recent `fix(...)` commits replayed through a short-name
+  grep: median 3 of 1043 test files selected, maximum 103.
+- **Run time.** A one-class change (`src/Editor/UndoHistory.php`) ran its one
+  test file in 1s through paratest, against `composer test`'s ~90s.
+
+What closes the original objection is the rule for the other 17%: a changed
+file that reaches no test file is not dropped, it sends the run to the whole
+suite and is named. So is anything outside the PHP roots (docs, `composer.json`,
+`config/`, fixtures). Under that rule seven of the twelve commits stayed scoped
+and five went whole-suite — three of them for an `mcp` tools file no test names
+by its class (`CodeTools`, `CoreTools`, `IdeTools`), one for `DiskText`, one
+for `composer.json`.
+
+`--coverage` replaces the hand recipe (history-06, "a clover report over just
+the affected test classes"): one serial phpunit under pcov, then each changed
+source's `count="0"` statement lines. Serial, so plugin files survive — the
+parallel merge loses them.
+
+Mutation-checked: 310 mutants, 93% killed. The 19 survivors are analyser
+casts, `array_values` over lists only read in order, `true` values whose keys
+alone matter, a `preg_quote` defending names that are always `\w`, and a blank
+output line. The first run's survivors (39) found one bug before it shipped:
+`array_unique` over the flat argv collapsed the repeated `--coverage-filter`
+flags into one.

@@ -424,6 +424,14 @@ container cache on (~45s), safe because `--require=src` makes a lossy merge red.
 only when they overlapped was a test race, and it is fixed. Lower
 `PORTA_SHARD_PROCESSES` before going back to sequence.
 
+**A same-PATH test mapper — refused; a NAME search — kept.** Half of `src/` has
+no same-path test, so a path mapper reports green over nothing. `test:affected`
+selects every test file naming a changed class (83% of class names are named
+somewhere) and sends any file that reaches no test to the whole suite, so an
+empty selection cannot exist. *Re-opens on:* a green `test:affected` run over a
+change that `composer verify` then fails in a test the selection skipped
+because nothing named the class — then the name search is too narrow to trust.
+
 **The `[loop-leak]` escalation is refused on evidence.** Three full serial runs
 reported 7, 8 and 7 lines, differing by exactly one test, because whether a
 0.15s debounce is still armed depends on where the loop happened to stop. A gate

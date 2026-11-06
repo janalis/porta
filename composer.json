@@ -79,6 +79,7 @@
         "test:plugins": "@test --testsuite=Plugins",
         "test:integration": "@test --testsuite=Integration",
         "test:serial": "@php vendor/bin/phpunit --order-by=default",
+        "test:affected": "@php bin/porta-dev test:affected --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))}",
         "coverage": "@php -d pcov.enabled=1 -d pcov.directory=src vendor/bin/paratest --processes=${PORTA_TEST_PROCESSES:-$(( ($(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) + 1) / 2 ))} --functional --enforce-time-limit --default-time-limit=120 --passthru-php=\"'-d' 'pcov.enabled=1' '-d' 'pcov.directory=src'\" --coverage-clover coverage/clover.xml",
         "coverage:plugins": [
             "@php bin/porta-dev coverage:plugins --processes=${PORTA_SHARD_PROCESSES:-$(( $(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) * 3 / 4 ))}",

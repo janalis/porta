@@ -41,5 +41,11 @@ plugins/*/vendor/
 # (`npm run docs:screenshots`), never committed, so they are never stale.
 /docs/public/screenshots/
 
-# .claude links to .agents, so Claude Code's machine-local settings land here.
+# .claude links to .agents, so Claude Code's machine-local settings land here,
+# and so does its scheduler's lock.
 /.agents/settings.local.json
+/.agents/scheduled_tasks.lock
+
+# test:affected writes its throwaway phpunit configuration beside phpunit.xml.dist
+# (relative paths resolve from there) and deletes it after the run.
+/.phpunit.affected-*.xml

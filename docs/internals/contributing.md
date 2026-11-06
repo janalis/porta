@@ -547,10 +547,28 @@ break the thing I just touched", and it is not an answer about wiring, focus,
 rendering or a plugin — those live in the suites it skips, and `composer
 verify` is what says done.
 
-**There is deliberately no "test what I touched" mapper.** Only **49% of
-`src/` classes** (401 of 821, recounted 2026-09-30) have a `tests/Unit/<same path>Test.php`, so a
-path-derived selection would silently run nothing for half the tree and report
-green. Run a whole suite instead; it is 23 seconds.
+**`composer test:affected` runs what the change can reach** — by NAME, not by
+path. A same-path mapper stays refused: only **49% of `src/` classes** (401 of
+821, recounted 2026-09-30) have a `tests/Unit/<same path>Test.php`, so it would
+silently run nothing for half the tree and report green. A name search reaches
+**83%** (1122 of 1356 class names under `src/` and the plugins' `src/` appear in
+some test file, 2026-11-06), and the rest is never dropped quietly: a changed
+file that no test names — or anything that is not PHP under `src/`, `tests/` or
+`plugins/` (a doc, `composer.json`, a fixture) — sends the run to the whole
+suite, and the output names the file that forced it.
+
+```bash
+composer test:affected                   # the uncommitted change; --base=main for a branch
+composer test:affected -- --list         # the selection, nothing run
+composer test:affected -- --coverage     # serial under pcov: each changed source's uncovered lines
+```
+
+Replayed over twelve fix commits, seven stayed scoped (2 to 96 of 1043 test
+files, a second or so each) and five went whole-suite. It runs through paratest with `composer
+test`'s flags over a copy of `phpunit.xml.dist`, so the bootstrap, the
+extensions and the random order are the suite's. It is not a gate: an E2e test
+that drives a class without naming it is invisible to it, and `--coverage`
+grades the selection, not the tree — `composer verify` still says done.
 
 ## Startup performance notes
 
