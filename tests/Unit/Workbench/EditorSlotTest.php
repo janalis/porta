@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Porta\Editor\EditorPanes;
 use Porta\Layout\LayoutWidgets;
 use Porta\Layout\PreviewSplit;
+use Porta\Tests\Support\EmptyFolder;
 use Porta\Tests\Support\TestTui;
 use Porta\Ui\Theme\Styles;
 use Porta\Widget\CodeEditorWidget;
@@ -185,7 +186,7 @@ final class EditorSlotTest extends TestCase
 
     public function testKeysHeldOutsideTheAreaAreNotPulledIntoIt(): void
     {
-        $tree = new FileTreeWidget(\sys_get_temp_dir());
+        $tree = new FileTreeWidget(EmptyFolder::path());
         $this->tui->add($tree);
         $this->tui->setFocus($tree);
 

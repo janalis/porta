@@ -44,6 +44,7 @@ use Porta\Settings\SettingsScope;
 use Porta\Support\Clipboard;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\EditorState;
+use Porta\Tests\Support\EmptyFolder;
 use Porta\Tests\Support\FakePluginLifecycle;
 use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\Presence;
@@ -150,7 +151,7 @@ final class PluginApiTest extends TestCase
                     new StatusBarWidget(),
                     $this->editor,
                     $this->lifecycle = new FakePluginLifecycle(),
-                    new FileTreeWidget(\sys_get_temp_dir()),
+                    new FileTreeWidget(EmptyFolder::path()),
                     TestLspQuery::create(),
                     new BufferSaver($this->buffers, $this->events = new EventDispatcher()),
                     TestRuns::create($this->runs = TestRunController::create(tui: $tui)),
@@ -512,7 +513,7 @@ final class PluginApiTest extends TestCase
                 new StatusBarWidget(),
                 new CodeEditorWidget(),
                 lifecycle: $lifecycle = new FakePluginLifecycle(),
-                tree: new FileTreeWidget(\sys_get_temp_dir()),
+                tree: new FileTreeWidget(EmptyFolder::path()),
                 lspQuery: TestLspQuery::create(),
                 saver: new BufferSaver(new BufferManager(), new EventDispatcher()),
                 runs: TestRuns::create(),
@@ -1433,7 +1434,7 @@ final class PluginApiTest extends TestCase
             $statusBar ?? new StatusBarWidget(),
             $editor,
             new FakePluginLifecycle(),
-            new FileTreeWidget(\sys_get_temp_dir()),
+            new FileTreeWidget(EmptyFolder::path()),
             TestLspQuery::create(),
             new BufferSaver(new BufferManager(), new EventDispatcher()),
             TestRuns::create(),

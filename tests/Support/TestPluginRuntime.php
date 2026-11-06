@@ -65,7 +65,7 @@ final class TestPluginRuntime
             new StatusBarWidget(),
             $editor,
             new FakePluginLifecycle(),
-            new FileTreeWidget(\sys_get_temp_dir()),
+            new FileTreeWidget(EmptyFolder::path()),
             TestLspQuery::create(),
             new BufferSaver($buffers, new EventDispatcher()),
             TestRuns::create(),

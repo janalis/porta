@@ -19,6 +19,7 @@ use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Workbench\View\ViewRegistry;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Terminal\VirtualTerminal;
 use Symfony\Component\Tui\Tui;
@@ -52,6 +53,9 @@ final class IdePluginInstallTest extends TestCase
     protected function tearDown(): void
     {
         \putenv(null !== $this->portaHome ? 'PORTA_HOME='.$this->portaHome : 'PORTA_HOME');
+        // Set in setUp(), always to a fresh folder of this test's own: it went
+        // nowhere before, and every run left one behind.
+        new Filesystem()->remove(\dirname($this->composerBin)); // the binary's own folder
     }
 
     /** A plugin source registering one flashing command, with a composer.json declaring it a Porta plugin package. */

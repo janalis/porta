@@ -1172,8 +1172,12 @@ final class IdeContextMenusTest extends TestCase
     public function testRightClickingTheProjectNameOffersTheProjectsBesideIt(): void
     {
         \putenv('PATH=/nonexistent');
-        $project = new TempProject(['alpha.php' => "<?php\n"]);
-        $other = new TempProject(['b.php' => "<?php\n"]); // a sibling: both live in the temp dir
+        // Named, so it sits in a folder of its own with the sibling beside it:
+        // beside a bare temp project is the whole temp dir, tens of thousands
+        // of folders on a developer's machine, every one of them a menu row.
+        $project = new TempProject(['alpha.php' => "<?php\n"], name: 'alpha');
+        $other = \dirname($project->dir).'/beta';
+        $project->write('../beta/b.php', "<?php\n");
 
         $this->runIde(
             $project,
@@ -1190,12 +1194,12 @@ final class IdeContextMenusTest extends TestCase
                     $labels = \array_map(static fn (MenuItem $item): string => $item->label, $items);
                     $this->assertContains(\basename($project->dir), $labels, 'this project, among them');
                     $this->assertSame('Open Project…', \end($labels), 'and the switcher last');
-                    $pick = \array_first(\array_filter($items, static fn (MenuItem $item): bool => \basename($other->dir) === $item->label));
+                    $pick = \array_first(\array_filter($items, static fn (MenuItem $item): bool => 'beta' === $item->label));
                     $this->assertInstanceOf(MenuItem::class, $pick, 'the folder beside it is offered');
 
                     ($pick->run)();
 
-                    $this->assertSame((string) \realpath($other->dir), Services::resolve($ide, ReopenRequest::class)->root(), 'this project closes and that one opens');
+                    $this->assertSame((string) \realpath($other), Services::resolve($ide, ReopenRequest::class)->root(), 'this project closes and that one opens');
                 },
             ],
         );
