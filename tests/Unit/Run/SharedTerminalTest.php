@@ -49,9 +49,12 @@ final class SharedTerminalTest extends TestCase
     {
         $runs = TestRuns::create($this->runs);
         $runs->start('cat', [\PHP_BINARY, '-r', 'echo "ready in ", getcwd(), "\n"; while (false !== ($l = fgets(STDIN))) { echo "got ", $l; }']);
-        $this->await(static fn (): bool => \str_contains((string) $runs->scrollback('run:cat'), 'ready'), what: 'the run to start');
+        // The whole line, not its first word: `echo` writes each argument on
+        // its own, so a loaded box shows "ready in " before the path arrives
+        // (seen on CI, 2026-11-06).
+        $started = 'ready in '.\realpath($this->project->dir);
+        $this->await(static fn (): bool => \str_contains((string) $runs->scrollback('run:cat'), $started), what: 'the run to start, in the project');
         $this->assertSame([['id' => 'run:cat', 'title' => 'cat', 'running' => true]], $runs->terminals());
-        $this->assertStringContainsString('ready in '.\realpath($this->project->dir), (string) $runs->scrollback('run:cat'), 'run in the project');
 
         $seen = '';
         $this->assertTrue($runs->watch('run:cat', static function (string $chunk) use (&$seen): void {

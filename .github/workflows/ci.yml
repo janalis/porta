@@ -166,6 +166,14 @@ jobs:
           path: ~/.composer/cache
           key: composer-${{ hashFiles('composer.lock') }}
           restore-keys: composer-
+      # coverage:src sets PORTA_CONTAINER_CACHE=on, so a warm dump is read
+      # rather than compiled per worker: 20s less on average, 3 runs of 4,
+      # measured side by side (decisions history, 2026-11-06).
+      - uses: actions/cache@v6
+        with:
+          path: .phpunit.cache
+          key: phpunit-coverage-src-${{ github.run_id }}
+          restore-keys: phpunit-coverage-src-
       - run: composer install --no-interaction --no-progress --classmap-authoritative
       # Kept as its own run beside `tests`, not instead of it — testing.md's
       # flake doctrine reads their divergence as the machine-load tell.

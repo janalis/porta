@@ -18,7 +18,7 @@ its one-line row in [Settled questions](../decisions.md).
 | [Part 5](history-05.md) | 2026-09-11 → 2026-09-12 | 31 |
 | [Part 6](history-06.md) | 2026-09-12 → 2026-09-28 | 28 |
 | [Part 7](history-07.md) | 2026-09-23 → 2026-09-30 | 46 |
-| [Part 8](history-08.md) | 2026-10-01 → | 13 |
+| [Part 8](history-08.md) | 2026-10-01 → | 14 |
 
 ## [Part 1](history-01.md)
 
@@ -297,3 +297,4 @@ its one-line row in [Settled questions](../decisions.md).
 - The dependency refresh and mago 1.59, two commits (2026-11-03)
 - Pull diagnostics, and the 2026-09-02 probe re-run (2026-11-05)
 - Tests for the diff, by name (2026-11-06)
+- Three CI levers, measured side by side (2026-11-06)

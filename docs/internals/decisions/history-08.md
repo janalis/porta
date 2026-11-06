@@ -503,3 +503,35 @@ alone matter, a `preg_quote` defending names that are always `\w`, and a blank
 output line. The first run's survivors (39) found one bug before it shipped:
 `array_unique` over the flat argv collapsed the repeated `--coverage-filter`
 flags into one.
+
+## Three CI levers, measured side by side (2026-11-06)
+
+CI's long pole was the `tests` job (231–275s in run 42253465404), and two caches
+looked missing: `coverage` restored no `.phpunit.cache`, and `coverage-plugins`
+restored no `shard-seconds.json`, so its shards ran in name order. Main's own
+step times across six green runs swing 188–299s for one job, so a
+before/after comparison across runs could not show a 15% change. A throwaway
+workflow on `diag/ci-speed` ran every variant in the SAME run instead, four
+runs (one seeding the caches, three repeats), step seconds:
+
+| variant | run 1 | run 2 | run 3 | run 4 | mean |
+| --- | --- | --- | --- | --- | --- |
+| `tests`, `auto` (4) | 195 | 274 | 232 | 269 | 242 |
+| `tests`, 6 workers | 241 | 220 | 213 | 199 | 218 |
+| `tests`, 8 workers | 217 | 229 | 230 | 223 | 225 |
+| `coverage:src`, no cache | 213 | 191 | 143 | 189 | 184 |
+| `coverage:src`, cache restored | 199 | 161 | 159 | 135 | 164 |
+| `coverage:plugins`, name order | 192 | 162 | 250 | 191 | 199 |
+| `coverage:plugins`, longest first | 168 | 177 | 241 | 239 | 206 |
+
+Only the `coverage` cache landed. Oversubscribing helps locally because the box
+is 80% idle under the suite; a 4-vCPU runner has far less idle to fill, and the
+mean gain stayed under the bar. The shard order loses because four lanes and
+~300 shards leave little to schedule.
+
+One flake surfaced on the way, in the uncached `coverage` leg of run 2:
+`SharedTerminalTest::testATabIsReadAsItPrintsAndTypedInto` awaited the word
+`ready` and then asserted `ready in <project>`, while the child prints that
+line in three writes. It awaits the whole line now. A mutant awaiting the wrong
+directory times out at that step.
+

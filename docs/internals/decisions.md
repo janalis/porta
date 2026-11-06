@@ -432,6 +432,23 @@ empty selection cannot exist. *Re-opens on:* a green `test:affected` run over a
 change that `composer verify` then fails in a test the selection skipped
 because nothing named the class — then the name search is too narrow to trust.
 
+**More paratest workers than vCPUs on CI's `tests` job — measured, not
+adopted; the `coverage` job's phpunit cache — adopted.** Side by side in four
+runs of one workflow (main's own step times swing 188–299s run to run): 6
+workers on the 4-vCPU runner were 10% faster on average and 8 were 7%, under the
+15% a CI change has to buy. Restoring `.phpunit.cache` for `coverage:src` was
+11% faster, 3 runs of 4, and costs nothing. Restoring the plugin shards' timings
+so CI starts the longest first was 7.5s SLOWER on average: at four lanes the
+order is noise. *Re-opens on:* a runner with more vCPUs, or a suite whose waits
+grow (the oversubscription case is the local one, 3.5 of 16 cores busy).
+
+**Skipping the per-boot container freshness check in tests — measured, not a
+lever.** In a git checkout every Ide boot re-checks the dump's 897 tracked
+resources: ~12ms for the first check in a process, ~1.3ms for each after it. At
+the suite's ~458 boots over 8 workers that is under a second of CPU, under 1% of
+`composer test`. *Re-opens on:* a warm re-check costing 10ms or more, or the
+boot count growing tenfold.
+
 **The `[loop-leak]` escalation is refused on evidence.** Three full serial runs
 reported 7, 8 and 7 lines, differing by exactly one test, because whether a
 0.15s debounce is still armed depends on where the loop happened to stop. A gate
