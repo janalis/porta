@@ -83,8 +83,15 @@ final class LspProbeCommand extends Command
     /** `MessageType` error and warning: the log and show messages that are findings. */
     private const int WARNING = 2;
 
-    /** Seconds past a kill for the reaper's last poll to see the process gone. */
-    private const float REAPED_AFTER = 0.2;
+    /**
+     * Seconds past a kill for the reaper's last poll to see the process gone.
+     * Generous on purpose: the probe stops waiting as soon as the last server
+     * is reaped, so this only bounds a reaper that a loaded box made late.
+     */
+    private const float REAPED_AFTER = 2.0;
+
+    /** How often the probe looks whether its stopped servers are all reaped. */
+    private const float REAP_POLL = 0.05;
 
     /** `DiagnosticSeverity` names, 1-based. */
     private const array SEVERITY = [1 => 'error', 2 => 'warning', 3 => 'info', 4 => 'hint'];
@@ -94,6 +101,9 @@ final class LspProbeCommand extends Command
 
     /** @var \Closure(list<string>, string, \Closure(string): void, array<string, mixed>|null): LspClientInterface */
     private readonly \Closure $clients;
+
+    /** Guards every real server this probe starts, and says when the last stopped one is reaped. */
+    private readonly OrphanGuard $guard;
 
     /**
      * @param (\Closure(string $root): array<string, non-empty-list<array{command: list<string>, name: string, initializationOptions?: array<string, mixed>}>>)|null $servers
@@ -106,6 +116,7 @@ final class LspProbeCommand extends Command
         parent::__construct();
         $this->servers = $servers ?? self::resolve(...);
         $guard = new OrphanGuard();
+        $this->guard = $guard;
         $this->clients =
             $clients ?? /**
              * @param list<string>              $command
@@ -150,7 +161,8 @@ final class LspProbeCommand extends Command
             $io->writeln(\sprintf('<info>%s</info>: %s, %d file(s)', $name, \implode(' ', $server['command']), \count($opened)));
             $reports[$name] = $this->probe($resolved, $server, $opened);
         }
-        EventLoop::delay($listen, static function () use ($reports): void {
+        $guard = $this->guard;
+        EventLoop::delay($listen, static function () use ($reports, $guard): void {
             $processes = false;
             foreach ($reports as $report) {
                 $processes = $processes || $report->client instanceof LspClient;
@@ -159,14 +171,28 @@ final class LspProbeCommand extends Command
             // A stopped server has EXIT_WITHIN to go on its own, then the
             // reaper's GRACE before it is killed — and the reaper's timer
             // does not hold the loop. This does, so every server process is
-            // reaped here rather than left for the orphan guard.
+            // reaped here rather than left for the orphan guard: until the
+            // guard has none left, with that whole span as the ceiling. A
+            // fixed wait cost every run 3.2s, even when no server outlived
+            // its stop — a crashed one is reaped by the stop itself.
             if ($processes) {
-                EventLoop::delay(LspClient::EXIT_WITHIN + ProcessReaper::GRACE + self::REAPED_AFTER, static function (): void {});
+                self::untilReaped($guard, LspClient::EXIT_WITHIN + ProcessReaper::GRACE + self::REAPED_AFTER);
             }
         });
         EventLoop::run();
 
         return self::report($io, $resolved, $reports);
+    }
+
+    /** Hold the loop until $guard has no child left, or $ceiling seconds. */
+    private static function untilReaped(OrphanGuard $guard, float $ceiling): void
+    {
+        $deadline = \hrtime(as_number: true) + (int) ($ceiling * 1e9);
+        EventLoop::repeat(self::REAP_POLL, static function (string $poll) use ($guard, $deadline): void {
+            if (0 === $guard->watching() || \hrtime(as_number: true) >= $deadline) {
+                EventLoop::cancel($poll);
+            }
+        });
     }
 
     /**

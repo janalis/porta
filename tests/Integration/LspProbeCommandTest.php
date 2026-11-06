@@ -172,6 +172,24 @@ final class LspProbeCommandTest extends TestCase
         $this->assertStringContainsString('did not start', $display);
     }
 
+    /**
+     * A server that ignores both its `exit` and SIGTERM is killed by the
+     * reaper, and the probe does not return before that: it waits for the
+     * orphan guard to have no child left. A probe that stopped waiting early
+     * would leave it running.
+     */
+    public function testAServerThatOutlivesItsStopIsReapedBeforeTheProbeReturns(): void
+    {
+        $pidFile = $this->project->path('server.pid');
+        $tester = $this->tester(['php' => [['command' => [\PHP_BINARY, __DIR__.'/../Support/lingering-lsp-server.php', $pidFile], 'name' => 'lingering']]]);
+
+        $tester->execute(['root' => $this->project->dir, '--listen' => 0.3]);
+
+        $pid = (int) \file_get_contents($pidFile);
+        $this->assertGreaterThan(0, $pid, 'the premise: it started');
+        $this->assertFalse(\posix_kill($pid, signal: 0), 'it is gone when the probe returns');
+    }
+
     public function testAServerThatRejectsInitializeAndStaysUpDoesNotHoldTheRunOpen(): void
     {
         // It answers `initialize` with an error and keeps reading: left

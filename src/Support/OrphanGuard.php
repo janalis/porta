@@ -67,18 +67,33 @@ final class OrphanGuard
     /** @var resource|null the watcher, held: freeing the handle would close the pipe, and the watcher would end everything at once */
     private $watcher;
 
+    /** @var array<int, true> the children guarded and not yet reaped, by pid */
+    private array $watched = [];
+
     /** Guard the child $pid until it is forgotten. */
     public function watch(int $pid): void
     {
+        $this->watched[$pid] = true;
         $this->send('+'.$pid);
     }
 
     /** The child $pid was reaped: its pid is no longer its. */
     public function forget(int $pid): void
     {
+        unset($this->watched[$pid]);
         if (null !== $this->pipe) {
             $this->send('-'.$pid);
         }
+    }
+
+    /**
+     * How many guarded children are not reaped yet — what lets a caller that
+     * stopped them all wait for the last to go rather than for the longest
+     * any of them could take.
+     */
+    public function watching(): int
+    {
+        return \count($this->watched);
     }
 
     /**

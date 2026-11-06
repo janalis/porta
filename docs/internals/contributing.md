@@ -191,9 +191,16 @@ three fixed in the 2026-09-15 round burned 6.3s, 7.5s and 3.0s each, and nothing
 would have reported them. And a worker that wedges took the whole suite with it,
 where paratest reaches ~99% and hangs: a per-test limit turns that into one red
 test. The margin is deliberate. Measured after the 2026-09-21 round, the slowest
-case in the tree is 2.73s, five exceed 2s and none exceeds 3s, so ten is a 3.7x
-headroom — wide enough to survive a loaded box, narrow enough that the next
-six-second test is a failure rather than a discovery.
+case in the tree was 2.73s, so ten was a 3.7x headroom — wide enough to survive
+a loaded box, narrow enough that the next six-second test is a failure rather
+than a discovery. By 2026-11-06 that headroom had eroded without anyone
+noticing: a serial profile found cases at 6–7s alone, all passing. Two were
+fixed — `TransportTest`'s drain read its socket once per 20ms await turn (7.3s →
+0.2s), and `lsp:probe` waited a flat 3.2s for servers already reaped (6.6s →
+3.5s, and every `composer lsp` run). `RefresherTest::testAnAgentsWriteIsNoticedByThePoll`
+is still 6.8s: it pumps two real `Refresher::LOCAL_POLL` intervals of 2s. Re-run
+the profile (`composer test:serial -- --log-junit=…`, ranked by time) after a
+round that adds waits; the limit only reports a breach, not a drift toward one.
 
 It is on the SCRIPT, not in `phpunit.xml.dist`, on purpose: pcov is 2-3x
 slower, so the same limit in the config would fire on honest tests during

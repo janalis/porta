@@ -95,8 +95,10 @@ final class OrphanGuardTest extends TestCase
         $guard = new OrphanGuard();
         $guard->watch($pid);
         $guard->watch($otherPid);
+        $this->assertSame(2, $guard->watching());
         $guard->forget($pid);
         $guard->forget(99_999_999); // forgetting what was never watched changes nothing
+        $this->assertSame(1, $guard->watching(), 'the forgotten one no longer counts, the unknown one never did');
 
         unset($guard);
 
