@@ -125,6 +125,15 @@ final readonly class DiffDocument
     }
 
     /**
+     * Whether git said the two sides are binary and differ — a change with no
+     * hunk to show, which {@see isEmpty()} alone reads as "nothing changed".
+     */
+    public function isBinary(): bool
+    {
+        return [] !== \preg_grep('/^Binary files .* differ$/', $this->headerLines);
+    }
+
+    /**
      * The flat render row list: one 'hunk' row per hunk header followed by
      * one 'line' row per body line (meta header lines are not rendered — the
      * view shows the file name in its own chrome).

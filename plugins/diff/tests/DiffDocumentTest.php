@@ -111,6 +111,15 @@ final class DiffDocumentTest extends TestCase
         $this->assertCount(2, $headerOnly->headerLines);
     }
 
+    public function testABinaryChangeIsKnownForOne(): void
+    {
+        $binary = DiffDocument::parse("diff --git a/logo.png b/logo.png\nindex 1..2 100644\nBinary files a/logo.png and b/logo.png differ\n");
+
+        $this->assertTrue($binary->isEmpty(), 'no hunk to show');
+        $this->assertTrue($binary->isBinary(), 'and yet a change');
+        $this->assertFalse(DiffDocument::parse("diff --git a/a b/a\n")->isBinary());
+    }
+
     public function testRenameHeadersAreKeptAsMeta(): void
     {
         $raw = "diff --git a/old.php b/new.php\nsimilarity index 95%\nrename from old.php\nrename to new.php\n";
