@@ -1378,16 +1378,11 @@ final class Document
     }
 
     /**
-     * Replace the entire buffer content as one undoable edit (used by
-     * project-wide replace). The caret is clamped into the new text.
-     */
-
-    /**
      * Take incoming file text and make it this document's: remember the shape
      * it arrived in, then hand back the one shape everything here works on.
      *
-     * ONE seam for both doors — the constructor and {@see replaceAll()} — and
-     * it exists because they had drifted. Line-ending normalisation was in both
+     * ONE seam for both doors from the disk — the constructor and
+     * {@see reload()} — and it exists because they had drifted. Line-ending normalisation was in both
      * but tested in only one, and the BOM and the line-ending memory each had
      * to be added to both by hand. A third concern arriving should not be a
      * third chance to miss a door.
@@ -1401,20 +1396,43 @@ final class Document
         $this->hasByteOrderMark = \str_starts_with($text, self::BOM);
         $text = $this->hasByteOrderMark ? \substr($text, offset: \strlen(self::BOM)) : $text;
         // The FIRST ending decides, because a mixed file has no majority worth
-        // honouring and the one it opens with is the one a reader saw.
+        // honouring and the one it opens with is the one a reader saw — not
+        // whichever kind appears anywhere: one pasted CRLF line, or a stray
+        // CR, rewrote every line of the file on its next save.
+        $ending = \substr($text, \strcspn($text, characters: "\r\n"), length: 2);
         $this->eol = match (true) {
-            \str_contains($text, "\r\n") => "\r\n",
-            \str_contains($text, "\r") => "\r",
+            "\r\n" === $ending => "\r\n",
+            \str_starts_with($ending, "\r") => "\r",
             default => "\n",
         };
 
         return \str_replace(["\r\n", "\r"], replace: "\n", subject: $text);
     }
 
+    /**
+     * Replace the entire buffer content as one undoable EDIT (project-wide
+     * replace, a formatter, a plugin): the file keeps its own line ending and
+     * byte-order mark, which the text an edit is made of — {@see getText()}'s,
+     * `\n`-joined and mark-less — knows nothing of. Taking them from it made
+     * the next save rewrite every line of a CRLF file and drop its BOM. The
+     * caret is clamped into the new text.
+     */
     public function replaceAll(string $text): void
     {
+        [$eol, $marked] = [$this->eol, $this->hasByteOrderMark];
+        $this->reload($text);
+        [$this->eol, $this->hasByteOrderMark] = [$eol, $marked];
+    }
+
+    /**
+     * Replace the content with the file's bytes as they are on disk now — the
+     * reconciler's reload, one undoable step — answering for the shape they
+     * arrive in.
+     */
+    public function reload(string $bytes): void
+    {
+        $text = $this->adopt($bytes);
         $this->pushUndo();
-        $text = $this->adopt($text);
         $this->lines = '' === $text ? [''] : \explode("\n", $text);
         $this->cursorLine = $this->clampLine($this->cursorLine);
         $this->cursorCol = $this->clampCol($this->cursorLine, $this->cursorCol);

@@ -180,7 +180,7 @@ final class FilesystemReconciler
     /** Replace a clean buffer's content with the new on-disk text, keeping it clean. */
     private function reloadBuffer(Buffer $buffer, string $content): void
     {
-        $buffer->document->replaceAll($content);
+        $buffer->document->reload($content);
         $buffer->document->markSaved();
         $buffer->diskChangedUnderEdit = false; // the buffer now IS the disk
         $this->lsp->notifyFullChange($buffer->path, $buffer->document); // no-op when no server is running

@@ -62,6 +62,22 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $this->assertSame("<?php // b v2\n", $manager->get($b)?->document->getText(), 'one slice covered both open buffers');
     }
 
+    /** A reload is the disk's: a file someone converted to LF saves as LF from then on. */
+    public function testAReloadTakesTheFilesNewLineEnding(): void
+    {
+        $a = (string) \realpath($this->project->write('a.php', "<?php\r\n// a\r\n"));
+        $buffers = $this->buffers();
+        $buffers->openFile($a, focus: OpenFocus::Editor);
+
+        \file_put_contents($a, data: "<?php\n// a, converted\n");
+        \touch($a, \time() + 2);
+        $buffers->pollFilesystemSlice();
+
+        $document = Services::resolve($this->ide, BufferManager::class)->get($a)?->document;
+        $this->assertSame("<?php\n// a, converted\n", $document?->getText());
+        $this->assertSame("\n", $document->eol);
+    }
+
     public function testAStoodDownPollStatsNothingUntilItsGapHasPassed(): void
     {
         // The pacer's own arithmetic is {@see PollBackoffTest}'s; this is the

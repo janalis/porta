@@ -78,11 +78,11 @@ final class DocumentAdoptTest extends TestCase
         $doc = new Document("plain\n");
         $this->assertFalse($doc->hasByteOrderMark);
 
-        $doc->replaceAll("\u{FEFF}marked\n");
+        $doc->reload("\u{FEFF}marked\n");
         $this->assertTrue($doc->hasByteOrderMark, 'the reload brought one');
         $this->assertSame('marked', $doc->getLine(0));
 
-        $doc->replaceAll("plain again\n");
+        $doc->reload("plain again\n");
         $this->assertFalse($doc->hasByteOrderMark, 'and a later reload without one clears it');
     }
 
@@ -99,6 +99,9 @@ final class DocumentAdoptTest extends TestCase
     public function testAMixedFileAnswersForItsFirstEnding(): void
     {
         $this->assertSame("\r\n", new Document("a\r\nb\nc\n")->eol);
+        $this->assertSame("\n", new Document("a\nb\nc\r\n")->eol, 'one pasted CRLF line further down is not the file\'s ending');
+        $this->assertSame("\n", new Document("a\nb\rc\n")->eol, 'nor is a stray CR');
+        $this->assertSame("\r", new Document("a\rb\r\n")->eol, 'a CR first is a CR file');
     }
 
     /** A reload adopts the new text's ending rather than keeping the old answer. */
@@ -107,8 +110,25 @@ final class DocumentAdoptTest extends TestCase
         $doc = new Document("a\r\n");
         $this->assertSame("\r\n", $doc->eol);
 
-        $doc->replaceAll("a\nb\n");
+        $doc->reload("a\nb\n");
 
         $this->assertSame("\n", $doc->eol, 'the reload brought LF');
+    }
+
+    /**
+     * An edit of the whole text — project replace, a formatter — is made of
+     * getText()'s `\n`-joined, mark-less text: the file keeps its own shape.
+     */
+    public function testAWholeTextEditKeepsTheFilesShape(): void
+    {
+        $doc = new Document("\u{FEFF}a\r\nb\r\n");
+
+        $doc->replaceAll("a\nB\n");
+
+        $this->assertSame("\r\n", $doc->eol);
+        $this->assertTrue($doc->hasByteOrderMark);
+        $this->assertSame("a\nB\n", $doc->getText());
+        $doc->undo();
+        $this->assertSame("a\nb\n", $doc->getText(), 'one undoable edit');
     }
 }
