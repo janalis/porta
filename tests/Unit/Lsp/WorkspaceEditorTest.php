@@ -768,6 +768,27 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertFileExists($real);
     }
 
+    /** A server renaming a link renames the link, and the fact names both of its spellings — never the target's. */
+    public function testARenamedLinkIsToldOfAsItself(): void
+    {
+        $project = new TempProject(['real.php' => "<?php\n"]);
+        \symlink($project->path('real.php'), $project->path('a.php'));
+        $events = new EventDispatcher();
+        $renamed = [];
+        $events->addListener(FileRenamed::class, static function (FileRenamed $e) use (&$renamed): void {
+            $renamed[] = [$e->from, $e->to];
+        });
+        $folder = (string) \realpath($project->dir);
+
+        $this->workspaceEditor($events)->applyWorkspaceEdit([
+            // Spelled by hand: Uri::fromPath() resolves the link, as a server's own URI does not.
+            'documentChanges' => [['kind' => 'rename', 'oldUri' => 'file://'.$project->path('a.php'), 'newUri' => 'file://'.$project->path('b.php')]],
+        ]);
+
+        $this->assertTrue(\is_link($project->path('b.php')), 'the link moved');
+        $this->assertSame([[$folder.'/a.php', $folder.'/b.php']], $renamed, 'the link\'s new name, not real.php');
+    }
+
     /**
      * All-or-nothing: an operation that cannot be honoured refuses the WHOLE
      * edit, because half a refactoring is worse than none. The edit below would

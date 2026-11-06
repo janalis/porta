@@ -241,7 +241,10 @@ final class FlakeScanCommand extends Command
             // would poison every later run in the scan. The handle is the shell
             // the command line went through, so killing only it left paratest
             // itself running the suite on — every descendant goes, then it.
-            \array_map(static fn (int $pid): bool => \posix_kill($pid, signal: 9), self::descendants(\proc_get_status($process)['pid']));
+            // ext-posix is not required (PtyProcess asks too): without it only
+            // the shell goes, as before, rather than the scan dying here.
+            $orphans = \function_exists('posix_kill') ? self::descendants(\proc_get_status($process)['pid']) : [];
+            \array_map(static fn (int $pid): bool => \posix_kill($pid, signal: 9), $orphans);
             \proc_terminate($process, signal: 9);
             \proc_close($process);
         }

@@ -11,6 +11,7 @@ use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Event\FileDeleted;
 use Porta\Event\FileRenamed;
+use Porta\Event\ReferencesFollowRequested;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
@@ -212,7 +213,7 @@ final class TreeKeyboardTest extends TestCase
         $this->assertTrue(Services::resolve($this->ide, BufferManager::class)->has((string) \realpath($this->project->path('a.php'))), 'the target is still open');
     }
 
-    /** A link renames as a link: the file it points at keeps its tab, and the rename told of is the link's. */
+    /** A link renames as a link: the file it points at keeps its tab, the rename told of is the link's, and no reference follows a file that never moved. */
     public function testRenamingALinkLeavesItsTargetAlone(): void
     {
         \symlink($this->project->path('a.php'), $this->project->path('link.php'));
@@ -222,12 +223,17 @@ final class TreeKeyboardTest extends TestCase
         Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileRenamed::class, static function (FileRenamed $event) use (&$renamed): void {
             $renamed[] = [\basename($event->from), \basename($event->to)];
         });
+        $followed = 0;
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(ReferencesFollowRequested::class, static function () use (&$followed): void {
+            ++$followed;
+        });
         $this->walkTo('link.php');
 
         $this->renameTo('moved.php');
 
         $this->assertTrue(\is_link($this->project->path('moved.php')));
         $this->assertSame([['link.php', 'moved.php']], $renamed, 'the link moved, not a.php onto itself');
+        $this->assertSame(0, $followed, 'no class was moved, so no reference follows: asked, the server renames the class inside a.php');
         $this->assertTrue(Services::resolve($this->ide, BufferManager::class)->has((string) \realpath($this->project->path('a.php'))), 'the target is still open');
     }
 

@@ -355,8 +355,9 @@ final readonly class WorkspaceEditor
         // made before, a refused move would leave it behind, wherever it was.
         $this->fs->mkdir(\dirname($to));
         $this->fs->rename($from, $to, overwrite: true);
-        // Canonical both sides, per FileRenamed's contract; $from is already gone.
-        $this->events->dispatch(new FileRenamed(Files::canonicalGone($from), Files::canonical($to)));
+        // Canonical both sides, per FileRenamed's contract; $from is already
+        // gone. A link is spelled as itself: it moved, its target did not.
+        $this->events->dispatch(new FileRenamed(Files::canonicalGone($from), Files::canonicalEntry($to)));
         // Dispatched rather than done here: re-opening needs BufferService,
         // which reaches this class back through FormatOnSave. A command event
         // is the sanctioned way out of a real container cycle, and this one is.

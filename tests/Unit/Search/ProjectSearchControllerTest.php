@@ -622,6 +622,33 @@ final class ProjectSearchControllerTest extends TestCase
     }
 
     /**
+     * The scoped replace of an open buffer works on the disk's bytes. Once they
+     * are gone, or no longer what the buffer holds, there is nothing the
+     * matches were measured in: read as '', they replaced the whole clean
+     * buffer with nothing. Left alone and named, as an unsaved one is.
+     */
+    public function testAScopedReplaceLeavesABufferWhoseFileIsGoneUntouched(): void
+    {
+        $text = "<?php \$foo = 'foo';\n";
+        $project = new TempProject(['src/A.php' => $text, 'src/B.php' => $text]);
+        $controller = $this->controller($project->dir);
+        $gone = $this->buffers->open((string) \realpath($project->path('src/A.php')), $text);
+        $changed = $this->buffers->open((string) \realpath($project->path('src/B.php')), $text);
+        $controller->open();
+        $controller->toggleOption(SearchOption::Tokens); // in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'foo';");
+        \unlink($project->path('src/A.php'));
+        $project->write('src/B.php', "<?php \$foo = 'other foo';\n");
+
+        $controller->replaceAll('bar');
+
+        $this->assertSame($text, $gone->document->getText(), 'a file gone from disk leaves its buffer as it was');
+        $this->assertSame($text, $changed->document->getText(), 'a file changed on disk is not replaced at offsets measured in its old bytes');
+        $this->assertStringContainsString('src/B.php', $this->statusRow($this->statusBar), 'the changed file is named, as an unsaved one is');
+    }
+
+    /**
      * An EMPTY replacement deletes every match across open buffers and on disk,
      * and the modal closes afterwards. It is a legitimate operation and stays
      * available — refusing would make a real verb a dead key — but it is the one

@@ -440,7 +440,15 @@ final class ProjectSearchController
                 // scope's spans were measured in, then held as the buffer holds
                 // them: the clean buffer is the same text, but without the
                 // byte-order mark that put every span on line 0 three bytes late.
-                $new = DiskText::asHeld($this->replaceLines(Files::read($abs), $lineIndices, $replacement, $approved));
+                // Bytes gone, or no longer the buffer's text, measure nothing it
+                // holds — read as '', they emptied the buffer.
+                $bytes = Files::tryRead($abs);
+                if (null === $bytes || DiskText::asHeld($bytes) !== $buffer->document->getText()) {
+                    $skipped[] = $relPath;
+
+                    continue;
+                }
+                $new = DiskText::asHeld($this->replaceLines($bytes, $lineIndices, $replacement, $approved));
                 if ($this->replacer->replace($buffer, $new)) {
                     ++$touched;
                 }

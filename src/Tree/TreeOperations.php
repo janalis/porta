@@ -342,7 +342,9 @@ final class TreeOperations
         // so an open file's buffer is re-pointed at the new name. A link is
         // spelled as itself: it moves, and what it points at stays put.
         $oldKey = Files::canonicalEntry($old);
-        $this->withFs($failure, function () use ($old, $new, $oldKey, $success, $overwrite): void {
+        // Asked of the old name, which is gone once the rename runs.
+        $link = \is_link($old);
+        $this->withFs($failure, function () use ($old, $new, $oldKey, $link, $success, $overwrite): void {
             // Write BEFORE the rename, or the edits are gone: the move closes
             // each affected buffer and re-opens it from disk, and
             // BufferManager::close() has no dirty check — the guarded prompt
@@ -381,7 +383,12 @@ final class TreeOperations
             // path resolves now that it exists.
             $newKey = Files::canonicalEntry($new);
             $this->events->dispatch(new FileRenamed($oldKey, $newKey));
-            $this->events->dispatch(new ReferencesFollowRequested($oldKey, $newKey));
+            // A link's target never moved: asked to follow, the server would
+            // rename the class inside it, and every use of it, for a new name
+            // only the link has.
+            if (!$link) {
+                $this->events->dispatch(new ReferencesFollowRequested($oldKey, $newKey));
+            }
             $this->tree->refresh();
             $this->tui->setFocus($this->tree);
             $this->notifier->success($success);
