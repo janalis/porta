@@ -100,6 +100,9 @@ final readonly class DiffDocument
                 ++$dels;
             }
             $addStart = $delStart + $dels;
+            // The old side's `\ No newline` sits between the runs: the last
+            // line changed in a file with no final newline still pairs.
+            $addStart += $addStart < $count && '\\' === $lines[$addStart]->origin ? 1 : 0;
             $adds = 0;
             while (($addStart + $adds) < $count && '+' === $lines[$addStart + $adds]->origin) {
                 ++$adds;
@@ -191,28 +194,55 @@ final readonly class DiffDocument
 
                     continue;
                 }
-                // Start of a deletion run: measure it and the following additions.
-                $dels = 0;
-                while (($i + $dels) < $count && '-' === $lines[$i + $dels]->origin) {
-                    ++$dels;
-                }
-                $addStart = $i + $dels;
-                $adds = 0;
-                while (($addStart + $adds) < $count && '+' === $lines[$addStart + $adds]->origin) {
-                    ++$adds;
-                }
-                for ($p = 0; $p < \max($dels, $adds); ++$p) {
-                    $rows[] = [
-                        'kind' => DiffRowKind::Pair,
-                        'hunk' => $h,
-                        'left' => $p < $dels ? $i + $p : -1,
-                        'right' => $p < $adds ? $addStart + $p : -1,
-                    ];
-                }
-                $i = $addStart + $adds - 1;
+                // Start of a deletion run: it, the additions after it, and the markers ending them.
+                [$change, $i] = self::changeRows($lines, $h, $i);
+                \array_push($rows, ...$change);
             }
         }
 
         return $rows;
+    }
+
+    /**
+     * The rows of the change starting at $i — a deletion run, the additions
+     * after it — and the index of its last line.
+     *
+     * @param list<DiffLine> $lines
+     *
+     * @return array{list<array{kind: DiffRowKind, hunk: int, left: int, right: int}>, int}
+     */
+    private static function changeRows(array $lines, int $h, int $i): array
+    {
+        $count = \count($lines);
+        $rows = [];
+        $dels = 0;
+        while (($i + $dels) < $count && '-' === $lines[$i + $dels]->origin) {
+            ++$dels;
+        }
+        $addStart = $i + $dels;
+        // The old side's `\ No newline` between the runs is set aside,
+        // so the runs still pair; it and the new side's own, after the
+        // additions, end the change on one row, each on its side.
+        $leftEnd = $addStart < $count && '\\' === $lines[$addStart]->origin ? $addStart : -1;
+        $addStart += $leftEnd >= 0 ? 1 : 0;
+        $adds = 0;
+        while (($addStart + $adds) < $count && '+' === $lines[$addStart + $adds]->origin) {
+            ++$adds;
+        }
+        for ($p = 0; $p < \max($dels, $adds); ++$p) {
+            $rows[] = [
+                'kind' => DiffRowKind::Pair,
+                'hunk' => $h,
+                'left' => $p < $dels ? $i + $p : -1,
+                'right' => $p < $adds ? $addStart + $p : -1,
+            ];
+        }
+        $after = $addStart + $adds;
+        $rightEnd = $leftEnd >= 0 && $adds > 0 && $after < $count && '\\' === $lines[$after]->origin ? $after : -1;
+        if ($leftEnd >= 0) {
+            $rows[] = ['kind' => DiffRowKind::Pair, 'hunk' => $h, 'left' => $leftEnd, 'right' => $rightEnd];
+        }
+
+        return [$rows, \max($rightEnd, $addStart + $adds - 1)];
     }
 }

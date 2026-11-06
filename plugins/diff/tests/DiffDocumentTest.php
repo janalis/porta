@@ -169,6 +169,22 @@ final class DiffDocumentTest extends TestCase
         $this->assertSame(['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 1, 'right' => -1], $rows[2], 'after a deletion the marker rides the old side');
     }
 
+    /** The last line changed in a file with no final newline: one pair, then both sides' markers on one row. */
+    public function testALastLineChangedWithoutAFinalNewlineStillPairs(): void
+    {
+        $doc = DiffDocument::parse("@@ -1,1 +1,1 @@\n-old line\n\\ No newline at end of file\n+new line\n\\ No newline at end of file\n");
+
+        $this->assertSame(
+            [
+                ['kind' => DiffRowKind::Hunk, 'hunk' => 0, 'left' => -1, 'right' => -1],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 0, 'right' => 2],
+                ['kind' => DiffRowKind::Pair, 'hunk' => 0, 'left' => 1, 'right' => 3],
+            ],
+            $doc->splitRows(),
+        );
+        $this->assertNotNull($doc->hunks[0]->lines[0]->changedRange, 'the word-level change is found across the marker');
+    }
+
     public function testHunkHeaderTextInsideABodyLineIsContent(): void
     {
         // Only a line that STARTS with @@ opens a hunk.
