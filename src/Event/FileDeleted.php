@@ -23,7 +23,8 @@ namespace Porta\Event;
  *
  * **It carries what went.** `$previousText` is the file's text as the user
  * last had it — the open buffer's, unsaved edits included, else the disk's —
- * or null for a directory or a file too large to be text. It is what makes a
+ * in the file's own ending and byte-order mark, or null for a directory, a
+ * link (what it points at is still there) or a file too large to be text. It is what makes a
  * delete recoverable: `local-history` keeps it as a snapshot, and restoring
  * that snapshot brings the file back.
  *

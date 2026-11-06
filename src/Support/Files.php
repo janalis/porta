@@ -170,9 +170,27 @@ final class Files
      */
     public static function canonicalGone(string $path): string
     {
+        return self::resolve($path) ?? self::inResolvedFolder($path);
+    }
+
+    /**
+     * {@see canonical()} for the ENTRY at $path rather than what it points at:
+     * a symbolic link is spelled by its resolved folder and its own name. A
+     * delete or a rename of a link acts on the link alone, so what it reports
+     * — and the buffers and marks it moves or forgets — must be the link's,
+     * never its target's, which is still there.
+     */
+    public static function canonicalEntry(string $path): string
+    {
+        return \is_link($path) ? self::inResolvedFolder($path) : self::canonical($path);
+    }
+
+    /** $path with its folder resolved and its own name kept; $path as given when the folder is gone too. */
+    private static function inResolvedFolder(string $path): string
+    {
         $folder = self::resolve(\dirname($path));
 
-        return self::resolve($path) ?? (null === $folder ? $path : $folder.\DIRECTORY_SEPARATOR.\basename($path));
+        return null === $folder ? $path : $folder.\DIRECTORY_SEPARATOR.\basename($path);
     }
 
     /**

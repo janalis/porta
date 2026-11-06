@@ -6,6 +6,7 @@ namespace Porta\Tree;
 
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
+use Porta\Editor\DiskText;
 use Porta\Editor\Document;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\PromptTone;
@@ -338,8 +339,9 @@ final class TreeOperations
     private function moveInto(string $old, string $new, string $failure, string $success, bool $overwrite = false): void
     {
         // Buffers are keyed by realpath(); resolve the old path the same way
-        // so an open file's buffer is re-pointed at the new name.
-        $oldKey = Files::canonical($old);
+        // so an open file's buffer is re-pointed at the new name. A link is
+        // spelled as itself: it moves, and what it points at stays put.
+        $oldKey = Files::canonicalEntry($old);
         $this->withFs($failure, function () use ($old, $new, $oldKey, $success, $overwrite): void {
             // Write BEFORE the rename, or the edits are gone: the move closes
             // each affected buffer and re-opens it from disk, and
@@ -377,7 +379,7 @@ final class TreeOperations
             // Canonical both sides, per FileRenamed's contract: $oldKey was
             // resolved BEFORE the rename (it cannot be, after), and the new
             // path resolves now that it exists.
-            $newKey = Files::canonical($new);
+            $newKey = Files::canonicalEntry($new);
             $this->events->dispatch(new FileRenamed($oldKey, $newKey));
             $this->events->dispatch(new ReferencesFollowRequested($oldKey, $newKey));
             $this->tree->refresh();
@@ -460,12 +462,16 @@ final class TreeOperations
         });
     }
 
-    /** The text a recovery restores: the open buffer's when there is one — unsaved edits are the user's too. */
+    /**
+     * The text a recovery restores: the open buffer's when there is one —
+     * unsaved edits are the user's too — in the file's own ending and mark,
+     * since a recovery writes it back as the file.
+     */
     private function textToKeep(string $key, string $path): ?string
     {
         $buffer = $this->buffers->get($key);
 
-        return null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
+        return null !== $buffer && !$buffer->isViewer() ? DiskText::asWritten($buffer->document) : Files::textOf($path);
     }
 
     /**
@@ -500,11 +506,13 @@ final class TreeOperations
 
     private function deleteOne(string $path): void
     {
-        // buffers are keyed by realpath()
-        $key = Files::canonical($path);
+        // buffers are keyed by realpath(); a link is spelled as itself — it
+        // goes alone, and what it points at keeps its tab and its marks.
+        $key = Files::canonicalEntry($path);
         $this->withFs($this->translator->trans('Cannot delete %file%', ['%file%' => $this->paths->relative($path)]), function () use ($path, $key): void {
-            // Read before it goes.
-            $previous = $this->textToKeep($key, $path);
+            // Read before it goes. A link has no text of its own to keep: what
+            // it points at is still there.
+            $previous = \is_link($path) ? null : $this->textToKeep($key, $path);
             // A folder's files too: each goes with it, and what keeps a
             // deleted file (local history) is told of each, with its text.
             // A link to a folder goes as a link: what it points at stays.

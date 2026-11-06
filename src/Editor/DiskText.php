@@ -37,6 +37,34 @@ final class DiskText
         };
     }
 
+    /**
+     * $document's text as its file is written: the ending and the byte-order
+     * mark it was loaded with put back. For a write that is not a buffer's save
+     * (which also applies `.editorconfig`): a file nobody opened, edited
+     * unseen, keeps the shape it had — not one rewritten line per line.
+     */
+    public static function asWritten(Document $document): string
+    {
+        return self::marked(self::inEnding($document->getText(), $document->eol), $document->hasByteOrderMark);
+    }
+
+    /**
+     * $text, held as a document holds it, written in the shape $bytes have:
+     * their ending, and their byte-order mark if they open with one. For text
+     * that goes back to whoever sent $bytes — an agent's proposal, kept,
+     * returns as it came, not as the buffer holds it.
+     */
+    public static function inShapeOf(string $text, string $bytes): string
+    {
+        return self::marked(self::inEnding($text, self::ending($bytes)), \str_starts_with($bytes, Document::BOM));
+    }
+
+    // @mago-expect lint:no-boolean-flag-parameter -- the mark is the one fact the call carries
+    private static function marked(string $bytes, bool $mark): string
+    {
+        return $mark ? Document::BOM.$bytes : $bytes;
+    }
+
     /** $text, held with `\n` breaks, as a file ending its lines with $eol writes it. */
     public static function inEnding(string $text, string $eol): string
     {

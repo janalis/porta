@@ -6,9 +6,11 @@ namespace Porta\Tests\Unit\Tree;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
 use Porta\Event\FileDeleted;
+use Porta\Event\FileRenamed;
 use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
@@ -128,6 +130,30 @@ final class TreeKeyboardTest extends TestCase
         $this->assertSame(['A.php' => "// unsaved <?php\n", 'B.php' => "<?php // b\n", 'src' => null], $deleted);
     }
 
+    /**
+     * An open file's text is handed on in its FILE's shape — its ending and its
+     * mark — because that is what a recovery writes back: held as the buffer
+     * holds it, a deleted CRLF file came back from local history as LF.
+     */
+    public function testAnOpenFilesTextGoesWithItInTheFilesOwnShape(): void
+    {
+        $this->project->write('d.php', "\u{FEFF}<?php\r\n// d\r\n");
+        $this->tree()->refresh();
+        Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('d.php'), focus: OpenFocus::Editor);
+        $this->editor()->getDocument()->insert('// unsaved ');
+        $this->tui()->setFocus($this->tree());
+        $kept = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$kept): void {
+            $kept[] = $event->previousText;
+        });
+        $this->walkTo('d.php');
+
+        $this->tui()->handleInput(self::DELETE);
+        $this->type("y\r");
+
+        $this->assertSame(["\u{FEFF}// unsaved <?php\r\n// d\r\n"], $kept);
+    }
+
     /** A deleted vendor/ is not a reason to read every file in it: past the cap, they go as files do outside Porta. */
     public function testAHugeFoldersFilesAreKeptOnlyUpToTheCap(): void
     {
@@ -164,6 +190,45 @@ final class TreeKeyboardTest extends TestCase
         $this->assertFileDoesNotExist($this->project->path('lib'));
         $this->assertFileExists($outside->path('C.php'));
         $this->assertNotContains('C.php', $deleted, 'a file that is still there is not deleted');
+    }
+
+    /** A link to a file goes as a link: the file it points at keeps its open tab, and only the link is told of as deleted. */
+    public function testALinkToAnOpenFileGoesAloneAndItsTargetStaysOpen(): void
+    {
+        \symlink($this->project->path('a.php'), $this->project->path('link.php'));
+        $this->tree()->refresh();
+        Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('a.php'), OpenFocus::Keep);
+        $deleted = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$deleted): void {
+            $deleted[] = $event->path;
+        });
+        $this->walkTo('link.php');
+
+        $this->tui()->handleInput(self::DELETE);
+        $this->type("y\r");
+
+        $this->assertFileDoesNotExist($this->project->path('link.php'));
+        $this->assertSame([\realpath($this->project->path('.')).'/link.php'], $deleted, 'the link, not what it points at');
+        $this->assertTrue(Services::resolve($this->ide, BufferManager::class)->has((string) \realpath($this->project->path('a.php'))), 'the target is still open');
+    }
+
+    /** A link renames as a link: the file it points at keeps its tab, and the rename told of is the link's. */
+    public function testRenamingALinkLeavesItsTargetAlone(): void
+    {
+        \symlink($this->project->path('a.php'), $this->project->path('link.php'));
+        $this->tree()->refresh();
+        Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('a.php'), OpenFocus::Keep);
+        $renamed = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileRenamed::class, static function (FileRenamed $event) use (&$renamed): void {
+            $renamed[] = [\basename($event->from), \basename($event->to)];
+        });
+        $this->walkTo('link.php');
+
+        $this->renameTo('moved.php');
+
+        $this->assertTrue(\is_link($this->project->path('moved.php')));
+        $this->assertSame([['link.php', 'moved.php']], $renamed, 'the link moved, not a.php onto itself');
+        $this->assertTrue(Services::resolve($this->ide, BufferManager::class)->has((string) \realpath($this->project->path('a.php'))), 'the target is still open');
     }
 
     /** A subfolder the walk cannot read is skipped, not thrown: the delete answers as it did before the walk. */

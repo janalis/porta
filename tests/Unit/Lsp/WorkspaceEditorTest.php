@@ -38,6 +38,8 @@ final class WorkspaceEditorTest extends TestCase
     use StatusReads;
 
     private BufferManager $buffers;
+
+    private RefactoringUndo $undo;
     private CodeEditorWidget $editor;
     private StatusBarWidget $statusBar;
 
@@ -51,7 +53,7 @@ final class WorkspaceEditorTest extends TestCase
             $this->editor,
             new LspSessionPool($root ?? \sys_get_temp_dir(), new FixedActiveFile(), new Translator('en')),
             $events ?? new EventDispatcher(),
-            new RefactoringUndo(new BufferManager(), new EventDispatcher()),
+            $this->undo = new RefactoringUndo(new BufferManager(), new EventDispatcher()),
             notifier: new Notifier($this->statusBar = new StatusBarWidget(), TestTui::create()),
         );
     }
@@ -267,6 +269,26 @@ final class WorkspaceEditorTest extends TestCase
 
         $this->assertSame(1, $outcome->touched);
         $this->assertSame("X123456789\n", (string) \file_get_contents($project->path('a.php')));
+    }
+
+    /**
+     * A closed file keeps its own shape: a rename across the project rewrote
+     * every line of a CRLF file and dropped its byte-order mark, because the
+     * write took the document's `\n`-joined, mark-less text — a whole-file
+     * diff for one changed name. And the undo still sees the file untouched.
+     */
+    public function testAClosedFileIsWrittenBackWithItsOwnEndingAndMark(): void
+    {
+        $original = "\u{FEFF}0123\r\nabc\r\n";
+        $project = new TempProject(['a.php' => $original]);
+        $we = $this->workspaceEditor();
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+
+        $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => $edit]]);
+
+        $this->assertSame("\u{FEFF}X123\r\nabc\r\n", (string) \file_get_contents($project->path('a.php')));
+        $this->assertNull($this->undo->undo(), 'nothing changed the file since: the undo goes through');
+        $this->assertSame($original, (string) \file_get_contents($project->path('a.php')));
     }
 
     /**
@@ -702,6 +724,48 @@ final class WorkspaceEditorTest extends TestCase
         ]);
 
         $this->assertSame(["// mine <?php\n", null], $deleted, 'the text the user had, then nothing for a folder');
+    }
+
+    /** The buffer's text goes in the file's own shape: a recovery writes it back as the file. */
+    public function testADeleteHandsOnAnOpenCrlfFileInItsOwnShape(): void
+    {
+        $project = new TempProject(['open.php' => "\u{FEFF}<?php\r\n"]);
+        $events = new EventDispatcher();
+        $deleted = [];
+        $events->addListener(FileDeleted::class, static function (FileDeleted $e) use (&$deleted): void {
+            $deleted[] = $e->previousText;
+        });
+        $we = $this->workspaceEditor($events);
+        $this->buffers->open((string) \realpath($project->path('open.php')), "\u{FEFF}<?php\r\n")->document->insert('// mine ');
+
+        $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($project->path('open.php'))]]]);
+
+        $this->assertSame(["\u{FEFF}// mine <?php\r\n"], $deleted);
+    }
+
+    /** A server deleting a link deletes the link: what it points at keeps its open buffer, and the fact names the link. */
+    public function testADeletedLinkLeavesItsTargetsBufferAndIsToldOfAsItself(): void
+    {
+        $project = new TempProject(['real.php' => "<?php\n"]);
+        \symlink($project->path('real.php'), $project->path('link.php'));
+        $events = new EventDispatcher();
+        $deleted = [];
+        $events->addListener(FileDeleted::class, static function (FileDeleted $e) use (&$deleted): void {
+            $deleted[] = [$e->path, $e->previousText];
+        });
+        $we = $this->workspaceEditor($events);
+        $real = (string) \realpath($project->path('real.php'));
+        $this->buffers->open($real, "<?php\n");
+
+        $we->applyWorkspaceEdit([
+            // Spelled by hand: Uri::fromPath() resolves the link, as a server's own URI does not.
+            'documentChanges' => [['kind' => 'delete', 'uri' => 'file://'.$project->path('link.php')]],
+        ]);
+
+        $this->assertSame([[\dirname($real).'/link.php', null]], $deleted);
+        $this->assertFalse(\is_link($project->path('link.php')), 'the link is gone');
+        $this->assertTrue($this->buffers->has($real), 'the target is still open');
+        $this->assertFileExists($real);
     }
 
     /**

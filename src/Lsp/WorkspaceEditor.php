@@ -7,6 +7,7 @@ namespace Porta\Lsp;
 use Porta\Container\AsIdeService;
 use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiskText;
 use Porta\Editor\Document;
 use Porta\Editor\EditorInvalidator;
 use Porta\Editor\SelectionMode;
@@ -343,24 +344,7 @@ final readonly class WorkspaceEditor
         if ('delete' === $kind) {
             $path = $this->pathOf($change['uri'] ?? null);
             \assert(null !== $path, description: 'a delete with no usable path is refused before applying');
-            // A server deleting a file the user has unsaved edits in takes those
-            // edits with it, and there is no autosave to have caught them. It is
-            // still applied: refusing here would leave the workspace edit HALF
-            // APPLIED, which this codebase treats as the worse outcome. What it
-            // may not do is happen in silence.
-            $buffer = $this->bufferAt($path);
-            if (true === $buffer?->isDirty()) {
-                $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => \basename($path)]));
-            }
-            // What the user last had — the buffer's text, unsaved edits and
-            // all — is what FileDeleted hands on for recovery.
-            $previous = null !== $buffer && !$buffer->isViewer() ? $buffer->document->getText() : Files::textOf($path);
-            $this->closeBufferAt($path);
-            // Canonical, and resolved BEFORE the removal — afterwards there is
-            // nothing left for realpath() to resolve. FileDeleted's contract.
-            $key = Files::canonical($path);
-            $this->fs->remove($path);
-            $this->events->dispatch(new FileDeleted($key, $previous));
+            $this->deleteEntry($path);
 
             return;
         }
@@ -377,6 +361,47 @@ final readonly class WorkspaceEditor
         // which reaches this class back through FormatOnSave. A command event
         // is the sanctioned way out of a real container cycle, and this one is.
         $this->events->dispatch(new BufferRepointRequested($from, $to));
+    }
+
+    /**
+     * A server's delete of $path, once {@see applyResourceOperation()} has judged it.
+     */
+    private function deleteEntry(string $path): void
+    {
+        // A link goes alone: what it points at keeps its buffer, and has no
+        // text to hand on — it is still there. Spelled as itself, resolved
+        // BEFORE the removal, as FileDeleted's contract asks of any path.
+        if (!\is_link($path)) {
+            $this->deleteFile($path);
+
+            return;
+        }
+        $link = Files::canonicalEntry($path);
+        $this->fs->remove($path);
+        $this->events->dispatch(new FileDeleted($link));
+    }
+
+    private function deleteFile(string $path): void
+    {
+        // A server deleting a file the user has unsaved edits in takes those
+        // edits with it, and there is no autosave to have caught them. It is
+        // still applied: refusing here would leave the workspace edit HALF
+        // APPLIED, which this codebase treats as the worse outcome. What it
+        // may not do is happen in silence.
+        $buffer = $this->bufferAt($path);
+        if (true === $buffer?->isDirty()) {
+            $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => \basename($path)]));
+        }
+        // Canonical, and resolved BEFORE the removal — afterwards there is
+        // nothing left for realpath() to resolve. FileDeleted's contract.
+        $key = Files::canonical($path);
+        // What the user last had — the buffer's text, unsaved edits and
+        // all, in the file's own shape — is what FileDeleted hands on for
+        // recovery, which writes it back as the file.
+        $previous = null !== $buffer && !$buffer->isViewer() ? DiskText::asWritten($buffer->document) : Files::textOf($path);
+        $this->closeBufferAt($path);
+        $this->fs->remove($path);
+        $this->events->dispatch(new FileDeleted($key, $previous));
     }
 
     private function bufferAt(string $path): ?Buffer
@@ -466,15 +491,18 @@ final readonly class WorkspaceEditor
 
             return;
         }
+        // In the file's own ending and mark: the document holds neither, and
+        // a rename that rewrote every line of a CRLF file was a whole-file diff.
+        $written = DiskText::asWritten($document);
         try {
-            $this->fs->dumpFile($target, $document->getText());
+            $this->fs->dumpFile($target, $written);
             ++$touched;
             // Announced only AFTER the write succeeded, and carrying what the
             // write replaced. A file with no buffer has no undo stack and no
             // BufferSaved, so this is the only moment its previous content
             // still exists anywhere — see {@see FileRewritten}.
             $this->events->dispatch(new FileRewritten($target, $contents));
-            $this->undo->recordFile($target, $contents, $document->getText());
+            $this->undo->recordFile($target, $contents, $written);
         } catch (IOException) {
             // The writability check passed and the write still failed (a full
             // disk, a read-only mount, a race). Uncaught this escapes the LSP
