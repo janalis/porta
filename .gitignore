@@ -40,3 +40,6 @@ plugins/*/vendor/
 # The docs screenshots: drawn from the running IDE at docs build
 # (`npm run docs:screenshots`), never committed, so they are never stale.
 /docs/public/screenshots/
+
+# .claude links to .agents, so Claude Code's machine-local settings land here.
+/.agents/settings.local.json

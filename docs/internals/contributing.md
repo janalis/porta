@@ -486,11 +486,9 @@ parallel paratest is not.
 
 The parallelism that pays here is **read-only fan-out**: sweeps, audits, "find
 every other site of this", checking a doc against the code. Three of those run
-in about the wall clock of one. `porta-explorer` is that shape, committed —
-read-only tools, told what this project counts as evidence, and told to report
-`file:line`. It is one prompt in two wrappers, `.claude/agents/porta-explorer.md`
-and `.codex/agents/porta-explorer.toml`; `AgentDefinitionsInSyncTest` fails when
-they part.
+in about the wall clock of one. Brief each agent as read-only, tell it what
+this project counts as evidence (a gate's output, a rendered screen,
+`.porta/error.log`), and have it report `file:line`.
 
 Two things never fan out, both measured rather than assumed:
 
@@ -519,10 +517,10 @@ would otherwise fight over is given to them one each.
   evidence. Stop early only for a gate failing for a reason you can't explain.
 - **A round of more than a handful of items** keeps its checklist in `TASKS.md`
   (gitignored): tick each item when done, add what you find on the way.
-- **Fan read-only sweeps out to `porta-explorer`** (above), one area per agent, and
+- **Fan read-only sweeps out to subagents** (above), one area per agent, and
   check each report's `file:line` evidence before accepting it — a claim argued in
   prose is not a verified one.
-- **Use the committed skills** in `.agents/skills/` (`.claude/skills` links there): `gates` (the inner loop and a hung
+- **Use the committed skills** in `.agents/skills/` (`.claude` is a link to `.agents`): `gates` (the inner loop and a hung
   run), `mutation-check`, `add-command`, `add-setting`, `new-plugin`, `review-branch`. Each is a recipe
   that links here; when one disagrees with this page, fix the skill.
 - **End every run with three headings: Blocked on me, Changed, Found.** Mark anything
