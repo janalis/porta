@@ -197,8 +197,9 @@ than a discovery. By 2026-11-06 that headroom had eroded without anyone
 noticing: a serial profile found cases at 6–7s alone, all passing. Two were
 fixed — `TransportTest`'s drain read its socket once per 20ms await turn (7.3s →
 0.2s), and `lsp:probe` waited a flat 3.2s for servers already reaped (6.6s →
-3.5s, and every `composer lsp` run). `RefresherTest::testAnAgentsWriteIsNoticedByThePoll`
-is still 6.8s: it pumps two real `Refresher::LOCAL_POLL` intervals of 2s. Re-run
+3.5s, and every `composer lsp` run), and `RefresherTest` pumped two whole 2s
+poll intervals to prove two negatives that a direct call to the poll's handler
+proves as well (6.8s → 2.5s). Re-run
 the profile (`composer test:serial -- --log-junit=…`, ranked by time) after a
 round that adds waits; the limit only reports a breach, not a drift toward one.
 
