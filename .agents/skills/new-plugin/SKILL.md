@@ -24,7 +24,7 @@ Worked examples: `git show --stat b4506a85` (mcp), `006b7600` (symfony-lsp). The
 5. **`mago.toml`**: add `"plugins/<name>/tests"` to the analyzer `excludes` by hand; mago excludes take no
    globs. If the plugin vendors dependencies, also add a `plugins/<name>/vendor` source exclude
    (`BundledPluginVendorTest`).
-6. **Arch**: in `ALLOWED_EDGES` (`src/Console/ArchitectureCheckCommand.php`), add one commented
+6. **Arch**: in `config/arch-allowlist.php`'s `edges`, add one commented
    `'<Ns>>X'` edge per core namespace the plugin's `src/` imports. `<Ns>` is the psr-4 segment after
    `Porta\`, not the directory name (`GitPlugin`, but `SymfonyLsp`). `porta.php` is outside the graph.
    Guard: `composer arch` (fails on drift in both directions).

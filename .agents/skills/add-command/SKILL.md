@@ -21,8 +21,8 @@ Worked examples: `git show f8a2f798` (tree cut/copy/paste), `b8cf05bb`, `51c3f7c
    - A NEW provider class needs `#[AsTaggedItem(priority: N)]` and a row in
      `tests/Unit/Container/CommandProviderOrderTest.php`. Priority is both the palette order and who wins a
      chord collision. Nothing tests two Ide-scope defaults on one chord, so grep the catalog for your chord.
-3. **Arch**: a new `use Porta\X` in the provider means a `'Command>X'` edge in `ALLOWED_EDGES`
-   (`src/Console/ArchitectureCheckCommand.php`). Guard: `composer arch`.
+3. **Arch**: a new `use Porta\X` in the provider means a `'Command>X'` edge in
+   `config/arch-allowlist.php`. Guard: `composer arch`.
 4. **Menu**: `'i:my_verb'` (IDE command) or `'e:my_verb'` (editor action) in `MenuModel::DEFS`
    (`src/Workbench/Menu/MenuModel.php`). Also add it to `FILE_SCOPED_IDE` if it acts on the current file,
    and to `VIEW_SAFE` if it must work in Settings/Welcome.

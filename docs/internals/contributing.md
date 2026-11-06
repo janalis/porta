@@ -347,8 +347,9 @@ Every file the fixer had touched passed in isolation, so only a full-suite run
 catches that class of damage. Review its diff, then run the whole suite.
 
 **`composer arch`** — the architecture ratchet
-(`src/Console/ArchitectureCheckCommand`): the exact namespace import graph,
-class-level acyclicity with a pinned set of accepted cycles, the E2e
+(`src/Console/ArchitectureCheckCommand`, its pins in `config/arch-allowlist.php`):
+the exact namespace import graph, class-level acyclicity with a pinned set of
+accepted cycles, the E2e
 suite-size bound, and no test line chaining off an inline
 `new TempProject(...)` temporary (PHP frees it — deleting the fixture dir —
 before the enclosing call runs, so the assertion silently tests the

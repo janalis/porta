@@ -109,7 +109,7 @@ final class ArchitectureCheckCommandTest extends TestCase
         $status = $tester->execute(['path' => $project->dir], ['capture_stderr_separately' => true]);
 
         $this->assertSame(Command::FAILURE, $status);
-        $this->assertStringContainsString('no longer exists — remove it from ALLOWED_SCCS', $tester->getErrorOutput());
+        $this->assertStringContainsString('no longer exists — remove it from config/arch-allowlist.php', $tester->getErrorOutput());
     }
 
     public function testAnOversizedE2eSuiteFails(): void
@@ -397,7 +397,7 @@ final class ArchitectureCheckCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $status);
         $this->assertStringContainsString('new circular dependency — Porta\Alpha\One <-> Porta\Beta\Two (re-opening acyclicity needs new evidence, recorded in docs/internals/decisions.md)', $errors);
-        $this->assertStringContainsString('classes: allowed SCC {Porta\Gamma\Ghost, Porta\Delta\Ghost} no longer exists — remove it from ALLOWED_SCCS', $errors);
+        $this->assertStringContainsString('classes: allowed SCC {Porta\Gamma\Ghost, Porta\Delta\Ghost} no longer exists — remove it from config/arch-allowlist.php', $errors);
     }
 
     public function testTwoPinnedSccsOnlyTheFirstMatchingProvesTheVanishedCheckLoopKeepsGoing(): void
