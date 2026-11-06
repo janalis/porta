@@ -243,13 +243,33 @@ final class FlakeScanCommand extends Command
             // itself running the suite on — every descendant goes, then it.
             // ext-posix is not required (PtyProcess asks too): without it only
             // the shell goes, as before, rather than the scan dying here.
-            $orphans = \function_exists('posix_kill') ? self::descendants(\proc_get_status($process)['pid']) : [];
-            \array_map(static fn (int $pid): bool => \posix_kill($pid, signal: 9), $orphans);
+            if (\function_exists('posix_kill')) {
+                self::killTree(\proc_get_status($process)['pid']);
+            }
             \proc_terminate($process, signal: 9);
             \proc_close($process);
         }
 
         return self::WEDGED;
+    }
+
+    /**
+     * Stop $root and everything below it, then kill them all. Frozen first,
+     * because the tree is still growing: one snapshot killed composer, and the
+     * paratest it started a moment later was handed to init — out of the
+     * tree, and running the suite on. A stopped process starts nothing and
+     * keeps its children, so snapshots repeat until one finds nothing new.
+     */
+    private static function killTree(int $root): void
+    {
+        \posix_kill($root, \SIGSTOP);
+        $frozen = [];
+        do {
+            $fresh = \array_values(\array_diff(self::descendants($root), $frozen));
+            \array_map(static fn (int $pid): bool => \posix_kill($pid, \SIGSTOP), $fresh);
+            $frozen = [...$frozen, ...$fresh];
+        } while ([] !== $fresh);
+        \array_map(static fn (int $pid): bool => \posix_kill($pid, \SIGKILL), $frozen);
     }
 
     /**
