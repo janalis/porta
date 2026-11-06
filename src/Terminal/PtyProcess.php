@@ -31,6 +31,8 @@ final class PtyProcess
     /** @var resource|null a child whose terminal closed, until the reaper collects it */
     private $reaping;
     private bool $stopped = false;
+    /** The run's process group — its leader's pid — once the shim gave it one; 0 without. */
+    private int $group = 0;
     /** What is typed or pasted, queued until the child's side takes it: a write takes only what fits. */
     private ?NonBlockingWriter $input = null;
 
@@ -108,6 +110,10 @@ final class PtyProcess
 
         /** @var resource $process */
         $this->process = $process;
+        // Kept apart from the process: stopping the group must outlive the
+        // leader, which can end (or close its terminal) and leave a server
+        // it started running. A pid is not reused while a group carries it.
+        $this->group = $this->pty && $this->sessioned() ? \proc_get_status($process)['pid'] : 0;
         /** @var array{0: resource, 1?: resource, 2?: resource} $pipes */
         $this->master = $pipes[1] ?? $pipes[0];
         \stream_set_blocking($this->master, enable: false);
@@ -152,21 +158,62 @@ final class PtyProcess
     public function write(string $data): void
     {
         $this->input?->write($data);
-        // The terminal is no controlling tty of the run's (macOS offers no way
-        // to make it one without TIOCSCTTY), so its line discipline sends no
-        // SIGINT: Ctrl+C only echoed ^C. Porta sends it to the run's group.
-        if ("\x03" === $data) {
-            $this->signalGroup(\SIGINT);
+        if ("\x03" === $data && $this->interruptsWithoutAKernel()) {
+            $this->signalGroup(\SIGINT); // @codeCoverageIgnore -- only where the session has no controlling tty, which macOS always gives it
         }
+    }
+
+    /**
+     * Whether Ctrl+C should interrupt and the kernel will not see to it: the
+     * terminal's `isig` is on (`stty -a` on the master reads the child's own
+     * modes) and the run has no controlling tty (`ps` names no terminal
+     * foreground group for it).
+     */
+    private function interruptsWithoutAKernel(): bool
+    {
+        $modes = $this->probe(['stty', '-a'], $this->master);
+
+        return 1 === \preg_match('/(?<![-\w])isig\b/', $modes) && (int) \trim($this->probe(['ps', '-o', 'tpgid=', '-p', (string) $this->group])) <= 0;
+    }
+
+    /**
+     * What $command prints, its input $stdin when one is given; '' when it cannot run.
+     *
+     * @param list<string>  $command
+     * @param resource|null $stdin
+     */
+    private function probe(array $command, $stdin = null): string
+    {
+        $said = '';
+        $pipes = [];
+        $input = ['pipe', 'r'];
+        if (\is_resource($stdin)) {
+            $input = $stdin;
+        }
+        $process = \proc_open($command, [0 => $input, 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        $out = $pipes[1] ?? null;
+        if (\is_resource($process) && \is_resource($out)) {
+            $said = (string) \stream_get_contents($out);
+            \proc_close($process);
+        }
+
+        return $said;
     }
 
     /**
      * The command, started in a session of its own through a few lines of
      * PHP that size the terminal and then become it (`pcntl_exec`, same pid):
-     * the run and everything it starts are one process group Porta can
-     * interrupt and stop whole. Run in Porta's own group, a `php -S` a
-     * composer script started outlived its tab, its re-run and the project,
-     * holding its port.
+     * the run and everything it starts are one process group Porta can stop
+     * whole. Run in Porta's own group, a `php -S` a composer script started
+     * outlived its tab, its re-run and the project, holding its port.
+     *
+     * macOS makes the terminal the new session's controlling tty, so Ctrl+C
+     * is the kernel's to deliver, as on any terminal: a SIGINT to the job in
+     * the foreground while `isig` is on, and a plain key to a program in raw
+     * mode — an editor's prefix, fzf's cancel. Where the session gets none,
+     * {@see write()} stands in for it, under the same rule. (Opening the tty
+     * to acquire one would make the session hold it: a child that closed its
+     * terminal would no longer read as EOF.)
      *
      * @return list<string>
      */
@@ -178,15 +225,20 @@ final class PtyProcess
             $this->columns,
         );
 
-        return \function_exists('pcntl_exec') && \is_executable('/usr/bin/env') ? [\PHP_BINARY, '-r', $shim, '--', ...$this->command] : $this->command;
+        return $this->sessioned() ? [\PHP_BINARY, '-r', $shim, '--', ...$this->command] : $this->command;
+    }
+
+    /** Whether the run starts in a session of its own — a group Porta can signal whole. */
+    private function sessioned(): bool
+    {
+        return \function_exists('pcntl_exec') && \function_exists('posix_kill') && \is_executable('/usr/bin/env');
     }
 
     /** Send $signal to the run's whole process group, when it has one of its own. */
     private function signalGroup(int $signal): void
     {
-        $pid = \is_resource($this->process) ? \proc_get_status($this->process)['pid'] : 0;
-        if ($pid > 0 && \function_exists('posix_kill') && \function_exists('posix_getpgid') && \posix_getpgid($pid) === $pid) {
-            \posix_kill(-$pid, $signal);
+        if ($this->group > 0) {
+            \posix_kill(-$this->group, $signal);
         }
     }
 

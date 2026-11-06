@@ -141,6 +141,32 @@ final class PtyProcessTest extends TestCase
         $this->assertStringContainsString('interrupted', $said);
     }
 
+    /** In raw mode Ctrl+C is a key the program reads (an editor's prefix, fzf's cancel), never a signal as well. */
+    public function testInRawModeCtrlCIsAKey(): void
+    {
+        $said = '';
+        $exit = null;
+        $p = new PtyProcess(['/bin/sh', '-c', "stty raw -echo; printf R; dd bs=1 count=1 2>/dev/null | od -An -tx1; sleep 0.5; printf 'read it'"], __DIR__);
+        $this->procs[] = $p;
+        $p->onOutput(static function (string $chunk) use (&$said): void {
+            $said .= $chunk;
+        })->onExit(static function (int $code) use (&$exit): void {
+            $exit = $code;
+        });
+        $this->assertTrue($p->start());
+        $this->await(static function () use (&$said): bool {
+            return \str_contains($said, 'R');
+        }, what: 'raw mode set');
+
+        $p->write("\x03");
+
+        $this->await(static function () use (&$exit): bool {
+            return null !== $exit;
+        }, what: 'the program to read the key and end');
+        $this->assertStringContainsString('03', $said);
+        $this->assertStringContainsString('read it', $said, 'not interrupted');
+    }
+
     /** The terminal has a size, not `0 0`: what reads it (stty, a pager) sees the panel's rows and columns. */
     public function testTheTerminalHasTheRunsSize(): void
     {
