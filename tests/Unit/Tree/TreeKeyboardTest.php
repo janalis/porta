@@ -13,6 +13,7 @@ use Porta\Event\WorkingTreeChanged;
 use Porta\Tests\Support\BootsIde;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
+use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\Toasts;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\FileTreeWidget;
@@ -143,6 +144,43 @@ final class TreeKeyboardTest extends TestCase
         $this->type("y\r");
 
         $this->assertSame(500, $kept);
+    }
+
+    /** A link to a folder goes as a link: the folder it points at, and its files, stay where they are. */
+    public function testALinkToAFolderGoesAloneAndItsTargetsFilesAreNotToldOf(): void
+    {
+        $outside = new TempProject(['C.php' => "<?php // c\n"]);
+        \symlink(\rtrim($outside->path(), characters: '/'), $this->project->path('lib'));
+        $this->tree()->refresh();
+        $deleted = [];
+        Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$deleted): void {
+            $deleted[] = \basename($event->path);
+        });
+        $this->walkTo('lib');
+
+        $this->tui()->handleInput(self::DELETE);
+        $this->type("y\r");
+
+        $this->assertFileDoesNotExist($this->project->path('lib'));
+        $this->assertFileExists($outside->path('C.php'));
+        $this->assertNotContains('C.php', $deleted, 'a file that is still there is not deleted');
+    }
+
+    /** A subfolder the walk cannot read is skipped, not thrown: the delete answers as it did before the walk. */
+    public function testAnUnreadableSubfolderDoesNotThrowOutOfTheDelete(): void
+    {
+        \mkdir($this->project->path('src/locked'));
+        \chmod($this->project->path('src/locked'), permissions: 0o000);
+        $this->walkTo('src');
+
+        try {
+            $this->tui()->handleInput(self::DELETE);
+            $this->type("y\r");
+        } finally {
+            \chmod($this->project->path('src/locked'), permissions: 0o755);
+        }
+
+        $this->assertSame('Cannot delete src', Toasts::last($this->ide), 'the remove itself refuses, and says so');
     }
 
     public function testInTheEditorDeleteIsTheEditorsOwn(): void

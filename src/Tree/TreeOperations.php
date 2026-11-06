@@ -479,10 +479,16 @@ final class TreeOperations
     private function textsInside(string $dir): array
     {
         $texts = [];
-        $walk = new \RecursiveIteratorIterator(new \RecursiveCallbackFilterIterator(
-            new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
-            static fn (mixed $entry): bool => !$entry instanceof \SplFileInfo || (!$entry->isLink() && '.git' !== $entry->getFilename()),
-        ));
+        // An unreadable subfolder is skipped, not thrown: the delete is the
+        // user's ask, and what this walk keeps is only a courtesy to it.
+        $walk = new \RecursiveIteratorIterator(
+            new \RecursiveCallbackFilterIterator(
+                new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS),
+                static fn (mixed $entry): bool => !$entry instanceof \SplFileInfo || (!$entry->isLink() && '.git' !== $entry->getFilename()),
+            ),
+            \RecursiveIteratorIterator::LEAVES_ONLY,
+            \RecursiveIteratorIterator::CATCH_GET_CHILD,
+        );
         foreach (new \LimitIterator($walk, offset: 0, limit: self::KEPT_ON_DELETE) as $file) {
             /** @var \SplFileInfo $file */
             $path = $file->getPathname();
@@ -501,7 +507,8 @@ final class TreeOperations
             $previous = $this->textToKeep($key, $path);
             // A folder's files too: each goes with it, and what keeps a
             // deleted file (local history) is told of each, with its text.
-            $inside = \is_dir($path) ? $this->textsInside($key) : [];
+            // A link to a folder goes as a link: what it points at stays.
+            $inside = \is_dir($path) && !\is_link($path) ? $this->textsInside($key) : [];
             $this->fs->remove($path);
             // $key was resolved before the removal, which is the only time
             // it could be — the same reason the rename above resolves early.
