@@ -888,7 +888,7 @@ final class Document
     {
         $this->selection->set($startLine, $startCol);
         $this->cursorLine = $this->clampLine($endLine);
-        $this->cursorCol = $this->clampCol($this->cursorLine, $endCol);
+        $this->cursorCol = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->cursorLine], $endCol);
         $this->goalCol = null;
     }
 
@@ -1429,7 +1429,9 @@ final class Document
         $this->pushUndo();
         $this->lines = '' === $text ? [''] : \explode("\n", $text);
         $this->cursorLine = $this->clampLine($this->cursorLine);
-        $this->cursorCol = $this->clampCol($this->cursorLine, $this->cursorCol);
+        // On a character, as setCursor() places one: the line changed under
+        // the caret, and its column could now fall inside `€`.
+        $this->cursorCol = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->cursorLine], $this->cursorCol);
         $this->selection->clear();
         $this->touch();
     }

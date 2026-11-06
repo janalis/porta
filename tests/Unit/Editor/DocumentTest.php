@@ -928,6 +928,29 @@ final class DocumentTest extends TestCase
         $this->assertTrue(\mb_check_encoding($doc->getText(), encoding: 'UTF-8'));
     }
 
+    /** Every door a column comes in by: the line changed on disk under the caret, and a selection set from elsewhere. */
+    public function testAReloadAndASelectionLandOnACharacterToo(): void
+    {
+        $doc = new Document("abcdefgh\n");
+        $doc->setCursor(0, 5);
+
+        $doc->reload("abc€def\n"); // € is bytes 3–5
+        $this->assertSame(3, $doc->cursorCol, 'reloaded');
+
+        $doc->setSelectionRange(0, 0, 0, 4);
+        $this->assertSame(3, $doc->cursorCol, 'selected');
+    }
+
+    /** A Latin-1 line is a character a byte: its `°` is no UTF-8 continuation to step back over. */
+    public function testACaretOnANonUtf8LineGoesWhereItIsPut(): void
+    {
+        $doc = new Document("20\xB0C\n");
+
+        $doc->setCursor(0, 2); // before the `°`
+
+        $this->assertSame(2, $doc->cursorCol);
+    }
+
     public function testGetTextInRange(): void
     {
         $doc = new Document("one\ntwo\nthree\n");

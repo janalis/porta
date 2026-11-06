@@ -93,12 +93,18 @@ final class TextMetrics
     /**
      * The largest UTF-8 character boundary at or before $col in $line, so a byte
      * offset carried onto another line (e.g. Up/Down) never lands mid-character.
+     * A line that is not UTF-8 — Latin-1, Windows-1252 — is a character a byte:
+     * its `°` is 0xB0, which is no continuation of anything, and taking it for
+     * one put the caret a character short.
      */
     public static function charBoundaryAtOrBefore(string $line, int $col): int
     {
         $col = \max(0, \min($col, \strlen($line)));
-        while ($col > 0 && $col < \strlen($line) && 0x80 === (\ord($line[$col]) & 0xC0)) {
-            --$col;
+        if (\mb_check_encoding($line, encoding: 'UTF-8')) {
+            // Valid UTF-8 opens on a lead byte, so the walk back stops by itself.
+            while ($col < \strlen($line) && 0x80 === (\ord($line[$col]) & 0xC0)) {
+                --$col;
+            }
         }
 
         return $col;

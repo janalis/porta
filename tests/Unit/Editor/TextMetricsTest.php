@@ -28,11 +28,12 @@ final class TextMetricsTest extends TestCase
         $this->assertSame(0, TextMetrics::prevCharBoundary($line, 0));
     }
 
-    public function testCharBoundaryAtOrBeforeNeverGoesNegativeOnMalformedBytes(): void
+    /** A line that is not UTF-8 is a character a byte: Latin-1's `°` (0xB0) is no continuation byte. */
+    public function testCharBoundaryAtOrBeforeTakesANonUtf8LineByteByByte(): void
     {
-        // Both bytes look like UTF-8 continuation bytes (10xxxxxx); the scan
-        // must still stop at 0 rather than wander into a negative column.
-        $this->assertSame(0, TextMetrics::charBoundaryAtOrBefore("\x80\x80", 1));
+        $this->assertSame(3, TextMetrics::charBoundaryAtOrBefore("20\xB0C", 3));
+        $this->assertSame(2, TextMetrics::charBoundaryAtOrBefore("x\x93y\x94", 2), 'Windows-1252 quotes');
+        $this->assertSame(1, TextMetrics::charBoundaryAtOrBefore("\x80\x80", 1));
     }
 
     public function testCharBoundaryAtOrBeforeRecognizesA0x81ContinuationByte(): void
