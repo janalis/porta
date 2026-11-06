@@ -27,7 +27,20 @@ final class NonBlockingWriter
     /** @var resource|null the target stream, already in non-blocking mode; null once closed */
     private $stream;
 
+    /** Most handed to one fwrite: a peer takes far less, and the copy is per call. */
+    private const int CHUNK = 65_536;
+
+    /** Written bytes at the head of the buffer that are dropped together, not one write at a time. */
+    private const int COMPACT_AT = 1_048_576;
+
     private string $buffer = '';
+
+    /**
+     * How much of $buffer is already written. Trimming the buffer after every
+     * write copied the whole queue each time: a pty takes about a kilobyte a
+     * write, so a 9 MB paste spent six seconds copying alone.
+     */
+    private int $offset = 0;
     private ?string $watcher = null;
     private bool $failed = false;
     private readonly \Closure $onError;
@@ -54,7 +67,7 @@ final class NonBlockingWriter
         if ($this->failed || null === $this->stream) {
             return;
         }
-        if ((\strlen($this->buffer) + \strlen($bytes)) > $this->limit) {
+        if (($this->pendingBytes() + \strlen($bytes)) > $this->limit) {
             $this->fail('write queue overflow');
 
             return;
@@ -66,7 +79,7 @@ final class NonBlockingWriter
     /** Bytes queued but not yet accepted by the stream. */
     public function pendingBytes(): int
     {
-        return \strlen($this->buffer);
+        return \strlen($this->buffer) - $this->offset;
     }
 
     /**
@@ -101,22 +114,23 @@ final class NonBlockingWriter
             EventLoop::cancel($this->watcher);
             $this->watcher = null;
         }
-        \stream_set_blocking($this->stream, enable: true);
+        $stream = $this->stream;
+        \stream_set_blocking($stream, enable: true);
         while ('' !== $this->buffer) {
             // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false/0 return is the handled failure signal.
-            $n = @\fwrite($this->stream, $this->buffer);
+            $n = @\fwrite($stream, $this->chunk());
             if (false === $n || 0 === $n) {
-                \stream_set_blocking($this->stream, enable: false);
+                \stream_set_blocking($stream, enable: false);
                 $this->fail('write failed');
 
                 return;
             }
-            $this->buffer = \substr($this->buffer, $n);
+            $this->written($n);
         }
-        if (\is_resource($this->stream)) {
-            \fflush($this->stream);
+        if (\is_resource($stream)) {
+            \fflush($stream);
         }
-        \stream_set_blocking($this->stream, enable: false);
+        \stream_set_blocking($stream, enable: false);
     }
 
     /** Cancel the drain watcher and forget the stream (the owner fcloses the fd). */
@@ -128,6 +142,29 @@ final class NonBlockingWriter
         }
         $this->stream = null;
         $this->buffer = '';
+        $this->offset = 0;
+    }
+
+    /** The next bytes to hand fwrite, from where the last write stopped. */
+    private function chunk(): string
+    {
+        return \substr($this->buffer, $this->offset, self::CHUNK);
+    }
+
+    /** $n more bytes reached the peer: empty the buffer once all have, compact it now and then. */
+    private function written(int $n): void
+    {
+        $this->offset += $n;
+        if ($this->offset >= \strlen($this->buffer)) {
+            $this->buffer = '';
+            $this->offset = 0;
+
+            return;
+        }
+        if ($this->offset >= self::COMPACT_AT) {
+            $this->buffer = \substr($this->buffer, $this->offset);
+            $this->offset = 0;
+        }
     }
 
     private function flush(): void
@@ -135,20 +172,26 @@ final class NonBlockingWriter
         if (null === $this->stream || '' === $this->buffer) {
             return;
         }
-        // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false return is the handled failure signal.
-        $n = @\fwrite($this->stream, $this->buffer);
-        if (false === $n) {
-            $this->fail('write failed');
+        $stream = $this->stream;
+        // As much as the peer takes now, a chunk at a time: one call per
+        // writable event used to leave the rest for the next event.
+        do {
+            $chunk = $this->chunk();
+            // @mago-expect lint:no-error-control-operator -- fwrite to a pipe whose peer has died (the local fd is still a live resource) raises an unavoidable EPIPE warning that no is_resource guard prevents; the false return is the handled failure signal.
+            $n = @\fwrite($stream, $chunk);
+            if (false === $n) {
+                $this->fail('write failed');
 
-            return;
-        }
+                return;
+            }
+            $this->written($n);
+        } while (\strlen($chunk) === $n && '' !== $this->buffer);
         // PHP's stream layer may hold a small tail in its own write buffer
         // (stream_set_write_buffer fails on proc pipes); push it to the fd —
         // on a non-blocking stream this never blocks.
-        if (\is_resource($this->stream)) {
-            \fflush($this->stream);
+        if (\is_resource($stream)) {
+            \fflush($stream);
         }
-        $this->buffer = \substr($this->buffer, $n);
         // Read once: $onDrain may queue more, and that write flushes itself.
         $drained = '' === $this->buffer;
 
@@ -164,7 +207,7 @@ final class NonBlockingWriter
         // while bytes are queued reports writable-with-error, and the next
         // fwrite returns false → the error path above.
         if (!$drained) {
-            $this->watcher ??= EventLoop::onWritable($this->stream, $this->flush(...));
+            $this->watcher ??= EventLoop::onWritable($stream, $this->flush(...));
         }
     }
 

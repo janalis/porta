@@ -305,4 +305,151 @@ final class NonBlockingWriterTest extends TestCase
         $this->assertSame(['write failed'], $this->errors);
         $this->assertSame(0, $drains, 'failure drops the queue without a drain signal');
     }
+
+    /**
+     * A peer that takes a kilobyte a write — a pty does — costs what it is
+     * sent, not its square. The writer trimmed its queue after every write,
+     * copying all of it: 8 MB through such a peer copied about 32 GB and took
+     * seconds (a 9 MB paste, 6s of copying). Linear, it is milliseconds. The
+     * bound is a clock, against this suite's doctrine, because the copies are
+     * the only thing that changes and nothing else can see them. Linear takes
+     * about 50ms and quadratic about 4.3s here, and load slows the second
+     * more, so 2s sits forty times above one and half the other.
+     */
+    public function testAPeerThatTakesAKilobyteAWriteCostsWhatItIsSent(): void
+    {
+        $peer = self::slowPeer();
+        \stream_wrapper_register('porta-slow-peer', $peer::class);
+        try {
+            $stream = \fopen('porta-slow-peer://x', mode: 'wb');
+            \assert(\is_resource($stream), description: 'the wrapper opened');
+            $writer = $this->writer($stream, \PHP_INT_MAX);
+            $size = 8_000_000;
+            $started = \hrtime(as_number: true);
+
+            $writer->write(\str_repeat('x', $size));
+            $writer->flushBlocking();
+
+            $seconds = (\hrtime(as_number: true) - $started) / 1e9;
+            $this->assertSame($size, $peer::$received, 'every byte reached the peer');
+            $this->assertSame(0, $writer->pendingBytes());
+            $this->assertLessThan(2.0, $seconds, 'linear in what is sent, not quadratic');
+        } finally {
+            \stream_wrapper_unregister('porta-slow-peer');
+        }
+    }
+
+    /**
+     * A writer whose queue never empties — a peer always a little behind —
+     * must not keep what it already wrote: the written head is dropped a
+     * mebibyte at a time, not only when the queue drains.
+     */
+    public function testWhatIsWrittenIsDroppedWhileTheQueueNeverEmpties(): void
+    {
+        $peer = self::slowPeer();
+        \stream_wrapper_register('porta-slow-peer', $peer::class);
+        try {
+            $stream = \fopen('porta-slow-peer://x', mode: 'wb');
+            \assert(\is_resource($stream), description: 'the wrapper opened');
+            $writer = $this->writer($stream, \PHP_INT_MAX);
+
+            $writer->write(\str_repeat('x', times: 3_000_000));
+            for ($i = 0; $i < 2_100; ++$i) {
+                $writer->write('y'); // each write lets the peer take another kilobyte
+            }
+
+            $held = \strlen((string) Probe::get($writer, 'buffer'));
+            $this->assertGreaterThan(0, $writer->pendingBytes(), 'the queue never emptied');
+            $this->assertLessThan($writer->pendingBytes() + 1_048_576, $held, 'over 2 MB written, and the buffer holds under a mebibyte of it');
+            $writer->close(); // the watcher it armed is on a stream no loop can select
+        } finally {
+            \stream_wrapper_unregister('porta-slow-peer');
+        }
+    }
+
+    /** A stream wrapper that takes a kilobyte a write, then is full until the next fwrite — as a pty is. */
+    private static function slowPeer(): object
+    {
+        $peer = new class {
+            public static int $received = 0;
+
+            /** @var resource|null set by PHP on every wrapper instance */
+            public $context;
+
+            public function stream_open(string $path, string $mode, int $options, ?string &$opened): bool
+            {
+                return true;
+            }
+
+            private bool $full = false;
+
+            /** A kilobyte, then full until the next fwrite: PHP keeps calling within one until a write takes nothing. */
+            public function stream_write(string $data): int
+            {
+                $this->full = !$this->full;
+                if (!$this->full) {
+                    return 0;
+                }
+                $taken = \min(1024, \strlen($data));
+                self::$received += $taken;
+
+                return $taken;
+            }
+
+            public function stream_set_option(int $option, int $arg1, ?int $arg2): bool
+            {
+                return true;
+            }
+
+            public function stream_flush(): bool
+            {
+                return true;
+            }
+        };
+        $peer::$received = 0; // static, and the class is the same one every call
+
+        return $peer;
+    }
+
+    /** A peer that takes everything gets it all from one write, chunks or not — not a chunk per writable event. */
+    public function testAPeerThatTakesEverythingGetsItAllAtOnce(): void
+    {
+        $peer = new class {
+            public static int $received = 0;
+
+            /** @var resource|null set by PHP on every wrapper instance */
+            public $context;
+
+            public function stream_open(string $path, string $mode, int $options, ?string &$opened): bool
+            {
+                return true;
+            }
+
+            public function stream_write(string $data): int
+            {
+                self::$received += \strlen($data);
+
+                return \strlen($data);
+            }
+
+            public function stream_flush(): bool
+            {
+                return true;
+            }
+        };
+        \stream_wrapper_register('porta-eager-peer', $peer::class);
+        try {
+            $stream = \fopen('porta-eager-peer://x', mode: 'wb');
+            \assert(\is_resource($stream), description: 'the wrapper opened');
+            $writer = $this->writer($stream);
+
+            $writer->write(\str_repeat('x', times: 300_000));
+
+            $this->assertSame(0, $writer->pendingBytes(), 'nothing left for a later event');
+            $this->assertSame(300_000, $peer::$received);
+            $writer->close();
+        } finally {
+            \stream_wrapper_unregister('porta-eager-peer');
+        }
+    }
 }
