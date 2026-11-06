@@ -189,6 +189,28 @@ final class TerminalBufferTest extends TestCase
         $this->assertSame(["a\u{1F600}"], $buffer->lines, 'on screen now, not with the next read');
     }
 
+    /** The colour is the pen's, not the cells': set once, it outlives an erased line and a new one. */
+    public function testTheColourSetOnceOutlivesAnEraseAndALineBreak(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b[32mDownloading 10%\x1b[2K\rDownloading 20%\nnext\x1b[3G\x1b[1Kx");
+
+        $this->assertSame("\x1b[32mDownloading 20%", $b->lines[0], 'redrawn green');
+        $this->assertSame('  xt', AnsiUtils::stripAnsiCodes($b->lines[1]));
+        $this->assertStringContainsString("\x1b[32mt", $b->lines[1], 'the next line green too');
+        $this->assertStringContainsString("\x1b[32mx", $b->lines[1], 'and after an erase to the cursor');
+    }
+
+    /** A reset puts the pen down: the next line is plain. */
+    public function testAResetEndsThePensColour(): void
+    {
+        $b = new TerminalBuffer();
+        $b->feed("\x1b[32mgreen\x1b[0m\nplain");
+
+        $this->assertSame('plain', AnsiUtils::stripAnsiCodes($b->lines[1]));
+        $this->assertStringNotContainsString("\x1b[32m", $b->lines[1]);
+    }
+
     public function testEraseToLineEnd(): void
     {
         $b = new TerminalBuffer();

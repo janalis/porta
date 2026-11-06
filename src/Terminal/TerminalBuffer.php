@@ -36,6 +36,13 @@ final class TerminalBuffer
     private int $col = 0;
     private string $pending = ''; // incomplete escape sequence across chunk boundaries
     private string $pendingSgr = ''; // SGR emitted since the last text write, applied forward
+    /**
+     * The pen: every SGR since the last reset. A terminal's colour belongs to
+     * the cursor, not to the cells it wrote — a line the panel ends with a
+     * reset, or one erased (a progress bar's `ESC[2K`), starts its next text
+     * in the colour still set.
+     */
+    private string $pen = '';
     private bool $discarding = false; // inside a string sequence past MAX_PENDING, dropped to its terminator
 
     /**
@@ -87,6 +94,7 @@ final class TerminalBuffer
         $this->curWidth = 0;
         $this->pending = '';
         $this->pendingSgr = '';
+        $this->pen = '';
         $this->discarding = false;
     }
 
@@ -256,8 +264,13 @@ final class TerminalBuffer
     {
         // Colour with no text after it still accumulates; past the cap the
         // newest code stands alone rather than growing without bound.
-        $reset = Sgr::RESET === $code || "\x1b[m" === $code || \strlen($this->pendingSgr) > self::MAX_PENDING_SGR;
-        $this->pendingSgr = $reset ? $code : $this->pendingSgr.$code;
+        $reset = Sgr::RESET === $code || "\x1b[m" === $code;
+        $this->pendingSgr = $reset || \strlen($this->pendingSgr) > self::MAX_PENDING_SGR ? $code : $this->pendingSgr.$code;
+        $this->pen = match (true) {
+            $reset => '',
+            \strlen($this->pen) > self::MAX_PENDING_SGR => $code,
+            default => $this->pen.$code,
+        };
     }
 
     private function writeText(string $text): void
@@ -321,6 +334,7 @@ final class TerminalBuffer
 
     private function eraseToCursor(): void
     {
+        $this->pendingSgr = $this->pen;
         $cur = $this->lines[\count($this->lines) - 1];
         $this->lines[\count($this->lines) - 1] = \str_repeat(' ', \max(1, $this->col + 1)).AnsiText::columnsFrom($cur, $this->col + 1, $this->curWidth);
         $this->curWidth = \max($this->curWidth, $this->col + 1);
@@ -328,6 +342,7 @@ final class TerminalBuffer
 
     private function eraseLine(): void
     {
+        $this->pendingSgr = $this->pen;
         $this->lines[\count($this->lines) - 1] = '';
         $this->curWidth = 0;
     }
@@ -344,6 +359,7 @@ final class TerminalBuffer
         $this->lines[] = '';
         $this->col = 0;
         $this->curWidth = 0;
+        $this->pendingSgr = $this->pen;
         // Amortized: run up to trimSlack past the cap, then one array_slice
         // lands back at exactly maxLines — array_shift per line reindexes
         // the whole array every time.
