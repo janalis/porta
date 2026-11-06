@@ -9,8 +9,8 @@ A **plugin** cannot use either half of that: it cannot carry
 `#[AsEventListener]`, and its own events do not belong in `src/Event/`. It
 listens with `PluginApi::on()` (restricted to the `PluginObservable` subset) and
 raises its own on a dispatcher it constructs itself. The bundled git plugin does
-both — fourteen of its widget→controller events left `src/Event/` with it, and
-the three facts anything may observe stayed.
+both — its widget→controller events left `src/Event/` with it (and the diff
+pane's with the diff plugin), and the three facts anything may observe stayed.
 
 If you are writing a *plugin*, the page you want is
 [Plugins → Listening to core events](plugins.md); this one is about the

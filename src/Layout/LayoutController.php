@@ -579,12 +579,6 @@ final class LayoutController
         $this->tui->requestRender();
     }
 
-    /** Whether the bottom panel is currently maximised — the status bar's read. */
-    public function isBottomPanelMaximised(): bool
-    {
-        return null !== $this->panelRestoreRows;
-    }
-
     private function maximisedRows(): int
     {
         $rows = $this->tui->getTerminal()->getRows();

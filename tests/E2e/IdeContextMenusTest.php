@@ -18,6 +18,7 @@ use Porta\Ide;
 use Porta\Overlay\Region\DropdownRegion;
 use Porta\Overlay\State\MenuOverlayController;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\FindModalReads;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\Paint;
@@ -1145,7 +1146,7 @@ final class IdeContextMenusTest extends TestCase
                     $tui->handleInput("\x10"); // ctrl+p
                     $tui->handleInput("\x1b[21;5~"); // ctrl+f10
                     $tui->tick();
-                    $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'go-to-file opened the centered picker');
+                    $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)), 'go-to-file opened the centered picker');
                     $this->assertFalse(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'no context menu over the picker');
                     // A right-click inside the modal picker also opens no menu.
                     $tui->handleInput("\x1b[<2;10;10M"); // right-press

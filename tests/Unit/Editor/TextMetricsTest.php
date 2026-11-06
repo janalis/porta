@@ -20,12 +20,6 @@ final class TextMetricsTest extends TestCase
         $this->assertSame(1, TextMetrics::nextCharBoundary($line, 0));
         $this->assertSame(3, TextMetrics::nextCharBoundary($line, 1), 'skips the 2-byte é');
         $this->assertSame(6, TextMetrics::nextCharBoundary($line, 3), 'skips the 3-byte 好');
-
-        $this->assertSame(3, TextMetrics::prevCharBoundary($line, 6));
-        $this->assertSame(1, TextMetrics::prevCharBoundary($line, 3));
-        $this->assertSame(0, TextMetrics::prevCharBoundary($line, 1));
-        // Already at the start: the floor is max(0, ...), not max(-1, ...).
-        $this->assertSame(0, TextMetrics::prevCharBoundary($line, 0));
     }
 
     /** A line that is not UTF-8 is a character a byte: Latin-1's `°` (0xB0) is no continuation byte. */

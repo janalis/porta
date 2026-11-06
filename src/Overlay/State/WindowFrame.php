@@ -194,11 +194,6 @@ final class WindowFrame
         $this->dragStart = null;
     }
 
-    public function isDragging(): bool
-    {
-        return null !== $this->dragZone;
-    }
-
     /**
      * Track the handle under the pointer on the drawn $box (null: no box);
      * true when it changed, so the window repaints only on a real move.

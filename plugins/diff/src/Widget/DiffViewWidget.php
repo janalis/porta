@@ -198,11 +198,6 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         }
     }
 
-    public function isWrapped(): bool
-    {
-        return $this->wrap;
-    }
-
     /** The screen rows each diff row takes at the last width, memoised until the rows, the width or the wrap change. */
     private function heights(): DiffRowHeights
     {

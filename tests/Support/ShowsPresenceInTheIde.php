@@ -88,7 +88,7 @@ trait ShowsPresenceInTheIde
                 $server->stop();
                 $look($ide);
                 $this->awaitPainted($tui, $terminal, Glyphs::PARTICIPANTS.' 1 '.Glyphs::OUT_OF_TOUCH, 20.0);
-                Assert::assertTrue(Services::resolve($ide, Participants::class)->isOutOfTouch(PresenceSync::SOURCE), 'Ada kept, as last seen');
+                Assert::assertArrayHasKey(PresenceSync::SOURCE, Probe::array(Services::resolve($ide, Participants::class), 'lost'), 'Ada kept, as last seen');
             },
             300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($server, $look): void {
                 $server->start();
@@ -103,7 +103,7 @@ trait ShowsPresenceInTheIde
                     timeout: 20.0,
                     what: 'Ada back, in touch, her caret drawn again',
                 );
-                Assert::assertFalse(Services::resolve($ide, Participants::class)->isOutOfTouch(PresenceSync::SOURCE));
+                Assert::assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array(Services::resolve($ide, Participants::class), 'lost'));
             },
             // Ada closes her file — her caret goes — and then quits, so that
             // nothing else changes on screen: the status bar repaints only

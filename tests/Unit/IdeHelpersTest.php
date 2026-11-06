@@ -37,6 +37,7 @@ use Porta\Support\PerfCollector;
 use Porta\Support\ProjectPaths;
 use Porta\Tests\Support\AwaitsGit;
 use Porta\Tests\Support\BootsIde;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\PharFixture;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
@@ -752,11 +753,11 @@ final class IdeHelpersTest extends TestCase
         Widgets::editor($tui)->findModal->close();
 
         $byLabel['Go to Symbol in Project']();
-        $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker over the editor');
+        $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)), 'go-to-symbol opens the centered picker over the editor');
         Widgets::editor($tui)->closeSearch();
 
         $byLabel['Go to File']();
-        $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'go-to-file opens the centered picker over the editor');
+        $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)), 'go-to-file opens the centered picker over the editor');
         Widgets::editor($tui)->closeSearch();
 
         // Cycle the choice settings and toggle a bool one.

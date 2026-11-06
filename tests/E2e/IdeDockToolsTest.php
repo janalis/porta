@@ -17,6 +17,7 @@ use Porta\History\SearchHistoryStore;
 use Porta\Ide;
 use Porta\Lsp\NavigationController;
 use Porta\Lsp\Uri;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -749,7 +750,7 @@ final class IdeDockToolsTest extends TestCase
                         $tui->handleInput($ch);
                     }
                     $this->frame($tui);
-                    $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen());
+                    $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)));
                     $gotoRect = Widgets::rect($renderer, $tui->getById('editor'));
                     $wheel($tui, $gotoRect->col + 3, $gotoRect->row + 3);
                     $tui->tick();

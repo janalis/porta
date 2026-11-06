@@ -277,11 +277,6 @@ final class PerfCollector
         $this->reset();
     }
 
-    public function logFile(): string
-    {
-        return $this->log->path();
-    }
-
     /**
      * What an empty sample set prints. NOT `0.0`, which is the whole point:
      * a percentile of nothing is not a fast measurement, and the two read

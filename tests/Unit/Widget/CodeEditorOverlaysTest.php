@@ -113,7 +113,7 @@ final class CodeEditorOverlaysTest extends TestCase
             },
             static fn (): null => null,
         );
-        $this->assertTrue($editor->isSearchOverlayOpen());
+        $this->assertTrue(EditorState::searchOpen($editor));
         $editor->setSearchRows($this->searchRows());
 
         $placed = EditorState::layoutPickers($editor, [0, 0, 20, 80]);
@@ -126,7 +126,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertSame('beta.php', $picked);
 
         $editor->closeSearch();
-        $this->assertFalse($editor->isSearchOverlayOpen());
+        $this->assertFalse(EditorState::searchOpen($editor));
     }
 
     public function testSearchOverlayMouseClickPicksAndHoverSelects(): void

@@ -74,7 +74,7 @@ final class MarkdownFenceLayoutTest extends TestCase
         $source = $this->plain($renderer->render($edited, width: 40)->lines);
         $this->assertStringContainsString('invalid', $source);
         $this->assertStringNotContainsString('漢字', $source);
-        $session->dispose();
+        $session->clear();
     }
 
     public function testPngGraphicsFallbackAndRelease(): void
@@ -134,6 +134,6 @@ final class MarkdownFenceLayoutTest extends TestCase
         $plain = $this->plain(\array_map(static fn (PageLine $row): string => $row->text, $lines));
         $this->assertStringContainsString('A-->B', $plain);
         $this->assertStringContainsString('Cannot display diagram PNG', $plain);
-        $session->dispose();
+        $session->clear();
     }
 }

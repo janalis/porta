@@ -13,8 +13,6 @@ final class FenceSession
     /** @var array<int, FenceBlock> body byte offset => current block */
     private array $blocks = [];
     private string $path = '';
-    /** @var \Closure(): void */
-    private readonly \Closure $unsubscribe;
 
     /** @param \Closure(): void $changed */
     public function __construct(
@@ -22,7 +20,9 @@ final class FenceSession
         private readonly FenceRenderQueue $queue,
         private readonly \Closure $changed,
     ) {
-        $this->unsubscribe = $registry->onChange(function (): void {
+        // For the session's whole life: the pages that hold one are shared,
+        // so they live as long as the IDE and nothing ever lets go of one.
+        $registry->onChange(function (): void {
             $this->clear();
             ($this->changed)();
         });
@@ -107,12 +107,6 @@ final class FenceSession
             $block->stop();
         }
         $this->blocks = [];
-    }
-
-    public function dispose(): void
-    {
-        $this->clear();
-        ($this->unsubscribe)();
     }
 
     /** @param list<array{CodeBlock, \Closure(string, string, string, int, \Closure(FenceResult): void, \Closure(string): void): \Closure(): void}> $codes */

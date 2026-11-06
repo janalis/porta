@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\FreezeWatchdog;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\ProcessAlarm;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
@@ -30,7 +31,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->heartbeat();
         $watchdog->stop();
 
-        $log = (string) \file_get_contents($watchdog->logFile());
+        $log = (string) \file_get_contents(Probe::object($watchdog, 'log')->path());
         $this->assertStringContainsString('loop stalled for 4.00s (recovered)', $log, 'five seconds between beats a second apart: blocked for four');
         $this->assertStringContainsString('2026-07-13 10:00:05', $log, 'the wall clock still stamps the line — it just no longer measures the gap');
     }
@@ -51,7 +52,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->heartbeat();
         $watchdog->stop();
 
-        $this->assertFileDoesNotExist($watchdog->logFile(), 'a suspended process is not a blocked loop');
+        $this->assertFileDoesNotExist(Probe::object($watchdog, 'log')->path(), 'a suspended process is not a blocked loop');
     }
 
     public function testStayingUnderTheThresholdWritesNothing(): void
@@ -67,7 +68,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->heartbeat();
         $watchdog->stop();
 
-        $this->assertFileDoesNotExist($watchdog->logFile());
+        $this->assertFileDoesNotExist(Probe::object($watchdog, 'log')->path());
     }
 
     /** @return \Closure(): float */
@@ -90,7 +91,7 @@ final class FreezeWatchdogTest extends TestCase
             return \pcntl_alarm(0);
         });
 
-        $log = (string) \file_get_contents($watchdog->logFile());
+        $log = (string) \file_get_contents(Probe::object($watchdog, 'log')->path());
         $this->assertStringContainsString('loop blocked ≥ 30s', $log);
         $this->assertStringContainsString('#0', $log, 'the backtrace names the blocking site');
         $this->assertSame(0, $left, 'stop() disarmed the pending alarm');
@@ -131,7 +132,7 @@ final class FreezeWatchdogTest extends TestCase
 
         $this->assertSame(5, $armed, 'our 30s alarm is brought forward to the outer 5s deadline');
         $this->assertSame(1, $fired, 'the outer handler ran at its deadline');
-        $this->assertSame(2, \substr_count((string) \file_get_contents($watchdog->logFile()), needle: 'loop blocked'), 'and only our own alarms were logged as stalls');
+        $this->assertSame(2, \substr_count((string) \file_get_contents(Probe::object($watchdog, 'log')->path()), needle: 'loop blocked'), 'and only our own alarms were logged as stalls');
         $this->assertSame($outer, $handlerAfter, 'stop() hands the handler back');
         $this->assertSame(0, $leftAfter, 'with no alarm left: the outer one already fired');
     }
@@ -178,7 +179,7 @@ final class FreezeWatchdogTest extends TestCase
         $watchdog->heartbeat(); // would log — the failure must not throw
         $watchdog->stop();
 
-        $this->assertFileDoesNotExist($watchdog->logFile());
+        $this->assertFileDoesNotExist(Probe::object($watchdog, 'log')->path());
     }
 
     public function testARealLoopStallProducesADriftLine(): void
@@ -193,8 +194,8 @@ final class FreezeWatchdogTest extends TestCase
         $this->runLoopFor(0.6);
         $watchdog->stop();
 
-        $this->assertFileExists($watchdog->logFile());
-        $this->assertStringContainsString('loop stalled for', (string) \file_get_contents($watchdog->logFile()));
+        $this->assertFileExists(Probe::object($watchdog, 'log')->path());
+        $this->assertStringContainsString('loop stalled for', (string) \file_get_contents(Probe::object($watchdog, 'log')->path()));
     }
 
     public function testARealHardHangFiresTheAlarmMidBlock(): void
@@ -209,7 +210,7 @@ final class FreezeWatchdogTest extends TestCase
         $this->runLoopFor(2.6);
         $watchdog->stop();
 
-        $log = (string) \file_get_contents($watchdog->logFile());
+        $log = (string) \file_get_contents(Probe::object($watchdog, 'log')->path());
         $this->assertStringContainsString('loop blocked ≥ 1s', $log);
         $this->assertStringContainsString('sleep', $log, 'the backtrace names the blocking call');
     }

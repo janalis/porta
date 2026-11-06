@@ -101,19 +101,11 @@ final class TerminalPanelWidgetTest extends TestCase
         }
     }
 
-    public function testTitleAndGetTitle(): void
+    public function testOpeningNamesTheTitle(): void
     {
         $panel = new TerminalPanelWidget();
         $panel->open('one', new TerminalBuffer());
         $this->assertSame('one', $panel->getTitle());
-
-        $rev = $panel->getRenderRevision();
-        $panel->setTitle('one'); // no change -> no invalidation
-        $this->assertSame($rev, $panel->getRenderRevision());
-
-        $panel->setTitle('two');
-        $this->assertSame('two', $panel->getTitle());
-        $this->assertGreaterThan($rev, $panel->getRenderRevision());
     }
 
     public function testScrollClampsToAvailableHistory(): void

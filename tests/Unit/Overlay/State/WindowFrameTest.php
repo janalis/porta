@@ -11,6 +11,7 @@ use Porta\Overlay\Region\WindowGeometry;
 use Porta\Overlay\Region\WindowPlacement;
 use Porta\Overlay\Region\WindowZone;
 use Porta\Overlay\State\WindowFrame;
+use Porta\Tests\Support\Probe;
 
 /**
  * The one move-and-resize state machine every floating window shares. The
@@ -76,12 +77,12 @@ final class WindowFrameTest extends TestCase
         $g = $this->place($frame);
 
         $this->assertSame(WindowZone::Title, $frame->press(self::box($g), 7, 30));
-        $this->assertTrue($frame->isDragging());
+        $this->assertNotNull(Probe::get($frame, 'dragZone'));
         $this->assertTrue($frame->dragTo(9, 25, release: false));
         $moved = $this->place($frame);
 
         $this->assertSame([9, 15, 40, 10], [$moved->top, $moved->col, $moved->width, $moved->rows], 'two down, five left, same size');
-        $this->assertTrue($frame->isDragging(), 'still held until the release');
+        $this->assertNotNull(Probe::get($frame, 'dragZone'), 'still held until the release');
         $this->assertNull($frame->hot(), 'a move lights no handle');
     }
 
@@ -183,7 +184,7 @@ final class WindowFrameTest extends TestCase
     {
         $frame = new WindowFrame();
         $this->drag($frame, 7, 30, 8, 30);
-        $this->assertFalse($frame->isDragging());
+        $this->assertNull(Probe::get($frame, 'dragZone'));
         $this->assertFalse($frame->dragTo(12, 12, release: false), 'nothing armed after the release');
 
         $frame->press(self::box($this->place($frame)), 8, 30);
@@ -198,7 +199,7 @@ final class WindowFrameTest extends TestCase
         $zone = $frame->press(new ModalBox(7, 20, 40, 10, headerRows: 2, windowStart: 0, count: 6), 7, 30);
 
         $this->assertSame(WindowZone::Title, $zone, 'the zone is still answered');
-        $this->assertFalse($frame->isDragging(), 'but with no placement there is nothing to move');
+        $this->assertNull(Probe::get($frame, 'dragZone'), 'but with no placement there is nothing to move');
     }
 
     /** @return iterable<string, array{int, int, WindowZone}> */
@@ -215,7 +216,7 @@ final class WindowFrameTest extends TestCase
         $frame = new WindowFrame();
 
         $this->assertSame($zone, $frame->press(self::box($this->place($frame)), $row, $col));
-        $this->assertFalse($frame->isDragging());
+        $this->assertNull(Probe::get($frame, 'dragZone'));
         $this->assertFalse($frame->dragTo(12, 12, release: true));
     }
 
@@ -231,7 +232,7 @@ final class WindowFrameTest extends TestCase
 
         $g = $this->place($frame);
         $this->assertSame([7, 20, 40, 10], [$g->top, $g->col, $g->width, $g->rows], 'back to the default, centred');
-        $this->assertFalse($frame->isDragging());
+        $this->assertNull(Probe::get($frame, 'dragZone'));
         $this->assertNull($frame->hot());
     }
 

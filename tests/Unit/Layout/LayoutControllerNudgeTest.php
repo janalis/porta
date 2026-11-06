@@ -152,11 +152,11 @@ final class LayoutControllerNudgeTest extends TestCase
         // moved away from, which reads as the panel jumping on its own.
         [$layout, $results] = $this->withOpenPanel();
         $layout->toggleBottomPanelMaximised();
-        $this->assertTrue($layout->isBottomPanelMaximised());
+        $this->assertNotNull(Probe::get($layout, 'panelRestoreRows'));
 
         $layout->nudgeBottomPanel(-1);
 
-        $this->assertFalse($layout->isBottomPanelMaximised(), 'the nudge ended it');
+        $this->assertNull(Probe::get($layout, 'panelRestoreRows'), 'the nudge ended it');
         $chosen = $results->visibleRows();
 
         $layout->toggleBottomPanelMaximised();
@@ -181,7 +181,7 @@ final class LayoutControllerNudgeTest extends TestCase
 
             $layout->toggleBottomPanelMaximised();
 
-            $this->assertSame($expectedMaximised, $layout->isBottomPanelMaximised());
+            $this->assertSame($expectedMaximised, null !== Probe::get($layout, 'panelRestoreRows'));
             $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the toggle asked for a frame');
         }
     }
@@ -207,7 +207,7 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $layout->toggleBottomPanelMaximised();
 
-        $this->assertFalse($layout->isBottomPanelMaximised());
+        $this->assertNull(Probe::get($layout, 'panelRestoreRows'));
         $this->assertSame([], $this->layoutFile(), 'and nothing persisted');
     }
 
@@ -228,7 +228,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $layout->applyLayout();
 
         $this->assertSame(40 - 6 - 7, $results->visibleRows(), 'it took the bigger screen');
-        $this->assertTrue($layout->isBottomPanelMaximised(), 'and is still maximised');
+        $this->assertNotNull(Probe::get($layout, 'panelRestoreRows'), 'and is still maximised');
     }
 
     /** An editor strip at the side takes columns, not rows: a maximised panel gets its two rows back. */

@@ -470,7 +470,7 @@ final class SettingsViewControllerTest extends TestCase
         $this->renderer->renderFrame($this->content, 100, 24);
         $this->form->handleInput("\r");
 
-        $this->assertTrue($this->contextMenu->isListbox(), 'the list is open');
+        $this->assertTrue(Probe::get($this->contextMenu, 'open') && Probe::get($this->contextMenu, 'listbox'), 'the list is open');
         $this->contextMenu->handleInput("\x1b[B"); // from System, the current option, past English
         $this->contextMenu->handleInput("\x1b[B"); // to Français
         $this->contextMenu->handleInput("\r");

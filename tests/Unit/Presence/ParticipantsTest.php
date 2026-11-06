@@ -12,6 +12,7 @@ use Porta\Presence\Identity;
 use Porta\Presence\Participant;
 use Porta\Presence\Participants;
 use Porta\Tests\Support\FakeScheduler;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\RecordingEvents;
 use Porta\Tests\Support\RecordingFileOpener;
 use Porta\Tests\Support\TempProject;
@@ -109,8 +110,8 @@ final class ParticipantsTest extends TestCase
         $participants->outOfTouch('presence');
         $this->assertCount(1, $this->scheduler->scheduled, 'one timer, however often it is said');
         $this->assertSame([Participants::GRACE], \array_values($this->scheduler->delays));
-        $this->assertTrue($participants->isOutOfTouch('presence'));
-        $this->assertFalse($participants->isOutOfTouch('plugin:assist'));
+        $this->assertArrayHasKey('presence', Probe::array($participants, 'lost'));
+        $this->assertArrayNotHasKey('plugin:assist', Probe::array($participants, 'lost'));
         $cell = $participants->statusCells()[0];
         $this->assertSame(Glyphs::PARTICIPANTS.' 2 '.Glyphs::OUT_OF_TOUCH, $cell->text, 'still counted, marked');
         $this->assertSame(StatusTone::Accent, $cell->tone);
@@ -120,7 +121,7 @@ final class ParticipantsTest extends TestCase
 
         // Back in time: the timer is called off, and they are as they are now.
         $participants->set('presence', [new Participant('a', 'Ada', 'ssh')]);
-        $this->assertFalse($participants->isOutOfTouch('presence'));
+        $this->assertArrayNotHasKey('presence', Probe::array($participants, 'lost'));
         $this->assertSame([], $this->scheduler->scheduled);
         $this->assertSame(Glyphs::PARTICIPANTS.' 2', $participants->statusCells()[0]->text);
 
@@ -129,7 +130,7 @@ final class ParticipantsTest extends TestCase
         $this->events->dispatched = [];
         $this->scheduler->fire();
         $this->assertSame(['-presence/a Ada ssh'], $this->facts());
-        $this->assertFalse($participants->isOutOfTouch('presence'));
+        $this->assertArrayNotHasKey('presence', Probe::array($participants, 'lost'));
         $this->assertSame(['Cy'], \array_map(static fn (Participant $p): string => $p->name, $participants->all()));
     }
 

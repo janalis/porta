@@ -121,12 +121,6 @@ final class Participants implements StatusSegment
         return $all;
     }
 
-    /** Whether $source's link is lost and its people are as last seen. */
-    public function isOutOfTouch(string $source): bool
-    {
-        return \array_key_exists($source, $this->lost);
-    }
-
     #[\Override]
     public function statusCells(): array
     {

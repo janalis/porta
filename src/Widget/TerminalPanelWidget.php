@@ -83,14 +83,6 @@ final class TerminalPanelWidget extends DockPanelWidget implements FocusableInte
         $this->markOpen();
     }
 
-    public function setTitle(string $title): void
-    {
-        if ($this->title !== $title) {
-            $this->title = $title;
-            $this->invalidate();
-        }
-    }
-
     public function getTitle(): string
     {
         return $this->title;

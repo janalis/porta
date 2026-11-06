@@ -278,7 +278,7 @@ final class IdeTest extends TestCase
                 // --- Go to file palette (a files-only Search Everywhere, centered) -----
                 3050 => function () use ($tui, $editor): void {
                     $tui->handleInput("\x10"); // ctrl+p
-                    $this->assertTrue($editor()->isSearchOverlayOpen(), 'Ctrl+P opens the centered go-to-file picker');
+                    $this->assertTrue(EditorState::searchOpen($editor()), 'Ctrl+P opens the centered go-to-file picker');
                     $this->painted($tui, 'Go to File', because: 'the picker title');
                     foreach (\str_split('target') as $ch) {
                         $tui->handleInput($ch);
@@ -414,7 +414,7 @@ final class IdeTest extends TestCase
                 // Ctrl+Shift+E → modal opens; the empty query seeds recent files.
                 500 => function () use ($screen, $tui, $editor): void {
                     $tui->handleInput("\x1b[101;6u"); // ctrl+shift+e
-                    $this->assertTrue($editor()->isSearchOverlayOpen());
+                    $this->assertTrue(EditorState::searchOpen($editor()));
                     $this->awaitPainted($tui, $this->terminal, 'Search Everywhere');
                     $s = $screen();
                     $this->assertStringContainsString('Search Everywhere', $s, 'the modal title');
@@ -437,7 +437,7 @@ final class IdeTest extends TestCase
                         what: 'the picked file to open',
                     );
                     $this->assertStringEndsWith('Target.php', (string) $editor()->getFilePath(), 'picking a file opens it');
-                    $this->assertFalse($editor()->isSearchOverlayOpen(), 'picking closes the modal');
+                    $this->assertFalse(EditorState::searchOpen($editor()), 'picking closes the modal');
                 },
 
                 // Reopen; a class name drives the async LSP workspace/symbol source.
@@ -487,7 +487,7 @@ final class IdeTest extends TestCase
                     $tui->handleInput("\x1b[101;6u");
                     $tui->handleInput('z'); // schedules the async debounce
                     $tui->handleInput("\x1b"); // esc → close (cancels the debounce)
-                    $this->assertFalse($editor()->isSearchOverlayOpen(), 'Esc closes the modal');
+                    $this->assertFalse(EditorState::searchOpen($editor()), 'Esc closes the modal');
                     $this->assertSame('editor', $tui->getFocus()?->getId());
                 },
 

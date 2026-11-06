@@ -190,9 +190,4 @@ final class FreezeWatchdog
     {
         return \max(1, (int) \ceil((float) $this->outerDue - ($this->monotonic)()));
     }
-
-    public function logFile(): string
-    {
-        return $this->log->path();
-    }
 }

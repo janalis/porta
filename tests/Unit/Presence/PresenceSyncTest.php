@@ -273,7 +273,7 @@ final class PresenceSyncTest extends TestCase
             $sync->tick();
             $this->assertSame(['-peer:'.self::ADA], $this->shown(), 'where they were is no longer where they are');
             $this->assertSame(['Ada'], $this->roster(), 'but they are not gone');
-            $this->assertTrue($this->participants->isOutOfTouch(PresenceSync::SOURCE));
+            $this->assertArrayHasKey(PresenceSync::SOURCE, Probe::array($this->participants, 'lost'));
             $sync->tick();
             $this->assertSame([], $this->shown());
             $this->assertCount(1, $this->scheduler->scheduled, 'lost once, however long');
@@ -285,7 +285,7 @@ final class PresenceSyncTest extends TestCase
         $this->now += 1.0;
         $sync->tick();
         $this->assertSame(['+peer:'.self::ADA.' Ada src/A.php:1'], $this->shown(), 'back, though their beat did not move while this side was away');
-        $this->assertFalse($this->participants->isOutOfTouch(PresenceSync::SOURCE));
+        $this->assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array($this->participants, 'lost'));
         $sync->tick();
         $this->assertInstanceOf(Beacon::class, $this->mine($sync), 'and this side says where it is at once, heartbeat or not: the others stopped hearing it');
     }

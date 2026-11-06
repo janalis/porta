@@ -138,7 +138,7 @@ final class FenceInteractionTest extends TestCase
         $session->invoke($edited->blocks[0]->body->start, 'find-node', $pick);
         $this->assertCount(1, $contexts);
         $this->assertGreaterThan(0, $changed);
-        $session->dispose();
+        $session->clear();
     }
 
     public function testActionsReceiveTheRenderedDiagramNumber(): void
@@ -159,7 +159,7 @@ final class FenceInteractionTest extends TestCase
             $session->invoke($code->body->start, 'export', static function (): void {});
         }
         $this->assertSame([1, 2], $numbers);
-        $session->dispose();
+        $session->clear();
     }
 
     public function testPendingResizesAndReplacedResultsRetireTheirPickerContexts(): void
@@ -192,7 +192,7 @@ final class FenceInteractionTest extends TestCase
         $session->invoke($offset, 'find', $pick);
         $contexts[1]->select('one');
         $this->assertSame(['one'], $selected);
-        $session->dispose();
+        $session->clear();
     }
 
     public function testActionFailuresRetainTheResultAndReportItsError(): void
@@ -210,6 +210,6 @@ final class FenceInteractionTest extends TestCase
         $session->invoke($code->body->start, 'bad', static function (): void {});
         $this->assertSame('action failed', $session->block($code)->error);
         $this->assertSame(['row'], $session->block($code)->result->rows);
-        $session->dispose();
+        $session->clear();
     }
 }

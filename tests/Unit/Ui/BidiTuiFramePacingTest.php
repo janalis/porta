@@ -358,7 +358,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $tui->start();
         $this->microTurn();
 
-        $log = (string) \file_get_contents($perf->logFile());
+        $log = (string) \file_get_contents(Probe::object($perf, 'log')->path());
         $this->assertStringContainsString('slow-paint render=150ms bidi=0ms write=0ms', $log, 'the bad frame named its layer on the spot');
         $tui->stop();
     }

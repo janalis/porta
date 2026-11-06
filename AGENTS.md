@@ -90,7 +90,7 @@ its dated history (look entries up, never read it whole) has the numbers. Re-pro
   locator; `classmap-authoritative` in `composer.json`.
 - The extraction audit — every candidate measured, the topic closed. Git is the
   one that re-opened and landed: `src/Git` and `src/Widget/Git` are
-  `plugins/git/` now, and core keeps no git-named symbol.
+  `plugins/git/` now; core keeps two observable facts and the install's difftool.
 - Namespace cycles — closed at class granularity.
 - `Layout/ViewRegion` as a RENAME of the compiled slots (runtime minting replaced
   it); clickable status segments (reopened — the branch cell is the consumer).

@@ -80,7 +80,7 @@ final class ListboxOpenerTest extends TestCase
         $this->opener->openUnder($host, 4, 10, 1, 20, [['a', 'Alpha'], ['b', 'Beta']], 'b', static function (string $value) use (&$picked): void {
             $picked = $value;
         });
-        $this->assertTrue($this->menu->isListbox());
+        $this->assertTrue(Probe::get($this->menu, 'open') && Probe::get($this->menu, 'listbox'));
         $this->menu->handleInput("\r");
         $this->assertSame('b', $picked, 'the list opens on the current option');
 

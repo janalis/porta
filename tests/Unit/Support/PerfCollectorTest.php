@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Support;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\BootTrace;
 use Porta\Support\PerfCollector;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\FrameHooks;
 use Revolt\EventLoop;
@@ -33,7 +34,7 @@ final class PerfCollectorTest extends TestCase
 
     private function log(PerfCollector $perf): string
     {
-        return (string) \file_get_contents($perf->logFile());
+        return (string) \file_get_contents(Probe::object($perf, 'log')->path());
     }
 
     public function testABeatLogsPassGapPercentiles(): void
@@ -105,7 +106,7 @@ final class PerfCollectorTest extends TestCase
 
         $perf->beat();
 
-        $this->assertFileDoesNotExist($perf->logFile());
+        $this->assertFileDoesNotExist(Probe::object($perf, 'log')->path());
     }
 
     public function testCountersResetBetweenBeats(): void
@@ -242,7 +243,7 @@ final class PerfCollectorTest extends TestCase
         // proves by crossing the threshold on the reorder alone.
         $perf->paintMark(0.0489, 0.001, bidiSeconds: 0.05);
 
-        $this->assertFileDoesNotExist($perf->logFile());
+        $this->assertFileDoesNotExist(Probe::object($perf, 'log')->path());
     }
 
     public function testTheBeatCarriesTheBacklogProbeAndLoad(): void
@@ -354,7 +355,7 @@ final class PerfCollectorTest extends TestCase
         }
         $perf->stop();
 
-        $this->assertFileExists($perf->logFile());
+        $this->assertFileExists(Probe::object($perf, 'log')->path());
         $this->assertStringContainsString('passes=1', $this->log($perf));
     }
 }

@@ -23,6 +23,12 @@ final class EditorState
         return null !== Probe::get(self::host($editor), 'overlay');
     }
 
+    /** The find/replace search modal is open. */
+    public static function searchOpen(object $editor): bool
+    {
+        return self::host($editor)->isSearchOpen();
+    }
+
     /** The mini prompt (rename, branch name…) is open. */
     public static function promptOpen(object $editor): bool
     {

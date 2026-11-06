@@ -123,6 +123,6 @@ final class FenceLinksTest extends TestCase
         $provider->drain();
         $provider->requests[1]['error']('bad edit');
         $this->assertSame([], $renderer->render($edited, width: 40)->links);
-        $session->dispose();
+        $session->clear();
     }
 }

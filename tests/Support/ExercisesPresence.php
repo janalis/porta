@@ -54,14 +54,14 @@ trait ExercisesPresence
         $bo->events->dispatched = [];
         $server->stop();
         $this->look($bo);
-        Assert::assertTrue($bo->participants->isOutOfTouch(PresenceSync::SOURCE), 'out of touch');
+        Assert::assertArrayHasKey(PresenceSync::SOURCE, Probe::array($bo->participants, 'lost'), 'out of touch');
         Assert::assertSame(['Ada' => 2], $bo->sees(), 'Ada stays, as last seen');
         Assert::assertCount(1, $bo->events->take(AgentLeft::class), 'without her caret: where she was is not where she is');
 
         $server->start();
         $bo->wait(Backoff::after(0)); // a lost server is looked at again after a backoff, not every tick
         $this->look($bo);
-        Assert::assertFalse($bo->participants->isOutOfTouch(PresenceSync::SOURCE), 'back in touch');
+        Assert::assertArrayNotHasKey(PresenceSync::SOURCE, Probe::array($bo->participants, 'lost'), 'back in touch');
         Assert::assertSame(['Ada' => 2], $bo->sees());
         Assert::assertCount(1, $bo->events->take(AgentActivity::class), 'and her caret with her');
         $this->look($bo);

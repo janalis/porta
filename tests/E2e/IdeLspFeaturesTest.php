@@ -785,7 +785,7 @@ final class IdeLspFeaturesTest extends TestCase
                     }
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'go-to-symbol opens the centered picker');
+                    $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)), 'go-to-symbol opens the centered picker');
                     // The workspace-symbol query is an LSP round trip: await it
                     // landing instead of a fixed gap.
                     $this->awaitPainted($tui, $terminal, 'Greeter');

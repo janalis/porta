@@ -35,17 +35,6 @@ final class TextMetrics
         return \min($len, $col);
     }
 
-    /** Previous UTF-8 character boundary before $col in $line. */
-    public static function prevCharBoundary(string $line, int $col): int
-    {
-        --$col;
-        while ($col > 0 && 0x80 === (\ord($line[$col]) & 0xC0)) {
-            --$col;
-        }
-
-        return \max(0, $col);
-    }
-
     /**
      * The byte offset after the grapheme that starts at $col: a caret step or a
      * Delete. A grapheme is what the terminal draws as one character — a base

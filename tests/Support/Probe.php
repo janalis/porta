@@ -39,6 +39,22 @@ final class Probe
         return $object;
     }
 
+    /**
+     * A private property that must be an array (throws where it is not).
+     *
+     * @return array<array-key, mixed>
+     */
+    public static function array(object $object, string $property): array
+    {
+        /** @var mixed $value */
+        $value = self::get($object, $property);
+        if (!\is_array($value)) {
+            throw new \LogicException(\sprintf('$%s on %s is not an array', $property, $object::class));
+        }
+
+        return $value;
+    }
+
     /** Write a private/protected property, walking parent classes like {@see get()}. */
     public static function set(object $object, string $property, mixed $value): void
     {

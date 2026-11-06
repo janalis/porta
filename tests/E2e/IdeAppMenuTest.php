@@ -10,6 +10,7 @@ use Porta\Editor\LineNumberMode;
 use Porta\Ide;
 use Porta\Onboarding\OnboardingState;
 use Porta\Tests\Support\ClearsPortaLsp;
+use Porta\Tests\Support\EditorState;
 use Porta\Tests\Support\Paint;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\Probe;
@@ -512,7 +513,7 @@ final class IdeAppMenuTest extends TestCase
             [
                 300 => function (Tui $tui): void {
                     $tui->handleInput("\x1b[97;6u"); // ctrl+shift+a
-                    $this->assertTrue(Widgets::editor($tui)->isSearchOverlayOpen(), 'the command palette opens the centered picker');
+                    $this->assertTrue(EditorState::searchOpen(Widgets::editor($tui)), 'the command palette opens the centered picker');
                     foreach (\str_split('save all') as $ch) {
                         $tui->handleInput($ch);
                     }

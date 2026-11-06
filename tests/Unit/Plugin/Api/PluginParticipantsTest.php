@@ -11,6 +11,7 @@ use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginRuntime;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Presence\Participant;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestPluginRuntime;
 use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\StatusBarWidget;
@@ -46,7 +47,7 @@ final class PluginParticipantsTest extends TestCase
             'a name of nothing is no one; a numeric id is still a string',
         );
         $participants->outOfTouch();
-        $this->assertTrue($this->runtime->participants->isOutOfTouch('plugin:assist'));
+        $this->assertArrayHasKey('plugin:assist', Probe::array($this->runtime->participants, 'lost'));
         $participants->set([]);
         $this->assertSame([], $this->runtime->participants->all());
     }

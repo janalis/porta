@@ -79,11 +79,8 @@ final class FenceSessionTest extends TestCase
         $this->assertContains("invalid\n", $stopped);
         $session->prepare($first, '/other.md', width: 40);
         $this->assertNull($session->block($code)->result, 'navigation cannot reuse another document result');
-        $session->dispose();
+        $session->clear();
         $this->assertSame([], $scheduler->scheduled);
-        $changesBefore = $changed;
-        $registry->remove('diagram');
-        $this->assertSame($changesBefore, $changed, 'disposed sessions unsubscribe');
     }
 
     public function testRegistryChangesAndRemovalReleaseBlocks(): void
@@ -122,7 +119,7 @@ final class FenceSessionTest extends TestCase
         $scheduler->fire();
         $registry->remove('diagram');
         $this->assertNull($session->block($dot));
-        $session->dispose();
+        $session->clear();
     }
 
     public function testInsertionRemovalAndReorderingCannotTransferOtherResults(): void
@@ -172,7 +169,7 @@ final class FenceSessionTest extends TestCase
         /** @var CodeBlock $new */
         $new = $inserted->blocks[0];
         $this->assertNull($session->block($new)->result, 'an inserted fence cannot inherit the old ordinal result');
-        $session->dispose();
+        $session->clear();
         $this->assertSame([], $scheduler->scheduled);
     }
 
@@ -205,6 +202,6 @@ final class FenceSessionTest extends TestCase
         $code = $doc->blocks[0];
         $this->assertNull($session->block($code));
         $this->assertNull($registry->renderer('mermaid'));
-        $session->dispose();
+        $session->clear();
     }
 }

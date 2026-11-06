@@ -402,22 +402,22 @@ final class ContextMenuTest extends TestCase
 
         $menu->openListbox($options, 1, 30);
 
-        $this->assertTrue($menu->isListbox());
+        $this->assertTrue(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'));
         $this->assertSame(30, $menu->panelWidth(), 'as wide as the select, not just its longest option');
         $menu->handleInput("\r");
         $this->assertSame('light', $picked, 'Enter picks the option it opened on');
-        $this->assertFalse($menu->isListbox(), 'picking closes it');
+        $this->assertFalse(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'), 'picking closes it');
 
         $menu->openListbox($options, 99, 0);
         $menu->handleInput("\r");
         $this->assertSame('dark', $picked, 'an out-of-range current falls back to the first option');
 
         $menu->open($options);
-        $this->assertFalse($menu->isListbox(), 'a plain menu is not a listbox');
+        $this->assertFalse(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'), 'a plain menu is not a listbox');
         $this->assertSame(MenuPanel::width($options), $menu->panelWidth(), 'and keeps no minimum width');
 
         $menu->openListbox([], 0, 30);
-        $this->assertFalse($menu->isListbox(), 'an empty list opens nothing');
+        $this->assertFalse(Probe::get($menu, 'open') && Probe::get($menu, 'listbox'), 'an empty list opens nothing');
     }
 
     /** A menu item runs from its access letter: Cut takes C, so Copy takes o. */

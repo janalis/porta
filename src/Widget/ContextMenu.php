@@ -107,12 +107,6 @@ final class ContextMenu extends OverlayWidget
         $this->afterNavigate();
     }
 
-    /** Whether the open panel is a select's option list (drawn with the focused, heavy frame). */
-    public function isListbox(): bool
-    {
-        return $this->open && $this->listbox;
-    }
-
     #[\Override]
     protected function resetState(): void
     {

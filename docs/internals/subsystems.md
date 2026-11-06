@@ -1053,18 +1053,24 @@ registry in `Debug/DebugAdapters`.
 
 ## Git — a bundled plugin, not a subsystem
 
-**All of it lives in `plugins/git/`.** Core keeps no git-named symbol: not in
-the view enum, the menu model, the status bar, the settings nav, or
-`.porta.json`. What is written below is still true of the code; it is just not
+**All of it lives in `plugins/git/`.** Core keeps no git code: nothing in the
+view enum, the menu model, the status bar, the settings nav, or `.porta.json`.
+What stays git-named is not the plugin's — the two facts anything may observe
+(`Event/GitCommitted`, `Event/GitRemoteCompleted`), the installer's difftool
+setup (`Install/GitToolSetup`), and the `.gitignore` pruning the file walks share
+(`Support/GitIgnored`). What is written below is still true of the code; it is just not
 core's. `docs/internals/decisions.md` has the move and the seams it needed.
 
-`GitProcessRunner` owns the only mutable state in the layer — the in-flight
-process map — so `GitInfo`'s thirty-odd porcelain verbs are stateless
-argv-builders over it. That in-flight map is also the **E2e completion
-barrier**: git mutates the tree before the exit callback fires, so an empty map
-means the operation landed on disk. `RunsIde::awaitGit()` reaches it through
-`ViewRegistry::find('git')` — the view is the one plugin-built object core can
-name.
+The only mutable state in the layer is what is in flight, held in two
+`ProcessLane`s (`Process/GitProcesses`): the general one, behind
+`GitProcessRunner`, and the remote one a fetch, pull or push runs in — apart so
+that "Cancel Remote Operation" stops a fetch without stopping the status poll.
+`GitInfo`'s thirty-odd porcelain verbs are stateless argv-builders over them.
+Both lanes together are also the **E2e completion barrier**: git mutates the
+tree before the exit callback fires, so two empty lanes mean the operation
+landed on disk; one lane alone let a test walk out with a fetch in flight.
+`RunsIde::awaitGit()` reaches both through `ViewRegistry::find('git')` — the
+view is the one plugin-built object core can name.
 
 The runner answers a run that cannot happen as exit 1 with no output. Every
 caller already handles that shape — the `Outcome` verbs read the code, and every

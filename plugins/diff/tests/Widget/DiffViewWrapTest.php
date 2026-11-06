@@ -118,7 +118,7 @@ final class DiffViewWrapTest extends TestCase
         $this->assertSame(8, $widget->hScroll());
 
         $widget->useSoftWrap();
-        $this->assertTrue($widget->isWrapped());
+        $this->assertTrue(Probe::get($widget, 'wrap'));
         $this->assertSame(0, $widget->hScroll(), 'wrapping goes back to the start');
         $widget->handleInput("\x1b[C");
         $this->assertSame(0, $widget->hScroll(), '→ has nothing to show');
@@ -127,7 +127,7 @@ final class DiffViewWrapTest extends TestCase
         $widget->useSoftWrap();
         $widget->useHorizontalScroll();
         $widget->useHorizontalScroll();
-        $this->assertFalse($widget->isWrapped());
+        $this->assertFalse(Probe::get($widget, 'wrap'));
         $this->assertCount(1, \array_filter(self::body($widget), static fn (string $row): bool => \str_contains($row, 'n')), 'one row per line again');
         $widget->scrollHBy(8);
         $this->assertSame(8, $widget->hScroll());

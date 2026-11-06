@@ -323,7 +323,7 @@ final class SearchUiWiringTest extends TestCase
 
         $modal->handleInput("\x1bs", $this->editor->getKeybindings());
 
-        $this->assertTrue($this->scopeList->isListbox(), 'the list is open');
+        $this->assertTrue(Probe::get($this->scopeList, 'open') && Probe::get($this->scopeList, 'listbox'), 'the list is open');
         $this->scopeList->handleInput("\x1b[B");
         $this->scopeList->handleInput("\r");
         $this->assertSame(1, Probe::get($this->search, 'scopeIndex'), 'the pick is the search\'s scope now');

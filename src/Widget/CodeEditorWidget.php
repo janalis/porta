@@ -435,11 +435,6 @@ final class CodeEditorWidget extends AbstractWidget implements
         $this->overlayHost->closeSearch();
     }
 
-    public function isSearchOverlayOpen(): bool
-    {
-        return $this->overlayHost->isSearchOpen();
-    }
-
     /** Feed one key event to the open search modal (from the global input path). */
     public function handleSearchOverlayInput(string $data): void
     {
