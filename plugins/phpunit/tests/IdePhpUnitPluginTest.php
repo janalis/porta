@@ -318,11 +318,12 @@ final class IdePhpUnitPluginTest extends TestCase
                     $decorations = Widgets::editor($tui)->decorations;
                     $buffers = Services::resolve($ide, BufferService::class);
                     self::measurer($project, $both);
-                    // Calc, in front, has an unsaved edit: the run measures
-                    // the disk, whose lines are not the buffer's.
+                    // Calc, in front, is edited while the run measures it: a
+                    // run saves first, so the edit is one the disk it measured
+                    // does not have, and its lines are not the buffer's.
                     $buffers->openFile($project->path('src/Calc.php'), OpenFocus::Editor);
-                    Widgets::editor($tui)->getDocument()->insert("// more\n");
                     $this->command($ide, $terminal, 'run_with_coverage');
+                    Widgets::editor($tui)->getDocument()->insert("// more\n");
                     $results = $tui->getById('results');
                     $this->await(static fn (): bool => !Probe::get($results, 'searching'), what: 'the run to finish');
                     $this->assertSame([], $decorations->coverage, 'a buffer with unsaved edits gets none');
