@@ -459,6 +459,27 @@ final class ProjectSearchControllerTest extends TestCase
     }
 
     /**
+     * The matches are the disk's lines: a buffer with unsaved edits has other
+     * text at them — here a line added on top, so disk line 1 is the buffer's 2.
+     */
+    public function testAReplaceLeavesABufferWithUnsavedEditsAloneAndSaysSo(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n\$needle = 2;\n"]);
+        $controller = $this->controller($project->dir);
+        $buffer = $this->buffers->open($project->path('src/A.php'), "<?php\n\$needle = 1;\n\$needle = 2;\n");
+        $buffer->document->setCursor(1, 0);
+        $buffer->document->insert("// added\n");
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('$needle = 1;');
+
+        $controller->replaceAll('found', excluded: [1]);
+
+        $this->assertSame("<?php\n// added\n\$needle = 1;\n\$needle = 2;\n", $buffer->document->getText(), 'nothing rewritten at the disk\'s line numbers');
+        $this->assertStringContainsString('Not replaced in src/A.php: unsaved edits', $this->statusRow($this->statusBar, 200));
+    }
+
+    /**
      * A replace may not touch the occurrences the token scope excluded.
      *
      * `LanguageFilter` keeps a line when AT LEAST ONE occurrence falls in the

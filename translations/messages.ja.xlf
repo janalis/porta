@@ -3630,6 +3630,10 @@
         <source>Not run: %file% has edits that could not be saved</source>
         <target>実行しませんでした: %file% に保存できなかった変更があります</target>
       </trans-unit>
+      <trans-unit id="1237">
+        <source>Not replaced in %files%: unsaved edits the search did not see — save, then search again</source>
+        <target>%files% では置換しませんでした: 検索が見ていない未保存の変更があります — 保存してからもう一度検索してください</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

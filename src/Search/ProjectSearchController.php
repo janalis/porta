@@ -423,12 +423,22 @@ final class ProjectSearchController
         $this->armedEmptyReplace = false;
 
         $touched = 0;
+        $skipped = [];
         foreach ($keptLinesByPath as $relPath => $lineIndices) {
+            $abs = $this->paths->absolute($relPath);
+            $buffer = $this->buffers->find($abs);
+            // The matches are the DISK's lines and offsets: in a buffer with
+            // unsaved edits they point at other text — an excluded line
+            // rewritten, a kept one missed, a scoped span spliced mid-word.
+            // Left alone and named; saved, a search sees what it holds.
+            if (true === $buffer?->isDirty()) {
+                $skipped[] = $relPath;
+
+                continue;
+            }
             // Narrowed once per FILE, not per line: it classifies the whole
             // content, and a replace over a file touches many lines of it.
             $approved = $this->languageFilter->approvedSpans($relPath, $this->lastSearchQuery, $this->searchOptions);
-            $abs = $this->paths->absolute($relPath);
-            $buffer = $this->buffers->find($abs);
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
@@ -449,6 +459,9 @@ final class ProjectSearchController
         }
 
         $this->finishReplace($touched);
+        if ([] !== $skipped) {
+            $this->notifier->warn($this->translator->trans('Not replaced in %files%: unsaved edits the search did not see — save, then search again', ['%files%' => \implode(', ', $skipped)]));
+        }
     }
 
     /**

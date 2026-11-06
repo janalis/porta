@@ -3630,6 +3630,10 @@
         <source>Not run: %file% has edits that could not be saved</source>
         <target>Non eseguito: %file% ha modifiche che non è stato possibile salvare</target>
       </trans-unit>
+      <trans-unit id="1237">
+        <source>Not replaced in %files%: unsaved edits the search did not see — save, then search again</source>
+        <target>Non sostituito in %files%: modifiche non salvate che la ricerca non ha visto; salva, poi cerca di nuovo</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

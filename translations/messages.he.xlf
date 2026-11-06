@@ -3630,6 +3630,10 @@
         <source>Not run: %file% has edits that could not be saved</source>
         <target>לא הורץ: ב-%file% יש שינויים שלא ניתן היה לשמור</target>
       </trans-unit>
+      <trans-unit id="1237">
+        <source>Not replaced in %files%: unsaved edits the search did not see — save, then search again</source>
+        <target>לא הוחלף ב-%files%: שינויים שלא נשמרו שהחיפוש לא ראה — שמרו, ואז חפשו שוב</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
