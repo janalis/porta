@@ -80,6 +80,17 @@ final class LoopIsolationExtension implements Extension
         if ([] !== $leaked) {
             LeakLog::append(\sprintf("[loop-leak] %s: %d identifier(s) leaked%s\n", $testId, \count($leaked), self::describe($leaked)));
         }
+        // A test that swaps in its own handler and "restores" null hands every
+        // later test in the worker NO handler: Ide::run() then installs its
+        // production one, and a step's throw — an await() timing out — becomes
+        // a toast over an IDE whose remaining steps never run. Under coverage,
+        // with no time limit, that idle IDE slept on its signal watchers for
+        // 5.5 hours (2026-11-06: JsonRpcTransportTest, then a failing E2e step,
+        // in one worker). Put the rethrower back and say who moved it.
+        if (LoopErrors::rethrow() !== EventLoop::getErrorHandler()) {
+            LeakLog::append(\sprintf("[handler-leak] %s: left the loop's error handler changed — the suite's rethrower is back\n", $testId));
+            EventLoop::setErrorHandler(LoopErrors::rethrow());
+        }
         if (!EventLoop::getDriver()->isRunning()) {
             // The error handler lives ON the driver, so a bare swap drops the
             // suite's rethrower (tests/bootstrap.php). The next test that runs
@@ -88,10 +99,9 @@ final class LoopIsolationExtension implements Extension
             // test reported OK with its later assertions never run. Serial runs
             // (test:serial, the coverage:plugins shards) hit it after the first
             // test that never ran the loop; paratest's one-test workers rarely
-            // did. Carried across, whatever it currently is.
-            $handler = EventLoop::getErrorHandler();
+            // did. Carried across.
             EventLoop::setDriver(new StreamSelectDriver());
-            EventLoop::setErrorHandler($handler);
+            EventLoop::setErrorHandler(LoopErrors::rethrow());
 
             return;
         }

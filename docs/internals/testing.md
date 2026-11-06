@@ -409,6 +409,14 @@ which a Tui that parked a suspension leaves it doing — by cancelling each leak
 identifier by hand. That fallback took a full serial run from 2448 leak lines to
 53.
 
+It also puts the suite's error handler back, reporting `[handler-leak]`. A test
+that swaps in its own handler restores the one it found, never `null`: with no
+handler, `Ide::run()` installs the production one, and a later step's failing
+`await()` becomes a toast over an IDE whose remaining steps never run. With no
+time limit, as under coverage, that IDE sleeps on its signal watchers for good.
+This hung a coverage worker for 5.5 hours, after `JsonRpcTransportTest` and a
+failing E2e step ran in one worker.
+
 `tests/Support/EnvIsolationExtension` does the same for the environment, in both
 channels (`putenv`/`getenv` and `$_ENV` — Porta reads the second), reporting
 `[env-leak]`. Environment leaks are nastier because the symptom lands in another

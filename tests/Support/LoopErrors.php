@@ -16,9 +16,15 @@ namespace Porta\Tests\Support;
  */
 final class LoopErrors
 {
+    private static ?\Closure $rethrow = null;
+
+    /**
+     * One instance, always: {@see LoopIsolationExtension} tells the suite's
+     * handler from a replacement a test left behind by identity.
+     */
     public static function rethrow(): \Closure
     {
-        return static function (\Throwable $error): never {
+        return self::$rethrow ??= static function (\Throwable $error): never {
             throw $error; // fail the test loudly — Revolt surfaces this from run()
         };
     }

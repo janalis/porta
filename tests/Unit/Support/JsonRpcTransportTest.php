@@ -98,6 +98,7 @@ final class JsonRpcTransportTest extends TestCase
         $transport = new JsonRpcTransport([\PHP_BINARY, '-r', 'echo '.\var_export($frames, return: true).'; sleep(5);'], $project->dir, 'peer');
         $seen = [];
         $errors = [];
+        $suite = EventLoop::getErrorHandler();
         EventLoop::setErrorHandler(static function (\Throwable $error) use (&$errors): void {
             $errors[] = $error->getMessage();
         });
@@ -112,7 +113,7 @@ final class JsonRpcTransportTest extends TestCase
                 return 2 === \count($seen) && [] !== $errors;
             }, what: 'both frames and the error');
         } finally {
-            EventLoop::setErrorHandler(null);
+            EventLoop::setErrorHandler($suite); // never null: that hands the next test none
             $transport->stop();
         }
 

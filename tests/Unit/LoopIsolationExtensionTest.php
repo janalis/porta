@@ -6,8 +6,10 @@ namespace Porta\Tests\Unit;
 
 use PHPUnit\Framework\Attributes\RunInSeparateProcess;
 use PHPUnit\Framework\TestCase;
+use Porta\Tests\Support\LeakLog;
 use Porta\Tests\Support\LoopErrors;
 use Porta\Tests\Support\LoopIsolationExtension;
+use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 
 final class LoopIsolationExtensionTest extends TestCase
@@ -37,5 +39,38 @@ final class LoopIsolationExtensionTest extends TestCase
 
         $this->assertNotSame($before, EventLoop::getDriver(), 'the swap route ran — a loop that is not running gets a fresh driver');
         $this->assertSame($handler, EventLoop::getErrorHandler(), 'and the handler came with it');
+    }
+
+    /**
+     * A test that left the handler null (or its own) must not hand that to
+     * the next one: with none, Ide::run() installs the production handler and
+     * a failing await() becomes a toast over an IDE that never stops — a
+     * worker that hung 5.5h under coverage. The put-back runs before either
+     * route, so this needs no process of its own; it covers both anyway.
+     */
+    public function testAHandlerATestLeftChangedIsPutBack(): void
+    {
+        $project = new TempProject([]);
+        $previous = \getenv(LeakLog::PATH_ENV);
+        \putenv(LeakLog::PATH_ENV.'='.$project->path('leaks.log'));
+        try {
+            EventLoop::setErrorHandler(null);
+            LoopIsolationExtension::reset(self::class.'::nulled');
+            $this->assertSame(LoopErrors::rethrow(), EventLoop::getErrorHandler(), 'a null handler is replaced by the rethrower');
+
+            EventLoop::setErrorHandler(static function (): void {});
+            $suspension = EventLoop::getSuspension();
+            EventLoop::defer(static function () use ($suspension): void {
+                LoopIsolationExtension::reset(LoopIsolationExtensionTest::class.'::running');
+                $suspension->resume();
+            });
+            $suspension->suspend();
+            $this->assertSame(LoopErrors::rethrow(), EventLoop::getErrorHandler(), 'and a test\'s own one too, while the loop runs');
+
+            $this->assertStringContainsString('[handler-leak] '.self::class.'::nulled', (string) \file_get_contents($project->path('leaks.log')), 'who moved it is named');
+        } finally {
+            \putenv(\is_string($previous) ? LeakLog::PATH_ENV.'='.$previous : LeakLog::PATH_ENV);
+            EventLoop::setErrorHandler(LoopErrors::rethrow());
+        }
     }
 }
