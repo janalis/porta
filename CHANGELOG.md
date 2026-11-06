@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-06
+
 ### Added
 
 - **The phpunit plugin**: run the test at the caret (`Ctrl+Shift+F10`), a
