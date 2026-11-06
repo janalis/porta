@@ -198,7 +198,16 @@ six-second test is a failure rather than a discovery.
 It is on the SCRIPT, not in `phpunit.xml.dist`, on purpose: pcov is 2-3x
 slower, so the same limit in the config would fire on honest tests during
 `composer coverage:check` — the actual gate — and a guard that flakes gets
-turned off.
+turned off. Coverage carries its own ceiling instead, `--default-time-limit=120`.
+That limit is there to catch hangs, not slowness: it is 13x the slowest test
+under pcov. Without it, one stuck test held a coverage worker for 5.5 hours.
+
+The limit is a SIGALRM, and so is the IDE's freeze watchdog. Until 2026-11-06
+the watchdog took the alarm over and re-armed its own on every beat, so no test
+that boots an IDE, which means every E2e test, had a time limit at all.
+`FreezeWatchdog` now keeps an alarm that was already pending when it started.
+That alarm's handler fires at its deadline, and stop() hands back the handler
+with the time left. `IdeTimeLimitTest` pins this.
 
 **Capture gate output rather than paging it**, so the exit code survives:
 

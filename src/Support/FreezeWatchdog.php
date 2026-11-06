@@ -26,6 +26,13 @@ use Revolt\EventLoop;
  *   naming the exact blocking call site, then re-arms — a permanent hang
  *   leaves a trail every few seconds instead of silence.
  *
+ * The alarm is the PROCESS's, and someone may already hold it: PHPUnit's
+ * per-test time limit is a SIGALRM too. Overwriting it, as this did, meant no
+ * test that boots an IDE had a time limit at all — a hung E2e step ran until
+ * the worker was killed. So an alarm already pending at start() is kept: its
+ * handler fires when its deadline passes, and stop() hands back the handler
+ * and whatever is left of the time.
+ *
  * Logging is best-effort by design: the watchdog must never break the app.
  * `$signalsAvailable` is the test seam — a unit test passes false so it never
  * leaves a live SIGALRM handler behind.
@@ -35,6 +42,15 @@ final class FreezeWatchdog
 {
     private ?string $timer = null;
     private ?float $lastBeat = null;
+
+    /** What held SIGALRM before start(): restored by stop(). */
+    private \Closure|int $previousHandler = \SIG_DFL;
+
+    /**
+     * When the alarm pending at start() falls due, on the monotonic clock —
+     * null when there was none, or its handler was not a callable to forward to.
+     */
+    private ?float $outerDue = null;
     private readonly DiagnosticLog $log;
 
     /** @var \Closure(): float seconds on a clock that stops when the process does */
@@ -68,8 +84,11 @@ final class FreezeWatchdog
         $this->timer = EventLoop::repeat($this->interval, $this->heartbeat(...));
         if ($this->signalsAvailable) {
             \pcntl_async_signals(true);
+            $pending = \pcntl_alarm(0);
+            $this->previousHandler = self::alarmHandler();
+            $this->outerDue = $pending > 0 && $this->previousHandler instanceof \Closure ? ($this->monotonic)() + $pending : null;
             \pcntl_signal(\SIGALRM, $this->handleAlarm(...));
-            \pcntl_alarm($this->alarmSeconds);
+            $this->arm();
         }
     }
 
@@ -81,7 +100,12 @@ final class FreezeWatchdog
         }
         if ($this->signalsAvailable) {
             \pcntl_alarm(0);
-            \pcntl_signal(\SIGALRM, \SIG_DFL);
+            \pcntl_signal(\SIGALRM, $this->previousHandler);
+            if (null !== $this->outerDue) {
+                \pcntl_alarm($this->secondsToOuter());
+            }
+            $this->previousHandler = \SIG_DFL;
+            $this->outerDue = null;
         }
     }
 
@@ -101,20 +125,70 @@ final class FreezeWatchdog
         }
         $this->lastBeat = $beat;
         if ($this->signalsAvailable) {
-            \pcntl_alarm($this->alarmSeconds); // re-arm: a live loop never lets it fire
+            $this->arm(); // re-arm: a live loop never lets it fire
         }
     }
 
     /** Signal entry point — the SIGALRM handler {@see start()} installs. */
     public function handleAlarm(): void
     {
+        if ($this->outerFired()) {
+            return; // not ours: the alarm that was pending at start() was due
+        }
         // The loop missed $alarmSeconds of heartbeats: it is blocked right now.
         // The async signal interrupted the blocked call — capture where.
         $trace = new \Exception()->getTraceAsString();
         $this->log->append(\sprintf("loop blocked \u{2265} %ds, backtrace:\n%s", $this->alarmSeconds, $trace));
         if ($this->signalsAvailable) {
-            \pcntl_alarm($this->alarmSeconds);
+            $this->arm();
         }
+    }
+
+    /**
+     * Run the handler of the alarm pending at start() once its deadline has
+     * passed, as if it had never been displaced — PHPUnit's throws, which is
+     * the point. Checked on every beat as well as on our own alarm: a live
+     * loop re-arms the alarm faster than a second, so it never fires there.
+     */
+    private function outerFired(): bool
+    {
+        if (null === $this->outerDue || ($this->monotonic)() < $this->outerDue) {
+            return false;
+        }
+        $this->outerDue = null;
+        if ($this->previousHandler instanceof \Closure) {
+            ($this->previousHandler)(\SIGALRM, []);
+        }
+
+        return true;
+    }
+
+    /**
+     * Who holds SIGALRM now: a disposition (`SIG_DFL`, `SIG_IGN`) or a handler.
+     * The stub types the call `bool|resource`; PHP returns `callable|int`.
+     */
+    private static function alarmHandler(): \Closure|int
+    {
+        /** @var mixed $handler */
+        $handler = \pcntl_signal_get_handler(\SIGALRM);
+        if (\is_int($handler)) {
+            return $handler;
+        }
+
+        return \is_callable($handler) ? \Closure::fromCallable($handler) : \SIG_DFL;
+    }
+
+    /** Our own alarm, brought forward to the outer one's deadline when that comes first. */
+    private function arm(): void
+    {
+        $this->outerFired();
+        \pcntl_alarm(null === $this->outerDue ? $this->alarmSeconds : \min($this->alarmSeconds, $this->secondsToOuter()));
+    }
+
+    /** Whole seconds until the outer alarm is due — at least one, as `alarm(0)` would cancel instead. */
+    private function secondsToOuter(): int
+    {
+        return \max(1, (int) \ceil((float) $this->outerDue - ($this->monotonic)()));
     }
 
     public function logFile(): string

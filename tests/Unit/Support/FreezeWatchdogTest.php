@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Support;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Support\FreezeWatchdog;
+use Porta\Tests\Support\ProcessAlarm;
 use Porta\Tests\Support\TempProject;
 use Revolt\EventLoop;
 use Symfony\Component\Clock\MockClock;
@@ -80,15 +81,78 @@ final class FreezeWatchdogTest extends TestCase
         $project = new TempProject();
         $watchdog = new FreezeWatchdog($project->dir, new MockClock('2026-07-13 11:00:00'), alarmSeconds: 30, signalsAvailable: true);
 
-        $watchdog->start();
-        $watchdog->heartbeat(); // the signals arm re-arms the alarm on each beat
-        $watchdog->handleAlarm();
-        $watchdog->stop();
+        $left = ProcessAlarm::borrow(static function () use ($watchdog): int {
+            $watchdog->start();
+            $watchdog->heartbeat(); // the signals arm re-arms the alarm on each beat
+            $watchdog->handleAlarm();
+            $watchdog->stop();
+
+            return \pcntl_alarm(0);
+        });
 
         $log = (string) \file_get_contents($watchdog->logFile());
         $this->assertStringContainsString('loop blocked ≥ 30s', $log);
         $this->assertStringContainsString('#0', $log, 'the backtrace names the blocking site');
-        $this->assertSame(0, \pcntl_alarm(0), 'stop() disarmed the pending alarm');
+        $this->assertSame(0, $left, 'stop() disarmed the pending alarm');
+    }
+
+    /**
+     * An alarm already pending when the watchdog starts is someone else's —
+     * PHPUnit's time limit is one — and overwriting it left every test that
+     * boots an IDE with no time limit. Its handler fires at its own deadline,
+     * our alarm is brought forward to meet it, and stop() hands back the
+     * handler with what is left of the time.
+     */
+    public function testAnAlarmPendingAtStartStillFiresAndIsHandedBack(): void
+    {
+        $project = new TempProject();
+        $watchdog = new FreezeWatchdog($project->dir, new MockClock('2026-07-13 11:00:00'), alarmSeconds: 30, signalsAvailable: true, monotonic: $this->ticking());
+        $fired = 0;
+        $outer = static function () use (&$fired): void {
+            ++$fired;
+        };
+
+        [$armed, $handlerAfter, $leftAfter] = ProcessAlarm::borrow(function () use ($watchdog, $outer): array {
+            \pcntl_signal(\SIGALRM, $outer);
+            \pcntl_alarm(5);
+            $watchdog->start();
+            $armed = \pcntl_alarm(0);
+            $watchdog->heartbeat();
+
+            $watchdog->handleAlarm(); // ours: the outer one is not due yet
+            $this->monotonic += 6.0;
+            $watchdog->handleAlarm(); // the outer one's deadline has passed
+            $watchdog->handleAlarm(); // and it fires once, not on every alarm after
+            $this->monotonic -= 3.0;
+            $watchdog->stop();
+
+            return [$armed, \pcntl_signal_get_handler(\SIGALRM), \pcntl_alarm(0)];
+        });
+
+        $this->assertSame(5, $armed, 'our 30s alarm is brought forward to the outer 5s deadline');
+        $this->assertSame(1, $fired, 'the outer handler ran at its deadline');
+        $this->assertSame(2, \substr_count((string) \file_get_contents($watchdog->logFile()), needle: 'loop blocked'), 'and only our own alarms were logged as stalls');
+        $this->assertSame($outer, $handlerAfter, 'stop() hands the handler back');
+        $this->assertSame(0, $leftAfter, 'with no alarm left: the outer one already fired');
+    }
+
+    public function testStopHandsBackWhatIsLeftOfAnAlarmThatHasNotFired(): void
+    {
+        $project = new TempProject();
+        $watchdog = new FreezeWatchdog($project->dir, new MockClock('2026-07-13 11:00:00'), alarmSeconds: 3, signalsAvailable: true, monotonic: $this->ticking());
+        $outer = static function (): void {};
+
+        $left = ProcessAlarm::borrow(function () use ($watchdog, $outer): int {
+            \pcntl_signal(\SIGALRM, $outer);
+            \pcntl_alarm(20);
+            $watchdog->start();
+            $this->monotonic += 12.4;
+            $watchdog->stop();
+
+            return \pcntl_alarm(0);
+        });
+
+        $this->assertSame(8, $left, 'the 7.6s still to run, in whole seconds rounded up');
     }
 
     public function testSignalsArmByDefault(): void
