@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Search;
 
 use Porta\Editor\BufferManager;
+use Porta\Editor\DiskText;
 use Porta\Editor\DocumentReplacer;
 use Porta\Filesystem\LocalFilesystem;
 use Porta\Filesystem\ProjectFilesystem;
@@ -592,17 +593,21 @@ final class ProjectSearchController
     private function replaceLines(string $content, array $lineIndices, string $replacement, ?array $approved = null): string
     {
         $lines = \explode("\n", $content);
+        // The file's own ending, read off the whole of it: one line split on
+        // `\n` keeps only a CRLF's CR, and a break typed into the replacement
+        // went in as a lone CR.
+        $eol = DiskText::ending($content);
         foreach ($lineIndices as $index) {
             if (null === ($lines[$index] ?? null)) {
                 continue;
             }
             if (null !== $approved) {
-                $lines[$index] = self::spliceSpans($lines[$index], $approved[$index] ?? [], $replacement);
+                $lines[$index] = self::spliceSpans($lines[$index], $approved[$index] ?? [], DiskText::inEnding($replacement, $eol));
 
                 continue;
             }
 
-            $lines[$index] = $this->projectSearch->applyReplacement($lines[$index], $this->lastSearchQuery, $replacement, $this->searchOptions);
+            $lines[$index] = $this->projectSearch->applyReplacement($lines[$index], $this->lastSearchQuery, $replacement, $this->searchOptions, $eol);
         }
 
         return \implode("\n", $lines);

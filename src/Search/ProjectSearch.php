@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Search;
 
+use Porta\Editor\DiskText;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\Support\AsyncProcess;
 use Porta\Support\Files;
@@ -550,13 +551,16 @@ final class ProjectSearch
      * same matching semantics as {@see search()}. In non-regex mode the
      * replacement is literal (backslashes and `$` are escaped); in regex mode
      * it may use backreferences. Returns the content unchanged on a bad regex.
+     *
+     * Line breaks in $replacement go in as $eol, the file's own — a CRLF file
+     * given `\n` came back with its endings mixed. Left out, it is $content's:
+     * right for a whole file, wrong for one line of it, whose CRLF has been
+     * split off down to a trailing CR.
      */
-    public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options): string
+    public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options, ?string $eol = null): string
     {
         $pattern = SearchPattern::fit($this->pattern($query, $options), $content);
-        // Line breaks go in as the file's own: a CRLF file given `\n` by a
-        // multi-line replacement came back with its endings mixed.
-        $replacement = self::inFilesEndings($replacement, $content);
+        $replacement = DiskText::inEnding($replacement, $eol ?? DiskText::ending($content));
         // Preserve-case (literal replace only): map each match's casing onto the
         // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
         if ($options->preserveCase && !$options->regex) {
@@ -575,19 +579,6 @@ final class ProjectSearch
         \restore_error_handler();
 
         return $result ?? $content;
-    }
-
-    /** $text with its `\n` breaks as $content's first one is — CRLF, or a lone CR (a document's rule). */
-    private static function inFilesEndings(string $text, string $content): string
-    {
-        $ending = \substr($content, \strcspn($content, characters: "\r\n"), length: 2);
-        $eol = match (true) {
-            "\r\n" === $ending => "\r\n",
-            \str_starts_with($ending, "\r") => "\r",
-            default => "\n",
-        };
-
-        return "\n" === $eol ? $text : \str_replace("\n", replace: $eol, subject: $text);
     }
 
     /**

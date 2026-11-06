@@ -622,6 +622,35 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('$found = 1;', (string) \file_get_contents($project->path('src/A.php')));
     }
 
+    /** A line break typed into the replacement goes into a CRLF file as CRLF — not the lone CR its split line ends with. */
+    public function testABreakInTheReplacementTakesTheWholeFilesEnding(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\r\nx foo y\r\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('foo');
+        $this->awaitModalShows('x foo y');
+
+        $controller->replaceAll("a\nb");
+
+        $this->assertSame("<?php\r\nx a\r\nb y\r\n", (string) \file_get_contents($project->path('src/A.php')));
+    }
+
+    /** And through the scoped splice, which inserts the replacement by itself. */
+    public function testABreakInAScopedReplacementTakesTheFilesEndingToo(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\r\n\$foo = 'foo';\r\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->toggleOption(SearchOption::Tokens); // any → in comments/strings
+        $controller->search('foo');
+        $this->awaitModalShows("\$foo = 'foo';");
+
+        $controller->replaceAll("a\nb");
+
+        $this->assertSame("<?php\r\n\$foo = 'a\r\nb';\r\n", (string) \file_get_contents($project->path('src/A.php')));
+    }
+
     public function testReplaceAllWritesAClosedFileToDisk(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);

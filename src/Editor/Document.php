@@ -1398,16 +1398,7 @@ final class Document
     {
         $this->hasByteOrderMark = \str_starts_with($text, self::BOM);
         $text = $this->hasByteOrderMark ? \substr($text, offset: \strlen(self::BOM)) : $text;
-        // The FIRST ending decides, because a mixed file has no majority worth
-        // honouring and the one it opens with is the one a reader saw — not
-        // whichever kind appears anywhere: one pasted CRLF line, or a stray
-        // CR, rewrote every line of the file on its next save.
-        $ending = \substr($text, \strcspn($text, characters: "\r\n"), length: 2);
-        $this->eol = match (true) {
-            "\r\n" === $ending => "\r\n",
-            \str_starts_with($ending, "\r") => "\r",
-            default => "\n",
-        };
+        $this->eol = DiskText::ending($text);
 
         return DiskText::asHeld($text);
     }
