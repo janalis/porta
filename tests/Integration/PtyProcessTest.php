@@ -99,7 +99,9 @@ final class PtyProcessTest extends TestCase
     {
         $marker = 'porta-grandchild-'.\bin2hex(\random_bytes(4));
         $said = '';
-        $p = new PtyProcess(['/bin/sh', '-c', "exec -a {$marker} sleep 60 & echo started; wait"], __DIR__);
+        // bash, not sh: Linux's sh is dash, which has no `exec -a` — the
+        // grandchild never took the marker's name there.
+        $p = new PtyProcess(['/bin/bash', '-c', "exec -a {$marker} sleep 60 & echo started; wait"], __DIR__);
         $this->procs[] = $p;
         $p->onOutput(static function (string $chunk) use (&$said): void {
             $said .= $chunk;
@@ -108,7 +110,11 @@ final class PtyProcessTest extends TestCase
         $this->await(static function () use (&$said): bool {
             return \str_contains($said, 'started');
         }, what: 'the background child');
-        $alive = static fn (): bool => '' !== \trim((string) \shell_exec('pgrep -f '.\escapeshellarg($marker)));
+        // `[p]orta-…` matches the marker and not itself: shell_exec runs pgrep
+        // under `sh -c`, whose own command line holds the pattern — on Linux
+        // that shell matched, and the grandchild never looked gone.
+        $pattern = '['.$marker[0].']'.\substr($marker, offset: 1);
+        $alive = static fn (): bool => '' !== \trim((string) \shell_exec('pgrep -f '.\escapeshellarg($pattern)));
         $this->assertTrue($alive(), 'the premise: the grandchild runs');
 
         $p->stop();
