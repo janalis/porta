@@ -667,6 +667,39 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame("alpha!\nbeta!\n", $doc->getText());
     }
 
+    /** A lookaround needs the line around the match: run over the match alone, it matched nothing. */
+    public function testARegexReplaceWithALookaroundReplaces(): void
+    {
+        $doc = new Document("é foo(1); foo; foo(2);\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, '(?<=\s|^)foo(?=\()');
+        $bar->handleInput("\x1bOR"); // F3: the second match, so the line has a match before it
+        $bar->handleInput("\t");
+        $this->type($bar, '[$0]');
+
+        $bar->handleInput("\x1br");
+
+        $this->assertSame("é foo(1); foo; [foo](2);\n", $doc->getText(), 'the current match, where it is — counted in characters past the é');
+    }
+
+    /** A replacement the query still matches is not the next match: each press moves on. */
+    public function testReplaceMovesPastWhatItInserted(): void
+    {
+        $doc = new Document("foo foo\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'foo');
+        $bar->handleInput("\t");
+        $this->type($bar, 'foobar');
+
+        $bar->handleInput("\x1br");
+        $bar->handleInput("\x1br");
+
+        $this->assertSame("foobar foobar\n", $doc->getText(), 'not foobarbar foo');
+    }
+
     public function testLiteralModeReplacementKeepsDollarSigns(): void
     {
         $doc = new Document("value\n");

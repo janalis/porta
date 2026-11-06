@@ -625,14 +625,20 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
             return;
         }
         $match = $this->matches[$this->currentIndex];
+        $insertion = $this->insertionFor($doc, $match);
         $doc->setCursor($match['line'], $match['start']);
         $doc->beginSelect();
         $doc->setCursor($match['line'], $match['end'], selection: SelectionMode::Keep);
-        $doc->insert($this->insertionFor($doc, $match));
+        $doc->insert($insertion);
 
-        $keepIndex = $this->currentIndex;
+        // On to the first match past what went in: a replacement the query
+        // still matches (`foo` → `Foo`, `foo` → `foobar`) is not the next one,
+        // or every press replaced the same place again.
+        $line = $match['line'];
+        $past = $match['start'] + \strlen($insertion);
         $this->recompute(jumpToNearest: MatchJump::None);
-        $this->gotoMatch(\min($keepIndex, \count($this->matches) - 1));
+        $next = \array_find_key($this->matches, static fn (array $m): bool => $m['line'] > $line || ($m['line'] === $line && $m['start'] >= $past));
+        $this->gotoMatch($next ?? 0);
     }
 
     /**
@@ -692,18 +698,32 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         if (!$this->regex) {
             return $replacement;
         }
-        $matched = \substr($doc->lines[$match['line']] ?? '', $match['start'], $match['end'] - $match['start']);
+        $line = $doc->lines[$match['line']] ?? '';
         $pattern = SearchPattern::build(
             $this->query->value(),
             MatchMode::Regex,
             $this->wholeWord ? WordMode::WholeWord : WordMode::Anywhere,
             \mb_strtolower($this->query->value()) !== $this->query->value() ? CaseMode::Sensitive : CaseMode::Insensitive,
         );
+        // Expanded where it matched, in its line: run over the match alone, a
+        // lookbehind or lookahead lost its context, matched nothing, and the
+        // match went back in unchanged. The pattern is pinned to the match's
+        // offset — a lookbehind of exactly that many characters — so preg's
+        // own replacement syntax expands it, and the expansion is what the
+        // line grew by.
+        $fitted = SearchPattern::fit($pattern, $line);
+        $head = \substr($line, offset: 0, length: $match['start']);
+        $chars = \str_ends_with($fitted, 'u') ? \mb_strlen($head) : \strlen($head);
+        $close = (int) \strrpos($fitted, needle: '/');
+        $pinned = '/(?<=^.{'.$chars.'})(?:'.\substr($fitted, offset: 1, length: $close - 1).')/s'.\substr($fitted, $close + 1);
         \set_error_handler(static fn (): bool => true);
-        $expanded = \preg_replace(SearchPattern::fit($pattern, $matched), $replacement, $matched, limit: 1);
+        $count = 0;
+        $replaced = \preg_replace($pinned, $replacement, $line, limit: 1, count: $count);
         \restore_error_handler();
 
-        return \is_string($expanded) ? $expanded : $replacement;
+        return \is_string($replaced) && 1 === $count
+            ? \substr($replaced, $match['start'], \strlen($replaced) - \strlen($line) + $match['end'] - $match['start'])
+            : $replacement;
     }
 
     private function notifyUpdate(): void
