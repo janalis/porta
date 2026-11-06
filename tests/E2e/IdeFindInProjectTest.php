@@ -649,6 +649,8 @@ final class IdeFindInProjectTest extends TestCase
                     foreach (\str_split('newname') as $ch) {
                         $tui->handleInput($ch);
                     }
+                    // An option re-runs the search, and Alt+A waits for it.
+                    $this->await(fn (): bool => !\str_contains($this->modalText($tui), 'searching…'), what: 'the re-run to land');
                     $tui->handleInput("\x1ba"); // alt+a → replace all
                 },
                 900 => function ($tui) use ($project): void {

@@ -114,6 +114,24 @@ final class ProjectSearchControllerTest extends TestCase
         $this->await(fn (): bool => \str_contains($this->panelText(), $needle), $timeout, "the results panel to show '{$needle}'");
     }
 
+    /** An option or scope changed re-runs the search, and the modal says so until it lands — which is what holds Alt+A back. */
+    public function testEveryReRunShowsTheModalSearching(): void
+    {
+        $project = new TempProject(['src/A.php' => "<?php\n\$needle = 1;\n"]);
+        $controller = $this->controller($project->dir);
+        $controller->open();
+        $controller->search('needle');
+        $this->awaitModalShows('1 result');
+
+        $controller->toggleOption(SearchOption::WholeWord);
+        $this->assertStringContainsString('searching…', $this->modal(), 'an option');
+        $this->awaitModalShows('1 result');
+
+        $controller->setScopeIndex(0);
+        $this->assertStringContainsString('searching…', $this->modal(), 'the scope');
+        $this->awaitModalShows('1 result');
+    }
+
     public function testOpenShowsTheFindModal(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\n"]);

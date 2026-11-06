@@ -695,6 +695,11 @@ final class ProjectSearchController
     private function run(string $query): void
     {
         $this->armedEmptyReplace = false; // a confirm is for the results it was asked over
+        // Every re-run, not only a typed query's: an option or scope changed
+        // under listed results left Alt+A replacing over the old ones.
+        if ($this->editor->findModal->isOpen()) {
+            $this->editor->findModal->setSearching();
+        }
         // A completion landing after the user switched tabs updates the
         // captured tab's model only — never whichever tool is now on display.
         $tab = $this->paneTab();
