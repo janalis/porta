@@ -668,6 +668,31 @@ final class TreeOperations
         $this->tui->requestRender();
     }
 
+    // @mago-expect lint:no-boolean-flag-parameter -- $usable is the verdict on $name; the method only says it.
+    private function usable(string $name, bool $usable): bool
+    {
+        if (!$usable) {
+            $this->notifier->error($this->translator->trans('%name% is not a usable name here', ['%name%' => $name]));
+        }
+
+        return $usable;
+    }
+
+    /**
+     * Two spellings of one entry: a difference of case, or of Unicode
+     * normalisation (`é` as one code point or two), on a disk that ignores
+     * both. One inode is one entry unless a second hard link shares it —
+     * renaming a file onto its own other link would do nothing and say
+     * "Renamed". A folder has no second link.
+     */
+    private static function sameEntry(string $old, string $new): bool
+    {
+        $a = \file_exists($new) ? \stat($old) : false;
+        $b = false !== $a ? \stat($new) : false;
+
+        return false !== $a && false !== $b && $a['dev'] === $b['dev'] && $a['ino'] === $b['ino'] && (\is_dir($old) || 1 === $a['nlink']);
+    }
+
     /**
      * Run a filesystem mutation, flashing $failMessage if it raises an I/O
      * error — and tell version control that the working tree moved.
@@ -686,28 +711,6 @@ final class TreeOperations
      * the tree, and asking git is how anyone finds out what actually landed.
      * The no-op cases never reach here; they return at their own guard.
      */
-    // @mago-expect lint:no-boolean-flag-parameter -- $usable is the verdict on $name; the method only says it.
-    private function usable(string $name, bool $usable): bool
-    {
-        if (!$usable) {
-            $this->notifier->error($this->translator->trans('%name% is not a usable name here', ['%name%' => $name]));
-        }
-
-        return $usable;
-    }
-
-    /** Two spellings of one entry — only ever a difference of case. */
-    private static function sameEntry(string $old, string $new): bool
-    {
-        if (\strtolower($old) !== \strtolower($new) || !\file_exists($new)) {
-            return false;
-        }
-        $a = \stat($old);
-        $b = \stat($new);
-
-        return false !== $a && false !== $b && $a['dev'] === $b['dev'] && $a['ino'] === $b['ino'];
-    }
-
     private function withFs(string $failMessage, callable $op): void
     {
         try {

@@ -214,6 +214,47 @@ final class TreeKeyboardTest extends TestCase
         $this->assertSame('Renamed to B.php', Toasts::last($this->ide));
     }
 
+    /** Case beyond ASCII, and the other normalisation of `é`: one file to the disk, still a rename. */
+    public function testACaseOnlyRenameBeyondAsciiRenames(): void
+    {
+        \file_put_contents($this->project->path("\u{C9}l\u{E9}ment.php"), data: "<?php\n");
+        if (!\file_exists($this->project->path("\u{E9}l\u{E9}ment.php"))) {
+            $this->markTestSkipped('a case-sensitive disk has no collision to step around');
+        }
+        $this->tree()->refresh();
+        $this->walkTo("\u{C9}l\u{E9}ment.php");
+
+        $this->renameTo("\u{E9}l\u{E9}ment.php");
+
+        $this->assertSame("Renamed to \u{E9}l\u{E9}ment.php", Toasts::last($this->ide));
+    }
+
+    /** A folder counts its own links (`.` and its children's `..`), never a second name. */
+    public function testACaseOnlyRenameOfAFolderRenames(): void
+    {
+        if (!\file_exists($this->project->path('SRC'))) {
+            $this->markTestSkipped('a case-sensitive disk has no collision to step around');
+        }
+        $this->walkTo('src');
+
+        $this->renameTo('Src');
+
+        $this->assertDirectoryExists($this->project->path('Src'));
+        $this->assertSame('Renamed to Src', Toasts::last($this->ide));
+    }
+
+    /** A second hard link is another entry: renaming onto it would do nothing and say it did. */
+    public function testARenameOntoAHardLinkOfItselfAsks(): void
+    {
+        \link($this->project->path('a.php'), $this->project->path('linked.php'));
+        $this->walkTo('a.php');
+
+        $this->renameTo('linked.php');
+
+        $this->assertFileExists($this->project->path('a.php'), 'not renamed away');
+        $this->assertStringStartsWith('Cannot rename a.php', Toasts::last($this->ide));
+    }
+
     public function testNewFileStaysBelowItsFolder(): void
     {
         $this->walkTo('src');
