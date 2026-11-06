@@ -72,6 +72,9 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
 
     private const int MAX_MATCHES = 5000;
 
+    /** The most a PCRE `{n}` may count. */
+    private const int MOST_COUNTED = 65_535;
+
     private bool $withReplace = false;
     private readonly TextField $query;
     private readonly TextField $replacement;
@@ -708,14 +711,18 @@ final class FindBarWidget extends OverlayWidget implements FocusableInterface, M
         // Expanded where it matched, in its line: run over the match alone, a
         // lookbehind or lookahead lost its context, matched nothing, and the
         // match went back in unchanged. The pattern is pinned to the match's
-        // offset — a lookbehind of exactly that many characters — so preg's
-        // own replacement syntax expands it, and the expansion is what the
-        // line grew by.
+        // offset — anchored, that many characters stepped over and dropped
+        // from the match by \K — so preg's own replacement syntax expands it,
+        // and the expansion is what the line grew by. Stepped in runs of the
+        // most one {n} may count: a lookbehind of the whole head stopped
+        // compiling past 65535 characters, on a minified line.
         $fitted = SearchPattern::fit($pattern, $line);
         $head = \substr($line, offset: 0, length: $match['start']);
         $chars = \str_ends_with($fitted, 'u') ? \mb_strlen($head) : \strlen($head);
         $close = (int) \strrpos($fitted, needle: '/');
-        $pinned = '/(?<=^.{'.$chars.'})(?:'.\substr($fitted, offset: 1, length: $close - 1).')/s'.\substr($fitted, $close + 1);
+        $runs = \intdiv($chars, self::MOST_COUNTED);
+        $skip = (0 === $runs ? '' : '(?:.{'.self::MOST_COUNTED.'}){'.$runs.'}').'.{'.($chars % self::MOST_COUNTED).'}';
+        $pinned = '/^'.$skip.'\K(?:'.\substr($fitted, offset: 1, length: $close - 1).')/s'.\substr($fitted, $close + 1);
         \set_error_handler(static fn (): bool => true);
         $count = 0;
         $replaced = \preg_replace($pinned, $replacement, $line, limit: 1, count: $count);

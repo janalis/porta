@@ -685,6 +685,23 @@ final class FindBarWidgetTest extends TestCase
         $this->assertSame("é foo(1); foo; [foo](2);\n", $doc->getText(), 'the current match, where it is — counted in characters past the é');
     }
 
+    /** Past what one `{n}` can count — a minified line — the match is still expanded where it is. */
+    public function testARegexReplaceFarIntoALongLineExpandsItsReferences(): void
+    {
+        $doc = new Document(\str_repeat('x ', times: 40_000)."fooId;\n");
+        $bar = new FindBarWidget(new Translator('en'));
+        $bar->setFocused(true);
+        $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
+        $bar->handleInput("\x1bx"); // regex mode
+        $this->type($bar, '(?<= )(foo)Id');
+        $bar->handleInput("\t");
+        $this->type($bar, '$1Key');
+
+        $bar->handleInput("\x1br");
+
+        $this->assertStringEndsWith(' fooKey;'."\n", $doc->getText());
+    }
+
     /** A replacement the query still matches is not the next match: each press moves on. */
     public function testReplaceMovesPastWhatItInserted(): void
     {
