@@ -11,6 +11,7 @@ use Porta\Editor\FileOpener;
 use Porta\Editor\OpenFocus;
 use Porta\Lsp\Uri;
 use Porta\Lsp\WorkspaceEditor;
+use Porta\Lsp\WorkspaceEditOutcome;
 
 /**
  * The open buffers, for a plugin: which files are open and which hold edits
@@ -246,7 +247,7 @@ final readonly class OpenBuffers
             ];
         }
 
-        return $this->workspace->applyWorkspaceEdit(['documentChanges' => $changes])->refused;
+        return self::whyNot($this->workspace->applyWorkspaceEdit(['documentChanges' => $changes]));
     }
 
     /**
@@ -257,7 +258,7 @@ final readonly class OpenBuffers
      */
     public function move(string $from, string $to): ?string
     {
-        return $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'rename', 'oldUri' => Uri::fromPath($from), 'newUri' => Uri::fromPath($to)]]])->refused;
+        return self::whyNot($this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'rename', 'oldUri' => Uri::fromPath($from), 'newUri' => Uri::fromPath($to)]]]));
     }
 
     /**
@@ -272,7 +273,17 @@ final readonly class OpenBuffers
         return match (true) {
             \is_dir($path) => \sprintf('%s is a folder — only files are deleted this way', $path),
             true === $this->buffers->find($path)?->isDirty() => \sprintf('%s has unsaved changes in the editor — they are the user\'s to keep or drop', $path),
-            default => $this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]])->refused,
+            default => self::whyNot($this->workspace->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]])),
         };
+    }
+
+    /**
+     * Why an edit did not do what was asked, or null when it did: refused
+     * before anything ran, or a path the disk would not write — a create
+     * under a file, a move into a folder that cannot be written.
+     */
+    private static function whyNot(WorkspaceEditOutcome $outcome): ?string
+    {
+        return $outcome->refused ?? (null === ($path = $outcome->skipped[0] ?? null) ? null : \sprintf('%s could not be written', $path));
     }
 }

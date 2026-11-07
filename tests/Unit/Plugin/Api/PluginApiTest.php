@@ -880,6 +880,8 @@ final class PluginApiTest extends TestCase
         $this->assertNull($files->create($at('empty.txt')));
         $this->assertSame('', \file_get_contents($at('empty.txt')));
         $this->assertSame('a.php already exists', $files->create($at('a.php'), 'x'));
+        // Judged fine, refused by the disk: a file cannot hold a folder. Said, not taken for done.
+        $this->assertSame($at('a.php').'/under/c.php could not be written', $files->create($at('a.php/under/c.php')));
 
         $this->assertNull($files->move($at('a.php'), $at('moved/a.php')));
         $this->assertFileExists($at('moved/a.php'));
