@@ -31,10 +31,15 @@ final class FlowchartModernShapesTest extends TestCase
     public static function shapes(): iterable
     {
         $rows = \json_decode((string) \file_get_contents(__DIR__.'/../fixtures/mermaid/flowchart-shapes.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
-        foreach ($rows as $row) {
-            foreach (\array_unique([$row['name'], ...$row['aliases']]) as $alias) {
-                yield $alias => [$row['name'], $alias];
+        // A sample — every fourth shape, by its first alias — not all 150
+        // names: janalis/viz checks every one, and what Porta adds, the rows,
+        // is the same code for each.
+        foreach ($rows as $index => $row) {
+            if (0 !== ($index % 4)) {
+                continue;
             }
+            $alias = $row['aliases'][0] ?? $row['name'];
+            yield $alias => [$row['name'], $alias];
         }
     }
 

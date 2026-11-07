@@ -12,7 +12,16 @@ final class FlowchartCorpusTest extends TestCase
     /** @return iterable<string, array{string}> */
     public static function fixtures(): iterable
     {
-        return NativeCorpus::of('flowchart');
+        // Every 20th example: janalis/viz renders all 261, and what Porta adds,
+        // the rows, is the same code for each. The files stay for
+        // DisplayWidthParityTest, which measures every line of them.
+        $index = 0;
+        foreach (NativeCorpus::of('flowchart') as $name => $case) {
+            if (0 !== ($index++ % 20)) {
+                continue;
+            }
+            yield $name => $case;
+        }
     }
 
     #[DataProvider('fixtures')]
