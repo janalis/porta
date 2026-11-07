@@ -109,7 +109,13 @@ Three rules constrain what an event may carry and where it may be dispatched:
 
 - **Payloads are scalars, enums or value objects — never widget instances.**
   That is what keeps the class graph acyclic while both `Widget → Event` and
-  `Event → Widget` edges exist.
+  `Event → Widget` edges exist. Six core facts carry a live MODEL instead —
+  `Buffer` (`BufferOpened`, `…Reloaded`, `…Saved`, `…Switched`) and
+  `DockToolTab` (`DockToolBound`, `DockToolClosed`) — because their listeners
+  act on its state: a bound Search tab is adopted with its `SearchTabState`,
+  and an id would only send each listener back to the owner that just
+  dispatched it. Never a widget, and never on an event a plugin can observe:
+  `PluginObservableContractTest` holds those to scalars and backed enums.
 - **Never dispatch from a render path** (`beforeRender`, `render`,
   `processRender`). Listener count is unbounded; a frame's cost should not be.
 - **A listener that mutates the thing that dispatched must land on a setter
