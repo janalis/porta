@@ -97,12 +97,12 @@ final class LanguageFilterTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n\$foo = 'foo';\n"]);
         $filter = $this->filter($project);
 
-        $inStrings = $filter->approvedSpans('a.php', 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
+        $inStrings = $filter->approvedSpans('a.php', "<?php\n\$foo = 'foo';\n", 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
         $this->assertNotNull($inStrings);
         // Line 1 is `$foo = 'foo';` — the variable at 1, the string body at 8.
         $this->assertSame([['start' => 8, 'length' => 3]], $inStrings[1] ?? [], 'only the occurrence inside the string');
 
-        $except = $filter->approvedSpans('a.php', 'foo', new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
+        $except = $filter->approvedSpans('a.php', "<?php\n\$foo = 'foo';\n", 'foo', new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
         $this->assertNotNull($except);
         $this->assertSame([['start' => 1, 'length' => 3]], $except[1] ?? [], 'only the occurrence outside it');
     }
@@ -117,8 +117,8 @@ final class LanguageFilterTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n\$foo = 'foo';\n", 'notes.xyz' => "foo\n"]);
         $filter = $this->filter($project);
 
-        $this->assertNull($filter->approvedSpans('a.php', 'foo', new SearchOptions(tokenScope: TokenScope::Any)), 'no scope to apply');
-        $this->assertNull($filter->approvedSpans('notes.xyz', 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'unknown language');
-        $this->assertNull($filter->approvedSpans('gone.php', 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'unreadable file');
+        $this->assertNull($filter->approvedSpans('a.php', "<?php\n\$foo = 'foo';\n", 'foo', new SearchOptions(tokenScope: TokenScope::Any)), 'no scope to apply');
+        $this->assertNull($filter->approvedSpans('notes.xyz', "foo\n", 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'unknown language');
+        $this->assertNull($filter->approvedSpans('gone.php', '', 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'no content: a file gone or unreadable');
     }
 }

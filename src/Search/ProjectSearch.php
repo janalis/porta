@@ -549,7 +549,7 @@ final class ProjectSearch
     /**
      * Apply the search→replace transformation to a file's content using the
      * same matching semantics as {@see search()}. In non-regex mode the
-     * replacement is literal (backslashes and `$` are escaped); in regex mode
+     * replacement is literal (backslashes and `$` included); in regex mode
      * it may use backreferences. Returns the content unchanged on a bad regex.
      *
      * Line breaks in $replacement go in as $eol, the file's own — a CRLF file
@@ -559,26 +559,9 @@ final class ProjectSearch
      */
     public function applyReplacement(string $content, string $query, string $replacement, SearchOptions $options, ?string $eol = null): string
     {
-        $pattern = SearchPattern::fit($this->pattern($query, $options), $content);
         $replacement = DiskText::inEnding($replacement, $eol ?? DiskText::ending($content));
-        // Preserve-case (literal replace only): map each match's casing onto the
-        // replacement so foo→bar, Foo→Bar and FOO→BAR in one pass.
-        if ($options->preserveCase && !$options->regex) {
-            \set_error_handler(static fn (): bool => true);
-            try {
-                $result = \preg_replace_callback($pattern, fn (array $m): string => $this->applyCasePattern($m[0], $replacement), $content);
-            } finally {
-                \restore_error_handler();
-            }
 
-            return $result ?? $content;
-        }
-        $repl = $options->regex ? $replacement : (string) \preg_replace('/[\\\\$]/', replacement: '\\\\$0', subject: $replacement);
-        \set_error_handler(static fn (): bool => true);
-        $result = \preg_replace($pattern, $repl, $content);
-        \restore_error_handler();
-
-        return $result ?? $content;
+        return $this->rewrite($content, $query, $replacement, $options, starts: null);
     }
 
     /**
@@ -594,37 +577,50 @@ final class ProjectSearch
      */
     public function replaceSpans(string $line, array $spans, string $query, string $replacement, SearchOptions $options, string $eol): string
     {
-        $starts = \array_column($spans, column_key: 'start');
-        $replacement = DiskText::inEnding($replacement, $eol);
+        return $this->rewrite($line, $query, DiskText::inEnding($replacement, $eol), $options, \array_column($spans, column_key: 'start'));
+    }
+
+    /**
+     * The one rewrite both replaces make, so they cannot drift apart: every
+     * match of $query in $subject — or, given $starts, only those starting
+     * there — becomes $replacement, as {@see matchReplacement()} spells it.
+     * $subject unchanged on a bad regex.
+     *
+     * @param ?list<int> $starts
+     */
+    private function rewrite(string $subject, string $query, string $replacement, SearchOptions $options, ?array $starts): string
+    {
         \set_error_handler(static fn (): bool => true);
         try {
             $result = \preg_replace_callback(
-                SearchPattern::fit($this->pattern($query, $options), $line),
-                fn (array $match): string => $this->spanReplacement($match, $starts, $replacement, $options),
-                $line,
+                SearchPattern::fit($this->pattern($query, $options), $subject),
+                fn (array $match): string => $this->matchReplacement($match, $starts, $replacement, $options),
+                $subject,
                 flags: \PREG_OFFSET_CAPTURE,
             );
         } finally {
             \restore_error_handler();
         }
 
-        return $result ?? $line;
+        return $result ?? $subject;
     }
 
     /**
-     * One match's rewrite under {@see replaceSpans()}: itself unless it starts
-     * at an approved span.
+     * One match's rewrite: itself when $starts is given and it starts at none
+     * of them; else a regex's backreferences expanded from its own groups, a
+     * literal recast to its case under preserve-case, or the replacement as
+     * typed — literal, `$` and `\` included.
      *
      * @param array<array-key, mixed> $match  as PREG_OFFSET_CAPTURE hands it: each group a [text, offset] pair
-     * @param list<int>               $starts
+     * @param ?list<int>              $starts
      */
-    private function spanReplacement(array $match, array $starts, string $replacement, SearchOptions $options): string
+    private function matchReplacement(array $match, ?array $starts, string $replacement, SearchOptions $options): string
     {
         $groups = \array_map(static fn (mixed $group): string => \is_array($group) && \is_string($group[0] ?? null) ? $group[0] : '', $match);
         $whole = \is_array($match[0] ?? null) ? $match[0] : [];
 
         return match (true) {
-            !\in_array($whole[1] ?? null, $starts, strict: true) => $groups[0] ?? '',
+            null !== $starts && !\in_array($whole[1] ?? null, $starts, strict: true) => $groups[0] ?? '',
             $options->regex => Backreferences::expand($replacement, $groups),
             $options->preserveCase => $this->applyCasePattern($groups[0] ?? '', $replacement),
             default => $replacement,

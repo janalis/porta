@@ -71,7 +71,10 @@ final readonly class LanguageFilter
     }
 
     /**
-     * Which occurrences in $relPath the scope actually APPROVES, line by line.
+     * Which occurrences in $relPath, whose bytes are $content, the scope
+     * actually APPROVES, line by line. Handed the bytes rather than reading
+     * them: they are the ones the caller then rewrites, read once, so the
+     * spans cannot be measured in a file that changed between two reads.
      *
      * {@see apply()} answers a per-LINE question — keep this result or drop it —
      * because that is all a result list needs. A replace needs the finer one:
@@ -81,16 +84,15 @@ final readonly class LanguageFilter
      * in one line.
      *
      * Null means "do not narrow" — the scope is Any, or the language is unknown
-     * or the file unreadable, which are exactly the cases where {@see apply()}
+     * or there is no content, which are exactly the cases where {@see apply()}
      * keeps everything. The caller then replaces as it always did.
      *
      * @return array<int, list<array{start: int, length: int}>>|null line index => approved spans
      */
-    public function approvedSpans(string $relPath, string $query, SearchOptions $options): ?array
+    public function approvedSpans(string $relPath, string $content, string $query, SearchOptions $options): ?array
     {
         $scope = $options->tokenScope;
         $language = LanguageMap::highlightForPath($relPath);
-        $content = Files::read($this->paths->absolute($relPath));
         if (TokenScope::Any === $scope || null === $language || '' === $content) {
             return null;
         }

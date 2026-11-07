@@ -432,9 +432,6 @@ final class ProjectSearchController
 
                 continue;
             }
-            // Narrowed once per FILE, not per line: it classifies the whole
-            // content, and a replace over a file touches many lines of it.
-            $approved = $this->languageFilter->approvedSpans($relPath, $this->lastSearchQuery, $this->searchOptions);
             if (null !== $buffer) {
                 // Replaced in the DISK's bytes, which the matches and the
                 // scope's spans were measured in, then held as the buffer holds
@@ -448,7 +445,7 @@ final class ProjectSearchController
 
                     continue;
                 }
-                $new = DiskText::asHeld($this->replaceLines($bytes, $lineIndices, $replacement, $approved));
+                $new = DiskText::asHeld($this->replaceLines($bytes, $lineIndices, $replacement, $this->approved($relPath, $bytes)));
                 if ($this->replacer->replace($buffer, $new)) {
                     ++$touched;
                 }
@@ -457,7 +454,7 @@ final class ProjectSearchController
             }
             $old = Files::readWritable($abs);
             if (null !== $old) {
-                $new = $this->replaceLines($old, $lineIndices, $replacement, $approved);
+                $new = $this->replaceLines($old, $lineIndices, $replacement, $this->approved($relPath, $old));
                 if ($new !== $old) {
                     $this->fs->dumpFile($abs, $new);
                     ++$touched;
@@ -469,6 +466,18 @@ final class ProjectSearchController
         if ([] !== $skipped) {
             $this->notifier->warn($this->translator->trans('Not replaced in %files%: unsaved edits the search did not see — save, then search again', ['%files%' => \implode(', ', $skipped)]));
         }
+    }
+
+    /**
+     * The scope's approved spans in $bytes — the very bytes about to be
+     * rewritten, read once. Narrowed once per FILE, not per line: it
+     * classifies the whole content, and a replace touches many lines of it.
+     *
+     * @return array<int, list<array{start: int, length: int}>>|null
+     */
+    private function approved(string $relPath, string $bytes): ?array
+    {
+        return $this->languageFilter->approvedSpans($relPath, $bytes, $this->lastSearchQuery, $this->searchOptions);
     }
 
     /**
