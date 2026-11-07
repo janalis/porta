@@ -462,10 +462,7 @@ final class ProjectSearchController
             }
         }
 
-        $this->finishReplace($touched);
-        if ([] !== $skipped) {
-            $this->notifier->warn($this->translator->trans('Not replaced in %files%: unsaved edits the search did not see — save, then search again', ['%files%' => \implode(', ', $skipped)]));
-        }
+        $this->finishReplace($touched, $skipped);
     }
 
     /**
@@ -560,9 +557,17 @@ final class ProjectSearchController
         }
 
         $touched = 0;
+        $skipped = [];
         foreach (\array_unique(\array_column($this->lastSearchResults, 'path')) as $relPath) {
             $abs = $this->paths->absolute($relPath);
             $buffer = $this->buffers->find($abs);
+            // The search read the disk: a match only the unsaved text holds
+            // was never shown, so it was never the user's to leave out.
+            if (true === $buffer?->isDirty()) {
+                $skipped[] = $relPath;
+
+                continue;
+            }
             if (null !== $buffer) {
                 $old = $buffer->document->getText();
                 $new = $this->projectSearch->applyReplacement($old, $this->lastSearchQuery, $replacement, $this->searchOptions);
@@ -582,16 +587,24 @@ final class ProjectSearchController
             }
         }
 
-        $this->finishReplace($touched);
+        $this->finishReplace($touched, $skipped);
     }
 
-    /** Flash the touched-file count, close whichever surface drove the replace, and refocus the editor. */
-    private function finishReplace(int $touched): void
+    /**
+     * Flash the touched-file count, close whichever surface drove the replace,
+     * and refocus the editor — then name the files left alone for their unsaved edits.
+     *
+     * @param list<string> $skipped
+     */
+    private function finishReplace(int $touched, array $skipped): void
     {
         $this->notifier->flash($this->translator->trans('Replaced in %count% file|Replaced in %count% files', ['%count%' => $touched]));
         $this->editor->findModal->close(); // replace runs from the modal
         $this->tui->setFocus($this->editor);
         $this->tui->requestRender();
+        if ([] !== $skipped) {
+            $this->notifier->warn($this->translator->trans('Not replaced in %files%: unsaved edits the search did not see — save, then search again', ['%files%' => \implode(', ', $skipped)]));
+        }
     }
 
     /**

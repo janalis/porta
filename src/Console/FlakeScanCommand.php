@@ -120,10 +120,10 @@ final class FlakeScanCommand extends Command
         $red = 0;
 
         for ($run = 1; $run <= $runs; ++$run) {
-            // tempnam() makes the name it hands out — the reserved, empty file
-            // goes with the log, or every run left one behind for good.
-            $name = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-flake-');
-            $log = $name.'.xml';
+            // A fresh name, not tempnam()'s: that reserves an empty file every
+            // run then had to remove beside its log, and fails as false — cast
+            // to '', the log was './.xml' in the checkout.
+            $log = \sys_get_temp_dir().'/porta-flake-'.\bin2hex(\random_bytes(8)).'.xml';
             $leaksBefore = \is_file($leakLog) ? (int) \filesize($leakLog) : 0;
             $started = \hrtime(as_number: true);
             $exit = ($this->runner)($log, $processes, $testsuite, $timeout);
@@ -131,11 +131,8 @@ final class FlakeScanCommand extends Command
 
             $failed = $this->failedTests($log);
             $leaks += $this->leaksSince($leakLog, $leaksBefore);
-            foreach ([$log, $name] as $file) {
-                if (!\is_file($file)) {
-                    continue;
-                }
-                \unlink($file);
+            if (\is_file($log)) {
+                \unlink($log);
             }
             if ([] !== $failed || 0 !== $exit) {
                 ++$red;

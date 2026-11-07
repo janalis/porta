@@ -268,7 +268,7 @@ final class FlakeScanCommandTest extends TestCase
         $this->assertStringContainsString('3/3 runs green', $tester->getDisplay());
     }
 
-    /** Each run's log goes when the run is read, and so does the empty name tempnam() made for it. */
+    /** Each run's log goes when the run is read, and nothing is reserved beside it. */
     public function testEachRunLeavesNothingInTheTempDir(): void
     {
         $logs = [];
@@ -285,6 +285,7 @@ final class FlakeScanCommandTest extends TestCase
 
         $this->assertCount(2, $logs);
         foreach ($logs as $log) {
+            $this->assertStringEndsWith('.xml', $log, 'named for what it holds: a reader of a stray one knows it');
             $this->assertFileDoesNotExist($log);
             $this->assertFileDoesNotExist(\substr($log, offset: 0, length: -\strlen('.xml')));
         }

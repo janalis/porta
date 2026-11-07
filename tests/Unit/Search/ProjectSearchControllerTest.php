@@ -1159,6 +1159,35 @@ final class ProjectSearchControllerTest extends TestCase
         $this->assertStringContainsString('Replaced in 3 files', $this->statusRow($this->statusBar), 'three files, six matches: counted per file');
     }
 
+    /**
+     * A multi-line replace, like a single-line one, leaves a buffer with
+     * unsaved edits alone and names it: the search read the disk, so a match
+     * in text only the buffer holds was never shown, and could not be left out.
+     */
+    public function testAMultilineReplaceLeavesABufferWithUnsavedEditsAloneAndSaysSo(): void
+    {
+        $text = "<?php\nfunction foo()\n{\n}\n";
+        $project = new TempProject(['src/A.php' => $text, 'src/B.php' => $text]);
+        $controller = $this->controller($project->dir);
+        $buffer = $this->buffers->open($project->path('src/A.php'), $text);
+        $buffer->document->setCursor(4, 0);
+        $buffer->document->insert("function foo()\n{\n}\n"); // unsaved: a second match the search never saw
+        $controller->open();
+        $controller->search("foo()\n{");
+        $this->await(static fn (): bool => 2 === \count(Probe::get($controller, 'lastSearchResults')), what: 'one match on disk in each file');
+        // The unsaved file FIRST, whatever order the scan found them in: a
+        // replace that stopped at it, rather than passing it by, then shows.
+        $results = Probe::array($controller, 'lastSearchResults');
+        \usort($results, static fn (array $x, array $y): int => $x['path'] <=> $y['path']);
+        Probe::set($controller, 'lastSearchResults', $results);
+
+        $controller->replaceAll("bar()\n{");
+
+        $this->assertSame($text."function foo()\n{\n}\n", $buffer->document->getText(), 'neither match rewritten: one was never shown');
+        $this->assertStringContainsString("bar()\n{", (string) \file_get_contents($project->path('src/B.php')), 'the replace goes on past it to the next file');
+        $this->assertStringContainsString('Not replaced in src/A.php: unsaved edits', $this->statusRow($this->statusBar, 200));
+    }
+
     /** replaceLines() skips an index past the end and still reaches the valid ones after it. */
     public function testReplaceLinesGoesOnPastAnOutOfRangeIndex(): void
     {
