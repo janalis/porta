@@ -36,16 +36,20 @@ return new class('todo') extends AbstractPlugin {
     /**
      * The scan, as the closure both the command and F5 fire.
      *
-     * Built per call rather than memoised: the engine is cheap, and a scan
-     * reads the `tags` setting when it runs, so editing the setting takes
-     * effect on the next scan with nothing to invalidate.
+     * One engine for every scan, so a scan cancels the one still running: an
+     * engine per call left both running, and the older — the tags before a
+     * settings change — could land last and stand in the tab. A scan still
+     * reads the `tags` setting when it runs, so editing it takes effect on
+     * the next scan with nothing to invalidate.
      *
      * @return \Closure(): void
      */
     private function scan(PluginApi $api): \Closure
     {
-        return static function () use ($api): void {
-            new TodoScan($api, new ProjectSearch($api->projectRoot()))->run();
+        $engine = new ProjectSearch($api->projectRoot());
+
+        return static function () use ($api, $engine): void {
+            new TodoScan($api, $engine)->run();
         };
     }
 };
