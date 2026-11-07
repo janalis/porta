@@ -107,9 +107,14 @@ final class TempProject
     public function initGit(?string $branch = null, string $name = 'Porta Test', string $email = 'test@porta.dev'): void
     {
         $this->git('init', '-q', ...null !== $branch ? ['-b', $branch] : []);
-        $this->git('config', 'user.email', $email);
-        $this->git('config', 'user.name', $name);
-        $this->git('config', 'commit.gpgsign', 'false');
+        // Written into .git/config, not set by three `git config` runs: each is
+        // a process, and this runs for every git fixture in the suite.
+        $quote = static fn (string $value): string => '"'.\addcslashes($value, characters: '"\\').'"';
+        \file_put_contents(
+            $this->dir.'/.git/config',
+            "[user]\n\temail = {$quote($email)}\n\tname = {$quote($name)}\n[commit]\n\tgpgsign = false\n",
+            \FILE_APPEND,
+        );
 
         // `.porta/` is machine-local state (session, layout, the onboarding
         // marker). Ignore it through .git/info/exclude rather than a committed
@@ -123,9 +128,12 @@ final class TempProject
     public function commitAll(string $message): string
     {
         $this->git('add', '-A');
-        $this->git('commit', '-q', '--no-gpg-sign', '-m', $message);
+        // The hash read from commit's own summary line — `[main 1a2b3c4] msg` —
+        // rather than one more process to ask rev-parse for it.
+        $said = $this->git('commit', '--no-gpg-sign', '-m', $message);
+        $hash = [];
 
-        return $this->git('rev-parse', '--short', 'HEAD');
+        return 1 === \preg_match('/^\[.* ([0-9a-f]{7,})\]/m', $said, $hash) ? $hash[1] : $this->git('rev-parse', '--short', 'HEAD');
     }
 
     private static function gitBinary(): string
