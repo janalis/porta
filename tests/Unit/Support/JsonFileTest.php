@@ -59,4 +59,22 @@ final class JsonFileTest extends TestCase
 
         $this->assertNull(JsonFile::read($project->dir.'/scalar.json'));
     }
+
+    /**
+     * A project folder moved or deleted while the IDE has it open is not made
+     * again by the next save of a file of Porta's own: the layout written as a
+     * pane was dragged left a folder holding only `.porta/layout.json` where
+     * the project had been.
+     */
+    public function testAWriteInAProjectThatIsGoneMakesNothing(): void
+    {
+        $project = new TempProject();
+        $root = $project->path('moved');
+        \mkdir($root);
+        $this->assertTrue(JsonFile::writeInProject(new Filesystem(), $root, $root.'/.porta/layout.json', ['a' => 1]), 'written while the project is there');
+        new Filesystem()->remove($root);
+
+        $this->assertFalse(JsonFile::writeInProject(new Filesystem(), $root, $root.'/.porta/layout.json', ['a' => 2]));
+        $this->assertDirectoryDoesNotExist($root);
+    }
 }

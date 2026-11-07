@@ -61,14 +61,15 @@ final class JsonFile
 
     /**
      * {@see write()} for a file of Porta's own in the project $root, which is
-     * not written through a link ({@see Files::throughLink()}): false then,
-     * as for any write that fails.
+     * not written through a link ({@see Files::throughLink()}), nor into a
+     * project that is gone — moved or deleted while open, it was made again,
+     * holding nothing but the file: false then, as for any write that fails.
      *
      * @param array<array-key, mixed> $data
      */
     public static function writeInProject(Filesystem $fs, string $root, string $path, array $data): bool
     {
-        return !Files::throughLink($root, $path) && self::write($fs, $path, $data);
+        return \is_dir($root) && !Files::throughLink($root, $path) && self::write($fs, $path, $data);
     }
 
     /** Remove what {@see writeInProject()} wrote — never through a link either, which would remove what it points into. */
