@@ -22,8 +22,9 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
  * A right-click context menu: a floating single-column list of
  * {@see MenuItem}s anchored at the pointer. Unlike {@see MenuBarWidget} it has
  * no title strip and **renders nothing in the layout** — it floats purely as an
- * overlay composited over the tree / tab bar / editor by the coordinator (see
- * {@see \Porta\Ide::refreshContextMenuOverlay()}), which also routes keyboard
+ * overlay composited over the tree / tab bar / editor
+ * ({@see \Porta\Overlay\State\MenuOverlayController}, opened through
+ * {@see \Porta\Workbench\Menu\ContextMenuOpener}), which also routes keyboard
  * to it modally while open. That keeps the menu independent of which widget owns
  * focus, so a right-click never disturbs the editor caret or tree selection.
  */

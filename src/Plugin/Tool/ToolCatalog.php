@@ -15,7 +15,7 @@ use Porta\Plugin\Runtime\PluginManifest;
  *
  * Two sources, one answer: what a plugin's MANIFEST declares
  * (`extra.porta.tools`), read from the copy that loads, and what an enabled
- * third-party plugin registered in code ({@see PluginManager::registeredTools()}).
+ * third-party plugin registered in code ({@see PluginManager::registeredInstallers()}).
  * The Settings page, the Welcome cards, the palette's tool commands and the
  * update check all ask here, so a tool cannot be "missing" in one of them and
  * "installed" in another.

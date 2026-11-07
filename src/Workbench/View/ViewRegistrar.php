@@ -61,8 +61,8 @@ final class ViewRegistrar
 
     /**
      * Build ONE plugin's committed views — the live-enable half. True when a
-     * view actually landed, which is the caller's cue to announce
-     * {@see \Porta\Event\ViewContributionsChanged} so the layout recompiles
+     * view actually landed, which is the caller's cue to recompile the layout
+     * — {@see ViewContributionListener} applies direction and layout itself
      * (the mirror of Ide's boot-tail applyDirection + applyLayout — a
      * dependency this class cannot hold without a container cycle through the
      * overlay stack).

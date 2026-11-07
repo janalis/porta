@@ -776,7 +776,7 @@ final class GraphViewerWidget extends NavigablePaneWidget
 
     /**
      * The Settings page wrote `renderMode`. Unlike the in-pane toggle this
-     * does not consult {@see GraphKind::hasLayout()}: the setting is the
+     * does not consult {@see DiagramKind::hasLayout()}: the setting is the
      * standing preference for every document this pane will show, and a
      * picture that cannot honour it now still should when a DOT file arrives.
      */

@@ -142,10 +142,10 @@ final class BidiTui extends Tui implements FrameHooks
     /**
      * Tell the frame path that the TERMINAL runs the bidi algorithm itself.
      *
-     * Then Porta must not reorder: the row would be reordered twice and come
-     * out wrong. It leaves the logical row and only marks the pane edges, so
-     * the terminal mirrors each pane within its own span instead of merging
-     * them into one run. See {@see PaneReorder::markBoundaries()}.
+     * Porta still lays the row out, then FREEZES it with an LTR override, or
+     * the terminal reorders it a second time and it comes out wrong. Leaving
+     * the logical row for the terminal to lay out was tried and refused (see
+     * {@see PaneReorder}). See {@see PaneReorder::freezeRow()}.
      */
     public function setTerminalBidi(bool $terminalBidi): void
     {

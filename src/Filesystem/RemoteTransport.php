@@ -21,7 +21,7 @@ namespace Porta\Filesystem;
  * spaces and quotes included, so a transport that builds a command line
  * quotes every one.
  *
- * Registered with {@see \Porta\Plugin\Api\PluginApi::registerRemoteTransport()}.
+ * Handed over by {@see \Porta\Plugin\Api\RemoteProjectPlugin::remoteTransport()}.
  */
 abstract class RemoteTransport
 {

@@ -123,8 +123,9 @@ manager at all. Relocating the widget→domain-VO edges was
 measured and mostly rejected — for Settings, Tree, Debug and Highlight that is
 the *correct* layering direction, views reading domain shapes.
 
-**Git is a bundled plugin. `src/Git` and `src/Widget/Git` are gone, and core
-keeps no git-named symbol.**
+**Git is a bundled plugin. `src/Git` and `src/Widget/Git` are gone; core
+keeps two observable facts (`GitCommitted`, `GitRemoteCompleted`) and the
+install's difftool (`Install/GitToolSetup`).**
 
 An earlier attempt stopped at the view on three measurements. Every one of them
 changed, and not by trying harder — by changing what the seam had to describe:

@@ -22,7 +22,7 @@ use Symfony\Component\Tui\Tui;
  * Wheel routing, split out of {@see MouseRouter}: 140-odd lines that touch none
  * of the router's cross-event drag state, so they were only ever sharing a file
  * with it. Joins the already-extracted satellites (ClickCounter, HitTester,
- * HoverRouter, GitMouseRouter, SettingsMouseRouter, ModalWindowRouter).
+ * HoverRouter, SettingsMouseRouter, ModalWindowRouter; the git view's own router left with it, for plugins/git).
  *
  * The guard order inside {@see route()} is behaviour, exactly as it is in the
  * router's own spine — the pointer can be over several surfaces at once and the

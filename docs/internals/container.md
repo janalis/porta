@@ -171,11 +171,12 @@ first E2e test.
 
 ## Role interfaces over the editor widget
 
-`CodeEditorWidget` has 81 public methods, so consumers depend on the narrow role
-they use: `ActiveFileProvider`, `ActiveDocumentProvider`, `EditorTextAccess`,
-`EditorInvalidator`, `ModalHost`, `EditorDecorationSink`, `LineAnnotationSink`,
-`EditorViewOptions`, `EditorIndentTarget`, `EditorKeymapProvider`,
-`EditorCommandTarget`. The loader's single-implementation aliasing covers each
+`CodeEditorWidget` has some seventy public methods, so consumers depend on the
+narrow role they use: `ActiveFileProvider`, `ActiveDocumentProvider`,
+`EditorTextAccess`, `EditorInvalidator`, `ModalHost`, `EditorViewOptions`,
+`EditorIndentTarget`, `EditorKeymapProvider`, `EditorCommandTarget`,
+`EditorHost` (`EditorActions`) and `SearchOverlay` (Search Everywhere). The
+decoration sinks are not among them: `Editor/DecorationStore` implements those. The loader's single-implementation aliasing covers each
 with zero container config.
 
 A consumer whose methods span two roles takes **two parameters of the same
@@ -189,7 +190,7 @@ a test can substitute the collaborator is a `\Closure` parameter instead:
 transport, `LspReconfigurer`'s reopen), or a first-class callable a plugin
 passes by hand (the image pane's rasterizer). A one-consumer interface stays
 only for a reason a fake is not: the widget roles above, which keep a consumer
-off an 81-method class; the editor's outbound hooks on `Widget/EditorCallbacks`,
+off a seventy-method class; the editor's outbound hooks on `Widget/EditorCallbacks`,
 whose implementers hold the widget, so a concrete type would close a class
 cycle (`DebugSessionObserver` likewise, for `DapSession`); an optional
 capability tested with `instanceof` (`ThemeAwareHighlightProvider`); and a

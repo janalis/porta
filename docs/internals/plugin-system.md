@@ -285,7 +285,9 @@ Consumer-owned interfaces are how a subsystem consumes plugin registrations
 without depending on `Porta\Plugin`: `Editor/EditorPaneSource`,
 `Editor/ViewerProviderSource`, `Config/RebindableActionSource`,
 `Search/TokenSpanProvider`, `Highlight/SyntaxHighlightProviderSource`,
-`Lsp/LanguageServerProvider`, `Workbench/Dock/DockToolSource`. The interface
+`Lsp/LanguageServerProvider`, `Workbench/Dock/DockToolSource`,
+`Workbench/Menu/ContributedMenuSource`, `Workbench/View/ContributedViewSource`,
+`Debug/DebugAdapterProvider`, `Workbench/StatusSegmentSource`. The interface
 lives beside its consumer; `PluginManager` implements it.
 
 Every plugin handler and hook is wrapped in try/catch to a status-bar flash, so

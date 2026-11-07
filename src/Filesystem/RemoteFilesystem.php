@@ -9,6 +9,7 @@ use Porta\Editor\BufferManager;
 use Porta\Event\StatusCellsChanged;
 use Porta\I18n\Translator;
 use Porta\Search\FileIndex;
+use Porta\Search\ProjectSearch;
 use Porta\Support\Files;
 use Porta\Ui\Glyphs;
 use Porta\Workbench\Menu\MenuItem;
@@ -59,6 +60,9 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
     /**
      * What a walk of the whole tree does not descend into: what go-to-file
      * leaves out by default ({@see FileIndex}), and Porta's own state.
+     * {@see ProjectSearch::EXCLUDES} plus `.porta`, spelled out rather than
+     * read from it: ProjectSearch depends on this class, and reading it here
+     * would close a class cycle. A folder added there belongs here too.
      */
     private const array WALK_SKIP = ['.git', 'node_modules', 'vendor', '.idea', '.vscode', '.porta'];
     /** How many polls — half a minute — before a directory the server refused is asked again. */
