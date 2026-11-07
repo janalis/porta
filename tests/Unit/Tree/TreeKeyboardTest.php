@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Tree;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Editor\Buffer;
 use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\OpenFocus;
@@ -235,6 +236,34 @@ final class TreeKeyboardTest extends TestCase
         $this->assertSame([['link.php', 'moved.php']], $renamed, 'the link moved, not a.php onto itself');
         $this->assertSame(0, $followed, 'no class was moved, so no reference follows: asked, the server renames the class inside a.php');
         $this->assertTrue(Services::resolve($this->ide, BufferManager::class)->has((string) \realpath($this->project->path('a.php'))), 'the target is still open');
+    }
+
+    /**
+     * A rename saves the file's unsaved edits first, because the move closes
+     * the buffer and re-reads it from disk. When that save is REFUSED — the
+     * file changed on disk under the edits, the first Ctrl+S's warning — the
+     * move went ahead anyway and the edits were gone, replaced by the other
+     * writer's text. Now nothing moves, and the edits stay.
+     */
+    public function testARenameWhoseSaveIsRefusedMovesNothingAndKeepsTheEdits(): void
+    {
+        $path = (string) \realpath($this->project->path('a.php'));
+        Services::resolve($this->ide, BufferService::class)->openFile($path, OpenFocus::Keep);
+        $buffer = Services::resolve($this->ide, BufferManager::class)->get($path);
+        $this->assertInstanceOf(Buffer::class, $buffer);
+        $buffer->document->insert('// mine');
+        \file_put_contents($path, data: "<?php\n// theirs, written from outside\n");
+        \clearstatcache();
+        $this->ide->pollFilesystem();
+        $this->tui()->setFocus($this->tree());
+        $this->walkTo('a.php');
+
+        $this->renameTo('moved.php');
+
+        $this->assertFileExists($path, 'not moved');
+        $this->assertFileDoesNotExist($this->project->path('moved.php'));
+        $this->assertStringContainsString('// mine', $buffer->document->getText(), 'the edits are still in their buffer');
+        $this->assertTrue($buffer->isDirty());
     }
 
     /** A subfolder the walk cannot read is skipped, not thrown: the delete answers as it did before the walk. */

@@ -168,6 +168,27 @@ final class IdeHelpersTest extends TestCase
         $this->assertFalse($buffer->diskChangedUnderEdit, 'and the warning is spent');
     }
 
+    /**
+     * Rewritten from outside into something Porta cannot read as text — not
+     * UTF-8 here, or past the size limit — the file cannot be reloaded or
+     * compared, but it DID change. The stamp was taken and nothing flagged, so
+     * the next save wrote the buffer over the other writer's file without a word.
+     */
+    public function testAFileRewrittenIntoWhatCannotBeReadIsStillFlaggedAsChanged(): void
+    {
+        $path = $this->project->write('latin.php', "<?php\n// cafe\n");
+        $buffers = Services::resolve($this->ide, BufferService::class);
+        $buffers->openFile($path);
+        $buffer = Services::resolve($this->ide, BufferManager::class)->get((string) \realpath($path));
+        $this->assertInstanceOf(Buffer::class, $buffer);
+
+        $this->project->write('latin.php', "<?php\n// caf\xE9, re-saved as Latin-1\n"); // a different length: the stamp is mtime:size
+        $buffers->pollFilesystem();
+
+        $this->assertTrue($buffer->diskChangedUnderEdit, 'the next save warns before it overwrites');
+        $this->assertStringContainsString('latin.php changed on disk', Toasts::last($this->ide));
+    }
+
     public function testReloadingAFileSpendsTheOverwriteWarning(): void
     {
         // A clean buffer reloads instead of warning, and the buffer then IS the

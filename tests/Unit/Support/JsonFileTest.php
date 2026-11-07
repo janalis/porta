@@ -77,4 +77,17 @@ final class JsonFileTest extends TestCase
         $this->assertFalse(JsonFile::writeInProject(new Filesystem(), $root, $root.'/.porta/layout.json', ['a' => 2]));
         $this->assertDirectoryDoesNotExist($root);
     }
+
+    /**
+     * A file saved with a UTF-8 byte-order mark — some Windows editors add one —
+     * read as invalid JSON: every setting in a `.porta.json` ignored, and Porta's
+     * own editor hides the mark, so the file looked valid and could not be fixed
+     * there. The mark is not part of the JSON.
+     */
+    public function testAByteOrderMarkIsNotPartOfTheJson(): void
+    {
+        $project = new TempProject(['marked.json' => "\u{FEFF}{\"theme\": \"tempest\"}"]);
+
+        $this->assertSame(['theme' => 'tempest'], JsonFile::read($project->path('marked.json')));
+    }
 }

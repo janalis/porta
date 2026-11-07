@@ -126,7 +126,13 @@ final class FilesystemReconciler
     {
         $content = $this->readTextFile($buffer->path);
         if (null === $content) {
-            return; // unreadable / too large / binary now — leave the buffer untouched
+            // Unreadable, too large or not UTF-8 now: the buffer is left as it
+            // is, but the file DID change — the stamp above already says it
+            // matches, so unflagged, the next save wrote over it without a word.
+            $buffer->diskChangedUnderEdit = true;
+            $this->notifier->flash($this->translator->trans('%file% changed on disk', ['%file%' => $this->paths->relative($buffer->path)]));
+
+            return;
         }
         if (!$buffer->isDirty()) {
             $this->reloadBuffer($buffer, $content);

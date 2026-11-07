@@ -24,6 +24,7 @@ use Porta\Support\Files;
 use Porta\Workbench\Notifier;
 use Psr\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Exception\IOException;
+use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Path;
 
 /**
@@ -155,7 +156,16 @@ final readonly class WorkspaceEditor
                 // the words and leave the new file standing. Refused outright
                 // rather than half-offered.
                 $this->undo->decline();
-                $this->applyResourceOperation($kind, $change);
+                $failed = $this->resourceOperationFailed($kind, $change);
+                if (null !== $failed) {
+                    // The disk refused it (a folder that cannot be written, a
+                    // file onto a folder): stop here — what follows may need
+                    // it — and say so, rather than throw out of an edit whose
+                    // earlier operations are already on disk.
+                    $skipped[] = $failed;
+
+                    break;
+                }
 
                 continue;
             }
@@ -246,12 +256,26 @@ final readonly class WorkspaceEditor
             $this->present($to, $exists) && true !== ($options['overwrite'] ?? null) && true !== ($options['ignoreIfExists'] ?? null) => \sprintf('%s already exists', \basename($to)),
             default => null,
         };
-        if (null === $refusal) {
+        // A taken name under ignoreIfExists (and no overwrite) is the spec's
+        // SKIP: nothing moves, so nothing the later operations see changes.
+        if (null === $refusal && !$this->ignored($to, $options, $exists)) {
             $exists[$from] = false;
             $exists[$to] = true;
         }
 
         return $refusal;
+    }
+
+    /**
+     * Whether a rename to $to is the spec's skip: the name taken, ignoreIfExists
+     * asked, overwrite not.
+     *
+     * @param array<string, mixed> $options
+     * @param array<string, bool>  $exists
+     */
+    private function ignored(string $to, array $options, array $exists): bool
+    {
+        return $this->present($to, $exists) && true !== ($options['overwrite'] ?? null) && true === ($options['ignoreIfExists'] ?? null);
     }
 
     /**
@@ -327,6 +351,24 @@ final readonly class WorkspaceEditor
      *
      * @param array<string, mixed> $change
      */
+    /**
+     * {@see applyResourceOperation()}, the disk's refusal caught: the path it
+     * could not write, or null when it applied.
+     *
+     * @param array<string, mixed> $change
+     */
+    private function resourceOperationFailed(string $kind, array $change): ?string
+    {
+        try {
+            $this->applyResourceOperation($kind, $change);
+        } catch (IOExceptionInterface) {
+            return (string) $this->pathOf($change['newUri'] ?? $change['uri'] ?? null);
+        }
+
+        return null;
+    }
+
+    /** @param array<string, mixed> $change */
     private function applyResourceOperation(string $kind, array $change): void
     {
         // Every path here was resolved and judged by refuseUnhonourable, which
@@ -351,6 +393,17 @@ final readonly class WorkspaceEditor
         $from = $this->pathOf($change['oldUri'] ?? null);
         $to = $this->pathOf($change['newUri'] ?? null);
         \assert(null !== $from && null !== $to, description: 'a rename with no usable path is refused before applying');
+        $options = \is_array($change['options'] ?? null) ? $change['options'] : [];
+        // A taken name without overwrite was judged a skip (ignoreIfExists):
+        // applied with overwrite on, as it was, it replaced the file there.
+        if (true === ($options['overwrite'] ?? null) || !\file_exists($to)) {
+            $this->renameEntry($from, $to);
+        }
+    }
+
+    /** A server's rename of $from to $to, once {@see applyResourceOperation()} has judged it. */
+    private function renameEntry(string $from, string $to): void
+    {
         // The folder it goes into is made here, once the rename is judged —
         // made before, a refused move would leave it behind, wherever it was.
         $this->fs->mkdir(\dirname($to));

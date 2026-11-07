@@ -417,8 +417,13 @@ final class TreeOperations
             if (!$buffer->isDirty() || ($buffer->path !== $root && !ProjectPaths::isUnder($buffer->path, $root))) {
                 continue;
             }
-
-            $this->bufferService->saveBuffer($buffer);
+            // A save refused — the file changed on disk under the edits, whose
+            // first Ctrl+S only warns — or failed stops the move here, through
+            // the same toast as any failed step: gone ahead, the move re-read
+            // the file from disk and the edits were lost.
+            if (!$this->bufferService->saveBuffer($buffer)) {
+                throw new IOException(\sprintf('%s could not be saved', $buffer->path));
+            }
         }
     }
 

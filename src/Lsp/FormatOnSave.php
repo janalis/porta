@@ -30,6 +30,15 @@ final class FormatOnSave
 {
     private bool $enabled = false;
 
+    /**
+     * One round per FILE: a re-entrant save of this file supersedes its
+     * pending format, a save of another file must not — a single round for
+     * all of them dropped the first file's save when a second was saved.
+     *
+     * @var array<string, RequestRound>
+     */
+    private array $rounds = [];
+
     public function __construct(
         private readonly LspSessionPool $lsp,
         private readonly EditorInvalidator $editor,
@@ -37,7 +46,6 @@ final class FormatOnSave
         private readonly Translator $translator,
         private readonly Scheduler $scheduler,
         private readonly Tui $tui,
-        private readonly RequestRound $round = new RequestRound(),
     ) {}
 
     public function enable(): void
@@ -67,7 +75,9 @@ final class FormatOnSave
             return;
         }
 
-        $token = $this->round->start();
+        $this->rounds[$buffer->path] ??= new RequestRound();
+        $round = $this->rounds[$buffer->path];
+        $token = $round->start();
         $doc = $buffer->document;
         $version = $doc->version;
         $options = $doc->formattingOptions();
@@ -75,8 +85,8 @@ final class FormatOnSave
         // Ctrl+S must never hang: after 2 s the save proceeds unformatted and
         // the late response is dropped — with a flash, so a skipped format is
         // distinguishable from an already-clean file.
-        $timer = $this->scheduler->delay(2.0, function () use ($token, $save): void {
-            if (!$this->round->supersede($token)) {
+        $timer = $this->scheduler->delay(2.0, function () use ($round, $token, $save): void {
+            if (!$round->supersede($token)) {
                 return;
             }
             $this->notifier->warn($this->translator->trans('Formatting timed out — saved unformatted'));
@@ -86,8 +96,8 @@ final class FormatOnSave
         $this->lsp->request(
             'textDocument/formatting',
             ['textDocument' => Uri::textDocument($path), 'options' => $options],
-            function (mixed $result, ?array $error) use ($token, $timer, $buffer, $version, $save): void {
-                if (!$this->round->supersede($token)) {
+            function (mixed $result, ?array $error) use ($round, $token, $timer, $buffer, $version, $save): void {
+                if (!$round->supersede($token)) {
                     return; // superseded by the timeout or a newer save
                 }
                 $this->scheduler->cancel($timer);

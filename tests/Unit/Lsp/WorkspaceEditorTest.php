@@ -768,6 +768,93 @@ final class WorkspaceEditorTest extends TestCase
         $this->assertFileExists($real);
     }
 
+    /**
+     * `ignoreIfExists` says to SKIP a rename whose target is taken. It was let
+     * through the judging and then applied with overwrite on, so the file
+     * already at the target was replaced, its text gone.
+     */
+    public function testARenameToATakenNameThatSaysIgnoreIfExistsIsSkipped(): void
+    {
+        $project = new TempProject(['a.php' => "<?php // a\n", 'b.php' => "<?php // b, kept\n"]);
+
+        $outcome = $this->workspaceEditor()->applyWorkspaceEdit([
+            'documentChanges' => [[
+                'kind' => 'rename',
+                'oldUri' => Uri::fromPath($project->path('a.php')),
+                'newUri' => Uri::fromPath($project->path('b.php')),
+                'options' => ['ignoreIfExists' => true],
+            ]],
+        ]);
+
+        $this->assertFalse($outcome->isRefused());
+        $this->assertSame("<?php // b, kept\n", \file_get_contents($project->path('b.php')), 'the taken name keeps its file');
+        $this->assertFileExists($project->path('a.php'), 'and the rename did not happen');
+    }
+
+    /**
+     * The judging walks the operations against what will exist, so it must see
+     * a skipped rename as moving NOTHING: a later delete of the source is then
+     * honourable — and a free name, under the same option, is still a move.
+     */
+    public function testASkippedRenameMovesNothingInTheJudgingEither(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php // b\n", 'c.php' => "<?php // c\n"]);
+        $skip = ['ignoreIfExists' => true];
+
+        $outcome = $this->workspaceEditor()->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'rename', 'oldUri' => Uri::fromPath($project->path('a.php')), 'newUri' => Uri::fromPath($project->path('b.php')), 'options' => $skip],
+                ['kind' => 'delete', 'uri' => Uri::fromPath($project->path('a.php'))],
+                ['kind' => 'rename', 'oldUri' => Uri::fromPath($project->path('c.php')), 'newUri' => Uri::fromPath($project->path('d.php')), 'options' => $skip],
+                ['kind' => 'delete', 'uri' => Uri::fromPath($project->path('d.php'))],
+            ],
+        ]);
+
+        $this->assertFalse($outcome->isRefused(), (string) $outcome->refused);
+        $this->assertFileDoesNotExist($project->path('a.php'), 'still there after the skip, so deleted');
+        $this->assertSame("<?php // b\n", \file_get_contents($project->path('b.php')));
+        $this->assertFileDoesNotExist($project->path('c.php'), 'a free name is a move');
+        $this->assertFileDoesNotExist($project->path('d.php'), 'and then deleted where it went');
+    }
+
+    /**
+     * A resource operation the disk refuses — a rename into a folder that
+     * cannot be written — was thrown out of the edit: the operations before
+     * it stayed applied, nobody heard the tree changed, and the caller got an
+     * exception where it was promised an outcome. Now the edit stops there and
+     * says what it could not write.
+     */
+    public function testAResourceOperationTheDiskRefusesStopsTheEditAndSaysSo(): void
+    {
+        $project = new TempProject(['a.php' => "<?php\n", 'locked/keep.php' => "<?php\n"]);
+        \chmod($project->path('locked'), permissions: 0o555);
+        $events = new EventDispatcher();
+        $treeChanged = 0;
+        $events->addListener(WorkingTreeChanged::class, static function () use (&$treeChanged): void {
+            ++$treeChanged;
+        });
+
+        try {
+            $outcome = $this->workspaceEditor($events)->applyWorkspaceEdit([
+                'documentChanges' => [
+                    ['kind' => 'rename', 'oldUri' => Uri::fromPath($project->path('a.php')), 'newUri' => Uri::fromPath($project->dir.'/locked/a.php')],
+                    ['kind' => 'create', 'uri' => Uri::fromPath($project->path('after.php'))],
+                ],
+            ]);
+        } finally {
+            \chmod($project->path('locked'), permissions: 0o755);
+        }
+
+        $this->assertSame(
+            [$project->dir.'/locked/a.php'],
+            \array_map(static fn (string $path): string => \str_replace((string) \realpath($project->dir), $project->dir, $path), $outcome->skipped),
+            'named as what could not be written',
+        );
+        $this->assertFileExists($project->path('a.php'));
+        $this->assertFileDoesNotExist($project->path('after.php'), 'the edit stopped there: what follows may have needed what failed');
+        $this->assertSame(1, $treeChanged, 'the tree is announced: an edit may have applied operations before the one that failed');
+    }
+
     /** A server renaming a link renames the link, and the fact names both of its spellings — never the target's. */
     public function testARenamedLinkIsToldOfAsItself(): void
     {

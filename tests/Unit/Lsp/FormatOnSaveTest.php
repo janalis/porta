@@ -253,4 +253,32 @@ final class FormatOnSaveTest extends TestCase
         $this->respond([]);
         $this->assertSame(1, $this->saves);
     }
+
+    /**
+     * A save of ANOTHER file is not a re-entrant save of this one. One round
+     * served every buffer, so saving b.php while a.php's format was pending
+     * superseded a.php's: neither its answer nor its timeout saved it, and the
+     * file the user had just saved stayed unsaved, without a word.
+     */
+    public function testASaveOfAnotherFileDoesNotCancelThisOnesSave(): void
+    {
+        $formatOnSave = $this->formatOnSave();
+        $a = $this->buffer();
+        $b = new BufferManager()->open('/tmp/proj/b.php', "<?php \$b=1;\n");
+        $this->pool->notifyDidOpen($b->path, $b->document->getText(), 'php', 1);
+        $saved = [];
+
+        $formatOnSave->formatThenSave($a, static function () use (&$saved): void {
+            $saved[] = 'a';
+        });
+        $formatOnSave->formatThenSave($b, static function () use (&$saved): void {
+            $saved[] = 'b';
+        });
+        $formatting = \array_values(\array_filter($this->client->requests, static fn (array $sent): bool => 'textDocument/formatting' === $sent['method']));
+        $this->assertCount(2, $formatting);
+        $formatting[0]['respond']([], error: null);
+        $formatting[1]['respond']([], error: null);
+
+        $this->assertSame(['a', 'b'], $saved, 'each file saved, each on its own answer');
+    }
 }
