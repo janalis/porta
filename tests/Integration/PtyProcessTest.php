@@ -409,10 +409,11 @@ final class PtyProcessTest extends TestCase
         $this->await(static function () use (&$buffer): bool {
             return $buffer->lineCount() > 1;
         });
-        $before = EventLoop::getIdentifiers();
+        $watcher = Probe::get($p, 'watcher');
+        $this->assertIsString($watcher);
         $p->stop();
-        $after = EventLoop::getIdentifiers();
-        $this->assertLessThan(\count($before), \count($after), 'stop() must cancel its own watcher, not just null the property');
+        // Its id, not a count: the reaper's timer may join the loop as the watcher leaves it.
+        $this->assertNotContains($watcher, EventLoop::getIdentifiers(), 'stop() must cancel its own watcher, not just null the property');
 
         $countAfterStop = $buffer->lineCount();
         // Give any leaked watcher a chance to fire before asserting silence.
@@ -431,9 +432,13 @@ final class PtyProcessTest extends TestCase
         $this->assertTrue($p->start());
         $status = \proc_get_status(Probe::get($p, 'process'));
         $pid = $status['pid'];
+        $master = Probe::get($p, 'master');
 
         $p->stop();
 
-        $this->assertFalse(\posix_kill($pid, signal: 0), 'the child OS process must actually be terminated, not merely marked stopped locally');
+        // Gone once reaped — at once when it is dead, as nearly always; on the
+        // reaper's timer when not, since stop() no longer waits on the UI loop.
+        $this->await(static fn (): bool => !\posix_kill($pid, signal: 0), what: 'the child OS process terminated, not merely marked stopped locally');
+        $this->assertFalse(\is_resource($master), 'the terminal closed, not only forgotten: a dying child has nothing left to drain into');
     }
 }

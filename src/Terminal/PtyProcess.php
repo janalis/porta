@@ -264,9 +264,21 @@ final class PtyProcess
         }
         // The whole group: a server the run started goes with it.
         $this->signalGroup(\SIGKILL);
+        // Closed before the child is reaped: a dying process drains what it
+        // wrote to its terminal, and an open master nobody reads holds that
+        // drain — and the exit — forever.
+        if (\is_resource($this->master)) {
+            \fclose($this->master);
+        }
+        $this->master = null;
+        // Reaped, never waited for: proc_close() blocks until the child is
+        // gone, and stop() runs on the UI loop. A child stuck in its exit —
+        // a session leader's terminal teardown on a loaded macOS, seen
+        // holding a test worker for hours — froze the IDE with it. Dead,
+        // as nearly always, it is reaped at once; else on a timer.
         if (\is_resource($this->process)) {
             \proc_terminate($this->process, \SIGKILL);
-            \proc_close($this->process);
+            ProcessReaper::closeWhenDead($this->process);
         }
         $this->process = null;
         $this->running = false;
