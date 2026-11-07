@@ -47,6 +47,8 @@ final class SettingsPluginsControllerTest extends TestCase
     /** Held so its destructor does not remove the bundled fixture mid-test. */
     private TempProject $embedded;
     private ?string $composerBinary = null;
+    /** @var list<TempProject> where fake tools are written: each goes with the test, not left in the temp dir */
+    private array $bins = [];
     /** @var array<string, string|null> manager name => fake binary path */
     private array $managerBinaries = [];
     private EventDispatcher $events;
@@ -174,7 +176,10 @@ final class SettingsPluginsControllerTest extends TestCase
 
     private function fakeComposer(int $exitCode = 0): string
     {
-        return FakeComposer::write(\sys_get_temp_dir().'/porta-fakebin-'.\bin2hex(\random_bytes(4)), $exitCode);
+        $bin = new TempProject();
+        $this->bins[] = $bin;
+
+        return FakeComposer::write($bin->dir, $exitCode);
     }
 
     public function testTheIndexListsEachPluginWithWhatItIsAndAButtonToItsPage(): void
@@ -702,11 +707,12 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame(0, $this->lifecycle->refreshed, 'no declaration → nothing to install');
     }
 
-    /** Drive the event loop until $done or the timeout. */
     /** An executable stand-in for a package manager that exits with $exitCode after an optional sleep. */
     private function fakeManager(int $exitCode, int $sleepSeconds = 0): string
     {
-        $path = (string) \tempnam(\sys_get_temp_dir(), prefix: 'porta-mgr');
+        $bin = new TempProject();
+        $this->bins[] = $bin;
+        $path = $bin->dir.'/manager';
         \file_put_contents($path, "#!/bin/sh\nsleep {$sleepSeconds}\nexit {$exitCode}\n");
         \chmod($path, permissions: 0o755);
 

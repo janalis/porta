@@ -7,16 +7,20 @@ namespace Porta\Tests\Unit\Support;
 use PHPUnit\Framework\TestCase;
 use Porta\Support\BrowserOpener;
 use Porta\Tests\Support\PreservesPath;
+use Porta\Tests\Support\TempProject;
 
 final class BrowserOpenerTest extends TestCase
 {
     use PreservesPath;
 
+    /** The shims' folder: a TempProject, so it goes with the test rather than staying in the temp dir. */
+    private ?TempProject $shims = null;
+
     /** A temp dir holding executable shims named $names, put first on PATH. */
     private function shimPath(string ...$names): string
     {
-        $dir = \sys_get_temp_dir().'/porta-opener-'.\bin2hex(\random_bytes(4));
-        \mkdir($dir);
+        $this->shims = new TempProject();
+        $dir = \rtrim($this->shims->dir, characters: '/');
         foreach ($names as $name) {
             \file_put_contents($dir.'/'.$name, data: "#!/bin/sh\n");
             \chmod($dir.'/'.$name, permissions: 0o755);

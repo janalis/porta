@@ -507,8 +507,17 @@ final class FlakeScanCommandTest extends TestCase
     public function testTheRealRunnerKillsARunThatOutlivesItsBudget(): void
     {
         $tester = new CommandTester(new FlakeScanCommand());
-
-        $tester->execute(['--runs' => 1, '--processes' => 2, '--testsuite' => 'Integration', '--timeout' => 1]);
+        // The run is killed, so nothing it made is cleaned up — each worker's
+        // claude folder, its first TempProject. Made in a temp dir of the
+        // test's own, they go with it instead of staying in the real one.
+        $temp = new TempProject();
+        $previous = \getenv('TMPDIR');
+        \putenv('TMPDIR='.$temp->dir);
+        try {
+            $tester->execute(['--runs' => 1, '--processes' => 2, '--testsuite' => 'Integration', '--timeout' => 1]);
+        } finally {
+            \putenv(\is_string($previous) ? 'TMPDIR='.$previous : 'TMPDIR');
+        }
         $display = $tester->getDisplay();
 
         $this->assertStringContainsString('WEDGED', $display);
