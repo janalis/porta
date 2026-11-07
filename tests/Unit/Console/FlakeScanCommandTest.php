@@ -527,7 +527,15 @@ final class FlakeScanCommandTest extends TestCase
         // The TREE goes: killing only the shell the run was started through
         // left paratest running the whole suite on, beside whatever ran next,
         // and writing its log into the temp dir when it was done.
-        $survivors = \trim((string) \shell_exec("pgrep -f -- '--log-junit=.*porta-flake-' 2>/dev/null"));
+        // A SIGKILL is delivered, not awaited: on a loaded box a killed
+        // process is still listed for a moment. Gone within the deadline is
+        // killed; still there after it is a survivor.
+        $deadline = \hrtime(as_number: true) + 5_000_000_000;
+        $survivors = self::flakeRuns();
+        while ('' !== $survivors && \hrtime(as_number: true) < $deadline) {
+            \usleep(50_000);
+            $survivors = self::flakeRuns();
+        }
         $this->assertSame('', $survivors, 'no paratest of the killed run is left');
     }
 
@@ -592,5 +600,11 @@ final class FlakeScanCommandTest extends TestCase
 
         $this->assertNull($received, 'no --processes flag is passed for auto');
         $this->assertStringContainsString("paratest's own default", $tester->getDisplay());
+    }
+
+    /** The pids of any paratest still writing a flake scan's log, one per line. */
+    private static function flakeRuns(): string
+    {
+        return \trim((string) \shell_exec("pgrep -f -- '--log-junit=.*porta-flake-' 2>/dev/null"));
     }
 }
