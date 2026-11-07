@@ -262,8 +262,17 @@ final class TreeKeyboardTest extends TestCase
 
         $this->assertFileExists($path, 'not moved');
         $this->assertFileDoesNotExist($this->project->path('moved.php'));
+        $this->assertContains('a.php changed on disk', Toasts::all($this->ide), 'and says why');
         $this->assertStringContainsString('// mine', $buffer->document->getText(), 'the edits are still in their buffer');
         $this->assertTrue($buffer->isDirty());
+
+        // And trying again at once does not write over the other writer: the
+        // move never answered Ctrl+S's first press for the user.
+        $this->tui()->setFocus($this->tree());
+        $this->walkTo('a.php');
+        $this->renameTo('moved.php');
+        $this->assertFileExists($path, 'still not moved');
+        $this->assertStringContainsString('theirs', (string) \file_get_contents($path), 'their text is still on disk');
     }
 
     /** A subfolder the walk cannot read is skipped, not thrown: the delete answers as it did before the walk. */

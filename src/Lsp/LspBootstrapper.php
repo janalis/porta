@@ -76,7 +76,9 @@ final readonly class LspBootstrapper
                         ['%count%' => $outcome->touched, '%skipped%' => \count($outcome->skipped)],
                     ));
 
-                    return $outcome->touched > 0;
+                    // Applied in part is applied: a server told otherwise would
+                    // act on a tree that no longer is what it thinks.
+                    return $outcome->touched > 0 || $outcome->operations > 0;
                 }
                 if ($outcome->touched > 0) {
                     $this->notifier->flash(

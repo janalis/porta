@@ -145,10 +145,11 @@ final readonly class WorkspaceEditor
         }
 
         $touched = 0;
+        $operations = 0;
         $skipped = [];
         $started = [];
         $this->undo->begin();
-        foreach ($changes as $change) {
+        foreach ($changes as $index => $change) {
             $kind = \is_string($change['kind'] ?? null) ? $change['kind'] : '';
             if ('' !== $kind) {
                 // A create, rename or delete puts this edit beyond the reach of
@@ -161,11 +162,13 @@ final readonly class WorkspaceEditor
                     // The disk refused it (a folder that cannot be written, a
                     // file onto a folder): stop here — what follows may need
                     // it — and say so, rather than throw out of an edit whose
-                    // earlier operations are already on disk.
-                    $skipped[] = $failed;
+                    // earlier operations are already on disk. Every file the
+                    // rest of the edit named is left undone, and named too.
+                    $skipped = [...$skipped, $failed, ...$this->pathsNamed(\array_slice($changes, $index + 1))];
 
                     break;
                 }
+                ++$operations;
 
                 continue;
             }
@@ -178,7 +181,27 @@ final readonly class WorkspaceEditor
             }
         }
 
-        return new WorkspaceEditOutcome($touched, $skipped);
+        return new WorkspaceEditOutcome($touched, \array_values(\array_unique($skipped)), operations: $operations);
+    }
+
+    /**
+     * Every file $changes name — what an edit stopped part-way leaves undone.
+     *
+     * @param list<array<string, mixed>> $changes
+     *
+     * @return list<string>
+     */
+    private function pathsNamed(array $changes): array
+    {
+        $paths = [];
+        foreach ($changes as $change) {
+            $named = $this->pathOf($change['newUri'] ?? $change['uri'] ?? $change['textDocument']['uri'] ?? null);
+            if (null !== $named) {
+                $paths[] = $named;
+            }
+        }
+
+        return $paths;
     }
 
     /**
@@ -346,12 +369,6 @@ final readonly class WorkspaceEditor
     }
 
     /**
-     * Perform one operation. Validated already, so what remains is the doing —
-     * and the open buffer, which has to follow the file it is showing.
-     *
-     * @param array<string, mixed> $change
-     */
-    /**
      * {@see applyResourceOperation()}, the disk's refusal caught: the path it
      * could not write, or null when it applied.
      *
@@ -368,7 +385,12 @@ final readonly class WorkspaceEditor
         return null;
     }
 
-    /** @param array<string, mixed> $change */
+    /**
+     * Perform one operation. Validated already, so what remains is the doing —
+     * and the open buffer, which has to follow the file it is showing.
+     *
+     * @param array<string, mixed> $change
+     */
     private function applyResourceOperation(string $kind, array $change): void
     {
         // Every path here was resolved and judged by refuseUnhonourable, which
@@ -377,7 +399,10 @@ final readonly class WorkspaceEditor
         if ('create' === $kind) {
             $path = $this->pathOf($change['uri'] ?? null);
             \assert(null !== $path, description: 'a create with no usable path is refused before applying');
-            if (!\file_exists($path)) {
+            // overwrite REPLACES a file there (and wins over ignoreIfExists):
+            // kept, the edits that follow a create landed on the old text.
+            $overwrite = \is_array($change['options'] ?? null) && true === ($change['options']['overwrite'] ?? null);
+            if ($overwrite || !\file_exists($path)) {
                 $this->fs->dumpFile($path, '');
             }
 
@@ -393,10 +418,11 @@ final readonly class WorkspaceEditor
         $from = $this->pathOf($change['oldUri'] ?? null);
         $to = $this->pathOf($change['newUri'] ?? null);
         \assert(null !== $from && null !== $to, description: 'a rename with no usable path is refused before applying');
+        /** @var array<string, mixed> $options */
         $options = \is_array($change['options'] ?? null) ? $change['options'] : [];
-        // A taken name without overwrite was judged a skip (ignoreIfExists):
-        // applied with overwrite on, as it was, it replaced the file there.
-        if (true === ($options['overwrite'] ?? null) || !\file_exists($to)) {
+        // The judging's own skip rule, asked of the disk now: applied with
+        // overwrite on, as it was, a skipped rename replaced the file there.
+        if (!$this->ignored($to, $options, [])) {
             $this->renameEntry($from, $to);
         }
     }
@@ -443,9 +469,6 @@ final readonly class WorkspaceEditor
         // APPLIED, which this codebase treats as the worse outcome. What it
         // may not do is happen in silence.
         $buffer = $this->bufferAt($path);
-        if (true === $buffer?->isDirty()) {
-            $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => \basename($path)]));
-        }
         // Canonical, and resolved BEFORE the removal — afterwards there is
         // nothing left for realpath() to resolve. FileDeleted's contract.
         $key = Files::canonical($path);
@@ -453,8 +476,13 @@ final readonly class WorkspaceEditor
         // all, in the file's own shape — is what FileDeleted hands on for
         // recovery, which writes it back as the file.
         $previous = null !== $buffer && !$buffer->isViewer() ? DiskText::asWritten($buffer->document) : Files::textOf($path);
-        $this->closeBufferAt($path);
+        // Removed FIRST: a removal the disk refuses throws from here, and the
+        // tab — unsaved edits and all — must still be open when it does.
         $this->fs->remove($path);
+        if (true === $buffer?->isDirty()) {
+            $this->notifier?->error($this->translator->trans('Deleted %file% — unsaved changes in it are gone', ['%file%' => \basename($path)]));
+        }
+        $this->closeBufferAt($path);
         $this->events->dispatch(new FileDeleted($key, $previous));
     }
 

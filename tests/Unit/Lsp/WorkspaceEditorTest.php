@@ -837,8 +837,10 @@ final class WorkspaceEditorTest extends TestCase
         try {
             $outcome = $this->workspaceEditor($events)->applyWorkspaceEdit([
                 'documentChanges' => [
+                    ['kind' => 'create', 'uri' => Uri::fromPath($project->path('first.php'))],
                     ['kind' => 'rename', 'oldUri' => Uri::fromPath($project->path('a.php')), 'newUri' => Uri::fromPath($project->dir.'/locked/a.php')],
                     ['kind' => 'create', 'uri' => Uri::fromPath($project->path('after.php'))],
+                    ['textDocument' => ['uri' => Uri::fromPath($project->path('locked/keep.php')), 'version' => null], 'edits' => []],
                 ],
             ]);
         } finally {
@@ -846,13 +848,61 @@ final class WorkspaceEditorTest extends TestCase
         }
 
         $this->assertSame(
-            [$project->dir.'/locked/a.php'],
+            [$project->dir.'/locked/a.php', $project->dir.'/after.php', $project->dir.'/locked/keep.php'],
             \array_map(static fn (string $path): string => \str_replace((string) \realpath($project->dir), $project->dir, $path), $outcome->skipped),
-            'named as what could not be written',
+            'named as what could not be written — and what the edit then never reached',
         );
         $this->assertFileExists($project->path('a.php'));
         $this->assertFileDoesNotExist($project->path('after.php'), 'the edit stopped there: what follows may have needed what failed');
+        $this->assertSame(1, $outcome->operations, 'what ran before it is counted: a server told "not applied" would act on a tree that is not there');
         $this->assertSame(1, $treeChanged, 'the tree is announced: an edit may have applied operations before the one that failed');
+    }
+
+    /**
+     * A delete the disk refuses leaves the file's tab open, unsaved edits and
+     * all: the buffer was closed BEFORE the removal, so a refused one lost the
+     * edits while the file stayed.
+     */
+    public function testADeleteTheDiskRefusesKeepsTheTabAndItsEdits(): void
+    {
+        $project = new TempProject(['locked/a.php' => "<?php\n"]);
+        $path = (string) \realpath($project->path('locked/a.php'));
+        $we = $this->workspaceEditor();
+        $this->buffers->open($path, "<?php\n")->document->insert('// mine');
+        \chmod($project->path('locked'), permissions: 0o555);
+
+        try {
+            $outcome = $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => 'file://'.$path]]]);
+        } finally {
+            \chmod($project->path('locked'), permissions: 0o755);
+        }
+
+        $this->assertSame([$path], $outcome->skipped);
+        $this->assertFileExists($path);
+        $this->assertStringContainsString('// mine', (string) $this->buffers->get($path)?->document->getText(), 'the tab and its edits are still there');
+    }
+
+    /**
+     * `overwrite` on a create REPLACES a file already there. Kept, the text
+     * edits that follow a create — an extracted class — landed on the old
+     * file's text, two files' worth of code in one.
+     */
+    public function testACreateThatSaysOverwriteReplacesTheFileThere(): void
+    {
+        $project = new TempProject(['X.php' => "<?php // old\n"]);
+        $uri = Uri::fromPath($project->path('X.php'));
+
+        $this->workspaceEditor()->applyWorkspaceEdit([
+            'documentChanges' => [
+                ['kind' => 'create', 'uri' => $uri, 'options' => ['overwrite' => true]],
+                [
+                    'textDocument' => ['uri' => $uri, 'version' => null],
+                    'edits' => [['range' => ['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'newText' => "<?php // new\n"]],
+                ],
+            ],
+        ]);
+
+        $this->assertSame("<?php // new\n", \file_get_contents($project->path('X.php')));
     }
 
     /** A server renaming a link renames the link, and the fact names both of its spellings — never the target's. */

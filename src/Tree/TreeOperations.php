@@ -417,11 +417,16 @@ final class TreeOperations
             if (!$buffer->isDirty() || ($buffer->path !== $root && !ProjectPaths::isUnder($buffer->path, $root))) {
                 continue;
             }
-            // A save refused — the file changed on disk under the edits, whose
-            // first Ctrl+S only warns — or failed stops the move here, through
-            // the same toast as any failed step: gone ahead, the move re-read
-            // the file from disk and the edits were lost.
-            if (!$this->bufferService->saveBuffer($buffer)) {
+            // A file changed on disk under the edits is not saved here at all:
+            // that is the user's call, and saveBuffer() would take this as its
+            // first Ctrl+S — arming the overwrite, so a second try of the move
+            // within seconds wrote over the other writer's work. It, or a save
+            // that fails, stops the move, through the same toast as any failed
+            // step: gone ahead, the move re-read the file and lost the edits.
+            if ($buffer->diskChangedUnderEdit) {
+                $this->notifier->warn($this->translator->trans('%file% changed on disk', ['%file%' => $this->paths->relative($buffer->path)]));
+            }
+            if ($buffer->diskChangedUnderEdit || !$this->bufferService->saveBuffer($buffer)) {
                 throw new IOException(\sprintf('%s could not be saved', $buffer->path));
             }
         }

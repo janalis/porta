@@ -21,11 +21,14 @@ final readonly class WorkspaceEditOutcome
      * @param list<string>        $skipped files named by the edit that could not be written (missing, read-only)
      * @param string|null         $refused when set, NOTHING was applied — a resource operation the edit
      *                                     required could not be honoured, and half of it is worse than none
+     * @param int                 $operations creates, renames and deletes that went through — an edit
+     *                                        that changed no text may still have changed the tree
      */
     public function __construct(
         public int $touched,
         public array $skipped = [],
         public ?string $refused = null,
+        public int $operations = 0,
     ) {}
 
     /** The whole edit was declined; the workspace is untouched. */
