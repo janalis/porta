@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-11-08
+
 ### Security
 
 - **Assist**: a guest could open any file under the shared project, including

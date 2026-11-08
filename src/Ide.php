@@ -95,7 +95,7 @@ use Symfony\Component\Tui\Tui;
  */
 final class Ide
 {
-    public const string VERSION = '0.1.4';
+    public const string VERSION = '0.1.5';
 
     private readonly Tui $tui;
 
