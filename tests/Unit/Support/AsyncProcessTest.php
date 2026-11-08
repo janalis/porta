@@ -269,7 +269,7 @@ final class AsyncProcessTest extends TestCase
     /**
      * The discriminating case: a child that never reads stdin. Once the 64KB
      * pipe buffer fills there is no reader to drain it, so the old blocking
-     * fwrite parked the caller inside start() until the child exited — 300ms
+     * fwrite parked the caller inside start() until the child exited — 1.5 s
      * of dead event loop here, and unbounded for a longer-lived child. The
      * watcher simply stops being writable and start() returns at once.
      *
@@ -279,7 +279,7 @@ final class AsyncProcessTest extends TestCase
     public function testStartReturnsImmediatelyWhenTheChildNeverReadsStdin(): void
     {
         $process = new AsyncProcess(
-            [\PHP_BINARY, '-r', 'usleep(400000); echo "done";'], // never touches STDIN
+            [\PHP_BINARY, '-r', 'usleep(1500000); echo "done";'], // never touches STDIN
             __DIR__,
             stdin: \str_repeat('y', 512 * 1024),
         );
@@ -296,6 +296,8 @@ final class AsyncProcessTest extends TestCase
         }, timeout: 10.0);
 
         $this->assertSame('done', $out);
-        $this->assertLessThan(100.0, $spentInStart, 'start() must not block on the child draining stdin');
+        // Half the child's life, not a tight bound: blocking costs all of it,
+        // and on a loaded box proc_open() alone passed the 100 ms this was.
+        $this->assertLessThan(750.0, $spentInStart, 'start() must not block on the child draining stdin');
     }
 }

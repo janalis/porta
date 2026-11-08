@@ -602,9 +602,16 @@ final class FlakeScanCommandTest extends TestCase
         $this->assertStringContainsString("paratest's own default", $tester->getDisplay());
     }
 
-    /** The pids of any paratest still writing a flake scan's log, one per line. */
+    /**
+     * The pids of any paratest still writing a flake scan's log, one per line.
+     *
+     * `[-]-`, not `--`: the shell shell_exec() runs pgrep through carries the
+     * pattern in its own command line, and on Linux (dash forks for it, where
+     * macOS's sh execs) pgrep found that shell — every time, as a survivor.
+     * The bracket keeps the pattern from matching its own spelling.
+     */
     private static function flakeRuns(): string
     {
-        return \trim((string) \shell_exec("pgrep -f -- '--log-junit=.*porta-flake-' 2>/dev/null"));
+        return \trim((string) \shell_exec("pgrep -f -- '[-]-log-junit=.*porta-flake-' 2>/dev/null"));
     }
 }
