@@ -487,6 +487,40 @@ final class CoverageCheckCommandTest extends TestCase
         $this->assertStringNotContainsString('psalm', $display, 'the external-tool one is excused');
     }
 
+    /**
+     * A file that only declares — an interface, an enum of cases — has nothing
+     * pcov can record, and is recorded only when it happens to be compiled
+     * while coverage runs: absent from one run and present in the next, it
+     * failed the gate on files nothing could cover. Its absence is no gap. A
+     * method body, a property hook, a top-level call: those stay required.
+     */
+    public function testAFileThatOnlyDeclaresMayBeAbsentAndOneThatRunsCodeMayNot(): void
+    {
+        $project = new TempProject([
+            'plugins/demo/src/Contract.php' => "<?php\ndeclare(strict_types=1);\nnamespace Demo;\n#[\\Attribute]\ninterface Contract { public function x(): void; }\n",
+            'plugins/demo/src/Kind.php' => "<?php\nnamespace Demo;\nenum Kind: string { case A = 'a'; }\n",
+            'plugins/demo/src/Shape.php' => "<?php\ndeclare(strict_types=1, ticks=1);\nnamespace Demo;\nuse Other\\Thing;\n#[Route('/x', methods: ['GET', ['nested']])]\nabstract class Shape implements \\Countable { public const array SIDES = [1, 2]; protected ?Thing \$thing = null; abstract public function area(): float; }\n",
+            'plugins/demo/src/Nothing.php' => "<?php\nnamespace Demo;\n",
+            'plugins/demo/src/Returned.php' => "<?php\nnamespace Demo;\nfinal class Returned {}\nreturn 1;\n",
+            'plugins/demo/src/Doer.php' => "<?php\nnamespace Demo;\nfinal class Doer { public function x(): int { return 1; } }\n",
+            'plugins/demo/src/Hooked.php' => "<?php\nnamespace Demo;\nfinal class Hooked { public int \$x { get => 1; } }\n",
+            'plugins/demo/src/Aliased.php' => "<?php\nnamespace Demo;\nfinal class Aliased {}\n\\class_alias(Aliased::class, 'Other');\n",
+        ]);
+        $project->write('clover.xml', $this->clover([], totalCovered: 0, totalStatements: 0));
+
+        $tester = $this->tester();
+        $status = $tester->execute(['clover' => $project->path('clover.xml'), 'threshold' => '0', '--require' => $project->path('plugins')]);
+        $display = $tester->getDisplay();
+
+        $this->assertSame(Command::FAILURE, $status, $display);
+        foreach (['Doer.php', 'Hooked.php', 'Aliased.php', 'Nothing.php', 'Returned.php'] as $runs) {
+            $this->assertStringContainsString($runs, $display, $runs.' runs code, or declares no type: its absence is a gap');
+        }
+        foreach (['Contract.php', 'Kind.php', 'Shape.php'] as $declares) {
+            $this->assertStringNotContainsString($declares, $display, $declares.' only declares');
+        }
+    }
+
     public function testADeadMayBeAbsentEntryFailsTheGate(): void
     {
         // The arch gate's both-directions doctrine, applied to this allowlist:

@@ -52,6 +52,29 @@ final class CoverageCheckCommand extends Command
 {
     use CommandErrorStream;
 
+    /** What may stand outside a type in a file that only declares: its namespace, uses, and the type's own header. */
+    private const array HEADER = [
+        \T_OPEN_TAG,
+        \T_NAMESPACE,
+        \T_USE,
+        \T_FUNCTION,
+        \T_CONST,
+        \T_AS,
+        \T_STRING,
+        \T_NAME_QUALIFIED,
+        \T_NAME_FULLY_QUALIFIED,
+        \T_NAME_RELATIVE,
+        \T_ABSTRACT,
+        \T_FINAL,
+        \T_READONLY,
+        \T_CLASS,
+        \T_INTERFACE,
+        \T_TRAIT,
+        \T_ENUM,
+        \T_EXTENDS,
+        \T_IMPLEMENTS,
+    ];
+
     /** @var list<string> */
     private readonly array $mayBeAbsent;
 
@@ -338,7 +361,7 @@ final class CoverageCheckCommand extends Command
             // where the path is already relative, but nothing should depend on
             // the caller's working directory to decide what is excused.
             $excused = \array_filter($this->mayBeAbsent, static fn (string $tail): bool => \str_ends_with($relative, $tail));
-            if (\array_key_exists((string) \realpath($path), $graded) || [] !== $excused) {
+            if (\array_key_exists((string) \realpath($path), $graded) || [] !== $excused || self::declarationOnly($path)) {
                 continue;
             }
             $absent[] = $relative;
@@ -346,6 +369,74 @@ final class CoverageCheckCommand extends Command
         \sort($absent);
 
         return $absent;
+    }
+
+    /**
+     * Whether the file at $path declares a type and runs nothing: an interface,
+     * an enum of cases, a trait or class without a body to any method. pcov
+     * records such a file only when it is compiled while coverage runs, which
+     * one run does and the next does not — so its absence is no gap, and
+     * failing on it failed the gate on files nothing could ever cover. A
+     * script (no type declared) and any method body stay required.
+     */
+    private static function declarationOnly(string $path): bool
+    {
+        $declares = false;
+        $depth = 0;
+        $skip = 0; // inside an attribute's brackets or a declare()'s parentheses
+        $previous = null;
+        foreach (\PhpToken::tokenize((string) \file_get_contents($path)) as $part) {
+            if ($part->isIgnorable()) {
+                continue;
+            }
+            if ($skip > 0) {
+                $skip += match ($part->text) {
+                    '[', '(' => 1,
+                    ']', ')' => -1,
+                    default => 0,
+                };
+
+                continue;
+            }
+            $declares = $declares || (0 === $depth && $part->is([\T_CLASS, \T_INTERFACE, \T_TRAIT, \T_ENUM]));
+            $verdict = true === $previous?->is(\T_DECLARE) ? self::deeper($skip, 1) : self::runs($part, $depth, $skip);
+            $previous = $part;
+            if (null !== $verdict) {
+                return false;
+            }
+        }
+
+        return $declares;
+    }
+
+    /**
+     * A token's say in {@see declarationOnly()}: non-null when it runs code —
+     * an arrow fn, a body inside a type (a method, a hook), or a statement
+     * outside one. Tracks the brace depth and opens the skips it starts.
+     */
+    private static function runs(\PhpToken $part, int &$depth, int &$skip): ?true
+    {
+        if ($part->is(\T_ATTRIBUTE)) {
+            $skip = 1; // declare's parentheses open on the next token, and are skipped there
+        }
+
+        return match (true) {
+            $part->is([\T_ATTRIBUTE, \T_DECLARE]) => null,
+            '{' === $part->text && 0 === $depth => self::deeper($depth, 1),
+            '}' === $part->text => self::deeper($depth, -1),
+            // A body inside a type (a method, a hook), or a statement outside
+            // one — a call, a return; an arrow fn is always one of these.
+            // (declare()'s own parentheses never get here.)
+            '{' === $part->text, 0 === $depth && !$part->is(self::HEADER) && !\in_array($part->text, [';', ',', ':', '\\'], strict: true) => true,
+            default => null,
+        };
+    }
+
+    private static function deeper(int &$depth, int $by): null
+    {
+        $depth += $by;
+
+        return null;
     }
 
     /**
