@@ -5,6 +5,68 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Security
+
+- **Assist**: a guest could open any file under the shared project, including
+  ones the share leaves out (a gitignored `.env`), and a guest who may edit
+  could rewrite it. A guest now opens and saves only what the host shares.
+- **Assist**: a guest's language-server session could point the host's server
+  at any folder on the host's disk and read it back through hover and symbol
+  search. The host's server now always works on the host's project.
+- **Assist**: a guest could freeze the host by asking for the file list many
+  times at once; each ask ran a full project scan.
+
+### Fixed
+
+- **Data loss**: renaming or moving a file whose unsaved edits could not be
+  saved first — the file had changed on disk — went ahead and lost the edits.
+  It now stops and says the file changed. Trying again at once no longer
+  overwrites the other program's changes.
+- **Data loss**: discarding a renamed file in the git view restored the old
+  name over a file you had written there since. Discarding a copy no longer
+  touches the file it was copied from.
+- **Data loss**: keeping a Claude Code proposal after its tab was closed
+  emptied the file.
+- **Data loss**: the stash picker could drop or apply a different stash than
+  the one picked, when the list changed in a terminal while it was open.
+- **Format on save**: saving a second file while the first was still being
+  formatted silently cancelled the first file's save.
+- **Symbolic links**: deleting or renaming a link in the tree, or by a
+  language server, acted on the file it points to — closing its tabs and
+  forgetting its bookmarks and history.
+- **Line endings**: a language-server rename, and a Claude Code proposal,
+  rewrote a CRLF file as LF and dropped its byte-order mark; a proposal's
+  side-by-side comparison showed every line of such a file as changed.
+- **Language servers**: a rename onto an existing file marked "ignore if it
+  exists" overwrote it; a create marked "overwrite" kept the old text; an
+  operation the disk refused stopped the IDE mid-edit instead of saying which
+  files were not written.
+- **Search and replace**: a replace limited to comments and strings wrote `$1`
+  literally and ignored Preserve Case, landed three characters late in files
+  with a byte-order mark, and rewrote files with unsaved edits; a multi-line
+  replace now leaves those alone too, and names them.
+- **Files changed elsewhere**: a file rewritten by another program into
+  something Porta cannot show (not UTF-8, or over 2 MB) is now flagged as
+  changed, so the next save warns before overwriting it.
+- A `.porta.json` saved with a byte-order mark was ignored as invalid, and
+  set aside at the next settings change.
+- A project folder moved or deleted while open was recreated by the next
+  layout save.
+- Stopping a run in a terminal tab could freeze the IDE when its process was
+  slow to exit.
+- Claude Code: one session quitting turned down another session's waiting
+  proposals; a session that closed without reading its replies could freeze
+  the IDE.
+- Git: comparing two binary files that differ said they were identical; a
+  failed discard of an untracked file said "Deleted".
+- Local History: restoring from the tree failed in a project opened through a
+  symbolic link; a comparison git could not make said the snapshot matched
+  the file.
+- TODO: a scan started while another ran could leave the older results in
+  the tab.
+- Review: the IDE could crash when a review disappeared while its view was
+  closed.
+
 ## [0.1.4] - 2026-11-06
 
 ### Added
