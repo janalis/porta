@@ -200,7 +200,7 @@ final class JsonRpcTransport
             try {
                 $onMessage($message);
             } catch (\Throwable $error) {
-                EventLoop::queue(static fn () => throw $error);
+                EventLoop::queue(static fn (): never => throw $error);
             }
         }
     }

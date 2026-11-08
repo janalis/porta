@@ -34,7 +34,7 @@ final class MenuFileContextTest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         try {
-            $context->with('/p/a.php', static fn () => throw new \RuntimeException('boom'));
+            $context->with('/p/a.php', static fn (): never => throw new \RuntimeException('boom'));
         } finally {
             $this->assertNull($context->file());
         }

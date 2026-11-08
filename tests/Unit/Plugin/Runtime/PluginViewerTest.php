@@ -382,7 +382,7 @@ final class PluginViewerTest extends TestCase
         $manager = $this->manager();
         $seen = 0;
         $api = $this->api($manager, 'vcs');
-        $api->onSettingChanged(static fn (string $key, bool|int|string $value) => throw new \RuntimeException('listener exploded'));
+        $api->onSettingChanged(static fn (string $key, bool|int|string $value): never => throw new \RuntimeException('listener exploded'));
         $api->onSettingChanged(static function () use (&$seen): void {
             ++$seen;
         });

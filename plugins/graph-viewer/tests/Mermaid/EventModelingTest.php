@@ -68,7 +68,7 @@ final class EventModelingTest extends TestCase
                         $item[$field] = \array_map(static fn (array $condition): array => ['entityIdentifier' => $condition['entityIdentifier']], $item[$field]);
                     }
                 }
-                $actual[] = \array_filter($item, static fn ($value): bool => null !== $value);
+                $actual[] = \array_filter($item, static fn (bool|string|array|null $value): bool => null !== $value);
             }
             $this->assertSame(self::ordered($expected['model'][$key]), self::ordered($actual));
         }
