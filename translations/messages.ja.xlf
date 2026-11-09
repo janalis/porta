@@ -3662,10 +3662,6 @@
         <source>About</source>
         <target>概要</target>
       </trans-unit>
-      <trans-unit id="1246">
-        <source>All categories</source>
-        <target>すべてのカテゴリ</target>
-      </trans-unit>
       <trans-unit id="1247">
         <source>Asking Packagist…</source>
         <target>Packagist に問い合わせ中…</target>
@@ -3726,10 +3722,6 @@
         <source>Replaces the built-in %plugin% plugin</source>
         <target>組み込みの %plugin% プラグインを置き換えます</target>
       </trans-unit>
-      <trans-unit id="1262">
-        <source>Store</source>
-        <target>ストア</target>
-      </trans-unit>
       <trans-unit id="1263">
         <source>The plugin store could not reach Packagist: showing what it saw last</source>
         <target>プラグインストアは Packagist に接続できませんでした。前回の内容を表示しています</target>
@@ -3761,10 +3753,6 @@
       <trans-unit id="1271">
         <source>by %author%</source>
         <target>作者: %author%</target>
-      </trans-unit>
-      <trans-unit id="1272">
-        <source>⏎ details · Space get or update · c category · u updates · / filter</source>
-        <target>⏎ 詳細 · Space 入手/更新 · c カテゴリ · u 更新 · / 絞り込み</target>
       </trans-unit>
       <trans-unit id="1273">
         <source>Linters &amp; formatters</source>
@@ -3873,6 +3861,42 @@
       <trans-unit id="1299">
         <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
         <target>%plugins% を更新しました — %names% を完了するには Porta を再起動してください。読み込み済みのクラスは古いコードのままです</target>
+      </trans-unit>
+      <trans-unit id="1300">
+        <source>Categories</source>
+        <target>カテゴリ</target>
+      </trans-unit>
+      <trans-unit id="1301">
+        <source>See all</source>
+        <target>すべて表示</target>
+      </trans-unit>
+      <trans-unit id="1302">
+        <source>Results for "%query%"</source>
+        <target>「%query%」の検索結果</target>
+      </trans-unit>
+      <trans-unit id="1303">
+        <source>Install from URL or path</source>
+        <target>URL またはパスからインストール</target>
+      </trans-unit>
+      <trans-unit id="1304">
+        <source>⏎ to type a git URL, local path, or vendor/name package</source>
+        <target>⏎ で git URL、ローカルパス、または vendor/name パッケージを入力</target>
+      </trans-unit>
+      <trans-unit id="1305">
+        <source>Update all</source>
+        <target>すべてアップデート</target>
+      </trans-unit>
+      <trans-unit id="1306">
+        <source>Developer</source>
+        <target>デベロッパ</target>
+      </trans-unit>
+      <trans-unit id="1307">
+        <source>⏎ details · Space get · [ ] tabs · / search</source>
+        <target>⏎ 詳細 · Space 入手 · [ ] タブ · / 検索</target>
+      </trans-unit>
+      <trans-unit id="1308">
+        <source>No plugin is installed</source>
+        <target>インストールされているプラグインはありません</target>
       </trans-unit>
     </body>
   </file>

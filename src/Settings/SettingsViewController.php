@@ -14,6 +14,7 @@ use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Widget\Settings\StoreTab;
 use Porta\Workbench\Menu\ListboxOpener;
 use Porta\Workbench\Menu\ViewMenuSource;
 use Porta\Workbench\View\ContributedView;
@@ -59,7 +60,7 @@ final class SettingsViewController implements ContributedView
         private readonly Translator $translator = new Translator('en'),
         // Trailing and optional, so the hand-built views in the settings
         // tests stand; the container always wires both. Without them the
-        // Store page is a plain form page.
+        // Plugins page is a plain form page.
         private readonly ?PluginStoreWidget $store = null,
         private readonly ?SettingsStoreController $storeController = null,
     ) {
@@ -97,6 +98,8 @@ final class SettingsViewController implements ContributedView
                         $this->host->invalidate();
                     });
                 })
+                ->onChange($this->changeStore(...))
+                ->onOpenChoice($this->openStoreChoice(...))
                 ->onFocusNext($this->focusNav(...))
                 ->onExit($exit);
         }
@@ -174,7 +177,7 @@ final class SettingsViewController implements ContributedView
         $this->host->invalidate();
     }
 
-    /** Open the view on page $id, the keyboard on that page: the palette's way to the store. */
+    /** Open the view on page $id, the keyboard on that page: the palette's way to the store, the Plugins page. */
     public function openOn(string $id): void
     {
         $this->open();
@@ -206,9 +209,18 @@ final class SettingsViewController implements ContributedView
     public function onSectionRequested(SettingsSectionRequested $event): void
     {
         $this->selectSection($event->section);
-        if (null !== $event->row) {
-            $this->form->selectKey($event->row);
+        if (null === $event->row) {
+            return;
         }
+        // The Plugins page is the store: a search hit on its install field or
+        // its scope lands on the Installed tab, on that control.
+        $store = $this->store;
+        if (null !== $store && $store === $this->contentWidget()) {
+            $store->showTab(StoreTab::Installed, PluginStoreWidget::INSTALL_KEY === $event->row ? 'install' : 'scope');
+
+            return;
+        }
+        $this->form->selectKey($event->row);
     }
 
     private function selectSection(string $id): void
@@ -326,13 +338,24 @@ final class SettingsViewController implements ContributedView
      */
     private function openChoice(SettingsRow $row, int $relRow, int $relCol, int $relAbove, int $width): void
     {
+        $this->openList($this->form, $row, [$relRow, $relCol, $relAbove, $width], function (string $value) use ($row): void {
+            $this->changeSetting($row->key, $value);
+        });
+    }
+
+    /**
+     * $row's options as a list under its control on $host.
+     *
+     * @param array{int, int, int, int} $at     the row under the control, its column, the row it is drawn from, its width
+     * @param \Closure(string): void    $choose
+     */
+    private function openList(AbstractWidget $host, SettingsRow $row, array $at, \Closure $choose): void
+    {
         $options = [];
         foreach ($row->options ?? [] as $option) {
             $options[] = [$option, $row->optionLabels[$option] ?? $option];
         }
-        $this->listbox->openUnder($this->form, $relRow, $relCol, $relAbove, $width, $options, (string) $row->value, function (string $value) use ($row): void {
-            $this->changeSetting($row->key, $value);
-        });
+        $this->listbox->openUnder($host, $at[0], $at[1], $at[2], $at[3], $options, (string) $row->value, $choose);
     }
 
     private function changeSetting(string $key, bool|int|string $value): bool
@@ -375,7 +398,7 @@ final class SettingsViewController implements ContributedView
 
             return;
         }
-        if ('plugins' === $this->section || \str_starts_with($this->section, 'plugin:')) {
+        if ($this->form === $this->contentWidget() && ('plugins' === $this->section || \str_starts_with($this->section, 'plugin:'))) {
             $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
             $this->host->invalidate();
         }
@@ -393,9 +416,28 @@ final class SettingsViewController implements ContributedView
         // Asked once: it reads every install from disk, and the rows need it too.
         $outdated = $this->storeController->outdated();
         $this->nav->setStoreUpdates(\count($outdated));
-        if ('store' === $this->section) {
-            $this->store?->setStore($this->storeController->rows($outdated), $this->storeController->refreshing(), \count($outdated));
+        $store = $this->store;
+        if (null !== $store && $store === $this->contentWidget()) {
+            $store->setStore($this->storeController->rows($outdated), $this->storeController->refreshing(), \count($outdated));
+            $store->setInstalled($this->plugins->installed(), $this->plugins->scopeRow());
             $this->host->invalidate();
+        }
+    }
+
+    /** The store's install field was submitted, or its scope picked: the Plugins page's own change. */
+    private function changeStore(string $key, string $value): void
+    {
+        $this->plugins->change($key, $value);
+        $this->pushStore();
+    }
+
+    /** The store's scope select: its list under it, a pick being {@see changeStore()}. */
+    private function openStoreChoice(SettingsRow $row, int $relRow, int $relCol, int $relAbove, int $width): void
+    {
+        if (null !== $this->store) {
+            $this->openList($this->store, $row, [$relRow, $relCol, $relAbove, $width], function (string $value) use ($row): void {
+                $this->changeStore($row->key, $value);
+            });
         }
     }
 
@@ -415,7 +457,7 @@ final class SettingsViewController implements ContributedView
     {
         return match (true) {
             'keybindings' === $this->section => $this->keymapList,
-            'store' === $this->section && null !== $this->store && null !== $this->storeController => $this->store,
+            'plugins' === $this->section && null !== $this->store && null !== $this->storeController => $this->store,
             default => $this->form,
         };
     }

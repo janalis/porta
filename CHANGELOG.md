@@ -5,6 +5,18 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **Plugin store**: the store is now the **Settings → Plugins** page itself,
+  laid out like the App Store. **Discover** opens on a banner of featured
+  plugins, then a shelf of tiles per category with **See all**; **Categories**
+  lists every category; **Updates** has **Update all**; **Installed** lists
+  every installed plugin and holds the install scope and the install-from-URL
+  field that the Plugins page used to have. A plugin's page opens with a strip
+  of its downloads, category, developer, version and license. The arrow keys
+  move through the grid, and `]` / `[` switch tabs (`c` / `Shift+C` are gone).
+  See [The plugin store](docs/plugin-store.md).
+
 ## [0.1.6] - 2026-11-09
 
 ### Added

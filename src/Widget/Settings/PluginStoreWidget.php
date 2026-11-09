@@ -6,27 +6,21 @@ namespace Porta\Widget\Settings;
 
 use Porta\Container\AsWidget;
 use Porta\Event\SettingsSectionRequested;
-use Porta\Help\Layout\ImageLayout;
-use Porta\Help\Layout\PageLine;
-use Porta\Help\MarkdownRenderer;
 use Porta\I18n\Translator;
 use Porta\Plugin\Store\StoreAction;
 use Porta\Plugin\Store\StoreCategory;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
+use Porta\Settings\InstalledPlugin;
+use Porta\Settings\SettingsRow;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
 use Porta\Ui\FilterKeys;
-use Porta\Ui\Glyphs;
 use Porta\Ui\Graphics\TerminalGraphics;
-use Porta\Ui\ListNavigation;
-use Porta\Ui\ListSelection;
-use Porta\Ui\Role;
 use Porta\Ui\ScreenDensity;
 use Porta\Ui\TextField;
 use Porta\Ui\Theme\Styles;
-use Porta\Widget\HoverableList;
 use Porta\Widget\PaneNavigationCallbacks;
 use Porta\Widget\Render\FieldBox;
 use Porta\Widget\Render\FieldSpec;
@@ -37,12 +31,10 @@ use Porta\Widget\Render\Rule;
 use Porta\Widget\Render\TabStripRenderer;
 use Porta\Widget\Support\ArrowScrollTrait;
 use Porta\Widget\Support\FillsPaneTrait;
-use Porta\Widget\Support\HoverTrait;
 use Porta\Widget\Support\InputHook;
 use Porta\Widget\Support\PanelRowStyle;
 use Porta\Widget\Support\WheelScrollable;
 use Psr\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Input\Key;
 use Symfony\Component\Tui\Input\Keybindings;
 use Symfony\Component\Tui\Render\RenderContext;
@@ -53,101 +45,99 @@ use Symfony\Component\Tui\Widget\KeybindingsTrait;
 use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
 
 /**
- * The plugin store, the App Store's two pages in a settings pane.
+ * The plugin store, the Settings › Plugins page, laid out as the App Store.
  *
- * The shelf: a **Discover** tab listing every plugin and an **Updates** tab
- * listing the installed ones with a newer release, a category to narrow
- * either by, and a filter. Each plugin takes two rows — its title, badges and
- * button; then who made it, its shelf, its version and when it was released.
+ * Four tabs: **Discover** — the featured plugins, then a shelf per category;
+ * **Categories**, each opening its whole shelf; **Updates**, the installed
+ * plugins with a newer release and Update all; and **Installed**, every
+ * plugin here — from the store or not — with where an install lands and a
+ * field that installs from a git URL, a path or a package. A search narrows
+ * whichever tab is shown. The shelf is laid out by {@see StoreShelf}, whose
+ * item map every key, click and hover reads.
  *
- * The page (Enter): the plugin's header and button, its screenshots,
- * **What's New** (the newest section of its changelog), **About** (its
- * README) and **Information**. What the page shows beyond the catalog is not
- * this widget's to fetch: it asks through {@see onAsset()} and is handed each
- * answer through {@see setAsset()}, so nothing here waits on the network.
+ * Enter opens a plugin's page ({@see StorePage}): its header and button, a
+ * strip of facts, its screenshots, What's New, About and Information. What
+ * the page shows beyond the catalog is not this widget's to fetch: it asks
+ * through {@see onAsset()} and is handed each answer through
+ * {@see setAsset()}, so nothing here waits on the network.
  *
  * Every button goes back to the controller as the entry pressed; which button
  * it is, and what it does, are the controller's.
  */
 #[AsWidget('settings-store', flex: 1)]
-final class PluginStoreWidget extends AbstractWidget implements FocusableInterface, HoverableList, MenuOverlayHost, VerticallyExpandableInterface, WheelScrollable
+final class PluginStoreWidget extends AbstractWidget implements FocusableInterface, MenuOverlayHost, VerticallyExpandableInterface, WheelScrollable
 {
     use ArrowScrollTrait;
     use FillsPaneTrait;
     use FocusableTrait;
-    use HoverTrait;
     use InputHook;
     use KeybindingsTrait;
     use MenuOverlayHostTrait;
     use PaneNavigationCallbacks;
     use PanelRowStyle;
 
-    /** Each plugin on the shelf: its title row and its facts row. */
-    private const int ENTRY_ROWS = 2;
-
-    /** The title, the rule under it and the tab strip, before any filter field. */
-    private const int CHROME_ROWS = 3;
-
-    /** How long a README the page lays out may be, in source lines: a store page is not the manual. */
-    private const int README_LINES = 400;
+    /** The settings key the install field's source is handed to the page under. */
+    public const string INSTALL_KEY = 'pluginInstall';
 
     /** @var list<StoreRow> */
     private array $rows = [];
 
-    /** @var list<StoreRow> the rows the tab, the category and the filter leave */
-    private array $shown = [];
+    /** @var list<InstalledPlugin> */
+    private array $installed = [];
 
-    private bool $updatesTab = false;
-
-    private ?StoreCategory $category = null;
+    /** The "Save changes to" row the Installed tab leads with, or null where there is nothing to choose. */
+    private ?SettingsRow $scope = null;
 
     private bool $refreshing = false;
 
     private int $updateCount = 0;
 
+    private StoreTab $tab = StoreTab::Discover;
+
+    /** The category whose whole shelf is shown, or null. */
+    private ?StoreCategory $category = null;
+
     private readonly TextField $filter;
 
     private bool $filtering = false;
 
-    private readonly ListSelection $list;
+    /** The Installed tab's install field. */
+    private readonly TextField $source;
 
-    /** The package whose page is open, or null on the shelf. */
-    private ?string $detail = null;
+    /** Whether the install field takes the keys: Enter opened it. */
+    private bool $editing = false;
 
-    /** The page's first drawn line. */
-    private int $detailScroll = 0;
+    /** The selected item's key, or null for the first. */
+    private ?string $selected = null;
 
-    /** The screenshot the page shows. */
-    private int $shot = 0;
+    /** The key of the item under the pointer, and whether the pointer is on its button. */
+    private ?string $hovered = null;
 
-    /** @var array<string, string|null> each asked-for address and what it answered; absent while it is on its way */
-    private array $assets = [];
+    private bool $hoveredButton = false;
 
-    /** @var list<string>|null the page's laid-out lines, kept until the page, its width or an asset changes */
-    private ?array $detailLines = null;
+    /** @var list<StoreItem> the items the last frame drew */
+    private array $items = [];
 
-    /** @var array{?string, int, int} the [package, width, shot] the page was laid out for */
-    private array $detailKey = [null, 0, 0];
+    /** The shelf's first drawn body line. */
+    private int $scroll = 0;
 
-    /** @var array<int, array{start: int, width: int, target: string}> the tab strip's hit zones, from the last render */
+    /** Whether each frame scrolls the selection into view: until the wheel scrolls the shelf away from it. */
+    private bool $follow = true;
+
+    /** The shelf rows above its body, in the last frame. */
+    private int $chromeRows = 3;
+
+    private readonly StoreDetail $page;
+
+    /** @var array<int, array{start: int, width: int, target: StoreTab}> the tab strip's hit zones, from the last render */
     private array $stripZones = [];
 
-    /** @var array{int, int, int}|null the page's drawn button: row, first column, width; null when scrolled off */
-    private ?array $buttonZone = null;
+    /** The row the tab strip's labels are on, from the last render. */
+    private int $stripRow = 2;
 
     private int $lastRows = 12;
 
-    /** The width the last frame was drawn at, which is where a shelf row's button sits. */
-    private int $drawnWidth = 80;
-
-    /** @var array<string, true> the addresses already asked for, so a page laid out again does not ask twice */
-    private array $asked = [];
-
     private readonly CrumbHeader $header;
-
-    private readonly MarkdownRenderer $markdown;
-
-    private readonly ImageLayout $images;
 
     /** @var (callable(StoreEntry): void)|null */
     private $onPress;
@@ -157,6 +147,12 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
 
     /** @var (callable(string, bool): void)|null an address the page needs: a text, or (true) a picture */
     private $onAsset;
+
+    /** @var (callable(string, string): void)|null the install field or the scope changed: its key and value */
+    private $onChange;
+
+    /** @var (callable(SettingsRow, int, int, int, int): void)|null the scope select's list was asked for */
+    private $onOpenChoice;
 
     public function __construct(
         private readonly Translator $translator,
@@ -168,10 +164,9 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     ) {
         $this->initStyles($styles);
         $this->filter = new TextField(style: $cursorStyle);
-        $this->list = new ListSelection();
+        $this->source = new TextField(style: $cursorStyle);
         $this->header = new CrumbHeader();
-        $this->markdown = new MarkdownRenderer($this->styles, graphics: $graphics);
-        $this->images = new ImageLayout($graphics);
+        $this->page = new StoreDetail($translator, $this->styles, $graphics);
         $this->setTrail();
         $this->addStyleClass('list');
     }
@@ -180,8 +175,8 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     public function onCrumb(callable $callback): self
     {
         $this->header->onCrumb(function (string $id) use ($callback): void {
-            // The store's own crumb, on its page, is the way back to the shelf.
-            'store' === $id ? $this->closeDetail() : $callback($id);
+            // The store's own crumb, below it, is the way back to its shelf.
+            'plugins' === $id && (null !== $this->detail() || null !== $this->category) ? $this->showTab($this->tab) : $callback($id);
         });
 
         return $this;
@@ -211,6 +206,22 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         return $this;
     }
 
+    /** @param callable(string, string): void $callback the install field was submitted ({@see INSTALL_KEY}) or the scope stepped: key and value */
+    public function onChange(callable $callback): self
+    {
+        $this->onChange = $callback;
+
+        return $this;
+    }
+
+    /** @param callable(SettingsRow, int, int, int, int): void $callback the scope select's list, under it: row, column, the row it is drawn from, width */
+    public function onOpenChoice(callable $callback): self
+    {
+        $this->onOpenChoice = $callback;
+
+        return $this;
+    }
+
     /** Tint the link crumb at column $col of the title row, or none (null); returns whether that changed. */
     public function hoverCrumb(?int $col): bool
     {
@@ -233,30 +244,40 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $this->rows = $rows;
         $this->refreshing = $refreshing;
         $this->updateCount = $updateCount;
-        $this->applyFilter();
         // The page's button may have changed: Get became Working, then Open.
-        $this->detailLines = null;
-        if (null !== $this->detail && null === $this->row($this->detail)) {
+        $this->page->stale();
+        $package = $this->page->package();
+        if (null !== $package && null === $this->row($package)) {
             $this->closeDetail();
         }
+        $this->invalidate();
+    }
+
+    /**
+     * What the Installed tab shows: every installed plugin, and the scope an
+     * install lands in (null where there is nothing to choose).
+     *
+     * @param list<InstalledPlugin> $installed
+     */
+    public function setInstalled(array $installed, ?SettingsRow $scope): void
+    {
+        $this->installed = $installed;
+        $this->scope = $scope;
         $this->invalidate();
     }
 
     /** What $url answered (null: nothing) — the page lays itself out again with it. */
     public function setAsset(string $url, ?string $body): void
     {
-        $this->assets[$url] = $body;
-        $this->detailLines = null;
+        $this->page->answer($url, $body);
         $this->invalidate();
     }
 
-    /** Back on the shelf, its tab, category and filter as they were. */
+    /** Back on the shelf, its tab, category and search as they were. */
     public function closeDetail(): void
     {
-        $this->detail = null;
-        $this->images->clear();
-        $this->markdown->clearImages();
-        $this->detailLines = null;
+        $this->page->close();
+        $this->follow = true;
         $this->setTrail();
         $this->invalidate();
     }
@@ -264,34 +285,64 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     /** The package whose page is open, or null on the shelf. */
     public function detail(): ?string
     {
-        return $this->detail;
+        return $this->page->package();
+    }
+
+    /** Show $tab, from its top: the page asks for the Installed tab when the search lands on the install field. */
+    public function showTab(StoreTab $tab, ?string $select = null): void
+    {
+        if (null !== $this->detail()) {
+            $this->closeDetail();
+        }
+        $this->tab = $tab;
+        $this->category = null;
+        $this->editing = false;
+        $this->selected = $select;
+        $this->scroll = 0;
+        $this->follow = true;
+        $this->setTrail();
+        $this->invalidate();
+    }
+
+    public function tab(): StoreTab
+    {
+        return $this->tab;
     }
 
     #[\Override]
     public function handleInput(string $data): void
     {
-        if ($this->inputHookHandled($data)) {
-            return;
-        }
         $kb = $this->getKeybindings();
-        if (null !== $this->detail) {
-            $this->detailInput($data, $kb);
-
-            return;
-        }
+        // The app's hook first, asked once.
+        $hooked = $this->inputHookHandled($data);
         match (true) {
-            $this->filtering && $this->editFilter($data, $kb) => null,
-            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
+            !$hooked && null !== $this->detail() => $this->detailInput($data, $kb),
+            // Then a field that is open: the search, or the install field.
+            $hooked, $this->filtering && $this->editFilter($data, $kb), $this->editing && $this->editSource($data, $kb) => null,
+            default => $this->shelfInput($data, $kb),
+        };
+    }
+
+    private function shelfInput(string $data, Keybindings $kb): void
+    {
+        match (true) {
+            $kb->matches($data, 'exit_view') => null === $this->category ? $this->fire($this->onExit) : $this->back(),
+            $kb->matches($data, 'back') => $this->back(),
             $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
             $kb->matches($data, 'show_settings') => $this->events?->dispatch(new SettingsSectionRequested('general')),
             $kb->matches($data, 'filter') => $this->startFilter(),
-            $kb->matches($data, 'open') => $this->openDetail(),
-            $kb->matches($data, 'press') => $this->pressSelected(),
-            $kb->matches($data, 'next_category') => $this->cycleCategory(1),
-            $kb->matches($data, 'previous_category') => $this->cycleCategory(-1),
-            $kb->matches($data, 'switch_tab') => $this->showUpdates(!$this->updatesTab),
+            $kb->matches($data, 'open') => $this->activate(),
+            $kb->matches($data, 'press') => $this->press(),
+            $kb->matches($data, 'next_tab') => $this->stepTab(1),
+            $kb->matches($data, 'previous_tab') => $this->stepTab(-1),
+            $kb->matches($data, 'show_updates') => $this->showTab(StoreTab::Updates),
             $kb->matches($data, 'update_all') => $this->fire($this->onUpdateAll),
-            ListNavigation::handleKey($data, $kb, $this->list, \count($this->shown), page: $this->entriesFitting()) => $this->invalidate(),
+            $kb->matches($data, 'move_up') => $this->move(-1, 0),
+            $kb->matches($data, 'move_down') => $this->move(1, 0),
+            $kb->matches($data, 'move_left') => $this->move(0, -1),
+            $kb->matches($data, 'move_right') => $this->move(0, 1),
+            $kb->matches($data, 'page_up') => $this->move(-$this->bodyRows(), 0),
+            $kb->matches($data, 'page_down') => $this->move($this->bodyRows(), 0),
             default => null,
         };
     }
@@ -299,31 +350,32 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     private function detailInput(string $data, Keybindings $kb): void
     {
         $shots = \count($this->detailRow()?->entry->screenshots ?? []);
+        $page = \max(1, $this->lastRows - 2);
         match (true) {
             $kb->matches($data, 'exit_view'), $kb->matches($data, 'back') => $this->closeDetail(),
             $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'open'), $kb->matches($data, 'press') => $this->pressSelected(),
+            $kb->matches($data, 'open'), $kb->matches($data, 'press') => $this->pressDetail(),
             $kb->matches($data, 'move_up') => $this->scrollDetail(-1),
             $kb->matches($data, 'move_down') => $this->scrollDetail(1),
-            $kb->matches($data, 'page_up') => $this->scrollDetail(-\max(1, $this->lastRows - self::CHROME_ROWS)),
-            $kb->matches($data, 'page_down') => $this->scrollDetail(\max(1, $this->lastRows - self::CHROME_ROWS)),
-            $shots > 1 && $kb->matches($data, 'next_shot') => $this->showShot(($this->shot + 1) % $shots),
-            $shots > 1 && $kb->matches($data, 'previous_shot') => $this->showShot(($this->shot + $shots - 1) % $shots),
+            $kb->matches($data, 'page_up') => $this->scrollDetail(-$page),
+            $kb->matches($data, 'page_down') => $this->scrollDetail($page),
+            $shots > 1 && $kb->matches($data, 'move_right') => $this->showShot(($this->page->shot() + 1) % $shots),
+            $shots > 1 && $kb->matches($data, 'move_left') => $this->showShot(($this->page->shot() + $shots - 1) % $shots),
             default => null,
         };
     }
 
     /**
-     * A click: a crumb on the title row; a tab or the category on the strip;
-     * on the shelf, a plugin's button presses it, its row selects it, and the
-     * selected row opens its page; on a page, its button.
+     * A click: a crumb on the title row; a tab on the strip; on the shelf, a
+     * button presses, an item selects, the selected item opens; on a page,
+     * its button.
      */
     public function handleClick(int $relRow, int $relCol = 0): void
     {
         match (true) {
             0 === $relRow => $this->header->click($relCol),
-            null !== $this->detail => $this->clickPage($relRow, $relCol),
-            (self::CHROME_ROWS - 1) === $relRow => $this->clickStrip($relCol),
+            null !== $this->detail() => $this->clickPage($relRow, $relCol),
+            $relRow < $this->chromeRows => $this->clickStrip($relRow, $relCol),
             default => $this->clickShelf($relRow, $relCol),
         };
     }
@@ -331,49 +383,67 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     /** On a page, only its button answers. */
     private function clickPage(int $relRow, int $relCol): void
     {
-        $zone = $this->buttonZone;
-        if (null !== $zone && $relRow === $zone[0] && $relCol >= $zone[1] && $relCol < ($zone[1] + $zone[2])) {
-            $this->pressSelected();
+        if ($this->page->onButton($relRow - 2, $relCol)) {
+            $this->pressDetail();
         }
     }
 
-    /** On the shelf: a button presses, a row selects, the selected row opens. */
+    /** On the shelf: a button presses, an item selects, the selected item opens. */
     private function clickShelf(int $relRow, int $relCol): void
     {
-        $index = $this->entryAt($relRow);
-        if (null === $index) {
+        $row = $relRow - $this->chromeRows + $this->scroll;
+        $item = \array_find($this->items, static fn (StoreItem $item): bool => $item->contains($row, $relCol));
+        if (null === $item) {
             return;
         }
-        // The button is on a plugin's title row, at its right end.
-        $onButton = 0 === (($relRow - $this->headerRows()) % self::ENTRY_ROWS) && $relCol >= $this->buttonColumn($index);
-        $open = $index === $this->list->selected();
-        $this->list->select($index);
+        $open = $item->key === $this->selected;
+        $this->selected = $item->key;
         match (true) {
-            $onButton => $this->pressSelected(),
-            $open => $this->openDetail(),
+            $item->onButton($row, $relCol) => $this->press(),
+            $open || StoreItemKind::SeeAll === $item->kind || StoreItemKind::Scope === $item->kind => $this->activate(),
             default => $this->invalidate(),
         };
     }
 
-    #[\Override]
-    public function hoverRow(int $relRow): bool
+    /**
+     * Tint the item under the pointer at ($relRow, $relCol), or none (null);
+     * returns whether that changed.
+     */
+    public function hoverAt(?int $relRow, int $relCol = 0): bool
     {
-        return $this->setHovered(null === $this->detail ? $this->entryAt($relRow) : null);
+        $row = null === $relRow || null !== $this->detail() ? null : $relRow - $this->chromeRows + $this->scroll;
+        $item = null === $row || $row < $this->scroll ? null : \array_find($this->items, static fn (StoreItem $item): bool => $item->contains($row, $relCol));
+        $button = null !== $item && null !== $row && $item->onButton($row, $relCol);
+        $pageButton = null !== $this->detail() && null !== $relRow && $this->page->onButton($relRow - 2, $relCol);
+        $key = $pageButton ? 'page' : $item?->key;
+        if ($key === $this->hovered && ($button || $pageButton) === $this->hoveredButton) {
+            return false;
+        }
+        $this->hovered = $key;
+        $this->hoveredButton = $button || $pageButton;
+        $this->invalidate();
+
+        return true;
     }
 
-    /** The wheel scrolls a page; on the shelf it is the arrows, as everywhere. */
+    /** The pointer left the store: nothing is tinted. Returns whether that changed. */
+    public function clearHover(): bool
+    {
+        return $this->hoverAt(null);
+    }
+
+    /** The wheel scrolls the shelf or the page, leaving the selection where it is. */
     #[\Override]
     public function scrollBy(int $delta): void
     {
-        if (null !== $this->detail) {
+        if (null !== $this->detail()) {
             $this->scrollDetail($delta);
 
             return;
         }
-        $key = $delta < 0 ? "\x1b[A" : "\x1b[B";
-        for ($i = 0; $i < \abs($delta); ++$i) {
-            $this->handleInput($key);
-        }
+        $this->scroll = \max(0, $this->scroll + $delta);
+        $this->follow = false;
+        $this->invalidate();
     }
 
     #[\Override]
@@ -382,12 +452,13 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $width = $context->getColumns();
         $rows = \max(1, $context->getRows() > 0 ? $context->getRows() : 12);
         $this->lastRows = $rows;
-        $this->drawnWidth = $width;
-        $this->buttonZone = null;
-
         $row = $this->detailRow();
+        $lines = null === $row ? $this->renderShelf($width, $rows) : $this->renderDetail($row, $width, $rows);
+        while (\count($lines) < $rows) {
+            $lines[] = AnsiText::blank($width);
+        }
 
-        return null === $row ? $this->renderShelf($width, $rows) : $this->renderDetail($row, $width, $rows);
+        return \array_slice($lines, offset: 0, length: $rows);
     }
 
     /** @return list<string> */
@@ -395,12 +466,12 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     {
         $hint = $this->refreshing
             ? $this->translator->trans('Asking Packagist…')
-            : $this->translator->trans('⏎ details · Space get or update · c category · u updates · / filter');
-        $lines = [$this->header->render($width, $this->styles, $hint), Rule::horizontal($width, $this->styles), $this->strip($width)];
+            : $this->translator->trans('⏎ details · Space get · [ ] tabs · / search');
+        $lines = [$this->header->render($width, $this->styles, $hint), ...$this->strip($width)];
         if ($this->filtering) {
             $focused = $this->isFocused();
             \array_push($lines, ...FieldBox::field(
-                new FieldSpec($this->translator->trans('Filter')),
+                new FieldSpec($this->translator->trans('Search')),
                 $this->filter,
                 FieldState::of($focused),
                 $focused ? CaretVisibility::Shown : CaretVisibility::Hidden,
@@ -409,337 +480,152 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
                 $this->styles,
             ));
         }
-        $top = \count($lines);
-        if ([] === $this->shown) {
-            $lines[] = AnsiText::truncate(' '.$this->styles->of(Role::Dim)->apply($this->emptyText()), $width, pad: true);
+        $this->chromeRows = \count($lines);
+        $shelf = $this->shelf($width);
+        if (null === \array_find($this->items, fn (StoreItem $item): bool => $item->key === $this->selected)) {
+            // What was selected is not on this shelf: its first item is — a
+            // plugin, not the "See all" over it.
+            $first = \array_find($this->items, static fn (StoreItem $item): bool => StoreItemKind::SeeAll !== $item->kind);
+            $this->selected = $first?->key;
+            $shelf = $this->shelf($width);
         }
-        $fit = \max(1, \intdiv($rows - $top, self::ENTRY_ROWS));
-        $scroll = $this->list->follow($fit);
-        for ($index = $scroll; $index < \min(\count($this->shown), $scroll + $fit); ++$index) {
-            $selected = $index === $this->list->selected();
-            $hovered = $index === $this->hoveredIndex;
-            [$first, $second] = $this->entryLines($this->shown[$index], $width, $selected);
-            $lines[] = $this->shadeRow($first, $selected, $hovered);
-            $lines[] = $this->shadeRow($second, $selected, $hovered);
+        $body = $shelf->lines();
+        $room = \max(1, $rows - $this->chromeRows);
+        $item = $this->item();
+        if ($this->follow && null !== $item) {
+            // The first item brings the shelf's top with it, its heading and all.
+            $top = $item === $this->items[0] ? 0 : $item->top();
+            $this->scroll = \min($this->scroll, $top);
+            $this->scroll = \max($this->scroll, $item->row + $item->height - $room);
         }
-        while (\count($lines) < $rows) {
-            $lines[] = AnsiText::blank($width);
-        }
+        $this->scroll = \max(0, \min($this->scroll, \count($body) - $room));
 
-        return \array_slice($lines, offset: 0, length: $rows);
+        return [...$lines, ...\array_slice($body, $this->scroll, $room)];
+    }
+
+    /** The shelf laid out for this frame, its item map kept for the keys and the pointer. */
+    private function shelf(int $width): StoreShelf
+    {
+        $shelf = new StoreShelf(
+            $this->translator,
+            $this->styles,
+            $width,
+            FieldBox::rowsFor($this->density->current(), $width),
+            fn (string $text, string $key): string => $this->shadeRow($text, $key === $this->selected, $key === $this->hovered && $key !== $this->selected),
+            $this->selected,
+            $this->hovered,
+            $this->hoveredButton,
+            $this->isFocused() && !$this->filtering,
+        );
+        $query = \mb_strtolower(\trim($this->filter->value()));
+        $matching = $this->matching($this->rows, $query);
+        $browsing = StoreTab::Discover === $this->tab || StoreTab::Categories === $this->tab;
+        $updates = \array_values(\array_filter($matching, static fn (StoreRow $row): bool => null !== $row->update));
+        match (true) {
+            $browsing && null !== $this->category => $shelf->flat(
+                $this->translator->trans($this->category->label()),
+                \array_values(\array_filter($matching, fn (StoreRow $row): bool => $this->category === $row->entry->category)),
+            ),
+            $browsing && [] === $this->rows => $shelf->say($this->emptyText()),
+            $browsing && '' !== $query => $shelf->flat($this->translator->trans('Results for "%query%"', ['%query%' => \trim($this->filter->value())]), $matching),
+            StoreTab::Discover === $this->tab => $shelf->discover($this->rows),
+            StoreTab::Categories === $this->tab => $shelf->categories($this->rows),
+            StoreTab::Updates === $this->tab && [] === $updates => $shelf->say($this->translator->trans('Every plugin is up to date')),
+            StoreTab::Updates === $this->tab => $shelf->updates($updates),
+            default => $shelf->installed(
+                \array_values(\array_filter(
+                    $this->installed,
+                    static fn (InstalledPlugin $plugin): bool => '' === $query || \str_contains(\mb_strtolower($plugin->name.' '.$plugin->description), $query),
+                )),
+                $this->rows,
+                $this->scope,
+                $this->source,
+                $this->editing,
+            ),
+        };
+        if ([] === $shelf->items() && [] !== $this->rows && $browsing) {
+            $shelf->say($this->translator->trans('No plugin matches'));
+        }
+        $this->items = $shelf->items();
+
+        return $shelf;
     }
 
     /**
-     * The tab strip: Discover and Updates as the dock's tabs, then the
-     * category it is narrowed to.
+     * The rows a search leaves, featured first.
+     *
+     * @param list<StoreRow> $rows
+     *
+     * @return list<StoreRow>
      */
-    private function strip(int $width): string
+    private function matching(array $rows, string $query): array
     {
-        $updates = $this->translator->trans('Updates').($this->updateCount > 0 ? ' ('.$this->updateCount.')' : '');
-        $strip = TabStripRenderer::render(
-            [
-                ['label' => $this->translator->trans('Discover'), 'active' => !$this->updatesTab, 'closable' => false],
-                ['label' => $updates, 'active' => $this->updatesTab, 'closable' => false],
-            ],
-            $width,
-            $this->styles,
-        );
+        $shown = \array_values(\array_filter($rows, static fn (StoreRow $row): bool => $row->entry->matches($query)));
+        \usort($shown, static fn (StoreRow $a, StoreRow $b): int => (int) $b->entry->featured <=> (int) $a->entry->featured);
+
+        return $shown;
+    }
+
+    /**
+     * The tab strip: Discover, Categories, Updates and Installed as the dock's tabs.
+     *
+     * @return list<string>
+     */
+    private function strip(int $width): array
+    {
+        $tabs = [];
+        foreach (StoreTab::cases() as $tab) {
+            $label = $this->translator->trans($tab->label());
+            if (StoreTab::Updates === $tab && $this->updateCount > 0) {
+                $label .= ' ('.$this->updateCount.')';
+            }
+            $tabs[] = ['label' => $label, 'active' => $tab === $this->tab, 'closable' => false];
+        }
+        // Roomy, the strip draws the rule under the title itself, the pills' upper halves in it.
+        $rows = TabStripRenderer::edgedRowsFor($this->density->current());
+        $strip = TabStripRenderer::render($tabs, $width, $this->styles, rows: $rows, paneFocused: $this->isFocused());
+        $lines = $strip['lines'];
+        if (1 === $rows) {
+            \array_unshift($lines, Rule::horizontal($width, $this->styles));
+        }
+        $this->stripRow = 1 + \count($lines) - \count($strip['lines']) + $strip['labelRow'];
         $this->stripZones = [];
         foreach ($strip['hitMap'] as $cell) {
-            $this->stripZones[] = ['start' => $cell['start'], 'width' => $cell['width'], 'target' => 0 === $cell['index'] ? 'discover' : 'updates'];
+            $this->stripZones[] = ['start' => $cell['start'], 'width' => $cell['width'], 'target' => StoreTab::cases()[$cell['index']]];
         }
-        $category = ' '.$this->translator->trans($this->category?->label() ?? 'All categories').' '.Glyphs::EXPANDED;
-        $this->stripZones[] = ['start' => $strip['used'] + 1, 'width' => AnsiUtils::visibleWidth($category), 'target' => 'category'];
-        $line = AnsiText::truncate($strip['lines'][0] ?? '', $strip['used']).' '.$this->styles->of(Role::TabAccent)->apply($category);
 
-        return AnsiText::truncate($line, $width, pad: true);
+        return \array_map(static fn (string $line): string => AnsiText::truncate($line, $width, pad: true), $lines);
     }
 
-    private function clickStrip(int $col): void
+    private function clickStrip(int $relRow, int $col): void
     {
-        foreach ($this->stripZones as $zone) {
-            if ($col < $zone['start'] || $col >= ($zone['start'] + $zone['width'])) {
-                continue;
-            }
-            match ($zone['target']) {
-                'discover' => $this->showUpdates(false),
-                'updates' => $this->showUpdates(true),
-                default => $this->cycleCategory(1),
-            };
-
+        if ($relRow !== $this->stripRow) {
             return;
         }
-    }
-
-    /**
-     * A plugin's two shelf rows.
-     *
-     * @return array{string, string}
-     */
-    private function entryLines(StoreRow $row, int $width, bool $selected): array
-    {
-        $entry = $row->entry;
-        $badges = [];
-        if ($entry->verified) {
-            $badges[] = $this->styles->of(Role::TabAccent)->apply(Glyphs::MD_CHECK.' '.$this->translator->trans('Verified'));
+        $zone = \array_find($this->stripZones, static fn (array $zone): bool => $col >= $zone['start'] && $col < ($zone['start'] + $zone['width']));
+        if (null !== $zone) {
+            $this->showTab($zone['target']);
         }
-        if ($entry->featured) {
-            $badges[] = $this->styles->of(Role::TabAccent)->apply($this->translator->trans('Featured'));
-        }
-        $button = $this->button($row, $selected);
-        $buttonWidth = AnsiUtils::visibleWidth($button);
-        $title = $this->styles->of(Role::Bright)->apply($entry->title).([] === $badges ? '' : '  '.\implode('  ', $badges));
-        $first = AnsiText::truncate(' '.$title, \max(0, $width - $buttonWidth - 1), pad: true).$button.' ';
-        $second = AnsiText::truncate('   '.$this->styles->of(Role::Dim)->apply($this->facts($row)), $width, pad: true);
-
-        return [$this->barred(AnsiText::truncate($first, $width, pad: true), $selected), $second];
     }
 
-    /** Who made it, its shelf, its version — or the update it has — when it was released, how often it was got. */
-    private function facts(StoreRow $row): string
-    {
-        $entry = $row->entry;
-        $version = null === $row->update ? $entry->version : $row->update->from.' → '.$row->update->to;
-        $facts = [$entry->author, $this->translator->trans($entry->category->label()), $version];
-        if ($entry->time > 0) {
-            $facts[] = \gmdate('Y-m-d', $entry->time);
-        }
-        if ($entry->downloads > 0) {
-            $facts[] = $this->translator->trans('%count% downloads', ['%count%' => \number_format($entry->downloads)]);
-        }
-
-        return \implode(' · ', $facts);
-    }
-
-    /** The button, `[ Get ]`: bright while it does something, faint when it does not. */
-    private function button(StoreRow $row, bool $selected): string
-    {
-        $caption = '[ '.$this->translator->trans($row->action->caption()).' ]';
-        $role = match (true) {
-            !$row->action->pressable() => Role::Faint,
-            StoreAction::Update === $row->action => Role::Modified,
-            $selected => Role::Bright,
-            default => Role::TabAccent,
-        };
-
-        return $this->styles->of($role)->apply($caption);
-    }
-
-    private function buttonWidth(StoreRow $row): int
-    {
-        return AnsiUtils::visibleWidth('[ '.$this->translator->trans($row->action->caption()).' ]');
-    }
-
-    /** The shelf column a click on shown entry $index's title row presses its button from. */
-    private function buttonColumn(int $index): int
-    {
-        return \max(0, $this->drawnWidth - 1 - $this->buttonWidth($this->shown[$index]));
-    }
-
-    /** Why the shelf is empty: the first reason that holds, a refresh on its way first. */
+    /** Why the store is empty: a refresh on its way, or Packagist out of reach. */
     private function emptyText(): string
     {
-        // The reasons that hold, in order; the first of them is said.
-        $reason = \array_key_first(\array_filter([
-            'Asking Packagist…' => $this->refreshing,
-            'Every plugin is up to date' => $this->updatesTab,
-            'The store is empty: Packagist could not be reached' => [] === $this->rows,
-        ]));
-
-        return $this->translator->trans($reason ?? 'No plugin matches');
+        return $this->translator->trans($this->refreshing ? 'Asking Packagist…' : 'The store is empty: Packagist could not be reached');
     }
 
     /** @return list<string> */
     private function renderDetail(StoreRow $row, int $width, int $rows): array
     {
+        $caption = \mb_strtolower($this->translator->trans($row->action->caption()));
         $hint = \count($row->entry->screenshots) > 1
-            ? $this->translator->trans('Esc back · ⏎ %action% · ←/→ screenshots', ['%action%' => \mb_strtolower($this->translator->trans($row->action->caption()))])
-            : $this->translator->trans('Esc back · ⏎ %action%', ['%action%' => \mb_strtolower($this->translator->trans($row->action->caption()))]);
+            ? $this->translator->trans('Esc back · ⏎ %action% · ←/→ screenshots', ['%action%' => $caption])
+            : $this->translator->trans('Esc back · ⏎ %action%', ['%action%' => $caption]);
         $chrome = [$this->header->render($width, $this->styles, $hint), Rule::horizontal($width, $this->styles)];
-        $body = $this->detailLines($row, $width);
+        $controls = FieldBox::rowsFor($this->density->current(), $width);
         $room = \max(1, $rows - \count($chrome));
-        $this->detailScroll = \max(0, \min($this->detailScroll, \count($body) - $room));
-        // The header is the body's first line: its button scrolls with it.
-        if (0 === $this->detailScroll) {
-            $this->buttonZone = [\count($chrome), $width - 1 - $this->buttonWidth($row), $this->buttonWidth($row)];
-        }
-        $lines = [...$chrome, ...\array_slice($body, $this->detailScroll, $room)];
-        while (\count($lines) < $rows) {
-            $lines[] = AnsiText::blank($width);
-        }
 
-        return $lines;
-    }
-
-    /**
-     * The page, laid out once per plugin, width, screenshot and arrived asset.
-     *
-     * @return list<string>
-     */
-    private function detailLines(StoreRow $row, int $width): array
-    {
-        $key = [$row->entry->package, $width, $this->shot];
-        if (null !== $this->detailLines && $key === $this->detailKey) {
-            return $this->detailLines;
-        }
-        $this->detailKey = $key;
-        $entry = $row->entry;
-        $dim = $this->styles->of(Role::Dim);
-        $button = $this->button($row, true);
-        $lines = [
-            AnsiText::truncate(' '.$this->styles->of(Role::Bright)->apply($entry->title), \max(0, $width - AnsiUtils::visibleWidth($button) - 1), pad: true).$button.' ',
-            ' '
-                .$dim->apply(\implode(' · ', \array_filter([
-                    $this->translator->trans('by %author%', ['%author%' => $entry->author]),
-                    $this->translator->trans($entry->category->label()),
-                    $entry->version,
-                    $entry->license,
-                    $entry->verified ? Glyphs::MD_CHECK.' '.$this->translator->trans('Verified') : '',
-                ]))),
-        ];
-        if (null !== $entry->replaces) {
-            $lines[] = ' '.$this->styles->of(Role::TabAccent)->apply($this->translator->trans('Replaces the built-in %plugin% plugin', ['%plugin%' => $entry->replaces]));
-        }
-        if (!$entry->compatible) {
-            $lines[] = ' '.$this->styles->of(Role::DiagWarn)->apply($this->translator->trans('No release of it runs on this Porta'));
-        }
-        if ('' !== $entry->description) {
-            $lines[] = '';
-            $lines[] = ' '.$entry->description;
-        }
-        $lines = [...$lines, ...$this->preview($entry, $width), ...$this->whatsNew($row, $width), ...$this->about($entry, $width), ...$this->information($row, $width)];
-
-        return $this->detailLines = \array_map(static fn (string $line): string => AnsiText::truncate($line, $width, pad: true), $lines);
-    }
-
-    /** @return list<string> */
-    private function preview(StoreEntry $entry, int $width): array
-    {
-        $url = $entry->screenshots[$this->shot] ?? null;
-        if (null === $url) {
-            return [];
-        }
-        $count = \count($entry->screenshots);
-        $legend = $this->translator->trans('Preview').($count > 1 ? '  '.Glyphs::SCROLL_PREV.' '.($this->shot + 1).'/'.$count.' '.Glyphs::SCROLL_NEXT : '');
-        $lines = ['', Rule::horizontal($width, $this->styles, $legend)];
-        $bytes = $this->asset($url);
-        $image = null === $bytes ? null : $this->images->png($bytes, \max(1, $width - 2));
-        $missing = \array_key_exists($url, $this->assets) ? $this->translator->trans('The screenshot could not be shown') : $this->translator->trans('Loading…');
-        $shown = null === $image ? [' '.$this->styles->of(Role::Dim)->apply($missing)] : \array_map(static fn (PageLine $line): string => ' '.$line->text, $image);
-
-        return [...$lines, ...$shown];
-    }
-
-    /** @return list<string> */
-    private function whatsNew(StoreRow $row, int $width): array
-    {
-        $entry = $row->entry;
-        $title = $this->translator->trans("What's New").'  '.$entry->version.($entry->time > 0 ? ' · '.\gmdate('Y-m-d', $entry->time) : '');
-        $lines = ['', Rule::horizontal($width, $this->styles, $title)];
-        $changelog = null === $entry->changelog ? null : $this->asset($entry->changelog);
-        $section = null === $changelog ? '' : self::newestSection($changelog);
-        $body = match (true) {
-            '' !== $section => $this->markdown->render($section, $width)->lines,
-            null !== $entry->changelog && !\array_key_exists($entry->changelog, $this->assets) => [' '.$this->styles->of(Role::Dim)->apply($this->translator->trans('Loading…'))],
-            // No changelog to read: the release history says what it can.
-            default => $this->history($entry),
-        };
-
-        return [...$lines, ...$body];
-    }
-
-    /**
-     * The newest releases, each with its date.
-     *
-     * @return list<string>
-     */
-    private function history(StoreEntry $entry): array
-    {
-        $dim = $this->styles->of(Role::Dim);
-
-        return \array_map(
-            static fn (array $release): string => ' '.$release[0].($release[1] > 0 ? $dim->apply('  '.\gmdate('Y-m-d', $release[1])) : ''),
-            \array_slice($entry->history, offset: 0, length: 8),
-        );
-    }
-
-    /** @return list<string> */
-    private function about(StoreEntry $entry, int $width): array
-    {
-        $readme = null === $entry->readme ? null : $this->asset($entry->readme);
-        if (null === $readme) {
-            return [];
-        }
-        $source = \array_slice(\explode("\n", $readme), offset: 0, length: self::README_LINES);
-        // The page already says what it is called.
-        if (\str_starts_with($source[0] ?? '', '# ')) {
-            \array_shift($source);
-        }
-
-        return ['', Rule::horizontal($width, $this->styles, $this->translator->trans('About')), ...$this->markdown->render(\implode("\n", $source), $width)->lines];
-    }
-
-    /** @return list<string> */
-    private function information(StoreRow $row, int $width): array
-    {
-        $entry = $row->entry;
-        $facts = [
-            'Provider' => $entry->author,
-            'Package' => $entry->package,
-            'Category' => $this->translator->trans($entry->category->label()),
-            'Version' =>
-                $entry->version.('' !== $row->installed && $row->installed !== $entry->version ? ' ('.$this->translator->trans('%version% installed', ['%version%' => $row->installed]).')' : ''),
-            'Updated' => $entry->time > 0 ? \gmdate('Y-m-d', $entry->time) : '',
-            'License' => $entry->license,
-            'Downloads' => $entry->downloads > 0 ? \number_format($entry->downloads) : '',
-            'Source' => $entry->source,
-        ];
-        $lines = ['', Rule::horizontal($width, $this->styles, $this->translator->trans('Information'))];
-        $labels = [];
-        foreach ($facts as $label => $value) {
-            if ('' === $value) {
-                continue;
-            }
-            $labels[$this->translator->trans($label)] = $value;
-        }
-        $column = \max(\array_map(AnsiUtils::visibleWidth(...), [...\array_keys($labels), ''])) + 2;
-        foreach ($labels as $label => $value) {
-            $lines[] = ' '.$this->styles->of(Role::Dim)->apply(AnsiText::truncate($label, $column, pad: true)).$value;
-        }
-
-        return $lines;
-    }
-
-    /**
-     * The newest release's section of a Keep-a-Changelog file: the first
-     * `## ` heading that names a version (not Unreleased), up to the next.
-     */
-    public static function newestSection(string $changelog): string
-    {
-        $section = [];
-        $inside = false;
-        foreach (\explode("\n", \str_replace("\r\n", replace: "\n", subject: $changelog)) as $line) {
-            $heading = \str_starts_with($line, '## ');
-            if ($heading && $inside) {
-                break;
-            }
-            if ($heading && 1 === \preg_match('/\d/', $line) && false === \stripos($line, needle: 'unreleased')) {
-                $inside = true;
-
-                continue;
-            }
-            if ($inside) {
-                $section[] = $line;
-            }
-        }
-
-        return \trim(\implode("\n", $section));
-    }
-
-    /** What $url answered; null while it is on its way, or when it answered nothing. */
-    private function asset(string $url): ?string
-    {
-        return $this->assets[$url] ?? null;
+        return [...$chrome, ...$this->page->lines($row, $width, $controls, $room, 'page' === $this->hovered && $this->hoveredButton)];
     }
 
     /**
@@ -749,19 +635,19 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
      */
     private function requestAssets(StoreEntry $entry): void
     {
-        $wanted = [[$entry->changelog, false], [$entry->readme, false], [$entry->screenshots[$this->shot] ?? null, true]];
-        foreach ($wanted as [$url, $image]) {
-            if (null === $url || \array_key_exists($url, $this->asked) || null === $this->onAsset) {
-                continue;
+        $ask = $this->onAsset;
+        if (null !== $ask) {
+            foreach ($this->page->unasked($entry) as [$url, $image]) {
+                $ask($url, $image);
             }
-            $this->asked[$url] = true;
-            ($this->onAsset)($url, $image);
         }
     }
 
     private function detailRow(): ?StoreRow
     {
-        return null === $this->detail ? null : $this->row($this->detail);
+        $package = $this->page->package();
+
+        return null === $package ? null : $this->row($package);
     }
 
     private function row(string $package): ?StoreRow
@@ -769,61 +655,167 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         return \array_find($this->rows, static fn (StoreRow $row): bool => $package === $row->entry->package);
     }
 
-    private function openDetail(): void
+    /** The selected item, from the last frame's map. */
+    private function item(): ?StoreItem
     {
-        $row = $this->shown[$this->list->selected()] ?? null;
-        if (null === $row) {
+        return \array_find($this->items, fn (StoreItem $item): bool => $item->key === $this->selected);
+    }
+
+    /**
+     * Move the selection $rows down (up when negative) the grid, or $columns
+     * across a row: to the item nearest the selected one's column in the
+     * nearest row that way.
+     */
+    private function move(int $rows, int $columns): void
+    {
+        $from = $this->item();
+        if (null === $from) {
             return;
         }
-        $this->detail = $row->entry->package;
-        $this->detailScroll = 0;
-        $this->shot = 0;
-        $this->detailLines = null;
-        $this->setTrail($row->entry->title);
-        $this->requestAssets($row->entry);
+        $target = $from->row + $rows;
+        $candidates = \array_filter($this->items, static fn (StoreItem $item): bool => match (true) {
+            $columns < 0 => $item->row === $from->row && $item->col < $from->col,
+            $columns > 0 => $item->row === $from->row && $item->col > $from->col,
+            $rows < 0 => $item->row < $from->row,
+            default => $item->row > $from->row,
+        });
+        if ([] === $candidates) {
+            return;
+        }
+        // The nearest row the step reaches, then the nearest column in it.
+        \usort(
+            $candidates,
+            static fn (StoreItem $a, StoreItem $b): int => (
+                [
+                    0 === $columns ? \abs($a->row - $target) : 0,
+                    \abs($a->col - $from->col),
+                ] <=> [
+                    0 === $columns ? \abs($b->row - $target) : 0,
+                    \abs($b->col - $from->col),
+                ]
+            ),
+        );
+        $this->selected = $candidates[0]->key;
+        $this->follow = true;
         $this->invalidate();
     }
 
-    private function pressSelected(): void
+    /** The shelf rows a page key moves by. */
+    private function bodyRows(): int
     {
-        $row = $this->detailRow() ?? $this->shown[$this->list->selected()] ?? null;
+        return \max(1, $this->lastRows - $this->chromeRows);
+    }
+
+    /** Enter: a plugin's page, a category's shelf, Update all, the scope's list. */
+    private function activate(): void
+    {
+        $item = $this->item();
+        match ($item?->kind) {
+            StoreItemKind::Tile => null === $item->store ? $this->openPluginPage((string) $item->plugin) : $this->openDetail($item->store),
+            StoreItemKind::SeeAll, StoreItemKind::Category => $this->showCategory($item->category),
+            StoreItemKind::UpdateAll => $this->fire($this->onUpdateAll),
+            StoreItemKind::Scope => $this->openChoice($item),
+            StoreItemKind::Install => $this->startEditing(),
+            default => null,
+        };
+    }
+
+    private function startEditing(): void
+    {
+        // One field takes the keys at a time: the search closes, its query kept.
+        $this->filtering = false;
+        $this->editing = true;
+        $this->invalidate();
+    }
+
+    /** Space: the selected plugin's button, or what Enter does on anything else. */
+    private function press(): void
+    {
+        $item = $this->item();
+        if (StoreItemKind::Tile !== $item?->kind) {
+            $this->activate();
+
+            return;
+        }
+        $row = $item->store;
+        match (true) {
+            // An installed plugin's button is Update when the store has a newer release, Open otherwise.
+            null !== $item->plugin && StoreAction::Update !== $row?->action => $this->openPluginPage($item->plugin),
+            null !== $row && null !== $this->onPress && $row->action->pressable() => ($this->onPress)($row->entry),
+            default => null,
+        };
+    }
+
+    private function pressDetail(): void
+    {
+        $row = $this->detailRow();
         if (null !== $row && null !== $this->onPress && $row->action->pressable()) {
             ($this->onPress)($row->entry);
         }
     }
 
+    private function openPluginPage(string $name): void
+    {
+        $this->events?->dispatch(new SettingsSectionRequested('plugin:'.$name, 'pluginEnabled'));
+    }
+
+    private function openChoice(StoreItem $item): void
+    {
+        $row = $this->chromeRows + $item->row - $this->scroll;
+        if (null !== $this->scope && null !== $this->onOpenChoice) {
+            ($this->onOpenChoice)($this->scope, $row + $item->height, $item->col, $row, $item->width);
+        }
+    }
+
+    private function openDetail(StoreRow $row): void
+    {
+        $this->page->open($row->entry->package);
+        $this->setTrail($row->entry->title);
+        $this->requestAssets($row->entry);
+        $this->invalidate();
+    }
+
+    private function showCategory(?StoreCategory $category): void
+    {
+        $this->category = $category;
+        $this->selected = null;
+        $this->scroll = 0;
+        $this->follow = true;
+        $this->setTrail();
+        $this->invalidate();
+    }
+
+    /** Backspace, or Esc in a category, on the shelf: the shelf the category was opened from. */
+    private function back(): void
+    {
+        if (null !== $this->category) {
+            $key = 'category:'.$this->category->value;
+            $this->showCategory(null);
+            // Back on Categories, on the category just left.
+            $this->selected = StoreTab::Categories === $this->tab ? $key : null;
+        }
+    }
+
+    private function stepTab(int $step): void
+    {
+        $tabs = StoreTab::cases();
+        $at = (int) \array_search($this->tab, $tabs, strict: true);
+        $this->showTab($tabs[($at + $step + \count($tabs)) % \count($tabs)]);
+    }
+
     private function scrollDetail(int $delta): void
     {
-        $this->detailScroll = \max(0, $this->detailScroll + $delta);
+        $this->page->scrollBy($delta);
         $this->invalidate();
     }
 
     private function showShot(int $shot): void
     {
-        $this->shot = $shot;
-        $this->detailLines = null;
+        $this->page->showShot($shot);
         $row = $this->detailRow();
         if (null !== $row) {
             $this->requestAssets($row->entry);
         }
-        $this->invalidate();
-    }
-
-    private function showUpdates(bool $updates): void
-    {
-        $this->updatesTab = $updates;
-        $this->list->select(0);
-        $this->applyFilter();
-        $this->invalidate();
-    }
-
-    private function cycleCategory(int $step): void
-    {
-        $choices = [null, ...StoreCategory::cases()];
-        $at = (int) \array_search($this->category, $choices, strict: true);
-        $this->category = $choices[($at + $step + \count($choices)) % \count($choices)];
-        $this->list->select(0);
-        $this->applyFilter();
         $this->invalidate();
     }
 
@@ -833,54 +825,66 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** While filtering, the keys belong to the field ({@see FilterKeys}). */
+    /** While searching, the keys belong to the field ({@see FilterKeys}). */
     private function editFilter(string $data, Keybindings $kb): bool
     {
         $edit = FilterKeys::edit($this->filter, $data, $kb);
         $this->filtering = FilterKeys::Left !== $edit;
         if ($edit->refilters()) {
-            $this->list->select(0);
-            $this->applyFilter();
+            $this->selected = null;
+            $this->scroll = 0;
+            $this->follow = true;
             $this->invalidate();
         }
 
         return FilterKeys::Ignored !== $edit;
     }
 
-    /** The rows the tab, the category and the filter leave, featured first. */
-    private function applyFilter(): void
+    /**
+     * The install field, open, takes what is typed: Enter installs it, Esc
+     * closes it; the arrows close it and move on.
+     */
+    private function editSource(string $data, Keybindings $kb): bool
     {
-        $query = \mb_strtolower(\trim($this->filter->value()));
-        $shown = \array_values(\array_filter(
-            $this->rows,
-            fn (StoreRow $row): bool => (!$this->updatesTab || null !== $row->update) && (null === $this->category || $this->category === $row->entry->category) && $row->entry->matches($query),
-        ));
-        \usort($shown, static fn (StoreRow $a, StoreRow $b): int => (int) $b->entry->featured <=> (int) $a->entry->featured);
-        $this->shown = $shown;
-        $this->list->clamp(\count($this->shown));
-    }
-
-    /** The shelf rows above the first plugin. */
-    private function headerRows(): int
-    {
-        return self::CHROME_ROWS + ($this->filtering ? FieldBox::rowsFor($this->density->current()) : 0);
-    }
-
-    private function entriesFitting(): int
-    {
-        return \max(1, \intdiv($this->lastRows - $this->headerRows(), self::ENTRY_ROWS));
-    }
-
-    /** The shelf entry drawn at widget row $relRow, or null. */
-    private function entryAt(int $relRow): ?int
-    {
-        $offset = $relRow - $this->headerRows();
-        if ($offset < 0 || [] === $this->shown) {
-            return null;
+        $handled = match (true) {
+            $kb->matches($data, 'open') => $this->submitSource(),
+            $kb->matches($data, 'exit_view') => $this->stopEditing(),
+            $kb->matches($data, 'delete_char_backward') => $this->eraseSource(),
+            default => $this->source->insert($data),
+        };
+        if (!$handled) {
+            $this->editing = false;
         }
-        $index = $this->list->scroll() + \intdiv($offset, self::ENTRY_ROWS);
+        $this->invalidate();
 
-        return $index < \count($this->shown) ? $index : null;
+        return $handled;
+    }
+
+    private function submitSource(): bool
+    {
+        $source = \trim($this->source->value());
+        $this->stopEditing();
+        if ('' !== $source && null !== $this->onChange) {
+            ($this->onChange)(self::INSTALL_KEY, $source);
+        }
+
+        return true;
+    }
+
+    /** Backspace in the install field is the field's, even with nothing left to erase. */
+    private function eraseSource(): bool
+    {
+        $this->source->backspace();
+
+        return true;
+    }
+
+    private function stopEditing(): bool
+    {
+        $this->source->clear();
+        $this->editing = false;
+
+        return true;
     }
 
     private function setTrail(?string $page = null): void
@@ -888,8 +892,10 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $trail = [
             ['label' => $this->translator->trans('Settings'), 'id' => 'general'],
             ['label' => $this->translator->trans('Plugins'), 'id' => 'plugins'],
-            ['label' => $this->translator->trans('Store'), 'id' => 'store'],
         ];
+        if (null !== $this->category && null === $page) {
+            $page = $this->translator->trans($this->category->label());
+        }
         if (null !== $page) {
             $trail[] = ['label' => $page, 'id' => null];
         }
@@ -902,16 +908,16 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         return [
             'move_up' => [Key::UP],
             'move_down' => [Key::DOWN],
+            'move_left' => [Key::LEFT],
+            'move_right' => [Key::RIGHT],
             'page_up' => [Key::PAGE_UP],
             'page_down' => [Key::PAGE_DOWN],
             'open' => [Key::ENTER],
             'press' => [Key::SPACE],
             'back' => [Key::BACKSPACE],
-            'next_shot' => [Key::RIGHT],
-            'previous_shot' => [Key::LEFT],
-            'next_category' => ['c'],
-            'previous_category' => ['shift+c'],
-            'switch_tab' => ['u'],
+            'next_tab' => [']'],
+            'previous_tab' => ['['],
+            'show_updates' => ['u'],
             'update_all' => ['shift+u'],
             'filter' => ['ctrl+f', '/'],
             'delete_char_backward' => [Key::BACKSPACE],

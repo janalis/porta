@@ -303,15 +303,7 @@ final readonly class SettingsRowLayout
             return $lines;
         }
 
-        return \array_map(static function (string $line): string {
-            $first = [];
-            $last = [];
-            $latin = '/^[^\p{Hebrew}\p{Arabic}]$/u';
-            $start = 1 === \preg_match('/\p{L}/u', $line, $first) && 1 === \preg_match($latin, $first[0]) ? Bidi::LTR_MARK : '';
-            $end = 1 === \preg_match('/.*(\p{L})/us', $line, $last) && 1 === \preg_match($latin, $last[1]) ? Bidi::LTR_MARK : '';
-
-            return $start.$line.$end;
-        }, $lines);
+        return \array_map(Bidi::pinLatinEdges(...), $lines);
     }
 
     /** The columns one row's control is drawn in: a checkbox its own, every other kind the page's. */

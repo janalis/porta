@@ -44,7 +44,7 @@ final readonly class PluginCommands implements CommandProvider
             ->add('plugins_disable', $this->pickToDisable(...), label: 'Plugins: Disable…')
             ->add('plugins_install_tools', $this->installMissing(...), label: 'Plugins: Install Missing Tools')
             ->add('plugins_update_tools', $this->updateAll(...), label: 'Plugins: Update Tools')
-            ->add('plugins_store', fn () => $this->settings?->openOn('store'), label: 'Plugins: Open Store');
+            ->add('plugins_store', fn () => $this->settings?->openOn('plugins'), label: 'Plugins: Open Store');
     }
 
     private function pickToEnable(): void

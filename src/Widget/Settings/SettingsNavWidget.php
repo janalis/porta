@@ -169,7 +169,6 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             $entries[] = ['id' => $id, 'label' => $label, 'kind' => NavEntryKind::Section];
         }
         $entries[] = ['id' => 'plugins', 'label' => 'Plugins', 'kind' => NavEntryKind::Folder];
-        $entries[] = ['id' => 'store', 'label' => 'Store', 'kind' => NavEntryKind::Store];
         foreach ($pluginNames as $name) {
             $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => NavEntryKind::Plugin];
         }
@@ -257,7 +256,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
-    /** The store's update count, beside its name; 0 says nothing. */
+    /** The store's update count, beside the Plugins folder's name; 0 says nothing. */
     public function setStoreUpdates(int $count): void
     {
         if ($count !== $this->storeUpdates) {
@@ -341,7 +340,8 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
     private function label(array $entry): string
     {
         return match (true) {
-            NavEntryKind::Store === $entry['kind'] => $this->translator->trans($entry['label']).($this->storeUpdates > 0 ? ' ('.$this->storeUpdates.')' : ''),
+            // Plugins is the store: it says how many updates it has.
+            'plugins' === $entry['id'] => $this->translator->trans($entry['label']).($this->storeUpdates > 0 ? ' ('.$this->storeUpdates.')' : ''),
             \in_array($entry['kind'], [NavEntryKind::Section, NavEntryKind::Folder], strict: true) => $this->translator->trans($entry['label']),
             default => $entry['label'],
         };

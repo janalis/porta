@@ -99,7 +99,7 @@ final class SettingsPluginsController
     /** @return list<SettingsRow> */
     public function rows(): array
     {
-        $rows = $this->scopeRow->lead(also: $this->translator->trans('new plugins install here too'), rows: [
+        $rows = $this->scopeRow->lead(also: $this->also(), rows: [
             new SettingsRow(
                 key: 'pluginInstall',
                 label: $this->translator->trans('Install plugin'),
@@ -110,50 +110,64 @@ final class SettingsPluginsController
                 fieldset: $this->translator->trans('Install'),
             ),
         ]);
-        $installed = $this->translator->trans('Installed');
-        foreach ($this->lifecycle->listedNames() as $name) {
-            $rows[] = $this->indexRow($name, $installed);
+        $fieldset = $this->translator->trans('Installed');
+        foreach ($this->installed() as $plugin) {
+            $rows[] = new SettingsRow(
+                key: self::OPEN_PREFIX.$plugin->name,
+                label: $plugin->name,
+                kind: SettingsRowKind::Action,
+                value: $this->translator->trans('Open'),
+                restart: false,
+                // Last, where the hint's truncation costs least: in the label, a
+                // sentence-long description sized the label column and pushed every
+                // row's button and state off the screen.
+                hint: \implode(' · ', \array_filter([$plugin->facts, $plugin->description])),
+                fieldset: $fieldset,
+            );
         }
 
         return $rows;
     }
 
-    /**
-     * One plugin on the index: what it is, whether it is on, where it comes
-     * from and what it still needs — and the button that opens its page,
-     * where everything about it is done.
-     */
-    private function indexRow(string $name, string $fieldset): SettingsRow
+    /** The "Save changes to" row the store's Installed tab leads with, or null when there is nothing to choose. */
+    public function scopeRow(): ?SettingsRow
     {
-        $description = $this->tools->manifest($name)->description ?? '';
-        $missing = \array_map(
-            static fn (ToolStatus $status): string => $status->tool->name,
-            \array_values(\array_filter($this->tools->statuses($name), static fn (ToolStatus $status): bool => $status->blocks())),
-        );
-        $scope = $this->scopeOf($name);
-        $hint = [$this->translator->trans($this->lifecycle->isDisabled($name) ? 'off' : 'on')];
-        if (null !== $scope) {
-            $hint[] = $this->translator->trans(InstallScope::Embedded === $scope ? 'built-in' : $scope->value);
-        }
-        if ([] !== $missing) {
-            $hint[] = $this->translator->trans('needs %tools%', ['%tools%' => \implode(', ', $missing)]);
-        }
-        // Last, where the hint's truncation costs least: in the label, a
-        // sentence-long description sized the label column and pushed every
-        // row's button and state off the screen.
-        if ('' !== $description) {
-            $hint[] = $description;
+        return $this->scopeRow->row($this->also());
+    }
+
+    /** What the scope decides on the Plugins page beyond the file. */
+    private function also(): string
+    {
+        return $this->translator->trans('new plugins install here too');
+    }
+
+    /**
+     * Every installed plugin: what it is, whether it is on, where it comes
+     * from and what it still needs. The Installed tab draws them, and the
+     * settings search finds them through the index rows.
+     *
+     * @return list<InstalledPlugin>
+     */
+    public function installed(): array
+    {
+        $plugins = [];
+        foreach ($this->lifecycle->listedNames() as $name) {
+            $missing = \array_map(
+                static fn (ToolStatus $status): string => $status->tool->name,
+                \array_values(\array_filter($this->tools->statuses($name), static fn (ToolStatus $status): bool => $status->blocks())),
+            );
+            $scope = $this->scopeOf($name);
+            $facts = [$this->translator->trans($this->lifecycle->isDisabled($name) ? 'off' : 'on')];
+            if (null !== $scope) {
+                $facts[] = $this->translator->trans(InstallScope::Embedded === $scope ? 'built-in' : $scope->value);
+            }
+            if ([] !== $missing) {
+                $facts[] = $this->translator->trans('needs %tools%', ['%tools%' => \implode(', ', $missing)]);
+            }
+            $plugins[] = new InstalledPlugin($name, $this->tools->manifest($name)->description ?? '', \implode(' · ', $facts));
         }
 
-        return new SettingsRow(
-            key: self::OPEN_PREFIX.$name,
-            label: $name,
-            kind: SettingsRowKind::Action,
-            value: $this->translator->trans('Open'),
-            restart: false,
-            hint: \implode(' · ', $hint),
-            fieldset: $fieldset,
-        );
+        return $plugins;
     }
 
     /**

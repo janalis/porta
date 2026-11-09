@@ -1,6 +1,6 @@
 # The plugin store
 
-**Settings › Plugins › Store** lists every Porta plugin published on
+**Settings › Plugins** is the store: it lists every Porta plugin published on
 [Packagist](https://packagist.org/search/?type=porta-plugin). Each plugin has
 one button:
 
@@ -15,30 +15,46 @@ one button:
 
 ## Using the store
 
-The **shelf** has two tabs:
+The store has four tabs:
 
-- **Discover** lists every plugin, the most downloaded first.
-- **Updates** lists only the installed plugins that have a newer release.
+- **Discover** is the front page: the featured plugins in a banner, then a
+  shelf per category. A shelf with more than it shows has **See all ›**,
+  which opens the whole category.
+- **Categories** lists every category with how many plugins it has; Enter
+  opens one.
+- **Updates** lists the installed plugins that have a newer release, under an
+  **Update all** button.
+- **Installed** lists every plugin installed here, from the store or not, with
+  **Open** (its Settings page) or **Update**. Above them, **Save changes to**
+  picks where a new plugin installs (this project, or every project), and
+  **Install from URL or path** installs a package by name, a git URL or a local
+  directory: press Enter to type into it, and Enter again to install (see
+  [Installing, removing, disabling](plugins.md#installing-removing-disabling)).
 
-Each plugin shows its title, who made it, its category, its version, when that
-version was released and how often it was downloaded. **Verified** marks a
-plugin whose author registered it with Porta (see below).
+Each plugin is a tile: its icon, its title, what it does, who made it, its
+category, its version, when that version was released and how often it was
+downloaded, with its button at the right. **Verified** marks a plugin whose
+author registered it with Porta (see below). Tiles stand two to a row where
+the pane is wide enough.
 
 | Key | Does |
 | --- | --- |
-| ↑ ↓, PgUp PgDn | Move through the shelf |
-| Enter | Open the plugin's page |
+| ↑ ↓ ← →, PgUp PgDn | Move through the tiles |
+| Enter | Open the plugin's page, or the category, or the field |
 | Space | Press the plugin's button |
-| `c` / `Shift+C` | Next / previous category |
-| `u` | Switch between Discover and Updates |
+| `]` / `[` | Next / previous tab |
+| `u` | Show Updates |
 | `Shift+U` | Update every plugin listed under Updates |
-| `/` or Ctrl+F | Filter by name, description or author |
+| `/` or Ctrl+F | Search by name, description or author |
+| Esc or Backspace | Leave a category |
 
-A click on a tab, on the category or on a button does the same.
+A click on a tab, a tile, **See all** or a button does the same: a click selects
+a tile, and a second click opens its page.
 
 A plugin's **page** shows, in order:
 
-- its button;
+- its button, then a strip with its downloads, category, developer, version and
+  license;
 - its screenshots (← → to move between them);
 - **What's New**: the newest release's section of its changelog;
 - **About**: its README;

@@ -3662,10 +3662,6 @@
         <source>About</source>
         <target>Informazioni</target>
       </trans-unit>
-      <trans-unit id="1246">
-        <source>All categories</source>
-        <target>Tutte le categorie</target>
-      </trans-unit>
       <trans-unit id="1247">
         <source>Asking Packagist…</source>
         <target>Interrogazione di Packagist…</target>
@@ -3726,10 +3722,6 @@
         <source>Replaces the built-in %plugin% plugin</source>
         <target>Sostituisce il plugin integrato %plugin%</target>
       </trans-unit>
-      <trans-unit id="1262">
-        <source>Store</source>
-        <target>Store</target>
-      </trans-unit>
       <trans-unit id="1263">
         <source>The plugin store could not reach Packagist: showing what it saw last</source>
         <target>Lo store dei plugin non ha raggiunto Packagist: mostra ciò che ha visto l’ultima volta</target>
@@ -3761,10 +3753,6 @@
       <trans-unit id="1271">
         <source>by %author%</source>
         <target>di %author%</target>
-      </trans-unit>
-      <trans-unit id="1272">
-        <source>⏎ details · Space get or update · c category · u updates · / filter</source>
-        <target>⏎ dettagli · Spazio ottieni o aggiorna · c categoria · u aggiornamenti · / filtra</target>
       </trans-unit>
       <trans-unit id="1273">
         <source>Linters &amp; formatters</source>
@@ -3873,6 +3861,42 @@
       <trans-unit id="1299">
         <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
         <target>%plugins% aggiornati — riavvia Porta per completare %names%: le classi già caricate mantengono il vecchio codice</target>
+      </trans-unit>
+      <trans-unit id="1300">
+        <source>Categories</source>
+        <target>Categorie</target>
+      </trans-unit>
+      <trans-unit id="1301">
+        <source>See all</source>
+        <target>Vedi tutto</target>
+      </trans-unit>
+      <trans-unit id="1302">
+        <source>Results for "%query%"</source>
+        <target>Risultati per «%query%»</target>
+      </trans-unit>
+      <trans-unit id="1303">
+        <source>Install from URL or path</source>
+        <target>Installa da URL o percorso</target>
+      </trans-unit>
+      <trans-unit id="1304">
+        <source>⏎ to type a git URL, local path, or vendor/name package</source>
+        <target>⏎ per digitare un URL git, un percorso locale o un pacchetto vendor/name</target>
+      </trans-unit>
+      <trans-unit id="1305">
+        <source>Update all</source>
+        <target>Aggiorna tutto</target>
+      </trans-unit>
+      <trans-unit id="1306">
+        <source>Developer</source>
+        <target>Sviluppatore</target>
+      </trans-unit>
+      <trans-unit id="1307">
+        <source>⏎ details · Space get · [ ] tabs · / search</source>
+        <target>⏎ dettagli · Spazio ottieni · [ ] schede · / cerca</target>
+      </trans-unit>
+      <trans-unit id="1308">
+        <source>No plugin is installed</source>
+        <target>Nessun plugin è installato</target>
       </trans-unit>
     </body>
   </file>

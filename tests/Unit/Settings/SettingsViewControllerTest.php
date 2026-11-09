@@ -91,6 +91,7 @@ use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
+use Porta\Widget\Settings\StoreTab;
 use Porta\Widget\StatusBarWidget;
 use Porta\Widget\TabBarWidget;
 use Porta\Workbench\EditorArea;
@@ -1324,13 +1325,13 @@ final class SettingsViewControllerTest extends TestCase
         $controller = $this->controller(store: $store);
         $controller->open();
 
-        $controller->onSectionRequested(new SettingsSectionRequested('store'));
-        $this->assertSame(['settings-store'], $this->ids($this->content));
+        $controller->onSectionRequested(new SettingsSectionRequested('plugins'));
+        $this->assertSame(['settings-store'], $this->ids($this->content), 'Plugins is the store');
         $this->assertSame($this->store, $this->tui->getFocus(), 'the keyboard follows the page it was on');
         $lines = \implode("\n", $this->store?->render(new RenderContext(100, 10)) ?? []);
         $this->assertStringContainsString('Rector', $lines);
         $this->assertStringContainsString('Updates (1)', $lines);
-        $this->assertStringContainsString('Store (1)', \implode("\n", $this->nav->render(new RenderContext(24, 24))), 'the nav counts the updates');
+        $this->assertStringContainsString('Plugins (1)', \implode("\n", $this->nav->render(new RenderContext(24, 24))), 'the nav counts the updates');
 
         // Back on the form: the store keeps its count in the nav, and re-reads nothing.
         $controller->onSectionRequested(new SettingsSectionRequested('general'));
@@ -1347,7 +1348,7 @@ final class SettingsViewControllerTest extends TestCase
         $store->fill();
         $store->http->bodies['https://img.test/a.png'] = "\x89PNG\r\n\x1a\nx";
         $controller = $this->controller(store: $store);
-        $controller->openOn('store');
+        $controller->openOn('plugins');
         $this->assertSame($this->store, $this->tui->getFocus());
         $this->store?->render(new RenderContext(100, 20));
 
@@ -1363,11 +1364,53 @@ final class SettingsViewControllerTest extends TestCase
         $this->store?->handleInput('1');
         $this->assertSame('general', $this->nav->selectedId());
 
-        $controller->onSectionRequested(new SettingsSectionRequested('store'));
+        $controller->onSectionRequested(new SettingsSectionRequested('plugins'));
         $this->store?->handleInput("\t");
         $this->assertSame($this->nav, $this->tui->getFocus());
         $this->store?->handleInput('U');
         $this->store?->handleInput("\x1b");
         $this->assertFalse($controller->isOpen());
+    }
+
+    /**
+     * The store's Installed tab is the Plugins page's index: what is
+     * installed, the scope a pick changes through the page's own list, and a
+     * search hit on the install field lands on it.
+     */
+    public function testTheInstalledTabListsThePluginsAndChangesTheScopeThroughThePage(): void
+    {
+        $store = new StoreFixture();
+        $store->fill();
+        $controller = $this->controller(store: $store);
+        $this->lifecycle->names = ['git'];
+        $controller->open();
+        $this->scope->set(ConfigScope::Project);
+
+        $controller->onSectionRequested(new SettingsSectionRequested('plugins', 'configScope'));
+        $this->assertSame(['settings-store'], $this->ids($this->content));
+        $this->assertSame(StoreTab::Installed, $this->store?->tab(), 'a search hit on the scope lands on the Installed tab');
+        $this->renderer->renderFrame($this->content, 100, 30);
+        $lines = AnsiUtils::stripAnsiCodes(\implode("\n", $this->store?->render(new RenderContext(100, 30)) ?? []));
+        $this->assertStringContainsString('Install from URL or path', $lines);
+        $this->assertMatchesRegularExpression('/git\s+╭/u', $lines);
+
+        $this->store?->handleInput("\r"); // the scope's list, under it
+        $this->assertTrue(Probe::get($this->contextMenu, 'open') && Probe::get($this->contextMenu, 'listbox'), 'the list is open');
+        $this->contextMenu->handleInput("\x1b[B");
+        $this->contextMenu->handleInput("\r");
+        $this->assertSame(ConfigScope::Global, $this->scope->current(), 'the pick went through the Plugins page');
+        $after = AnsiUtils::stripAnsiCodes(\implode("\n", $this->store?->render(new RenderContext(100, 30)) ?? []));
+        $this->assertNotSame($lines, $after, 'the store shows the scope picked');
+
+        $controller->onSectionRequested(new SettingsSectionRequested('plugins', 'pluginInstall'));
+        $this->store?->render(new RenderContext(100, 30));
+        $this->store?->handleInput("\r");
+        foreach (\str_split('/nowhere') as $key) {
+            $this->store?->handleInput($key);
+        }
+        $refreshed = $this->lifecycle->refreshed;
+        $this->store?->handleInput("\r");
+        $lifecycle = $this->lifecycle;
+        $this->await(static fn (): bool => $lifecycle->refreshed > $refreshed, what: 'the install\'s answer, through the Plugins page');
     }
 }

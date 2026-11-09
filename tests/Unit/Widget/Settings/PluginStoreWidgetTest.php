@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Widget\Settings;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Event\SettingsSectionRequested;
+use Porta\I18n\BaseDirection;
+use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Store\PluginUpdate;
@@ -13,12 +15,17 @@ use Porta\Plugin\Store\StoreAction;
 use Porta\Plugin\Store\StoreCategory;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
+use Porta\Settings\InstalledPlugin;
+use Porta\Settings\SettingsRow;
+use Porta\Settings\SettingsRowKind;
+use Porta\Ui\ScreenDensity;
 use Porta\Widget\Settings\PluginStoreWidget;
+use Porta\Widget\Settings\StoreTab;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 
-/** The store's shelf and its pages, drawn and driven from the keyboard and the pointer. */
+/** The store as the App Store: its four tabs, its grid of tiles and its pages, driven from the keyboard and the pointer. */
 final class PluginStoreWidgetTest extends TestCase
 {
     private const string CHANGELOG = 'https://raw.test/CHANGELOG.md';
@@ -29,6 +36,8 @@ final class PluginStoreWidgetTest extends TestCase
 
     private const string SHOT_2 = 'https://img.test/2.png';
 
+    private const string SHOT_3 = 'https://img.test/3.png';
+
     /** @var list<string> */
     private array $pressed = [];
 
@@ -38,14 +47,22 @@ final class PluginStoreWidgetTest extends TestCase
     /** @var list<string> each address the page asked for, `!` marking a picture */
     private array $asked = [];
 
+    /** @var list<array{string, string}> */
+    private array $changes = [];
+
+    /** @var list<array{string, int, int, int, int}> each list the scope select asked for: its key, row, column, row above, width */
+    private array $choices = [];
+
     private int $updateAll = 0;
 
     private int $exits = 0;
 
     private int $focusNext = 0;
 
-    /** @var list<string> */
+    /** @var list<array{string, ?string}> */
     private array $sections = [];
+
+    private ScreenDensity $density;
 
     private PluginStoreWidget $widget;
 
@@ -53,9 +70,10 @@ final class PluginStoreWidgetTest extends TestCase
     {
         $events = new EventDispatcher();
         $events->addListener(SettingsSectionRequested::class, function (SettingsSectionRequested $event): void {
-            $this->sections[] = $event->section;
+            $this->sections[] = [$event->section, $event->row];
         });
-        $this->widget = new PluginStoreWidget(new Translator('en'), events: $events);
+        $this->density = new ScreenDensity();
+        $this->widget = new PluginStoreWidget(new Translator('en'), density: $this->density, events: $events);
         $this->widget
             ->onPress(function (StoreEntry $entry): void {
                 $this->pressed[] = $entry->package;
@@ -70,6 +88,12 @@ final class PluginStoreWidgetTest extends TestCase
             ->onUpdateAll(function (): void {
                 ++$this->updateAll;
             })
+            ->onChange(function (string $key, string $value): void {
+                $this->changes[] = [$key, $value];
+            })
+            ->onOpenChoice(function (SettingsRow $row, int $relRow, int $relCol, int $relAbove, int $width): void {
+                $this->choices[] = [$row->key, $relRow, $relCol, $relAbove, $width];
+            })
             ->onExit(function (): void {
                 ++$this->exits;
             })
@@ -78,8 +102,14 @@ final class PluginStoreWidgetTest extends TestCase
             });
     }
 
-    private static function entry(string $name, StoreCategory $category = StoreCategory::Linters, bool $verified = false, bool $featured = false, array $screenshots = []): StoreEntry
-    {
+    /** @param list<string> $screenshots */
+    private static function entry(
+        string $name,
+        StoreCategory $category = StoreCategory::Linters,
+        bool $verified = false,
+        bool $featured = false,
+        array $screenshots = [],
+    ): StoreEntry {
         return new StoreEntry(
             'acme/porta-'.$name,
             $name,
@@ -104,12 +134,12 @@ final class PluginStoreWidgetTest extends TestCase
         );
     }
 
-    /** The shelf: rector (verified, Get), phpunit (featured, testing, Update), todo (Built-in). */
+    /** The shelf: rector (verified, Get), phpunit (featured, testing, Update), todo (Working). */
     private function shelf(): void
     {
         $this->widget->setStore(
             [
-                new StoreRow(self::entry('rector', verified: true, screenshots: [self::SHOT, self::SHOT_2]), StoreAction::Get),
+                new StoreRow(self::entry('rector', verified: true, screenshots: [self::SHOT, self::SHOT_2, self::SHOT_3]), StoreAction::Get),
                 new StoreRow(
                     self::entry('phpunit', StoreCategory::Testing, featured: true),
                     StoreAction::Update,
@@ -123,19 +153,75 @@ final class PluginStoreWidgetTest extends TestCase
         );
     }
 
-    private function screen(int $columns = 100, int $rows = 30): string
+    /** Five linters: more than two rows of a two-column grid hold. */
+    private function linters(): void
+    {
+        $rows = [];
+        foreach (['alpha', 'bravo', 'charlie', 'delta', 'echo'] as $name) {
+            $rows[] = new StoreRow(self::entry($name), StoreAction::Get);
+        }
+        $this->widget->setStore($rows, false, 0);
+    }
+
+    private function installed(): void
+    {
+        $this->shelf();
+        $scope = new SettingsRow(
+            key: 'configScope',
+            label: 'Save changes to',
+            kind: SettingsRowKind::Choice,
+            value: 'project',
+            restart: false,
+            options: ['project', 'global'],
+            optionLabels: ['project' => '.porta.json', 'global' => '~/.porta/config.json'],
+        );
+        $this->widget->setInstalled([new InstalledPlugin('git', 'Git history', 'on · built-in'), new InstalledPlugin('phpunit', '', 'on · global')], $scope);
+        $this->widget->showTab(StoreTab::Installed);
+    }
+
+    /** The screen as drawn, its escapes kept: what hover changes is a style. */
+    private function raw(int $columns = 100, int $rows = 40): string
+    {
+        return \implode("\n", $this->widget->render(new RenderContext($columns, $rows)));
+    }
+
+    private function screen(int $columns = 100, int $rows = 40): string
     {
         return AnsiUtils::stripAnsiCodes(\implode("\n", $this->widget->render(new RenderContext($columns, $rows))));
+    }
+
+    /**
+     * Where $needle is first drawn: its row and column.
+     *
+     * @return array{int, int}
+     */
+    private function at(string $needle, int $columns = 100, int $rows = 40): array
+    {
+        foreach (\explode("\n", $this->screen($columns, $rows)) as $row => $line) {
+            $col = \mb_strpos($line, $needle);
+            if (false !== $col) {
+                return [$row, $col];
+            }
+        }
+        $this->fail('Not drawn: '.$needle);
+    }
+
+    private function click(string $needle, int $columns = 100, int $rows = 40): void
+    {
+        [$row, $col] = $this->at($needle, $columns, $rows);
+        $this->widget->handleClick($row, $col);
+        $this->screen($columns, $rows);
     }
 
     private function key(string ...$keys): void
     {
         foreach ($keys as $key) {
             $this->widget->handleInput($key);
+            $this->screen();
         }
     }
 
-    /** A 1×1 PNG, for the screenshot the page draws. */
+    /** A 4×4 PNG, for the screenshot the page draws. */
     private static function png(): string
     {
         $image = \imagecreatetruecolor(4, height: 4);
@@ -145,88 +231,351 @@ final class PluginStoreWidgetTest extends TestCase
         return (string) \ob_get_clean();
     }
 
-    public function testTheShelfListsEachPluginWithItsFactsAndButtonFeaturedFirst(): void
+    public function testDiscoverIsTheFrontPageFeaturedFirstThenAShelfPerCategory(): void
     {
         $this->shelf();
         $screen = $this->screen();
 
-        $this->assertStringContainsString('Settings › Plugins › Store', $screen);
-        $this->assertStringContainsString('Discover', $screen);
-        $this->assertStringContainsString('Updates (1)', $screen);
-        $this->assertStringContainsString('All categories ▾', $screen);
-        $this->assertMatchesRegularExpression('/Phpunit\s+Featured.*\[ Update \]/u', $screen);
+        $this->assertStringContainsString('Settings › Plugins ', $screen);
+        $this->assertMatchesRegularExpression('/Discover\s+Categories\s+Updates \(1\)\s+Installed/u', $screen);
+        $this->assertStringContainsString('╭ Featured ─', $screen);
+        $this->assertMatchesRegularExpression('/│ Re │ Does rector\s+│  Get  │/u', $screen);
+        $this->assertMatchesRegularExpression('/Rector  ✓ Verified\s+╭/u', $screen);
         $this->assertStringContainsString('Ada · Testing · v0.9.0 → v1.0.0 · 2027-01-15 · 1,234 downloads', $screen);
-        $this->assertMatchesRegularExpression('/Rector\s+✓ Verified.*\[ Get \]/u', $screen);
-        $this->assertStringContainsString('[ Working… ]', $screen);
-        $this->assertLessThan(\strpos($screen, needle: 'Rector'), \strpos($screen, needle: 'Phpunit'), 'featured first');
+        $this->assertStringContainsString('Phpunit  Featured', $screen);
+        $this->assertStringContainsString('Working…', $screen);
+        $this->assertLessThan(\strpos($screen, needle: 'Linters & formatters'), \strpos($screen, needle: 'Featured ─'), 'the banner first');
+        $this->assertLessThan(\strpos($screen, needle: 'Productivity'), \strpos($screen, needle: 'Testing'), 'the shelves in category order');
+        $this->assertStringNotContainsString('See all', $screen, 'every shelf shows all it has');
+        $this->assertStringNotContainsString('Languages', $screen, 'an empty category has no shelf');
     }
 
-    public function testWhatAnEmptyShelfSays(): void
+    public function testAShelfWithMoreThanTwoRowsHoldSaysSeeAllWhichOpensTheWholeCategory(): void
+    {
+        $this->linters();
+        $screen = $this->screen();
+        $this->assertStringContainsString('See all ›', $screen);
+        $this->assertMatchesRegularExpression('/Alpha.*Bravo/u', $screen, 'two to a row');
+        $this->assertStringNotContainsString('Echo', $screen, 'two rows of two');
+
+        $this->click('See all');
+        $screen = $this->screen();
+        $this->assertStringContainsString('Settings › Plugins › Linters & formatters', $screen);
+        $this->assertStringContainsString('Echo', $screen);
+        $this->assertStringNotContainsString('See all', $screen);
+
+        $this->key("\x1b");
+        $this->assertSame(0, $this->exits, 'Esc leaves the category, not the view');
+        $this->assertStringNotContainsString('Echo', $this->screen());
+
+        $this->click('See all');
+        $this->click('Plugins');
+        $this->assertStringNotContainsString('Echo', $this->screen(), 'the Plugins crumb is the way back to the front page');
+        $this->assertSame([], $this->crumbs);
+
+        $this->click('See all');
+        $this->click('Settings');
+        $this->assertSame(['general'], $this->crumbs, 'in a category, another crumb is still the view\'s');
+        $this->key(']');
+        $this->assertStringNotContainsString('Linters & formatters', \explode("\n", $this->screen())[0], 'another tab leaves the category, its crumb with it');
+    }
+
+    public function testANarrowPaneHasOneTileToARowAndACompactScreenOneRowControls(): void
+    {
+        $this->linters();
+        $this->assertDoesNotMatchRegularExpression('/Alpha.*Bravo/u', $this->screen(60), 'one to a row');
+        $this->assertStringContainsString('Bravo', $this->screen(60));
+
+        $this->density->observe(24);
+        $screen = $this->screen(100, 24);
+        $this->assertMatchesRegularExpression('/\[Al\] Alpha\s+│  Get  │/u', $screen);
+        $this->assertStringContainsString('Does alpha · Ada · Linters & formatters', $screen);
+        $this->assertStringContainsString('Discover │ Categories │', $screen, 'the compact strip');
+        $this->assertMatchesRegularExpression('/^─{100}$/mu', $screen, 'under its own rule');
+        $this->assertStringNotContainsString('┌────┐', $screen);
+
+        $this->shelf();
+        $screen = $this->screen(100, 24);
+        $this->assertMatchesRegularExpression('/^ Featured\s*$/mu', $screen, 'compact, the banner is a plain shelf');
+        $this->assertStringNotContainsString('╭ Featured', $screen);
+    }
+
+    public function testAStoreWiredToNothingStillDrawsAndAnswersTheKeys(): void
+    {
+        $bare = new PluginStoreWidget(new Translator('en'));
+        $bare->setStore([new StoreRow(self::entry('rector', screenshots: [self::SHOT]), StoreAction::Get)], false, 0);
+        $bare->setInstalled([], new SettingsRow(key: 'configScope', label: 'Save changes to', kind: SettingsRowKind::Choice, value: 'project', restart: false, options: ['project']));
+        $bare->render(new RenderContext(100, 40));
+        foreach (["\r", ' ', "\x1b", ']', ']', ']', 'U'] as $key) {
+            $bare->handleInput($key);
+            $bare->render(new RenderContext(100, 40));
+        }
+        $bare->handleInput("\r"); // the scope's list, with no one to show it
+        $bare->handleInput("\x1b[C");
+        $bare->handleInput("\r");
+        $bare->handleInput('x');
+        $bare->handleInput("\r"); // nothing to hand the source to
+        $bare->setInstalled([new InstalledPlugin('git', '', 'on')], null);
+        $bare->render(new RenderContext(100, 40));
+        $bare->handleInput("\x1b[B");
+        $bare->render(new RenderContext(100, 40));
+        $bare->handleInput(' '); // no one to open its page
+        $this->assertStringContainsString('Install from URL or path', AnsiUtils::stripAnsiCodes(\implode("\n", $bare->render(new RenderContext(100, 40)))));
+    }
+
+    public function testTheArrowsWalkTheGridAndSpacePressesTheSelectedButton(): void
+    {
+        $this->linters();
+        $this->screen();
+        $this->key(' ');
+        $this->assertSame(['acme/porta-alpha'], $this->pressed, 'the first tile starts selected');
+        $this->key("\x1b[C", ' '); // right
+        $this->key("\x1b[B", ' '); // down: delta, under bravo
+        $this->key("\x1b[D", ' '); // left: charlie
+        $this->key("\x1b[A", ' '); // up: alpha
+        $this->key("\x1b[D", ' '); // nothing further left
+        $this->assertSame(['acme/porta-alpha', 'acme/porta-bravo', 'acme/porta-delta', 'acme/porta-charlie', 'acme/porta-alpha', 'acme/porta-alpha'], $this->pressed);
+        $this->key("\x1b[A", "\x1b[A", "\r"); // above the grid: See all, the nearest that way; Enter opens it
+        $this->assertStringContainsString('Echo', $this->screen());
+        $this->key("\x1b[6~", ' '); // page down: the last row
+        $this->assertSame('acme/porta-echo', \end($this->pressed));
+        $this->key("\x1b[5~", ' ');
+        $this->assertSame('acme/porta-alpha', \end($this->pressed));
+
+        $this->key('U', "\t", '1', "\x7f");
+        $this->assertSame(0, $this->exits);
+        $this->assertStringNotContainsString('Echo', $this->screen(), 'Backspace left the category');
+        $this->key("\x7f", "\x1b");
+        $this->assertSame(1, $this->updateAll);
+        $this->assertSame(1, $this->focusNext);
+        $this->assertSame([['general', null]], $this->sections);
+        $this->assertSame(1, $this->exits, 'on the front page, Esc leaves the view');
+    }
+
+    public function testTheSelectionScrollsIntoViewAndTheWheelScrollsWithoutMovingIt(): void
+    {
+        $this->shelf();
+        $this->assertStringContainsString('╭ Featured', $this->screen(100, 14));
+        $this->key("\x1b[B", "\x1b[B", "\x1b[B");
+        $screen = $this->screen(100, 14);
+        $this->assertStringContainsString('Productivity', $screen, 'the last shelf, its heading with it');
+        $this->assertStringNotContainsString('╭ Featured', $screen);
+
+        $this->widget->scrollBy(-20);
+        $this->assertStringContainsString('╭ Featured', $this->screen(100, 14));
+        $this->widget->handleInput(' ');
+        $this->assertSame([], $this->pressed, 'todo, still selected, is Working');
+        $this->widget->scrollBy(3);
+        $this->assertStringNotContainsString('╭ Featured', $this->screen(100, 14));
+
+        // Scrolled, a click and the pointer still find what is drawn under them.
+        [$row] = $this->at('Does rector', 100, 14);
+        $get = (int) \mb_strpos(\explode("\n", $this->screen(100, 14))[$row], needle: 'Get');
+        $this->assertTrue($this->widget->hoverAt($row, $get));
+        $this->assertStringContainsString("\e[4m", $this->raw(100, 14), 'the button drawn under the pointer underlines');
+        [$row, $col] = $this->at('Does rector', 100, 14);
+        $this->widget->handleClick($row, $col);
+        $this->widget->handleClick($row, $col);
+        $this->assertSame('acme/porta-rector', $this->widget->detail(), 'the tile drawn there, not the one that row held unscrolled');
+        $this->widget->closeDetail();
+
+        $this->widget->scrollBy(10);
+        $this->key(']', '[');
+        $this->assertStringContainsString('╭ Featured', $this->screen(100, 14), 'a tab is shown from its top');
+    }
+
+    public function testCategoriesListsEveryCategoryAndOpensOne(): void
+    {
+        $this->shelf();
+        $this->key(']');
+        $this->assertSame(StoreTab::Categories, $this->widget->tab());
+        $screen = $this->screen();
+        $this->assertMatchesRegularExpression('/Languages\s+0 ›/u', $screen);
+        $this->assertMatchesRegularExpression('/Linters & formatters\s+1 ›/u', $screen);
+
+        $this->key("\r"); // Languages
+        $this->assertStringContainsString('No plugin matches', $this->screen());
+        $this->key("\x7f", "\x1b[B", "\r"); // back on Languages; down to Linters
+        $screen = $this->screen();
+        $this->assertStringContainsString('Settings › Plugins › Linters & formatters', $screen);
+        $this->assertStringContainsString('Rector', $screen);
+        $this->key("\x7f", "\r");
+        $this->assertStringContainsString('Settings › Plugins › Linters & formatters', $this->screen(), 'back on the category just left, not the first');
+
+        // A page down is a screen of the list, not its end.
+        $this->widget->showTab(StoreTab::Categories);
+        $this->screen(100, 14);
+        $this->widget->handleInput("\x1b[6~");
+        $this->widget->handleInput("\r");
+        $trail = \explode("\n", $this->screen(100, 14))[0];
+        $this->assertDoesNotMatchRegularExpression('/Languages|Other/u', $trail, 'neither the first category nor the last: '.$trail);
+        $this->assertStringContainsString('Settings › Plugins › ', $trail);
+
+        $this->key('[', '[');
+        $this->assertSame(StoreTab::Installed, $this->widget->tab(), 'round from the first tab to the last');
+    }
+
+    public function testUpdatesListsWhatHasOneAndUpdatesAll(): void
+    {
+        $this->shelf();
+        $this->key('u');
+        $screen = $this->screen();
+        $this->assertStringContainsString('Update all', $screen);
+        $this->assertStringContainsString('Phpunit', $screen);
+        $this->assertStringNotContainsString('Rector', $screen);
+        $this->key(' ', "\r");
+        $this->assertSame(2, $this->updateAll, 'the button starts selected');
+        $this->click('Update all');
+        $this->assertSame(3, $this->updateAll);
+        $this->key("\x1b[B", ' ');
+        $this->assertSame(['acme/porta-phpunit'], $this->pressed);
+
+        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], false, 0);
+        $this->assertStringContainsString('Every plugin is up to date', $this->screen());
+    }
+
+    public function testInstalledHoldsTheScopeTheInstallFieldAndEveryInstalledPlugin(): void
+    {
+        $this->installed();
+        $screen = $this->screen();
+        $this->assertStringContainsString('Save changes to', $screen);
+        $this->assertMatchesRegularExpression('/\.porta\.json\s+▾/u', $screen);
+        $this->assertStringContainsString('Install from URL or path', $screen);
+        $this->assertMatchesRegularExpression('/git\s+╭/u', $screen);
+        $this->assertStringContainsString('on · built-in', $screen);
+        $this->assertStringContainsString('on · global · v0.9.0 → v1.0.0', $this->screen(140), 'the store knows phpunit');
+        $this->assertMatchesRegularExpression('/│  Update  │/u', $screen);
+
+        $this->key("\r"); // the scope select
+        $this->assertSame('configScope', $this->choices[0][0] ?? null);
+        [$row, $col] = $this->at('Save changes to');
+        $this->assertSame([$row + 3, $col - 2, $row], [$this->choices[0][1], $this->choices[0][2], $this->choices[0][3]], 'the list hangs under the box');
+
+        $this->key("\x1b[C", 'x'); // the install field: shut, it takes nothing
+        $this->assertSame([], $this->changes);
+        $this->key("\r", ' ', 'a', 'b', '/', 'c', ']', "\x7f", ' ', "\r");
+        $this->assertSame([['pluginInstall', 'ab/c']], $this->changes, 'open, every key is the field\'s; the source is trimmed');
+        $this->key('u', ']');
+        $this->assertSame(StoreTab::Installed, $this->widget->tab(), 'installing shut the field: the keys are the store\'s again');
+        $this->screen();
+        $this->key("\x1b[C");
+        $this->key("\r", "\r");
+        $this->assertCount(1, $this->changes, 'nothing typed, nothing installed');
+        $this->key("\r", 'z', "\x1b");
+        $this->assertSame(0, $this->exits, 'Esc shuts the field');
+        $this->key('u', ']');
+        $this->assertSame(StoreTab::Installed, $this->widget->tab(), 'shut, the field takes no more keys');
+        $this->key("\x1b[C");
+        $this->key("\r", "\x7f", 'q', "\r");
+        $this->assertSame(
+            [
+                ['pluginInstall', 'ab/c'],
+                ['pluginInstall', 'q'],
+            ],
+            $this->changes,
+            'Backspace on an empty field keeps it open',
+        );
+        $this->screen();
+        $this->key("\x1b[C");
+        $this->key("\r", "\x7f", "\x7f", 'q', "\x1b[B", "\x1b[D", ' '); // the arrows shut it and move on: phpunit, under it, then git
+        $this->assertSame([['plugin:git', 'pluginEnabled']], $this->sections);
+        $this->assertCount(2, $this->changes);
+        $this->key("\r");
+        $this->assertSame(
+            [
+                ['plugin:git', 'pluginEnabled'],
+                ['plugin:git', 'pluginEnabled'],
+            ],
+            $this->sections,
+            'git is not in the store: Enter opens its settings',
+        );
+
+        $this->key("\x1b[C", ' ');
+        $this->assertSame(['acme/porta-phpunit'], $this->pressed, 'Update');
+        $this->key("\r");
+        $this->assertSame('acme/porta-phpunit', $this->widget->detail(), 'one the store knows has its page');
+    }
+
+    public function testOnANarrowPaneTheScopeStandsOverTheInstallField(): void
+    {
+        $this->installed();
+        $screen = $this->screen(56);
+        $this->assertMatchesRegularExpression('/▾ │\s*\n\s*╰─+╯\s*\n\s*╭ Install from URL or path/u', $screen, 'the field under the select, not squeezed beside it');
+        $this->assertStringContainsString('.porta.json          ▾', $screen, 'the select reads whole');
+        $this->widget->handleInput("\x1b[B"); // from the select down to the field
+        $this->screen(56);
+        foreach (["\r", 'x', "\r"] as $key) {
+            $this->widget->handleInput($key);
+            $this->screen(56);
+        }
+        $this->assertSame([['pluginInstall', 'x']], $this->changes);
+    }
+
+    public function testASearchHitOpensTheInstalledTabOnItsControl(): void
+    {
+        $this->installed();
+        $this->widget->showTab(StoreTab::Installed, 'install');
+        $this->screen();
+        $this->key("\r", 'x', "\r");
+        $this->assertSame([['pluginInstall', 'x']], $this->changes);
+    }
+
+    public function testAnInstalledPluginTheStoreDoesNotListAsItsCopyIsNotLookedUp(): void
+    {
+        // A takeover offered beside the bundled plugin is Get: not the copy installed.
+        $this->widget->setStore([new StoreRow(self::entry('git'), StoreAction::Get)], false, 0);
+        $this->widget->setInstalled([new InstalledPlugin('git', '', 'on · built-in')], null);
+        $this->widget->showTab(StoreTab::Installed);
+        $screen = $this->screen();
+        $this->assertStringNotContainsString('Save changes to', $screen, 'no scope to choose');
+        $this->assertStringNotContainsString('No plugin is installed', $screen);
+        $this->widget->setInstalled([], null);
+        $this->assertStringContainsString('No plugin is installed', $this->screen());
+        $this->widget->setInstalled([new InstalledPlugin('git', '', 'on · built-in')], null);
+        $this->assertStringNotContainsString('Does git', $screen);
+        $this->screen();
+        $this->key("\x1b[B", ' ');
+        $this->assertSame([['plugin:git', 'pluginEnabled']], $this->sections);
+    }
+
+    public function testTheSearchNarrowsTheShelfIntoResults(): void
+    {
+        $this->shelf();
+        $this->key('/', 'r', 'e', 'c', "\x7f");
+        $screen = $this->screen();
+        $this->assertStringContainsString('╭ Search', $screen, 'the search shows its field');
+        $this->assertStringContainsString('Results for "re"', $screen);
+        $this->assertStringContainsString('Rector', $screen);
+        $this->assertStringNotContainsString('Todo', $screen);
+        $this->key("\x1b"); // leaves the search, not the view
+        $this->assertSame(0, $this->exits);
+        $this->assertStringContainsString('Todo', $this->screen());
+
+        $this->installed();
+        $this->key('/', 'p', 'h', 'p');
+        $this->assertStringContainsString('on · global', $this->screen(), 'a name matches, not only a description');
+        $this->key("\x1b", '/', 'g', 'i');
+        $screen = $this->screen();
+        $this->assertStringContainsString('Git history', $screen);
+        $this->assertStringNotContainsString('on · global', $screen);
+        $this->click('Install from URL');
+        $this->click('Install from URL');
+        $this->key('a');
+        $this->assertStringNotContainsString('╭ Search', $this->screen(), 'opening the field closes the search');
+        $this->assertStringContainsString('Git history', $this->screen(), 'its query kept');
+    }
+
+    public function testWhatAnEmptyStoreSays(): void
     {
         $this->widget->setStore([], true, 0);
         $this->assertStringContainsString('Asking Packagist…', $this->screen());
         $this->widget->setStore([], false, 0);
         $this->assertStringContainsString('The store is empty: Packagist could not be reached', $this->screen());
+        $this->key(' ', "\r", "\x1b[B");
+        $this->assertNull($this->widget->detail(), 'nothing to select');
         $this->shelf();
-        $this->key('u');
-        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], false, 0);
-        $this->assertStringContainsString('Every plugin is up to date', $this->screen());
-        $this->key('u', '/', 'z', 'z');
+        $this->key('/', 'z', 'z');
         $this->assertStringContainsString('No plugin matches', $this->screen());
-    }
-
-    public function testCategoriesTabsAndTheFilterNarrowTheShelf(): void
-    {
-        $this->shelf();
-
-        $this->key('u');
-        $this->assertStringNotContainsString('Rector', $this->screen(), 'Updates lists only what has one');
-        $this->assertStringContainsString('Phpunit', $this->screen());
-        $this->key('u');
-
-        $this->key('c'); // Languages: none
-        $this->assertStringContainsString('Languages ▾', $this->screen());
-        $this->assertStringContainsString('No plugin matches', $this->screen());
-        $this->key('c'); // Linters & formatters
-        $this->assertStringContainsString('Rector', $this->screen());
-        $this->assertStringNotContainsString('Phpunit', $this->screen());
-        $this->key('C', 'C'); // Shift+C twice: back to All
-        $this->assertStringContainsString('All categories ▾', $this->screen());
-        $this->key('C'); // and round to the last shelf
-        $this->assertStringContainsString('Other ▾', $this->screen());
-        $this->key('c');
-
-        $this->key('/', 'r', 'e', 'c', "\x7f");
-        $screen = $this->screen();
-        $this->assertStringContainsString('Filter', $screen);
-        $this->assertStringContainsString('Rector', $screen);
-        $this->assertStringNotContainsString('Todo', $screen);
-        $this->key("\x1b"); // leaves the filter, not the view
-        $this->assertSame(0, $this->exits);
-        $this->assertStringContainsString('Todo', $this->screen());
-    }
-
-    public function testTheKeysDriveTheShelf(): void
-    {
-        $this->shelf();
-        $this->screen();
-        $this->key("\x1b[B", ' '); // rector, the second shown
-        $this->assertSame(['acme/porta-rector'], $this->pressed);
-        $this->key("\x1b[B", ' '); // the third plugin: Working does nothing
-        $this->assertSame(['acme/porta-rector'], $this->pressed);
-        $this->key("\x1b[5~", ' ');
-        $this->assertSame(['acme/porta-rector', 'acme/porta-phpunit'], $this->pressed);
-
-        $this->key('U', "\t", '1', "\x1b"); // Shift+U
-        $this->assertSame(1, $this->updateAll);
-        $this->assertSame(1, $this->focusNext);
-        $this->assertSame(['general'], $this->sections);
-        $this->assertSame(1, $this->exits);
-
-        $this->widget->scrollBy(2);
-        $this->widget->scrollBy(-1);
-        $this->key(' ');
-        $this->assertSame('acme/porta-rector', \end($this->pressed), 'the wheel is the arrows');
     }
 
     public function testThePointerSelectsOpensPressesAndSwitches(): void
@@ -234,31 +583,37 @@ final class PluginStoreWidgetTest extends TestCase
         $this->shelf();
         $this->screen();
 
-        $this->widget->handleClick(5, 10); // rector's facts row: selected
+        $this->click('Does rector'); // selects
         $this->assertSame([], $this->pressed);
-        $this->assertTrue($this->widget->hoverRow(5));
-        $this->assertFalse($this->widget->hoverRow(5));
-        $this->widget->handleClick(5, 95); // its button
-        $this->assertSame(['acme/porta-rector'], $this->pressed);
-        $this->widget->handleClick(3, 95); // phpunit's button, not yet selected
-        $this->assertSame(['acme/porta-rector', 'acme/porta-phpunit'], $this->pressed);
-        $this->widget->handleClick(6, 95); // under rector's button, on its facts row: selects, presses nothing
-        $this->assertCount(2, $this->pressed);
-        $this->widget->handleClick(6, 95); // the selected row again: its page
+        $this->assertNull($this->widget->detail());
+        [$row, $col] = $this->at('Does rector');
+        $this->assertTrue($this->widget->hoverAt($row, $col));
+        $this->assertFalse($this->widget->hoverAt($row, $col));
+        $this->click('Does rector'); // the selected one: its page
         $this->assertSame('acme/porta-rector', $this->widget->detail());
         $this->widget->closeDetail();
-        $this->widget->handleClick(29, 5); // below the last plugin
-        $this->widget->handleClick(1, 5); // the rule
 
-        $this->screen();
-        $this->widget->handleClick(2, 14); // Updates
-        $this->assertStringNotContainsString('Rector', $this->screen());
-        $this->widget->handleClick(2, 3); // Discover
-        $this->assertStringContainsString('Rector', $this->screen());
-        $this->widget->handleClick(2, 30); // the category
-        $this->assertStringContainsString('Languages ▾', $this->screen());
-        $this->widget->handleClick(2, 90); // past everything on the strip
-        $this->assertStringContainsString('Languages ▾', $this->screen());
+        [$row] = $this->at('Does rector');
+        $col = \mb_strpos(\explode("\n", $this->screen())[$row], needle: 'Get');
+        $this->assertStringNotContainsString("\e[4m", $this->raw(), 'nothing underlined at rest');
+        $this->assertTrue($this->widget->hoverAt($row, (int) $col), 'onto its button');
+        $this->assertStringContainsString("\e[4m", $this->raw(), 'the button under the pointer underlines its caption');
+        $this->widget->handleClick($row, (int) $col);
+        $this->assertSame(['acme/porta-rector'], $this->pressed);
+        $this->assertTrue($this->widget->clearHover());
+        $this->assertFalse($this->widget->clearHover());
+
+        $this->widget->handleClick(39, 5); // past everything
+        [$stripRow, $updatesCol] = $this->at('Updates (1)');
+        $this->widget->handleClick($stripRow - 1, $updatesCol); // over the tab, on the strip's upper rule
+        $this->assertSame(StoreTab::Discover, $this->widget->tab());
+        $this->widget->handleClick($stripRow, $updatesCol - 1); // the column before its label: still its pill
+        $this->assertSame(StoreTab::Updates, $this->widget->tab());
+        $this->widget->showTab(StoreTab::Discover);
+        $this->click('Updates (1)');
+        $this->assertSame(StoreTab::Updates, $this->widget->tab());
+        $this->widget->handleClick(2, 99); // past every tab
+        $this->assertSame(StoreTab::Updates, $this->widget->tab());
 
         $this->widget->handleClick(0, 2); // Settings
         $this->assertSame(['general'], $this->crumbs);
@@ -274,13 +629,16 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertSame('acme/porta-rector', $this->widget->detail());
         $this->assertSame([self::CHANGELOG, self::README, '!'.self::SHOT], $this->asked);
 
-        $screen = $this->screen();
-        $this->assertStringContainsString('Settings › Plugins › Store › Rector', $screen);
+        $screen = $this->screen(120, 60);
+        $this->assertStringContainsString('Settings › Plugins › Rector', $screen);
         $this->assertStringContainsString('Esc back · ⏎ get · ←/→ screenshots', $screen);
-        $this->assertStringContainsString('by Ada · Linters & formatters · v1.0.0 · MIT · ✓ Verified', $screen);
-        $this->assertStringContainsString('Preview  ‹ 1/2 ›', $screen);
+        $this->assertMatchesRegularExpression('/│ Re │ Does rector\s+│  Get  │/u', $screen);
+        $this->assertStringContainsString('by Ada', $screen);
+        $this->assertMatchesRegularExpression('/DOWNLOADS\s+│\s+CATEGORY\s+│\s+DEVELOPER\s+│\s+VERSION\s+│\s+LICENSE/u', $screen);
+        $this->assertMatchesRegularExpression('/1,234\s+│\s+Linters & formatters\s+│\s+Ada\s+│\s+v1\.0\.0\s+│\s+MIT/u', $screen);
+        $this->assertStringContainsString('Preview  ‹ 1/3 ›', $screen);
         $this->assertStringContainsString('Loading…', $screen);
-        $this->assertStringContainsString("What's New  v1.0.0 · 2027-01-15", $screen);
+        $this->assertMatchesRegularExpression("/What's New\\s+v1\\.0\\.0 · 2027-01-15/u", $screen);
         $this->assertMatchesRegularExpression('/Downloads\s+1,234/', $screen);
 
         $this->widget->setAsset(self::CHANGELOG, "# Changelog\n\n## [Unreleased]\n- soon\n\n## [1.0.0] - 2027-01-15\n- **Fixed** the thing\n\n## [0.9.0]\n- older\n");
@@ -298,15 +656,25 @@ final class PluginStoreWidgetTest extends TestCase
         $this->widget->setAsset(self::SHOT_2, null);
         $this->assertStringContainsString('The screenshot could not be shown', $this->screen(100, 80));
         $this->key("\x1b[D", "\x1b[D");
-        $this->assertStringContainsString('Preview  ‹ 2/2 ›', $this->screen(100, 80), 'round from the first to the last');
+        $this->assertStringContainsString('Preview  ‹ 3/3 ›', $this->screen(100, 80), 'round from the first to the last');
+        $this->key("\x1b[D");
+        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, 80), 'and back one');
 
         $this->key(' ', "\r");
         $this->assertSame(['acme/porta-rector', 'acme/porta-rector'], $this->pressed);
-        $this->widget->handleClick(2, 95); // the page's button
+        [$row, $col] = $this->at('Get');
+        $this->assertStringNotContainsString("\e[4m", $this->raw());
+        $this->assertTrue($this->widget->hoverAt($row, $col), 'the page\'s button');
+        $this->assertStringContainsString("\e[4m", $this->raw(), 'underlined under the pointer');
+        $this->widget->handleClick($row + 2, $col); // under its box
+        $this->assertCount(2, $this->pressed);
+        $this->widget->handleClick($row - 1, $col); // its top border is the button too
         $this->assertCount(3, $this->pressed);
-        $this->widget->handleClick(5, 5); // elsewhere on the page
-        $this->assertCount(3, $this->pressed);
-        $this->assertFalse($this->widget->hoverRow(3), 'a page has no rows to tint');
+        $this->widget->handleClick($row + 1, $col); // and its bottom one
+        $this->assertCount(4, $this->pressed);
+        $this->assertTrue($this->widget->hoverAt($row + 4, 5));
+        $this->widget->handleClick($row + 4, 5); // elsewhere on the page
+        $this->assertCount(4, $this->pressed);
         $this->key("\t");
         $this->assertSame(1, $this->focusNext);
 
@@ -314,29 +682,32 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertNull($this->widget->detail());
     }
 
-    public function testAPageScrollsAndGoesBackByEscapeOrTheStoresCrumb(): void
+    public function testAPageScrollsAndGoesBackByEscapeOrThePluginsCrumb(): void
     {
         $this->shelf();
         $this->screen();
-        $this->key("\r"); // phpunit: one screenshot-less page
+        $this->key("\r"); // phpunit, first in the banner: one screenshot-less page
         $this->assertStringContainsString('Esc back · ⏎ update', $this->screen(100, 12));
         $this->assertSame([self::CHANGELOG, self::README], $this->asked);
 
-        $this->key("\x1b[B", "\x1b[B");
-        $this->assertStringNotContainsString('by Ada', $this->screen(100, 12), 'scrolled past the header');
-        $this->key("\x1b[A", "\x1b[A", "\x1b[6~", "\x1b[5~");
+        $this->widget->handleInput("\x1b[B");
+        $this->widget->handleInput("\x1b[B");
+        $this->assertStringNotContainsString('┌────┐', $this->screen(100, 12), 'scrolled past the header');
+        foreach (["\x1b[A", "\x1b[A", "\x1b[6~", "\x1b[5~"] as $key) {
+            $this->widget->handleInput($key);
+        }
         $this->widget->scrollBy(1);
         $this->widget->scrollBy(-1);
-        $this->key("\x1b[C"); // no screenshots: nothing to page
-        $this->assertStringContainsString('by Ada', $this->screen(100, 12));
+        $this->widget->handleInput("\x1b[C"); // no screenshots: nothing to page
+        $this->widget->handleInput("\x1b[D");
+        $this->assertStringContainsString('┌────┐', $this->screen(100, 12));
 
         $this->key("\x1b");
         $this->assertNull($this->widget->detail());
         $this->assertSame(0, $this->exits, 'Esc on a page leaves the page, not the view');
 
         $this->key("\r");
-        $this->screen();
-        $this->widget->handleClick(0, 23); // the Store crumb
+        $this->click('Plugins');
         $this->assertNull($this->widget->detail());
         $this->assertSame([], $this->crumbs, 'the store\'s own crumb is the widget\'s');
     }
@@ -359,7 +730,7 @@ final class PluginStoreWidgetTest extends TestCase
             compatible: false,
         );
         $this->widget->setStore([new StoreRow($entry, StoreAction::Incompatible)], false, 0);
-        $this->screen();
+        $this->assertStringContainsString('Ada · Other · v1.0.0', $this->screen(), 'no description: its category says what it is');
         $this->key("\r");
         $screen = $this->screen(100, 40);
 
@@ -367,19 +738,56 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertStringContainsString('No release of it runs on this Porta', $screen);
         $this->assertMatchesRegularExpression('/v1\.0\.0\s+2027-01-15\s*\n\s+v0\.1\.0/', $screen);
         $this->assertStringNotContainsString('About', $screen);
+        $this->assertStringNotContainsString('DOWNLOADS', $screen, 'a fact it does not have is not in the strip');
         $this->key(' ');
         $this->assertSame([], $this->pressed, 'Incompatible does nothing');
 
         $this->widget->setStore([], false, 0);
         $this->assertNull($this->widget->detail());
-        $this->key("\r");
-        $this->assertNull($this->widget->detail(), 'nothing to open');
     }
 
-    public function testTheNewestSectionIsTheFirstVersionedOne(): void
+    /** @param list<string> $rows the first of $rows that holds $needle, or '' */
+    private static function rowWith(array $rows, string $needle): string
     {
-        $this->assertSame("- a\n- b", PluginStoreWidget::newestSection("# Log\r\n\r\n## Unreleased 2\r\n- x\r\n## 1.2.0\r\n- a\r\n- b\r\n## 1.1.0\r\n- c"));
-        $this->assertSame('', PluginStoreWidget::newestSection("# Log\n\nnothing versioned"));
+        return \array_find($rows, static fn (string $line): bool => \str_contains($line, $needle)) ?? '';
+    }
+
+    /**
+     * Mirrored, a tile is mirrored whole: its icon's three rows stay one box,
+     * and each fact of the page's strip stays under its caption. Read on the
+     * reordered rows — what the terminal shows, not what was composed.
+     */
+    public function testInHebrewEachTileAndEachFactMirrorsWhole(): void
+    {
+        $widget = new PluginStoreWidget(new Translator('he'));
+        $widget->setStore(
+            [
+                new StoreRow(self::entry('chroma', StoreCategory::Languages), StoreAction::Enable),
+                new StoreRow(self::entry('phpactor', StoreCategory::Languages), StoreAction::Get),
+            ],
+            false,
+            0,
+        );
+        $rows = static fn (): array => \array_map(
+            static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)),
+            $widget->render(new RenderContext(86, 14)),
+        );
+        $shelf = $rows();
+        $top = self::rowWith($shelf, '┌────┐');
+        $middle = self::rowWith($shelf, '│ Ch │');
+        $bottom = self::rowWith($shelf, '└────┘');
+        $this->assertSame(\mb_strrpos($top, needle: '┌────┐'), \mb_strpos($middle, needle: '│ Ch │'), 'chroma\'s icon: one box, at the right as a mirrored row starts');
+        $this->assertSame(\mb_strrpos($top, needle: '┌────┐'), \mb_strrpos($bottom, needle: '└────┘'));
+        $this->assertGreaterThan(\mb_strpos($middle, needle: 'Does chroma'), \mb_strpos($middle, needle: '│ Ch │'), 'the icon right of its text');
+        $this->assertLessThan(\mb_strpos($middle, needle: 'Does chroma'), \mb_strpos($middle, needle: '│ Ph │'), 'phpactor, the second tile, to the left of the first');
+
+        $widget->handleInput("\r");
+        $page = $rows();
+        $captions = self::rowWith($page, 'ןוישיר');
+        $values = self::rowWith($page, 'MIT');
+        $this->assertSame(\mb_strpos($captions, needle: '│'), \mb_strpos($values, needle: '│'), 'the cells line up');
+        $this->assertLessThan(\mb_strpos($values, needle: '│'), \mb_strpos($values, needle: 'MIT'), 'the licence under its caption, the leftmost');
+        $this->assertLessThan(\mb_strpos($captions, needle: '│'), \mb_strpos($captions, needle: 'ןוישיר'));
     }
 
     public function testTheAppsInputHookComesFirstAndAStrayKeyOnAPageDoesNothing(): void
@@ -387,13 +795,15 @@ final class PluginStoreWidgetTest extends TestCase
         $this->shelf();
         $this->screen();
         $this->key('x'); // no key of the shelf's
-        $this->assertStringContainsString('Rector', $this->screen());
+        $this->assertSame(StoreTab::Discover, $this->widget->tab());
         $this->widget->onInput(static fn (string $keys): bool => 'u' === $keys);
         $this->key('u');
-        $this->assertStringContainsString('Rector', $this->screen(), 'the hook took the key: still on Discover');
+        $this->assertSame(StoreTab::Discover, $this->widget->tab(), 'the hook took the key');
 
         $this->key("\r", 'x');
         $this->assertSame('acme/porta-phpunit', $this->widget->detail());
         $this->assertSame([], $this->pressed);
+        $this->widget->showTab(StoreTab::Updates);
+        $this->assertNull($this->widget->detail(), 'a tab is shown from its shelf');
     }
 }

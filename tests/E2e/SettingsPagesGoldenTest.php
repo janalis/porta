@@ -23,7 +23,9 @@ use Porta\Tests\Support\RunsIde;
 use Porta\Tests\Support\ScreenReads;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
+use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
+use Porta\Widget\Settings\StoreTab;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
 use Symfony\Component\Tui\Render\RenderContext;
 use Symfony\Component\Tui\Tui;
@@ -227,7 +229,7 @@ final class SettingsPagesGoldenTest extends TestCase
                     foreach (self::PAGES as $page) {
                         $this->selectSettingsSection($nav, $page);
                         $this->frame($tui);
-                        $pages[$page] = $this->plainRows($form);
+                        $pages[$page] = 'plugins' === $page ? $this->installedTab($tui) : $this->plainRows($form);
                     }
                 },
             ],
@@ -245,8 +247,22 @@ final class SettingsPagesGoldenTest extends TestCase
         );
     }
 
+    /**
+     * Plugins is the store: what its rows say is on its Installed tab.
+     *
+     * @return list<string>
+     */
+    private function installedTab(Tui $tui): array
+    {
+        $store = $tui->getById('settings-store');
+        $this->assertInstanceOf(PluginStoreWidget::class, $store);
+        $store->showTab(StoreTab::Installed);
+
+        return $this->plainRows($store);
+    }
+
     /** @return list<string> */
-    private function plainRows(SettingsFormWidget $form): array
+    private function plainRows(SettingsFormWidget|PluginStoreWidget $form): array
     {
         $lines = [];
         foreach (Paint::lines($form, new RenderContext(110, 22)) as $line) {

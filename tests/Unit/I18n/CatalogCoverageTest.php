@@ -6,10 +6,12 @@ namespace Porta\Tests\Unit\I18n;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Editor\CompletionNote;
+use Porta\Plugin\Store\StoreCategory;
 use Porta\Search\Everywhere\SearchCategory;
 use Porta\Tests\Support\Catalogs;
 use Porta\Ui\ScopeKind;
 use Porta\Widget\Render\StripeMark;
+use Porta\Widget\Settings\StoreTab;
 use Symfony\Component\Finder\Finder;
 
 /**
@@ -410,6 +412,8 @@ final class CatalogCoverageTest extends TestCase
         'Search/Everywhere/SearchEverywhereController.php',
         'Search/ProjectSearchController.php',
         'Widget/CodeEditorWidget.php',
+        'Widget/Settings/PluginStoreWidget.php',
+        'Widget/Settings/StoreShelf.php',
     ];
 
     public function testEveryEnumLabelCallSiteIsCovered(): void
@@ -452,6 +456,8 @@ final class CatalogCoverageTest extends TestCase
             ...\array_map(static fn (ScopeKind $k): string => $k->label(), ScopeKind::cases()),
             ...\array_map(static fn (CompletionNote $n): string => $n->text(), CompletionNote::cases()),
             ...\array_map(static fn (StripeMark $m): string => $m->label(), StripeMark::cases()),
+            ...\array_map(static fn (StoreTab $t): string => $t->label(), StoreTab::cases()),
+            ...\array_map(static fn (StoreCategory $c): string => $c->label(), StoreCategory::cases()),
         ];
     }
 

@@ -94,21 +94,24 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Bundled Run', \array_column($commands->paletteCommands(), 'label'), 'the embedded plugin activated');
 
-                    // The manage screen lists it as built-in and on, with a
-                    // button to its page.
+                    // The store's Installed tab lists it as built-in and on,
+                    // with a button to its page.
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\t"); // nav → form
+                    $tui->handleInput("\t"); // nav → the store
+                    $tui->handleInput('u'); // Updates…
+                    $tui->handleInput(']'); // …then Installed
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
-                    $this->assertMatchesRegularExpression('/bundled\s+│\s+Open\s+│ · on · built-in/u', $screen);
+                    $this->assertMatchesRegularExpression('/\[Bu\] bundled\s+│\s+Open\s+│/u', $screen);
+                    $this->assertStringContainsString('on · built-in', $screen);
                     $this->assertDirectoryExists($embedded->path('bundled'));
                 },
                 150 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // The plugin's settings page: set the binary → the menu entry enables.
-                    $tui->handleInput("\t"); // form → nav (on Plugins)
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // → the bundled sub-item, past the Store
+                    $tui->handleInput("\t"); // the store → nav (on Plugins)
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // → the bundled sub-item
                     $this->awaitPainted($tui, $terminal, '   bundled');
                     $this->assertStringContainsString('   bundled', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the nav lists the plugin as an indented sub-item');
                     $this->assertStringNotContainsString('Remove', \implode("\n", $this->screenGrid($tui, $terminal)), 'a bundled plugin is switched off, never removed');
@@ -139,7 +142,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // the bundled sub-item, past the Store
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // the bundled sub-item
                     $tui->handleInput("\t"); // nav → form
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
                     $tui->handleInput("\x1b[A");
@@ -276,7 +279,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $commands->run('ide_settings');
                     $tui->handleInput("\t");
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // the bundled sub-item, past the Store
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // the bundled sub-item
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertMatchesRegularExpression('/Enabled\s+\[ \]/u', $screen, 'listed and re-enableable: an unchecked box, one row on this compact screen');

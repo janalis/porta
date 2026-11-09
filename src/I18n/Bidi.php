@@ -150,6 +150,24 @@ final class Bidi
     ];
 
     /**
+     * $line with a left-to-right mark at each edge its Latin text reaches:
+     * punctuation there would otherwise take a right-to-left paragraph's
+     * direction and leave for the far side — `~/.porta/bin` drew as
+     * `porta/bin./~`. An edge whose nearest letter is Hebrew or Arabic is
+     * left to the paragraph.
+     */
+    public static function pinLatinEdges(string $line): string
+    {
+        $first = [];
+        $last = [];
+        $latin = '/^[^\p{Hebrew}\p{Arabic}]$/u';
+        $start = 1 === \preg_match('/\p{L}/u', $line, $first) && 1 === \preg_match($latin, $first[0]) ? self::LTR_MARK : '';
+        $end = 1 === \preg_match('/.*(\p{L})/us', $line, $last) && 1 === \preg_match($latin, $last[1]) ? self::LTR_MARK : '';
+
+        return $start.$line.$end;
+    }
+
+    /**
      * Reorder one composed line to visual order for the given base direction.
      * A line with no strong RTL content and an LTR base is returned unchanged.
      */

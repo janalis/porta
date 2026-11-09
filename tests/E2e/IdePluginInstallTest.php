@@ -85,13 +85,21 @@ final class IdePluginInstallTest extends TestCase
         return (string) \json_encode(['name' => 'test/'.$name, 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR);
     }
 
-    /** Open settings and select the Plugins section, leaving focus on the form. */
+    /**
+     * Open settings on Plugins, the store, and its Installed tab, leaving the
+     * keyboard on its scope select.
+     */
     private function openPluginsSection(Tui $tui, Ide $ide): void
     {
-        Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
-        $tui->handleInput("\t"); // form → nav
+        if (!Services::resolve($ide, ViewRegistry::class)->isOpen('settings')) {
+            Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
+        }
         $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-        $tui->handleInput("\t"); // nav → form (scope row selected)
+        $tui->setFocus($tui->getById('settings-store'));
+        // Updates, then the tab after it: Installed, whichever tab the store was left on.
+        $tui->handleInput('u');
+        $tui->handleInput(']');
+        $this->frame($tui); // the shelf's item map is the drawn one
     }
 
     /** Type into the form's inline text editor. */
@@ -125,21 +133,22 @@ final class IdePluginInstallTest extends TestCase
                     $this->awaitPainted($tui, $terminal, 'Save changes to');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertMatchesRegularExpression('/Save changes to\s+[│┃] \.porta\.json\s+▾ [│┃]/u', $screen);
-                    $this->assertStringContainsString('git URL, local path, or vendor/name package', $screen, 'the empty install field shows its hint');
+                    $this->assertStringContainsString('Install from URL or path │ ⏎ to type a git URL', $screen, 'the empty install field shows its hint');
 
-                    $tui->handleInput("\x1b[B"); // → the install row
-                    $tui->handleInput("\r"); // start inline editing
+                    $tui->handleInput("\x1b[C"); // → the install field
+                    $tui->handleInput("\r"); // open it
                     $this->type($tui, $project->path('plugin-src/installee'));
                     $tui->handleInput("\r"); // commit → async composer require + live activation
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     // The toast is the MODEL saying so; the re-listed section is
                     // a later paint, and a bare tick() is not a frame.
-                    $this->awaitPainted($tui, $terminal, '· on · project');
+                    $this->awaitPainted($tui, $terminal, 'on · project');
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/installee/porta.php'));
-                    $this->assertMatchesRegularExpression('/installee\s+[│┃]\s+Open\s+[│┃] · on · project/u', $screen, 'the new plugin lists, on, with a button to its page');
+                    $this->assertMatchesRegularExpression('/\[In\] installee\s+│\s+Open\s+│/u', $screen, 'the new plugin lists, with a button to its page');
+                    $this->assertStringContainsString('on · project', $screen, 'on, from the project');
 
                     // Live activation: the command is in the registry and the palette.
                     $commands = Services::resolve($ide, CommandRegistry::class);
@@ -163,7 +172,8 @@ final class IdePluginInstallTest extends TestCase
 
                     // A plugin that installs but fails to load flashes the loader's error.
                     $this->openPluginsSection($tui, $ide);
-                    $tui->handleInput("\r"); // the install row: Settings reopens where it was left
+                    $tui->handleInput("\x1b[C"); // the install field
+                    $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/broken'));
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'failed to load'));
@@ -178,7 +188,7 @@ final class IdePluginInstallTest extends TestCase
                         $tui->handleInput("\x1b[A"); // clamp to the top (General)
                     }
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:installee'); // the installee sub-item, past the Store
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:installee'); // the installee sub-item
                     $tui->handleInput("\t"); // nav → form
                     for ($i = 0; $i < 10; ++$i) {
                         $tui->handleInput("\x1b[A"); // clamp to the Enabled row: the page ends in Remove
@@ -216,9 +226,8 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'active before removal');
 
                     $this->openPluginsSection($tui, $ide);
-                    $tui->handleInput("\x1b[B"); // install row
-                    $tui->handleInput("\x1b[B"); // demo's row
-                    $tui->handleInput("\r"); // Open: demo's own page
+                    $tui->handleInput("\x1b[B"); // demo's tile, under the scope
+                    $tui->handleInput(' '); // Open: demo's own page
                     for ($row = 0; $row < 10; ++$row) {
                         $tui->handleInput("\x1b[B"); // clamps on the last row, Remove
                     }
@@ -245,9 +254,8 @@ final class IdePluginInstallTest extends TestCase
                     $this->assertStringNotContainsString('demo says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // The same name reinstalls live from a fresh source dir.
-                    $tui->handleInput("\x1b[A"); // clamp to the top (scope row)…
-                    $tui->handleInput("\x1b[A");
-                    $tui->handleInput("\x1b[B"); // …then down to the install row
+                    $this->openPluginsSection($tui, $ide);
+                    $tui->handleInput("\x1b[C"); // the install field
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/demo'));
                     $tui->handleInput("\r");
@@ -285,18 +293,18 @@ final class IdePluginInstallTest extends TestCase
             [
                 100 => function ($tui, $terminal, Ide $ide) use ($host): void {
                     $this->openPluginsSection($tui, $ide);
-                    $tui->handleInput("\x1b[B"); // install row
+                    $tui->handleInput("\x1b[C"); // the install field
                     $tui->handleInput("\r");
                     $this->type($tui, 'file://'.$host->path('cloned'));
                     $tui->handleInput("\r"); // commit → async clone
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
-                    $this->awaitPainted($tui, $terminal, '· on · project');
+                    $this->awaitPainted($tui, $terminal, 'on · project');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/porta.php'));
-                    $this->assertMatchesRegularExpression('/cloned\s+[│┃]\s+Open\s+[│┃] · on · project/u', $screen, 'the async refresh re-listed the section');
+                    $this->assertMatchesRegularExpression('/\[Cl\] cloned\s+│\s+Open\s+│/u', $screen, 'the async refresh re-listed the tab');
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
@@ -323,23 +331,25 @@ final class IdePluginInstallTest extends TestCase
             [
                 100 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project, $home): void {
                     $this->openPluginsSection($tui, $ide);
-                    $tui->handleInput("\x1b[C"); // step the scope select: project → global (Enter would drop its list)
+                    $tui->handleInput("\r"); // the scope select's list…
+                    $tui->handleInput("\x1b[B"); // …from the project to global
+                    $tui->handleInput("\r");
                     // A substring that does not spell the gap: the value column is aligned
                     // per page, and a stale literal here is a ten-second timeout
                     // rather than a failure.
                     $this->awaitPainted($tui, $terminal, '~/.porta/config.json');
                     $this->assertMatchesRegularExpression('/Save changes to\s+[│┃] ~\/\.porta\/config\.json\s+▾ [│┃]/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
-                    $tui->handleInput("\x1b[B"); // install row
+                    $tui->handleInput("\x1b[C"); // the install field
                     $tui->handleInput("\r");
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
-                    $this->awaitPainted($tui, $terminal, '· on · global');
+                    $this->awaitPainted($tui, $terminal, 'on · global');
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/porta.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
-                    $this->assertMatchesRegularExpression('/worldwide\s+[│┃]\s+Open\s+[│┃] · on · global/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
+                    $this->assertMatchesRegularExpression('/\[Wo\] worldwide\s+│\s+Open\s+│/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
         );

@@ -185,7 +185,7 @@ final class ViewPointerStagesTest extends TestCase
 
     /**
      * Each of the four things a hover can change repaints on its own: a
-     * store row's tint, and a page title's crumb tint.
+     * store tile's tint, and a page title's crumb tint.
      */
     public function testAHoverThatTintsOnlyOneThingStillRepaints(): void
     {
@@ -198,11 +198,11 @@ final class ViewPointerStagesTest extends TestCase
         $tui->requestRender();
         $tui->processRender();
         $router = new SettingsMouseRouter(new HitTester($renderer), $tui, new SettingsNavWidget($translator), new SettingsFormWidget($translator), new KeybindingsListWidget($translator), $store);
-        $onRow = MouseEvent::parse("\x1b[<35;10;4M");
+        $onRow = MouseEvent::parse("\x1b[<35;10;8M"); // the tile, under its shelf's heading
         $this->assertInstanceOf(MouseEvent::class, $onRow);
         Probe::set($tui, 'renderRequested', false);
         $router->hover($onRow);
-        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'a store row took the tint');
+        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'a store tile took the tint');
 
         $form = new SettingsFormWidget($translator);
         $form->setRows([], [['label' => 'Settings', 'id' => 'general'], ['label' => 'General', 'id' => 'general']]);

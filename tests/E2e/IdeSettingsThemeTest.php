@@ -146,12 +146,12 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    // Select PHP in the nav: region row 16, after General,
+                    // Select PHP in the nav: region row 14, after General,
                     // Interface, Highlighting, Keybindings, Command line, the
-                    // Plugins folder, its Store and the Languages folder, each
-                    // with its rule → the content shows its indent rows.
-                    $tui->handleInput(self::windowSgr($ide, 0, 16, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 16, 4, release: true));
+                    // Plugins folder and the Languages folder, each with its
+                    // rule → the content shows its indent rows.
+                    $tui->handleInput(self::windowSgr($ide, 0, 14, 4));
+                    $tui->handleInput(self::windowSgr($ide, 0, 14, 4, release: true));
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->awaitPainted($tui, $terminal, 'Indent style');

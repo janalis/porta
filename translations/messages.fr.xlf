@@ -3662,10 +3662,6 @@
         <source>About</source>
         <target>À propos</target>
       </trans-unit>
-      <trans-unit id="1246">
-        <source>All categories</source>
-        <target>Toutes les catégories</target>
-      </trans-unit>
       <trans-unit id="1247">
         <source>Asking Packagist…</source>
         <target>Interrogation de Packagist…</target>
@@ -3726,10 +3722,6 @@
         <source>Replaces the built-in %plugin% plugin</source>
         <target>Remplace le plugin intégré %plugin%</target>
       </trans-unit>
-      <trans-unit id="1262">
-        <source>Store</source>
-        <target>Boutique</target>
-      </trans-unit>
       <trans-unit id="1263">
         <source>The plugin store could not reach Packagist: showing what it saw last</source>
         <target>La boutique de plugins n’a pas pu joindre Packagist : affichage de ce qu’elle a vu en dernier</target>
@@ -3761,10 +3753,6 @@
       <trans-unit id="1271">
         <source>by %author%</source>
         <target>par %author%</target>
-      </trans-unit>
-      <trans-unit id="1272">
-        <source>⏎ details · Space get or update · c category · u updates · / filter</source>
-        <target>⏎ détails · Espace obtenir ou mettre à jour · c catégorie · u mises à jour · / filtrer</target>
       </trans-unit>
       <trans-unit id="1273">
         <source>Linters &amp; formatters</source>
@@ -3873,6 +3861,42 @@
       <trans-unit id="1299">
         <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
         <target>%plugins% mis à jour — redémarrez Porta pour terminer %names% : les classes déjà chargées gardent leur ancien code</target>
+      </trans-unit>
+      <trans-unit id="1300">
+        <source>Categories</source>
+        <target>Catégories</target>
+      </trans-unit>
+      <trans-unit id="1301">
+        <source>See all</source>
+        <target>Tout voir</target>
+      </trans-unit>
+      <trans-unit id="1302">
+        <source>Results for "%query%"</source>
+        <target>Résultats pour « %query% »</target>
+      </trans-unit>
+      <trans-unit id="1303">
+        <source>Install from URL or path</source>
+        <target>Installer depuis une URL ou un chemin</target>
+      </trans-unit>
+      <trans-unit id="1304">
+        <source>⏎ to type a git URL, local path, or vendor/name package</source>
+        <target>⏎ pour saisir une URL git, un chemin local ou un paquet vendor/name</target>
+      </trans-unit>
+      <trans-unit id="1305">
+        <source>Update all</source>
+        <target>Tout mettre à jour</target>
+      </trans-unit>
+      <trans-unit id="1306">
+        <source>Developer</source>
+        <target>Développeur</target>
+      </trans-unit>
+      <trans-unit id="1307">
+        <source>⏎ details · Space get · [ ] tabs · / search</source>
+        <target>⏎ détails · Espace obtenir · [ ] onglets · / rechercher</target>
+      </trans-unit>
+      <trans-unit id="1308">
+        <source>No plugin is installed</source>
+        <target>Aucun plugin n’est installé</target>
       </trans-unit>
     </body>
   </file>

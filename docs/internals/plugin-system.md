@@ -225,6 +225,17 @@ background check uses the catalog's `fetchedAt` as its note: opening the store
 counts as a check. The suite pins that note in `tests/bootstrap.php`, as it
 does `tool-updates.json`.
 
+The page is `Widget/Settings/PluginStoreWidget`, mounted on the `plugins` nav id
+(there is no `store` page): `SettingsViewController::contentWidget()` maps Plugins
+to it whenever the store is wired, and the plain form only in a hand-built view.
+`StoreShelf` lays one frame out — lines plus a `StoreItem` map of each tile,
+"See all", category, field and button — and every key, click and hover reads that
+map; `StorePage` lays a plugin's page out, `StoreDetail` holds it. The Installed
+tab's rows come from `SettingsPluginsController::installed()`, and its scope
+select and install field go back through that controller's `change()`, so the
+install path is one. A search hit on `pluginInstall` or the scope lands on the
+Installed tab (`PluginStoreWidget::showTab()`).
+
 An updated plugin that is running reloads live. `PluginLifecycle::activateInstalled()`
 swaps out a running plugin of the same name rather than refusing a duplicate, which
 also makes installing a takeover over a running bundled copy work. Re-requiring

@@ -456,13 +456,13 @@ only ones you can hear: the rest of `Porta\Event` is internal.
 
 ## Installing, removing, disabling
 
-To browse what is published, open **Settings → Plugins → Store**: see
-[The plugin store](plugin-store.md), which also says how to publish yours.
-To install a package by name, a git URL or a local directory, open
-**Settings → Plugins** and use the form:
+To browse what is published, open **Settings → Plugins**, the plugin store:
+see [The plugin store](plugin-store.md), which also says how to publish yours.
+To install a package by name, a git URL or a local directory, open its
+**Installed** tab:
 
-- **Install into** — choose the project or the global directory.
-- **Install plugin** — type a **`vendor/name` package** (installed straight
+- **Save changes to** — choose the project or the global directory.
+- **Install from URL or path** — press Enter, then type a **`vendor/name` package** (installed straight
   from Packagist), a **git URL** (peeked to learn its package name and
   branch, then required from a `vcs` repository), or a **local directory
   path** (required from a `path` repository, which composer symlinks — so a
@@ -477,9 +477,10 @@ To install a package by name, a git URL or a local directory, open
   `janalis/porta-todo` installs as `todo`, the name a bundled plugin of that
   name goes by, and shadows it. Every bundled plugin is published this way,
   from a read-only split of its directory.
-- **Installed** lists every plugin once: its name and description, whether
+- Under them, every plugin once: its name and description, whether
   it is on or off, where it comes from (project, global or built-in), and
-  any required tool it is missing (`needs dot`). **Open** goes to its page.
+  any required tool it is missing (`needs dot`). **Open** goes to its page,
+  **Update** installs the newer release the store has.
 
 Each plugin's own page has its **Enabled** toggle, its settings, the
 **Tools** it runs ([Declaring the tools you run](#declaring-the-tools-you-run)), its documentation, and — for a project or

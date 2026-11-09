@@ -3662,10 +3662,6 @@
         <source>About</source>
         <target>אודות</target>
       </trans-unit>
-      <trans-unit id="1246">
-        <source>All categories</source>
-        <target>כל הקטגוריות</target>
-      </trans-unit>
       <trans-unit id="1247">
         <source>Asking Packagist…</source>
         <target>פונה ל-Packagist…</target>
@@ -3726,10 +3722,6 @@
         <source>Replaces the built-in %plugin% plugin</source>
         <target>מחליף את התוסף המובנה %plugin%</target>
       </trans-unit>
-      <trans-unit id="1262">
-        <source>Store</source>
-        <target>חנות</target>
-      </trans-unit>
       <trans-unit id="1263">
         <source>The plugin store could not reach Packagist: showing what it saw last</source>
         <target>חנות התוספים לא הצליחה להגיע ל-Packagist: מוצג מה שנראה לאחרונה</target>
@@ -3761,10 +3753,6 @@
       <trans-unit id="1271">
         <source>by %author%</source>
         <target>מאת %author%</target>
-      </trans-unit>
-      <trans-unit id="1272">
-        <source>⏎ details · Space get or update · c category · u updates · / filter</source>
-        <target>⏎ פרטים · Space קבלה או עדכון · c קטגוריה · u עדכונים · / סינון</target>
       </trans-unit>
       <trans-unit id="1273">
         <source>Linters &amp; formatters</source>
@@ -3873,6 +3861,42 @@
       <trans-unit id="1299">
         <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
         <target>%plugins% עודכנו — הפעל מחדש את Porta כדי להשלים את %names%: מחלקות שכבר נטענו שומרות על הקוד הישן</target>
+      </trans-unit>
+      <trans-unit id="1300">
+        <source>Categories</source>
+        <target>קטגוריות</target>
+      </trans-unit>
+      <trans-unit id="1301">
+        <source>See all</source>
+        <target>הצג הכול</target>
+      </trans-unit>
+      <trans-unit id="1302">
+        <source>Results for "%query%"</source>
+        <target>תוצאות עבור "%query%"</target>
+      </trans-unit>
+      <trans-unit id="1303">
+        <source>Install from URL or path</source>
+        <target>התקנה מכתובת URL או מנתיב</target>
+      </trans-unit>
+      <trans-unit id="1304">
+        <source>⏎ to type a git URL, local path, or vendor/name package</source>
+        <target>⏎ להקלדת כתובת git, נתיב מקומי או חבילת vendor/name</target>
+      </trans-unit>
+      <trans-unit id="1305">
+        <source>Update all</source>
+        <target>עדכן הכול</target>
+      </trans-unit>
+      <trans-unit id="1306">
+        <source>Developer</source>
+        <target>מפתח</target>
+      </trans-unit>
+      <trans-unit id="1307">
+        <source>⏎ details · Space get · [ ] tabs · / search</source>
+        <target>⏎ פרטים · רווח קבלה · [ ] לשוניות · / חיפוש</target>
+      </trans-unit>
+      <trans-unit id="1308">
+        <source>No plugin is installed</source>
+        <target>לא מותקן אף תוסף</target>
       </trans-unit>
     </body>
   </file>

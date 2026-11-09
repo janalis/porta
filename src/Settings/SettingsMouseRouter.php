@@ -98,7 +98,10 @@ final readonly class SettingsMouseRouter implements ViewPointer
     #[\Override]
     public function hover(MouseEvent $mouse): void
     {
-        $rows = $this->hit->hover($mouse->row, $mouse->col, ...$this->panes());
+        $rows = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);
+        // The store is a grid: what is under the pointer takes its column too.
+        $rel = null === $this->store ? null : $this->hit->hit($this->store, $mouse->row, $mouse->col);
+        $rows = (null !== $this->store && $this->store->hoverAt($rel['row'] ?? null, $rel['col'] ?? 0)) || $rows;
         // The pages' title rows are trails whose links tint by column.
         $formTitle = $this->form->hoverCrumb($this->titleColumn($this->form, $mouse));
         $keysTitle = $this->keys->hoverCrumb($this->titleColumn($this->keys, $mouse));
