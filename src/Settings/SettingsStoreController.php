@@ -10,9 +10,11 @@ use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Plugin\Runtime\PluginLoader;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\PluginUpdate;
 use Porta\Plugin\Store\PluginUpdates;
 use Porta\Plugin\Store\StoreAction;
+use Porta\Plugin\Store\StoreArt;
 use Porta\Plugin\Store\StoreAssets;
 use Porta\Plugin\Store\StoreCatalog;
 use Porta\Plugin\Store\StoreEntry;
@@ -48,6 +50,7 @@ final class SettingsStoreController
     public function __construct(
         private readonly StoreCatalog $catalog,
         private readonly StoreAssets $assets,
+        private readonly StoreArt $art,
         private readonly PluginUpdates $updates,
         private readonly PluginInstaller $installer,
         private readonly PluginLifecycleOps $lifecycle,
@@ -129,6 +132,16 @@ final class SettingsStoreController
             $onReady($url, $body);
         };
         $image ? $this->assets->image($url, $answer) : $this->assets->text($url, $answer);
+    }
+
+    /**
+     * Every plugin's icon and pictures, each handed to $onArt as it is found.
+     *
+     * @param \Closure(string, Art): void $onArt the package and its art
+     */
+    public function art(\Closure $onArt): void
+    {
+        $this->art->resolve($this->catalog->entries(), $onArt);
     }
 
     /** Press $entry's button. */

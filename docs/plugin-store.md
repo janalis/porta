@@ -35,7 +35,14 @@ Each plugin is a tile: its icon, its title, what it does, who made it, its
 category, its version, when that version was released and how often it was
 downloaded, with its button at the right. **Verified** marks a plugin whose
 author registered it with Porta (see below). Tiles stand two to a row where
-the pane is wide enough.
+the pane is wide enough. A featured plugin's first screenshot stands over its
+tile in the banner.
+
+The icons and screenshots are pictures where the terminal can draw them
+(kitty, Ghostty), and coloured half-blocks elsewhere. A
+plugin with no icon shows its initials in a box. The store never draws an icon
+for a plugin: it uses only what the plugin publishes (see
+[Pictures](#pictures)).
 
 | Key | Does |
 | --- | --- |
@@ -53,9 +60,9 @@ a tile, and a second click opens its page.
 
 A plugin's **page** shows, in order:
 
-- its button, then a strip with its downloads, category, developer, version and
-  license;
-- its screenshots (← → to move between them);
+- its icon and its button, then a strip with its downloads, category,
+  developer, version and license;
+- its screenshots side by side, all the same height (← → scrolls the strip);
 - **What's New**: the newest release's section of its changelog;
 - **About**: its README;
 - **Information**: provider, package, category, version, license, downloads and source.
@@ -104,6 +111,7 @@ finish.
                "store": {
                    "title": "Rector",
                    "category": "linters",
+                   "icon": "https://raw.githubusercontent.com/acme/porta-rector/main/docs/icon.png",
                    "screenshots": [
                        "https://raw.githubusercontent.com/acme/porta-rector/main/docs/screenshot.png"
                    ],
@@ -119,7 +127,8 @@ finish.
    | --- | --- | --- |
    | `title` | the name, capitalised | What the store calls it |
    | `category` | `other` | One of `languages`, `linters`, `testing`, `debugging`, `version-control`, `remote`, `viewers`, `ai`, `productivity`, `other` |
-   | `screenshots` | none | Up to six https PNG addresses, 2 MB each at most. About 16:9 reads best. |
+   | `icon` | from the README | An https address of a square picture, 2 MB at most. |
+   | `screenshots` | from the README | Up to six https picture addresses, 2 MB each at most. About 16:9 reads best. |
    | `changelog` | `CHANGELOG.md` | A path in your repository. The store reads it at the commit the release was tagged on. |
    | `readme` | `README.md` | Likewise |
 
@@ -128,6 +137,9 @@ finish.
    `Unreleased`. Without a changelog the store lists the release history
    instead. The changelog and README are read from GitHub, so a package
    published from another host shows neither.
+   Each picture can be a PNG, JPEG, GIF, WebP or SVG. An SVG is drawn only on
+   a machine that has `rsvg-convert` (librsvg), so a PNG reaches everyone.
+
 3. Tag a release and publish the package on Packagist. From then on it is in
    the store, unverified.
 4. To be **verified**, open a pull request against
@@ -151,6 +163,30 @@ The pull request's **Store** check (`bin/store-check`) verifies that:
 
 A maintainer reviews the rest. Once the pull request is merged, the entry shows
 in every Porta within the hour. No Porta release is needed.
+
+### Pictures
+
+A plugin that lists no `icon` or no `screenshots` gets them from its README,
+read at the release's tag. The store looks at the first four pictures there:
+
+- the first one is the icon, when it is square;
+- every wide one is a screenshot, when the package lists none.
+
+Badges (build status, version, downloads, coverage), people's avatars, and
+anything under a heading that thanks someone (Sponsors, Backers,
+Contributors…) are left out. Only https pictures are used. Of a logo shown
+in a light and a dark version (`#gh-light-mode-only` / `#gh-dark-mode-only`),
+the dark one is used.
+
+When the README shows no picture, the store reads the README of each tool
+the plugin drives (`extra.porta.tools`): a tool published on GitHub or as a
+composer package lends the pictures above its README's first `## ` section,
+usually its logo. That is how the bundled `phpstan` plugin shows PHPStan's
+logo.
+
+What was found is kept for a week under `~/.porta/cache/store`. When a
+README could not be read, nothing is kept, and the store looks again next
+session.
 
 ## Taking over a bundled plugin
 

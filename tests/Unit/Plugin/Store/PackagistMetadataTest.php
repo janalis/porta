@@ -177,6 +177,38 @@ final class PackagistMetadataTest extends TestCase
         $this->assertSame('', $entry->license);
     }
 
+    public function testAnEntryReadsItsIconAndWhereTheToolsItDrivesArePublished(): void
+    {
+        $release = self::FULL;
+        $release['extra']['porta']['store']['icon'] = 'https://example.com/icon.png';
+        $release['extra']['porta']['tools'] = [
+            ['name' => 'rector', 'sources' => [['composer', 'rector/rector'], ['brew', 'rector'], ['github', 'rectorphp/rector', ['asset' => 'x']]]],
+            ['name' => 'again', 'sources' => [['composer', 'rector/rector'], ['github', '../etc'], ['composer', 7], 'junk', ['npm', 'a/b']]],
+            ['name' => 'none'],
+            'junk',
+        ];
+        $entry = PackagistMetadata::entry(self::PACKAGE, self::p2([$release]));
+
+        $this->assertInstanceOf(StoreEntry::class, $entry);
+        $this->assertSame('https://example.com/icon.png', $entry->icon);
+        $this->assertSame(['composer:rector/rector', 'github:rectorphp/rector'], $entry->tools, 'each once; brew, npm and what is not a name left out');
+
+        $release['extra']['porta']['store']['icon'] = 'http://example.com/icon.png';
+        $release['extra']['porta']['tools'] = 'junk';
+        $plain = PackagistMetadata::entry(self::PACKAGE, self::p2([$release]));
+        $this->assertNull($plain?->icon, 'https only');
+        $this->assertSame([], $plain?->tools);
+    }
+
+    public function testTheRepositoryAPackageIsPublishedFrom(): void
+    {
+        $this->assertSame('acme/porta-rector', PackagistMetadata::repository(self::PACKAGE, self::p2([self::FULL])));
+        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([['source' => ['url' => 'https://gitlab.com/a/b.git']]])));
+        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([['version' => '1.0']])));
+        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, self::p2([], 'other/package')));
+        $this->assertNull(PackagistMetadata::repository(self::PACKAGE, 'not json'));
+    }
+
     public function testAChangelogPathOutsideTheRepositoryIsRefused(): void
     {
         foreach (['../x.md', '/abs.md', 'a b.md', ''] as $path) {

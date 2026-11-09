@@ -6,7 +6,9 @@ namespace Porta\Widget\Settings;
 
 use Porta\Container\AsWidget;
 use Porta\Event\SettingsSectionRequested;
+use Porta\Help\Layout\ImageLayout;
 use Porta\I18n\Translator;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\StoreAction;
 use Porta\Plugin\Store\StoreCategory;
 use Porta\Plugin\Store\StoreEntry;
@@ -59,7 +61,8 @@ use Symfony\Component\Tui\Widget\VerticallyExpandableInterface;
  * strip of facts, its screenshots, What's New, About and Information. What
  * the page shows beyond the catalog is not this widget's to fetch: it asks
  * through {@see onAsset()} and is handed each answer through
- * {@see setAsset()}, so nothing here waits on the network.
+ * {@see setAsset()}, so nothing here waits on the network. Each plugin's
+ * icon and pictures are handed in likewise, through {@see setArt()}.
  *
  * Every button goes back to the controller as the entry pressed; which button
  * it is, and what it does, are the controller's.
@@ -129,6 +132,12 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
 
     private readonly StoreDetail $page;
 
+    /** @var array<string, Art> each package's pictures, as they are found */
+    private array $art = [];
+
+    /** Where the shelf's pictures are drawn. */
+    private readonly ImageLayout $pictures;
+
     /** @var array<int, array{start: int, width: int, target: StoreTab}> the tab strip's hit zones, from the last render */
     private array $stripZones = [];
 
@@ -167,6 +176,7 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $this->source = new TextField(style: $cursorStyle);
         $this->header = new CrumbHeader();
         $this->page = new StoreDetail($translator, $this->styles, $graphics);
+        $this->pictures = new ImageLayout($graphics);
         $this->setTrail();
         $this->addStyleClass('list');
     }
@@ -273,6 +283,20 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
+    /**
+     * $package's pictures, found: its tile, and its page when it is open,
+     * show them; what its page shows of them is asked for.
+     */
+    public function setArt(string $package, Art $art): void
+    {
+        $this->art[$package] = $art;
+        $row = $this->detailRow();
+        if (null !== $row && $package === $row->entry->package) {
+            $this->requestAssets($row->entry);
+        }
+        $this->invalidate();
+    }
+
     /** Back on the shelf, its tab, category and search as they were. */
     public function closeDetail(): void
     {
@@ -349,7 +373,7 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
 
     private function detailInput(string $data, Keybindings $kb): void
     {
-        $shots = \count($this->detailRow()?->entry->screenshots ?? []);
+        $shots = \count($this->shots($this->detailRow()?->entry));
         $page = \max(1, $this->lastRows - 2);
         match (true) {
             $kb->matches($data, 'exit_view'), $kb->matches($data, 'back') => $this->closeDetail(),
@@ -359,8 +383,8 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
             $kb->matches($data, 'move_down') => $this->scrollDetail(1),
             $kb->matches($data, 'page_up') => $this->scrollDetail(-$page),
             $kb->matches($data, 'page_down') => $this->scrollDetail($page),
-            $shots > 1 && $kb->matches($data, 'move_right') => $this->showShot(($this->page->shot() + 1) % $shots),
-            $shots > 1 && $kb->matches($data, 'move_left') => $this->showShot(($this->page->shot() + $shots - 1) % $shots),
+            $shots > 1 && $kb->matches($data, 'move_right') => $this->showShot(\min($shots - 1, $this->page->shot() + 1)),
+            $shots > 1 && $kb->matches($data, 'move_left') => $this->showShot(\max(0, $this->page->shot() - 1)),
             default => null,
         };
     }
@@ -499,6 +523,8 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
             $this->scroll = \max($this->scroll, $item->row + $item->height - $room);
         }
         $this->scroll = \max(0, \min($this->scroll, \count($body) - $room));
+        // The pictures this shelf no longer draws are freed in the terminal.
+        $this->pictures->sweep();
 
         return [...$lines, ...\array_slice($body, $this->scroll, $room)];
     }
@@ -516,6 +542,8 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
             $this->hovered,
             $this->hoveredButton,
             $this->isFocused() && !$this->filtering,
+            art: $this->art,
+            images: $this->pictures,
         );
         $query = \mb_strtolower(\trim($this->filter->value()));
         $matching = $this->matching($this->rows, $query);
@@ -618,14 +646,14 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     private function renderDetail(StoreRow $row, int $width, int $rows): array
     {
         $caption = \mb_strtolower($this->translator->trans($row->action->caption()));
-        $hint = \count($row->entry->screenshots) > 1
+        $hint = \count($this->shots($row->entry)) > 1
             ? $this->translator->trans('Esc back · ⏎ %action% · ←/→ screenshots', ['%action%' => $caption])
             : $this->translator->trans('Esc back · ⏎ %action%', ['%action%' => $caption]);
         $chrome = [$this->header->render($width, $this->styles, $hint), Rule::horizontal($width, $this->styles)];
         $controls = FieldBox::rowsFor($this->density->current(), $width);
         $room = \max(1, $rows - \count($chrome));
 
-        return [...$chrome, ...$this->page->lines($row, $width, $controls, $room, 'page' === $this->hovered && $this->hoveredButton)];
+        return [...$chrome, ...$this->page->lines($row, $width, $controls, $room, 'page' === $this->hovered && $this->hoveredButton, $this->art[$row->entry->package] ?? null)];
     }
 
     /**
@@ -637,10 +665,20 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     {
         $ask = $this->onAsset;
         if (null !== $ask) {
-            foreach ($this->page->unasked($entry) as [$url, $image]) {
+            foreach ($this->page->unasked($entry, $this->shots($entry)) as [$url, $image]) {
                 $ask($url, $image);
             }
         }
+    }
+
+    /**
+     * The screenshots $entry's page shows.
+     *
+     * @return list<string>
+     */
+    private function shots(?StoreEntry $entry): array
+    {
+        return null === $entry ? [] : StorePage::shots($entry, $this->art[$entry->package] ?? null);
     }
 
     private function detailRow(): ?StoreRow

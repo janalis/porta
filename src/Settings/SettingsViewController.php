@@ -10,6 +10,7 @@ use Porta\Event\SettingsSectionRequested;
 use Porta\I18n\Translator;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
+use Porta\Plugin\Store\Art;
 use Porta\Widget\Settings\KeybindingsListWidget;
 use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
@@ -420,6 +421,10 @@ final class SettingsViewController implements ContributedView
         if (null !== $store && $store === $this->contentWidget()) {
             $store->setStore($this->storeController->rows($outdated), $this->storeController->refreshing(), \count($outdated));
             $store->setInstalled($this->plugins->installed(), $this->plugins->scopeRow());
+            $this->storeController->art(function (string $package, Art $art): void {
+                $this->store?->setArt($package, $art);
+                $this->host->invalidate();
+            });
             $this->host->invalidate();
         }
     }

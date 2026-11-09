@@ -27,11 +27,11 @@ final readonly class StoreTile
     /** The narrowest a tile is drawn: a grid with less room per column has one. */
     public const int MIN_WIDTH = 40;
 
-    /** The roomy icon's columns: `┌────┐`. */
-    private const int ICON_WIDTH = 6;
+    /** The roomy icon's box, in cells: `┌────┐` over three rows. */
+    public const array ICON = [6, 3];
 
-    /** The compact icon's columns: `[Re]`. */
-    private const int COMPACT_ICON_WIDTH = 4;
+    /** The compact icon's box: `[Re]`, a picture two rows tall. */
+    public const array COMPACT_ICON = [4, 2];
 
     /** The narrowest button, so short captions still read as one. */
     private const int MIN_BUTTON_WIDTH = 9;
@@ -76,7 +76,8 @@ final readonly class StoreTile
     }
 
     /**
-     * The tile, $width wide, and where its button was drawn in it.
+     * The tile, $width wide, and where its button was drawn in it. A card
+     * with a picture draws it in place of the initials, as tall as it is.
      *
      * @param int $rows the screen's control height: {@see FieldBox::ROWS}, or 1
      *
@@ -87,30 +88,41 @@ final readonly class StoreTile
         $boxed = FieldBox::ROWS === $rows;
         $buttonWidth = \max(self::MIN_BUTTON_WIDTH, FieldBox::controlWidth($card->caption));
         $button = FieldBox::button($card->caption, $card->pressable ? FieldState::Idle : FieldState::Disabled, $buttonHovered, $buttonWidth, $boxed ? FieldBox::ROWS : 1, $this->styles);
-        $accent = $this->styles->of(Role::TabAccent);
-        $initials = AnsiText::padRight($card->initials(), 2);
         $title = $this->styles->of(Role::Bright)->apply($card->title).('' === $card->badges ? '' : '  '.$card->badges);
         $dim = $this->styles->of(Role::Dim);
         $buttonCol = \max(0, $width - $buttonWidth - 1);
-        if ($boxed) {
-            $icon = [$accent->apply('┌────┐'), $accent->apply('│ '.$initials.' │'), $accent->apply('└────┘')];
-            $text = [$title, $card->subtitle, $dim->apply($card->facts)];
-            $room = \max(0, $buttonCol - self::ICON_WIDTH - 2);
-            $lines = [];
-            foreach ($text as $i => $line) {
-                $lines[] = $this->line(self::cell($icon[$i], $this->direction).' '.self::text($line, $room, $this->direction).' '.self::cell($button[$i], $this->direction), $width);
-            }
-
-            return ['lines' => $lines, 'button' => [0, $buttonCol, $buttonWidth, FieldBox::ROWS]];
+        $icon = $card->icon ?? $this->initials($card, $boxed);
+        $iconWidth = AnsiUtils::visibleWidth($icon[0] ?? '');
+        $text = $boxed ? [$title, $card->subtitle, $dim->apply($card->facts)] : [$title, $dim->apply(\implode(' · ', \array_filter([$card->subtitle, $card->facts])))];
+        $room = \max(0, $buttonCol - $iconWidth - 2);
+        $lines = [];
+        for ($i = 0, $height = \max(\count($text), \count($icon)); $i < $height; ++$i) {
+            $cell = \array_key_exists($i, $icon) ? self::cell($icon[$i], $this->direction) : AnsiText::blank($iconWidth);
+            $tail = \array_key_exists($i, $button) ? ' '.self::cell($button[$i], $this->direction) : '';
+            // Compact, what it is and who made it run under the button, to the tile's end.
+            $line = '' === $tail && !$boxed && 1 === $i ? $width - $iconWidth - 2 : $room;
+            $lines[] = $this->line($cell.' '.self::text($text[$i] ?? '', $line, $this->direction).$tail, $width);
         }
-        $room = \max(0, $buttonCol - self::COMPACT_ICON_WIDTH - 2);
-        $about = \implode(' · ', \array_filter([$card->subtitle, $card->facts]));
-        $lines = [
-            $this->line(self::cell($accent->apply('['.$initials.']'), $this->direction).' '.self::text($title, $room, $this->direction).' '.self::cell($button[0], $this->direction), $width),
-            $this->line(AnsiText::blank(self::COMPACT_ICON_WIDTH + 1).self::text($dim->apply($about), $width - self::COMPACT_ICON_WIDTH - 2, $this->direction), $width),
-        ];
 
-        return ['lines' => $lines, 'button' => [0, $buttonCol, AnsiUtils::visibleWidth($button[0]), 1]];
+        return ['lines' => $lines, 'button' => [0, $buttonCol, $boxed ? $buttonWidth : AnsiUtils::visibleWidth($button[0]), \count($button)]];
+    }
+
+    /**
+     * The initials' box: `┌────┐` over `│ Re │` roomy, `[Re]` compact.
+     *
+     * @return list<string>
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- the box is drawn for the screen's control height, which is all the flag is.
+    private function initials(StoreCard $card, bool $boxed): array
+    {
+        $accent = $this->styles->of(Role::TabAccent);
+        $initials = AnsiText::padRight($card->initials(), 2);
+
+        return (
+            $boxed
+                ? [$accent->apply('┌────┐'), $accent->apply('│ '.$initials.' │'), $accent->apply('└────┘')]
+                : [$accent->apply('['.$initials.']')]
+        );
     }
 
     /** A tile's row, $width wide: the column the button leaves at its end is padding, held in a mirrored row. */

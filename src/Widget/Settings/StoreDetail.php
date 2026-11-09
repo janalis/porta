@@ -7,6 +7,7 @@ namespace Porta\Widget\Settings;
 use Porta\Help\Layout\ImageLayout;
 use Porta\Help\MarkdownRenderer;
 use Porta\I18n\Translator;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
 use Porta\Ui\Graphics\TerminalGraphics;
@@ -25,7 +26,7 @@ final class StoreDetail
     /** The page's first drawn line. */
     private int $scroll = 0;
 
-    /** The screenshot the page shows. */
+    /** The strip's first screenshot. */
     private int $shot = 0;
 
     /** @var array<string, string|null> each asked-for address and what it answered; absent while it is on its way */
@@ -37,8 +38,8 @@ final class StoreDetail
     /** @var array{lines: list<string>, button: array{int, int, int, int}}|null */
     private ?array $page = null;
 
-    /** @var array{?string, int, int, int, bool} the [package, width, rows, shot, hovered] the page was laid out for */
-    private array $key = [null, 0, 0, 0, false];
+    /** @var array{?string, int, int, int, bool, ?Art} the [package, width, rows, shot, hovered, art] the page was laid out for */
+    private array $key = [null, 0, 0, 0, false, null];
 
     private readonly MarkdownRenderer $markdown;
 
@@ -108,12 +109,15 @@ final class StoreDetail
      *
      * @return list<string>
      */
-    public function lines(StoreRow $row, int $width, int $rows, int $room, bool $hovered): array
+    public function lines(StoreRow $row, int $width, int $rows, int $room, bool $hovered, ?Art $art = null): array
     {
-        $key = [$row->entry->package, $width, $rows, $this->shot, $hovered];
+        $key = [$row->entry->package, $width, $rows, $this->shot, $hovered, $art];
+        // Art compares as the object it is: art found again lays the page out again.
         if (null === $this->page || $key !== $this->key) {
             $this->key = $key;
-            $this->page = $this->pages->render($row, $width, $rows, $this->shot, $this->assets, $hovered);
+            $this->page = $this->pages->render($row, $width, $rows, $this->shot, $this->assets, $hovered, $art);
+            // The pictures this layout no longer draws — a strip moved on, a pane resized — are freed.
+            $this->images->sweep();
         }
         $this->scroll = \max(0, \min($this->scroll, \count($this->page['lines']) - $room));
 
@@ -130,14 +134,20 @@ final class StoreDetail
 
     /**
      * What the open page shows that has not been asked for: its changelog,
-     * its README and the screenshot on screen — each address and whether it
-     * is a picture. Each is asked for once.
+     * its README and its screenshots — each
+     * address and whether it is a picture. Each is asked for once.
+     *
+     * @param list<string> $shots the page's screenshots
      *
      * @return list<array{string, bool}>
      */
-    public function unasked(StoreEntry $entry): array
+    public function unasked(StoreEntry $entry, array $shots): array
     {
-        $wanted = [[$entry->changelog, false], [$entry->readme, false], [$entry->screenshots[$this->shot] ?? null, true]];
+        $wanted = [[$entry->changelog, false], [$entry->readme, false]];
+        // Six at most, as a package may list, and a wide pane shows them all.
+        foreach ($shots as $shot) {
+            $wanted[] = [$shot, true];
+        }
         $asks = [];
         foreach ($wanted as [$url, $image]) {
             if (null === $url || \array_key_exists($url, $this->asked)) {

@@ -37,6 +37,8 @@ final class StoreEntryTest extends TestCase
                 ['v1.2.0', 1_800_000_000],
                 ['v1.1.0', 0],
             ],
+            icon: 'https://example.com/icon.png',
+            tools: ['composer:rector/rector', 'github:rectorphp/rector'],
         );
     }
 
@@ -58,6 +60,8 @@ final class StoreEntryTest extends TestCase
         $this->assertNull($entry->changelog);
         $this->assertTrue($entry->compatible, 'not said otherwise: it runs');
         $this->assertFalse($entry->verified);
+        $this->assertNull($entry->icon);
+        $this->assertSame([], $entry->tools);
 
         $this->assertNull(StoreEntry::fromArray(['name' => 'b', 'version' => '1.0']), 'no package');
         $this->assertNull(StoreEntry::fromArray(['package' => 'a/b', 'version' => '1.0']), 'no name');

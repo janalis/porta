@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Porta\Widget\Settings;
 
+use Porta\Help\Layout\ImageLayout;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\StoreAction;
 use Porta\Plugin\Store\StoreCategory;
 use Porta\Plugin\Store\StoreRow;
@@ -42,6 +44,9 @@ final class StoreShelf
     /** The columns between two tiles of a row. */
     private const int GAP = 2;
 
+    /** The tallest a featured plugin's picture stands over its tile. */
+    public const int HERO_ROWS = 10;
+
     /** @var list<string> */
     private array $lines = [];
 
@@ -64,6 +69,8 @@ final class StoreShelf
      * @param string|null                          $selected the selected item's key
      * @param string|null                          $hovered  the key of the item under the pointer
      * @param bool                                 $focused  whether the widget takes the keys, so the selected field shows its caret
+     * @param array<string, Art>                   $art      each package's pictures, as far as they are found
+     * @param ImageLayout|null                     $images   where pictures are drawn; null draws none
      */
     public function __construct(
         private readonly Translator $translator,
@@ -77,6 +84,8 @@ final class StoreShelf
         private readonly bool $focused,
         // The banner's grid is no wider than its tiles: one featured plugin spans it.
         int $tiles = 2,
+        private readonly array $art = [],
+        private readonly ?ImageLayout $images = null,
     ) {
         $this->direction = $translator->isRtl() ? BaseDirection::Rtl : BaseDirection::Ltr;
         $this->tile = new StoreTile($styles, $this->direction);
@@ -294,6 +303,8 @@ final class StoreShelf
             $this->hoveredButton,
             $this->focused,
             \count($tiles),
+            $this->art,
+            $this->images,
         );
         $inner->grid($tiles, 'featured', [], -1);
         $this->blank();
@@ -321,6 +332,13 @@ final class StoreShelf
             if ($index > 0 && FieldBox::ROWS === $this->rows) {
                 $this->lines[] = $this->rules(\count($chunk));
             }
+            $hero = 'featured' === $shelf && FieldBox::ROWS === $this->rows ? $this->heroes($chunk) : -1;
+            // The row's pictures come into view with it; else the first row brings its heading.
+            $reveal = match (true) {
+                $hero >= 0 => $hero,
+                0 === $index => $heading,
+                default => -1,
+            };
             $top = \count($this->lines);
             $band = \array_fill(start_index: 0, count: $height, value: ' ');
             foreach ($chunk as $column => $tile) {
@@ -338,7 +356,7 @@ final class StoreShelf
                     store: $item['store'],
                     plugin: $item['plugin'],
                     button: [$top + $button[0], $col + $button[1], $button[2], $button[3]],
-                    reveal: 0 === $index ? $heading : -1,
+                    reveal: $reveal,
                 );
                 foreach ($drawn['lines'] as $i => $line) {
                     $band[$i] = AnsiText::padRight($band[$i], $col).$this->shadeIf($line, $item['key']);
@@ -348,6 +366,59 @@ final class StoreShelf
                 $this->lines[] = AnsiText::truncate($line, $this->width, pad: true);
             }
         }
+    }
+
+    /**
+     * The pictures of a row of featured plugins, over their tiles, as tall as
+     * the tallest needs up to {@see HERO_ROWS}; returns the row they start
+     * on, or -1 when none of them has one.
+     *
+     * @param list<StoreRow|InstalledPlugin> $chunk
+     */
+    private function heroes(array $chunk): int
+    {
+        $pictures = [];
+        $rows = 0;
+        foreach ($chunk as $column => $tile) {
+            $png = $tile instanceof StoreRow ? $this->art[$tile->entry->package]->hero ?? null : null;
+            $fits = null === $png ? null : $this->images?->fits($png, $this->tileWidth - 1, self::HERO_ROWS);
+            // Its size is in its header; whether it can be drawn here is the drawing.
+            if (null === $png || null === $fits || null === $this->images?->boxed($png, $this->tileWidth - 1, $fits[1])) {
+                continue;
+            }
+            $pictures[$column] = $png;
+            $rows = \max($rows, $fits[1]);
+        }
+        if ([] === $pictures) {
+            return -1;
+        }
+        $top = \count($this->lines);
+        $band = \array_fill(start_index: 0, count: $rows, value: ' ');
+        foreach ($pictures as $column => $png) {
+            $col = 1 + ($column * ($this->tileWidth + self::GAP));
+            foreach ($this->images?->boxed($png, $this->tileWidth - 1, $rows) ?? [] as $i => $line) {
+                $band[$i] = AnsiText::padRight($band[$i], $col).StoreTile::cell($line, $this->direction);
+            }
+        }
+        foreach ($band as $line) {
+            $this->lines[] = AnsiText::truncate($line, $this->width, pad: true);
+        }
+
+        return $top;
+    }
+
+    /**
+     * A store plugin's picture, drawn into the tile's icon box; null when it
+     * has none to draw.
+     *
+     * @return list<string>|null
+     */
+    private function icon(?string $package): ?array
+    {
+        $png = null === $package ? null : $this->art[$package]->icon ?? null;
+        [$columns, $rows] = FieldBox::ROWS === $this->rows ? StoreTile::ICON : StoreTile::COMPACT_ICON;
+
+        return null === $png ? null : $this->images?->boxed($png, $columns, $rows);
     }
 
     /**
@@ -372,6 +443,7 @@ final class StoreShelf
             $this->facts($row),
             $this->translator->trans($row->action->caption()),
             $row->action->pressable(),
+            $this->icon($entry->package),
         );
 
         return ['key' => 'tile:'.$shelf.':'.$entry->package, 'card' => $card, 'store' => $row, 'plugin' => null];
@@ -397,6 +469,7 @@ final class StoreShelf
             $facts,
             $this->translator->trans($update ? 'Update' : 'Open'),
             true,
+            $this->icon($row?->entry->package),
         );
 
         return ['key' => 'installed:'.$plugin->name, 'card' => $card, 'store' => $row, 'plugin' => $plugin->name];

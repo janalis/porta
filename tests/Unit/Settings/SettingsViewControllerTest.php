@@ -36,6 +36,7 @@ use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Store\StoreArt;
 use Porta\Plugin\Store\StoreAssets;
 use Porta\Presence\Identity;
 use Porta\Search\FileIndex;
@@ -68,6 +69,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PixelGraphics;
+use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\ReadsSettingsForm;
@@ -411,6 +413,7 @@ final class SettingsViewControllerTest extends TestCase
                 : new SettingsStoreController(
                     $store->catalog,
                     new StoreAssets($store->http->fetch(), null),
+                    new StoreArt($store->http->fetch(), new StoreAssets($store->http->fetch(), null), null),
                     $store->updates(),
                     $store->installer,
                     $store->lifecycle,
@@ -1338,6 +1341,20 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertSame(['settings-form'], $this->ids($this->content));
         $controller->refresh();
         $this->assertSame(['settings-form'], $this->ids($this->content));
+    }
+
+    public function testTheStoreShowsTheIconTheReadmeOfEachPluginShows(): void
+    {
+        $store = new StoreFixture();
+        $store->publish('acme/porta-rector', store: ['title' => 'Rector']);
+        $store->http->bodies['https://raw.githubusercontent.com/acme/porta-rector/ref/README.md'] = "![logo](https://img.test/logo.png)\n";
+        $store->http->bodies['https://img.test/logo.png'] = PngFixture::bytes(40, 40);
+        $store->fill();
+        $controller = $this->controller(store: $store);
+        $controller->openOn('plugins');
+
+        $lines = AnsiUtils::stripAnsiCodes(\implode("\n", $this->store?->render(new RenderContext(100, 20)) ?? []));
+        $this->assertMatchesRegularExpression('/▀{6} Rector/u', $lines, 'its picture in place of its initials');
     }
 
     public function testTheStoresButtonsAndAssetsGoThroughTheController(): void

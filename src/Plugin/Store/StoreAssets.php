@@ -6,6 +6,7 @@ namespace Porta\Plugin\Store;
 
 use Porta\Config\PortaHome;
 use Porta\Support\ControlChars;
+use Porta\Ui\Graphics\RasterImage;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 use Symfony\Component\Filesystem\Exception\IOExceptionInterface;
 use Symfony\Component\Filesystem\Filesystem;
@@ -20,7 +21,10 @@ use Symfony\Component\Filesystem\Filesystem;
  * on, so their address alone names their content. A screenshot is an address
  * its author may overwrite: a week is how stale one may get.
  *
- * Bounded both ways: a screenshot over {@see MAX_IMAGE} or that is not a PNG,
+ * A picture is kept as the PNG {@see RasterImage} made of it — a JPEG, a GIF,
+ * a WebP or an SVG is converted once, when it arrives.
+ *
+ * Bounded both ways: a picture over {@see MAX_IMAGE} or that is no picture,
  * and a text over {@see MAX_TEXT}, are nothing — a store page is not where a
  * plugin gets to fill the disk or the terminal.
  */
@@ -54,6 +58,7 @@ final class StoreAssets
         private readonly ?string $cacheDir,
         private readonly Filesystem $filesystem = new Filesystem(),
         ?\Closure $clock = null,
+        private readonly RasterImage $raster = new RasterImage(),
     ) {
         $this->clock = $clock ?? \time(...);
     }
@@ -72,60 +77,139 @@ final class StoreAssets
      */
     public function text(string $url, \Closure $onReady): void
     {
-        // Someone else's markdown, drawn in the terminal: no escape sequence of its own reaches it.
-        $this->asset($url, self::MAX_TEXT, static fn (string $body): bool => \mb_check_encoding($body, encoding: 'UTF-8'), static function (?string $body) use ($onReady): void {
-            $onReady(null === $body ? null : ControlChars::page($body));
+        $this->texts([$url], static function (array $bodies) use ($url, $onReady): void {
+            $onReady($bodies[$url] ?? null);
         });
     }
 
     /**
-     * The PNG at $url.
+     * The picture at $url, as a PNG.
      *
      * @param \Closure(?string): void $onReady exactly once, possibly before this returns
      */
     public function image(string $url, \Closure $onReady): void
     {
-        $this->asset($url, self::MAX_IMAGE, static fn (string $body): bool => \str_starts_with($body, self::PNG), $onReady);
+        $this->images([$url], static function (array $bodies) use ($url, $onReady): void {
+            $onReady($bodies[$url] ?? null);
+        });
     }
 
     /**
-     * @param \Closure(string): bool  $valid
-     * @param \Closure(?string): void $onReady
+     * The texts at $urls, in one fetch.
+     *
+     * @param list<string>                            $urls
+     * @param \Closure(array<string, ?string>): void $onReady exactly once, possibly before this returns: each address => its text, or null
      */
-    private function asset(string $url, int $maxBytes, \Closure $valid, \Closure $onReady): void
+    public function texts(array $urls, \Closure $onReady): void
     {
-        $kept = \array_key_exists($url, $this->memo) ? null : $this->kept($url);
-        if (null !== $kept && $valid($kept)) {
-            $this->memo[$url] = $kept;
-        }
-        if (\array_key_exists($url, $this->memo)) {
-            $onReady($this->memo[$url]);
+        $this->load(
+            $urls,
+            self::MAX_TEXT,
+            // What an older porta kept is the raw body: kept text is used only when it is already clean.
+            static fn (string $kept): bool => \mb_check_encoding($kept, encoding: 'UTF-8') && ControlChars::page($kept) === $kept,
+            // Someone else's markdown, drawn in the terminal: no escape sequence of its own reaches it.
+            static function (string $body, \Closure $onText): void {
+                $onText(\mb_check_encoding($body, encoding: 'UTF-8') ? ControlChars::page($body) : null);
+            },
+            $onReady,
+        );
+    }
+
+    /**
+     * The pictures at $urls, in one fetch, each made a PNG ({@see RasterImage}).
+     *
+     * @param list<string>                            $urls
+     * @param \Closure(array<string, ?string>): void $onReady exactly once, possibly before this returns: each address => its PNG, or null
+     */
+    public function images(array $urls, \Closure $onReady): void
+    {
+        $this->load(
+            $urls,
+            self::MAX_IMAGE,
+            static fn (string $kept): bool => \str_starts_with($kept, self::PNG),
+            $this->raster->png(...),
+            $onReady,
+        );
+    }
+
+    /**
+     * Each of $urls from this session's memory, from what is kept, or from
+     * one fetch of all the rest — an address another ask is already fetching
+     * waits for that one.
+     *
+     * @param list<string>                                     $urls
+     * @param \Closure(string): bool                           $usable    whether a kept body may be used as it is
+     * @param \Closure(string, \Closure(?string): void): void $transform a fetched body to what is kept and answered, or null
+     * @param \Closure(array<string, ?string>): void           $onReady
+     */
+    private function load(array $urls, int $maxBytes, \Closure $usable, \Closure $transform, \Closure $onReady): void
+    {
+        $urls = \array_values(\array_unique($urls));
+        $answers = [];
+        $answer = static function (string $url, ?string $body) use (&$answers, $urls, $onReady): void {
+            $answers[$url] = $body;
+            // The last address to answer hands every answer on, in the order asked.
+            if (\count($answers) === \count($urls)) {
+                $onReady(\array_merge(\array_fill_keys($urls, value: null), $answers));
+            }
+        };
+        if ([] === $urls) {
+            $onReady([]);
 
             return;
         }
-        if (\array_key_exists($url, $this->pending)) {
-            $this->pending[$url][] = $onReady;
+        $fetch = [];
+        foreach ($urls as $url) {
+            $kept = \array_key_exists($url, $this->memo) ? null : $this->kept($url);
+            if (null !== $kept && $usable($kept)) {
+                $this->memo[$url] = $kept;
+            }
+            if (\array_key_exists($url, $this->memo)) {
+                $answer($url, $this->memo[$url]);
 
+                continue;
+            }
+            if (!\array_key_exists($url, $this->pending)) {
+                $fetch[] = $url;
+            }
+            $this->pending[$url][] = static function (?string $body) use ($url, $answer): void {
+                $answer($url, $body);
+            };
+        }
+        if ([] === $fetch) {
             return;
         }
-        $this->pending[$url] = [$onReady];
         $this->http->get(
-            [$url],
-            function (array $bodies) use ($url, $valid): void {
-                $body = $bodies[$url] ?? null;
-                $body = null !== $body && $valid($body) ? $body : null;
-                $this->memo[$url] = $body;
-                if (null !== $body) {
-                    $this->keep($url, $body);
-                }
-                $waiting = $this->pending[$url];
-                unset($this->pending[$url]);
-                foreach ($waiting as $onReady) {
-                    $onReady($body);
+            $fetch,
+            function (array $bodies) use ($fetch, $transform): void {
+                foreach ($fetch as $url) {
+                    $body = $bodies[$url] ?? null;
+                    if (null === $body) {
+                        $this->settle($url, null);
+
+                        continue;
+                    }
+                    $transform($body, function (?string $made) use ($url): void {
+                        $this->settle($url, $made);
+                    });
                 }
             },
             $maxBytes,
         );
+    }
+
+    /** What $url answered, remembered — kept when it is something — and handed to all who wait for it. */
+    private function settle(string $url, ?string $body): void
+    {
+        $this->memo[$url] = $body;
+        if (null !== $body) {
+            $this->keep($url, $body);
+        }
+        $waiting = $this->pending[$url] ?? [];
+        unset($this->pending[$url]);
+        foreach ($waiting as $onReady) {
+            $onReady($body);
+        }
     }
 
     /** What is kept for $url and still young enough to use, or null. */

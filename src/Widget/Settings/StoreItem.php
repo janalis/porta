@@ -70,7 +70,12 @@ final readonly class StoreItem
             $this->plugin,
             $this->category,
             null === $this->button ? null : [$this->button[0] + $rows, $this->button[1] + $cols, $this->button[2], $this->button[3]],
-            0 === $this->row ? $reveal : -1,
+            match (true) {
+                // Its own reveal from the inner grid's top, or none on the first row: the moved-to heading.
+                0 === $this->row, 0 === $this->reveal => $reveal,
+                $this->reveal > 0 => $this->reveal + $rows,
+                default => -1,
+            },
         );
     }
 

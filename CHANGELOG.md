@@ -16,6 +16,14 @@ versions follow [Semantic Versioning](https://semver.org/).
   of its downloads, category, developer, version and license. The arrow keys
   move through the grid, and `]` / `[` switch tabs (`c` / `Shift+C` are gone).
   See [The plugin store](docs/plugin-store.md).
+- **Plugin store pictures**: each plugin shows its icon on its tile and on its
+  page, and a featured plugin's screenshot stands over its tile in the banner.
+  A plugin's page shows its screenshots side by side, and ← → scrolls them. A
+  plugin that publishes no `icon` or `screenshots` gets them from its README,
+  or else from the README of the tool it drives, so the bundled `phpstan`
+  plugin shows PHPStan's logo. The store never draws an icon for a plugin.
+  Pictures can be PNG, JPEG, GIF, WebP or, where `rsvg-convert` is installed,
+  SVG.
 
 ## [0.1.6] - 2026-11-09
 

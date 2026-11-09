@@ -10,6 +10,7 @@ use Porta\I18n\BaseDirection;
 use Porta\I18n\Bidi;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallScope;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\PluginUpdate;
 use Porta\Plugin\Store\StoreAction;
 use Porta\Plugin\Store\StoreCategory;
@@ -18,8 +19,12 @@ use Porta\Plugin\Store\StoreRow;
 use Porta\Settings\InstalledPlugin;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsRowKind;
+use Porta\Tests\Support\PixelGraphics;
+use Porta\Tests\Support\PngFixture;
 use Porta\Ui\ScreenDensity;
 use Porta\Widget\Settings\PluginStoreWidget;
+use Porta\Widget\Settings\StorePage;
+use Porta\Widget\Settings\StoreShelf;
 use Porta\Widget\Settings\StoreTab;
 use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\Tui\Ansi\AnsiUtils;
@@ -627,7 +632,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->screen();
         $this->key("\x1b[B", "\r"); // rector's page
         $this->assertSame('acme/porta-rector', $this->widget->detail());
-        $this->assertSame([self::CHANGELOG, self::README, '!'.self::SHOT], $this->asked);
+        $this->assertSame([self::CHANGELOG, self::README, '!'.self::SHOT, '!'.self::SHOT_2, '!'.self::SHOT_3], $this->asked, 'every screenshot it has');
 
         $screen = $this->screen(120, 60);
         $this->assertStringContainsString('Settings › Plugins › Rector', $screen);
@@ -644,6 +649,8 @@ final class PluginStoreWidgetTest extends TestCase
         $this->widget->setAsset(self::CHANGELOG, "# Changelog\n\n## [Unreleased]\n- soon\n\n## [1.0.0] - 2027-01-15\n- **Fixed** the thing\n\n## [0.9.0]\n- older\n");
         $this->widget->setAsset(self::README, "# Rector\n\nRefactor *everything*.\n");
         $this->widget->setAsset(self::SHOT, self::png());
+        $this->widget->setAsset(self::SHOT_2, self::png());
+        $this->widget->setAsset(self::SHOT_3, self::png());
         $screen = $this->screen(100, 80);
         $this->assertStringContainsString('Fixed the thing', $screen);
         $this->assertStringNotContainsString('older', $screen);
@@ -651,14 +658,30 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertStringContainsString('Refactor everything.', $screen);
         $this->assertStringNotContainsString('Loading…', $screen);
 
-        $this->key("\x1b[C"); // the next screenshot
-        $this->assertSame('!'.self::SHOT_2, \end($this->asked));
+        $this->assertCount(
+            StorePage::STRIP_ROWS,
+            \array_filter(\explode("\n", $screen), static fn (string $line): bool => 1 === \preg_match('/^ ▀{20}  ▀{20}  ▀{20} +$/u', $line)),
+            'three screenshots side by side, each as tall as the strip, two columns apart',
+        );
+        $narrow = \array_filter(\explode("\n", $this->screen(40, 80)), static fn (string $line): bool => 1 === \preg_match('/▀{4}/u', $line));
+        $this->assertSame(
+            [2],
+            \array_values(\array_unique(\array_map(static fn (string $line): int => (int) \preg_match_all('/▀+/u', $line), $narrow))),
+            'a narrow page shows what fits, the rest cut off',
+        );
         $this->widget->setAsset(self::SHOT_2, null);
-        $this->assertStringContainsString('The screenshot could not be shown', $this->screen(100, 80));
-        $this->key("\x1b[D", "\x1b[D");
-        $this->assertStringContainsString('Preview  ‹ 3/3 ›', $this->screen(100, 80), 'round from the first to the last');
+        $this->assertStringContainsString('The screenshot could not be shown', $this->screen(100, 80), 'the second stands beside the first');
+        $this->assertMatchesRegularExpression('/^ ▀{20} +The screenshot could not be shown/mu', $this->screen(100, 80));
+        $this->key("\x1b[C"); // the strip moves on one
+        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, 80));
+        $this->assertMatchesRegularExpression('/^ +The screenshot could not be shown +▀{20} +$/mu', $this->screen(100, 80), 'it starts at the second');
+        $this->assertCount(5, $this->asked, 'nothing it shows was not asked for already');
+        $this->key("\x1b[C", "\x1b[C");
+        $this->assertStringContainsString('Preview  ‹ 3/3 ›', $this->screen(100, 80), 'it stops at the last');
         $this->key("\x1b[D");
-        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, 80), 'and back one');
+        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, 80), 'back one');
+        $this->key("\x1b[D", "\x1b[D");
+        $this->assertStringContainsString('Preview  ‹ 1/3 ›', $this->screen(100, 80), 'and it stops at the first');
 
         $this->key(' ', "\r");
         $this->assertSame(['acme/porta-rector', 'acme/porta-rector'], $this->pressed);
@@ -805,5 +828,167 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertSame([], $this->pressed);
         $this->widget->showTab(StoreTab::Updates);
         $this->assertNull($this->widget->detail(), 'a tab is shown from its shelf');
+    }
+
+    public function testATileWithAnIconDrawsItInPlaceOfItsInitials(): void
+    {
+        $this->shelf();
+        $this->assertMatchesRegularExpression('/│ Re │ Does rector/u', $this->screen());
+
+        $this->widget->setArt('acme/porta-rector', new Art(icon: PngFixture::bytes(32, 32)));
+        $screen = $this->screen();
+        $this->assertDoesNotMatchRegularExpression('/│ Re │/u', $screen, 'the picture takes the box');
+        $this->assertMatchesRegularExpression('/^ ▀{6} Rector/mu', $screen, 'six columns wide');
+        $this->assertCount(3, \array_filter(\explode("\n", $screen), static fn (string $line): bool => 1 === \preg_match('/^ ▀{6} \S/u', $line)), 'three rows tall, beside the tile\'s three lines');
+        $this->assertStringContainsString('│ To │', $screen, 'a plugin with no picture keeps its initials');
+
+        $this->density->observe(24);
+        $screen = $this->screen(100, 24);
+        $this->assertMatchesRegularExpression('/^ ▀{4} Rector/mu', $screen, 'compact, four columns');
+        $this->assertMatchesRegularExpression('/^ ▀{4} Does rector · Ada/mu', $screen, 'and two rows: what it is beside the second');
+        $this->assertStringContainsString('[To]', $screen);
+
+        $this->widget->setArt('acme/porta-rector', new Art(icon: 'not a png'));
+        $this->assertStringContainsString('[Re]', $this->screen(100, 24), 'a picture that cannot be drawn leaves the initials');
+    }
+
+    public function testAnInstalledPluginWearsItsStoreIcon(): void
+    {
+        $this->installed();
+        $this->widget->setArt('acme/porta-phpunit', new Art(icon: PngFixture::bytes(32, 32)));
+        $screen = $this->screen();
+        $this->assertMatchesRegularExpression('/▀{6} Phpunit/u', $screen);
+        $this->assertMatchesRegularExpression('/│ Gi │ Git history/u', $screen, 'one the store does not know keeps its initials');
+    }
+
+    public function testAFeaturedPluginsPictureStandsOverItsTile(): void
+    {
+        $this->shelf();
+        $plain = \explode("\n", $this->screen());
+        $this->widget->setArt('acme/porta-phpunit', new Art(hero: PngFixture::bytes(320, 90)));
+        $lines = \explode("\n", $this->screen());
+        $title = \array_key_first(\array_filter($lines, static fn (string $line): bool => \str_contains($line, 'Phpunit')));
+        $this->assertMatchesRegularExpression('/^ │ +▀{20,}/u', $lines[$title - 2], 'inside the banner, over the tile');
+        $this->assertMatchesRegularExpression('/^ ╭ Featured/u', $lines[5], 'the banner\'s top border opens the shelf');
+        $pictureRows = \count(\array_filter($lines, static fn (string $line): bool => 1 === \preg_match('/^ │ +▀{20,}/u', $line)));
+        $this->assertGreaterThan(1, $pictureRows);
+        $this->assertLessThanOrEqual(StoreShelf::HERO_ROWS, $pictureRows);
+        $this->assertSame(
+            $pictureRows,
+            \count($lines) - \count($plain) + \count(\array_filter($plain, static fn (string $line): bool => '' === \trim($line)))
+            - \count(\array_filter($lines, static fn (string $line): bool => '' === \trim($line))),
+            'the shelf grows by the picture alone',
+        );
+
+        $this->widget->setArt('acme/porta-rector', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->assertCount(
+            $pictureRows,
+            \array_filter(\explode("\n", $this->screen()), static fn (string $line): bool => 1 === \preg_match('/^ │ +▀{20,}/u', $line)),
+            'only a featured plugin stands under its picture',
+        );
+
+        // Down the shelf, the banner scrolled away, and back up: the featured tile brings its picture into view.
+        foreach (["\x1b[B", "\x1b[B", "\x1b[B"] as $key) {
+            $this->widget->handleInput($key);
+            $this->screen(100, 24);
+        }
+        $this->assertDoesNotMatchRegularExpression('/╭ Featured/u', $this->screen(100, 24), 'its top scrolled away');
+        foreach (["\x1b[A", "\x1b[A", "\x1b[A"] as $key) {
+            $this->widget->handleInput($key);
+            $this->screen(100, 24);
+        }
+        $short = \explode("\n", $this->screen(100, 24));
+        $this->assertMatchesRegularExpression('/^ ╭ Featured/u', $short[5], 'the banner\'s top, with the picture under it');
+        $this->assertMatchesRegularExpression('/^ │ +▀{20,}/u', $short[6]);
+
+        $this->density->observe(24);
+        $this->assertDoesNotMatchRegularExpression('/▀{20,}/u', $this->screen(100, 24), 'compact, no picture: the banner is a plain shelf');
+    }
+
+    public function testThePageShowsItsIconAndTheScreenshotsItsReadmeShows(): void
+    {
+        $this->shelf();
+        $this->screen();
+        $this->key("\x1b[B", "\x1b[B", "\x1b[B", "\r"); // the page of the plugin called todo
+        $this->assertSame('acme/porta-todo', $this->widget->detail());
+        $this->assertSame([self::CHANGELOG, self::README], $this->asked, 'it lists no screenshot');
+        $this->assertStringNotContainsString('Preview', $this->screen());
+
+        $this->widget->setArt('acme/porta-todo', new Art(icon: PngFixture::bytes(64, 64), shots: [self::SHOT_2]));
+        $this->assertSame([self::CHANGELOG, self::README, '!'.self::SHOT_2], $this->asked, 'its README\'s screenshot is asked for as it is found');
+        $screen = $this->screen(100, 40);
+        $this->assertMatchesRegularExpression('/^ ▀{10} Todo/mu', $screen, 'a large icon by its name');
+        $this->assertCount(5, \array_filter(\explode("\n", $screen), static fn (string $line): bool => 1 === \preg_match('/^ ▀{10} /u', $line)), 'five rows tall');
+        $this->assertStringContainsString('Preview', $screen);
+        $this->assertStringNotContainsString('←/→ screenshots', $screen, 'one screenshot has nowhere to move');
+
+        $this->widget->setArt('acme/porta-rector', new Art(shots: ['https://img.test/readme.png']));
+        $this->key("\x7f", "\x1b[A", "\x1b[A", "\r"); // rector's page: it lists its own
+        $this->assertSame('acme/porta-rector', $this->widget->detail());
+        $this->assertNotContains('!https://img.test/readme.png', $this->asked, 'what a package lists wins');
+    }
+
+    public function testASecondRowOfFeaturedPluginsBringsItsPicturesIntoViewWithIt(): void
+    {
+        $names = ['alpha', 'bravo', 'charlie', 'delta'];
+        $this->widget->setStore(\array_map(static fn (string $name): StoreRow => new StoreRow(self::entry($name, featured: true), StoreAction::Get), $names), false, 0);
+        foreach ($names as $name) {
+            $this->widget->setArt('acme/porta-'.$name, new Art(hero: PngFixture::bytes(320, 90)));
+        }
+        /** @param list<string> $keys */
+        $walk = function (array $keys): array {
+            foreach ($keys as $key) {
+                $this->widget->handleInput($key);
+                $this->screen(100, 16);
+            }
+
+            return \explode("\n", $this->screen(100, 16));
+        };
+
+        // To the foot of the shelf, then up to Charlie, the banner's second row.
+        $walk(\array_fill(start_index: 0, count: 8, value: "\x1b[B"));
+        $lines = $walk(["\x1b[A", "\x1b[A"]);
+        $this->assertStringContainsString('Charlie', \implode("\n", $lines));
+        $this->assertMatchesRegularExpression('/^ │  ▀{45}   ▀{45}  │$/u', $lines[4], 'its row\'s pictures stand at the top of the shelf, over it, each over its tile');
+
+        $lines = $walk(["\x1b[C", "\x1b[A"]); // Delta, then Bravo over it
+        $this->assertStringContainsString('Bravo', \implode("\n", $lines));
+        $this->assertMatchesRegularExpression('/^ ╭ Featured/u', $lines[4], 'the first row brings the banner\'s top, its pictures under it');
+
+        // Pictures whose header says a size but that cannot be drawn: the second row brings only itself, the first the banner's top.
+        foreach ($names as $name) {
+            $this->widget->setArt('acme/porta-'.$name, new Art(hero: \substr(PngFixture::bytes(320, 90), offset: 0, length: 33)));
+        }
+        $walk(\array_fill(start_index: 0, count: 8, value: "\x1b[B"));
+        $lines = $walk(["\x1b[A", "\x1b[A"]);
+        $this->assertMatchesRegularExpression('/^ │  ┌────┐ Charlie/u', $lines[4], 'a picture that cannot be drawn stands nowhere');
+        $lines = $walk(["\x1b[C", "\x1b[A"]);
+        $this->assertMatchesRegularExpression('/^ ╭ Featured/u', $lines[4]);
+    }
+
+    public function testAScreenshotTheStripMovesPastIsFreedInTheTerminal(): void
+    {
+        [$graphics, $terminal] = PixelGraphics::answered();
+        $this->widget = new PluginStoreWidget(new Translator('en'), graphics: $graphics);
+        $this->shelf();
+        $this->screen();
+        $this->key("\x1b[B", "\r"); // rector's page
+        foreach ([self::SHOT, self::SHOT_2, self::SHOT_3] as $i => $url) {
+            $this->widget->setAsset($url, PngFixture::bytes(32, 32, [40 * $i, 0, 0]));
+        }
+        $this->screen(100, 80);
+        $terminal->clearOutput();
+
+        $this->key("\x1b[C");
+        $this->screen(100, 80);
+        $this->assertStringContainsString('a=d,d=I,', $terminal->getOutput(), 'the first, out of the strip, is deleted');
+    }
+
+    public function testOnlyTheFeaturedPluginWithAPictureHasOneOverIt(): void
+    {
+        $this->widget->setStore([new StoreRow(self::entry('alpha', featured: true), StoreAction::Get), new StoreRow(self::entry('bravo', featured: true), StoreAction::Get)], false, 0);
+        $this->widget->setArt('acme/porta-bravo', new Art(hero: PngFixture::bytes(320, 90)));
+
+        $this->assertMatchesRegularExpression('/^ │ {50}▀{45}  │$/mu', $this->screen(), 'the second column\'s, over the second tile');
     }
 }

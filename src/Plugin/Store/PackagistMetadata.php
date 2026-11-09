@@ -32,6 +32,9 @@ final class PackagistMetadata
     /** A GitHub repository's address as composer records it, with or without `.git`. */
     private const string GITHUB = '#^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+?)(?:\.git)?/?$#';
 
+    /** An `owner/name` a tool is published under: neither part a `.` or `..` step. */
+    private const string REPOSITORY = '#^(?!\.)[A-Za-z0-9_.-]+/(?!\.)[A-Za-z0-9_.-]+$#';
+
     /** A release tag composer calls stable: digits and dots, nothing after. */
     private const string STABLE = '/^\d+(\.\d+)*$/';
 
@@ -125,6 +128,8 @@ final class PackagistMetadata
             $curated?->replaces,
             $compatible,
             \array_map(static fn (array $release): array => [ControlChars::line(self::string($release, 'version')), self::time($release)], $releases),
+            self::screenshots([$store['icon'] ?? null])[0] ?? null,
+            self::tools($porta['tools'] ?? null),
         );
     }
 
@@ -217,6 +222,50 @@ final class PackagistMetadata
         $urls = \array_filter(self::strings($listed), static fn (string $url): bool => \str_starts_with($url, 'https://') && 1 !== \preg_match('/[\s\p{Cc}]/u', $url));
 
         return \array_slice(\array_values($urls), offset: 0, length: 6);
+    }
+
+    /**
+     * Where the tools a plugin drives are published, as `github:owner/name`
+     * or `composer:vendor/name` — the sources a README can be read from; a
+     * brew formula, an npm or a cargo package has none the store knows.
+     *
+     * @return list<string>
+     */
+    private static function tools(mixed $tools): array
+    {
+        $found = [];
+        /** @var mixed $tool */
+        foreach (\is_array($tools) ? $tools : [] as $tool) {
+            /** @var mixed $sources */
+            $sources = \is_array($tool) ? $tool['sources'] ?? null : null;
+            /** @var mixed $source */
+            foreach (\is_array($sources) ? $sources : [] as $source) {
+                /** @var mixed $kind */
+                $kind = \is_array($source) ? $source[0] ?? null : null;
+                /** @var mixed $name */
+                $name = \is_array($source) ? $source[1] ?? null : null;
+                if (!\is_string($name) || !\in_array($kind, ['github', 'composer'], strict: true) || 1 !== \preg_match(self::REPOSITORY, $name)) {
+                    continue;
+                }
+                $found[] = $kind.':'.$name;
+            }
+        }
+
+        return \array_values(\array_unique($found));
+    }
+
+    /**
+     * The GitHub repository a package's `p2` $json says it is published from,
+     * as `owner/name`, or null.
+     */
+    public static function repository(string $package, string $json): ?string
+    {
+        /** @var mixed $first */
+        $first = self::decode($json)['packages'][$package][0] ?? null;
+        $source = \is_array($first) && \is_array($first['source'] ?? null) ? $first['source'] : [];
+        $match = [];
+
+        return 1 === \preg_match(self::GITHUB, self::string($source, 'url'), $match) ? $match[1] : null;
     }
 
     /**

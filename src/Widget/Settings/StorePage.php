@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Help\Layout\ImageLayout;
-use Porta\Help\Layout\PageLine;
 use Porta\Help\MarkdownRenderer;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
 use Porta\Support\AnsiText;
@@ -34,6 +34,19 @@ final readonly class StorePage
     /** How long a README the page lays out may be, in source lines: a store page is not the manual. */
     private const int README_LINES = 400;
 
+    /** The header's icon box, roomy and compact, in cells. */
+    public const array ICON = [10, 5];
+
+    public const array COMPACT_ICON = [6, 3];
+
+    /** How tall the screenshots stand, roomy and compact. */
+    public const int STRIP_ROWS = 10;
+
+    public const int COMPACT_STRIP_ROWS = 6;
+
+    /** The columns between two screenshots of the strip. */
+    private const int STRIP_GAP = 2;
+
     public function __construct(
         private Translator $translator,
         private Styles $styles,
@@ -46,12 +59,16 @@ final readonly class StorePage
      *
      * @param array<string, string|null> $assets each asked-for address and what it answered
      * @param int                        $rows   the screen's control height: {@see FieldBox::ROWS}, or 1
+     * @param int                        $shot   the strip's first screenshot
+     * @param Art|null                   $art    its pictures, once found
      *
      * @return array{lines: list<string>, button: array{int, int, int, int}} the button as row, column, width, height
      */
-    public function render(StoreRow $row, int $width, int $rows, int $shot, array $assets, bool $buttonHovered): array
+    public function render(StoreRow $row, int $width, int $rows, int $shot, array $assets, bool $buttonHovered, ?Art $art = null): array
     {
         $entry = $row->entry;
+        [$iconColumns, $iconRows] = FieldBox::ROWS === $rows ? self::ICON : self::COMPACT_ICON;
+        $icon = null === $art?->icon ? null : $this->images->boxed($art->icon, $iconColumns, $iconRows);
         $card = new StoreCard(
             $entry->title,
             $entry->verified ? $this->styles->of(Role::TabAccent)->apply(Glyphs::MD_CHECK.' '.$this->translator->trans('Verified')) : '',
@@ -59,6 +76,7 @@ final readonly class StorePage
             $this->translator->trans('by %author%', ['%author%' => $entry->author]),
             $this->translator->trans($row->action->caption()),
             $row->action->pressable(),
+            $icon,
         );
         // A column of air at the left, as every other line of the page has.
         $header = new StoreTile($this->styles, $this->direction())->render($card, \max(0, $width - 1), $rows, $buttonHovered);
@@ -73,7 +91,7 @@ final readonly class StorePage
         $lines = [
             ...$lines,
             ...$this->strip($row, $width),
-            ...$this->preview($entry, $width, $shot, $assets),
+            ...$this->preview(self::shots($entry, $art), $width, FieldBox::ROWS === $rows ? self::STRIP_ROWS : self::COMPACT_STRIP_ROWS, $shot, $assets),
             ...$this->whatsNew($row, $width, $assets),
             ...$this->about($entry, $width, $assets),
             ...$this->information($row, $width),
@@ -118,25 +136,58 @@ final readonly class StorePage
     }
 
     /**
+     * The screenshots the page shows: the ones the package lists, else the
+     * ones its READMEs show.
+     *
+     * @return list<string>
+     */
+    public static function shots(StoreEntry $entry, ?Art $art): array
+    {
+        return [] !== $entry->screenshots ? $entry->screenshots : $art->shots ?? [];
+    }
+
+    /**
+     * The screenshots side by side, all as tall, from the $shot-th on, the
+     * last cut at the page's edge — the App Store's strip.
+     *
+     * @param list<string>               $shots
+     * @param positive-int               $height
      * @param array<string, string|null> $assets
      *
      * @return list<string>
      */
-    private function preview(StoreEntry $entry, int $width, int $shot, array $assets): array
+    private function preview(array $shots, int $width, int $height, int $shot, array $assets): array
     {
-        $url = $entry->screenshots[$shot] ?? null;
-        if (null === $url) {
+        if ([] === $shots) {
             return [];
         }
-        $count = \count($entry->screenshots);
+        $count = \count($shots);
         $legend = $this->translator->trans('Preview').($count > 1 ? '  '.Glyphs::SCROLL_PREV.' '.($shot + 1).'/'.$count.' '.Glyphs::SCROLL_NEXT : '');
-        $lines = ['', $this->heading($legend, $width)];
-        $bytes = $assets[$url] ?? null;
-        $image = null === $bytes ? null : $this->images->png($bytes, \max(1, $width - 2));
-        $missing = \array_key_exists($url, $assets) ? $this->translator->trans('The screenshot could not be shown') : $this->translator->trans('Loading…');
-        $shown = null === $image ? [' '.$this->styles->of(Role::Dim)->apply($missing)] : \array_map(static fn (PageLine $line): string => ' '.$line->text, $image);
+        $room = \max(1, $width - 2);
+        $band = \array_fill(start_index: 0, count: $height, value: '');
+        $used = 0;
+        $dim = $this->styles->of(Role::Dim);
+        foreach (\array_slice($shots, $shot) as $url) {
+            if ($used >= $room) {
+                break;
+            }
+            $bytes = $assets[$url] ?? null;
+            $fits = null === $bytes ? null : $this->images->fits($bytes, $room, $height);
+            $picture = null === $bytes || null === $fits ? null : $this->images->boxed($bytes, $fits[0], $height);
+            if (null === $picture) {
+                // Not here yet, or never: a word in its place, as wide as a 16:9 picture would stand.
+                $columns = \min($room, \intdiv($height * 32, num2: 9));
+                $word = \array_key_exists($url, $assets) ? $this->translator->trans('The screenshot could not be shown') : $this->translator->trans('Loading…');
+                $picture = \array_fill(start_index: 0, count: $height, value: AnsiText::blank($columns));
+                $picture[\intdiv($height, num2: 2)] = FieldBox::centred($word, $columns, $dim);
+            }
+            foreach ($picture as $i => $line) {
+                $band[$i] = AnsiText::padRight($band[$i], $used).StoreTile::cell($line, $this->direction());
+            }
+            $used += AnsiUtils::visibleWidth($picture[0]) + self::STRIP_GAP;
+        }
 
-        return [...$lines, ...$shown];
+        return ['', $this->heading($legend, $width), ...\array_map(static fn (string $line): string => ' '.AnsiText::truncate($line, $room), $band)];
     }
 
     /**

@@ -236,6 +236,19 @@ select and install field go back through that controller's `change()`, so the
 install path is one. A search hit on `pluginInstall` or the scope lands on the
 Installed tab (`PluginStoreWidget::showTab()`).
 
+The pictures are `StoreArt`'s: per catalog, a few batched fetches — the
+plugins' READMEs, then for the ones that show nothing, each tool's address
+(`extra.porta.tools`, a composer tool through its Packagist `p2` source) and
+the masthead of its README — then the first `StoreArt::CANDIDATES` pictures,
+judged by shape (square first one: the icon; wide ones: screenshots).
+`ReadmeImages` reads the addresses and drops badges, avatars and thanks
+sections. `StoreAssets` keeps each picture as the PNG `Ui/Graphics/RasterImage`
+made of it (GD for JPEG, GIF and WebP; `rsvg-convert` on stdin for SVG, never
+ImageMagick, which follows a document's references). The verdict is kept a
+week per `package@version` under `cache/store/art`. `SettingsViewController::pushStore()`
+asks for it, never a render; the widget draws it through its own `ImageLayout`
+(`boxed()`), swept every shelf frame.
+
 An updated plugin that is running reloads live. `PluginLifecycle::activateInstalled()`
 swaps out a running plugin of the same name rather than refusing a duplicate, which
 also makes installing a takeover over a running bundled copy work. Re-requiring

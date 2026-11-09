@@ -26,6 +26,8 @@ final readonly class StoreEntry
      * @param string                    $source      the repository's web address, or ''
      * @param bool                      $compatible  whether $version runs on this Porta (plugin API, PHP, extensions)
      * @param list<array{string, int}>  $history     every tagged release, newest first: version and time
+     * @param string|null               $icon        an https address of its icon, as the package lists it
+     * @param list<string>              $tools       where the tools it drives are published: `github:owner/name`, `composer:vendor/name`
      */
     public function __construct(
         public string $package,
@@ -47,6 +49,8 @@ final readonly class StoreEntry
         public ?string $replaces = null,
         public bool $compatible = true,
         public array $history = [],
+        public ?string $icon = null,
+        public array $tools = [],
     ) {}
 
     /** Whether $query (lowercase, trimmed) is in what the entry is called, says or is by. */
@@ -83,6 +87,8 @@ final readonly class StoreEntry
             'replaces' => $this->replaces,
             'compatible' => $this->compatible,
             'history' => $this->history,
+            'icon' => $this->icon,
+            'tools' => $this->tools,
         ];
     }
 
@@ -122,6 +128,8 @@ final readonly class StoreEntry
             $optional('replaces'),
             false !== ($data['compatible'] ?? null),
             self::history($data['history'] ?? null),
+            $optional('icon'),
+            PackagistMetadata::strings($data['tools'] ?? null),
         );
     }
 

@@ -11,13 +11,16 @@ use Porta\Event\SettingsSectionRequested;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\StoreAction;
+use Porta\Plugin\Store\StoreArt;
 use Porta\Plugin\Store\StoreAssets;
 use Porta\Plugin\Store\StoreCategory;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsStoreController;
+use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StoreFixture;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -47,9 +50,12 @@ final class SettingsStoreControllerTest extends TestCase
             $this->requested[] = $event->section.'#'.$event->row;
         });
 
+        $assets = new StoreAssets($store->http->fetch(), null);
+
         return new SettingsStoreController(
             $store->catalog,
-            new StoreAssets($store->http->fetch(), null),
+            $assets,
+            new StoreArt($store->http->fetch(), $assets, null),
             $store->updates(),
             $store->installer,
             $store->lifecycle,
@@ -78,6 +84,20 @@ final class SettingsStoreControllerTest extends TestCase
         $this->assertInstanceOf(StoreRow::class, $row, $package.' is listed');
 
         return $row->entry;
+    }
+
+    public function testEachPluginsArtIsLookedForAcrossTheCatalog(): void
+    {
+        $this->store->publish('acme/porta-rector', store: ['icon' => 'https://img.test/icon.png']);
+        $this->store->publish('acme/porta-other');
+        $this->store->http->bodies['https://img.test/icon.png'] = PngFixture::bytes(40, 40);
+        $this->store->fill();
+        $found = [];
+        $this->controller()->art(static function (string $package, Art $art) use (&$found): void {
+            $found[$package] = null !== $art->icon;
+        });
+
+        $this->assertSame(['acme/porta-other' => false, 'acme/porta-rector' => true], $found, 'every entry, in the order of the shelves');
     }
 
     public function testEachPluginGetsTheButtonForHowItStandsHere(): void

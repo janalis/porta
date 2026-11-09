@@ -13,6 +13,7 @@ final readonly class StoreCard
     /**
      * @param string $badges already styled: ✓ Verified, Featured
      * @param string $caption the button's caption, translated
+     * @param list<string>|null $icon its picture, drawn into the icon's box already; null keeps the initials
      */
     public function __construct(
         public string $title,
@@ -21,6 +22,7 @@ final readonly class StoreCard
         public string $facts,
         public string $caption,
         public bool $pressable,
+        public ?array $icon = null,
     ) {}
 
     /**

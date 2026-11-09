@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Help\Layout;
 
+use Porta\Support\AnsiText;
 use Porta\Ui\Graphics\KittyPlaceholders;
 use Porta\Ui\Graphics\PngDimensions;
 use Porta\Ui\Graphics\PngRaster;
@@ -117,6 +118,82 @@ final class ImageLayout
         return null !== $graphics && $graphics->available()
             ? $this->place($graphics, $key, static fn (): string => $bytes, $columns, $rows)
             : $this->fallback($key, $bytes, $columns, $rows);
+    }
+
+    /**
+     * The PNG inside a box of $columns × $rows cells: as large as it fits
+     * with its shape kept, and centred — an icon, a banner, a screenshot of a
+     * strip. Null when it cannot be drawn.
+     *
+     * @return list<string>|null exactly $rows lines, each $columns wide
+     */
+    public function boxed(string $png, int $columns, int $rows): ?array
+    {
+        $size = PngDimensions::read($png);
+        if (null === $size || $columns < 1 || $rows < 1) {
+            return null;
+        }
+        [$fitColumns, $fitRows] = $this->fitted($size, $columns, $rows);
+        $key = \hash('xxh128', $png).'@'.$fitColumns.'x'.$fitRows;
+        $graphics = $this->graphics;
+        $lines = null !== $graphics && $graphics->available()
+            ? $this->place($graphics, $key, static fn (): string => $png, $fitColumns, $fitRows)
+            : $this->fallback($key, $png, $fitColumns, $fitRows);
+
+        return null === $lines ? null : self::centred($lines, $fitColumns, $columns, $rows);
+    }
+
+    /**
+     * $lines, $width wide, in the middle of a box of $columns × $rows blank cells.
+     *
+     * @param list<PageLine> $lines
+     *
+     * @return list<string>
+     */
+    private static function centred(array $lines, int $width, int $columns, int $rows): array
+    {
+        $left = \intdiv(\max(0, $columns - $width), num2: 2);
+        $top = \intdiv(\max(0, $rows - \count($lines)), num2: 2);
+        $boxed = \array_fill(start_index: 0, count: \max(0, $rows), value: AnsiText::blank($columns));
+        foreach ($lines as $index => $line) {
+            $boxed[$top + $index] = AnsiText::blank($left).$line->text.AnsiText::blank($columns - $width - $left);
+        }
+
+        return $boxed;
+    }
+
+    /**
+     * The cells a PNG fills inside $columns × $rows, its shape kept; null
+     * when it is no PNG.
+     *
+     * @return array{int, int}|null columns and rows
+     */
+    public function fits(string $png, int $columns, int $rows): ?array
+    {
+        $size = PngDimensions::read($png);
+
+        return null === $size ? null : $this->fitted($size, \max(1, $columns), \max(1, $rows));
+    }
+
+    /**
+     * The most cells an image of $size fills inside $columns × $rows, its shape kept.
+     *
+     * @param array{int, int} $size
+     *
+     * @return array{int, int}
+     */
+    private function fitted(array $size, int $columns, int $rows): array
+    {
+        [$cellWidth, $cellHeight] = $this->graphics?->cellPixels() ?? [8, 16];
+        [$pixelWidth, $pixelHeight] = $size;
+        $columns = \min($columns, KittyPlaceholders::MAX_CELLS);
+        $tall = (int) \round(($columns * $cellWidth * $pixelHeight) / ($pixelWidth * $cellHeight));
+        if ($tall <= $rows) {
+            return [$columns, \max(1, $tall)];
+        }
+        $wide = (int) \round(($rows * $cellHeight * $pixelWidth) / ($pixelHeight * $cellWidth));
+
+        return [\max(1, \min($columns, $wide)), $rows];
     }
 
     /** @return list<PageLine>|null */
