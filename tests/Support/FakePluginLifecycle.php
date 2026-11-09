@@ -41,6 +41,14 @@ final class FakePluginLifecycle implements PluginLifecycleOps
         $this->deactivated[] = $name;
     }
 
+    /** @var list<string> */
+    public array $unloaded = [];
+
+    public function unload(string $name): void
+    {
+        $this->unloaded[] = $name;
+    }
+
     public function enable(string $name): void
     {
         $this->toggled[] = [$name, true];

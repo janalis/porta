@@ -19,6 +19,7 @@ non-blocking event loop.
 | [Debugger](debugger.md) | DAP adapters, breakpoints, stepping, the debug panel |
 | [Configuration](configuration.md) | `.porta.json`, the Settings view, `.editorconfig`, the `.porta/` state directory |
 | [Plugins](plugins.md) | Installing/removing plugins, writing your own, the `PluginApi` reference |
+| [Plugin store](plugin-store.md) | Browsing, installing and updating plugins from Settings; publishing yours and registering it; taking over a bundled plugin |
 
 ## Bundled plugins
 

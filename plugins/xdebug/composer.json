@@ -10,5 +10,13 @@
         "psr-4": {
             "Porta\\Xdebug\\": "src/"
         }
+    },
+    "extra": {
+        "porta": {
+            "store": {
+                "title": "Xdebug",
+                "category": "debugging"
+            }
+        }
     }
 }

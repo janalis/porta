@@ -54,6 +54,8 @@ final readonly class IdeConfig
         'displayName' => '',
         'sharePresence' => true,
         'toolUpdateCheck' => 'daily',
+        'pluginUpdateCheck' => 'weekly',
+        'pluginAutoUpdate' => false,
     ];
 
     /**
@@ -140,6 +142,7 @@ final readonly class IdeConfig
         'pixelRatio' => ['auto', '1', '1.25', '1.5', '2', '3'],
         'tabBarPosition' => ['top', 'bottom', 'left', 'right'],
         'toolUpdateCheck' => ['off', 'daily', 'weekly'],
+        'pluginUpdateCheck' => ['off', 'daily', 'weekly'],
     ];
 
     /** An empty `highlight` block: no global default, no per-language overrides. */

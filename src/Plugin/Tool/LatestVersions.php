@@ -29,7 +29,7 @@ final readonly class LatestVersions
     private const null NO_CHUNKS = null;
 
     /** Bounded and HTTPS-only, like every download Porta makes. */
-    private const array CURL = ['curl', '-fsSL', '--connect-timeout', '15', '--max-time', '30', '--proto', '=https', '--proto-redir', '=https'];
+    public const array CURL = ['curl', '-fsSL', '--connect-timeout', '15', '--max-time', '30', '--proto', '=https', '--proto-redir', '=https'];
 
     /** @var \Closure(list<string>, string, \Closure(int, string): void, (\Closure(string): void)|null): void */
     private \Closure $run;

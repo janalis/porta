@@ -102,14 +102,17 @@ final class SettingsNavWidgetTest extends TestCase
         $this->assertSame('commandLine', $widget->selectedId());
 
         $widget->handleInput("\x1b[B"); // → Plugins
+        $widget->handleInput("\x1b[B"); // → the Store, the first page inside it
+        $this->assertSame('store', $widget->selectedId());
         $widget->handleInput("\x1b[B"); // → the Languages folder, which is no page
         $this->assertNull($widget->selectedId());
         $widget->handleInput("\x1b[B"); // → PHP
         $this->assertSame('lang:php', $widget->selectedId());
-        $this->assertSame(['interface', 'highlighting', 'keybindings', 'commandLine', 'plugins', 'lang:php'], $selected, 'the folder fired nothing');
+        $this->assertSame(['interface', 'highlighting', 'keybindings', 'commandLine', 'plugins', 'store', 'lang:php'], $selected, 'the folder fired nothing');
 
         $widget->handleInput("\x1b[A");
-        $widget->handleInput("\x1b[A"); // back up through the folder → Plugins
+        $widget->handleInput("\x1b[A");
+        $widget->handleInput("\x1b[A"); // back up through the folder and the Store → Plugins
         $this->assertSame('plugins', $widget->selectedId());
     }
 
@@ -133,17 +136,17 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleClick(3); // Keybindings
         $this->assertSame('keybindings', $widget->selectedId());
 
-        $widget->handleClick(6); // the Languages folder: selected, and closed
+        $widget->handleClick(7); // the Languages folder, past the Store: selected, and closed
         $this->assertNull($widget->selectedId());
         $this->assertSame(['keybindings'], $selected, 'the folder is no page: it fires nothing');
         $this->assertMatchesRegularExpression('/^ ▸ Languages\s*$/mu', $this->plain($widget->render(new RenderContext(24, 20))));
 
-        $widget->handleClick(7); // where PHP was: nothing is drawn there now
+        $widget->handleClick(8); // where PHP was: nothing is drawn there now
         $this->assertNull($widget->selectedId());
 
-        $widget->handleClick(6); // open it again
+        $widget->handleClick(7); // open it again
         $widget->render(new RenderContext(24, 20));
-        $widget->handleClick(7); // PHP
+        $widget->handleClick(8); // PHP
         $this->assertSame('lang:php', $widget->selectedId());
         $widget->handleClick(99); // dead space
         $this->assertSame('lang:php', $widget->selectedId());
@@ -156,7 +159,7 @@ final class SettingsNavWidgetTest extends TestCase
 
         $screen = $this->plain($widget->render(new RenderContext(24, 24)));
         $this->assertStringContainsString('    phpstan', $screen, 'plugin pages indent like languages');
-        $this->assertMatchesRegularExpression('/▾ Plugins\s*\n\s{4}phpstan\s*\n\s{4}mago/', $screen, 'they sit right inside the Plugins folder');
+        $this->assertMatchesRegularExpression('/▾ Plugins\s*\n\s{4}Store\s*\n\s{4}phpstan\s*\n\s{4}mago/', $screen, 'they sit right inside the Plugins folder');
 
         $widget->setActive('plugin:mago');
         $this->assertSame('plugin:mago', $widget->selectedId());
@@ -195,6 +198,17 @@ final class SettingsNavWidgetTest extends TestCase
         $lines = $widget->render(new RenderContext(24, 24));
         $mago = \array_find($lines, static fn (string $line): bool => \str_contains(AnsiUtils::stripAnsiCodes($line), 'mago'));
         $this->assertStringNotContainsString($dim, (string) $mago, 'switched back on, drawn as any page');
+    }
+
+    public function testTheStoreSaysHowManyUpdatesItHas(): void
+    {
+        $widget = $this->widget();
+        $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(24, 30))));
+        $this->assertMatchesRegularExpression('/^\s+Store\s*$/mu', $screen(), 'no updates, no count');
+        $widget->setStoreUpdates(2);
+        $this->assertStringContainsString('Store (2)', $screen(), 'the count repaints at once');
+        $widget->setStoreUpdates(2);
+        $this->assertStringContainsString('Store (2)', $screen());
     }
 
     public function testSetActiveHighlightsAnEntry(): void
@@ -736,6 +750,7 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->handleInput(' '); // and Space open again
         $this->assertStringContainsString('git', $this->plain($widget->render(new RenderContext(24, 30))));
 
+        $widget->handleInput("\x1b[B"); // → the Store
         $widget->handleInput("\x1b[B"); // → git
         $widget->handleInput("\x1b[C"); // → on a page does nothing
         $widget->handleInput("\r");
@@ -752,11 +767,15 @@ final class SettingsNavWidgetTest extends TestCase
         $widget->setActive('lang:php');
         $widget->render(new RenderContext(24, 30));
 
-        $widget->handleClick(6); // the Languages folder: selected and closed
+        $widget->handleClick(7); // the Languages folder, past the Store: selected and closed
 
         $this->assertNull($widget->selectedId());
         $widget->handleInput("\x1b[B"); // nothing below a closed last folder
         $this->assertNull($widget->selectedId());
+
+        $widget->setActive('lang:php'); // a page reached by id opens its folder first
+        $this->assertSame('lang:php', $widget->selectedId());
+        $this->assertMatchesRegularExpression('/^ ▾ Languages\s*$/mu', AnsiUtils::stripAnsiCodes(\implode("\n", $widget->render(new RenderContext(24, 40)))));
     }
 
     /** A page reached from the search or the header is never left hidden in a closed folder. */

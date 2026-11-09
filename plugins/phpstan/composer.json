@@ -20,7 +20,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "PHPStan",
+                "category": "linters"
+            }
         }
     }
 }

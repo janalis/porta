@@ -16,13 +16,15 @@ enum NavEntryKind
     case Section;
     case Folder;
     case Plugin;
+    /** The plugin store, the first page inside Plugins. */
+    case Store;
     case Language;
 
     /** The folder a row of this kind sits in, or null for a top-level row. */
     public function folder(): ?string
     {
         return match ($this) {
-            self::Plugin => 'plugins',
+            self::Plugin, self::Store => 'plugins',
             self::Language => 'languages',
             default => null,
         };

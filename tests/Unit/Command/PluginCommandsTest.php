@@ -191,4 +191,12 @@ final class PluginCommandsTest extends TestCase
         $this->assertSame([], $this->ran);
         $this->assertStringContainsString('Nothing to update: Porta manages none of the installed tools', $this->toast());
     }
+
+    /** The palette's way to the store; the view it opens has its own tests (SettingsViewControllerTest::openOn). */
+    public function testOpenStoreIsAPaletteCommand(): void
+    {
+        $this->assertTrue($this->commands->has('plugins_store'));
+        $this->commands->run('plugins_store');
+        $this->assertSame('', \trim($this->toast()), 'with no settings view wired, it does nothing, and says nothing');
+    }
 }

@@ -1,6 +1,7 @@
 # Packagist installs the GitHub source archive: keep what Porta runs from
 # (src/, config/, docs/ — the F1 browser links into docs/internals/ too —
-# translations/, plugins/ and the bin/ launchers) and
+# translations/, store/ — the shipped plugin-store curation —, plugins/ and
+# the bin/ launchers) and
 # leave out what only works on Porta itself.
 /.agents             export-ignore
 /.claude             export-ignore

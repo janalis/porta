@@ -99,6 +99,9 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      */
     private const int WIDEST_MINIMUM = 26;
 
+    /** How many installed plugins the store has a newer release of, said beside its name. */
+    private int $storeUpdates = 0;
+
     /** @var array<string, true> the plugins whose pages are drawn dim: they are off */
     private array $disabledPlugins = [];
 
@@ -166,6 +169,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
             $entries[] = ['id' => $id, 'label' => $label, 'kind' => NavEntryKind::Section];
         }
         $entries[] = ['id' => 'plugins', 'label' => 'Plugins', 'kind' => NavEntryKind::Folder];
+        $entries[] = ['id' => 'store', 'label' => 'Store', 'kind' => NavEntryKind::Store];
         foreach ($pluginNames as $name) {
             $entries[] = ['id' => 'plugin:'.$name, 'label' => $name, 'kind' => NavEntryKind::Plugin];
         }
@@ -253,6 +257,15 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $this->invalidate();
     }
 
+    /** The store's update count, beside its name; 0 says nothing. */
+    public function setStoreUpdates(int $count): void
+    {
+        if ($count !== $this->storeUpdates) {
+            $this->storeUpdates = $count;
+            $this->invalidate();
+        }
+    }
+
     /**
      * The narrowest this may be dragged: wide enough to READ every row it
      * draws, not a number frozen against the rows it drew once. Every
@@ -327,7 +340,11 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
      */
     private function label(array $entry): string
     {
-        return \in_array($entry['kind'], [NavEntryKind::Section, NavEntryKind::Folder], strict: true) ? $this->translator->trans($entry['label']) : $entry['label'];
+        return match (true) {
+            NavEntryKind::Store === $entry['kind'] => $this->translator->trans($entry['label']).($this->storeUpdates > 0 ? ' ('.$this->storeUpdates.')' : ''),
+            \in_array($entry['kind'], [NavEntryKind::Section, NavEntryKind::Folder], strict: true) => $this->translator->trans($entry['label']),
+            default => $entry['label'],
+        };
     }
 
     /** The id of the entry under the cursor ('general' | 'keybindings' | 'plugins' | 'plugin:<name>' | 'lang:<id>'), or null on the Languages folder. */

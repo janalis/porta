@@ -8,6 +8,7 @@ use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
 use Porta\Input\MouseRouter;
 use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\View\ViewPointer;
@@ -32,7 +33,15 @@ final readonly class SettingsMouseRouter implements ViewPointer
         private SettingsNavWidget $nav,
         private SettingsFormWidget $form,
         private KeybindingsListWidget $keys,
+        // Trailing and optional, as on the view: the hand-built routers in the tests stand.
+        private ?PluginStoreWidget $store = null,
     ) {}
+
+    /** @return list<SettingsNavWidget|SettingsFormWidget|KeybindingsListWidget|PluginStoreWidget> */
+    private function panes(): array
+    {
+        return \array_values(\array_filter([$this->nav, $this->form, $this->keys, $this->store]));
+    }
 
     #[\Override]
     public function wheel(WheelGesture $gesture): bool
@@ -44,8 +53,8 @@ final readonly class SettingsMouseRouter implements ViewPointer
         $pane = WheelAxis::Horizontal === $gesture->axis
             ? null
             : \array_find(
-                [$this->nav, $this->form, $this->keys],
-                fn (SettingsNavWidget|SettingsFormWidget|KeybindingsListWidget $pane): bool => null !== $this->hit->hit($pane, $mouse->row, $mouse->col),
+                $this->panes(),
+                fn (SettingsNavWidget|SettingsFormWidget|KeybindingsListWidget|PluginStoreWidget $pane): bool => null !== $this->hit->hit($pane, $mouse->row, $mouse->col),
             );
         $pane?->scrollBy($gesture->step);
 
@@ -57,7 +66,7 @@ final readonly class SettingsMouseRouter implements ViewPointer
     public function press(MouseEvent $mouse): bool
     {
         $pressed = false;
-        foreach ([$this->nav, $this->form, $this->keys] as $pane) {
+        foreach ($this->panes() as $pane) {
             $rel = $this->hit->hit($pane, $mouse->row, $mouse->col);
             if (null === $rel) {
                 continue;
@@ -89,17 +98,18 @@ final readonly class SettingsMouseRouter implements ViewPointer
     #[\Override]
     public function hover(MouseEvent $mouse): void
     {
-        $rows = $this->hit->hover($mouse->row, $mouse->col, $this->nav, $this->form, $this->keys);
+        $rows = $this->hit->hover($mouse->row, $mouse->col, ...$this->panes());
         // The pages' title rows are trails whose links tint by column.
         $formTitle = $this->form->hoverCrumb($this->titleColumn($this->form, $mouse));
         $keysTitle = $this->keys->hoverCrumb($this->titleColumn($this->keys, $mouse));
-        if ($rows || $formTitle || $keysTitle) {
+        $storeTitle = null !== $this->store && $this->store->hoverCrumb($this->titleColumn($this->store, $mouse));
+        if ($rows || $formTitle || $keysTitle || $storeTitle) {
             $this->tui->requestRender();
         }
     }
 
     /** The pointer's column on $page's title row, or null when it is not on that row. */
-    private function titleColumn(SettingsFormWidget|KeybindingsListWidget $page, MouseEvent $mouse): ?int
+    private function titleColumn(SettingsFormWidget|KeybindingsListWidget|PluginStoreWidget $page, MouseEvent $mouse): ?int
     {
         $rel = $this->hit->hit($page, $mouse->row, $mouse->col);
 

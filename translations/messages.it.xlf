@@ -3638,6 +3638,242 @@
         <source>Update it from a shell: %command%</source>
         <target>Aggiornalo da una shell: %command%</target>
       </trans-unit>
+      <trans-unit id="1240">
+        <source>&quot;%name%&quot; was not installed from a package, so Porta cannot update it</source>
+        <target>«%name%» non è stato installato da un pacchetto, quindi Porta non può aggiornarlo</target>
+      </trans-unit>
+      <trans-unit id="1241">
+        <source>&quot;%package%&quot; is not verified by Porta, and a plugin runs as PHP with your permissions. Press again to install it</source>
+        <target>«%package%» non è verificato da Porta, e un plugin viene eseguito come PHP con i tuoi permessi. Premi di nuovo per installarlo</target>
+      </trans-unit>
+      <trans-unit id="1242">
+        <source>%count% downloads</source>
+        <target>%count% download</target>
+      </trans-unit>
+      <trans-unit id="1243">
+        <source>%plugin% installed</source>
+        <target>%plugin% installato</target>
+      </trans-unit>
+      <trans-unit id="1244">
+        <source>%version% installed</source>
+        <target>%version% installata</target>
+      </trans-unit>
+      <trans-unit id="1245">
+        <source>About</source>
+        <target>Informazioni</target>
+      </trans-unit>
+      <trans-unit id="1246">
+        <source>All categories</source>
+        <target>Tutte le categorie</target>
+      </trans-unit>
+      <trans-unit id="1247">
+        <source>Asking Packagist…</source>
+        <target>Interrogazione di Packagist…</target>
+      </trans-unit>
+      <trans-unit id="1248">
+        <source>Built-in plugins update with Porta</source>
+        <target>I plugin integrati si aggiornano con Porta</target>
+      </trans-unit>
+      <trans-unit id="1249">
+        <source>Cannot update &quot;%name%&quot;</source>
+        <target>Impossibile aggiornare «%name%»</target>
+      </trans-unit>
+      <trans-unit id="1250">
+        <source>Plugin update check</source>
+        <target>Controllo aggiornamenti</target>
+      </trans-unit>
+      <trans-unit id="1251">
+        <source>Discover</source>
+        <target>Scopri</target>
+      </trans-unit>
+      <trans-unit id="1252">
+        <source>Esc back · ⏎ %action%</source>
+        <target>Esc indietro · ⏎ %action%</target>
+      </trans-unit>
+      <trans-unit id="1253">
+        <source>Esc back · ⏎ %action% · ←/→ screenshots</source>
+        <target>Esc indietro · ⏎ %action% · ←/→ screenshot</target>
+      </trans-unit>
+      <trans-unit id="1254">
+        <source>Every plugin is up to date</source>
+        <target>Tutti i plugin sono aggiornati</target>
+      </trans-unit>
+      <trans-unit id="1255">
+        <source>Featured</source>
+        <target>In evidenza</target>
+      </trans-unit>
+      <trans-unit id="1256">
+        <source>Information</source>
+        <target>Informazioni dettagliate</target>
+      </trans-unit>
+      <trans-unit id="1257">
+        <source>Installing %plugin%…</source>
+        <target>Installazione di %plugin%…</target>
+      </trans-unit>
+      <trans-unit id="1258">
+        <source>No plugin matches</source>
+        <target>Nessun plugin corrisponde</target>
+      </trans-unit>
+      <trans-unit id="1259">
+        <source>No release of it runs on this Porta</source>
+        <target>Nessuna sua versione funziona su questo Porta</target>
+      </trans-unit>
+      <trans-unit id="1260">
+        <source>Plugin updates available: %plugins% — open Settings › Plugins › Store</source>
+        <target>Aggiornamenti dei plugin disponibili: %plugins% — apri Impostazioni › Plugin › Store</target>
+      </trans-unit>
+      <trans-unit id="1261">
+        <source>Replaces the built-in %plugin% plugin</source>
+        <target>Sostituisce il plugin integrato %plugin%</target>
+      </trans-unit>
+      <trans-unit id="1262">
+        <source>Store</source>
+        <target>Store</target>
+      </trans-unit>
+      <trans-unit id="1263">
+        <source>The plugin store could not reach Packagist: showing what it saw last</source>
+        <target>Lo store dei plugin non ha raggiunto Packagist: mostra ciò che ha visto l’ultima volta</target>
+      </trans-unit>
+      <trans-unit id="1264">
+        <source>The screenshot could not be shown</source>
+        <target>Impossibile mostrare lo screenshot</target>
+      </trans-unit>
+      <trans-unit id="1265">
+        <source>The store is empty: Packagist could not be reached</source>
+        <target>Lo store è vuoto: Packagist non è raggiungibile</target>
+      </trans-unit>
+      <trans-unit id="1266">
+        <source>Auto-update plugins</source>
+        <target>Aggiornamento automatico</target>
+      </trans-unit>
+      <trans-unit id="1268">
+        <source>Updating %plugin%…</source>
+        <target>Aggiornamento di %plugin%…</target>
+      </trans-unit>
+      <trans-unit id="1269">
+        <source>Verified</source>
+        <target>Verificato</target>
+      </trans-unit>
+      <trans-unit id="1270">
+        <source>What's New</source>
+        <target>Novità</target>
+      </trans-unit>
+      <trans-unit id="1271">
+        <source>by %author%</source>
+        <target>di %author%</target>
+      </trans-unit>
+      <trans-unit id="1272">
+        <source>⏎ details · Space get or update · c category · u updates · / filter</source>
+        <target>⏎ dettagli · Spazio ottieni o aggiorna · c categoria · u aggiornamenti · / filtra</target>
+      </trans-unit>
+      <trans-unit id="1273">
+        <source>Linters &amp; formatters</source>
+        <target>Linter e formattatori</target>
+      </trans-unit>
+      <trans-unit id="1274">
+        <source>Testing</source>
+        <target>Test</target>
+      </trans-unit>
+      <trans-unit id="1275">
+        <source>Debugging</source>
+        <target>Debug</target>
+      </trans-unit>
+      <trans-unit id="1276">
+        <source>Version control</source>
+        <target>Controllo versione</target>
+      </trans-unit>
+      <trans-unit id="1277">
+        <source>Remote</source>
+        <target>Remoto</target>
+      </trans-unit>
+      <trans-unit id="1278">
+        <source>Viewers</source>
+        <target>Visualizzatori</target>
+      </trans-unit>
+      <trans-unit id="1279">
+        <source>AI</source>
+        <target>IA</target>
+      </trans-unit>
+      <trans-unit id="1280">
+        <source>Productivity</source>
+        <target>Produttività</target>
+      </trans-unit>
+      <trans-unit id="1281">
+        <source>Other</source>
+        <target>Altro</target>
+      </trans-unit>
+      <trans-unit id="1282">
+        <source>Get</source>
+        <target>Ottieni</target>
+      </trans-unit>
+      <trans-unit id="1283">
+        <source>Built-in</source>
+        <target>Integrato</target>
+      </trans-unit>
+      <trans-unit id="1284">
+        <source>Enable</source>
+        <target>Attiva</target>
+      </trans-unit>
+      <trans-unit id="1285">
+        <source>Incompatible</source>
+        <target>Incompatibile</target>
+      </trans-unit>
+      <trans-unit id="1286">
+        <source>Provider</source>
+        <target>Fornitore</target>
+      </trans-unit>
+      <trans-unit id="1287">
+        <source>Package</source>
+        <target>Pacchetto</target>
+      </trans-unit>
+      <trans-unit id="1288">
+        <source>Category</source>
+        <target>Categoria</target>
+      </trans-unit>
+      <trans-unit id="1289">
+        <source>Version</source>
+        <target>Versione</target>
+      </trans-unit>
+      <trans-unit id="1290">
+        <source>Updated</source>
+        <target>Aggiornato</target>
+      </trans-unit>
+      <trans-unit id="1291">
+        <source>License</source>
+        <target>Licenza</target>
+      </trans-unit>
+      <trans-unit id="1292">
+        <source>Downloads</source>
+        <target>Download</target>
+      </trans-unit>
+      <trans-unit id="1293">
+        <source>Source</source>
+        <target>Sorgente</target>
+      </trans-unit>
+      <trans-unit id="1294">
+        <source>Plugins: Open Store</source>
+        <target>Plugin: apri lo store</target>
+      </trans-unit>
+      <trans-unit id="1295">
+        <source>Its maintainers publish %package%</source>
+        <target>I suoi manutentori pubblicano %package%</target>
+      </trans-unit>
+      <trans-unit id="1296">
+        <source>installed, it takes the place of the built-in copy</source>
+        <target>installato, prende il posto della copia integrata</target>
+      </trans-unit>
+      <trans-unit id="1297">
+        <source>reloads live once updated</source>
+        <target>si ricarica a caldo dopo l’aggiornamento</target>
+      </trans-unit>
+      <trans-unit id="1298">
+        <source>Updated %plugins% — reloaded live</source>
+        <target>%plugins% aggiornati — ricaricati a caldo</target>
+      </trans-unit>
+      <trans-unit id="1299">
+        <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
+        <target>%plugins% aggiornati — riavvia Porta per completare %names%: le classi già caricate mantengono il vecchio codice</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

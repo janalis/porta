@@ -78,7 +78,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\x1b[B"); // phpantom sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:phpantom'); // the phpantom sub-item, past the Store
                     $this->awaitPainted($tui, $terminal, 'phpantom_lsp binary');
                     $this->assertStringContainsString('phpantom_lsp binary', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the binary setting shows on the page');
 
@@ -143,7 +143,7 @@ final class IdePhpLspPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\x1b[B"); // phpantom sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:phpantom'); // the phpantom sub-item, past the Store
                     $this->awaitPainted($tui, $terminal, 'phpantom_lsp — the PHP language server');
                     $this->assertMatchesRegularExpression(
                         '/phpantom_lsp — the PHP language server\s+[│┆]\s+Install\s+[│┆]/u',

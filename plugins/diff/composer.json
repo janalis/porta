@@ -11,5 +11,13 @@
         "psr-4": {
             "Porta\\DiffPlugin\\": "src/"
         }
+    },
+    "extra": {
+        "porta": {
+            "store": {
+                "title": "Diff",
+                "category": "viewers"
+            }
+        }
     }
 }

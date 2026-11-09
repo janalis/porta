@@ -25,7 +25,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "Composer",
+                "category": "productivity"
+            }
         }
     }
 }

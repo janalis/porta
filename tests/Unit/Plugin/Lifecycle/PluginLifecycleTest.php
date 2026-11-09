@@ -7,6 +7,8 @@ namespace Porta\Tests\Unit\Plugin\Lifecycle;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\CommandRegistry;
 use Porta\Config\ConfigScope;
+use Porta\Config\LiveKeybindings;
+use Porta\Editor\EditorPanes;
 use Porta\Ide;
 use Porta\Lsp\LspSessionPool;
 use Porta\Onboarding\OnboardingState;
@@ -16,6 +18,7 @@ use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\Services;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\UntrustsProjects;
+use Porta\Widget\MenuBarWidget;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\View\ViewRegistry;
 use Symfony\Component\Filesystem\Filesystem;
@@ -276,6 +279,97 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertNotNull($result, 'a malformed plugin file must be reported, not silently ignored');
         $this->assertFalse($this->hasCommand($ide, 'broken:boom'));
+    }
+
+    /**
+     * An update rewrites a running plugin's files in place: activating it
+     * again swaps the running copy for the new code, live, where loading it
+     * beside itself used to be refused as a duplicate name.
+     */
+    public function testActivatingARunningPluginAgainSwapsInItsNewCode(): void
+    {
+        $ide = $this->boot();
+        $this->writePlugin('acme', command: 'greet');
+        $lifecycle = $this->lifecycle($ide);
+        $file = $this->project->dir.'/.porta/plugins/acme/porta.php';
+        $this->assertNull($lifecycle->activateInstalled($file));
+        $this->assertTrue($this->hasCommand($ide, 'acme:greet'));
+
+        \unlink($file);
+        \rmdir(\dirname($file));
+        $this->writePlugin('acme', command: 'wave'); // the new release
+
+        $this->assertNull($lifecycle->activateInstalled($file), 'swapped, not refused as a duplicate');
+        $this->assertTrue($this->hasCommand($ide, 'acme:wave'), 'the new code runs');
+        $this->assertFalse($this->hasCommand($ide, 'acme:greet'), 'the old one is gone');
+
+        $lifecycle->unload('acme'); // stopped for an update: nothing in its place, nothing persisted
+        $this->assertFalse($this->hasCommand($ide, 'acme:wave'));
+        $this->assertFalse($lifecycle->isDisabled('acme'), 'an unload is no switch-off');
+        $lifecycle->unload('acme'); // and again: nothing runs, nothing to stop
+        $this->assertNull($lifecycle->activateInstalled($file));
+        $this->assertTrue($this->hasCommand($ide, 'acme:wave'), 'back on once its files are in place');
+
+        \file_put_contents($file, data: '<?php return 42;'); // a release that cannot load
+        $this->assertNotNull($lifecycle->activateInstalled($file));
+        $this->assertFalse($this->hasCommand($ide, 'acme:wave'), 'the old copy stopped all the same: its commands do not linger');
+    }
+
+    /**
+     * What a running plugin contributed beyond its commands — its top-level
+     * menu, its default keys, its language server — leaves with it when it is
+     * unloaded or swapped, and the new copy's comes in its place.
+     */
+    public function testUnloadAndSwapCarryTheMenuTheKeysAndTheServer(): void
+    {
+        $ide = $this->boot();
+        $dir = $this->project->dir.'/.porta/plugins/acme';
+        // @mago-expect lint:no-boolean-flag-parameter -- the first release or the second: the one fact a release carries here.
+        $release = static function (bool $first) use ($dir): void {
+            if (!\is_dir($dir)) {
+                \mkdir($dir, permissions: 0o777, recursive: true);
+            }
+            $release = $first ? 'v1' : 'v2';
+            $pane = "\$api->registerPane('acmepane', static fn (\$services) => new Porta\\Tests\\Support\\TestPane('acmepane'), static fn (string \$path): string => '{$release}');";
+            $body = $first
+                ? "\$api->registerCommand('greet', 'Acme: Greet', static fn () => null, ['shift+f12']);\n\$api->registerMenu('Acme', 'Run', ['i:acme:greet']);\n\$api->registerLanguageServer('acme', 'acme-ls', static fn (): array => ['/opt/acme-ls']);\n{$pane}"
+                : "\$api->registerCommand('wave', 'Acme: Wave', static fn () => null);\n{$pane}";
+            \file_put_contents(
+                $dir.'/porta.php',
+                "<?php\nreturn new class implements Porta\\Plugin\\Api\\PortaPlugin {\n public function name(): string { return 'acme'; }\n public function activate(Porta\\Plugin\\Api\\PluginApi \$api): void {\n{$body}\n }\n};\n",
+            );
+        };
+        $release(true);
+        $lifecycle = $this->lifecycle($ide);
+        $keys = Probe::object($lifecycle, 'keys');
+        $this->assertInstanceOf(LiveKeybindings::class, $keys);
+        $pool = Services::resolve($ide, LspSessionPool::class);
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'), \JSON_THROW_ON_ERROR);
+        $menuBar = Services::resolve($ide, MenuBarWidget::class);
+        $menus = static fn (): array => \array_column(Probe::get($menuBar, 'menus'), 'title');
+
+        $this->assertNull($lifecycle->activateInstalled($dir.'/porta.php'));
+        $this->assertContains('Acme', $menus());
+        $this->assertSame(['shift+f12'], $keys->getBindings('acme:greet'));
+        $this->assertStringContainsString('acme-ls', $servers());
+        $panes = Probe::object($lifecycle, 'panes', 'panes');
+        $this->assertInstanceOf(EditorPanes::class, $panes);
+        $this->assertSame('v1', $panes->load('acmepane', 'a.x'));
+
+        $lifecycle->unload('acme');
+        $this->assertNull($panes->ownerOf('acmepane'), 'its pane goes');
+        $this->assertNotContains('Acme', $menus(), 'its menu goes');
+        $this->assertSame([], $keys->getBindings('acme:greet'), 'its key goes');
+        $this->assertStringNotContainsString('acme-ls', $servers(), 'its server stops');
+
+        $this->assertNull($lifecycle->activateInstalled($dir.'/porta.php'));
+        $release(false); // the new release: no menu, no key, no server
+        $this->assertNull($lifecycle->activateInstalled($dir.'/porta.php'));
+        $this->assertNotContains('Acme', $menus(), 'the old copy\'s menu went with the swap');
+        $this->assertSame([], $keys->getBindings('acme:greet'));
+        $this->assertStringNotContainsString('acme-ls', $servers(), 'the old copy\'s server stopped with the swap');
+        $this->assertTrue($this->hasCommand($ide, 'acme:wave'));
+        $this->assertSame('v2', $panes->load('acmepane', 'a.x'), 'the new release\'s pane, never the old instance kept standing');
     }
 
     public function testDeactivateRemovesCommandsAndPanesWhenNoShadowCopyExists(): void

@@ -16,6 +16,14 @@ interface PluginLifecycleOps extends PluginEnablement
     /** Live-load an installed porta.php; returns the failure message or null. */
     public function activateInstalled(string $file): ?string;
 
+    /**
+     * Stop a running plugin live — its menus, commands, keys, panes and
+     * server — with nothing loaded in its place and nothing persisted: the
+     * caller loads it again ({@see activateInstalled()}) once its files are
+     * what they should be.
+     */
+    public function unload(string $name): void;
+
     /** Live-deactivate a removed plugin (and reactivate a shadowed copy). */
     public function deactivate(string $name): void;
 

@@ -43,6 +43,7 @@ final class MenuModel
             'i:ide_local_history',
             self::SEP,
             'i:ide_settings',
+            'i:plugins_store',
             'i:ide_quit',
         ],
         'Edit' => [

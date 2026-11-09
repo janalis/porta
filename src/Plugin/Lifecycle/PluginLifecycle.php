@@ -123,23 +123,51 @@ final class PluginLifecycle implements PluginLifecycleOps
     #[\Override]
     public function activateInstalled(string $file): ?string
     {
-        $error = $this->loader->loadFile($file, $this->plugins);
-        if (null !== $error) {
-            return $this->translator->trans($error->key, $error->params);
-        }
-        $this->plugins->registerCommands($this->commands);
+        // A plugin of this name is running already: the copy just installed
+        // shadows it (a store package taking a bundled plugin over), or it IS
+        // that copy, updated on disk. Either way it is swapped live — the old
+        // one stopped as a removal stops it, then this file loaded in its
+        // place — where loading beside it would be refused as a duplicate.
         // Identity is the plugin's directory basename — the same convention
         // enabledPlugins, requires and the installer's listing all key on.
         $name = \basename(\dirname($file));
-        $this->registerContributionsOf($name);
+        $wasProvider = $this->plugins->providesLanguageServer($name);
+        $this->stop($name);
+        $error = $this->loader->loadFile($file, $this->plugins);
+        if (null === $error) {
+            $this->plugins->registerCommands($this->commands);
+            $this->registerContributionsOf($name);
+        }
         // A server it brings starts now, as enable() starts one, not at the
-        // next unrelated reconfigure.
-        $this->reconfigureLspIf($this->plugins->providesLanguageServer($name));
+        // next unrelated reconfigure; one a swapped-out copy brought stops.
+        // A failed swap still rebuilds: the old copy's keys and menus went with it.
+        $this->reconfigureLspIf($wasProvider || $this->plugins->providesLanguageServer($name));
         $this->keys->rebuild();
         $this->menuRebuilder->rebuild();
         $this->refreshNav();
 
-        return null;
+        return null === $error ? null : $this->translator->trans($error->key, $error->params);
+    }
+
+    #[\Override]
+    public function unload(string $name): void
+    {
+        $wasProvider = $this->plugins->providesLanguageServer($name);
+        $this->stop($name);
+        $this->reconfigureLspIf($wasProvider);
+        $this->keys->rebuild();
+        $this->menuRebuilder->rebuild();
+    }
+
+    /** Take a running $name out of every registry, leaving the slot empty. */
+    private function stop(string $name): void
+    {
+        if (!$this->plugins->hasPlugin($name)) {
+            return;
+        }
+        $this->plugins->deactivate($name, $this->commands);
+        $this->panes->forget($name);
+        $this->retractContributionsOf($name);
     }
 
     /**

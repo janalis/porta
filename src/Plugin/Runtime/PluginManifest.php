@@ -200,6 +200,20 @@ final readonly class PluginManifest
         if (null === $data) {
             return new self($name, $directory);
         }
+
+        return self::fromData($name, $directory, $data);
+    }
+
+    /**
+     * The manifest $data describes, for plugin $name at $directory — a
+     * `composer.json` read from disk, or one version of a package as Packagist
+     * publishes it, which is how the store asks whether a release would load
+     * here before anything is installed.
+     *
+     * @param array<array-key, mixed> $data
+     */
+    public static function fromData(string $name, string $directory, array $data): self
+    {
         $autoload = \is_array($data['autoload'] ?? null) ? $data['autoload'] : [];
         $facts = self::composerFacts($name, $autoload, $data);
 

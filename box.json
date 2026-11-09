@@ -3,6 +3,7 @@
     "directories": [
         "src",
         "config",
+        "store",
         "translations"
     ],
     "finder": [

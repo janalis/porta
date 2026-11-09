@@ -42,7 +42,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "Custos",
+                "category": "linters"
+            }
         }
     }
 }

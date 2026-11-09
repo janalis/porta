@@ -146,6 +146,7 @@ export default defineConfig({
           text: 'Extending',
           items: [
             { text: 'Plugins', link: '/plugins' },
+            { text: 'Plugin store', link: '/plugin-store' },
             { text: 'Events', link: '/events' },
             { text: 'Architecture', link: '/architecture' },
             { text: 'Bundled plugins', link: '/plugins/git/' },

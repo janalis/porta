@@ -7,8 +7,8 @@ namespace Porta\Plugin\Tool;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginEnablement;
+use Porta\Support\HourlyLook;
 use Porta\Workbench\Notifier;
-use Revolt\EventLoop;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -30,14 +30,11 @@ final class ToolUpdates
     /** The `toolUpdateCheck` choices, and the seconds between checks each means; 0 is off. */
     public const array CADENCES = ['off' => 0, 'daily' => ToolUpdateCheck::DAY, 'weekly' => 604_800];
 
-    /** How often a long-running IDE looks whether a check has come due. */
-    private const float LOOK_EVERY = 3600.0;
-
     private string $cadence;
 
     private bool $checking = false;
 
-    private ?string $timer = null;
+    private readonly HourlyLook $hourly;
 
     /** @var array<string, string>|null `<plugin>/<tool>` => its newest version, read from the note once */
     private ?array $latest = null;
@@ -63,6 +60,7 @@ final class ToolUpdates
         $cadence = $settings['toolUpdateCheck'] ?? 'daily';
         $this->cadence = \is_string($cadence) && \array_key_exists($cadence, self::CADENCES) ? $cadence : 'daily';
         $this->clock = $clock ?? \time(...);
+        $this->hourly = new HourlyLook($this->checkIfDue(...));
     }
 
     /**
@@ -72,20 +70,13 @@ final class ToolUpdates
      */
     public function start(): void
     {
-        $this->checkIfDue();
-        if (null === $this->timer) {
-            $this->timer = EventLoop::repeat(self::LOOK_EVERY, $this->checkIfDue(...));
-            EventLoop::unreference($this->timer);
-        }
+        $this->hourly->start();
     }
 
     /** The hourly look ends with the IDE, or it would outlive the loop that runs it. */
     public function stop(): void
     {
-        if (null !== $this->timer) {
-            EventLoop::cancel($this->timer);
-            $this->timer = null;
-        }
+        $this->hourly->stop();
     }
 
     /** The `toolUpdateCheck` setting moved; switched on, a due check runs now. */

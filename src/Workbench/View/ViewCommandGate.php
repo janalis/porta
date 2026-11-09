@@ -30,7 +30,7 @@ final readonly class ViewCommandGate
      * Settings must be able to get back without losing their place.
      */
     private const array KEEPS_OPEN = [
-        'settings' => ['ide_quit', 'ide_settings', 'ide_command_palette', 'ide_help', 'ide_welcome'],
+        'settings' => ['ide_quit', 'ide_settings', 'plugins_store', 'ide_command_palette', 'ide_help', 'ide_welcome'],
         'welcome' => ['ide_quit', 'ide_welcome', 'ide_command_palette', 'ide_help'],
         // The docs' own toggle, so F1 over them closes them rather than
         // closing them first and opening them again.

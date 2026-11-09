@@ -1,0 +1,171 @@
+# The plugin store
+
+**Settings › Plugins › Store** lists every Porta plugin published on
+[Packagist](https://packagist.org/search/?type=porta-plugin). Each plugin has
+one button:
+
+| Button | Meaning |
+| --- | --- |
+| **Get** | It is not installed. Pressing it installs it into the scope at the top of the Settings view (this project, or every project), and switches it on. |
+| **Update** | A newer release that runs on this Porta is out. |
+| **Open** | It is installed and up to date. Pressing it opens its Settings page. |
+| **Built-in** | It ships with Porta. Pressing it opens its Settings page. |
+| **Enable** | It is installed or built in, but switched off. |
+| **Incompatible** | No release of it runs on this Porta: it targets another plugin API, or a PHP version or extension this machine lacks. |
+
+## Using the store
+
+The **shelf** has two tabs:
+
+- **Discover** lists every plugin, the most downloaded first.
+- **Updates** lists only the installed plugins that have a newer release.
+
+Each plugin shows its title, who made it, its category, its version, when that
+version was released and how often it was downloaded. **Verified** marks a
+plugin whose author registered it with Porta (see below).
+
+| Key | Does |
+| --- | --- |
+| ↑ ↓, PgUp PgDn | Move through the shelf |
+| Enter | Open the plugin's page |
+| Space | Press the plugin's button |
+| `c` / `Shift+C` | Next / previous category |
+| `u` | Switch between Discover and Updates |
+| `Shift+U` | Update every plugin listed under Updates |
+| `/` or Ctrl+F | Filter by name, description or author |
+
+A click on a tab, on the category or on a button does the same.
+
+A plugin's **page** shows, in order:
+
+- its button;
+- its screenshots (← → to move between them);
+- **What's New**: the newest release's section of its changelog;
+- **About**: its README;
+- **Information**: provider, package, category, version, license, downloads and source.
+
+Esc or Backspace goes back to the shelf.
+
+A plugin that is not verified asks before it installs: the first **Get** only
+warns you, and a second one installs it. A plugin is PHP that runs inside
+Porta with your permissions, so install one only from an author you trust.
+
+The store keeps what it last fetched under `~/.porta/cache/store`. It opens
+at once, even offline, and asks Packagist again when that copy is more than an
+hour old.
+
+### Updates
+
+Porta checks for newer releases in the background, weekly by default
+(`pluginUpdateCheck`: `daily`, `weekly` or `off`). It says once, in a toast,
+what it found. With `pluginAutoUpdate` on, it installs the updates instead.
+Both settings are on the **General** page.
+
+An update only reaches a plugin you installed from Packagist. A plugin
+installed from a local path or a git URL follows its own source. A built-in
+plugin updates with Porta.
+
+A plugin that is running reloads live with its new version: its menus,
+commands and keys are swapped at once. A class it had already loaded cannot be
+unloaded from PHP, so if it had any, the update says to restart Porta to
+finish.
+
+## Publishing a plugin
+
+1. Write the plugin ([Writing a plugin](plugins.md#writing-a-plugin)). Give its
+   `composer.json` the name `vendor/porta-<name>` and `"type": "porta-plugin"`.
+   It installs as `<name>`.
+2. Describe it for the store under `extra.porta.store`:
+
+   ```json
+   {
+       "name": "acme/porta-rector",
+       "description": "Rector refactorings on the current file",
+       "type": "porta-plugin",
+       "extra": {
+           "porta": {
+               "api": 1,
+               "store": {
+                   "title": "Rector",
+                   "category": "linters",
+                   "screenshots": [
+                       "https://raw.githubusercontent.com/acme/porta-rector/main/docs/screenshot.png"
+                   ],
+                   "changelog": "CHANGELOG.md",
+                   "readme": "README.md"
+               }
+           }
+       }
+   }
+   ```
+
+   | Key | Default | What it is |
+   | --- | --- | --- |
+   | `title` | the name, capitalised | What the store calls it |
+   | `category` | `other` | One of `languages`, `linters`, `testing`, `debugging`, `version-control`, `remote`, `viewers`, `ai`, `productivity`, `other` |
+   | `screenshots` | none | Up to six https PNG addresses, 2 MB each at most. About 16:9 reads best. |
+   | `changelog` | `CHANGELOG.md` | A path in your repository. The store reads it at the commit the release was tagged on. |
+   | `readme` | `README.md` | Likewise |
+
+   The changelog follows [Keep a Changelog](https://keepachangelog.com/).
+   **What's New** shows the first `## ` section that names a version, skipping
+   `Unreleased`. Without a changelog the store lists the release history
+   instead. The changelog and README are read from GitHub, so a package
+   published from another host shows neither.
+3. Tag a release and publish the package on Packagist. From then on it is in
+   the store, unverified.
+4. To be **verified**, open a pull request against
+   [janalis/porta](https://github.com/janalis/porta) that adds your package to
+   `store/plugins.json`, and nothing else:
+
+   ```json
+   {
+       "acme/porta-rector": { "category": "linters" }
+   }
+   ```
+
+   An entry takes `category`, which overrides the package's own, and
+   `replaces` (see the next section). Only Porta's maintainers set `featured`.
+
+The pull request's **Store** check (`bin/store-check`) verifies that:
+
+- the package is on Packagist, and is a `porta-plugin`;
+- it is published from a GitHub repository owned by you, or by an
+  organisation you are a *public* member of.
+
+A maintainer reviews the rest. Once the pull request is merged, the entry shows
+in every Porta within the hour. No Porta release is needed.
+
+## Taking over a bundled plugin
+
+Several bundled plugins drive someone else's tool: `mago`, `phpstan`,
+`symfony-lsp` and others. The owners of that tool can publish the plugin
+themselves and replace Porta's copy.
+
+1. Publish your plugin as `<vendor>/porta-<name>`, where `<name>` is the
+   bundled plugin's name, for instance `carthage-software/porta-mago`.
+   Installing it then shadows the bundled copy, and users keep their settings.
+2. In the registration pull request, say so:
+
+   ```json
+   {
+       "carthage-software/porta-mago": { "category": "linters", "replaces": "mago" }
+   }
+   ```
+
+On top of the usual checks, CI verifies that:
+
+- `plugins/<name>` exists;
+- the package installs under that name;
+- your package's owner also owns a repository that the bundled plugin lists in
+  `extra.porta.tools`. For `mago`, that is the owner of
+  `carthage-software/mago`, the tool's composer package.
+
+A bundled plugin that drives no published tool, such as `todo`, cannot be
+taken over.
+
+Once the takeover is merged:
+
+- your package takes the place of Porta's own split in the store, with
+  **Get**, and its page says which built-in plugin it replaces;
+- a later Porta release drops its bundled copy.

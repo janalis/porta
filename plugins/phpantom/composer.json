@@ -24,7 +24,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "PHPantom",
+                "category": "languages"
+            }
         }
     }
 }

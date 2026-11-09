@@ -11,6 +11,7 @@ use Porta\I18n\Translator;
 use Porta\Layout\ViewRegion;
 use Porta\Layout\ViewRegions;
 use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\Menu\ListboxOpener;
@@ -56,6 +57,11 @@ final class SettingsViewController implements ContributedView
         ViewRegistry $views,
         private readonly ListboxOpener $listbox,
         private readonly Translator $translator = new Translator('en'),
+        // Trailing and optional, so the hand-built views in the settings
+        // tests stand; the container always wires both. Without them the
+        // Store page is a plain form page.
+        private readonly ?PluginStoreWidget $store = null,
+        private readonly ?SettingsStoreController $storeController = null,
     ) {
         // Minted, like git's. The nav is this view's fixed half, so it goes
         // into the sidebar once here — it used to be handed to PaneLayout as a
@@ -79,6 +85,21 @@ final class SettingsViewController implements ContributedView
             ->onOpenChoice($this->openChoice(...))
             ->onFocusNext($this->focusNav(...))
             ->onExit($exit);
+        $storeController = $this->storeController;
+        if (null !== $storeController) {
+            $this->store
+                ?->onCrumb($this->selectSection(...))
+                ->onPress($storeController->press(...))
+                ->onUpdateAll($storeController->updateAll(...))
+                ->onAsset(function (string $url, bool $image) use ($storeController): void {
+                    $storeController->asset($url, $image, function (string $url, ?string $body): void {
+                        $this->store?->setAsset($url, $body);
+                        $this->host->invalidate();
+                    });
+                })
+                ->onFocusNext($this->focusNav(...))
+                ->onExit($exit);
+        }
         $this->keymapList
             ->onCrumb($this->selectSection(...))
             ->onRebind($this->rebind(...))
@@ -153,6 +174,14 @@ final class SettingsViewController implements ContributedView
         $this->host->invalidate();
     }
 
+    /** Open the view on page $id, the keyboard on that page: the palette's way to the store. */
+    public function openOn(string $id): void
+    {
+        $this->open();
+        $this->selectSection($id);
+        $this->focusContent();
+    }
+
     #[\Override]
     public function close(): void
     {
@@ -193,20 +222,27 @@ final class SettingsViewController implements ContributedView
         //
         // Conditional, because the same swap driven from the NAV must not steal
         // focus from it: the nav is still mounted and is where the user is.
-        $outgoing = 'keybindings' === $this->section ? $this->keymapList : $this->form;
+        $outgoing = $this->contentWidget();
         $followFocus = $this->host->focused() === $outgoing;
 
         $this->section = $id;
         $this->nav->setActive($id);
         $this->region->content()->clear();
-        if ('keybindings' === $id) {
+        $incoming = $this->contentWidget();
+        if ($incoming === $this->keymapList) {
             $this->keymapList->setRows($this->keymap->rows());
-            $this->region->content()->add($this->keymapList);
         }
-        if ('keybindings' !== $id) {
+        if ($incoming === $this->store) {
+            $this->store->closeDetail();
+            $this->storeController?->shown();
+        }
+        // Every page change re-reads the store's count, so the nav says it
+        // whichever page the view opens on.
+        $this->pushStore();
+        if ($incoming === $this->form) {
             $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
-            $this->region->content()->add($this->form);
         }
+        $this->region->content()->add($incoming);
         if (\str_starts_with($id, 'plugin:')) {
             // A plugin page starts on its Enabled row: the row index carried
             // over from the last page lands, as often as not, on its last row
@@ -215,7 +251,7 @@ final class SettingsViewController implements ContributedView
             $this->plugins->pageShown(\substr($id, offset: 7));
         }
         if ($followFocus) {
-            $this->host->focus('keybindings' === $id ? $this->keymapList : $this->form);
+            $this->host->focus($incoming);
         }
         $this->host->invalidate();
     }
@@ -343,6 +379,24 @@ final class SettingsViewController implements ContributedView
             $this->form->setRows($this->rowsForSection(), $this->nav->trailFor($this->section));
             $this->host->invalidate();
         }
+        // The store's buttons follow every install, update and toggle, and
+        // its count in the nav follows the updates.
+        $this->pushStore();
+    }
+
+    /** The store's rows and the nav's count of its updates, read again. */
+    private function pushStore(): void
+    {
+        if (null === $this->storeController) {
+            return;
+        }
+        // Asked once: it reads every install from disk, and the rows need it too.
+        $outdated = $this->storeController->outdated();
+        $this->nav->setStoreUpdates(\count($outdated));
+        if ('store' === $this->section) {
+            $this->store?->setStore($this->storeController->rows($outdated), $this->storeController->refreshing(), \count($outdated));
+            $this->host->invalidate();
+        }
     }
 
     private function rebind(string $action, string $key): void
@@ -359,7 +413,11 @@ final class SettingsViewController implements ContributedView
 
     private function contentWidget(): AbstractWidget&FocusableInterface
     {
-        return 'keybindings' === $this->section ? $this->keymapList : $this->form;
+        return match (true) {
+            'keybindings' === $this->section => $this->keymapList,
+            'store' === $this->section && null !== $this->store && null !== $this->storeController => $this->store,
+            default => $this->form,
+        };
     }
 
     /**

@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# The plugin store's registration check: every entry a pull request adds to or
+# changes in store/plugins.json must be its author's to make.
+#
+#   bin/store-check <base-ref> <pr-author>
+#
+# For each added or changed entry:
+#   - the package is on Packagist, and its newest release is a `porta-plugin`;
+#   - its source is a GitHub repository owned by the PR's author, or by an
+#     organisation the author is a PUBLIC member of;
+#   - its category, when set, is one the store knows;
+#   - `featured` is only set by someone with write access to janalis/porta;
+#   - `replaces: <name>` (a takeover) names a bundled plugin, the package
+#     installs under that very name, and the package's owner also owns a
+#     repository the bundled plugin declares in `extra.porta.tools` (read from
+#     the base branch, never the pull request's copy) — the
+#     tool's own GitHub repository, or the one its composer package is
+#     published from. A bundled plugin that drives no tool of anyone's cannot
+#     be taken over.
+#
+# Needs gh (authenticated: GH_TOKEN), jq and curl. Exits 1 with every reason.
+set -euo pipefail
+
+base=${1:?usage: bin/store-check <base-ref> <pr-author>}
+author=${2:?usage: bin/store-check <base-ref> <pr-author>}
+file=store/plugins.json
+categories='["languages","linters","testing","debugging","version-control","remote","viewers","ai","productivity","other"]'
+failed=0
+
+fail() {
+    echo "::error file=$file::$1"
+    failed=1
+}
+
+lower() { tr '[:upper:]' '[:lower:]' <<<"$1"; }
+
+# Whether the PR's author speaks for GitHub account $1.
+speaks_for() {
+    [ "$(lower "$1")" = "$(lower "$author")" ] || gh api "orgs/$1/public_members/$author" --silent >/dev/null 2>&1
+}
+
+# The owner of the GitHub repository a package's newest release comes from, or nothing.
+package_owner() {
+    curl -fsSL --proto =https "https://repo.packagist.org/p2/$1.json" 2>/dev/null \
+        | jq -r --arg p "$1" '.packages[$p][0].source.url // ""' \
+        | sed -nE 's#^https://github\.com/([^/]+)/.*#\1#p'
+}
+
+if ! jq -e 'type == "object"' "$file" >/dev/null; then
+    fail "$file must be one JSON object, keyed by package"
+    exit 1
+fi
+
+old=$(git show "$base:$file" 2>/dev/null || echo '{}')
+changed=$(jq -r --argjson old "$old" 'to_entries[] | select(.value != $old[.key]) | .key' "$file")
+
+for package in $changed; do
+    entry=$(jq -c --arg p "$package" '.[$p]' "$file")
+    if ! grep -Eq '^[a-z0-9]([_.-]?[a-z0-9]+)*/[a-z0-9]([_.-]?[a-z0-9]+)*$' <<<"$package"; then
+        fail "\"$package\" is not a composer package name"
+        continue
+    fi
+    unknown=$(jq -r 'if type == "object" then keys - ["category","featured","replaces"] | join(", ") else "not an object" end' <<<"$entry")
+    if [ -n "$unknown" ]; then
+        fail "$package: unknown keys ($unknown) — an entry takes category, featured and replaces"
+    fi
+    if ! jq -e --argjson c "$categories" '(.category // "other") as $cat | $c | index($cat)' <<<"$entry" >/dev/null; then
+        fail "$package: category must be one of $(jq -r 'join(", ")' <<<"$categories")"
+    fi
+
+    meta=$(curl -fsSL --proto =https "https://repo.packagist.org/p2/$package.json" 2>/dev/null || true)
+    if [ -z "$meta" ]; then
+        fail "$package is not on Packagist: publish it there first"
+        continue
+    fi
+    type=$(jq -r --arg p "$package" '.packages[$p][0].type // ""' <<<"$meta")
+    if [ "$type" != "porta-plugin" ]; then
+        fail "$package's newest release is of type \"$type\", not \"porta-plugin\""
+    fi
+    owner=$(package_owner "$package")
+    if [ -z "$owner" ]; then
+        fail "$package is not published from a GitHub repository, so its ownership cannot be checked"
+        continue
+    fi
+    if ! speaks_for "$owner"; then
+        fail "$package is published from github.com/$owner, which is not @$author's (nor an organisation @$author is a public member of)"
+    fi
+
+    if jq -e '.featured == true' <<<"$entry" >/dev/null; then
+        permission=$(gh api "repos/janalis/porta/collaborators/$author/permission" --jq .permission 2>/dev/null || echo none)
+        if [ "$permission" != "admin" ] && [ "$permission" != "write" ] && [ "$permission" != "maintain" ]; then
+            fail "$package: only Porta's maintainers feature a plugin"
+        fi
+    fi
+
+    replaces=$(jq -r '.replaces // ""' <<<"$entry")
+    if [ -z "$replaces" ]; then
+        continue
+    fi
+    # The bundled plugin as the base branch has it: a pull request that also
+    # rewrote which tool it drives would otherwise name its own repository.
+    if ! manifest=$(git show "$base:plugins/$replaces/composer.json" 2>/dev/null); then
+        fail "$package replaces \"$replaces\", which is not a bundled plugin"
+        continue
+    fi
+    name=${package#*/}
+    name=${name#porta-}
+    if [ "$name" != "$replaces" ]; then
+        fail "$package installs as \"$name\": a package that replaces \"$replaces\" must be named <vendor>/porta-$replaces"
+    fi
+    upstream=""
+    while IFS=$'\t' read -r manager source; do
+        case "$manager" in
+            github) upstream="$upstream ${source%%/*}" ;;
+            composer) upstream="$upstream $(package_owner "$source")" ;;
+        esac
+    done < <(jq -r '.extra.porta.tools[]?.sources[]? | select(type == "array") | [.[0], .[1]] | @tsv' <<<"$manifest")
+    if [ -z "${upstream// /}" ]; then
+        fail "$package replaces \"$replaces\", which drives no tool published on GitHub: it cannot be taken over"
+        continue
+    fi
+    matched=0
+    for candidate in $upstream; do
+        if [ "$(lower "$candidate")" = "$(lower "$owner")" ]; then
+            matched=1
+        fi
+    done
+    if [ "$matched" -eq 0 ]; then
+        fail "$package is published from github.com/$owner, but \"$replaces\" drives tools from:$upstream — only their owners may take it over"
+    fi
+done
+
+if [ "$failed" -eq 0 ]; then
+    echo "store/plugins.json: $(wc -w <<<"$changed" | tr -d ' ') entr(y/ies) checked for @$author"
+fi
+exit "$failed"

@@ -20,7 +20,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "Phpactor",
+                "category": "languages"
+            }
         }
     }
 }

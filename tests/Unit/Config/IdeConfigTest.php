@@ -16,6 +16,7 @@ use Porta\Editor\InlayHintMode;
 use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
+use Porta\Plugin\Store\PluginUpdates;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\CursorStyle;
@@ -825,6 +826,7 @@ final class IdeConfigTest extends TestCase
         $this->assertSame(Theme::ids(), IdeConfig::CHOICE_SETTINGS['theme']);
         $this->assertSame(PixelRatio::CHOICES, IdeConfig::CHOICE_SETTINGS['pixelRatio']);
         $this->assertSame(\array_keys(ToolUpdates::CADENCES), IdeConfig::CHOICE_SETTINGS['toolUpdateCheck']);
+        $this->assertSame(\array_keys(PluginUpdates::CADENCES), IdeConfig::CHOICE_SETTINGS['pluginUpdateCheck']);
         $this->assertSame(Translator::CHOICES, IdeConfig::CHOICE_SETTINGS['language']);
         $this->assertSame(
             \array_map(static fn (LineNumberMode $mode): string => $mode->value, LineNumberMode::cases()),

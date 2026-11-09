@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Plugin\Tool\ToolCatalog;
 use Porta\Plugin\Tool\ToolJobs;
+use Porta\Settings\SettingsViewController;
 use Porta\Workbench\Notifier;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 
@@ -30,6 +31,9 @@ final readonly class PluginCommands implements CommandProvider
         private ModalHost $modals,
         private Notifier $notifier,
         private Translator $translator,
+        // Trailing and optional so the provider's hand-built tests stand; the
+        // container always wires it.
+        private ?SettingsViewController $settings = null,
     ) {}
 
     #[\Override]
@@ -39,7 +43,8 @@ final readonly class PluginCommands implements CommandProvider
             ->add('plugins_enable', $this->pickToEnable(...), label: 'Plugins: Enable…')
             ->add('plugins_disable', $this->pickToDisable(...), label: 'Plugins: Disable…')
             ->add('plugins_install_tools', $this->installMissing(...), label: 'Plugins: Install Missing Tools')
-            ->add('plugins_update_tools', $this->updateAll(...), label: 'Plugins: Update Tools');
+            ->add('plugins_update_tools', $this->updateAll(...), label: 'Plugins: Update Tools')
+            ->add('plugins_store', fn () => $this->settings?->openOn('store'), label: 'Plugins: Open Store');
     }
 
     private function pickToEnable(): void

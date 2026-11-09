@@ -46,6 +46,13 @@ foreach (['config.json', 'trusted-projects.json'] as $portaLeaked) {
 // crates.io and npm from the middle of the suite. A note saying "checked just
 // now" keeps it quiet for the run; the check's own tests use a home of their own.
 file_put_contents(__DIR__.'/Support/fixtures/home/.porta/tool-updates.json', json_encode(['checkedAt' => time(), 'latest' => []], JSON_THROW_ON_ERROR));
+// The plugin-update check's note is the store's own catalog: an empty one
+// fetched just now keeps every booted Ide off Packagist the same way.
+$portaStoreCache = __DIR__.'/Support/fixtures/home/.porta/cache/store';
+if (!is_dir($portaStoreCache) && !mkdir($portaStoreCache, recursive: true) && !is_dir($portaStoreCache)) {
+    throw new RuntimeException('Cannot create '.$portaStoreCache);
+}
+file_put_contents($portaStoreCache.'/catalog.json', json_encode(['fetchedAt' => time(), 'entries' => []], JSON_THROW_ON_ERROR));
 
 // Every TempProject lives under the temp dir, and nearly every scenario writes
 // a `.porta.json` that enables a plugin or names a server: all of them are the

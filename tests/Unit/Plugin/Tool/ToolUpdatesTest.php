@@ -124,7 +124,7 @@ final class ToolUpdatesTest extends TestCase
         $tools = $this->tools();
 
         $tools->updates->start();
-        EventLoop::cancel((string) Probe::get($tools->updates, 'timer'));
+        EventLoop::cancel((string) Probe::get(Probe::object($tools->updates, 'hourly'), 'timer'));
 
         $this->assertStringContainsString('Updates available: dot 1.1.0 — run "Plugins: Update Tools"', $this->toast(), 'gh is current; jq could not be asked');
         $dot = $tools->catalog->status(self::tool($tools, 'dot'));
@@ -212,12 +212,12 @@ final class ToolUpdatesTest extends TestCase
     {
         $tools = $this->tools();
         $tools->updates->start();
-        $timer = Probe::get($tools->updates, 'timer');
+        $timer = Probe::get(Probe::object($tools->updates, 'hourly'), 'timer');
         $tools->updates->start();
 
         try {
             $this->assertIsString($timer);
-            $this->assertSame($timer, Probe::get($tools->updates, 'timer'), 'a second start adds no second timer');
+            $this->assertSame($timer, Probe::get(Probe::object($tools->updates, 'hourly'), 'timer'), 'a second start adds no second timer');
             $this->assertFalse(EventLoop::isReferenced($timer));
         } finally {
             EventLoop::cancel((string) $timer);
@@ -230,13 +230,13 @@ final class ToolUpdatesTest extends TestCase
         $tools = $this->tools();
         $tools->updates->stop();
         $tools->updates->start();
-        $timer = (string) Probe::get($tools->updates, 'timer');
+        $timer = (string) Probe::get(Probe::object($tools->updates, 'hourly'), 'timer');
 
         $tools->updates->stop();
         $tools->updates->stop();
 
         $this->assertNotContains($timer, EventLoop::getIdentifiers(), 'the timer is gone with the IDE');
-        $this->assertNull(Probe::get($tools->updates, 'timer'), 'so a later start arms a new one');
+        $this->assertNull(Probe::get(Probe::object($tools->updates, 'hourly'), 'timer'), 'so a later start arms a new one');
     }
 
     private static function tool(TestTools $tools, string $name): ToolRequirement

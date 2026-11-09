@@ -25,7 +25,11 @@
                     "purpose": "talks to the server",
                     "setting": "binary"
                 }
-            ]
+            ],
+            "store": {
+                "title": "FTP",
+                "category": "remote"
+            }
         }
     }
 }

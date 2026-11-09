@@ -12,6 +12,7 @@ use Porta\I18n\Translator;
 use Porta\Support\AnsiText;
 use Porta\Ui\CaretVisibility;
 use Porta\Ui\CursorStyle;
+use Porta\Ui\FilterKeys;
 use Porta\Ui\Glyphs;
 use Porta\Ui\ListNavigation;
 use Porta\Ui\ListSelection;
@@ -260,29 +261,17 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         return $this->setHovered($this->rowIndexAt($relRow));
     }
 
-    /**
-     * While filtering, the keys belong to the field: printable characters
-     * narrow the list, Backspace widens it, Escape leaves the query behind.
-     * Everything else — the arrows, Enter to rebind — still drives the list, so
-     * you can type two letters and press Enter without a mode change.
-     */
+    /** While filtering, the keys belong to the field ({@see FilterKeys}). */
     private function editFilter(string $data, Keybindings $kb): bool
     {
-        $leave = $kb->matches($data, 'exit_view');
-        $backspace = !$leave && $kb->matches($data, 'delete_char_backward');
-        if ($leave) {
-            $this->filtering = false;
-            $this->filter->clear();
-        }
-        // Leaving always re-filters (the query is gone); Backspace and typing
-        // only when they changed it.
-        $changed = $leave || ($backspace ? $this->filter->backspace() : $this->filter->editKey($data, $kb) || $this->filter->insert($data));
-        if ($changed) {
+        $edit = FilterKeys::edit($this->filter, $data, $kb);
+        $this->filtering = FilterKeys::Left !== $edit;
+        if ($edit->refilters()) {
             $this->applyFilter();
             $this->invalidate();
         }
 
-        return $leave || $backspace || $changed;
+        return FilterKeys::Ignored !== $edit;
     }
 
     /** The title and the rule under it, plus the boxed filter field while it is showing. */

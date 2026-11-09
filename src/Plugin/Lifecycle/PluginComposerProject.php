@@ -80,6 +80,41 @@ final readonly class PluginComposerProject
     }
 
     /**
+     * The version composer installed of each package in $scopeBase's plugin
+     * project, as it was tagged (`v1.2.0`), read from composer's own record
+     * of what it installed — nothing to run, nothing to ask.
+     *
+     * @return array<string, string> package => version
+     */
+    public function installedVersions(string $scopeBase): array
+    {
+        $installed = JsonFile::read($scopeBase.'/.porta/vendor/composer/installed.json');
+        $versions = [];
+        /** @var mixed $package */
+        foreach (\is_array($installed['packages'] ?? null) ? $installed['packages'] : [] as $package) {
+            if (!\is_array($package) || !\is_string($package['name'] ?? null) || !\is_string($package['version'] ?? null)) {
+                continue;
+            }
+            $versions[$package['name']] = $package['version'];
+        }
+
+        return $versions;
+    }
+
+    /**
+     * Whether $packageName resolves from Packagist — no path or git
+     * repository of its own in $scopeBase's project, which is the one kind of
+     * install a newer RELEASE can update.
+     */
+    public function fromPackagist(string $scopeBase, string $packageName): bool
+    {
+        /** @var mixed $repositories */
+        $repositories = JsonFile::read($this->composerJsonPath($scopeBase))['repositories'] ?? null;
+
+        return !\is_array($repositories) || !\array_key_exists($packageName, $repositories);
+    }
+
+    /**
      * Point $packageName at a local directory (symlinked by composer itself,
      * so an installed-by-path plugin under active development is picked up
      * live). Keyed by package name, so reinstalling the same plugin later

@@ -13,6 +13,7 @@ use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
 use Porta\Overlay\State\TooltipCenter;
+use Porta\Plugin\Store\PluginUpdates;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Presence\Identity;
 use Porta\Search\FileIndex;
@@ -62,6 +63,9 @@ final class SettingsController
         TooltipCenter $tooltips,
         Identity $identity,
         ToolUpdates $updates,
+        // Trailing and optional so the settings tests' hand-built controllers
+        // stand; the container always wires it.
+        ?PluginUpdates $plugins = null,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -283,6 +287,25 @@ final class SettingsController
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $updates->setCadence((string) $v),
                 'options' => \array_keys(ToolUpdates::CADENCES),
+            ],
+            // How often the store is asked about newer releases of the
+            // plugins Porta installed from it, and whether to install them.
+            'pluginUpdateCheck' => [
+                'label' => 'Plugin update check',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'general',
+                'fieldset' => 'Tools',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $plugins?->setCadence((string) $v),
+                'options' => \array_keys(PluginUpdates::CADENCES),
+            ],
+            'pluginAutoUpdate' => [
+                'label' => 'Auto-update plugins',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'fieldset' => 'Tools',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $plugins?->setAuto((bool) $v),
             ],
         ];
     }

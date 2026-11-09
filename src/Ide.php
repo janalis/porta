@@ -45,6 +45,7 @@ use Porta\Onboarding\OnboardingState;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Lifecycle\PluginLifecycle;
 use Porta\Plugin\Runtime\PluginHost;
+use Porta\Plugin\Store\PluginUpdates;
 use Porta\Plugin\Tool\RunningProcesses;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Presence\PresenceSync;
@@ -565,6 +566,8 @@ final class Ide
             // the background check for newer ones. Not for a git tool run,
             // which is not the user opening their project.
             $this->service(ToolUpdates::class)->start();
+            // And the plugins themselves: newer releases in the store.
+            $this->service(PluginUpdates::class)->start();
 
             $openedInitial = false;
             if (null !== $this->initialFile) {
@@ -603,6 +606,7 @@ final class Ide
                 $this->watchdog->stop();
                 $this->perf->stop();
                 $this->service(ToolUpdates::class)->stop();
+                $this->service(PluginUpdates::class)->stop();
                 // A download, an update check or a version probe still out
                 // would outlive the IDE writing into ~/.porta.
                 $this->service(RunningProcesses::class)->cancel();

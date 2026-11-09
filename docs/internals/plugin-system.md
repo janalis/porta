@@ -198,6 +198,42 @@ never `Filesystem::remove()`'s recursive delete, which would otherwise
 recurse into the real target. A pre-existing git-clone/hand-placed directory
 (not a symlink) keeps the old direct delete, unaffected.
 
+## The store reads Packagist; the repository only curates
+
+`Plugin/Store` is the plugin store ([plugin-store.md](../plugin-store.md)).
+`StoreCatalog` lists every `porta-plugin` package from Packagist's
+`search.json`, then reads each package's `p2` metadata, all in one curl
+process (`HttpFetch`). `PackagistMetadata` expands composer's minified version
+list and picks the newest STABLE release that `PluginManifest::fromData()` says
+would load here: the same API and platform checks the loader declines a plugin
+with. The result is cached in `~/.porta/cache/store/catalog.json`, so the store
+opens at once, offline too.
+
+`store/plugins.json` is curation, not a gate: being listed there only makes a
+package verified. Porta fetches it from `main`, so a merged registration needs
+no release, and falls back to the copy it shipped with. A curated
+`replaces: <name>` removes `janalis/porta-<name>` from the shelves.
+`bin/store-check` is the CI half: it checks that the PR author owns the package
+and, for a takeover, the bundled plugin's upstream tool.
+
+Get is `PluginInstaller::install()` with the `vendor/name`. Update is
+`PluginInstaller::update()`: `composer require <pkg>:^<new>` in the scope's
+project, so a new major is reachable. Only a Packagist install can be updated
+(`PluginComposerProject::fromPackagist()`). `PluginUpdates` decides what is
+outdated, by comparing composer's `installed.json` with the catalog. Its
+background check uses the catalog's `fetchedAt` as its note: opening the store
+counts as a check. The suite pins that note in `tests/bootstrap.php`, as it
+does `tool-updates.json`.
+
+An updated plugin that is running reloads live. `PluginLifecycle::activateInstalled()`
+swaps out a running plugin of the same name rather than refusing a duplicate, which
+also makes installing a takeover over a running bundled copy work. Re-requiring
+`porta.php` compiles a new anonymous class each time, so the new file's code is what
+runs (checked by hand: a changed `porta.php` required twice in one process answers with
+the new code). A named class the plugin already loaded cannot be
+redeclared, so `PluginUpdates::loadedFrom()` looks for one declared from the plugin's
+directory and names that plugin for a restart.
+
 ## Dependencies follow the enabled state
 
 `composer install --no-dev` runs at three moments — install, enable, and a boot

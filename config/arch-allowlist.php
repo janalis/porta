@@ -392,6 +392,9 @@ return [
         'Widget>Lsp',
         'Widget>Onboarding',
         'Widget>Overlay',
+        // The plugin store's page draws the store's entries and their buttons
+        // (Plugin\Store's value objects); what pressing one does stays in Settings.
+        'Widget>Plugin',
         'Widget>Search',
         'Widget>Settings',
         'Widget>Support',

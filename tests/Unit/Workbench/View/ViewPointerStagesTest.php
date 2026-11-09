@@ -8,9 +8,15 @@ use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
 use Porta\Input\HitTester;
 use Porta\Input\MouseEvent;
+use Porta\Plugin\Store\StoreAction;
+use Porta\Plugin\Store\StoreCategory;
+use Porta\Plugin\Store\StoreEntry;
+use Porta\Plugin\Store\StoreRow;
 use Porta\Settings\SettingsMouseRouter;
+use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Workbench\View\WheelAxis;
@@ -109,6 +115,7 @@ final class ViewPointerStagesTest extends TestCase
             $nav,
             new SettingsFormWidget($translator), // never attached: HitTester::rect() is null, a guaranteed miss
             new KeybindingsListWidget($translator), // same
+            new PluginStoreWidget($translator), // same — and wired in, the nav must still be reached
         );
 
         $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), 'a vertical notch over the hit pane scrolls it');
@@ -142,5 +149,72 @@ final class ViewPointerStagesTest extends TestCase
         );
 
         $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 3)), 'missing nav and form must not stop the scan before it reaches keys');
+    }
+
+    /** The store is a settings pane like the others: the wheel, a press and the pointer's tint reach it. */
+    public function testTheStorePageTakesTheWheelAPressAndTheHover(): void
+    {
+        $translator = new Translator('en');
+        $renderer = new Renderer(new StyleSheet());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), renderer: $renderer);
+        $store = new PluginStoreWidget($translator);
+        $crumbs = [];
+        $store->onCrumb(static function (string $id) use (&$crumbs): void {
+            $crumbs[] = $id;
+        });
+        $tui->add($store); // the only widget attached: it fills the whole screen
+        $tui->requestRender();
+        $tui->processRender();
+        $router = new SettingsMouseRouter(new HitTester($renderer), $tui, new SettingsNavWidget($translator), new SettingsFormWidget($translator), new KeybindingsListWidget($translator), $store);
+
+        $this->assertTrue($router->wheel(new WheelGesture($this->mouse(), WheelAxis::Vertical, 1)));
+        $onTitle = MouseEvent::parse("\x1b[<0;3;1M");
+        $this->assertInstanceOf(MouseEvent::class, $onTitle);
+        $tui->processRender();
+        Probe::set($tui, 'renderRequested', false);
+        $router->hover($onTitle); // tints the Settings crumb
+        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'a crumb that took the tint repaints');
+        Probe::set($tui, 'renderRequested', false);
+        $router->hover($onTitle);
+        $this->assertFalse(Probe::get($tui, 'renderRequested'), 'the same crumb again changes nothing, and repaints nothing');
+        $this->assertTrue($router->press($onTitle));
+        $this->assertSame(['general'], $crumbs);
+        $router->hover($this->mouse());
+        $this->assertSame($store, $tui->getFocus());
+    }
+
+    /**
+     * Each of the four things a hover can change repaints on its own: a
+     * store row's tint, and a page title's crumb tint.
+     */
+    public function testAHoverThatTintsOnlyOneThingStillRepaints(): void
+    {
+        $translator = new Translator('en');
+        $renderer = new Renderer(new StyleSheet());
+        $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), renderer: $renderer);
+        $store = new PluginStoreWidget($translator);
+        $store->setStore([new StoreRow(new StoreEntry('a/porta-b', 'b', 'B', 'A', '', StoreCategory::Other, '1'), StoreAction::Get)], false, 0);
+        $tui->add($store);
+        $tui->requestRender();
+        $tui->processRender();
+        $router = new SettingsMouseRouter(new HitTester($renderer), $tui, new SettingsNavWidget($translator), new SettingsFormWidget($translator), new KeybindingsListWidget($translator), $store);
+        $onRow = MouseEvent::parse("\x1b[<35;10;4M");
+        $this->assertInstanceOf(MouseEvent::class, $onRow);
+        Probe::set($tui, 'renderRequested', false);
+        $router->hover($onRow);
+        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'a store row took the tint');
+
+        $form = new SettingsFormWidget($translator);
+        $form->setRows([], [['label' => 'Settings', 'id' => 'general'], ['label' => 'General', 'id' => 'general']]);
+        $formTui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), renderer: $renderer);
+        $formTui->add($form);
+        $formTui->requestRender();
+        $formTui->processRender();
+        $formRouter = new SettingsMouseRouter(new HitTester($renderer), $formTui, new SettingsNavWidget($translator), $form, new KeybindingsListWidget($translator));
+        $onTitle = MouseEvent::parse("\x1b[<35;3;1M");
+        $this->assertInstanceOf(MouseEvent::class, $onTitle);
+        Probe::set($formTui, 'renderRequested', false);
+        $formRouter->hover($onTitle);
+        $this->assertTrue(Probe::get($formTui, 'renderRequested'), 'the form\'s crumb took the tint');
     }
 }

@@ -456,7 +456,10 @@ only ones you can hear: the rest of `Porta\Event` is internal.
 
 ## Installing, removing, disabling
 
-Open **Settings → Plugins** and use the form:
+To browse what is published, open **Settings → Plugins → Store**: see
+[The plugin store](plugin-store.md), which also says how to publish yours.
+To install a package by name, a git URL or a local directory, open
+**Settings → Plugins** and use the form:
 
 - **Install into** — choose the project or the global directory.
 - **Install plugin** — type a **`vendor/name` package** (installed straight

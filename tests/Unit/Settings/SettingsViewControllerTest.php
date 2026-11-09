@@ -36,6 +36,7 @@ use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginManager;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Store\StoreAssets;
 use Porta\Presence\Identity;
 use Porta\Search\FileIndex;
 use Porta\Settings\LiveSettingsApplier;
@@ -58,6 +59,7 @@ use Porta\Settings\SettingsProvenance;
 use Porta\Settings\SettingsRow;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsScopeRow;
+use Porta\Settings\SettingsStoreController;
 use Porta\Settings\SettingsViewController;
 use Porta\Settings\ShadowedWriteWarning;
 use Porta\Tests\Support\AttachedStyles;
@@ -67,7 +69,9 @@ use Porta\Tests\Support\FixedActiveFile;
 use Porta\Tests\Support\NavigatesSettings;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\Probe;
+use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\ReadsSettingsForm;
+use Porta\Tests\Support\StoreFixture;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestCompletionController;
 use Porta\Tests\Support\TestLiveKeybindings;
@@ -84,6 +88,7 @@ use Porta\Widget\CodeEditorWidget;
 use Porta\Widget\ContextMenu;
 use Porta\Widget\MenuBarWidget;
 use Porta\Widget\Settings\KeybindingsListWidget;
+use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Widget\Settings\SettingsFormWidget;
 use Porta\Widget\Settings\SettingsNavWidget;
 use Porta\Widget\StatusBarWidget;
@@ -110,6 +115,10 @@ use Symfony\Component\Tui\Widget\ContainerWidget;
 
 final class SettingsViewControllerTest extends TestCase
 {
+    use PumpsLoop;
+
+    private ?PluginStoreWidget $store = null;
+
     use NavigatesSettings;
     use ReadsSettingsForm;
 
@@ -161,7 +170,7 @@ final class SettingsViewControllerTest extends TestCase
         }
     }
 
-    private function controller(?ViewRegistry $views = null, ?array $sections = null): SettingsViewController
+    private function controller(?ViewRegistry $views = null, ?array $sections = null, ?StoreFixture $store = null): SettingsViewController
     {
         $this->project = new TempProject();
         $editWidget = new ContainerWidget();
@@ -171,6 +180,8 @@ final class SettingsViewControllerTest extends TestCase
 
         $this->nav = new SettingsNavWidget(new Translator('en'));
         $this->sectionEvents = new EventDispatcher();
+        $this->store = null === $store ? null : new PluginStoreWidget(new Translator('en'), events: $this->sectionEvents);
+        $this->store?->setId('settings-store');
         $this->form = new SettingsFormWidget(new Translator('en'), events: $this->sectionEvents);
         $this->form->setId('settings-form');
         $this->keymapList = new KeybindingsListWidget(new Translator('en'), events: $this->sectionEvents);
@@ -354,6 +365,7 @@ final class SettingsViewControllerTest extends TestCase
                 $this->nav,
                 $this->form,
                 $this->keymapList,
+                $this->store,
             ),
             $this->tui,
             // Same order the porta.settings_section tag priorities produce, with
@@ -392,6 +404,20 @@ final class SettingsViewControllerTest extends TestCase
                 new MenuOverlayController($renderer, $menuBar, $this->contextMenu, new MenuOverlayPanes([$this->form])),
                 $this->contextMenu,
             ),
+            store: $this->store,
+            storeController: null === $store
+                ? null
+                : new SettingsStoreController(
+                    $store->catalog,
+                    new StoreAssets($store->http->fetch(), null),
+                    $store->updates(),
+                    $store->installer,
+                    $store->lifecycle,
+                    $store->notifier,
+                    $store->translator,
+                    $scope,
+                    $this->sectionEvents,
+                ),
         );
         // Compiled from #[AsEventListener] in the container; wired by hand here.
         $this->sectionEvents->addListener(SettingsSectionRequested::class, $controller->onSectionRequested(...));
@@ -716,11 +742,11 @@ final class SettingsViewControllerTest extends TestCase
             $this->nav->handleInput("\x1b[B");
         }
 
-        // Keybindings is the one nav entry that is NOT a settings section: the
-        // view swaps in a different widget for it, and it has no SettingsRows
-        // to catalogue. Named here rather than silently filtered, so adding a
-        // second such entry has to come past this assertion.
-        $navIds = \array_values(\array_filter($navIds, static fn (string $id): bool => 'keybindings' !== $id));
+        // Keybindings and the plugin store are the nav entries that are NOT
+        // settings sections: the view swaps in a widget of their own, and they
+        // have no SettingsRows to catalogue. Named here rather than silently
+        // filtered, so adding another such entry has to come past this assertion.
+        $navIds = \array_values(\array_filter($navIds, static fn (string $id): bool => !\in_array($id, ['keybindings', 'store'], strict: true)));
 
         \sort($navIds);
         \sort($pages);
@@ -1287,5 +1313,61 @@ final class SettingsViewControllerTest extends TestCase
         $this->keymapList->render(new RenderContext(60, 10)); // the click maps against the drawn trail
         $this->keymapList->handleClick(0, 3);
         $this->assertSame('general', $this->nav->selectedId(), 'the keybindings page\'s Settings crumb too');
+    }
+
+    public function testTheStorePageMountsTheStoreAndFillsItFromTheCatalog(): void
+    {
+        $store = new StoreFixture();
+        $store->publish('acme/porta-rector', 'v1.1.0', ['title' => 'Rector']);
+        $store->installed('acme/porta-rector', 'v1.0.0');
+        $store->fill();
+        $controller = $this->controller(store: $store);
+        $controller->open();
+
+        $controller->onSectionRequested(new SettingsSectionRequested('store'));
+        $this->assertSame(['settings-store'], $this->ids($this->content));
+        $this->assertSame($this->store, $this->tui->getFocus(), 'the keyboard follows the page it was on');
+        $lines = \implode("\n", $this->store?->render(new RenderContext(100, 10)) ?? []);
+        $this->assertStringContainsString('Rector', $lines);
+        $this->assertStringContainsString('Updates (1)', $lines);
+        $this->assertStringContainsString('Store (1)', \implode("\n", $this->nav->render(new RenderContext(24, 24))), 'the nav counts the updates');
+
+        // Back on the form: the store keeps its count in the nav, and re-reads nothing.
+        $controller->onSectionRequested(new SettingsSectionRequested('general'));
+        $this->assertSame(['settings-form'], $this->ids($this->content));
+        $controller->refresh();
+        $this->assertSame(['settings-form'], $this->ids($this->content));
+    }
+
+    public function testTheStoresButtonsAndAssetsGoThroughTheController(): void
+    {
+        $store = new StoreFixture();
+        $store->publish('acme/porta-rector', store: ['title' => 'Rector', 'screenshots' => ['https://img.test/a.png']]);
+        $store->curate('{"acme/porta-rector": {}}');
+        $store->fill();
+        $store->http->bodies['https://img.test/a.png'] = "\x89PNG\r\n\x1a\nx";
+        $controller = $this->controller(store: $store);
+        $controller->openOn('store');
+        $this->assertSame($this->store, $this->tui->getFocus());
+        $this->store?->render(new RenderContext(100, 20));
+
+        $this->store?->handleInput("\r"); // the page: its changelog, README and screenshot are asked for
+        $this->assertContains('https://img.test/a.png', $store->http->asked());
+
+        $this->store?->handleInput("\r"); // Get, verified: installs at once
+        $this->await(static fn (): bool => [] !== $store->lifecycle->activated, what: 'the install');
+
+        $controller->refresh();
+        $this->assertSame('acme/porta-rector', $this->store?->detail(), 'a re-read keeps the page');
+        $this->store?->handleInput("\x1b"); // off the page, back on the shelf
+        $this->store?->handleInput('1');
+        $this->assertSame('general', $this->nav->selectedId());
+
+        $controller->onSectionRequested(new SettingsSectionRequested('store'));
+        $this->store?->handleInput("\t");
+        $this->assertSame($this->nav, $this->tui->getFocus());
+        $this->store?->handleInput('U');
+        $this->store?->handleInput("\x1b");
+        $this->assertFalse($controller->isOpen());
     }
 }

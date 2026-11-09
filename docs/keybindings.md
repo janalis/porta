@@ -102,6 +102,7 @@ settings.
 | `Ctrl+Shift+A` | Find Action (command palette) |
 | `Ctrl+Shift+E` | Search Everywhere |
 | `Ctrl+,` | Settings (inside: `Ctrl+F` finds a setting — or filters the Keybindings list in place, `R` resets the selected row, `2` jumps to Keybindings and `1` back to General, `[`/`]` change a value, `Tab` switches pane) |
+| `c` / `Shift+C`, `u`, `Shift+U` | In **Settings → Plugins → Store**: next / previous category, Discover ↔ Updates, update every plugin listed under Updates (`Space` presses the selected plugin's button, `Enter` opens its page — see [The plugin store](plugin-store.md)) |
 | `Ctrl+Alt+D` | Git view (changes, staging, history) |
 | `Ctrl+\`` / `Alt+F12` | Toggle the integrated terminal |
 | `Ctrl+Shift+\`` / `Alt+F11` | Open a new terminal session |

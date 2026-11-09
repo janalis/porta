@@ -20,7 +20,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "Psalm",
+                "category": "linters"
+            }
         }
     }
 }

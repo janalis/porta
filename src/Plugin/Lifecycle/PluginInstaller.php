@@ -121,9 +121,11 @@ final class PluginInstaller
      * `vendor/name` package, into the scope's plugin dir. Exactly one $onDone
      * call: a translated error, or the installed porta.php path.
      *
-     * @param \Closure(?string, ?string): void $onDone (?error, ?pluginFile)
+     * @param \Closure(?string, ?string): void $onDone  (?error, ?pluginFile)
+     * @param string|null                     $version a `vendor/name` package's exact release — the one the
+     *        store checked runs here; null lets composer pick the newest
      */
-    public function install(string $source, InstallScope $scope, \Closure $onDone): void
+    public function install(string $source, InstallScope $scope, \Closure $onDone, ?string $version = null): void
     {
         $root = null === $this->running ? $this->rootFor($scope) : null;
         if (null === $root || !$this->mayRunComposerIn($scope)) {
@@ -143,9 +145,10 @@ final class PluginInstaller
         $isDir = !$isUrl && \is_dir($source);
         $isPackageName = !$isUrl && !$isDir && 1 === \preg_match(self::PACKAGE_NAME_PATTERN, $source);
 
+        // A path or a git URL has no releases to pick from: only a package name takes $version.
         $require = match (true) {
             $isDir => $this->requireByPath(...),
-            $isPackageName => $this->requireByName(...),
+            $isPackageName => fn (string $source, string $base, string $root, \Closure $onDone) => $this->requireByName($source, $base, $root, $onDone, $version),
             $isUrl => $this->requireByGitUrl(...),
             default => null,
         };
@@ -258,7 +261,7 @@ final class PluginInstaller
      *
      * @param \Closure(?string, ?string): void $onDone
      */
-    private function requireByName(string $source, string $base, string $root, \Closure $onDone): void
+    private function requireByName(string $source, string $base, string $root, \Closure $onDone, ?string $version = null): void
     {
         $dest = $this->destination($base, $source, $onDone);
         if (null === $dest) {
@@ -273,7 +276,8 @@ final class PluginInstaller
         }
         $this->fs->mkdir($base);
         $packageName = $source;
-        $ok = $this->startComposer($composerDir, ['require', $packageName, '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use (
+        $constraint = null === $version ? $packageName : $packageName.':'.\ltrim($version, characters: 'v');
+        $ok = $this->startComposer($composerDir, ['require', $constraint, '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use (
             $composerDir,
             $root,
             $packageName,
@@ -700,6 +704,89 @@ final class PluginInstaller
         }
 
         return $plugins;
+    }
+
+    /**
+     * Every plugin installed as a package — `.porta/plugins/<name>` a symlink
+     * into the scope's composer project — with the package it is, the version
+     * composer installed, and whether that came from Packagist (the only kind
+     * a newer release updates). A hand-placed directory is no package.
+     *
+     * @return list<array{name: string, scope: InstallScope, dir: string, package: string, version: string, packagist: bool}>
+     */
+    public function packages(): array
+    {
+        $packages = [];
+        $versions = [];
+        foreach ($this->installed() as $copy) {
+            $root = InstallScope::Embedded === $copy['scope'] || !\is_link($copy['dir']) ? null : $this->rootFor($copy['scope']);
+            [$package] = null === $root ? [null] : $this->packageManifest($copy['dir']);
+            if (null === $root || null === $package) {
+                continue;
+            }
+            $versions[$copy['scope']->value] ??= $this->project->installedVersions($root);
+            $packages[] = [
+                'name' => $copy['name'],
+                'scope' => $copy['scope'],
+                'dir' => $copy['dir'],
+                'package' => $package,
+                'version' => $versions[$copy['scope']->value][$package] ?? '',
+                'packagist' => $this->project->fromPackagist($root, $package),
+            ];
+        }
+
+        return $packages;
+    }
+
+    /**
+     * Update the package-installed plugin $name in $scope: to exactly
+     * $version and whatever that release needs when one is named (a new
+     * constraint, so a new major is reachable — the store offers the newest
+     * release that runs here, and composer must not pick a newer one that
+     * does not), or as far as its constraint goes.
+     * Its own dependencies are installed again after, as on install:
+     * composer replaced its directory.
+     *
+     * The plugin's directory stays where it was, so nothing needs relinking.
+     * Swapping a RUNNING plugin for the new code is the caller's
+     * ({@see \Porta\Plugin\Lifecycle\PluginLifecycle::activateInstalled()}).
+     *
+     * @param \Closure(?string): void $onDone the translated error, or null on success
+     */
+    public function update(string $name, InstallScope $scope, ?string $version, \Closure $onDone): void
+    {
+        $root = InstallScope::Embedded === $scope ? null : $this->rootFor($scope);
+        $dest = null === $root ? null : $root.'/.porta/plugins/'.$name;
+        [$package] = null === $dest || !\is_link($dest) ? [null] : $this->packageManifest($dest);
+        $refusal = match (true) {
+            null !== $this->running => $this->translator->trans('Another install is already running'),
+            InstallScope::Embedded === $scope => $this->translator->trans('Built-in plugins update with Porta'),
+            !$this->mayRunComposerIn($scope) => $this->composerRefused(),
+            null === $package => $this->translator->trans('"%name%" was not installed from a package, so Porta cannot update it', ['%name%' => $name]),
+            default => null,
+        };
+        $composerDir = null === $refusal && null !== $root ? $this->project->ensureScaffold($root) : null;
+        if (null !== $refusal || null === $composerDir || null === $dest || null === $package) {
+            $onDone($refusal ?? $this->translator->trans('Cannot update "%name%"', ['%name%' => $name]));
+
+            return;
+        }
+        $args = null === $version
+            ? ['update', $package, '--with-dependencies']
+            : ['require', $package.':'.\ltrim($version, characters: 'v'), '--update-with-dependencies'];
+        $ok = $this->startComposer($composerDir, [...$args, '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use ($dest, $name, $onDone): void {
+            if (0 !== $code) {
+                $onDone($this->translator->trans('Cannot update "%name%"', ['%name%' => $name]));
+
+                return;
+            }
+            $this->finishInstall($dest, static function (?string $error) use ($onDone): void {
+                $onDone($error);
+            });
+        });
+        if (!$ok) {
+            $onDone($this->translator->trans('composer is not available'));
+        }
     }
 
     /**

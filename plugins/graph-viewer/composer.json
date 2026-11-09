@@ -68,7 +68,11 @@
                         "-version"
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "Graph Viewer",
+                "category": "viewers"
+            }
         }
     }
 }

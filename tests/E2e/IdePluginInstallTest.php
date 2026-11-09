@@ -178,7 +178,7 @@ final class IdePluginInstallTest extends TestCase
                         $tui->handleInput("\x1b[A"); // clamp to the top (General)
                     }
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\x1b[B"); // installee sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:installee'); // the installee sub-item, past the Store
                     $tui->handleInput("\t"); // nav → form
                     for ($i = 0; $i < 10; ++$i) {
                         $tui->handleInput("\x1b[A"); // clamp to the Enabled row: the page ends in Remove

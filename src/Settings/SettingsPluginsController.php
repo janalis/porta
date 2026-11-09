@@ -14,6 +14,9 @@ use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginSettings;
+use Porta\Plugin\Store\PluginUpdate;
+use Porta\Plugin\Store\PluginUpdates;
+use Porta\Plugin\Store\StoreCatalog;
 use Porta\Plugin\Tool\ToolCatalog;
 use Porta\Plugin\Tool\ToolJobs;
 use Porta\Plugin\Tool\ToolStatus;
@@ -45,6 +48,12 @@ final class SettingsPluginsController
 
     /** Prefix marking an index row; the rest of the key is the plugin whose page it opens. */
     private const string OPEN_PREFIX = 'pluginOpen:';
+
+    /** Prefix marking a store Update button; the rest is `<install scope>:<plugin>`. */
+    private const string UPDATE_PREFIX = 'pluginUpdate:';
+
+    /** A bundled plugin's offer of the package its tool's owners publish in its place. */
+    private const string TAKEOVER_KEY = 'pluginTakeover';
 
     /** Prefix marking a Remove button; the rest is `<install scope>:<plugin>`. */
     private const string REMOVE_PREFIX = 'pluginRemove:';
@@ -81,6 +90,10 @@ final class SettingsPluginsController
         // Trailing for the same reason: what may load here, so an untrusted
         // project's own copy is not the one described.
         private readonly ?PluginLoader $loader = null,
+        // Trailing for the same reason: the store's newer releases, and the
+        // packages that take a bundled plugin over.
+        private readonly ?PluginUpdates $storeUpdates = null,
+        private readonly ?StoreCatalog $catalog = null,
     ) {}
 
     /** @return list<SettingsRow> */
@@ -279,7 +292,7 @@ final class SettingsPluginsController
         // A plugin that ships its own docs offers them last, after its knobs
         // and buttons — a disabled one too, which is when reading what it
         // does is most useful.
-        return [...$rows, ...$this->docsRow($name), ...$this->removeRows($name)];
+        return [...$rows, ...$this->docsRow($name), ...$this->takeoverRows($name), ...$this->updateRows($name), ...$this->removeRows($name)];
     }
 
     /**
@@ -330,6 +343,60 @@ final class SettingsPluginsController
         }
 
         return [] === $parts ? $this->translator->trans('installed') : \implode(' · ', $parts);
+    }
+
+    /**
+     * An Update button per installed copy of $name the store has a newer
+     * release of — the store's own Update, here where the plugin is.
+     *
+     * @return list<SettingsRow>
+     */
+    private function updateRows(string $name): array
+    {
+        $rows = [];
+        foreach ($this->storeUpdates?->outdated() ?? [] as $update) {
+            if ($name !== $update->name) {
+                continue;
+            }
+            $working = $this->storeUpdates?->isUpdating($name, $update->scope) ?? false;
+            $rows[] = new SettingsRow(
+                key: self::UPDATE_PREFIX.$update->scope->value.':'.$name,
+                label: $this->translator->trans('%from% → %to% available', ['%from%' => $update->from, '%to%' => $update->to]),
+                kind: SettingsRowKind::Action,
+                value: $this->translator->trans($working ? 'Working…' : 'Update'),
+                restart: false,
+                hint: $this->translator->trans('reloads live once updated'),
+                fieldset: $this->translator->trans('Installed'),
+                disabled: $working,
+            );
+        }
+
+        return $rows;
+    }
+
+    /**
+     * For a bundled plugin whose tool's owners publish their own in its
+     * place: the offer to get theirs, which shadows this copy.
+     *
+     * @return list<SettingsRow>
+     */
+    private function takeoverRows(string $name): array
+    {
+        $package = InstallScope::Embedded === $this->scopeOf($name) ? $this->catalog?->replacing($name) : null;
+        // One that does not run here is not offered: installed, it would
+        // shadow the working built-in copy and then be declined at load.
+        if (null === $package || !$package->compatible) {
+            return [];
+        }
+
+        return [new SettingsRow(
+            key: self::TAKEOVER_KEY,
+            label: $this->translator->trans('Its maintainers publish %package%', ['%package%' => $package->package]),
+            kind: SettingsRowKind::Action,
+            value: $this->translator->trans('Get'),
+            restart: false,
+            hint: $this->translator->trans('installed, it takes the place of the built-in copy'),
+        )];
     }
 
     /** @return list<SettingsRow> the Documentation row, when $name ships a guide */
@@ -387,6 +454,8 @@ final class SettingsPluginsController
             \str_starts_with($key, self::TOOL_PREFIX) => $this->toolPressed($name, \substr($key, offset: \strlen(self::TOOL_PREFIX))),
             'pluginDocs' === $key => $this->openDocs($name),
             \str_starts_with($key, self::REMOVE_PREFIX) => $this->removalPressed($key),
+            \str_starts_with($key, self::UPDATE_PREFIX) => $this->updatePressed($key),
+            self::TAKEOVER_KEY === $key => $this->takeoverPressed($name),
             \str_starts_with($key, self::SETTING_PREFIX) => $this->changeSetting($name, \substr($key, offset: \strlen(self::SETTING_PREFIX)), $value),
             default => null,
         };
@@ -454,17 +523,40 @@ final class SettingsPluginsController
         $this->armed = null;
     }
 
-    private function install(string $source): void
+    /** @param string|null $version the exact release, for a package the store checked */
+    private function install(string $source, ?string $version = null): void
     {
         $this->armed = null;
         if ('' === $source) {
             return;
         }
-        $this->installer->install($source, InstallScope::of($this->scope->current()), function (?string $error, ?string $file): void {
-            $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed');
-            $this->notifier->flash($message, 5.0);
-            $this->lifecycle->refreshView();
-        });
+        $this->installer->install(
+            $source,
+            InstallScope::of($this->scope->current()),
+            function (?string $error, ?string $file): void {
+                $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed');
+                $this->notifier->flash($message, 5.0);
+                $this->lifecycle->refreshView();
+            },
+            $version,
+        );
+    }
+
+    private function updatePressed(string $key): void
+    {
+        $this->armed = null;
+        $update = \array_find($this->storeUpdates?->outdated() ?? [], static fn (PluginUpdate $update): bool => self::UPDATE_PREFIX.$update->scope->value.':'.$update->name === $key);
+        if (null !== $update) {
+            $this->storeUpdates?->update($update);
+        }
+    }
+
+    private function takeoverPressed(string $name): void
+    {
+        $package = $this->catalog?->replacing($name);
+        if (null !== $package && $package->compatible) {
+            $this->install($package->package, $package->version);
+        }
     }
 
     private function removalPressed(string $key): void

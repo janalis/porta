@@ -108,7 +108,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                 150 => function ($tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // The plugin's settings page: set the binary → the menu entry enables.
                     $tui->handleInput("\t"); // form → nav (on Plugins)
-                    $tui->handleInput("\x1b[B"); // → the bundled sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // → the bundled sub-item, past the Store
                     $this->awaitPainted($tui, $terminal, '   bundled');
                     $this->assertStringContainsString('   bundled', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the nav lists the plugin as an indented sub-item');
                     $this->assertStringNotContainsString('Remove', \implode("\n", $this->screenGrid($tui, $terminal)), 'a bundled plugin is switched off, never removed');
@@ -139,7 +139,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     $tui->handleInput("\t"); // form → nav
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\x1b[B"); // bundled sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // the bundled sub-item, past the Store
                     $tui->handleInput("\t"); // nav → form
                     $tui->handleInput("\x1b[A"); // clamp to the Enabled row
                     $tui->handleInput("\x1b[A");
@@ -276,7 +276,7 @@ final class IdeEmbeddedPluginsTest extends TestCase
                     $commands->run('ide_settings');
                     $tui->handleInput("\t");
                     $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $tui->handleInput("\x1b[B"); // bundled sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:bundled'); // the bundled sub-item, past the Store
                     $this->frame($tui);
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertMatchesRegularExpression('/Enabled\s+\[ \]/u', $screen, 'listed and re-enableable: an unchecked box, one row on this compact screen');

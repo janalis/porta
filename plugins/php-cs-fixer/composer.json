@@ -20,7 +20,11 @@
                         ]
                     ]
                 }
-            ]
+            ],
+            "store": {
+                "title": "PHP CS Fixer",
+                "category": "linters"
+            }
         }
     }
 }
