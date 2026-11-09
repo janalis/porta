@@ -7,6 +7,25 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Plugin store**: **Settings → Plugins → Store** (or **Plugins: Open Store**,
+  also in the File menu) lists every Porta plugin published on Packagist. Browse
+  the Discover and Updates tabs by category or name. Each plugin has a page
+  with its screenshots, what changed in its newest release, its README and its
+  details, and one button: Get, Update, Open, Built-in or Enable. A plugin Porta
+  has not verified asks twice before it installs, since it runs as PHP with
+  your permissions. See [The plugin store](docs/plugin-store.md).
+- **Plugin updates**: Porta checks for newer releases of the plugins you
+  installed from the store, weekly by default (`pluginUpdateCheck`), and can
+  install them as soon as it finds them (`pluginAutoUpdate`). An updated plugin
+  that is running reloads at once, without a restart. If it had already loaded
+  some of its own code, the update says a restart finishes it. An outdated
+  plugin's Settings page has its own Update button too.
+- **Publishing a plugin**: register yours in the store with a pull request
+  adding it to `store/plugins.json`; CI checks that you own the package. The
+  owner of a tool a bundled plugin drives (mago, phpstan, symfony-lsp, …) can
+  publish their own plugin in its place. The store then offers theirs, and the
+  bundled plugin's Settings page points to it.
+
 - `porta --self-update` (and **Settings → Command line → Porta itself**) now
   updates every install: through `brew upgrade` for Homebrew and `composer
   global update` for a global Composer install. A checkout or a project's
@@ -15,6 +34,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Installing a plugin under the name of one that was running — a copy of a
+  bundled plugin, say — failed with "duplicate plugin name". It now replaces
+  the running one at once.
 - `porta --self-update` from Homebrew replaced the phar in brew's Cellar behind
   brew's back. Through a `porta` that is a link to the phar, it replaced the
   link with a plain file. It now leaves Homebrew's phar to brew and updates the
