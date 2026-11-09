@@ -12,6 +12,8 @@ use Porta\Console\Workspace;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
 use Porta\Container\ToolMode;
+use Porta\Install\Installation;
+use Porta\Install\InstallMethod;
 use Porta\Tests\Support\Presence;
 use Porta\Tests\Support\Probe;
 use Porta\Tests\Support\TempProject;
@@ -400,12 +402,19 @@ final class PortaCommandTest extends TestCase
 
     /**
      * A command whose --self-update talks to a scripted `curl`: the API says
-     * $latest, and serves the two assets it lists. It runs as the phar $phar.
+     * $latest, and serves the two assets it lists. It runs as the phar $phar,
+     * or as $installation says; brew and composer are $manager, which answers
+     * an exit code (they are not run when there is none).
+     *
+     * @param (\Closure(list<string>): int)|null $manager
      */
-    private function updater(string $version, string $latest, ?string $phar, int $newPharRuns = 0): PortaCommand
+    private function updater(string $version, string $latest, ?string $phar, int $newPharRuns = 0, ?Installation $installation = null, ?\Closure $manager = null): PortaCommand
     {
         return new PortaCommand(
-            process: static function (array $command, ?string $stdin = null) use ($latest, $newPharRuns): array {
+            process: static function (array $command, ?string $stdin = null) use ($latest, $newPharRuns, $manager): array {
+                if (\in_array($command[0], ['brew', 'composer'], strict: true)) {
+                    return [null === $manager ? 127 : $manager($command), ''];
+                }
                 $url = (string) \end($command);
                 $out = 'curl' === $command[0] ? \array_search('-o', $command, strict: true) : false;
                 if (false !== $out && \str_starts_with($command[$out + 1], '/')) {
@@ -425,6 +434,7 @@ final class PortaCommandTest extends TestCase
             },
             version: $version,
             phar: $phar ?? '',
+            installation: $installation,
         );
     }
 
@@ -437,6 +447,19 @@ final class PortaCommandTest extends TestCase
 
         $this->assertStringContainsString('porta updated: v1.2.0 → v1.3.0', $tester->getDisplay());
         $this->assertSame('NEW', \file_get_contents($dir->path('porta.phar')));
+    }
+
+    public function testAPharReachedThroughALinkIsReplacedWhereItLivesAndTheLinkKept(): void
+    {
+        $dir = new TempProject(['Downloads/porta.phar' => 'OLD']);
+        \mkdir($dir->path('bin'));
+        \symlink($dir->path('Downloads/porta.phar'), $dir->path('bin/porta'));
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('bin/porta')));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
+
+        $this->assertTrue(\is_link($dir->path('bin/porta')), 'the link is still a link');
+        $this->assertSame('NEW', \file_get_contents($dir->path('Downloads/porta.phar')));
     }
 
     public function testSelfUpdateDryRunOnlySaysWhatIsThere(): void
@@ -472,12 +495,121 @@ final class PortaCommandTest extends TestCase
         $this->assertSame('OLD', \file_get_contents($dir->path('porta.phar')));
     }
 
-    public function testOnlyAPharUpdatesItself(): void
+    /** A Homebrew install: the Cellar's 1.2.0 phar behind brew's `bin/porta` link. */
+    private static function cellar(): TempProject
     {
-        $tester = new CommandTester($this->updater('0.1.0', 'v1.3.0', null));
+        $brew = new TempProject(['Cellar/porta/1.2.0/bin/porta' => 'OLD', 'Cellar/porta/1.3.0/bin/porta' => 'NEW']);
+        \mkdir($brew->path('bin'));
+        \symlink($brew->path('Cellar/porta/1.2.0/bin/porta'), $brew->path('bin/porta'));
+
+        return $brew;
+    }
+
+    public function testAHomebrewPharIsUpgradedByBrewNeverSwappedBehindItsBack(): void
+    {
+        $brew = self::cellar();
+        $ran = [];
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $brew->path('bin/porta'), manager: static function (array $command) use ($brew, &$ran): int {
+            $ran[] = \implode(' ', $command);
+            \unlink($brew->path('bin/porta'));
+            \symlink($brew->path('Cellar/porta/1.3.0/bin/porta'), $brew->path('bin/porta'));
+
+            return 0;
+        }));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
+
+        $this->assertSame(['brew upgrade janalis/tap/porta'], $ran);
+        $this->assertStringContainsString('porta updated: v1.2.0 → v1.3.0', $tester->getDisplay());
+        $this->assertSame('OLD', \file_get_contents($brew->path('Cellar/porta/1.2.0/bin/porta')), 'the file is brew\'s, left alone');
+        $this->assertTrue(\is_link($brew->path('bin/porta')));
+    }
+
+    public function testABrewUpgradeThatChangedNothingIsNotReportedAsAnUpdate(): void
+    {
+        $brew = self::cellar();
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $brew->path('bin/porta'), manager: static fn (): int => 0));
 
         $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
-        $this->assertStringContainsString('composer global update janalis/porta', \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '');
+
+        $said = \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '';
+        $this->assertStringContainsString('`brew upgrade janalis/tap/porta` left porta as it was, though v1.3.0 is out — it may not have reached the Homebrew tap yet', $said);
+        $this->assertStringNotContainsString('porta updated', $said);
+    }
+
+    public function testADryRunOfAHomebrewInstallRunsNothing(): void
+    {
+        $brew = self::cellar();
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $brew->path('bin/porta'), manager: function (): int {
+            $this->fail('brew ran on a dry run');
+        }));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true, '--dry-run' => true]));
+        $this->assertStringContainsString('porta v1.2.0 can be updated to v1.3.0', $tester->getDisplay());
+    }
+
+    public function testAGlobalComposerInstallIsUpdatedByComposer(): void
+    {
+        $home = new TempProject(['vendor/composer/installed.php' => '<?php return [1];']);
+        $ran = [];
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', null, installation: new Installation(InstallMethod::ComposerGlobal, $home->dir), manager: static function (array $command) use (
+            $home,
+            &$ran,
+        ): int {
+            $ran[] = \implode(' ', $command);
+            $home->write('vendor/composer/installed.php', '<?php return [2];');
+
+            return 0;
+        }));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
+
+        $this->assertSame(['composer global update janalis/porta --no-interaction'], $ran);
+        $this->assertStringContainsString('porta updated: v1.2.0 → v1.3.0', $tester->getDisplay());
+    }
+
+    public function testAFailedComposerUpdateSaysWhatFailed(): void
+    {
+        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', null, installation: new Installation(InstallMethod::ComposerGlobal, '/nowhere'), manager: static fn (): int => 2));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+
+        $this->assertStringContainsString(
+            'porta: self-update: `composer global update janalis/porta --no-interaction` failed (exit 2); run it yourself to see why.',
+            \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '',
+        );
+    }
+
+    public function testACheckoutIsToldHowAndNothingRuns(): void
+    {
+        // No phar and no installation handed in: this very checkout is read.
+        $tester = new CommandTester($this->updater('0.1.0', 'v1.3.0', null, manager: function (): int {
+            $this->fail('a checkout is never updated for its user');
+        }));
+
+        $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
+
+        $checkout = (string) \realpath(\dirname(__DIR__, levels: 3));
+        $said = \preg_replace('/\s+/', replacement: ' ', subject: $tester->getDisplay()) ?? '';
+        $this->assertStringContainsString('porta 0.1.0 can be updated to v1.3.0.', $said);
+        $this->assertStringContainsString(\sprintf('This porta is the git checkout at %1$s: update it with `git -C %1$s pull --ff-only && composer install --working-dir=%1$s`.', $checkout), $said);
+    }
+
+    public function testAProjectsDependencyIsToldHowOnADryRunWithoutFailing(): void
+    {
+        $tester = new CommandTester($this->updater('0.1.0', 'v1.3.0', null, installation: new Installation(InstallMethod::ComposerProject, '/work/app')));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true, '--dry-run' => true]));
+        $this->assertStringContainsString('This porta is a dependency of the project at /work/app: update it with `composer update janalis/porta --working-dir=/work/app`.', $tester->getDisplay());
+    }
+
+    public function testACurrentCheckoutHasNothingToBeToldAbout(): void
+    {
+        $tester = new CommandTester($this->updater('v1.3.0', 'v1.3.0', null, installation: new Installation(InstallMethod::Checkout, '/work/porta')));
+
+        $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
+        $this->assertStringContainsString('porta v1.3.0 is up to date', $tester->getDisplay());
+        $this->assertStringNotContainsString('update it with', $tester->getDisplay());
     }
 
     /** @return iterable<string, array{string, bool}> */

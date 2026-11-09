@@ -347,8 +347,9 @@ and a click on `Settings` or `Plugins` goes to that page.
   removed from here: the `porta` command (a symlink, `~/.local/bin/porta`
   unless one is already on your `PATH`; a `porta` put there some other way is
   shown and left alone), Porta as [git's difftool and
-  mergetool](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool), and — for the phar —
-  updating Porta itself (`--self-update`, run in the background). A removal
+  mergetool](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool), and updating
+  Porta itself (`--self-update`, run in the background — for a checkout or a
+  project's dependency, the row only shows the command). A removal
   takes two presses.
 - **Plugins** — install (git URL or local path, project or global scope) and
   remove plugins; see [plugins.md](plugins.md).

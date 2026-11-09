@@ -117,7 +117,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
 
     $services = $container->services();
 
-    // Private by default: the seven fully-non-service locations are excluded
+    // Private by default: the eight fully-non-service locations are excluded
     // from discovery outright (see the load() below); the remaining non-service
     // classes in MIXED directories (closure-wired controllers, per-buffer
     // objects, VOs beside their services) still register private and are pruned
@@ -151,7 +151,10 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
     // Autoregister every Porta\ class except the orchestrator, the container
     // factory, and the measured 100%-non-service tiers (events, widget-support
     // DTOs/enums/traits, the stateless render tier, the console entrypoint,
-    // the JSON grammars (Highlight/Json) — zero container-built classes in
+    // the JSON grammars (Highlight/Json), Porta outside the IDE (Install/:
+    // the link, git's tools, how it was installed — every one built with
+    // `new`, and a nullable Install/ parameter must fall to its default)
+    // — zero container-built classes in
     // each). A class
     // in one of these that ever becomes a real service must be un-excluded
     // here; that edit is the review point. Mixed directories (Overlay/Region,
@@ -165,6 +168,7 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
             '../src/Console/',
             '../src/Event/',
             '../src/Highlight/Json/',
+            '../src/Install/',
             '../src/Widget/Render/',
             '../src/Widget/Support/',
         ]);

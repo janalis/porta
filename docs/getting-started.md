@@ -26,13 +26,9 @@ latest [release](https://github.com/janalis/porta/releases), then:
 ```bash
 curl -fsSLO https://github.com/janalis/porta/releases/latest/download/porta.phar
 install -m 755 porta.phar ~/.local/bin/porta
-porta --self-update   # later: replace it with the latest release
 ```
 
-`--self-update` checks the release's SHA-256, runs the new phar once, and only
-then swaps it in; `--self-update --dry-run` only says whether there is one.
-A `GH_TOKEN` or `GITHUB_TOKEN` in the environment is sent along, which only
-lifts GitHub's anonymous rate limit. To build it yourself instead:
+To build it yourself instead:
 `composer install && composer build:phar`, which fetches
 [Box](https://github.com/box-project/box) into `build/` the first time.
 
@@ -58,6 +54,26 @@ installs, updates or removes the `porta` link, and Porta as git's difftool and
 mergetool. From a shell, `porta --git-setup` makes it git's tools, and
 `porta --diff a.php b.php` compares two files by hand — see
 [the git guide](../plugins/git/docs/README.md#as-gits-difftool-and-mergetool).
+
+### Updating
+
+`porta --self-update` compares with the latest release and updates Porta the
+way it was installed; `porta --self-update --dry-run` only says whether there
+is a newer one.
+
+| Installed as | `--self-update` |
+| --- | --- |
+| the phar | checks the release's SHA-256, runs the new phar once, and only then swaps it in — the file itself, when `porta` is a link to it |
+| Homebrew | runs `brew upgrade janalis/tap/porta` (the phar in brew's Cellar is brew's to replace) |
+| Composer, globally | runs `composer global update janalis/porta` |
+| a project's dependency | prints `composer update janalis/porta` for that project, and changes nothing |
+| a checkout | prints `git pull --ff-only && composer install`, and changes nothing |
+
+Homebrew's tap and Packagist follow a release by a few minutes; an update run
+before they have it says so rather than claiming success. A `GH_TOKEN` or
+`GITHUB_TOKEN` in the environment is sent along to GitHub, which only lifts
+its anonymous rate limit. **Settings → Command line → Porta itself** runs the
+same update in the background.
 
 ## Language server
 

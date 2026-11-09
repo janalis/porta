@@ -9,6 +9,8 @@ use Porta\Install\CommandLink;
 use Porta\Install\CommandLinkStatus;
 use Porta\Install\GitToolSetup;
 use Porta\Install\GitToolStatus;
+use Porta\Install\Installation;
+use Porta\Install\InstallMethod;
 use Porta\Install\PortaBinary;
 use Porta\Settings\SettingsPage;
 use Porta\Settings\SettingsRow;
@@ -22,8 +24,8 @@ use Symfony\Component\Process\Process;
 
 /**
  * The Command line page: Porta outside the IDE — the `porta` command on PATH,
- * Porta as git's difftool and mergetool, and (for a phar) updating Porta
- * itself. Each one is installed, updated and removed from here; what the page
+ * Porta as git's difftool and mergetool, and updating Porta itself the way
+ * it was installed. Each one is installed, updated and removed from here; what the page
  * shows is read afresh every time its rows are built, so a change made from a
  * shell meanwhile is what the page says.
  *
@@ -46,6 +48,9 @@ final class CommandLineSection implements SettingsSection
 
     private const string UPDATE_SLOT = 'self-update';
 
+    /** Seconds an update may take: `brew upgrade` refreshes its taps first, and may upgrade PHP along. */
+    private const float UPDATE_TIMEOUT = 900.0;
+
     /** The removal key waiting for its second press. */
     private ?string $armed = null;
 
@@ -53,13 +58,14 @@ final class CommandLineSection implements SettingsSection
 
     /**
      * @param string|null $binary the binary installs point at; null asks {@see PortaBinary}
-     * @param string|null $phar   the phar an update replaces, '' for none; null asks {@see PortaBinary}
+     * @param Installation|null $installation how this Porta was installed, which the update follows; null reads it
+     *                                        off {@see PortaBinary}
      */
     public function __construct(
         private readonly Translator $translator,
         private readonly Notifier $notifier,
         private readonly ?string $binary = null,
-        private readonly ?string $phar = null,
+        private readonly ?Installation $installation = null,
     ) {}
 
     /** @return list<SettingsPage> */
@@ -197,7 +203,8 @@ final class CommandLineSection implements SettingsSection
 
     private function updateRow(): SettingsRow
     {
-        $phar = $this->phar ?? PortaBinary::phar();
+        $installation = $this->installation();
+        $command = ['%command%' => $installation->commandLine()];
 
         return new SettingsRow(
             key: self::UPDATE,
@@ -205,11 +212,15 @@ final class CommandLineSection implements SettingsSection
             kind: SettingsRowKind::Action,
             value: $this->translator->trans('Update'),
             restart: false,
-            hint: '' !== $phar
-                ? $this->translator->trans('Replaces %path% with the latest release', ['%path%' => $phar])
-                : $this->translator->trans('This Porta runs from a checkout or Composer: update it with git pull or composer global update'),
+            hint: match ($installation->method) {
+                InstallMethod::Phar => $this->translator->trans('Replaces %path% with the latest release', ['%path%' => self::shown($installation->path)]),
+                InstallMethod::Homebrew, InstallMethod::ComposerGlobal => $this->translator->trans('Runs %command%', $command),
+                // Said from where it is run, without the path: the page is about this Porta.
+                InstallMethod::ComposerProject => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'composer update '.Installation::PACKAGE]),
+                InstallMethod::Checkout => $this->translator->trans('Update it from a shell: %command%', ['%command%' => 'git pull --ff-only && composer install']),
+            },
             fieldset: $this->translator->trans('Updates'),
-            disabled: '' === $phar,
+            disabled: !$installation->method->updatesItself(),
         );
     }
 
@@ -232,30 +243,32 @@ final class CommandLineSection implements SettingsSection
     }
 
     /**
-     * `porta --self-update` against the phar, as a child process: it talks to
-     * GitHub, which the loop cannot wait on. Whether it replaced anything is
-     * read off the phar itself, not its output; the output is what it said.
+     * `porta --self-update`, as a child process: it talks to GitHub, and may
+     * run brew or Composer, none of which the loop can wait on. Whether it
+     * changed anything is read off the install itself, not its output; the
+     * output is what it said.
      */
     private function selfUpdate(): void
     {
-        $phar = $this->phar ?? PortaBinary::phar();
+        $installation = $this->installation();
         match (true) {
-            '' === $phar => null, // the row is inert then
+            !$installation->method->updatesItself() => null, // the row is inert then
             null !== $this->update => $this->notifier->warn($this->translator->trans('An update is already running')),
-            default => $this->startSelfUpdate($phar),
+            default => $this->startSelfUpdate($installation),
         };
     }
 
-    private function startSelfUpdate(string $phar): void
+    private function startSelfUpdate(Installation $installation): void
     {
-        $before = \hash_file('xxh128', $phar);
-        $this->update = new AsyncProcess([\PHP_BINARY, $phar, '--self-update', '--no-ansi'], \dirname($phar), captureStderr: true, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
-        $started = $this->update->start(function (int $code, string $out) use ($phar, $before): void {
+        $binary = $this->binary ?? PortaBinary::path();
+        $before = $installation->fingerprint();
+        $this->update = new AsyncProcess([\PHP_BINARY, $binary, '--self-update', '--no-ansi'], \dirname($binary), captureStderr: true, timeout: self::UPDATE_TIMEOUT);
+        $started = $this->update->start(function (int $code, string $out) use ($installation, $before): void {
             $said = self::said($out."\n".(string) $this->update?->errorOutput());
             $this->update = null;
             match (true) {
                 0 !== $code => $this->notifier->error($said, 8.0, self::UPDATE_SLOT),
-                \hash_file('xxh128', $phar) !== $before => $this->notifier->success($said.' '.$this->translator->trans('Restart Porta to use it.'), 8.0, self::UPDATE_SLOT),
+                $installation->fingerprint() !== $before => $this->notifier->success($said.' '.$this->translator->trans('Restart Porta to use it.'), 8.0, self::UPDATE_SLOT),
                 default => $this->notifier->success($said, 5.0, self::UPDATE_SLOT),
             };
         });
@@ -270,7 +283,7 @@ final class CommandLineSection implements SettingsSection
             // @codeCoverageIgnoreEnd
         }
         // Up for as long as the update runs: its outcome replaces it.
-        $this->notifier->flash($this->translator->trans('Looking for a newer Porta…'), 600.0, self::UPDATE_SLOT);
+        $this->notifier->flash($this->translator->trans('Looking for a newer Porta…'), self::UPDATE_TIMEOUT, self::UPDATE_SLOT);
     }
 
     /** What a console command said, on one line, without the box an error is drawn in. */
@@ -285,6 +298,11 @@ final class CommandLineSection implements SettingsSection
         $home = \rtrim((string) \getenv('HOME'), characters: '/');
 
         return '' !== $home && \str_starts_with($path, $home.'/') ? '~'.\substr($path, \strlen($home)) : $path;
+    }
+
+    private function installation(): Installation
+    {
+        return $this->installation ?? Installation::detect(PortaBinary::phar(), PortaBinary::packageDir(), \getenv());
     }
 
     private function link(): CommandLink

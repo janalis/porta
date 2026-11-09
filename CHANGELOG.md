@@ -5,6 +5,21 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- `porta --self-update` (and **Settings → Command line → Porta itself**) now
+  updates every install: through `brew upgrade` for Homebrew and `composer
+  global update` for a global Composer install. A checkout or a project's
+  dependency is told the command to run. Before, only a downloaded phar could
+  update itself.
+
+### Fixed
+
+- `porta --self-update` from Homebrew replaced the phar in brew's Cellar behind
+  brew's back. Through a `porta` that is a link to the phar, it replaced the
+  link with a plain file. It now leaves Homebrew's phar to brew and updates the
+  file a link points to.
+
 ## [0.1.5] - 2026-11-08
 
 ### Security

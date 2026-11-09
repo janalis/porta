@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Settings\Section;
 
 use PHPUnit\Framework\TestCase;
 use Porta\I18n\Translator;
+use Porta\Install\Installation;
+use Porta\Install\InstallMethod;
 use Porta\Overlay\State\Toast;
 use Porta\Overlay\State\ToastCenter;
 use Porta\Settings\Section\CommandLineSection;
@@ -69,7 +71,8 @@ final class CommandLineSectionTest extends TestCase
         $_ENV[$name] = $value;
     }
 
-    private function section(?string $phar = ''): CommandLineSection
+    /** A section whose Porta is $installation (a checkout of its own by default), run as $binary. */
+    private function section(?Installation $installation = null, ?string $binary = null): CommandLineSection
     {
         $tui = TestTui::create(80, 24);
         $this->toasts = new ToastCenter(new FakeScheduler(), $tui);
@@ -77,8 +80,8 @@ final class CommandLineSectionTest extends TestCase
         return new CommandLineSection(
             new Translator('en'),
             new Notifier(new StatusBarWidget(), $tui, toasts: $this->toasts),
-            $this->home->path('checkout/bin/porta'),
-            $phar,
+            $binary ?? $this->home->path('checkout/bin/porta'),
+            $installation ?? new Installation(InstallMethod::Checkout, $this->home->path('checkout')),
         );
     }
 
@@ -233,13 +236,16 @@ final class CommandLineSectionTest extends TestCase
         $this->assertSame('git is not installed', $row->hint);
     }
 
-    public function testOutsideAPharUpdatingIsLeftToGitOrComposer(): void
+    public function testACheckoutOrAProjectsDependencyIsOnlyToldHowToUpdate(): void
     {
         $section = $this->section();
         $row = self::rows($section)['cli:update'];
 
         $this->assertTrue($row->disabled);
-        $this->assertStringContainsString('git pull or composer global update', (string) $row->hint);
+        $this->assertSame('Update it from a shell: git pull --ff-only && composer install', $row->hint);
+        $dependency = self::rows($this->section(new Installation(InstallMethod::ComposerProject, '/work/app')))['cli:update'];
+        $this->assertTrue($dependency->disabled);
+        $this->assertSame('Update it from a shell: composer update janalis/porta', $dependency->hint);
         $section->change(CommandLineSection::ID, 'cli:update', 'Update');
         $this->assertSame([], $this->toasts->toasts());
     }
@@ -260,8 +266,8 @@ final class CommandLineSectionTest extends TestCase
     public function testAnUpdateRunsTheSelfUpdateAndSaysToRestart(): void
     {
         $phar = $this->phar('porta updated: v0.1.0 → v0.2.0.', replace: true);
-        $section = $this->section($phar);
-        $this->assertStringContainsString('Replaces '.$phar, (string) self::rows($section)['cli:update']->hint);
+        $section = $this->section(new Installation(InstallMethod::Phar, $phar), $phar);
+        $this->assertSame('Replaces ~/porta.phar with the latest release', self::rows($section)['cli:update']->hint, 'under the home, from ~');
 
         $section->change(CommandLineSection::ID, 'cli:update', 'Update');
         $this->assertSame('Looking for a newer Porta…', $this->lastToast());
@@ -275,7 +281,8 @@ final class CommandLineSectionTest extends TestCase
 
     public function testAnUpdateWithNothingNewSaysWhatItSaid(): void
     {
-        $section = $this->section($this->phar('porta v0.2.0 is up to date (latest release: v0.2.0).'));
+        $phar = $this->phar('porta v0.2.0 is up to date (latest release: v0.2.0).');
+        $section = $this->section(new Installation(InstallMethod::Phar, $phar), $phar);
 
         $section->change(CommandLineSection::ID, 'cli:update', 'Update');
 
@@ -285,12 +292,38 @@ final class CommandLineSectionTest extends TestCase
 
     public function testAFailedUpdateShowsItsErrorOnOneLine(): void
     {
-        $section = $this->section($this->phar("  [ERROR] porta: self-update: gh could not read\n          the latest release", code: 1));
+        $phar = $this->phar("  [ERROR] porta: self-update: gh could not read\n          the latest release", code: 1);
+        $section = $this->section(new Installation(InstallMethod::Phar, $phar), $phar);
 
         $section->change(CommandLineSection::ID, 'cli:update', 'Update');
 
         $this->await(fn (): bool => \str_contains($this->lastToast(), 'self-update'), what: 'the update to fail');
         $this->assertSame('porta: self-update: gh could not read the latest release', $this->lastToast());
+    }
+
+    public function testBrewIsNamedAsWhatTheUpdateRuns(): void
+    {
+        $row = self::rows($this->section(new Installation(InstallMethod::Homebrew, '/opt/homebrew/Cellar/porta/0.1.5/bin/porta')))['cli:update'];
+
+        $this->assertFalse($row->disabled);
+        $this->assertSame('Runs brew upgrade janalis/tap/porta', $row->hint);
+    }
+
+    public function testAComposerUpdateThatChangedTheInstallSaysToRestart(): void
+    {
+        // The stand-in porta does what `composer global update` would: rewrite Composer's record.
+        $home = $this->home->path('composer-home');
+        $this->home->write('composer-home/vendor/composer/installed.php', '<?php return [1];');
+        $binary = $this->home->write('composer-home/vendor/bin/porta', \sprintf(
+            "<?php\nfile_put_contents(%s, '<?php return [2];');\necho \"porta updated: v0.1.0 → v0.2.0.\\n\";\n",
+            \var_export($home.'/vendor/composer/installed.php', return: true),
+        ));
+        $section = $this->section(new Installation(InstallMethod::ComposerGlobal, $home), $binary);
+        $this->assertSame('Runs composer global update janalis/porta --no-interaction', self::rows($section)['cli:update']->hint);
+
+        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+
+        $this->await(fn (): bool => \in_array('porta updated: v0.1.0 → v0.2.0. Restart Porta to use it.', $this->allToasts(), strict: true), what: 'the update to finish');
     }
 
     public function testNothingHereResets(): void

@@ -62,8 +62,8 @@ composer global require janalis/porta     # with minimum-stability dev, see belo
 ```
 
 Or download `porta.phar` from the
-[releases page](https://github.com/janalis/porta/releases); `porta
---self-update` keeps it current. See
+[releases page](https://github.com/janalis/porta/releases). However it was
+installed, `porta --self-update` keeps it current. See
 [Getting started](https://janalis.github.io/porta/getting-started) for
 Composer's stability settings, a language server, and building from source.
 

@@ -2934,10 +2934,6 @@
         <source>Replaces %path% with the latest release</source>
         <target>מחליף את %path% בגרסה האחרונה</target>
       </trans-unit>
-      <trans-unit id="1041">
-        <source>This Porta runs from a checkout or Composer: update it with git pull or composer global update</source>
-        <target>Porta הזה רץ מ-checkout או מ-Composer: עדכנו אותו עם git pull או composer global update</target>
-      </trans-unit>
       <trans-unit id="1042">
         <source>Updates</source>
         <target>עדכונים</target>
@@ -3633,6 +3629,14 @@
       <trans-unit id="1237">
         <source>Not replaced in %files%: unsaved edits the search did not see — save, then search again</source>
         <target>לא הוחלף ב-%files%: שינויים שלא נשמרו שהחיפוש לא ראה — שמרו, ואז חפשו שוב</target>
+      </trans-unit>
+      <trans-unit id="1238">
+        <source>Runs %command%</source>
+        <target>מריץ %command%</target>
+      </trans-unit>
+      <trans-unit id="1239">
+        <source>Update it from a shell: %command%</source>
+        <target>עדכנו אותו ממעטפת: %command%</target>
       </trans-unit>
     </body>
   </file>

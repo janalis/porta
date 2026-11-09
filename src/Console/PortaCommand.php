@@ -11,6 +11,9 @@ use Porta\Container\ToolLaunch;
 use Porta\Filesystem\ProjectLocation;
 use Porta\Ide;
 use Porta\Install\GitToolSetup;
+use Porta\Install\Installation;
+use Porta\Install\InstallMethod;
+use Porta\Install\PortaBinary;
 use Porta\Support\BootTrace;
 use Porta\Support\DiagnosticLog;
 use Symfony\Component\Console\Attribute\Argument;
@@ -42,7 +45,8 @@ use Symfony\Component\Process\Process;
           <info>porta --diff A B</info>          compare two files (what git difftool runs)
           <info>porta --merge L R B M</info>     resolve M in the merge view (what git mergetool runs;
                                    exits 1 while conflict markers remain in M)
-          <info>porta --self-update</info>       replace this porta.phar with the latest release
+          <info>porta --self-update</info>       update porta to the latest release — the phar itself, or
+                                   through brew or composer global; a checkout is told how
           <info>porta review …</info>            write and read local code reviews (porta review --help)
 
         Keys: Ctrl+T/F2 switch tree/editor · Ctrl+S save · Ctrl+Space complete ·
@@ -87,6 +91,8 @@ final class PortaCommand extends Command
      * @param string                                                            $phar          the phar running, '' when not one — only a phar can update itself
      * @param array<string, string|false>                                       $env           the environment, for a GitHub token
      * @param WorkspaceTrust|null                                               $trust         whose answers decide what a project may run; defaults to the user's
+     * @param Installation|null                                                 $installation  how this porta was installed, which --self-update follows; defaults
+     *                                                                                         to reading it off $phar and the package's folder
      */
     public function __construct(
         ?callable $launch = null,
@@ -98,6 +104,7 @@ final class PortaCommand extends Command
         private readonly string $phar = '',
         private readonly array $env = [],
         ?WorkspaceTrust $trust = null,
+        private readonly ?Installation $installation = null,
     ) {
         parent::__construct();
         $this->launch = $launch ?? self::launchIde(...);
@@ -127,7 +134,7 @@ final class PortaCommand extends Command
         bool $merge = false,
         #[Option('Make porta git\'s difftool and mergetool, in the global git config')]
         bool $gitSetup = false,
-        #[Option('Replace this porta.phar with the latest release')]
+        #[Option('Update porta to the latest release, the way it was installed')]
         bool $selfUpdate = false,
         #[Option('With --git-setup: print the git config commands; with --self-update: only say what is available')]
         bool $dryRun = false,
@@ -328,30 +335,24 @@ final class PortaCommand extends Command
     }
 
     /** --self-update: fetch the latest release and swap it over the running phar (or, dry, say what is there). */
+    /**
+     * --self-update: compare with the latest release and, unless dry or
+     * current, update the way this porta was installed — the phar swaps
+     * itself, brew and a global Composer are run, and a checkout or a
+     * project's dependency is only told the command: those trees are not
+     * Porta's to change.
+     */
+    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
     private function updateSelf(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
     {
-        if ('' === $this->phar) {
-            $io->error(\sprintf(
-                'porta: --self-update replaces the porta.phar it runs from, and this porta runs from %s — update it with `composer global update janalis/porta` or `git pull` instead.',
-                $this->self,
-            ));
-
-            return Command::FAILURE;
-        }
-
-        return $this->updatePhar($output, $io, $dryRun);
-    }
-
-    /** --self-update from a phar: fetch the latest release and, unless dry or already current, install it. */
-    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
-    private function updatePhar(OutputInterface $output, SymfonyStyle $io, bool $dryRun): int
-    {
+        $installation = $this->installation ?? Installation::detect($this->phar, PortaBinary::packageDir(), $this->env);
+        $runs = $installation->method->updatesItself();
         $update = new SelfUpdate($this->process, $this->env);
         try {
             $latest = $update->latest();
             $newer = SelfUpdate::isNewer($latest, $this->version);
-            if ($newer && !$dryRun) {
-                $update->install($latest, $this->phar, \PHP_BINARY);
+            if ($newer && !$dryRun && $runs) {
+                $this->install($update, $installation, $latest);
             }
         } catch (\RuntimeException $e) {
             $io->error('porta: self-update: '.$e->getMessage());
@@ -360,11 +361,59 @@ final class PortaCommand extends Command
         }
         $output->writeln(match (true) {
             !$newer => \sprintf('porta %s is up to date (latest release: %s).', $this->version, $latest),
-            $dryRun => \sprintf('porta %s can be updated to %s.', $this->version, $latest),
+            $dryRun || !$runs => \sprintf('porta %s can be updated to %s.', $this->version, $latest),
             default => \sprintf('porta updated: %s → %s.', $this->version, $latest),
         });
 
-        return Command::SUCCESS;
+        return $runs || !$newer ? Command::SUCCESS : $this->tellHow($output, $installation, $dryRun);
+    }
+
+    /** An install Porta does not update itself: the command that would, and — unless only asked — a failure. */
+    // @mago-expect lint:no-boolean-flag-parameter -- --dry-run is the flag being honoured.
+    private function tellHow(OutputInterface $output, Installation $installation, bool $dryRun): int
+    {
+        $output->writeln(\sprintf(
+            'This porta is %s %s: update it with `%s`.',
+            InstallMethod::Checkout === $installation->method ? 'the git checkout at' : 'a dependency of the project at',
+            $installation->path,
+            $installation->commandLine(),
+        ));
+
+        // Asked to update and nothing was: a script must not read success.
+        return $dryRun ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /**
+     * Install $latest the way $installation says: the phar swaps itself;
+     * otherwise its package manager runs, and must visibly have changed it.
+     *
+     * @throws \RuntimeException saying what went wrong
+     */
+    private function install(SelfUpdate $update, Installation $installation, string $latest): void
+    {
+        if (InstallMethod::Phar === $installation->method) {
+            $update->install($latest, $installation->path, \PHP_BINARY);
+
+            return;
+        }
+        $before = $installation->fingerprint();
+        foreach ($installation->commands() as $command) {
+            // @mago-expect lint:literal-named-argument -- a closure's parameters have no names to pass it by
+            [$code] = ($this->process)($command, null);
+            if (0 !== $code) {
+                throw new \RuntimeException(\sprintf('`%s` failed (exit %d); run it yourself to see why.', \implode(' ', $command), $code));
+            }
+        }
+        // brew's tap and Packagist follow a release by minutes: an upgrade
+        // that finds nothing yet exits 0 and changes nothing.
+        if ($installation->fingerprint() === $before) {
+            throw new \RuntimeException(\sprintf(
+                '`%s` left porta as it was, though %s is out — it may not have reached %s yet; try again later.',
+                $installation->commandLine(),
+                $latest,
+                InstallMethod::Homebrew === $installation->method ? 'the Homebrew tap' : 'Packagist',
+            ));
+        }
     }
 
     /**
@@ -381,7 +430,8 @@ final class PortaCommand extends Command
     private static function runProcess(array $command, ?string $stdin = null): array
     {
         try {
-            $process = new Process($command, input: $stdin, timeout: 300);
+            // brew upgrades refresh their taps first, and may upgrade PHP along.
+            $process = new Process($command, input: $stdin, timeout: 900);
             $process->run();
 
             return [(int) $process->getExitCode(), $process->getOutput()];

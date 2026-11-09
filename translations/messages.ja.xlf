@@ -2934,10 +2934,6 @@
         <source>Replaces %path% with the latest release</source>
         <target>%path% を最新リリースに置き換えます</target>
       </trans-unit>
-      <trans-unit id="1041">
-        <source>This Porta runs from a checkout or Composer: update it with git pull or composer global update</source>
-        <target>この Porta はチェックアウトまたは Composer から動作しています。git pull または composer global update で更新してください</target>
-      </trans-unit>
       <trans-unit id="1042">
         <source>Updates</source>
         <target>アップデート</target>
@@ -3633,6 +3629,14 @@
       <trans-unit id="1237">
         <source>Not replaced in %files%: unsaved edits the search did not see — save, then search again</source>
         <target>%files% では置換しませんでした: 検索が見ていない未保存の変更があります — 保存してからもう一度検索してください</target>
+      </trans-unit>
+      <trans-unit id="1238">
+        <source>Runs %command%</source>
+        <target>%command% を実行します</target>
+      </trans-unit>
+      <trans-unit id="1239">
+        <source>Update it from a shell: %command%</source>
+        <target>シェルから更新してください: %command%</target>
       </trans-unit>
     </body>
   </file>

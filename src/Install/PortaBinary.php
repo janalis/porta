@@ -17,7 +17,13 @@ final class PortaBinary
     {
         $phar = \Phar::running(false);
 
-        return '' !== $phar ? $phar : (string) \realpath(\dirname(__DIR__, levels: 2).'/bin/porta');
+        return '' !== $phar ? $phar : (string) \realpath(self::packageDir().'/bin/porta');
+    }
+
+    /** The folder this package lives in: a checkout, or `vendor/janalis/porta` (inside the phar, its `phar://` root). */
+    public static function packageDir(): string
+    {
+        return \dirname(__DIR__, levels: 2);
     }
 
     /** The phar that is running, '' when this is not one — only a phar can update itself. */
