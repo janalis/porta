@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-11-10
+
 ### Changed
 
 - **Plugin store**: the store is now the **Settings → Plugins** page itself,
