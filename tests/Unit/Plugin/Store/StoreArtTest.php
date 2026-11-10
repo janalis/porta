@@ -363,6 +363,15 @@ final class StoreArtTest extends TestCase
         $this->assertSame([400, 225], self::dimensions(self::resolve($this->art(), [self::entry('plain')])['acme/porta-plain']->icon), 'no tool: its own first picture');
     }
 
+    /** A catalog an older Porta read lists fewer tools: what was found without them is not what is shown once they are known. */
+    public function testWhatWasFoundIsKeptByTheToolsItDrives(): void
+    {
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [self::README => "# Rector\n", $tool => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(48, 48)];
+        $this->assertNull(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon);
+        $this->assertSame([48, 48], self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon));
+    }
+
     /** A tool's logo that did not come is no icon: the plugin's own first picture is. */
     public function testTheFallbackIconIsOneThatWasDrawn(): void
     {
@@ -384,10 +393,10 @@ final class StoreArtTest extends TestCase
         ];
         $art = self::resolve($this->art(), [self::entry(tools: ['brew:site', 'brew:junk', 'brew:chroma'])])['acme/porta-rector'];
         $this->assertSame([48, 48], self::dimensions($art->icon), 'a home page off GitHub, or no page at all, lends nothing');
-        $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#3').'.json'), 'every formula read: kept');
+        $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#3#brew:site,brew:junk,brew:chroma').'.json'), 'every formula read: kept, by the tools it drives');
 
         $this->assertNull(self::resolve($this->art(), [self::entry('gone', tools: ['brew:gone'])])['acme/porta-gone']->icon);
-        $this->assertFileDoesNotExist($this->home->path('art/'.\sha1('acme/porta-gone@1.0#3').'.json'), 'a formula\'s page that did not come is looked at again');
+        $this->assertFileDoesNotExist($this->home->path('art/'.\sha1('acme/porta-gone@1.0#3#brew:gone').'.json'), 'a formula\'s page that did not come is looked at again');
     }
 
     public function testOnlyAREADMEsFirstPictureMayBeTheIcon(): void

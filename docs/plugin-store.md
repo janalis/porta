@@ -135,8 +135,8 @@ finish.
    | --- | --- | --- |
    | `title` | the name, capitalised | What the store calls it |
    | `category` | `other` | One of `languages`, `linters`, `testing`, `debugging`, `version-control`, `remote`, `viewers`, `ai`, `productivity`, `other` |
-   | `icon` | from the README | An https address of a square picture, 2 MB at most. |
-   | `screenshots` | from the README | Up to six https picture addresses, 2 MB each at most. About 16:9 reads best. |
+   | `icon` | from the README | An https address of a square picture, 16 MB at most. |
+   | `screenshots` | from the README | Up to six https picture addresses, 16 MB each at most. About 16:9 reads best. |
    | `changelog` | `CHANGELOG.md` | A path in your repository. The store reads it at the commit the release was tagged on. |
    | `readme` | `README.md` | Likewise |
 

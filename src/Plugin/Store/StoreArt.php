@@ -370,7 +370,8 @@ final class StoreArt
      */
     private static function key(StoreEntry $entry): string
     {
-        return $entry->package.'@'.$entry->version.'#'.self::RULES;
+        // And by the tools it drives: a catalog read by an older Porta may not know them all yet.
+        return $entry->package.'@'.$entry->version.'#'.self::RULES.([] === $entry->tools ? '' : '#'.\implode(',', $entry->tools));
     }
 
     /** @return array{icon: ?string, shots: list<string>}|null what was found for $key, while it is young enough */

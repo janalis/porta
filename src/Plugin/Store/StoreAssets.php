@@ -32,7 +32,7 @@ use Symfony\Component\Filesystem\Filesystem;
 #[Autoconfigure(constructor: 'create')]
 final class StoreAssets
 {
-    public const int MAX_IMAGE = 2_097_152;
+    public const int MAX_IMAGE = 16_777_216;
 
     public const int MAX_TEXT = 262_144;
 

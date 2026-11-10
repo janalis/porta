@@ -23,7 +23,7 @@ versions follow [Semantic Versioning](https://semver.org/).
   `screenshots` gets them from its README, and from the README of the tool it
   drives (on GitHub, Packagist or Homebrew), so the bundled `phpstan` plugin
   shows PHPStan's logo beside its own screenshot. With no square logo, the
-  first picture is the icon, shrunk to fit. Every bundled plugin's README
+  first picture is the icon, shrunk to fit. A picture may weigh up to 16 MB (Mago's banner is an 8.6 MB SVG); only the PNG made of it is kept. Every bundled plugin's README
   shows its screenshot. The store never draws an icon for a plugin. On the
   shelves, ↑ ↓ pass a **See all** that isn't above or below the selection.
   Pictures can be PNG, JPEG, GIF, WebP or SVG. With the image viewer
