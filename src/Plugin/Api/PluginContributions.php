@@ -34,6 +34,8 @@ final readonly class PluginContributions
     public PluginBuffer $previews;
     /** @var PluginBuffer<array{plugin: string, languages: list<string>, render: \Closure(string, string, string, int, \Closure(\Porta\Help\Fence\FenceResult): void, \Closure(string): void): \Closure(): void}> */
     public PluginBuffer $markdownFences;
+    /** @var PluginBuffer<array{plugin: string, capability: Capability, provider: \Closure}> */
+    public PluginBuffer $capabilities;
     /** @var PluginBuffer<array{plugin: string, id: string, pane: \Closure, load: \Closure}> */
     public PluginBuffer $panes;
     /** @var PluginBuffer<array{plugin: string, id: string, factory: \Closure}> */
@@ -62,6 +64,7 @@ final readonly class PluginContributions
         $this->viewers = new PluginBuffer();
         $this->previews = new PluginBuffer();
         $this->markdownFences = new PluginBuffer();
+        $this->capabilities = new PluginBuffer();
         $this->panes = new PluginBuffer();
         $this->views = new PluginBuffer();
         $this->actions = new PluginBuffer();
@@ -87,6 +90,7 @@ final readonly class PluginContributions
         $this->viewers = clone $this->viewers;
         $this->previews = clone $this->previews;
         $this->markdownFences = clone $this->markdownFences;
+        $this->capabilities = clone $this->capabilities;
         $this->panes = clone $this->panes;
         $this->views = clone $this->views;
         $this->actions = clone $this->actions;

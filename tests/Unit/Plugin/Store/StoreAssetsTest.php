@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Plugin\Store;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Plugin\Runtime\PluginCapabilities;
 use Porta\Plugin\Store\HttpFetch;
 use Porta\Plugin\Store\StoreAssets;
 use Porta\Plugin\Tool\RunningProcesses;
@@ -173,6 +174,6 @@ final class StoreAssetsTest extends TestCase
     public function testProductionWiringNeedsNoNetworkToBuild(): void
     {
         $this->expectNotToPerformAssertions();
-        StoreAssets::create(HttpFetch::create(new RunningProcesses()));
+        StoreAssets::create(HttpFetch::create(new RunningProcesses()), new PluginCapabilities());
     }
 }

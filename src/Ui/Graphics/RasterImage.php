@@ -12,10 +12,15 @@ use Porta\Support\AsyncProcess;
  * GD, narrowed to {@see MAX_WIDTH}; an SVG through `rsvg-convert`, at
  * {@see SVG_WIDTH}, when it is installed.
  *
- * Only librsvg draws an SVG here, never ImageMagick: these documents come off
- * the network, from anyone, and ImageMagick's SVG reader follows what a
- * document references. Fed on stdin, librsvg has no base to resolve a
+ * Core draws an SVG with librsvg alone, never ImageMagick: these documents
+ * come off the network, from anyone, and ImageMagick's SVG reader follows what
+ * a document references. Fed on stdin, librsvg has no base to resolve a
  * reference against, so it loads nothing but the document.
+ *
+ * A converter a plugin lends core comes first — the image viewer's honours
+ * its own `svgConverter` setting and may be ImageMagick — so it is handed only
+ * a document that references nothing outside itself; any other still goes to
+ * librsvg.
  */
 final readonly class RasterImage
 {
@@ -37,10 +42,14 @@ final readonly class RasterImage
     private bool $gd;
 
     /**
-     * @param (\Closure(string, \Closure(?string): void): void)|null $svg an SVG document to its PNG, or null; inject to test
+     * @param (\Closure(string, \Closure(?string): void): void)|null                                $svg  an SVG document to its PNG, or null; inject to test
+     * @param (\Closure(): ((\Closure(string, int, \Closure(?string): void): void)|null))|null $lent the SVG converter a plugin lends, asked at each use
      */
-    public function __construct(?\Closure $svg = null, ?bool $gd = null)
-    {
+    public function __construct(
+        ?\Closure $svg = null,
+        ?bool $gd = null,
+        private ?\Closure $lent = null,
+    ) {
         $this->svg = $svg ?? self::rsvg(...);
         $this->gd = $gd ?? \function_exists('imagecreatefromstring');
     }
@@ -68,12 +77,50 @@ final readonly class RasterImage
         $kind = self::kind($bytes);
         match ($kind) {
             'png' => $onPng($bytes),
-            'svg' => ($this->svg)($bytes, static function (?string $png) use ($onPng): void {
+            'svg' => $this->drawn($bytes, static function (?string $png) use ($onPng): void {
                 $onPng(null !== $png && 'png' === self::kind($png) ? $png : null);
             }),
             null => $onPng(null),
             default => $onPng($this->decoded($bytes)),
         };
+    }
+
+    /**
+     * Whether an SVG document names anything outside itself — a link, an
+     * image, a stylesheet, a font or an entity — that a converter could load.
+     */
+    public static function reachesOut(string $svg): bool
+    {
+        return 1 === \preg_match('/\b(?:href|src)\s*=\s*["\']?\s*(?!#|data:(?!image\/svg))[^\s"\'>]|url\(\s*["\']?\s*(?!#|data:(?!image\/svg))[^\s"\')]|<!ENTITY|@import/i', $svg);
+    }
+
+    /**
+     * The SVG drawn by the converter a plugin lends when there is one and the
+     * document is self-contained, by librsvg otherwise.
+     *
+     * @param \Closure(?string): void $onPng
+     */
+    private function drawn(string $svg, \Closure $onPng): void
+    {
+        $lent = null === $this->lent ? null : ($this->lent)();
+        if (null === $lent || self::reachesOut($svg)) {
+            ($this->svg)($svg, $onPng);
+
+            return;
+        }
+        // A plugin's code: answered once whatever it does, and never past a throw.
+        $answered = false;
+        $once = static function (?string $png) use (&$answered, $onPng): void {
+            if (!$answered) {
+                $answered = true;
+                $onPng($png);
+            }
+        };
+        try {
+            $lent($svg, self::SVG_WIDTH, $once);
+        } catch (\Throwable) {
+            $once(null);
+        }
     }
 
     /** A JPEG, GIF or WebP redrawn as a PNG, no wider than {@see MAX_WIDTH}; null when GD cannot read it. */

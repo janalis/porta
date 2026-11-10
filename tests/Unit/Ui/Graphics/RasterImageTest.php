@@ -119,6 +119,85 @@ final class RasterImageTest extends TestCase
         $this->assertSame([self::SVG, self::SVG], $handed);
     }
 
+    public function testAConverterAPluginLendsDrawsASelfContainedSvg(): void
+    {
+        $lent = [];
+        $converter = static function (string $svg, int $width, \Closure $onPng) use (&$lent): void {
+            $lent[] = [$svg, $width];
+            $onPng(PngFixture::bytes($width, 4));
+            $onPng('answered twice');
+        };
+        $rsvg = [];
+        $raster = new RasterImage(
+            static function (string $svg, \Closure $onPng) use (&$rsvg): void {
+                $rsvg[] = $svg;
+                $onPng(PngFixture::bytes(7, 7));
+            },
+            lent: static fn (): \Closure => $converter,
+        );
+
+        $this->assertSame([RasterImage::SVG_WIDTH, 4], PngDimensions::read((string) $this->png($raster, self::SVG)), 'answered once, with the first');
+        $this->assertSame([[self::SVG, RasterImage::SVG_WIDTH]], $lent);
+        $this->assertSame([], $rsvg, 'librsvg was not asked');
+
+        $outside = '<svg xmlns="http://www.w3.org/2000/svg"><image href="file:///etc/passwd"/></svg>';
+        $this->assertSame([7, 7], PngDimensions::read((string) $this->png($raster, $outside)), 'one that reaches out goes to librsvg');
+        $this->assertSame([$outside], $rsvg);
+        $this->assertCount(1, $lent);
+
+        $none = new RasterImage(
+            static function (string $svg, \Closure $onPng): void {
+                $onPng(PngFixture::bytes(7, 7));
+            },
+            lent: static fn (): ?\Closure => null,
+        );
+        $this->assertSame([7, 7], PngDimensions::read((string) $this->png($none, self::SVG)), 'none lent: librsvg');
+    }
+
+    public function testALentConverterThatThrowsIsNothing(): void
+    {
+        $raster = new RasterImage(function (): never {
+            $this->fail('a throw is not handed on');
+        }, lent: static fn (): \Closure => static function (): never {
+            throw new \RuntimeException('plugin bug');
+        });
+        $this->assertNull($this->png($raster, self::SVG));
+
+        $answeredFirst = new RasterImage(lent: static fn (): \Closure => static function (string $svg, int $width, \Closure $onPng): never {
+            $onPng(PngFixture::bytes(3, 3));
+
+            throw new \RuntimeException('after answering');
+        });
+        $this->assertSame([3, 3], PngDimensions::read((string) $this->png($answeredFirst, self::SVG)), 'still answered once');
+    }
+
+    public function testWhatASvgReachesOutTo(): void
+    {
+        foreach ([
+            '<image href="https://x.test/a.png"/>',
+            '<image xlink:href=\'a.png\'/>',
+            '<use href=other.svg#a/>',
+            '<rect style="fill:url(https://x.test/p.svg#g)"/>',
+            '<style>@import "x.css";</style>',
+            '<!DOCTYPE svg [<!ENTITY e SYSTEM "file:///etc/passwd">]>',
+            '<image href="data:image/svg+xml;base64,AAAA"/>',
+            '<script src="x.js"/>',
+        ] as $outside) {
+            $this->assertTrue(RasterImage::reachesOut('<svg>'.$outside.'</svg>'), $outside);
+        }
+        foreach ([
+            '<use href="#a"/>',
+            '<use xlink:href = "#a"/>',
+            '<rect fill="url(#g)"/>',
+            '<rect fill="url( \'#g\' )"/>',
+            '<image href="data:image/png;base64,AAAA"/>',
+            '<a href="">x</a>',
+            '<text>a href is fine in text</text>',
+        ] as $inside) {
+            $this->assertFalse(RasterImage::reachesOut('<svg>'.$inside.'</svg>'), $inside);
+        }
+    }
+
     public function testRsvgConvertIsDrivenOverStdinAtAFixedWidth(): void
     {
         $bin = new TempProject();

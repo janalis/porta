@@ -769,6 +769,21 @@ graphics where available and fitted half-block rows otherwise. Graph-viewer regi
 Hiding a pane cancels work and releases its images; live settings changes rerender
 registered fences, and disabling the plugin immediately restores source fences.
 
+### Lending core a feature
+
+Some features core uses only when a plugin provides them. Call
+`$api->provide(Capability $capability, Closure $provider)` during `activate()`.
+Import `Porta\Plugin\Api\Capability`; each case's docblock gives the shape of
+the closure it takes. The first active plugin that provides a capability is
+the one core uses. When that plugin is switched off, the next one takes over.
+When none is left, core goes without the feature or uses its own fallback.
+
+| Capability | Closure | Core uses it for |
+| --- | --- | --- |
+| `SvgRasterizer` | `(string $svg, int $width, Closure $onPng): void`. Draw the document `$width` pixels wide, then call `$onPng` exactly once with the PNG, or with null. | The SVG pictures on plugin pages in the store. Core hands over only a document that links to nothing outside itself. Without a provider, core uses `rsvg-convert`. |
+
+The bundled image viewer provides `SvgRasterizer`.
+
 ### Previewing a file beside its text
 
 A pane can also be a **live preview**: the file opens in the text editor as

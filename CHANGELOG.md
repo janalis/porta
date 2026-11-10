@@ -22,8 +22,17 @@ versions follow [Semantic Versioning](https://semver.org/).
   plugin that publishes no `icon` or `screenshots` gets them from its README,
   or else from the README of the tool it drives, so the bundled `phpstan`
   plugin shows PHPStan's logo. The store never draws an icon for a plugin.
-  Pictures can be PNG, JPEG, GIF, WebP or, where `rsvg-convert` is installed,
-  SVG.
+  Pictures can be PNG, JPEG, GIF, WebP or SVG. With the image viewer
+  plugin on, an SVG is drawn by its converter (the **SVG converter path**
+  setting, otherwise `rsvg-convert`, `magick` or `convert`). Without it, an
+  SVG needs `rsvg-convert`.
+
+### Added
+
+- **Plugin API**: `PluginApi::provide(Capability, Closure)` lets a plugin give
+  core a feature that core uses only when one is there. The first is
+  `Capability::SvgRasterizer`, which the image viewer provides. See
+  [Lending core a feature](docs/plugins.md#lending-core-a-feature).
 
 ## [0.1.6] - 2026-11-09
 

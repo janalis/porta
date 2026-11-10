@@ -53,9 +53,10 @@ final class PluginHost
         // editor that owns these options needs it — resolved on first read.
         #[AutowireServiceClosure(EditorDisplayOptions::class)]
         ?\Closure $display = null,
+        ?PluginCapabilities $capabilities = null,
     ) {
         $this->settings = new PluginSettings($rootDir, $config->plugins, $writer, $scope);
-        $this->manager = new PluginManager($events, $this->settings, $markdownFences ?? new MarkdownFenceRegistry());
+        $this->manager = new PluginManager($events, $this->settings, $markdownFences ?? new MarkdownFenceRegistry(), $capabilities ?? new PluginCapabilities());
         $this->tools = ToolLocator::forProject($rootDir, $this->settings);
         $this->loader = new PluginLoader(
             $rootDir,

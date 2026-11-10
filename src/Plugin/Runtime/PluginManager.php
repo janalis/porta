@@ -167,6 +167,7 @@ final class PluginManager implements
         private readonly EventDispatcherInterface $events,
         private readonly PluginSettings $settings,
         private readonly MarkdownFenceRegistry $markdownFences = new MarkdownFenceRegistry(),
+        private readonly PluginCapabilities $capabilities = new PluginCapabilities(),
     ) {}
 
     public function hasPlugin(string $name): bool
@@ -288,6 +289,7 @@ final class PluginManager implements
         }
         $this->settings->registerFor($name, $api->bufferedSettings());
         $this->markdownFences->add($contributions->markdownFences->all());
+        $this->capabilities->add($contributions->capabilities->all());
         // A live enable only: at boot the runtime is not wired yet, and nothing
         // could have read the set before every plugin committed.
         if ([] !== $tools && null !== $this->runtime) {
@@ -396,6 +398,7 @@ final class PluginManager implements
         $this->viewers = \array_values(\array_filter($this->viewers, static fn (array $viewer): bool => $name !== $viewer['plugin']));
         $this->previews = \array_values(\array_filter($this->previews, static fn (array $preview): bool => $name !== $preview['plugin']));
         $this->markdownFences->remove($name);
+        $this->capabilities->remove($name);
         $this->panes = \array_values(\array_filter($this->panes, static fn (array $pane): bool => $name !== $pane['plugin']));
         $this->views = \array_values(\array_filter($this->views, static fn (array $view): bool => $name !== $view['plugin']));
         $this->menus = \array_values(\array_filter($this->menus, static fn (array $menu): bool => $name !== $menu['plugin']));

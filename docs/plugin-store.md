@@ -137,8 +137,10 @@ finish.
    `Unreleased`. Without a changelog the store lists the release history
    instead. The changelog and README are read from GitHub, so a package
    published from another host shows neither.
-   Each picture can be a PNG, JPEG, GIF, WebP or SVG. An SVG is drawn only on
-   a machine that has `rsvg-convert` (librsvg), so a PNG reaches everyone.
+   Each picture can be a PNG, JPEG, GIF, WebP or SVG. An SVG is drawn by the
+   image viewer plugin's converter when that plugin is on, and by
+   `rsvg-convert` (librsvg) otherwise. A machine may have neither, so a PNG
+   reaches everyone.
 
 3. Tag a release and publish the package on Packagist. From then on it is in
    the store, unverified.

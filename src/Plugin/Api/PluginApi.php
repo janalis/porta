@@ -1166,6 +1166,20 @@ final class PluginApi
         ]);
     }
 
+    /**
+     * Lend core a feature it uses when one is there ({@see Capability}). The
+     * closure's shape is the case's; the first plugin to provide a capability
+     * is the one core uses. Several plugins may provide the same one: the next
+     * stands in when the first is switched off.
+     */
+    public function provide(Capability $capability, \Closure $provider): void
+    {
+        if ($this->drained) {
+            throw new PluginException(\sprintf('Capability "%s" must be provided during activate()', $capability->value));
+        }
+        $this->contributions->capabilities->add(['plugin' => $this->pluginName, 'capability' => $capability, 'provider' => $provider]);
+    }
+
     // --- Actions (live IDE; PluginException during activate()) ---------------
 
     /**

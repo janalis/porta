@@ -6,6 +6,7 @@ namespace Porta\Tests\Unit\Plugin\Store;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Porta\Plugin\Runtime\PluginCapabilities;
 use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\HttpFetch;
 use Porta\Plugin\Store\PackagistMetadata;
@@ -296,6 +297,6 @@ final class StoreArtTest extends TestCase
     {
         $this->expectNotToPerformAssertions();
         $http = HttpFetch::create(new RunningProcesses());
-        StoreArt::create($http, StoreAssets::create($http));
+        StoreArt::create($http, StoreAssets::create($http, new PluginCapabilities()));
     }
 }

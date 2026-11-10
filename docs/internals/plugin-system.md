@@ -350,6 +350,17 @@ without depending on `Porta\Plugin`: `Editor/EditorPaneSource`,
 `Debug/DebugAdapterProvider`, `Workbench/StatusSegmentSource`. The interface
 lives beside its consumer; `PluginManager` implements it.
 
+A feature core uses only when a plugin lends it (`PluginApi::provide()`) is
+a `Plugin/Api/Capability` case, not a verb. Committed providers go to
+`Plugin/Runtime/PluginCapabilities`, the one shared service that both
+`PluginHost` and the consumer are given. The consumer asks
+`first($capability)` each time it uses the feature and never keeps the answer.
+That way a live enable or disable takes effect from the next use, and the next
+provider takes over when the first is switched off. The consumer handles the
+provider's failures itself, because the closure is plugin code that runs
+outside any hook wrapper. For example, `Ui/Graphics/RasterImage` answers
+exactly once, and treats a throw as no picture.
+
 Every plugin handler and hook is wrapped in try/catch to a status-bar flash, so
 a faulting plugin never kills the loop. The wrapper takes a **single parameter**
 on purpose: the dispatcher calls listeners as `($event, $eventName,

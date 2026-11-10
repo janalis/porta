@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Porta\Plugin\Store;
 
 use Porta\Config\PortaHome;
+use Porta\Plugin\Api\Capability;
+use Porta\Plugin\Runtime\PluginCapabilities;
 use Porta\Support\ControlChars;
 use Porta\Ui\Graphics\RasterImage;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
@@ -63,11 +65,12 @@ final class StoreAssets
         $this->clock = $clock ?? \time(...);
     }
 
-    public static function create(HttpFetch $http): self
+    public static function create(HttpFetch $http, PluginCapabilities $capabilities): self
     {
         $home = PortaHome::base();
+        $raster = new RasterImage(lent: static fn (): ?\Closure => $capabilities->first(Capability::SvgRasterizer));
 
-        return new self($http, null === $home ? null : $home.'/.porta/cache/store/assets');
+        return new self($http, null === $home ? null : $home.'/.porta/cache/store/assets', raster: $raster);
     }
 
     /**
