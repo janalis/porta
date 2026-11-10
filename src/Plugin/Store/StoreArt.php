@@ -193,7 +193,7 @@ final class StoreArt
      *
      * @param list<StoreEntry>            $entries
      * @param array<string, list<string>> $found   package => the pictures its READMEs show
-     * @param array<string, bool>         $read    package => whether every README asked for came back: only then is the verdict kept
+     * @param array<string, bool>         $read    package => whether every README asked for came back: only then, and when every picture was drawn, is the verdict kept
      * @param \Closure(string, Art): void $onArt
      */
     private function judge(array $entries, array $found, array $read, \Closure $onArt): void
@@ -205,8 +205,11 @@ final class StoreArt
         $this->assets->images(\array_values(\array_unique(\array_merge([], ...\array_values($candidates)))), function (array $pngs) use ($entries, $candidates, $read, $onArt): void {
             foreach ($entries as $entry) {
                 $verdict = self::verdict($entry, $candidates[$entry->package], $pngs);
-                // A README that did not come back may be the network, not the plugin: it is looked for again next session.
-                if ($read[$entry->package] ?? false) {
+                // A README or a picture that did not come back may be the network, not the plugin, and a
+                // picture this machine could not draw may be drawn once a converter is there — the image
+                // viewer switched on, librsvg installed: either is looked for again next session.
+                $drawn = \array_all($candidates[$entry->package], static fn (string $url): bool => null !== ($pngs[$url] ?? null));
+                if ($drawn && ($read[$entry->package] ?? false)) {
                     $this->keep(self::key($entry), $verdict);
                 }
                 $this->show($entry, $verdict, $onArt);

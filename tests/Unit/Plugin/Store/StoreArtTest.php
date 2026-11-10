@@ -19,6 +19,7 @@ use Porta\Tests\Support\FakeHttp;
 use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Graphics\PngDimensions;
+use Porta\Ui\Graphics\RasterImage;
 
 /** Each plugin's icon and pictures: what it lists, else what its README shows, else its tools'. */
 final class StoreArtTest extends TestCase
@@ -163,6 +164,31 @@ final class StoreArtTest extends TestCase
         unset($this->http->bodies[self::README], $this->http->bodies[$tool]);
         $kept = self::resolve($this->art(), [self::entry(), self::entry('tooled', tools: ['github:vendor/tool'], readme: null)]);
         $this->assertSame([[40, 40], [40, 40]], [self::dimensions($kept['acme/porta-rector']->icon), self::dimensions($kept['acme/porta-tooled']->icon)], 'what was read is kept');
+    }
+
+    /** A picture not drawn this time — no SVG converter yet, or the network — is looked for again next session. */
+    public function testAPictureThatCouldNotBeDrawnIsNotKept(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"/>';
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.svg)\n", 'https://img.test/logo.svg' => $svg];
+        $converter = null;
+        $art = function () use (&$converter): StoreArt {
+            $fetch = $this->http->fetch();
+            $raster = new RasterImage(static function (string $svg, \Closure $onPng): void {
+                $onPng(null);
+            }, lent: static function () use (&$converter): ?\Closure {
+                return $converter;
+            });
+            $assets = new StoreAssets($fetch, $this->home->path('assets'), clock: fn (): int => $this->now, raster: $raster);
+
+            return new StoreArt($fetch, $assets, $this->home->path('art'), clock: fn (): int => $this->now);
+        };
+        $this->assertNull(self::resolve($art(), [self::entry()])['acme/porta-rector']->icon, 'no converter: no icon');
+
+        $converter = static function (string $svg, int $width, \Closure $onPng): void {
+            $onPng(PngFixture::bytes(40, 40));
+        };
+        $this->assertSame([40, 40], self::dimensions(self::resolve($art(), [self::entry()])['acme/porta-rector']->icon), 'the image viewer switched on: the next session draws it');
     }
 
     public function testEveryEntryAndEveryPictureIsLookedAtPastOneThatIsNot(): void

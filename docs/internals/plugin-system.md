@@ -243,9 +243,12 @@ the masthead of its README — then the first `StoreArt::CANDIDATES` pictures,
 judged by shape (square first one: the icon; wide ones: screenshots).
 `ReadmeImages` reads the addresses and drops badges, avatars and thanks
 sections. `StoreAssets` keeps each picture as the PNG `Ui/Graphics/RasterImage`
-made of it (GD for JPEG, GIF and WebP; `rsvg-convert` on stdin for SVG, never
-ImageMagick, which follows a document's references). The verdict is kept a
-week per `package@version` under `cache/store/art`. `SettingsViewController::pushStore()`
+made of it: GD for JPEG, GIF and WebP. An SVG goes to the converter a
+plugin lends (`Capability::SvgRasterizer`) when it references nothing outside
+itself. Otherwise it goes to `rsvg-convert` on stdin, never to ImageMagick,
+which follows a document's references. The verdict is kept a week per
+`package@version` under `cache/store/art`. It is kept only when every README
+was read and every picture was drawn. `SettingsViewController::pushStore()`
 asks for it, never a render; the widget draws it through its own `ImageLayout`
 (`boxed()`), swept every shelf frame.
 

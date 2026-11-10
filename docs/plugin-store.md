@@ -186,9 +186,10 @@ composer package lends the pictures above its README's first `## ` section,
 usually its logo. That is how the bundled `phpstan` plugin shows PHPStan's
 logo.
 
-What was found is kept for a week under `~/.porta/cache/store`. When a
-README could not be read, nothing is kept, and the store looks again next
-session.
+What was found is kept for a week under `~/.porta/cache/store`. If a README
+or a picture couldn't be fetched, or a picture couldn't be drawn (say, an SVG
+before the image viewer is switched on), nothing is kept, and the store looks
+again next session.
 
 ## Taking over a bundled plugin
 
