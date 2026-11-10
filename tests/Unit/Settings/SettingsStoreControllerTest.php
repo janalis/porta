@@ -20,7 +20,9 @@ use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
 use Porta\Settings\SettingsScope;
 use Porta\Settings\SettingsStoreController;
+use Porta\Support\DocsUrlOpener;
 use Porta\Tests\Support\PngFixture;
+use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StoreFixture;
 use Symfony\Component\EventDispatcher\EventDispatcher;
@@ -28,6 +30,7 @@ use Symfony\Component\EventDispatcher\EventDispatcher;
 /** The store page's buttons: which one each plugin gets, and what pressing it does. */
 final class SettingsStoreControllerTest extends TestCase
 {
+    use PreservesPath;
     use PumpsLoop;
 
     private StoreFixture $store;
@@ -64,7 +67,17 @@ final class SettingsStoreControllerTest extends TestCase
             $scope,
             $events,
             $loader,
+            new DocsUrlOpener($store->notifier, $store->translator, $store->project->dir),
         );
+    }
+
+    /** A link on a plugin's page goes to the browser; with none to open it, its address is shown. */
+    public function testALinkOnAPageIsOpened(): void
+    {
+        \putenv('PATH=/nonexistent');
+        $this->controller()->openLink('https://packagist.org/packages/acme/porta-rector');
+
+        $this->assertSame('Docs: https://packagist.org/packages/acme/porta-rector', $this->store->toast());
     }
 
     /** @return array<string, StoreAction> package => its button */
