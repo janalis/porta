@@ -13,6 +13,7 @@ use Porta\Help\Layout\LayoutState;
 use Porta\Help\Layout\PageLine;
 use Porta\Help\Layout\PageWords;
 use Porta\Help\Layout\StylePen;
+use Porta\Help\Layout\SvgPictures;
 use Porta\Help\Layout\TableLayout;
 use Porta\Highlight\CodeHighlighter;
 use Porta\Markdown\Inline\LinkSyntax;
@@ -53,11 +54,12 @@ final class MarkdownRenderer
         ?PageWords $words = null,
         ?TerminalGraphics $graphics = null,
         private readonly ?FenceSession $fences = null,
+        ?SvgPictures $svgs = null,
     ) {
         $this->parser = new MarkdownParser();
         $this->pen = new StylePen($styles);
         $this->words = $words ?? PageWords::english();
-        $this->images = new ImageLayout($graphics);
+        $this->images = new ImageLayout($graphics, svgs: $svgs);
         $this->code = new CodeLayout($this->pen, $highlighter, $fences, $this->images, $this->words);
         $this->html = new HtmlBlockLayout($this->pen, $this->images);
     }
@@ -94,14 +96,15 @@ final class MarkdownRenderer
      * @param array<int, true> $openDetails the `<details>` the reader has opened, by their number in source order
      * @param string|null      $baseDir     where the page's relative image paths start
      * @param string|null      $root        the tree the page sits in (a project, the docs): where an image path's `/` starts, as GitHub reads it from the repository's root, and no image is read from outside it — nor, without one, from outside $baseDir
+     * @param string|null      $publicDir   the docs' `public/`, where a `/` image path not in the tree is looked for, as the docs site serves it
      */
-    public function render(string $markdown, int $width, array $openDetails = [], ?string $baseDir = null, ?string $root = null): RenderedDoc
+    public function render(string $markdown, int $width, array $openDetails = [], ?string $baseDir = null, ?string $root = null, ?string $publicDir = null): RenderedDoc
     {
         $width = \max(self::MIN_WIDTH, $width);
         $document = $this->document($markdown);
         $footnotes = [];
         self::collectFootnotes($document, $footnotes);
-        $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails, $baseDir, $root);
+        $state = new LayoutState(new SourceText($markdown), $footnotes, $openDetails, $baseDir, $root, $publicDir);
         $layout = new BlockLayout($this->pen, $state, $this->code, new TableLayout($this->pen), $this->html, $this->images, $this->words);
         $lines = [...$layout->blocks($document->blocks, $width), ...$layout->footnotes($width)];
         $this->images->sweep();

@@ -82,6 +82,17 @@ final class StoreCatalog
         return \array_find($this->entries(), static fn (StoreEntry $entry): bool => $package === $entry->package);
     }
 
+    /**
+     * The listed package of the plugin named $name, or null: the verified
+     * one first, since anyone may publish a plugin under a name already taken.
+     */
+    public function named(string $name): ?StoreEntry
+    {
+        $named = \array_filter($this->entries(), static fn (StoreEntry $entry): bool => $name === $entry->name);
+
+        return \array_find($named, static fn (StoreEntry $entry): bool => $entry->verified) ?? \array_first($named);
+    }
+
     /** The listed package that takes over from the bundled plugin $name, or null. */
     public function replacing(string $name): ?StoreEntry
     {

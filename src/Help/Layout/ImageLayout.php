@@ -8,6 +8,7 @@ use Porta\Support\AnsiText;
 use Porta\Ui\Graphics\KittyPlaceholders;
 use Porta\Ui\Graphics\PngDimensions;
 use Porta\Ui\Graphics\PngRaster;
+use Porta\Ui\Graphics\RasterImage;
 use Porta\Ui\Graphics\TerminalGraphics;
 
 /**
@@ -37,6 +38,7 @@ final class ImageLayout
     public function __construct(
         private readonly ?TerminalGraphics $graphics = null,
         private readonly PngRaster $raster = new PngRaster(),
+        private readonly ?SvgPictures $svgs = null,
     ) {}
 
     /**
@@ -47,15 +49,17 @@ final class ImageLayout
      */
     private function lines(ImageRef $image, int $width, LayoutState $state, ?string $target, int $group): ?array
     {
-        $file = self::file($image->source, $state->baseDir, $state->root);
+        $file = self::file($image->source, $state->baseDir, $state->root, $state->publicDir);
         $graphics = $this->graphics;
         if (null === $graphics || !$graphics->available() || null === $file) {
             return null;
         }
+        // An SVG is drawn off the loop: its text stands in until the page is laid out again.
+        $png = PngDimensions::MAGIC === \file_get_contents($file, length: 8) ? null : $this->svgs?->png($file);
         // The header is all a layout reads: the whole file only goes to the terminal once.
-        $size = PngDimensions::read((string) \file_get_contents($file, length: 24));
+        $size = PngDimensions::read($png ?? (string) \file_get_contents($file, length: 24));
 
-        return null === $size ? null : $this->placed($graphics, $file, $size, $image, $width, $target, $group);
+        return null === $size ? null : $this->placed($graphics, $file, $size, $image, $width, $target, $group, $png);
     }
 
     /**
@@ -66,7 +70,7 @@ final class ImageLayout
      *
      * @return list<PageLine>
      */
-    private function placed(TerminalGraphics $graphics, string $file, array $size, ImageRef $image, int $width, ?string $target, int $group): array
+    private function placed(TerminalGraphics $graphics, string $file, array $size, ImageRef $image, int $width, ?string $target, int $group, ?string $png): array
     {
         [$columns, $rows] = $this->cells($size, $image->width, $width);
         $key = $file."\0".(int) \filemtime($file)."\0".$columns.'x'.$rows;
@@ -74,7 +78,7 @@ final class ImageLayout
         return $this->place(
             $graphics,
             $key,
-            static fn (): string => (string) \file_get_contents($file),
+            static fn (): string => $png ?? (string) \file_get_contents($file),
             $columns,
             $rows,
             null === $target ? [] : [[0, $columns, $target, $group]],
@@ -265,21 +269,38 @@ final class ImageLayout
     }
 
     /**
-     * The local PNG $source names, or null for a remote, missing or other
-     * file — or one outside the page's tree: a README's `../../..` or
-     * absolute path never reads the reader's own files.
+     * The local PNG or SVG $source names, or null for a remote, missing or
+     * other file — or one outside the page's tree: a README's `../../..` or
+     * absolute path never reads the reader's own files. A path from `/` not
+     * in the tree is looked for in the docs' `public/` too, where the docs
+     * site serves it from.
      */
-    private static function file(string $source, ?string $baseDir, ?string $root): ?string
+    private static function file(string $source, ?string $baseDir, ?string $root, ?string $publicDir): ?string
     {
         $path = \rawurldecode(\explode('?', \explode('#', $source)[0])[0]);
         if (null === $baseDir || '' === $path || 1 === \preg_match('#^[a-z][a-z0-9+.-]*:#i', $path)) {
             return null;
         }
-        $file = \realpath(\str_starts_with($path, '/') ? ($root ?? $baseDir).$path : $baseDir.'/'.$path);
-        $fence = \realpath($root ?? $baseDir);
-        $inside = false !== $file && false !== $fence && \str_starts_with($file, \rtrim($fence, characters: '/').'/') && \is_file($file);
+        $tree = $root ?? $baseDir;
 
-        return $inside && PngDimensions::MAGIC === \file_get_contents($file, length: 8) ? $file : null;
+        return \str_starts_with($path, '/')
+            ? self::inside($tree.$path, $tree) ?? (null === $publicDir ? null : self::inside($publicDir.$path, $publicDir))
+            : self::inside($baseDir.'/'.$path, $tree);
+    }
+
+    /** $path when it is a PNG or SVG file inside $fence, else null. */
+    private static function inside(string $path, string $fence): ?string
+    {
+        $file = \realpath($path);
+        $fence = \realpath($fence);
+
+        return false !== $file
+        && false !== $fence
+        && \str_starts_with($file, \rtrim($fence, characters: '/').'/')
+        && \is_file($file)
+        && \in_array(RasterImage::kind((string) \file_get_contents($file, length: 4096)), ['png', 'svg'], strict: true)
+            ? $file
+            : null;
     }
 
     /**

@@ -36,13 +36,13 @@ final readonly class RasterImage
     /** The most pixels GD is asked to decode. */
     private const int MAX_PIXELS = 16_000_000;
 
-    /** @var \Closure(string, \Closure(?string): void): void */
+    /** @var \Closure(string, int, \Closure(?string): void): void */
     private \Closure $svg;
 
     private bool $gd;
 
     /**
-     * @param (\Closure(string, \Closure(?string): void): void)|null                                $svg  an SVG document to its PNG, or null; inject to test
+     * @param (\Closure(string, int, \Closure(?string): void): void)|null                           $svg  an SVG document drawn that many pixels wide, as its PNG or null; inject to test
      * @param (\Closure(): ((\Closure(string, int, \Closure(?string): void): void)|null))|null $lent the SVG converter a plugin lends, asked at each use
      */
     public function __construct(
@@ -70,14 +70,15 @@ final readonly class RasterImage
     /**
      * $bytes as a PNG, or null when they are no picture this machine can draw.
      *
-     * @param \Closure(?string): void $onPng exactly once, possibly before this returns
+     * @param \Closure(?string): void $onPng    exactly once, possibly before this returns
+     * @param int                     $svgWidth how wide an SVG is drawn, in pixels
      */
-    public function png(string $bytes, \Closure $onPng): void
+    public function png(string $bytes, \Closure $onPng, int $svgWidth = self::SVG_WIDTH): void
     {
         $kind = self::kind($bytes);
         match ($kind) {
             'png' => $onPng($bytes),
-            'svg' => $this->drawn($bytes, static function (?string $png) use ($onPng): void {
+            'svg' => $this->drawn($bytes, $svgWidth, static function (?string $png) use ($onPng): void {
                 $onPng(null !== $png && 'png' === self::kind($png) ? $png : null);
             }),
             null => $onPng(null),
@@ -100,11 +101,11 @@ final readonly class RasterImage
      *
      * @param \Closure(?string): void $onPng
      */
-    private function drawn(string $svg, \Closure $onPng): void
+    private function drawn(string $svg, int $width, \Closure $onPng): void
     {
         $lent = null === $this->lent ? null : ($this->lent)();
         if (null === $lent || self::reachesOut($svg)) {
-            ($this->svg)($svg, $onPng);
+            ($this->svg)($svg, $width, $onPng);
 
             return;
         }
@@ -117,7 +118,7 @@ final readonly class RasterImage
             }
         };
         try {
-            $lent($svg, self::SVG_WIDTH, $once);
+            $lent($svg, $width, $once);
         } catch (\Throwable) {
             $once(null);
         }
@@ -163,10 +164,10 @@ final readonly class RasterImage
      *
      * @param \Closure(?string): void $onPng
      */
-    private static function rsvg(string $svg, \Closure $onPng): void
+    private static function rsvg(string $svg, int $width, \Closure $onPng): void
     {
         // The array form finds the program on the PATH itself, and says false when it is not there.
-        $process = new AsyncProcess(['rsvg-convert', '-f', 'png', '-w', (string) self::SVG_WIDTH], \sys_get_temp_dir(), stdin: $svg, timeout: self::SVG_TIMEOUT);
+        $process = new AsyncProcess(['rsvg-convert', '-f', 'png', '-w', (string) $width], \sys_get_temp_dir(), stdin: $svg, timeout: self::SVG_TIMEOUT);
         $started = $process->start(static function (int $code, string $out) use ($onPng): void {
             $onPng(0 === $code && '' !== $out ? $out : null);
         });

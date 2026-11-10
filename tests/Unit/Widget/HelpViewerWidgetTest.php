@@ -6,6 +6,8 @@ namespace Porta\Tests\Unit\Widget;
 
 use PHPUnit\Framework\TestCase;
 use Porta\Tests\Support\PharFixture;
+use Porta\Tests\Support\PixelGraphics;
+use Porta\Tests\Support\PngFixture;
 use Porta\Tests\Support\RecordingHelpViewerHandler;
 use Porta\Tests\Support\TempProject;
 use Porta\Ui\Glyphs;
@@ -142,6 +144,25 @@ final class HelpViewerWidgetTest extends TestCase
      * a tree beside the docs root, reachable, and crumbed under the plugin's
      * name — `README › demo › usage`, the plugin's index as its folder.
      */
+    /** A plugin's docs show the screenshots the docs build puts in `docs/public/`, as the docs site does. */
+    public function testAPluginsScreenshotIsReadFromTheDocsPublicFolder(): void
+    {
+        $tree = new TempProject([
+            'docs/README.md' => "# Home\n",
+            'docs/public/screenshots/demo.png' => PngFixture::bytes(160, 80),
+            'plugins/demo/docs/README.md' => "# Demo\n\n![Shot](/screenshots/demo.png)\n",
+        ]);
+        [$graphics] = PixelGraphics::answered(cellWidth: 8, cellHeight: 16);
+        $viewer = new HelpViewerWidget(graphics: $graphics);
+        $viewer->setDocsRoot($tree->path('docs'));
+        $viewer->setMoreRoots(static fn (): array => [$tree->path('plugins/demo/docs') => 'demo']);
+        $viewer->refreshPage($tree->path('plugins/demo/docs/README.md'), (string) \file_get_contents($tree->path('plugins/demo/docs/README.md')));
+
+        $screen = \implode("\n", $this->screen($viewer, rows: 20));
+        $this->assertStringNotContainsString('[Shot]', $screen, 'the picture, not its text');
+        $this->assertStringContainsString("\u{100000}", $screen, 'drawn in pixels');
+    }
+
     public function testALinkIntoAPluginsDocsOpensItUnderThePluginsName(): void
     {
         $tree = new TempProject([

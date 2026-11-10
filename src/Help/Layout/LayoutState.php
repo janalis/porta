@@ -30,6 +30,7 @@ final class LayoutState
      * @param array<int, true>                  $openDetails the `<details>` shown open, by {@see detailsNumber()}
      * @param string|null                       $baseDir     where the page's relative image paths start
      * @param string|null                       $root        the tree the page sits in: where `/` starts, and no image is read outside
+     * @param string|null                       $publicDir   the docs' `public/`: where a `/` path not in the tree is looked for, as the docs site serves it
      */
     public function __construct(
         public readonly SourceText $source,
@@ -37,6 +38,7 @@ final class LayoutState
         public readonly array $openDetails = [],
         public readonly ?string $baseDir = null,
         public readonly ?string $root = null,
+        public readonly ?string $publicDir = null,
     ) {}
 
     public function group(): int

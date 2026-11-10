@@ -2,6 +2,8 @@
 
 Composer from the editor: outdated packages listed and marked in composer.json, update, require and remove in a terminal tab.
 
+![composer.json with its outdated requirements marked, and the Packages tab](https://janalis.github.io/porta/screenshots/plugin-composer.svg)
+
 This is `janalis/porta-composer`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

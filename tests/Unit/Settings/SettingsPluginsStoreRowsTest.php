@@ -7,6 +7,7 @@ namespace Porta\Tests\Unit\Settings;
 use PHPUnit\Framework\TestCase;
 use Porta\Config\ConfigFiles;
 use Porta\Config\ConfigScope;
+use Porta\Event\SettingsSectionRequested;
 use Porta\Plugin\Runtime\PluginSettings;
 use Porta\Settings\SettingsPluginsController;
 use Porta\Settings\SettingsProvenance;
@@ -16,6 +17,8 @@ use Porta\Settings\SettingsScopeRow;
 use Porta\Tests\Support\PumpsLoop;
 use Porta\Tests\Support\StoreFixture;
 use Porta\Tests\Support\TestTools;
+use Porta\Widget\Settings\PluginStoreWidget;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 /** What the store adds to a plugin's own page: its Update, and a bundled plugin's takeover offer. */
 final class SettingsPluginsStoreRowsTest extends TestCase
@@ -29,8 +32,15 @@ final class SettingsPluginsStoreRowsTest extends TestCase
         $this->store = new StoreFixture();
     }
 
+    /** @var list<SettingsSectionRequested> */
+    private array $requested = [];
+
     private function controller(): SettingsPluginsController
     {
+        $events = new EventDispatcher();
+        $events->addListener(SettingsSectionRequested::class, function (SettingsSectionRequested $event): void {
+            $this->requested[] = $event;
+        });
         $files = ConfigFiles::for($this->store->project->dir);
         $scope = new SettingsScope($files);
         $scope->set(ConfigScope::Global);
@@ -51,6 +61,7 @@ final class SettingsPluginsStoreRowsTest extends TestCase
             new SettingsProvenance($files),
             storeUpdates: $this->store->updates(),
             catalog: $this->store->catalog,
+            events: $events,
         );
     }
 
@@ -122,5 +133,25 @@ final class SettingsPluginsStoreRowsTest extends TestCase
         $controller->changePlugin('mago', 'pluginTakeover', true);
         $this->assertSame([], $this->store->lifecycle->activated);
         $this->assertSame('', $this->store->toast(), 'nothing started');
+    }
+
+    /** A plugin's own page leads to its page in the store — the verified one, when two share its name. */
+    public function testAPluginsPageLinksToItsPageInTheStore(): void
+    {
+        $this->store->publish('acme/porta-lint');
+        $this->store->publish('janalis/porta-lint');
+        $this->store->curate('{"janalis/porta-lint": {}}');
+        $this->store->fill();
+        $controller = $this->controller();
+
+        $row = self::rows($controller, 'lint')['pluginStore'] ?? null;
+        $this->assertInstanceOf(SettingsRow::class, $row);
+        $this->assertSame(['In the store', 'Open'], [$row->label, $row->value]);
+        $this->assertArrayNotHasKey('pluginStore', self::rows($controller, 'unlisted'), 'the store does not list it: no row');
+
+        $controller->changePlugin('lint', 'pluginStore', true);
+        $this->assertEquals([new SettingsSectionRequested('plugins', PluginStoreWidget::PAGE_PREFIX.'janalis/porta-lint')], $this->requested);
+        $controller->changePlugin('unlisted', 'pluginStore', true);
+        $this->assertCount(1, $this->requested, 'a stale row asks for nothing');
     }
 }

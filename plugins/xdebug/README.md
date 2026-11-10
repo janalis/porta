@@ -2,6 +2,8 @@
 
 Debugs PHP with Xdebug: the vscode-php-debug adapter, found or installed for you.
 
+![The xdebug page in Settings → Plugins](https://janalis.github.io/porta/screenshots/plugin-xdebug.svg)
+
 This is `janalis/porta-xdebug`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

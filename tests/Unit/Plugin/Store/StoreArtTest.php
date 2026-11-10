@@ -174,7 +174,7 @@ final class StoreArtTest extends TestCase
         $converter = null;
         $art = function () use (&$converter): StoreArt {
             $fetch = $this->http->fetch();
-            $raster = new RasterImage(static function (string $svg, \Closure $onPng): void {
+            $raster = new RasterImage(static function (string $svg, int $width, \Closure $onPng): void {
                 $onPng(null);
             }, lent: static function () use (&$converter): ?\Closure {
                 return $converter;
@@ -204,7 +204,7 @@ final class StoreArtTest extends TestCase
         $converter = null;
         $changes = 0;
         $fetch = $this->http->fetch();
-        $raster = new RasterImage(static function (string $svg, \Closure $onPng): void {
+        $raster = new RasterImage(static function (string $svg, int $width, \Closure $onPng): void {
             $onPng(null);
         }, lent: static function () use (&$converter): ?\Closure {
             return $converter;
@@ -313,6 +313,49 @@ final class StoreArtTest extends TestCase
         $this->assertNotContains('https://img.test/sponsor.png', \array_merge(...$this->http->batches), 'a tool lends its masthead, never its sponsors');
     }
 
+    /** A plugin's README shows how it looks, its tool's the logo it is known by: both are read. */
+    public function testThePluginsScreenshotAndItsToolsLogoAreBothShown(): void
+    {
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [
+            self::README => "![shot](https://img.test/shot.png)\n",
+            $tool => "![logo](https://img.test/logo.png)\n![shot again](https://img.test/shot.png)\n![banner](https://img.test/banner.png)\n",
+            'https://img.test/shot.png' => PngFixture::bytes(400, 225),
+            'https://img.test/logo.png' => PngFixture::bytes(48, 48),
+            'https://img.test/banner.png' => PngFixture::bytes(600, 200),
+        ];
+        $art = self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector'];
+
+        $this->assertSame([48, 48], self::dimensions($art->icon), 'the tool\'s first picture is its logo');
+        $this->assertSame(['https://img.test/shot.png', 'https://img.test/banner.png'], $art->shots, 'the plugin\'s own first, each once');
+        $this->assertSame([400, 225], self::dimensions($art->hero));
+    }
+
+    /** The tool's README came back but the plugin's own did not: nothing is kept, so the next session reads it. */
+    public function testAPluginsUnreadReadmeIsNotKeptForItsToolsSake(): void
+    {
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [$tool => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(48, 48), 'https://img.test/shot.png' => PngFixture::bytes(400, 225)];
+        $this->assertSame([], self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->shots);
+
+        $this->http->bodies[self::README] = "![shot](https://img.test/shot.png)\n";
+        $this->assertSame(['https://img.test/shot.png'], self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->shots, 'looked at again');
+    }
+
+    public function testOnlyAREADMEsFirstPictureMayBeTheIcon(): void
+    {
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [
+            self::README => "![shot](https://img.test/shot.png)\n![square](https://img.test/square.png)\n",
+            $tool => "![banner](https://img.test/banner.png)\n![logo](https://img.test/logo.png)\n",
+            'https://img.test/shot.png' => PngFixture::bytes(400, 225),
+            'https://img.test/square.png' => PngFixture::bytes(64, 64),
+            'https://img.test/banner.png' => PngFixture::bytes(600, 200),
+            'https://img.test/logo.png' => PngFixture::bytes(48, 48),
+        ];
+        $this->assertNull(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon, 'neither first picture is square');
+    }
+
     public function testWhatWasFoundIsKeptForAWeekPerVersion(): void
     {
         $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
@@ -339,13 +382,24 @@ final class StoreArtTest extends TestCase
         $this->assertNull(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon, 'a week on, too');
     }
 
+    /** What an older Porta concluded, by older rules, is not read as this one's: the store looks again. */
+    public function testAVerdictKeptByOlderRulesIsLookedAtAgain(): void
+    {
+        $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0').'.json', '{"icon": null, "shots": []}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#1').'.json', '{"icon": null, "shots": []}');
+
+        $this->assertSame([40, 40], self::dimensions(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon));
+        $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#2').'.json'), 'kept under these rules');
+    }
+
     public function testAKeptFileThatIsNotWhatWasFoundIsLookedAtAgain(): void
     {
         $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0').'.json', '{"shots": []}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#2').'.json', '{"shots": []}');
         $this->assertNotNull(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon);
 
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0').'.json', '{"icon": 7, "shots": "x"}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#2').'.json', '{"icon": 7, "shots": "x"}');
         $kept = self::resolve($this->art(), [self::entry()])['acme/porta-rector'];
         $this->assertNull($kept->icon, 'what is not an address is no icon');
         $this->assertSame([], $kept->shots);

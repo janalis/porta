@@ -2,6 +2,8 @@
 
 Renders Graphviz, PlantUML and Mermaid diagrams in editor and Markdown previews.
 
+![The project's architecture, drawn as a graph](https://janalis.github.io/porta/screenshots/plugin-graph-viewer.svg)
+
 This is `janalis/porta-graph-viewer`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already, on by default: turn it off under **Settings → Plugins**.

@@ -2,6 +2,8 @@
 
 Porta's built-in syntax highlighting engine, from tempest/highlight.
 
+![The tempest page in Settings → Plugins](https://janalis.github.io/porta/screenshots/plugin-tempest.svg)
+
 This is `janalis/porta-tempest`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

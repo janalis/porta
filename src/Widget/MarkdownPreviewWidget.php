@@ -14,6 +14,7 @@ use Porta\I18n\Translator;
 use Porta\Support\Files;
 use Porta\Support\RevoltScheduler;
 use Porta\Support\Scheduler;
+use Porta\Ui\Graphics\RasterImage;
 use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\Styles;
 use Psr\EventDispatcher\EventDispatcherInterface;
@@ -58,8 +59,9 @@ final class MarkdownPreviewWidget extends MarkdownPageWidget
         ?FenceRenderQueue $fenceQueue = null,
         Scheduler $scheduler = new RevoltScheduler(),
         private readonly ?EventDispatcherInterface $events = null,
+        ?RasterImage $raster = null,
     ) {
-        parent::__construct($styles, $highlighters, $translator, $graphics, $fences, $fenceQueue, $scheduler);
+        parent::__construct($styles, $highlighters, $translator, $graphics, $fences, $fenceQueue, $scheduler, $raster);
     }
 
     /** A click on the page puts the editor's caret on what was clicked. */

@@ -16,6 +16,7 @@ use Porta\Highlight\TerminalThemeFactory;
 use Porta\Layout\WorkspaceLayout;
 use Porta\Overlay\State\MenuOverlayPanes;
 use Porta\Overlay\State\MenuOverlayPanesFactory;
+use Porta\Plugin\Runtime\PluginCapabilities;
 use Porta\Plugin\Runtime\PluginHost;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManager;
@@ -27,6 +28,7 @@ use Porta\Settings\SettingsSearchSource;
 use Porta\Support\BootTrace;
 use Porta\Support\FreezeWatchdog;
 use Porta\Ui\BidiTui;
+use Porta\Ui\Graphics\RasterImage;
 use Porta\Ui\Theme\Styles;
 use Porta\Ui\Theme\Themes;
 use Porta\Widget\CodeEditorWidget;
@@ -274,6 +276,12 @@ return static function (ContainerConfigurator $container, ContainerBuilder $buil
         ->set(Keybindings::class)
         ->factory([service(KeybindingsFactory::class), 'create'])
         ->tag('porta.ide_service');
+
+    // Pictures as PNGs, drawn with the SVG converter a plugin lends when one
+    // does: built by the registry that knows what is lent.
+    $services
+        ->set(RasterImage::class)
+        ->factory([service(PluginCapabilities::class), 'rasterImage']);
 
     // The plugin subsystem triple is built by PluginHost (its scalar inputs
     // come from IdeConfig + the environment); expose the members as services.

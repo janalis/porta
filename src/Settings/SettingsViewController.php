@@ -217,7 +217,10 @@ final class SettingsViewController implements ContributedView
         // its scope lands on the Installed tab, on that control.
         $store = $this->store;
         if (null !== $store && $store === $this->contentWidget()) {
-            $store->showTab(StoreTab::Installed, PluginStoreWidget::INSTALL_KEY === $event->row ? 'install' : 'scope');
+            // A plugin's own page asks for its page here; a search hit, for a control on Installed.
+            \str_starts_with($event->row, PluginStoreWidget::PAGE_PREFIX)
+                ? $store->showPage(\substr($event->row, offset: \strlen(PluginStoreWidget::PAGE_PREFIX)))
+                : $store->showTab(StoreTab::Installed, PluginStoreWidget::INSTALL_KEY === $event->row ? 'install' : 'scope');
 
             return;
         }

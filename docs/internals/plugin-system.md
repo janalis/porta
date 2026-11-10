@@ -236,18 +236,22 @@ select and install field go back through that controller's `change()`, so the
 install path is one. A search hit on `pluginInstall` or the scope lands on the
 Installed tab (`PluginStoreWidget::showTab()`).
 
-The pictures are `StoreArt`'s: per catalog, a few batched fetches — the
-plugins' READMEs, then for the ones that show nothing, each tool's address
-(`extra.porta.tools`, a composer tool through its Packagist `p2` source) and
-the masthead of its README — then the first `StoreArt::CANDIDATES` pictures,
-judged by shape (square first one: the icon; wide ones: screenshots).
+The pictures are `StoreArt`'s. Each catalog takes a few batched fetches: the
+plugins' READMEs, then each tool's address (`extra.porta.tools`, a composer
+tool through its Packagist `p2` source) and the masthead of its README. The
+plugin's own pictures come first, then the tool's, up to
+`StoreArt::CANDIDATES`. They are judged by shape: the first picture of
+either README is the icon when it is square, and every wide one is a
+screenshot.
 `ReadmeImages` reads the addresses and drops badges, avatars and thanks
 sections. `StoreAssets` keeps each picture as the PNG `Ui/Graphics/RasterImage`
 made of it: GD for JPEG, GIF and WebP. An SVG goes to the converter a
 plugin lends (`Capability::SvgRasterizer`) when it references nothing outside
 itself. Otherwise it goes to `rsvg-convert` on stdin, never to ImageMagick,
 which follows a document's references. The verdict is kept a week per
-`package@version` under `cache/store/art`. It is kept only when every README
+`package@version#RULES` under `cache/store/art`. Raise `StoreArt::RULES`
+whenever the judging changes, so verdicts reached under older rules are
+looked at again. It is kept only when every README
 was read and every picture was drawn. During a session, `StoreAssets` and
 `StoreArt` remember what failed. Both forget it when
 `PluginCapabilities::changes()` moves, so turning the image viewer on brings
@@ -255,6 +259,14 @@ SVGs in at the next `pushStore()`. A plugin page that is opened again asks
 again for anything that came back empty. `SettingsViewController::pushStore()`
 asks for it, never a render; the widget draws it through its own `ImageLayout`
 (`boxed()`), swept every shelf frame.
+
+`RasterImage` is a container service, built by
+`PluginCapabilities::rasterImage()` so that it uses the lent converter. The
+store's assets and the Markdown pages (`Help/Layout/SvgPictures`) share it. A
+page draws a local SVG off the loop, once per file version, and lays itself
+out again when it is ready. A plugin's **In the store** row raises
+`SettingsSectionRequested('plugins', 'store:<package>')`, and
+`PluginStoreWidget::showPage()` answers it.
 
 An updated plugin that is running reloads live. `PluginLifecycle::activateInstalled()`
 swaps out a running plugin of the same name rather than refusing a duplicate, which

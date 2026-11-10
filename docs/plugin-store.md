@@ -31,6 +31,9 @@ The store has four tabs:
   directory: press Enter to type into it, and Enter again to install (see
   [Installing, removing, disabling](plugins.md#installing-removing-disabling)).
 
+A plugin's own page under **Settings → Plugins** has an **In the store** row
+when the store lists it. **Open** there shows its page in the store.
+
 Each plugin is a tile: its icon, its title, what it does, who made it, its
 category, its version, when that version was released and how often it was
 downloaded, with its button at the right. **Verified** marks a plugin whose
@@ -180,11 +183,12 @@ Contributors…) are left out. Only https pictures are used. Of a logo shown
 in a light and a dark version (`#gh-light-mode-only` / `#gh-dark-mode-only`),
 the dark one is used.
 
-When the README shows no picture, the store reads the README of each tool
-the plugin drives (`extra.porta.tools`): a tool published on GitHub or as a
-composer package lends the pictures above its README's first `## ` section,
-usually its logo. That is how the bundled `phpstan` plugin shows PHPStan's
-logo.
+The store also reads the README of each tool the plugin drives
+(`extra.porta.tools`). A tool published on GitHub or as a composer package
+lends the pictures above its README's first `## ` section, usually its logo.
+These come after the plugin's own pictures, and the first picture of either
+README may be the icon. That is how the bundled `phpstan` plugin shows
+PHPStan's logo as its icon and its own screenshot beside it.
 
 What was found is kept for a week under `~/.porta/cache/store`. If a README
 or a picture couldn't be fetched, or a picture couldn't be drawn (say, an SVG

@@ -2,6 +2,8 @@
 
 Runs PHPUnit tests from the editor: the test at the caret, the file, the suite, or the ones that failed.
 
+![A test file after a run: the failure inline, each test marked, the results in the dock](https://janalis.github.io/porta/screenshots/plugin-phpunit.svg)
+
 This is `janalis/porta-phpunit`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

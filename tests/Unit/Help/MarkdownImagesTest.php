@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Porta\Tests\Unit\Help;
 
 use PHPUnit\Framework\TestCase;
+use Porta\Help\Layout\SvgPictures;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
 use Porta\Tests\Support\PixelGraphics;
 use Porta\Tests\Support\TempProject;
+use Porta\Ui\Graphics\RasterImage;
 use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Theme\DarkTheme;
 use Porta\Ui\Theme\Styles;
@@ -42,6 +44,11 @@ final class MarkdownImagesTest extends TestCase
             'docs/column.png' => self::png(100, 2000),
             'docs/dot.png' => self::png(1, 1),
             'docs/odd.png' => "\x89PNG\r\n\x1a\n".\pack('N', 13).'tEXt'.\pack('NN', 16, 16),
+            'docs/drawing.svg' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"/>',
+            'docs/public/screenshots/shot.png' => self::png(160, 80),
+            'docs/public/screenshots/shot.svg' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"/>',
+            'plugin/docs/README.md' => '# Plugin',
+            'docs/notes.txt' => 'not a picture',
         ]);
         [$this->graphics, $this->terminal] = PixelGraphics::answered(cellWidth: 8, cellHeight: 16);
     }
@@ -57,6 +64,64 @@ final class MarkdownImagesTest extends TestCase
     private function render(string $markdown, ?TerminalGraphics $graphics = null, int $width = 40): RenderedDoc
     {
         return new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $graphics ?? $this->graphics)->render($markdown, $width, [], $this->project->path('docs'));
+    }
+
+    /** An SVG is drawn off the loop: its text stands in, and the page is laid out again once it is a picture. */
+    public function testAnSvgIsDrawnOnceItIsAPicture(): void
+    {
+        $asked = [];
+        $answer = null;
+        $relaid = 0;
+        $raster = new RasterImage(static function (string $svg, int $width, \Closure $onPng) use (&$asked, &$answer): void {
+            $asked[] = [$svg, $width];
+            $answer = $onPng;
+        });
+        $svgs = new SvgPictures(static function () use (&$relaid): void {
+            ++$relaid;
+        }, $raster);
+        $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), graphics: $this->graphics, svgs: $svgs);
+        $render = fn (): RenderedDoc => $renderer->render('![Drawing](drawing.svg)', 40, [], $this->project->path('docs'));
+
+        $this->assertSame('[Drawing]', \trim(AnsiUtils::stripAnsiCodes($render()->lines[0])), 'its text, while it is drawn');
+        $this->assertSame([[(string) \file_get_contents($this->project->path('docs/drawing.svg')), SvgPictures::WIDTH]], $asked);
+        $render();
+        $this->assertCount(1, $asked, 'drawn once, not at every layout');
+        $this->assertSame(0, $relaid);
+
+        $answer(self::png(160, 80));
+        $this->assertSame(1, $relaid, 'the page is laid out again');
+        $this->assertCount(5, $render()->lines, 'the picture, in cells that keep its shape');
+        $this->assertCount(1, $asked);
+    }
+
+    public function testAnSvgThatCannotBeDrawnKeepsItsTextAndRedrawsNothing(): void
+    {
+        $relaid = 0;
+        $svgs = new SvgPictures(
+            static function () use (&$relaid): void {
+                ++$relaid;
+            },
+            new RasterImage(static function (string $svg, int $width, \Closure $onPng): void {
+                $onPng(null);
+            }),
+        );
+        $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), graphics: $this->graphics, svgs: $svgs);
+        foreach (['![Drawing](drawing.svg)', '![Notes](notes.txt)'] as $markdown) {
+            $this->assertStringStartsWith('[', \trim(AnsiUtils::stripAnsiCodes($renderer->render($markdown, 40, [], $this->project->path('docs'))->lines[0])), $markdown);
+        }
+        $this->assertSame(0, $relaid, 'answered as it was asked: no news to tell');
+        $this->assertStringStartsWith('[', \trim(AnsiUtils::stripAnsiCodes($this->render('![Drawing](drawing.svg)')->lines[0])), 'no SVG drawing at all without one');
+    }
+
+    public function testAPathFromTheRootIsLookedForInTheDocsPublicFolder(): void
+    {
+        $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), graphics: $this->graphics);
+        $plugin = $this->project->path('plugin/docs');
+        $public = $this->project->path('docs/public');
+
+        $this->assertCount(5, $renderer->render('![Shot](/screenshots/shot.png)', 40, [], $plugin, $plugin, $public)->lines, 'as the docs site serves it');
+        $this->assertSame('[Shot]', \trim(AnsiUtils::stripAnsiCodes($renderer->render('![Shot](/screenshots/shot.png)', 40, [], $plugin, $plugin)->lines[0])), 'no public folder named: not found');
+        $this->assertSame('[Out]', \trim(AnsiUtils::stripAnsiCodes($renderer->render('![Out](/../wide.png)', 40, [], $plugin, $plugin, $public)->lines[0])), 'nothing outside it');
     }
 
     public function testAnImageAloneIsDrawnInCellsThatKeepItsShape(): void

@@ -110,7 +110,7 @@ final class RasterImageTest extends TestCase
     public function testAnSvgIsDrawnByLibrsvgWhenItIsInstalled(): void
     {
         $handed = [];
-        $raster = new RasterImage(static function (string $svg, \Closure $onPng) use (&$handed): void {
+        $raster = new RasterImage(static function (string $svg, int $width, \Closure $onPng) use (&$handed): void {
             $handed[] = $svg;
             $onPng(1 === \count($handed) ? PngFixture::bytes(512, 256) : 'not a png');
         });
@@ -129,7 +129,7 @@ final class RasterImageTest extends TestCase
         };
         $rsvg = [];
         $raster = new RasterImage(
-            static function (string $svg, \Closure $onPng) use (&$rsvg): void {
+            static function (string $svg, int $width, \Closure $onPng) use (&$rsvg): void {
                 $rsvg[] = $svg;
                 $onPng(PngFixture::bytes(7, 7));
             },
@@ -146,7 +146,7 @@ final class RasterImageTest extends TestCase
         $this->assertCount(1, $lent);
 
         $none = new RasterImage(
-            static function (string $svg, \Closure $onPng): void {
+            static function (string $svg, int $width, \Closure $onPng): void {
                 $onPng(PngFixture::bytes(7, 7));
             },
             lent: static fn (): ?\Closure => null,

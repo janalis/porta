@@ -32,6 +32,9 @@ final class StoreArt
     /** How many of a README's pictures are looked at. */
     public const int CANDIDATES = 4;
 
+    /** The rules a kept verdict was reached by: raise it when they change. */
+    private const int RULES = 2;
+
     /** The most a tool's Packagist metadata may weigh: phpunit's is 750 kB. */
     private const int MAX_METADATA = 2_097_152;
 
@@ -119,7 +122,8 @@ final class StoreArt
     }
 
     /**
-     * Read the entries' READMEs, then their tools' for the ones that show nothing.
+     * Read the entries' READMEs, and their tools': a plugin's README may show
+     * how it looks, and its tool's the logo it is known by.
      *
      * @param list<StoreEntry>            $entries
      * @param \Closure(string, Art): void $onArt
@@ -130,18 +134,22 @@ final class StoreArt
         $this->assets->texts($readmes, function (array $texts) use ($entries, $onArt): void {
             $found = [];
             $read = [];
-            $bare = [];
+            $tooled = [];
             foreach ($entries as $entry) {
                 $readme = self::declaredAll($entry) ? null : $entry->readme;
                 $text = null === $readme ? null : $texts[$readme] ?? null;
                 $found[$entry->package] = null === $readme || null === $text ? [] : ReadmeImages::in($text, $readme);
                 $read[$entry->package] = null === $readme || null !== $text;
-                if ([] === $found[$entry->package] && !self::declaredAll($entry) && [] !== $entry->tools) {
-                    $bare[] = $entry;
+                if (!self::declaredAll($entry) && [] !== $entry->tools) {
+                    $tooled[] = $entry;
                 }
             }
-            $this->tools($bare, function (array $tools, array $toolsRead) use ($entries, $found, $read, $onArt): void {
-                $this->judge($entries, \array_merge($found, $tools), \array_merge($read, $toolsRead), $onArt);
+            $this->tools($tooled, function (array $tools, array $toolsRead) use ($entries, $found, $read, $onArt): void {
+                $both = [];
+                foreach ($toolsRead as $package => $came) {
+                    $both[$package] = $came && $read[$package];
+                }
+                $this->judge($entries, $found, $tools, \array_merge($read, $both), $onArt);
             });
         });
     }
@@ -205,19 +213,25 @@ final class StoreArt
      * Fetch each entry's first pictures, and say which is its icon and which are its screenshots.
      *
      * @param list<StoreEntry>            $entries
-     * @param array<string, list<string>> $found   package => the pictures its READMEs show
-     * @param array<string, bool>         $read    package => whether every README asked for came back: only then, and when every picture was drawn, is the verdict kept
+     * @param array<string, list<string>> $found    package => the pictures its own README shows
+     * @param array<string, list<string>> $borrowed package => the pictures atop its tools' READMEs
+     * @param array<string, bool>         $read     package => whether every README asked for came back: only then, and when every picture was drawn, is the verdict kept
      * @param \Closure(string, Art): void $onArt
      */
-    private function judge(array $entries, array $found, array $read, \Closure $onArt): void
+    private function judge(array $entries, array $found, array $borrowed, array $read, \Closure $onArt): void
     {
         $candidates = [];
+        $firsts = [];
         foreach ($entries as $entry) {
-            $candidates[$entry->package] = \array_slice($found[$entry->package] ?? [], offset: 0, length: self::CANDIDATES);
+            $own = \array_slice($found[$entry->package] ?? [], offset: 0, length: self::CANDIDATES);
+            $tools = \array_slice(\array_values(\array_diff($borrowed[$entry->package] ?? [], $own)), offset: 0, length: self::CANDIDATES - \count($own));
+            $candidates[$entry->package] = [...$own, ...$tools];
+            // Each README's first picture may be the icon: the plugin's own, else its tool's logo.
+            $firsts[$entry->package] = [] === $tools ? [0] : [0, \count($own)];
         }
-        $this->assets->images(\array_values(\array_unique(\array_merge([], ...\array_values($candidates)))), function (array $pngs) use ($entries, $candidates, $read, $onArt): void {
+        $this->assets->images(\array_values(\array_unique(\array_merge([], ...\array_values($candidates)))), function (array $pngs) use ($entries, $candidates, $firsts, $read, $onArt): void {
             foreach ($entries as $entry) {
-                $verdict = self::verdict($entry, $candidates[$entry->package], $pngs);
+                $verdict = self::verdict($entry, $candidates[$entry->package], $firsts[$entry->package], $pngs);
                 // A README or a picture that did not come back may be the network, not the plugin, and a
                 // picture this machine could not draw may be drawn once a converter is there — the image
                 // viewer switched on, librsvg installed: either is looked for again next session.
@@ -235,15 +249,16 @@ final class StoreArt
 
     /**
      * Which picture is the icon and which are the screenshots: the package's
-     * own when it lists them; else the first picture found, when it is
-     * square, and every wide one.
+     * own when it lists them; else the first square one of those first in a
+     * README, and every wide one.
      *
      * @param list<string>               $candidates
+     * @param list<int>                  $firsts     the candidates first in their README: those that may be the icon
      * @param array<string, string|null> $pngs
      *
      * @return array{icon: ?string, shots: list<string>}
      */
-    private static function verdict(StoreEntry $entry, array $candidates, array $pngs): array
+    private static function verdict(StoreEntry $entry, array $candidates, array $firsts, array $pngs): array
     {
         $icon = $entry->icon;
         $shots = $entry->screenshots;
@@ -252,7 +267,7 @@ final class StoreArt
             if (null === $size) {
                 continue;
             }
-            if (0 === $index && null === $icon && self::square($size)) {
+            if (null === $icon && \in_array($index, $firsts, strict: true) && self::square($size)) {
                 $icon = $url;
             }
             if ([] === $entry->screenshots && self::wide($size)) {
@@ -307,9 +322,14 @@ final class StoreArt
         return null !== $entry->icon && [] !== $entry->screenshots;
     }
 
+    /**
+     * Where a verdict is kept: by package and version, and by the rules that
+     * made it — {@see RULES} moves when they change, so a verdict an older
+     * Porta reached is never read as this one's.
+     */
     private static function key(StoreEntry $entry): string
     {
-        return $entry->package.'@'.$entry->version;
+        return $entry->package.'@'.$entry->version.'#'.self::RULES;
     }
 
     /** @return array{icon: ?string, shots: list<string>}|null what was found for $key, while it is young enough */

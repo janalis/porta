@@ -2,6 +2,8 @@
 
 Diffs for other plugins to show: the unified-diff model, word-level highlights and the unified or side-by-side diff pane.
 
+![The merge view: ours, the result and theirs, level with one another](https://janalis.github.io/porta/screenshots/plugin-diff.svg)
+
 This is `janalis/porta-diff`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already, on by default: turn it off under **Settings → Plugins**.

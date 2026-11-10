@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Plugin\Runtime;
 
 use Porta\Plugin\Api\Capability;
+use Porta\Ui\Graphics\RasterImage;
 
 /**
  * What plugins lend core ({@see \Porta\Plugin\Api\PluginApi::provide()}), in
@@ -44,6 +45,16 @@ final class PluginCapabilities
     public function changes(): int
     {
         return $this->changes;
+    }
+
+    /**
+     * Pictures made PNGs with the SVG converter a plugin lends, when one does
+     * — the one {@see RasterImage} core draws with: the container's service,
+     * built here because only this registry knows what is lent.
+     */
+    public function rasterImage(): RasterImage
+    {
+        return new RasterImage(lent: fn (): ?\Closure => $this->first(Capability::SvgRasterizer));
     }
 
     /** The closure the first plugin standing provides for $capability, or null when none does. */

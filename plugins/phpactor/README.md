@@ -2,6 +2,8 @@
 
 phpactor as the PHP language server.
 
+![The phpactor page in Settings → Plugins](https://janalis.github.io/porta/screenshots/plugin-phpactor.svg)
+
 This is `janalis/porta-phpactor`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

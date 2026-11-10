@@ -9,6 +9,7 @@ use Porta\Help\Fence\FenceRenderQueue;
 use Porta\Help\Fence\FenceSession;
 use Porta\Help\Fence\MarkdownFenceRegistry;
 use Porta\Help\Layout\PageWords;
+use Porta\Help\Layout\SvgPictures;
 use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
 use Porta\Help\RenderedDoc;
@@ -23,6 +24,7 @@ use Porta\Support\Scheduler;
 use Porta\Support\Text;
 use Porta\Ui\ClickZones;
 use Porta\Ui\Glyphs;
+use Porta\Ui\Graphics\RasterImage;
 use Porta\Ui\Graphics\TerminalGraphics;
 use Porta\Ui\Role;
 use Porta\Ui\Sgr;
@@ -100,6 +102,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
         ?MarkdownFenceRegistry $fences = null,
         ?FenceRenderQueue $fenceQueue = null,
         private readonly Scheduler $scheduler = new RevoltScheduler(),
+        ?RasterImage $raster = null,
     ) {
         $this->initStyles($styles);
         $words = null === $translator ? null : new PageWords(static fn (string $name): string => self::pageWord($translator, $name));
@@ -109,7 +112,8 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
                     $this->relayout();
                     $this->scheduleFences();
                 }) : null;
-        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $words, $graphics, $this->fences);
+        $svgs = null === $graphics ? null : new SvgPictures($this->relayout(...), $raster ?? new RasterImage());
+        $this->renderer = new MarkdownRenderer($this->styles, $highlighters?->forFragments(), $words, $graphics, $this->fences, $svgs);
         $this->headerZones = new ClickZones();
         // The terminal's answer arrives after the first frame: images that
         // were text until then are pixels now.
@@ -383,7 +387,8 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
             // other text: keep the source line at the top instead. A new text
             // (no page to measure against) keeps the offset as it was.
             $anchor = $this->doc?->origins[$this->scrollTop] ?? null;
-            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails, null === $this->path ? null : \dirname($this->path), $this->tree[0] ?? null);
+            $public = null === $this->docsRoot ? null : $this->docsRoot.'/public';
+            $doc = $this->renderer->render($this->markdown, $width, $this->openDetails, null === $this->path ? null : \dirname($this->path), $this->tree[0] ?? null, $public);
             $this->doc = $doc;
             $this->renderedWidth = $width;
             if (null !== $anchor) {

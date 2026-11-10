@@ -21,6 +21,7 @@ use Porta\Plugin\Tool\ToolCatalog;
 use Porta\Plugin\Tool\ToolJobs;
 use Porta\Plugin\Tool\ToolStatus;
 use Porta\Plugin\Tool\ToolUpdates;
+use Porta\Widget\Settings\PluginStoreWidget;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -54,6 +55,9 @@ final class SettingsPluginsController
 
     /** A bundled plugin's offer of the package its tool's owners publish in its place. */
     private const string TAKEOVER_KEY = 'pluginTakeover';
+
+    /** The row that opens the plugin's page in the store. */
+    private const string STORE_KEY = 'pluginStore';
 
     /** Prefix marking a Remove button; the rest is `<install scope>:<plugin>`. */
     private const string REMOVE_PREFIX = 'pluginRemove:';
@@ -306,7 +310,7 @@ final class SettingsPluginsController
         // A plugin that ships its own docs offers them last, after its knobs
         // and buttons — a disabled one too, which is when reading what it
         // does is most useful.
-        return [...$rows, ...$this->docsRow($name), ...$this->takeoverRows($name), ...$this->updateRows($name), ...$this->removeRows($name)];
+        return [...$rows, ...$this->docsRow($name), ...$this->storeRow($name), ...$this->takeoverRows($name), ...$this->updateRows($name), ...$this->removeRows($name)];
     }
 
     /**
@@ -429,6 +433,22 @@ final class SettingsPluginsController
         )];
     }
 
+    /** @return list<SettingsRow> the row that opens $name's page in the store, when the store lists it */
+    private function storeRow(string $name): array
+    {
+        if (null === $this->catalog?->named($name)) {
+            return [];
+        }
+
+        return [new SettingsRow(
+            key: self::STORE_KEY,
+            label: $this->translator->trans('In the store'),
+            kind: SettingsRowKind::Action,
+            value: $this->translator->trans('Open'),
+            restart: false,
+        )];
+    }
+
     /** Route a plugin settings-page edit: the Enabled toggle or a plugin setting. */
     /**
      * Put one of a plugin's own settings back to its descriptor default.
@@ -467,6 +487,7 @@ final class SettingsPluginsController
             'pluginEnabled' === $key => $this->toggle($name, $value),
             \str_starts_with($key, self::TOOL_PREFIX) => $this->toolPressed($name, \substr($key, offset: \strlen(self::TOOL_PREFIX))),
             'pluginDocs' === $key => $this->openDocs($name),
+            self::STORE_KEY === $key => $this->openStorePage($name),
             \str_starts_with($key, self::REMOVE_PREFIX) => $this->removalPressed($key),
             \str_starts_with($key, self::UPDATE_PREFIX) => $this->updatePressed($key),
             self::TAKEOVER_KEY === $key => $this->takeoverPressed($name),
@@ -487,6 +508,16 @@ final class SettingsPluginsController
         $docs = $this->installer->docsIndex($name);
         if (null !== $docs) {
             $this->events?->dispatch(new HelpPageRequested($docs));
+        }
+    }
+
+    /** The Plugins page, which is the store, open on $name's page there. */
+    private function openStorePage(string $name): void
+    {
+        $this->armed = null;
+        $entry = $this->catalog?->named($name);
+        if (null !== $entry) {
+            $this->events?->dispatch(new SettingsSectionRequested('plugins', PluginStoreWidget::PAGE_PREFIX.$entry->package));
         }
     }
 

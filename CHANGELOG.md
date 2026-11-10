@@ -20,8 +20,9 @@ versions follow [Semantic Versioning](https://semver.org/).
   page, and a featured plugin's screenshot stands over its tile in the banner.
   A plugin's page shows its screenshots side by side, and ← → scrolls them. A
   plugin that publishes no `icon` or `screenshots` gets them from its README,
-  or else from the README of the tool it drives, so the bundled `phpstan`
-  plugin shows PHPStan's logo. The store never draws an icon for a plugin.
+  and from the README of the tool it drives, so the bundled `phpstan` plugin
+  shows PHPStan's logo beside its own screenshot. Every bundled plugin's
+  README shows its screenshot. The store never draws an icon for a plugin.
   Pictures can be PNG, JPEG, GIF, WebP or SVG. With the image viewer
   plugin on, an SVG is drawn by its converter (the **SVG converter path**
   setting, otherwise `rsvg-convert`, `magick` or `convert`). Without it, an
@@ -29,6 +30,12 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Plugin pages link to the store**: a plugin's page under **Settings →
+  Plugins** has an **In the store** row that opens its page in the store.
+- **SVG pictures in the docs and the Markdown preview**: a local SVG is drawn
+  like a PNG, with the image viewer's converter when that plugin is on. In the
+  documentation, `/screenshots/…` is read from `docs/public/`, so the
+  screenshots on plugin pages show.
 - **Plugin API**: `PluginApi::provide(Capability, Closure)` lets a plugin give
   core a feature that core uses only when one is there. The first is
   `Capability::SvgRasterizer`, which the image viewer provides. See

@@ -2,6 +2,8 @@
 
 PHPStan analysis of the current file, or on save, as diagnostics.
 
+![The phpstan page in Settings → Plugins](https://janalis.github.io/porta/screenshots/plugin-phpstan.svg)
+
 This is `janalis/porta-phpstan`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

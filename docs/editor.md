@@ -873,11 +873,16 @@ it. An edit keeps your place in a long preview.
   writes `[x]` into the text — one edit, undone with `Ctrl+Z` like any other —
   and on `[✓]` unticks it.
 - **Images.** In a terminal that speaks the kitty graphics protocol (kitty,
-  Ghostty) a local PNG standing alone in its paragraph is drawn in pixels, at
-  its own size or its `<img width>`. A path starting with `/` is read from the
-  project's root, as GitHub reads it from the repository's, and no image is
-  read from outside the project. Elsewhere, and for a remote image or another
-  format, the page shows its alt text, a link that opens the file.
+  Ghostty) a local PNG or SVG standing alone in its paragraph is drawn in
+  pixels, at its own size or its `<img width>`. An SVG shows its alt text
+  until it has been drawn. It is drawn by the image viewer plugin's converter
+  when that plugin is on, and by `rsvg-convert` otherwise. A path starting
+  with `/` is read from the project's root, as GitHub reads it from the
+  repository's, and no image is read from outside the project. In the
+  documentation (`F1`), a path starting with `/` that isn't in the page's own
+  tree is read from `docs/public/`, as on the docs site. Elsewhere, and for a
+  remote image or another format, the page shows its alt text, a link that
+  opens the file.
 - **Markdown reads like the documentation** (`F1`): a navigation bar over the
   page — `‹` `›` through the pages you followed, then the page's place in the
   project — and links you cycle with `Tab` and follow with `Enter` or a click.

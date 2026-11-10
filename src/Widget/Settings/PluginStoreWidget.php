@@ -82,6 +82,9 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     /** The settings key the install field's source is handed to the page under. */
     public const string INSTALL_KEY = 'pluginInstall';
 
+    /** The row key, `store:` and a package, that asks for that package's page. */
+    public const string PAGE_PREFIX = 'store:';
+
     /** @var list<StoreRow> */
     private array $rows = [];
 
@@ -802,6 +805,16 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $row = $this->chromeRows + $item->row - $this->scroll;
         if (null !== $this->scope && null !== $this->onOpenChoice) {
             ($this->onOpenChoice)($this->scope, $row + $item->height, $item->col, $row, $item->width);
+        }
+    }
+
+    /** $package's page, when the store lists it — the link from a plugin's own settings page. */
+    public function showPage(string $package): void
+    {
+        $row = \array_find($this->rows, static fn (StoreRow $row): bool => $package === $row->entry->package);
+        if (null !== $row) {
+            $this->showTab(StoreTab::Discover);
+            $this->openDetail($row);
         }
     }
 

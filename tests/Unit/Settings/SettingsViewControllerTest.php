@@ -1357,6 +1357,24 @@ final class SettingsViewControllerTest extends TestCase
         $this->assertMatchesRegularExpression('/▀{6} Rector/u', $lines, 'its picture in place of its initials');
     }
 
+    /** A plugin's own page leads to its page in the store: the Plugins page, open on that package. */
+    public function testAPluginsStorePageIsOpenedFromItsSettingsPage(): void
+    {
+        $store = new StoreFixture();
+        $store->publish('acme/porta-rector', store: ['title' => 'Rector']);
+        $store->publish('acme/porta-mago', store: ['title' => 'Mago']);
+        $store->fill();
+        $controller = $this->controller(store: $store);
+        $controller->openOn('general');
+
+        $controller->onSectionRequested(new SettingsSectionRequested('plugins', PluginStoreWidget::PAGE_PREFIX.'acme/porta-mago'));
+        $this->assertSame(['settings-store'], $this->ids($this->content));
+        $this->assertSame('acme/porta-mago', $this->store?->detail());
+
+        $controller->onSectionRequested(new SettingsSectionRequested('plugins', PluginStoreWidget::PAGE_PREFIX.'acme/porta-gone'));
+        $this->assertNull($this->store?->detail(), 'one the store no longer lists: the shelf');
+    }
+
     public function testTheStoresButtonsAndAssetsGoThroughTheController(): void
     {
         $store = new StoreFixture();

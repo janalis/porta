@@ -2,6 +2,8 @@
 
 Runs php-cs-fixer on the current file, or on save.
 
+![The php-cs-fixer page in Settings → Plugins](https://janalis.github.io/porta/screenshots/plugin-php-cs-fixer.svg)
+
 This is `janalis/porta-php-cs-fixer`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

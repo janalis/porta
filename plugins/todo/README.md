@@ -2,6 +2,8 @@
 
 Scans the project for TODO and FIXME comments into a dock tool.
 
+![The TODO panel listing every marker in the project](https://janalis.github.io/porta/screenshots/plugin-todo.svg)
+
 This is `janalis/porta-todo`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already, on by default: turn it off under **Settings → Plugins**.

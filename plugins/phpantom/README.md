@@ -2,6 +2,8 @@
 
 phpantom as the PHP language server, plus its fixer.
 
+![The phpantom page in Settings → Plugins](https://janalis.github.io/porta/screenshots/plugin-phpantom.svg)
+
 This is `janalis/porta-phpantom`, one of the plugins bundled with
 [Porta](https://github.com/janalis/porta), the terminal IDE for PHP. Porta
 ships it already: turn it on under **Settings → Plugins**. Install this

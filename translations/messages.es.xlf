@@ -3898,6 +3898,10 @@
         <source>No plugin is installed</source>
         <target>No hay ningún plugin instalado</target>
       </trans-unit>
+      <trans-unit id="1309">
+        <source>In the store</source>
+        <target>En la tienda</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
