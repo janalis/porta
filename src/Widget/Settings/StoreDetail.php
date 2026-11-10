@@ -10,8 +10,12 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Store\Art;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
+use Porta\Support\AnsiText;
 use Porta\Ui\Graphics\TerminalGraphics;
+use Porta\Ui\Role;
+use Porta\Ui\Sgr;
 use Porta\Ui\Theme\Styles;
+use Symfony\Component\Tui\Ansi\AnsiUtils;
 
 /**
  * The plugin page the store has open: which plugin, how far it is scrolled,
@@ -35,8 +39,14 @@ final class StoreDetail
     /** @var array<string, true> the addresses already asked for, so a page laid out again does not ask twice */
     private array $asked = [];
 
-    /** @var array{lines: list<string>, button: array{int, int, int, int}}|null */
+    /** @var array{lines: list<string>, button: array{int, int, int, int}, links: list<array{url: string, spans: list<array{int, int, int}>}>}|null */
     private ?array $page = null;
+
+    /** The link the keys are on, by its place on the page; -1 for the page's button. */
+    private int $link = -1;
+
+    /** Whether the next layout scrolls the focused link into view. */
+    private bool $followLink = false;
 
     /** @var array{?string, int, int, int, bool, ?Art} the [package, width, rows, shot, hovered, art] the page was laid out for */
     private array $key = [null, 0, 0, 0, false, null];
@@ -47,8 +57,11 @@ final class StoreDetail
 
     private readonly StorePage $pages;
 
-    public function __construct(Translator $translator, Styles $styles, ?TerminalGraphics $graphics)
-    {
+    public function __construct(
+        Translator $translator,
+        private readonly Styles $styles,
+        ?TerminalGraphics $graphics,
+    ) {
         $this->markdown = new MarkdownRenderer($styles, graphics: $graphics);
         $this->images = new ImageLayout($graphics);
         $this->pages = new StorePage($translator, $styles, $this->markdown, $this->images);
@@ -65,6 +78,7 @@ final class StoreDetail
         $this->scroll = 0;
         $this->shot = 0;
         $this->page = null;
+        $this->link = -1;
     }
 
     public function close(): void
@@ -82,6 +96,36 @@ final class StoreDetail
     public function scrollBy(int $delta): void
     {
         $this->scroll = \max(0, $this->scroll + $delta);
+    }
+
+    /**
+     * Tab: the next of the page's links, the button before the first and
+     * after the last; $step -1 goes back.
+     */
+    public function cycleLink(int $step): void
+    {
+        // -1 (the button) and each link, round.
+        $stops = \count($this->page['links'] ?? []) + 1;
+        $this->link = (((($this->link + 1 + $step) % $stops) + $stops) % $stops) - 1;
+        $this->followLink = true;
+    }
+
+    /** Where the focused link leads, or null on the button. */
+    public function focusedLink(): ?string
+    {
+        return $this->page['links'][$this->link]['url'] ?? null;
+    }
+
+    /** Where the link at ($row, $col) of what {@see lines()} drew leads, or null. */
+    public function linkAt(int $row, int $col): ?string
+    {
+        $row += $this->scroll;
+        $link = \array_find(
+            $this->page['links'] ?? [],
+            static fn (array $link): bool => null !== \array_find($link['spans'], static fn (array $span): bool => $row === $span[0] && $col >= $span[1] && $col < $span[2]),
+        );
+
+        return $link['url'] ?? null;
     }
 
     public function shot(): int
@@ -123,9 +167,20 @@ final class StoreDetail
             // The pictures this layout no longer draws — a strip moved on, a pane resized — are freed.
             $this->images->sweep();
         }
+        $this->link = \min($this->link, \count($this->page['links']) - 1);
+        $spans = $this->page['links'][$this->link]['spans'] ?? [];
+        if ($this->followLink && [] !== $spans) {
+            // The focused link in view: scrolled to just as far as it takes.
+            $this->scroll = \max(\min($this->scroll, $spans[0][0]), \array_last($spans)[0] - $room + 1);
+        }
+        $this->followLink = false;
         $this->scroll = \max(0, \min($this->scroll, \count($this->page['lines']) - $room));
+        $lines = $this->page['lines'];
+        foreach ($spans as [$at, $from, $to]) {
+            $lines[$at] = $this->marked($lines[$at], $from, $to);
+        }
 
-        return \array_slice($this->page['lines'], $this->scroll, $room);
+        return \array_slice($lines, $this->scroll, $room);
     }
 
     /**
@@ -162,5 +217,18 @@ final class StoreDetail
         }
 
         return $asks;
+    }
+
+    /** $line with its columns $from to $to drawn as the focused link. */
+    private function marked(string $line, int $from, int $to): string
+    {
+        $width = AnsiUtils::visibleWidth($line);
+
+        return (
+            AnsiText::columnsFrom($line, 0, $from)
+            .Sgr::RESET
+            .$this->styles->of(Role::SelectedRow)->apply(AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($line, $from, $to - $from)))
+            .AnsiText::columnsFrom($line, $to, \max(0, $width - $to))
+        );
     }
 }

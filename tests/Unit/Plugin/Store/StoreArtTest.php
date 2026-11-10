@@ -125,10 +125,10 @@ final class StoreArtTest extends TestCase
         yield 'square' => [64, 64, true, false];
         yield 'smallest icon' => [32, 32, true, false];
         yield 'too small an icon' => [31, 31, false, false];
-        yield 'widest icon, 4:3' => [64, 48, true, false];
-        yield 'past 4:3' => [65, 48, false, false];
-        yield 'tallest icon, 3:4' => [48, 64, true, false];
-        yield 'past 3:4' => [48, 65, false, false];
+        yield 'widest icon, 3:2' => [60, 40, true, false];
+        yield 'past 3:2' => [61, 40, false, false];
+        yield 'tallest icon, 2:3' => [40, 60, true, false];
+        yield 'past 2:3' => [40, 61, false, false];
         yield 'narrowest screenshot, 13:10, square enough to be an icon too' => [260, 200, true, true];
         yield 'short of 13:10' => [259, 200, true, false];
         yield 'too narrow a screenshot' => [199, 100, false, false];
@@ -140,11 +140,18 @@ final class StoreArtTest extends TestCase
     #[DataProvider('shapes')]
     public function testAPicturesShapeSaysWhatItIs(int $width, int $height, bool $icon, bool $screenshot): void
     {
+        // Its tool's README shows a square logo: the icon whenever this picture is not square enough to be.
         $url = 'https://img.test/'.$width.'x'.$height.'.png';
-        $this->http->bodies = [self::README => '![p]('.$url.')', $url => PngFixture::bytes($width, $height)];
-        $art = self::resolve($this->art(), [self::entry()])['acme/porta-rector'];
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [
+            self::README => '![p]('.$url.')',
+            $url => PngFixture::bytes($width, $height),
+            $tool => '![logo](https://img.test/logo.png)',
+            'https://img.test/logo.png' => PngFixture::bytes(48, 48),
+        ];
+        $art = self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector'];
 
-        $this->assertSame([$icon ? [$width, $height] : null, $screenshot ? [$url] : []], [self::dimensions($art->icon), $art->shots]);
+        $this->assertSame([$icon ? [$width, $height] : [48, 48], $screenshot ? [$url] : []], [self::dimensions($art->icon), $art->shots]);
     }
 
     public function testWhatCouldNotBeReadIsNotKept(): void
@@ -342,6 +349,47 @@ final class StoreArtTest extends TestCase
         $this->assertSame(['https://img.test/shot.png'], self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->shots, 'looked at again');
     }
 
+    /** No square picture: the first one is the icon all the same, a tool's wordmark before the plugin's own screenshot. */
+    public function testWithNoSquarePictureTheFirstOneIsTheIcon(): void
+    {
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [
+            self::README => "![shot](https://img.test/shot.png)\n",
+            $tool => "![wordmark](https://img.test/wordmark.png)\n",
+            'https://img.test/shot.png' => PngFixture::bytes(400, 225),
+            'https://img.test/wordmark.png' => PngFixture::bytes(300, 80),
+        ];
+        $this->assertSame([300, 80], self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon));
+        $this->assertSame([400, 225], self::dimensions(self::resolve($this->art(), [self::entry('plain')])['acme/porta-plain']->icon), 'no tool: its own first picture');
+    }
+
+    /** A tool's logo that did not come is no icon: the plugin's own first picture is. */
+    public function testTheFallbackIconIsOneThatWasDrawn(): void
+    {
+        $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
+        $this->http->bodies = [self::README => "![shot](https://img.test/shot.png)\n", $tool => "![gone](https://img.test/gone.png)\n", 'https://img.test/shot.png' => PngFixture::bytes(400, 225)];
+        $this->assertSame([400, 225], self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon));
+    }
+
+    /** A tool installed by Homebrew lends the README of the GitHub repository its formula names as its home page. */
+    public function testAHomebrewToolLendsTheReadmeOfItsHomePage(): void
+    {
+        $this->http->bodies = [
+            self::README => "# Rector\n",
+            'https://formulae.brew.sh/api/formula/chroma.json' => '{"homepage": "https://github.com/alecthomas/chroma"}',
+            'https://formulae.brew.sh/api/formula/site.json' => '{"homepage": "https://chroma.test"}',
+            'https://formulae.brew.sh/api/formula/junk.json' => 'not json',
+            'https://raw.githubusercontent.com/alecthomas/chroma/HEAD/README.md' => "![logo](https://img.test/chroma.png)\n",
+            'https://img.test/chroma.png' => PngFixture::bytes(48, 48),
+        ];
+        $art = self::resolve($this->art(), [self::entry(tools: ['brew:site', 'brew:junk', 'brew:chroma'])])['acme/porta-rector'];
+        $this->assertSame([48, 48], self::dimensions($art->icon), 'a home page off GitHub, or no page at all, lends nothing');
+        $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#3').'.json'), 'every formula read: kept');
+
+        $this->assertNull(self::resolve($this->art(), [self::entry('gone', tools: ['brew:gone'])])['acme/porta-gone']->icon);
+        $this->assertFileDoesNotExist($this->home->path('art/'.\sha1('acme/porta-gone@1.0#3').'.json'), 'a formula\'s page that did not come is looked at again');
+    }
+
     public function testOnlyAREADMEsFirstPictureMayBeTheIcon(): void
     {
         $tool = 'https://raw.githubusercontent.com/vendor/tool/HEAD/README.md';
@@ -353,7 +401,11 @@ final class StoreArtTest extends TestCase
             'https://img.test/banner.png' => PngFixture::bytes(600, 200),
             'https://img.test/logo.png' => PngFixture::bytes(48, 48),
         ];
-        $this->assertNull(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon, 'neither first picture is square');
+        $this->assertSame(
+            [600, 200],
+            self::dimensions(self::resolve($this->art(), [self::entry(tools: ['github:vendor/tool'])])['acme/porta-rector']->icon),
+            'neither first picture is square: the tool\'s first, as it is shaped',
+        );
     }
 
     public function testWhatWasFoundIsKeptForAWeekPerVersion(): void
@@ -390,16 +442,16 @@ final class StoreArtTest extends TestCase
         $this->home->write('art/'.\sha1('acme/porta-rector@1.0#1').'.json', '{"icon": null, "shots": []}');
 
         $this->assertSame([40, 40], self::dimensions(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon));
-        $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#2').'.json'), 'kept under these rules');
+        $this->assertFileExists($this->home->path('art/'.\sha1('acme/porta-rector@1.0#3').'.json'), 'kept under these rules');
     }
 
     public function testAKeptFileThatIsNotWhatWasFoundIsLookedAtAgain(): void
     {
         $this->http->bodies = [self::README => "![logo](https://img.test/logo.png)\n", 'https://img.test/logo.png' => PngFixture::bytes(40, 40)];
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#2').'.json', '{"shots": []}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#3').'.json', '{"shots": []}');
         $this->assertNotNull(self::resolve($this->art(), [self::entry()])['acme/porta-rector']->icon);
 
-        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#2').'.json', '{"icon": 7, "shots": "x"}');
+        $this->home->write('art/'.\sha1('acme/porta-rector@1.0#3').'.json', '{"icon": 7, "shots": "x"}');
         $kept = self::resolve($this->art(), [self::entry()])['acme/porta-rector'];
         $this->assertNull($kept->icon, 'what is not an address is no icon');
         $this->assertSame([], $kept->shots);

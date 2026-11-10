@@ -19,6 +19,7 @@ use Porta\Plugin\Store\StoreAssets;
 use Porta\Plugin\Store\StoreCatalog;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
+use Porta\Support\DocsUrlOpener;
 use Porta\Workbench\Notifier;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
@@ -60,7 +61,14 @@ final class SettingsStoreController
         // Trailing, as everywhere in Settings: Open asks for a plugin's page through it.
         private readonly ?EventDispatcherInterface $events = null,
         private readonly ?PluginLoader $loader = null,
+        private readonly ?DocsUrlOpener $links = null,
     ) {}
+
+    /** A link on a plugin's page: in the browser. */
+    public function openLink(string $url): void
+    {
+        $this->links?->open($url);
+    }
 
     /**
      * Every plugin on the shelves, with its button.

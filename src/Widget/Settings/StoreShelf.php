@@ -371,7 +371,7 @@ final class StoreShelf
     /**
      * The pictures of a row of featured plugins, over their tiles, as tall as
      * the tallest needs up to {@see HERO_ROWS}; returns the row they start
-     * on, or -1 when none of them has one.
+     * on, or -1 when one of them has none to draw.
      *
      * @param list<StoreRow|InstalledPlugin> $chunk
      */
@@ -384,13 +384,11 @@ final class StoreShelf
             $fits = null === $png ? null : $this->images?->fits($png, $this->tileWidth - 1, self::HERO_ROWS);
             // Its size is in its header; whether it can be drawn here is the drawing.
             if (null === $png || null === $fits || null === $this->images?->boxed($png, $this->tileWidth - 1, $fits[1])) {
-                continue;
+                // A row stands its pictures over every tile or over none: one alone leaves a hole beside it.
+                return -1;
             }
             $pictures[$column] = $png;
             $rows = \max($rows, $fits[1]);
-        }
-        if ([] === $pictures) {
-            return -1;
         }
         $top = \count($this->lines);
         $band = \array_fill(start_index: 0, count: $rows, value: ' ');

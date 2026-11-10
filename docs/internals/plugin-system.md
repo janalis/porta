@@ -238,11 +238,15 @@ Installed tab (`PluginStoreWidget::showTab()`).
 
 The pictures are `StoreArt`'s. Each catalog takes a few batched fetches: the
 plugins' READMEs, then each tool's address (`extra.porta.tools`, a composer
-tool through its Packagist `p2` source) and the masthead of its README. The
-plugin's own pictures come first, then the tool's, up to
-`StoreArt::CANDIDATES`. They are judged by shape: the first picture of
-either README is the icon when it is square, and every wide one is a
-screenshot.
+tool through its Packagist `p2` source, a Homebrew one through its formula's
+`homepage`) and the masthead of its README. The plugin's own pictures come
+first, then the tool's, up to `StoreArt::CANDIDATES`. They are judged by
+shape: the first picture of either README is the icon when it is square, and
+every wide one is a screenshot. With no square one, the tool's first picture,
+else the plugin's, is the icon all the same (`boxed()` keeps its shape).
+`StoreShelf::heroes()` draws a banner row's pictures only when every tile in
+it has one. On a page, `StorePage` returns each link's address and spans, and
+`StoreDetail` keeps the focused one (Tab), draws it, and answers clicks.
 `ReadmeImages` reads the addresses and drops badges, avatars and thanks
 sections. `StoreAssets` keeps each picture as the PNG `Ui/Graphics/RasterImage`
 made of it: GD for JPEG, GIF and WebP. An SVG goes to the converter a

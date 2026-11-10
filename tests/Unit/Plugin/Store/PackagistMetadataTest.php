@@ -191,7 +191,7 @@ final class PackagistMetadataTest extends TestCase
 
         $this->assertInstanceOf(StoreEntry::class, $entry);
         $this->assertSame('https://example.com/icon.png', $entry->icon);
-        $this->assertSame(['composer:rector/rector', 'github:rectorphp/rector'], $entry->tools, 'each once; brew, npm and what is not a name left out');
+        $this->assertSame(['composer:rector/rector', 'brew:rector', 'github:rectorphp/rector'], $entry->tools, 'each once; npm and what is not a name left out');
 
         $release['extra']['porta']['store']['icon'] = 'http://example.com/icon.png';
         $release['extra']['porta']['tools'] = 'junk';

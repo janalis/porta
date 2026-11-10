@@ -64,6 +64,9 @@ final class PluginStoreWidgetTest extends TestCase
 
     private int $focusNext = 0;
 
+    /** @var list<string> each link a page followed */
+    private array $links = [];
+
     /** @var list<array{string, ?string}> */
     private array $sections = [];
 
@@ -104,6 +107,9 @@ final class PluginStoreWidgetTest extends TestCase
             })
             ->onFocusNext(function (): void {
                 ++$this->focusNext;
+            })
+            ->onLink(function (string $url): void {
+                $this->links[] = $url;
             });
     }
 
@@ -340,7 +346,10 @@ final class PluginStoreWidgetTest extends TestCase
         $this->key("\x1b[A", ' '); // up: alpha
         $this->key("\x1b[D", ' '); // nothing further left
         $this->assertSame(['acme/porta-alpha', 'acme/porta-bravo', 'acme/porta-delta', 'acme/porta-charlie', 'acme/porta-alpha', 'acme/porta-alpha'], $this->pressed);
-        $this->key("\x1b[A", "\x1b[A", "\r"); // above the grid: See all, the nearest that way; Enter opens it
+        $this->key("\x1b[A", "\r"); // above the left column: no See all stands there, so nothing; Enter opens alpha
+        $this->assertSame('acme/porta-alpha', $this->widget->detail());
+        $this->key("\x7f");
+        $this->key("\x1b[C", "\x1b[A", "\r"); // above the right column: See all; Enter opens it
         $this->assertStringContainsString('Echo', $this->screen());
         $this->key("\x1b[6~", ' '); // page down: the last row
         $this->assertSame('acme/porta-echo', \end($this->pressed));
@@ -721,8 +730,18 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertTrue($this->widget->hoverAt($row + 4, 5));
         $this->widget->handleClick($row + 4, 5); // elsewhere on the page
         $this->assertCount(4, $this->pressed);
-        $this->key("\t");
-        $this->assertSame(1, $this->focusNext);
+        // Tab goes through the page's links — its package and its source here — and round to the button.
+        $this->key("\t", "\r");
+        $this->assertSame(['https://packagist.org/packages/acme/porta-rector'], $this->links);
+        $this->key("\t", "\r", "\t", ' ');
+        $this->assertSame(['https://packagist.org/packages/acme/porta-rector', 'https://github.com/acme/porta-rector'], $this->links);
+        $this->assertCount(5, $this->pressed, 'past the last link, round to the button: Space presses it');
+        $this->key("\x1b[Z", "\x1b[Z", "\x1b[Z", ' ');
+        $this->assertCount(6, $this->pressed, 'Shift+Tab goes back, round to the button');
+        $this->assertSame(0, $this->focusNext, 'a page keeps Tab: it always has a link, its package');
+        [$at, $col] = $this->at('https://github.com/acme/porta-rector');
+        $this->widget->handleClick($at, $col + 2);
+        $this->assertCount(3, $this->links, 'a click on a link follows it');
 
         $this->key("\x7f"); // Backspace: back to the shelf
         $this->assertNull($this->widget->detail());
@@ -1007,11 +1026,59 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertStringContainsString('a=d,d=I,', $terminal->getOutput(), 'the first, out of the strip, is deleted');
     }
 
-    public function testOnlyTheFeaturedPluginWithAPictureHasOneOverIt(): void
+    /** A row of featured plugins stands pictures over every tile or none: one alone left a hole beside it. */
+    public function testARowOfFeaturedPluginsHasPicturesOverAllItsTilesOrNone(): void
     {
         $this->widget->setStore([new StoreRow(self::entry('alpha', featured: true), StoreAction::Get), new StoreRow(self::entry('bravo', featured: true), StoreAction::Get)], false, 0);
         $this->widget->setArt('acme/porta-bravo', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->assertDoesNotMatchRegularExpression('/▀{45}/u', $this->screen(), 'only the second has one: none');
 
-        $this->assertMatchesRegularExpression('/^ │ {50}▀{45}  │$/mu', $this->screen(), 'the second column\'s, over the second tile');
+        $this->widget->setArt('acme/porta-alpha', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->assertMatchesRegularExpression('/^ │  ▀{45}   ▀{45}  │$/mu', $this->screen(), 'both: over each');
+    }
+
+    /** From a featured tile in the left column, down is the next shelf's first tile — not the See all at its far right. */
+    public function testDownFromTheLeftColumnPassesTheSeeAllAtTheRight(): void
+    {
+        $rows = [
+            new StoreRow(self::entry('star', StoreCategory::Testing, featured: true), StoreAction::Get),
+            new StoreRow(self::entry('nova', StoreCategory::Testing, featured: true), StoreAction::Get),
+        ];
+        foreach (['alpha', 'bravo', 'charlie', 'delta', 'echo'] as $name) {
+            $rows[] = new StoreRow(self::entry($name), StoreAction::Get);
+        }
+        $this->widget->setStore($rows, false, 0);
+        $this->screen();
+        $this->key("\x1b[B", "\r");
+        $this->assertSame('acme/porta-alpha', $this->widget->detail());
+    }
+
+    /** A page's Markdown links are its own: a README's relative one leads to its page on GitHub, an anchor nowhere. */
+    public function testAPagesReadmeLinksAreFollowed(): void
+    {
+        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], false, 0);
+        $this->screen();
+        $this->key("\r");
+        $this->widget->setAsset(
+            self::README,
+            "# Rector\n\n- [ ] a task\n\nSee [usage](docs/usage.md), [top](#top) and [site](https://rector.test).\n\n".\str_repeat("Line.\n\n", times: 40)."[last](https://last.test)\n",
+        );
+        $this->widget->setAsset(self::CHANGELOG, null);
+        $this->screen(100, 20);
+        $this->key("\t", "\r", "\t", "\r");
+        $this->assertSame(['https://raw.test/docs/usage.md', 'https://rector.test'], $this->links, 'the anchor is no link to follow, nor the task\'s box');
+        [$row, $col] = $this->at('site', 100, 20);
+        $this->widget->handleClick($row, $col);
+        $this->widget->handleClick($row, $col - 1);
+        $this->assertSame('https://rector.test', \array_last($this->links), 'a click on it follows it');
+        $this->assertCount(3, $this->links, 'beside it, nothing');
+        $this->widget->handleInput("\t");
+        $this->assertStringContainsString('last', $this->screen(100, 20), 'the page scrolls to the link Tab is on');
+        [$row, $col] = $this->at('last', 100, 20);
+        $this->widget->handleClick($row, $col);
+        $this->assertSame('https://last.test', \array_last($this->links), 'a click on a page scrolled down');
+        $this->assertSame('https://github.com/acme/porta-x/blob/abc/docs/a.md', StorePage::address('docs/a.md', 'https://raw.githubusercontent.com/acme/porta-x/abc/README.md'));
+        $this->assertNull(StorePage::address('mailto:ada@x.test', 'https://raw.test/README.md'));
+        $this->assertNull(StorePage::address('docs/a.md', ''));
     }
 }

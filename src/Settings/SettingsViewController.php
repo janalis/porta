@@ -93,6 +93,7 @@ final class SettingsViewController implements ContributedView
                 ?->onCrumb($this->selectSection(...))
                 ->onPress($storeController->press(...))
                 ->onUpdateAll($storeController->updateAll(...))
+                ->onLink($storeController->openLink(...))
                 ->onAsset(function (string $url, bool $image) use ($storeController): void {
                     $storeController->asset($url, $image, function (string $url, ?string $body): void {
                         $this->store?->setAsset($url, $body);

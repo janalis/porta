@@ -41,6 +41,12 @@ final readonly class StoreItem
         return $row >= $this->row && $row < ($this->row + $this->height) && $col >= $this->col && $col < ($this->col + $this->width);
     }
 
+    /** Whether $other shares a column with this one: one stands over the other. */
+    public function overlaps(self $other): bool
+    {
+        return $this->col < ($other->col + $other->width) && $other->col < ($this->col + $this->width);
+    }
+
     public function onButton(int $row, int $col): bool
     {
         return self::within($this->button, $row, $col);

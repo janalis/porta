@@ -33,7 +33,7 @@ final class StoreArt
     public const int CANDIDATES = 4;
 
     /** The rules a kept verdict was reached by: raise it when they change. */
-    private const int RULES = 2;
+    private const int RULES = 3;
 
     /** The most a tool's Packagist metadata may weigh: phpunit's is 750 kB. */
     private const int MAX_METADATA = 2_097_152;
@@ -43,6 +43,9 @@ final class StoreArt
 
     /** The README a repository shows, on its default branch. */
     private const string README = 'https://raw.githubusercontent.com/%s/HEAD/README.md';
+
+    /** What Homebrew says of a formula: its home page among it. */
+    private const string FORMULA = 'https://formulae.brew.sh/api/formula/%s.json';
 
     /** @var array<string, Art> `package@version` => what it shows */
     private array $memo = [];
@@ -166,35 +169,49 @@ final class StoreArt
         $metadata = [];
         foreach ($entries as $entry) {
             foreach ($entry->tools as $tool) {
-                if (!\str_starts_with($tool, 'composer:')) {
-                    continue;
-                }
-                $metadata[] = \sprintf(PackagistMetadata::RELEASES, \substr($tool, offset: 9));
+                [$kind, $name] = \explode(':', $tool, limit: 2);
+                $metadata[] = match ($kind) {
+                    'composer' => \sprintf(PackagistMetadata::RELEASES, $name),
+                    'brew' => \sprintf(self::FORMULA, $name),
+                    default => null,
+                };
             }
         }
         $this->http->get(
-            \array_values(\array_unique($metadata)),
+            \array_values(\array_unique(\array_filter($metadata))),
             function (array $bodies) use ($entries, $onFound): void {
                 $readmes = [];
+                $unread = [];
                 foreach ($entries as $entry) {
-                    $readmes[$entry->package] = \array_map(
-                        static function (string $tool) use ($bodies): string {
-                            [$kind, $name] = \explode(':', $tool, limit: 2);
-                            $json = 'composer' === $kind ? $bodies[\sprintf(PackagistMetadata::RELEASES, $name)] ?? null : null;
+                    $readmes[$entry->package] = [];
+                    $unread[$entry->package] = false;
+                    foreach ($entry->tools as $tool) {
+                        [$kind, $name] = \explode(':', $tool, limit: 2);
+                        $json = match ($kind) {
+                            'composer' => $bodies[\sprintf(PackagistMetadata::RELEASES, $name)] ?? null,
+                            'brew' => $bodies[\sprintf(self::FORMULA, $name)] ?? null,
+                            default => null,
+                        };
+                        $repository = match ($kind) {
                             // A package that names no GitHub source is most often published from the repository it is named after.
-                            $repository = null === $json ? $name : PackagistMetadata::repository($name, $json) ?? $name;
-
-                            return \sprintf(self::README, $repository);
-                        },
-                        $entry->tools,
-                    );
+                            'composer' => null === $json ? $name : PackagistMetadata::repository($name, $json) ?? $name,
+                            // A formula is known by its home page: a GitHub one is a repository with a README.
+                            'brew' => null === $json ? null : self::homepage($json),
+                            default => $name,
+                        };
+                        // A formula's page that did not come may be the network: not kept, looked at again.
+                        $unread[$entry->package] = $unread[$entry->package] || ('brew' === $kind && null === $json);
+                        if (null !== $repository) {
+                            $readmes[$entry->package][] = \sprintf(self::README, $repository);
+                        }
+                    }
                 }
-                $this->assets->texts(\array_values(\array_unique(\array_merge([], ...\array_values($readmes)))), static function (array $texts) use ($readmes, $onFound): void {
+                $this->assets->texts(\array_values(\array_unique(\array_merge([], ...\array_values($readmes)))), static function (array $texts) use ($readmes, $unread, $onFound): void {
                     $found = [];
                     $read = [];
                     foreach ($readmes as $package => $urls) {
                         $images = [];
-                        $read[$package] = true;
+                        $read[$package] = !$unread[$package];
                         foreach ($urls as $url) {
                             $text = $texts[$url] ?? null;
                             $read[$package] = $read[$package] && null !== $text;
@@ -207,6 +224,22 @@ final class StoreArt
             },
             self::MAX_METADATA,
         );
+    }
+
+    /** The GitHub repository a Homebrew formula's $json names as its home page, as `owner/name`, or null. */
+    private static function homepage(string $json): ?string
+    {
+        try {
+            /** @var mixed $formula */
+            $formula = \json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            $formula = null;
+        }
+        /** @var mixed $page */
+        $page = \is_array($formula) ? $formula['homepage'] ?? null : null;
+        $match = [];
+
+        return \is_string($page) && 1 === \preg_match('#^https://github\.com/([A-Za-z0-9_.-]+/[A-Za-z0-9_-][A-Za-z0-9_.-]*?)(?:\.git)?/?$#', $page, $match) ? $match[1] : null;
     }
 
     /**
@@ -250,7 +283,7 @@ final class StoreArt
     /**
      * Which picture is the icon and which are the screenshots: the package's
      * own when it lists them; else the first square one of those first in a
-     * README, and every wide one.
+     * README — or, none square, the first there is — and every wide one.
      *
      * @param list<string>               $candidates
      * @param list<int>                  $firsts     the candidates first in their README: those that may be the icon
@@ -274,6 +307,14 @@ final class StoreArt
                 $shots[] = $url;
             }
         }
+        // None square: the first picture of a README is the icon all the same, drawn in its own shape —
+        // a tool's wordmark before the plugin's own screenshot.
+        foreach (\array_reverse($firsts) as $index) {
+            $url = $candidates[$index] ?? null;
+            if (null === $icon && null !== $url && null !== PngDimensions::read($pngs[$url] ?? '')) {
+                $icon = $url;
+            }
+        }
 
         return ['icon' => $icon, 'shots' => $shots];
     }
@@ -283,7 +324,7 @@ final class StoreArt
     {
         [$width, $height] = $size;
 
-        return \min($width, $height) >= 32 && ($width * 4) >= ($height * 3) && ($height * 4) >= ($width * 3);
+        return \min($width, $height) >= 32 && ($width * 3) >= ($height * 2) && ($height * 3) >= ($width * 2);
     }
 
     /** @param array{int, int} $size */

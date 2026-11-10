@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Porta\Widget\Settings;
 
 use Porta\Help\Layout\ImageLayout;
+use Porta\Help\LinkSpan;
 use Porta\Help\MarkdownRenderer;
 use Porta\I18n\BaseDirection;
 use Porta\I18n\Translator;
 use Porta\Plugin\Store\Art;
+use Porta\Plugin\Store\ReadmeImages;
 use Porta\Plugin\Store\StoreEntry;
 use Porta\Plugin\Store\StoreRow;
 use Porta\Support\AnsiText;
@@ -62,7 +64,7 @@ final readonly class StorePage
      * @param int                        $shot   the strip's first screenshot
      * @param Art|null                   $art    its pictures, once found
      *
-     * @return array{lines: list<string>, button: array{int, int, int, int}} the button as row, column, width, height
+     * @return array{lines: list<string>, button: array{int, int, int, int}, links: list<array{url: string, spans: list<array{int, int, int}>}>} the button as row, column, width, height; each link's address and where it is drawn, as row, first and past-last column
      */
     public function render(StoreRow $row, int $width, int $rows, int $shot, array $assets, bool $buttonHovered, ?Art $art = null): array
     {
@@ -88,18 +90,24 @@ final readonly class StorePage
         if (!$entry->compatible) {
             $lines[] = ' '.$this->styles->of(Role::DiagWarn)->apply($this->translator->trans('No release of it runs on this Porta'));
         }
-        $lines = [
-            ...$lines,
-            ...$this->strip($row, $width),
-            ...$this->preview(self::shots($entry, $art), $width, FieldBox::ROWS === $rows ? self::STRIP_ROWS : self::COMPACT_STRIP_ROWS, $shot, $assets),
-            ...$this->whatsNew($row, $width, $assets),
-            ...$this->about($entry, $width, $assets),
-            ...$this->information($row, $width),
-        ];
+        $links = [];
+        foreach ([
+            [[...$this->strip($row, $width), ...$this->preview(self::shots($entry, $art), $width, FieldBox::ROWS === $rows ? self::STRIP_ROWS : self::COMPACT_STRIP_ROWS, $shot, $assets)], []],
+            $this->whatsNew($row, $width, $assets),
+            $this->about($entry, $width, $assets),
+            $this->information($row, $width),
+        ] as [$section, $sectionLinks]) {
+            foreach ($sectionLinks as $link) {
+                $link['spans'] = \array_map(static fn (array $span): array => [$span[0] + \count($lines), $span[1], $span[2]], $link['spans']);
+                $links[] = $link;
+            }
+            $lines = [...$lines, ...$section];
+        }
 
         return [
             'lines' => \array_map(static fn (string $line): string => AnsiText::truncate($line, $width, pad: true), $lines),
             'button' => [$button[0], $button[1] + 1, $button[2], $button[3]],
+            'links' => $links,
         ];
     }
 
@@ -193,7 +201,7 @@ final readonly class StorePage
     /**
      * @param array<string, string|null> $assets
      *
-     * @return list<string>
+     * @return array{list<string>, list<array{url: string, spans: list<array{int, int, int}>}>} its lines, and its links
      */
     private function whatsNew(StoreRow $row, int $width, array $assets): array
     {
@@ -202,14 +210,57 @@ final readonly class StorePage
         $lines = ['', $this->heading($this->translator->trans("What's New"), $width, $when)];
         $changelog = null === $entry->changelog ? null : $assets[$entry->changelog] ?? null;
         $section = null === $changelog ? '' : self::newestSection($changelog);
-        $body = match (true) {
-            '' !== $section => $this->markdown->render($section, $width)->lines,
-            null !== $entry->changelog && !\array_key_exists($entry->changelog, $assets) => [' '.$this->styles->of(Role::Dim)->apply($this->translator->trans('Loading…'))],
+        [$body, $links] = match (true) {
+            '' !== $section => $this->markdown($section, $width, (string) $entry->changelog, \count($lines)),
+            null !== $entry->changelog && !\array_key_exists($entry->changelog, $assets) => [[' '.$this->styles->of(Role::Dim)->apply($this->translator->trans('Loading…'))], []],
             // No changelog to read: the release history says what it can.
-            default => $this->history($entry),
+            default => [$this->history($entry), []],
         };
 
-        return [...$lines, ...$body];
+        return [[...$lines, ...$body], $links];
+    }
+
+    /**
+     * Markdown laid out a column in, as every line of the page is, and its
+     * links: each with the address it leads to — a relative one read against
+     * $base, the file it is in — and where it is drawn, $above lines down.
+     *
+     * @return array{list<string>, list<array{url: string, spans: list<array{int, int, int}>}>}
+     */
+    private function markdown(string $source, int $width, string $base, int $above): array
+    {
+        $doc = $this->markdown->render($source, \max(1, $width - 1));
+        $links = [];
+        for ($group = 0; $group < $doc->groupCount(); ++$group) {
+            // A task's box or a `<details>` summary is the page's own action: its target is no address.
+            $url = self::address((string) $doc->target($group), $base);
+            if (null === $url) {
+                continue;
+            }
+            $links[] = [
+                'url' => $url,
+                'spans' => \array_map(static fn (LinkSpan $span): array => [$span->line + $above, $span->col + 1, $span->endCol + 1], $doc->spansOfGroup($group)),
+            ];
+        }
+
+        return [\array_map(static fn (string $line): string => ' '.$line, $doc->lines), $links];
+    }
+
+    /**
+     * Where a link leads, for the browser: a web address as it is; one
+     * relative to $base — a README's `docs/usage.md` — read against it, and a
+     * file on GitHub as its page there; null for an anchor, a mail address or
+     * anything else a browser should not be handed.
+     */
+    public static function address(string $target, string $base): ?string
+    {
+        $web = 1 === \preg_match('#^https?://#i', $target);
+        // An anchor or a mail address resolves to nothing: no browser is handed either.
+        $resolved = $web || '' === $base ? null : ReadmeImages::resolve($target, $base);
+        // A file on GitHub is shown on its page there, not as its raw bytes.
+        $page = null === $resolved ? null : \preg_replace('#^https://raw\.githubusercontent\.com/([^/]+/[^/]+)/([^/]+)/#', replacement: 'https://github.com/$1/blob/$2/', subject: $resolved);
+
+        return $web ? $target : $page;
     }
 
     /**
@@ -230,24 +281,25 @@ final readonly class StorePage
     /**
      * @param array<string, string|null> $assets
      *
-     * @return list<string>
+     * @return array{list<string>, list<array{url: string, spans: list<array{int, int, int}>}>} its lines, and its links
      */
     private function about(StoreEntry $entry, int $width, array $assets): array
     {
         $readme = null === $entry->readme ? null : $assets[$entry->readme] ?? null;
         if (null === $readme) {
-            return [];
+            return [[], []];
         }
         $source = \array_slice(\explode("\n", $readme), offset: 0, length: self::README_LINES);
         // The page already says what it is called.
         if (\str_starts_with($source[0] ?? '', '# ')) {
             \array_shift($source);
         }
+        [$body, $links] = $this->markdown(\implode("\n", $source), $width, (string) $entry->readme, 2);
 
-        return ['', $this->heading($this->translator->trans('About'), $width), ...$this->markdown->render(\implode("\n", $source), $width)->lines];
+        return [['', $this->heading($this->translator->trans('About'), $width), ...$body], $links];
     }
 
-    /** @return list<string> */
+    /** @return array{list<string>, list<array{url: string, spans: list<array{int, int, int}>}>} */
     private function information(StoreRow $row, int $width): array
     {
         $entry = $row->entry;
@@ -271,11 +323,24 @@ final readonly class StorePage
         }
         $column = \max(\array_map(AnsiUtils::visibleWidth(...), [...\array_keys($labels), ''])) + 2;
         $lines = ['', $this->heading($this->translator->trans('Information'), $width)];
+        $links = [];
         foreach ($labels as $label => $value) {
-            $lines[] = ' '.StoreTile::text($this->styles->of(Role::Dim)->apply($label), $column, $this->direction()).StoreTile::pinned($value, $this->direction());
+            $line = ' '.StoreTile::text($this->styles->of(Role::Dim)->apply($label), $column, $this->direction()).StoreTile::pinned($value, $this->direction());
+            // The source and the package each lead to their page on the web.
+            $url = match ($value) {
+                $entry->source => $entry->source,
+                $entry->package => 'https://packagist.org/packages/'.$entry->package,
+                default => null,
+            };
+            $at = null === $url ? false : \mb_strpos(AnsiUtils::stripAnsiCodes($line), $value);
+            if (null !== $url && false !== $at) {
+                $col = AnsiUtils::visibleWidth(\mb_substr(AnsiUtils::stripAnsiCodes($line), start: 0, length: $at));
+                $links[] = ['url' => $url, 'spans' => [[\count($lines), $col, $col + AnsiUtils::visibleWidth($value)]]];
+            }
+            $lines[] = $line;
         }
 
-        return $lines;
+        return [$lines, $links];
     }
 
     /** A section's heading, bold, with $aside at the right end. */

@@ -35,6 +35,9 @@ final class PackagistMetadata
     /** An `owner/name` a tool is published under: neither part a `.` or `..` step. */
     private const string REPOSITORY = '#^(?!\.)[A-Za-z0-9_.-]+/(?!\.)[A-Za-z0-9_.-]+$#';
 
+    /** A Homebrew formula's name. */
+    private const string FORMULA = '#^[a-z0-9][a-z0-9@._+-]*$#';
+
     /** A release tag composer calls stable: digits and dots, nothing after. */
     private const string STABLE = '/^\d+(\.\d+)*$/';
 
@@ -244,7 +247,13 @@ final class PackagistMetadata
                 $kind = \is_array($source) ? $source[0] ?? null : null;
                 /** @var mixed $name */
                 $name = \is_array($source) ? $source[1] ?? null : null;
-                if (!\is_string($name) || !\in_array($kind, ['github', 'composer'], strict: true) || 1 !== \preg_match(self::REPOSITORY, $name)) {
+                // A GitHub repository and a composer package name their repository; a Homebrew formula says it on its page.
+                $pattern = match ($kind) {
+                    'github', 'composer' => self::REPOSITORY,
+                    'brew' => self::FORMULA,
+                    default => null,
+                };
+                if (null === $pattern || !\is_string($kind) || !\is_string($name) || 1 !== \preg_match($pattern, $name)) {
                     continue;
                 }
                 $found[] = $kind.':'.$name;

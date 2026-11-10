@@ -17,12 +17,15 @@ versions follow [Semantic Versioning](https://semver.org/).
   move through the grid, and `]` / `[` switch tabs (`c` / `Shift+C` are gone).
   See [The plugin store](docs/plugin-store.md).
 - **Plugin store pictures**: each plugin shows its icon on its tile and on its
-  page, and a featured plugin's screenshot stands over its tile in the banner.
-  A plugin's page shows its screenshots side by side, and ← → scrolls them. A
-  plugin that publishes no `icon` or `screenshots` gets them from its README,
-  and from the README of the tool it drives, so the bundled `phpstan` plugin
-  shows PHPStan's logo beside its own screenshot. Every bundled plugin's
-  README shows its screenshot. The store never draws an icon for a plugin.
+  page. In the banner, a row of featured plugins shows their screenshots over
+  their tiles when each has one. A plugin's page shows its screenshots side by
+  side, and ← → scrolls them. A plugin that publishes no `icon` or
+  `screenshots` gets them from its README, and from the README of the tool it
+  drives (on GitHub, Packagist or Homebrew), so the bundled `phpstan` plugin
+  shows PHPStan's logo beside its own screenshot. With no square logo, the
+  first picture is the icon, shrunk to fit. Every bundled plugin's README
+  shows its screenshot. The store never draws an icon for a plugin. On the
+  shelves, ↑ ↓ pass a **See all** that isn't above or below the selection.
   Pictures can be PNG, JPEG, GIF, WebP or SVG. With the image viewer
   plugin on, an SVG is drawn by its converter (the **SVG converter path**
   setting, otherwise `rsvg-convert`, `magick` or `convert`). Without it, an
@@ -30,6 +33,9 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Plugin store pages**: their links work. **Tab** / **Shift+Tab** move
+  through them, Enter follows one in the browser, and a click does too. A
+  README's link to another file opens it on GitHub.
 - **Plugin pages link to the store**: a plugin's page under **Settings →
   Plugins** has an **In the store** row that opens its page in the store.
 - **SVG pictures in the docs and the Markdown preview**: a local SVG is drawn

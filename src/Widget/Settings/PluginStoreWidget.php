@@ -160,6 +160,9 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     /** @var (callable(string, bool): void)|null an address the page needs: a text, or (true) a picture */
     private $onAsset;
 
+    /** @var (callable(string): void)|null */
+    private $onLink;
+
     /** @var (callable(string, string): void)|null the install field or the scope changed: its key and value */
     private $onChange;
 
@@ -212,6 +215,14 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
     }
 
     /** @param callable(string, bool): void $callback the page needs this address: a text, or (true) a picture */
+    /** @param callable(string): void $callback a page's link was followed: open it in the browser */
+    public function onLink(callable $callback): self
+    {
+        $this->onLink = $callback;
+
+        return $this;
+    }
+
     public function onAsset(callable $callback): self
     {
         $this->onAsset = $callback;
@@ -380,8 +391,10 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $page = \max(1, $this->lastRows - 2);
         match (true) {
             $kb->matches($data, 'exit_view'), $kb->matches($data, 'back') => $this->closeDetail(),
-            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'open'), $kb->matches($data, 'press') => $this->pressDetail(),
+            // Tab goes through the page's links: it always has one, its package.
+            $kb->matches($data, 'next_link') => $this->cycleLink(1),
+            $kb->matches($data, 'previous_link') => $this->cycleLink(-1),
+            $kb->matches($data, 'open'), $kb->matches($data, 'press') => $this->followOrPress(),
             $kb->matches($data, 'move_up') => $this->scrollDetail(-1),
             $kb->matches($data, 'move_down') => $this->scrollDetail(1),
             $kb->matches($data, 'page_up') => $this->scrollDetail(-$page),
@@ -407,11 +420,34 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         };
     }
 
-    /** On a page, only its button answers. */
+    /** On a page, its button and its links answer. */
     private function clickPage(int $relRow, int $relCol): void
     {
-        if ($this->page->onButton($relRow - 2, $relCol)) {
-            $this->pressDetail();
+        $link = $this->page->linkAt($relRow - 2, $relCol);
+        match (true) {
+            $this->page->onButton($relRow - 2, $relCol) => $this->pressDetail(),
+            null !== $link => $this->follow($link),
+            default => null,
+        };
+    }
+
+    private function cycleLink(int $step): void
+    {
+        $this->page->cycleLink($step);
+        $this->invalidate();
+    }
+
+    /** Enter on a page: the focused link, else the button. */
+    private function followOrPress(): void
+    {
+        $link = $this->page->focusedLink();
+        null === $link ? $this->pressDetail() : $this->follow($link);
+    }
+
+    private function follow(string $url): void
+    {
+        if (null !== $this->onLink) {
+            ($this->onLink)($url);
         }
     }
 
@@ -717,6 +753,9 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
         $candidates = \array_filter($this->items, static fn (StoreItem $item): bool => match (true) {
             $columns < 0 => $item->row === $from->row && $item->col < $from->col,
             $columns > 0 => $item->row === $from->row && $item->col > $from->col,
+            // Up and down pass a heading's See all unless it stands over or under the item they leave:
+            // from the left column, the next shelf's first tile, not the link at its far right.
+            StoreItemKind::SeeAll === $item->kind && !$item->overlaps($from) => false,
             $rows < 0 => $item->row < $from->row,
             default => $item->row > $from->row,
         });
@@ -974,6 +1013,8 @@ final class PluginStoreWidget extends AbstractWidget implements FocusableInterfa
             'delete_char_backward' => [Key::BACKSPACE],
             'show_settings' => ['1'],
             'focus_next_pane' => [Key::TAB],
+            'next_link' => [Key::TAB],
+            'previous_link' => ['shift+tab'],
             'exit_view' => [Key::ESCAPE],
         ];
     }

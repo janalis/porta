@@ -38,8 +38,8 @@ Each plugin is a tile: its icon, its title, what it does, who made it, its
 category, its version, when that version was released and how often it was
 downloaded, with its button at the right. **Verified** marks a plugin whose
 author registered it with Porta (see below). Tiles stand two to a row where
-the pane is wide enough. A featured plugin's first screenshot stands over its
-tile in the banner.
+the pane is wide enough. In the banner, a row of featured plugins shows each
+one's first screenshot over its tile, when every plugin in the row has one.
 
 The icons and screenshots are pictures where the terminal can draw them
 (kitty, Ghostty), and coloured half-blocks elsewhere. A
@@ -49,7 +49,7 @@ for a plugin: it uses only what the plugin publishes (see
 
 | Key | Does |
 | --- | --- |
-| ↑ ↓ ← →, PgUp PgDn | Move through the tiles |
+| ↑ ↓ ← →, PgUp PgDn | Move through the tiles; ↑ ↓ stop on **See all** only when it stands over or under the selected tile |
 | Enter | Open the plugin's page, or the category, or the field |
 | Space | Press the plugin's button |
 | `]` / `[` | Next / previous tab |
@@ -70,7 +70,12 @@ A plugin's **page** shows, in order:
 - **About**: its README;
 - **Information**: provider, package, category, version, license, downloads and source.
 
-Esc or Backspace goes back to the shelf.
+On a page, ↑ ↓ and PgUp PgDn scroll it. **Tab** and **Shift+Tab** move through
+the page's links and its button, and Enter or Space follows the focused link
+or presses the button. A click on a link follows it too. The links are those
+of What's New and About, plus the package (its Packagist page) and the source.
+A link to another file of the README opens that file's page on GitHub. Links
+open in your browser. Esc or Backspace goes back to the shelf.
 
 A plugin that is not verified asks before it installs: the first **Get** only
 warns you, and a second one installs it. A plugin is PHP that runs inside
@@ -174,8 +179,12 @@ in every Porta within the hour. No Porta release is needed.
 A plugin that lists no `icon` or no `screenshots` gets them from its README,
 read at the release's tag. The store looks at the first four pictures there:
 
-- the first one is the icon, when it is square;
+- the first one is the icon, when it is square (up to 3:2 either way);
 - every wide one is a screenshot, when the package lists none.
+
+When neither README's first picture is square, the first picture is the icon
+anyway, shrunk to fit with its shape kept. The tool's comes before the
+plugin's own, so a wordmark like PHPUnit's is used before a screenshot.
 
 Badges (build status, version, downloads, coverage), people's avatars, and
 anything under a heading that thanks someone (Sponsors, Backers,
@@ -184,8 +193,9 @@ in a light and a dark version (`#gh-light-mode-only` / `#gh-dark-mode-only`),
 the dark one is used.
 
 The store also reads the README of each tool the plugin drives
-(`extra.porta.tools`). A tool published on GitHub or as a composer package
-lends the pictures above its README's first `## ` section, usually its logo.
+(`extra.porta.tools`). A tool published on GitHub, as a composer package or as
+a Homebrew formula whose home page is on GitHub lends the pictures above its
+README's first `## ` section, usually its logo.
 These come after the plugin's own pictures, and the first picture of either
 README may be the icon. That is how the bundled `phpstan` plugin shows
 PHPStan's logo as its icon and its own screenshot beside it.
