@@ -1,1 +1,6 @@
-{}
+{
+    "janalis/porta-phpunit": { "featured": true },
+    "janalis/porta-phpstan": { "featured": true },
+    "janalis/porta-custos": { "featured": true },
+    "janalis/porta-php-cs-fixer": { "featured": true }
+}
