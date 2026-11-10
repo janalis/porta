@@ -626,6 +626,29 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertFalse($this->widget->hoverCrumb(2));
     }
 
+    /** A screenshot that answered nothing is asked for again when the page opens next: a converter may be there by then. */
+    public function testWhatAnsweredNothingIsAskedAgainOnTheNextVisit(): void
+    {
+        $this->shelf();
+        $this->screen();
+        $this->key("\x1b[B", "\r"); // rector's page
+        $this->screen(120, 60);
+        $this->widget->setAsset(self::CHANGELOG, null);
+        $this->widget->setAsset(self::README, "# Rector\n");
+        $this->widget->setAsset(self::SHOT, self::png());
+        $this->widget->setAsset(self::SHOT_2, null);
+        $this->screen(120, 60);
+        $this->assertCount(5, $this->asked);
+
+        $this->widget->closeDetail();
+        $this->asked = [];
+        $this->screen();
+        $this->key("\r");
+        $this->assertSame('acme/porta-rector', $this->widget->detail());
+        $this->screen(120, 60);
+        $this->assertSame([self::CHANGELOG, '!'.self::SHOT_2], $this->asked, 'only what answered nothing, and what never answered stays asked');
+    }
+
     public function testThePageShowsWhatTheStoreKnowsAndAsksForTheRest(): void
     {
         $this->shelf();

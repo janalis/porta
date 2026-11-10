@@ -189,7 +189,8 @@ logo.
 What was found is kept for a week under `~/.porta/cache/store`. If a README
 or a picture couldn't be fetched, or a picture couldn't be drawn (say, an SVG
 before the image viewer is switched on), nothing is kept, and the store looks
-again next session.
+again next session. Switching the image viewer on or off makes the store look
+again straight away.
 
 ## Taking over a bundled plugin
 

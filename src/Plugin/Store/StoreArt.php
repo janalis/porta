@@ -47,6 +47,12 @@ final class StoreArt
     /** @var array<string, true> the `package@version`s being looked for */
     private array $looking = [];
 
+    /** @var array<string, true> the `package@version`s whose art lacks a picture that did not come or could not be drawn */
+    private array $unfinished = [];
+
+    /** The converters' count of changes when the unfinished art was last forgotten. */
+    private int $converters = 0;
+
     /** @var \Closure(): int */
     private readonly \Closure $clock;
 
@@ -80,6 +86,13 @@ final class StoreArt
      */
     public function resolve(array $entries, \Closure $onArt): void
     {
+        // A converter lent or taken back since — the image viewer switched on — and what lacked a picture is looked for again.
+        $converters = $this->assets->converterChanges();
+        if ($converters !== $this->converters) {
+            $this->converters = $converters;
+            $this->memo = \array_diff_key($this->memo, $this->unfinished);
+            $this->unfinished = [];
+        }
         $find = [];
         foreach ($entries as $entry) {
             $key = self::key($entry);
@@ -212,6 +225,9 @@ final class StoreArt
                 if ($drawn && ($read[$entry->package] ?? false)) {
                     $this->keep(self::key($entry), $verdict);
                 }
+                if (!$drawn) {
+                    $this->unfinished[self::key($entry)] = true;
+                }
                 $this->show($entry, $verdict, $onArt);
             }
         });
@@ -277,6 +293,9 @@ final class StoreArt
             $art = new Art(null === $icon ? null : $pngs[$icon] ?? null, null === $hero ? null : $pngs[$hero] ?? null, $verdict['shots']);
             $key = self::key($entry);
             $this->memo[$key] = $art;
+            if ((null !== $icon && null === $art->icon) || (null !== $hero && null === $art->hero)) {
+                $this->unfinished[$key] = true;
+            }
             unset($this->looking[$key]);
             $onArt($entry->package, $art);
         });

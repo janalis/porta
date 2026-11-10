@@ -41,6 +41,25 @@ final class PluginCapabilitiesTest extends TestCase
         $this->assertNull($capabilities->first(Capability::SvgRasterizer));
     }
 
+    public function testEachChangeToWhatIsProvidedIsCounted(): void
+    {
+        $capabilities = new PluginCapabilities();
+        $settings = new PluginSettings('/p', []);
+        $manager = new PluginManager(new EventDispatcher(), $settings, capabilities: $capabilities);
+        $quiet = $manager->api('quiet', '/p', $settings);
+        $manager->commit($quiet);
+        $this->assertSame(0, $capabilities->changes(), 'a plugin that provides nothing changes nothing');
+
+        $api = $manager->api('lender', '/p', $settings);
+        $api->provide(Capability::SvgRasterizer, static function (): void {});
+        $manager->commit($api);
+        $this->assertSame(1, $capabilities->changes());
+        $manager->deactivate('quiet', new CommandRegistry());
+        $this->assertSame(1, $capabilities->changes());
+        $manager->deactivate('lender', new CommandRegistry());
+        $this->assertSame(2, $capabilities->changes());
+    }
+
     public function testACapabilityIsProvidedOnlyDuringActivate(): void
     {
         $settings = new PluginSettings('/p', []);

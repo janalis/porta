@@ -248,7 +248,11 @@ plugin lends (`Capability::SvgRasterizer`) when it references nothing outside
 itself. Otherwise it goes to `rsvg-convert` on stdin, never to ImageMagick,
 which follows a document's references. The verdict is kept a week per
 `package@version` under `cache/store/art`. It is kept only when every README
-was read and every picture was drawn. `SettingsViewController::pushStore()`
+was read and every picture was drawn. During a session, `StoreAssets` and
+`StoreArt` remember what failed. Both forget it when
+`PluginCapabilities::changes()` moves, so turning the image viewer on brings
+SVGs in at the next `pushStore()`. A plugin page that is opened again asks
+again for anything that came back empty. `SettingsViewController::pushStore()`
 asks for it, never a render; the widget draws it through its own `ImageLayout`
 (`boxed()`), swept every shelf frame.
 

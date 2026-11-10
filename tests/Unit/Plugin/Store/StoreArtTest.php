@@ -191,6 +191,66 @@ final class StoreArtTest extends TestCase
         $this->assertSame([40, 40], self::dimensions(self::resolve($art(), [self::entry()])['acme/porta-rector']->icon), 'the image viewer switched on: the next session draws it');
     }
 
+    /** The image viewer switched on while Porta runs: the store looks again at once, not next session. */
+    public function testAConverterLentMidSessionDrawsWhatCouldNotBeDrawn(): void
+    {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"/>';
+        $this->http->bodies = [
+            self::README => "![logo](https://img.test/logo.svg)\n",
+            'https://img.test/logo.svg' => $svg,
+            'https://raw.githubusercontent.com/acme/porta-plain/abc/README.md' => "![logo](https://img.test/plain.png)\n",
+            'https://img.test/plain.png' => PngFixture::bytes(40, 40),
+        ];
+        $converter = null;
+        $changes = 0;
+        $fetch = $this->http->fetch();
+        $raster = new RasterImage(static function (string $svg, \Closure $onPng): void {
+            $onPng(null);
+        }, lent: static function () use (&$converter): ?\Closure {
+            return $converter;
+        });
+        $assets = new StoreAssets($fetch, $this->home->path('assets'), clock: fn (): int => $this->now, raster: $raster, converterChanges: static function () use (&$changes): int {
+            return $changes;
+        });
+        $art = new StoreArt($fetch, $assets, $this->home->path('art'), clock: fn (): int => $this->now);
+        $entries = [self::entry(), self::entry('plain', readme: 'https://raw.githubusercontent.com/acme/porta-plain/abc/README.md')];
+        $this->assertNull(self::resolve($art, $entries)['acme/porta-rector']->icon);
+
+        $converter = static function (string $svg, int $width, \Closure $onPng): void {
+            $onPng(PngFixture::bytes(40, 40));
+        };
+        $this->assertNull(self::resolve($art, $entries)['acme/porta-rector']->icon, 'nothing changed: what this session found stands');
+
+        ++$changes;
+        $fetched = \count($this->http->batches);
+        $found = self::resolve($art, $entries);
+        $this->assertSame([40, 40], self::dimensions($found['acme/porta-rector']->icon), 'a converter lent: drawn now');
+        $this->assertSame([40, 40], self::dimensions($found['acme/porta-plain']->icon));
+        $this->assertNotContains('https://img.test/plain.png', \array_merge([], ...\array_slice($this->http->batches, $fetched)), 'what was drawn is not fetched again');
+    }
+
+    public function testAPictureThatDidNotComeIsLookedForAgainWhenTheConvertersChange(): void
+    {
+        $this->http->bodies = [
+            self::README => "![logo](https://img.test/logo.png)\n![wide](https://img.test/wide.png)\n",
+            'https://img.test/logo.png' => PngFixture::bytes(40, 40),
+            'https://img.test/wide.png' => PngFixture::bytes(400, 225),
+        ];
+        self::resolve($this->art(), [self::entry()]); // kept: every picture drawn
+        $changes = 1; // plugins lent and took back converters before the store opened
+        $fetch = $this->http->fetch();
+        $art = new StoreArt($fetch, new StoreAssets($fetch, $this->home->path('none'), clock: fn (): int => $this->now, converterChanges: static function () use (&$changes): int {
+            return $changes;
+        }), $this->home->path('art'), clock: fn (): int => $this->now);
+        unset($this->http->bodies['https://img.test/logo.png']);
+        $this->assertNull(self::resolve($art, [self::entry()])['acme/porta-rector']->icon, 'the kept icon did not come');
+
+        $this->http->bodies['https://img.test/logo.png'] = PngFixture::bytes(40, 40);
+        $this->assertNull(self::resolve($art, [self::entry()])['acme/porta-rector']->icon, 'until the converters change, what this session found stands');
+        ++$changes;
+        $this->assertSame([40, 40], self::dimensions(self::resolve($art, [self::entry()])['acme/porta-rector']->icon));
+    }
+
     public function testEveryEntryAndEveryPictureIsLookedAtPastOneThatIsNot(): void
     {
         $this->http->bodies = [

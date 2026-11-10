@@ -70,6 +70,10 @@ final class StoreDetail
     public function close(): void
     {
         $this->package = null;
+        // What answered nothing is asked again when a page opens: a converter may be there by then.
+        $failed = \array_filter($this->assets, static fn (?string $body): bool => null === $body);
+        $this->asked = \array_diff_key($this->asked, $failed);
+        $this->assets = \array_diff_key($this->assets, $failed);
         $this->images->clear();
         $this->markdown->clearImages();
         $this->page = null;

@@ -17,18 +17,33 @@ final class PluginCapabilities
     /** @var list<array{plugin: string, capability: Capability, provider: \Closure}> */
     private array $providers = [];
 
+    /** How many times what is provided has changed: a consumer that keeps what it could not do retries when it moves. */
+    private int $changes = 0;
+
     /** @param list<array{plugin: string, capability: Capability, provider: \Closure}> $providers */
     public function add(array $providers): void
     {
-        $this->providers = [...$this->providers, ...$providers];
+        if ([] !== $providers) {
+            $this->providers = [...$this->providers, ...$providers];
+            ++$this->changes;
+        }
     }
 
     public function remove(string $plugin): void
     {
-        $this->providers = \array_values(\array_filter(
+        $remaining = \array_values(\array_filter(
             $this->providers,
             static fn (array $row): bool => $plugin !== $row['plugin'],
         ));
+        if ($remaining !== $this->providers) {
+            $this->providers = $remaining;
+            ++$this->changes;
+        }
+    }
+
+    public function changes(): int
+    {
+        return $this->changes;
     }
 
     /** The closure the first plugin standing provides for $capability, or null when none does. */

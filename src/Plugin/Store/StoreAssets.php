@@ -51,9 +51,13 @@ final class StoreAssets
     /** @var \Closure(): int */
     private readonly \Closure $clock;
 
+    /** The converters' count of changes when what could not be drawn was last forgotten. */
+    private int $converters = 0;
+
     /**
      * @param string|null            $cacheDir where assets are kept, or null on a machine with no home
      * @param (\Closure(): int)|null $clock    seconds since the epoch; inject to test
+     * @param (\Closure(): int)|null $converterChanges a count that moves when a plugin lends core an SVG converter or takes it back
      */
     public function __construct(
         private readonly HttpFetch $http,
@@ -61,6 +65,7 @@ final class StoreAssets
         private readonly Filesystem $filesystem = new Filesystem(),
         ?\Closure $clock = null,
         private readonly RasterImage $raster = new RasterImage(),
+        private readonly ?\Closure $converterChanges = null,
     ) {
         $this->clock = $clock ?? \time(...);
     }
@@ -70,7 +75,7 @@ final class StoreAssets
         $home = PortaHome::base();
         $raster = new RasterImage(lent: static fn (): ?\Closure => $capabilities->first(Capability::SvgRasterizer));
 
-        return new self($http, null === $home ? null : $home.'/.porta/cache/store/assets', raster: $raster);
+        return new self($http, null === $home ? null : $home.'/.porta/cache/store/assets', raster: $raster, converterChanges: $capabilities->changes(...));
     }
 
     /**
@@ -126,6 +131,12 @@ final class StoreAssets
      */
     public function images(array $urls, \Closure $onReady): void
     {
+        // A converter lent or taken back since: what could not be drawn this session is fetched again.
+        $converters = $this->converterChanges();
+        if ($converters !== $this->converters) {
+            $this->converters = $converters;
+            $this->memo = \array_filter($this->memo, static fn (?string $body): bool => null !== $body);
+        }
         $this->load(
             $urls,
             self::MAX_IMAGE,
@@ -133,6 +144,12 @@ final class StoreAssets
             $this->raster->png(...),
             $onReady,
         );
+    }
+
+    /** A count that moves whenever the converters that draw an SVG change. */
+    public function converterChanges(): int
+    {
+        return null === $this->converterChanges ? 0 : ($this->converterChanges)();
     }
 
     /**
