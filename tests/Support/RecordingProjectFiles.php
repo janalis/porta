@@ -24,6 +24,8 @@ final class RecordingProjectFiles implements ProjectFilesystem
     /** @var list<string> basenames whose content is not here yet */
     public array $notFetched = [];
 
+    public int $pendingWrites = 0;
+
     private readonly LocalFilesystem $local;
 
     public function __construct()
@@ -84,6 +86,6 @@ final class RecordingProjectFiles implements ProjectFilesystem
     #[\Override]
     public function pending(): int
     {
-        return 0;
+        return $this->pendingWrites;
     }
 }

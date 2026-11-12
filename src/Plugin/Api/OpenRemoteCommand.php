@@ -9,6 +9,7 @@ use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteSpec;
 use Porta\Install\PortaBinary;
 use Porta\Onboarding\OnboardingState;
+use Porta\Support\ProcessEnvironment;
 use Symfony\Component\Console\Attribute\Argument;
 use Symfony\Component\Console\Formatter\OutputFormatter;
 use Symfony\Component\Console\Input\InputInterface;
@@ -100,7 +101,7 @@ abstract class OpenRemoteCommand extends PluginCommand
     private static function launchPorta(string $root): int
     {
         $pipes = [];
-        $process = \proc_open([\PHP_BINARY, PortaBinary::path(), $root], [\STDIN, \STDOUT, \STDERR], $pipes);
+        $process = \proc_open([\PHP_BINARY, PortaBinary::path(), $root], [\STDIN, \STDOUT, \STDERR], $pipes, env_vars: ProcessEnvironment::withoutRestart(\getenv()));
 
         return false === $process ? 1 : \proc_close($process);
     }

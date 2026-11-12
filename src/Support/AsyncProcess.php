@@ -89,7 +89,7 @@ final class AsyncProcess
             2 => $this->captureStderr ? ['pipe', 'w'] : ['file', '/dev/null', 'w'],
         ];
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-        $process = @\proc_open($this->command, $descriptors, $pipes, $cwd, $this->env);
+        $process = @\proc_open($this->command, $descriptors, $pipes, $cwd, ProcessEnvironment::withoutRestart($this->env ?? \getenv()));
         if (!\is_resource($process)) {
             // Reached whenever the binary is not on the PATH: the ARRAY form
             // of proc_open resolves the program itself and returns false when

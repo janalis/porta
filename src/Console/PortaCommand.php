@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Porta\Console;
 
+use Porta\Config\PortaHome;
 use Porta\Config\WorkspaceTrust;
 use Porta\Container\Ansi;
 use Porta\Container\LspMode;
@@ -23,6 +24,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 
 /**
@@ -466,6 +468,7 @@ final class PortaCommand extends Command
         $file = $workspace->initialFile;
         $line = $workspace->line;
         $plugins = $workspace->plugins;
+        $resume = \getenv('PORTA_RESTART_DIRECTORY');
         // Each project is its own Ide with its own container, run one after the
         // other in the one process. Switching project is therefore an ordinary
         // QUIT — buffers saved, terminal restored, plugins shut down — followed
@@ -485,10 +488,16 @@ final class PortaCommand extends Command
                 bootTrace: new BootTrace($_SERVER['REQUEST_TIME_FLOAT'] ?? \microtime(true)),
                 tool: $workspace->tool,
                 plugins: $plugins,
+                restartDirectory: \is_string($resume) && '' !== $resume ? $resume : null,
             );
             $onBooted();
             $ide->run();
 
+            $directory = $ide->restartDirectory();
+            if (null !== $directory) {
+                return self::restart($ide, $directory, $root, $plugins, $lspCommand, $lsp, $ansi);
+            }
+            $resume = false;
             $next = $ide->reopenAt();
             if (null === $next) {
                 return $ide->exitCode();
@@ -501,5 +510,48 @@ final class PortaCommand extends Command
             $file = null;
             $line = null;
         }
+    }
+
+    /**
+     * @param list<string> $plugins
+     * @codeCoverageIgnore Interactive TTY handoff; RestartLauncher and the helper are exercised in child processes.
+     */
+    private static function restart(Ide $ide, string $directory, string $root, array $plugins, ?string $lspCommand, LspMode $lsp, Ansi $ansi): int
+    {
+        $binary = PortaBinary::entry($_SERVER['SCRIPT_FILENAME'], PortaBinary::path());
+        $php = PortaBinary::interpreter(\PHP_BINARY);
+        $launch = [$php, $binary, $root];
+        if (Ansi::Disabled === $ansi) {
+            $launch[] = '--no-ansi';
+        }
+        if (LspMode::Disabled === $lsp) {
+            $launch[] = '--no-lsp';
+        }
+        if (LspMode::Disabled !== $lsp && null !== $lspCommand) {
+            $launch[] = '--lsp='.$lspCommand;
+        }
+        foreach ($plugins as $plugin) {
+            $launch[] = '--plugin='.$plugin;
+        }
+        $home = PortaHome::base();
+        $state = null === $home ? \dirname($binary) : $home.'/.porta/updates';
+        new Filesystem()->mkdir($state, mode: 0o700);
+        $installation = Installation::current();
+        $key = InstallMethod::Homebrew === $installation->method ? 'homebrew' : $installation->path;
+        $helper = new RestartLauncher()->prepare(
+            $directory,
+            $root,
+            $launch,
+            $ide->updatesCore() ? [$php, $binary, '--self-update', '--no-interaction', '--no-ansi'] : [],
+            $state.'/'.\hash('sha256', $key).'.lock',
+        );
+        if (null === $helper) {
+            return 1;
+        }
+        $pipes = [];
+        /** @var non-empty-string $root */
+        $process = \proc_open([\PHP_BINARY, $helper, $directory.'/launch.json'], [\STDIN, \STDOUT, \STDERR], $pipes, $root);
+
+        return \is_resource($process) ? \proc_close($process) : 1;
     }
 }

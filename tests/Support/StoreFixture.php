@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Tests\Support;
 
+use Porta\Editor\BufferManager;
+use Porta\History\RestartSnapshot;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
@@ -12,6 +14,7 @@ use Porta\Plugin\Store\PluginUpdates;
 use Porta\Plugin\Store\StoreCatalog;
 use Porta\Widget\StatusBarWidget;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\UpdateRestart;
 
 /**
  * The plugin store's world, scripted: what Packagist publishes
@@ -50,6 +53,12 @@ final class StoreFixture
 
     /** @var array<string, array{plugin?: string, composerJson?: string}> what the fake composer lands for a package */
     private array $recipes = [];
+
+    /** @var array<string, array<string, string>> */
+    private array $requirements = [];
+
+    /** @var array<string, array<string, array{type: string, url: string}>> */
+    private array $repositories = [];
 
     public function __construct(int $composerExit = 0)
     {
@@ -132,8 +141,14 @@ final class StoreFixture
         \symlink($base->path('.porta/vendor/'.$package), $base->path('.porta/plugins/'.$name));
         $this->installedJson[$base->dir][] = ['name' => $package, 'version' => $version];
         $base->write('.porta/vendor/composer/installed.json', \json_encode(['packages' => $this->installedJson[$base->dir]], \JSON_THROW_ON_ERROR));
-        $repositories = $fromPackagist ? new \stdClass() : [$package => ['type' => 'path', 'url' => '/somewhere']];
-        $base->write('.porta/composer.json', \json_encode(['require' => [$package => '^1'], 'repositories' => $repositories], \JSON_THROW_ON_ERROR));
+        $this->requirements[$base->dir][$package] = '^'.\ltrim($version, characters: 'v');
+        if (!$fromPackagist) {
+            $this->repositories[$base->dir][$package] = ['type' => 'path', 'url' => '/somewhere'];
+        }
+        $base->write('.porta/composer.json', \json_encode(
+            ['require' => $this->requirements[$base->dir], 'repositories' => \array_key_exists($base->dir, $this->repositories) ? $this->repositories[$base->dir] : new \stdClass()],
+            \JSON_THROW_ON_ERROR,
+        ));
         $this->lifecycle->names[] = $name;
 
         return $name;
@@ -150,9 +165,24 @@ final class StoreFixture
      * @param array<string, bool|int|string> $settings
      * @param (\Closure(): int)|null        $clock
      */
-    public function updates(array $settings = [], ?\Closure $clock = null): PluginUpdates
+    public function updates(array $settings = [], ?\Closure $clock = null, ?UpdateRestart $restart = null, ?string $restartCheckAfter = null): PluginUpdates
     {
-        return new PluginUpdates($settings, $this->catalog, $this->installer, $this->lifecycle, $this->notifier, $this->translator, clock: $clock);
+        return new PluginUpdates(
+            $settings,
+            $this->catalog,
+            $this->installer,
+            $this->lifecycle,
+            $this->notifier,
+            $this->translator,
+            clock: $clock,
+            restart: $restart,
+            restartCheckAfter: $restartCheckAfter,
+        );
+    }
+
+    public function restart(): UpdateRestart
+    {
+        return new UpdateRestart($this->project->dir, new BufferManager(), new RestartSnapshot(), TestTui::create(), $this->notifier, $this->translator);
     }
 
     /** The status bar's toast, as text. */

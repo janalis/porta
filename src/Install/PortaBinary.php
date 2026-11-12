@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Porta\Install;
 
+use Porta\Support\Files;
+
 /**
  * The binary that is running: the phar when this is one, else the package's
  * own `bin/porta` (a Composer `vendor/bin` proxy includes that file, so this is
@@ -13,6 +15,33 @@ namespace Porta\Install;
  */
 final class PortaBinary
 {
+    /** Preserve matching launch links; an unrelated wrapper must never become an update target. */
+    public static function entry(string $invoked, string $binary): string
+    {
+        $actual = Files::canonical($binary);
+        $entry = Files::canonical($invoked);
+        $owner = static fn (string $path): ?string => \preg_replace('~/Cellar/porta/[^/]+/~', replacement: '/Cellar/porta/{version}/', subject: $path);
+        $actualOwner = $owner($actual);
+        $sameInstall = null !== $actualOwner && $owner($entry) === $actualOwner;
+
+        return \is_file($invoked) && $sameInstall ? Files::canonicalEntry($invoked) : $binary;
+    }
+
+    /** Homebrew may replace PHP too; its opt link survives removal of an old keg. */
+    public static function interpreter(string $binary): string
+    {
+        $parts = [];
+        $cellar = \strpos($binary, needle: '/Cellar/');
+        if (false !== $cellar && 1 === \preg_match('~/Cellar/([^/]+)/[^/]+/bin/php$~D', $binary, $parts)) {
+            $linked = \substr($binary, offset: 0, length: $cellar).'/opt/'.$parts[1].'/bin/php';
+            if (\is_file($linked)) {
+                return $linked;
+            }
+        }
+
+        return $binary;
+    }
+
     public static function path(): string
     {
         $phar = \Phar::running(false);

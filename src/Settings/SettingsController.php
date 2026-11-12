@@ -12,6 +12,7 @@ use Porta\Editor\EditorDisplayOptions;
 use Porta\Editor\InlayParameterHints;
 use Porta\Editor\LineNumberMode;
 use Porta\I18n\Translator;
+use Porta\Install\IdeUpdates;
 use Porta\Overlay\State\TooltipCenter;
 use Porta\Plugin\Store\PluginUpdates;
 use Porta\Plugin\Tool\ToolUpdates;
@@ -66,6 +67,7 @@ final class SettingsController
         // Trailing and optional so the settings tests' hand-built controllers
         // stand; the container always wires it.
         ?PluginUpdates $plugins = null,
+        ?IdeUpdates $ideUpdates = null,
     ) {
         $this->descriptors = [
             // --- Interface (the "Interface" settings page) ---
@@ -290,6 +292,7 @@ final class SettingsController
             ],
             // How often the store is asked about newer releases of the
             // plugins Porta installed from it, and whether to install them.
+            ...self::ideUpdateDescriptors($ideUpdates),
             'pluginUpdateCheck' => [
                 'label' => 'Plugin update check',
                 'kind' => SettingsRowKind::Choice,
@@ -306,6 +309,30 @@ final class SettingsController
                 'fieldset' => 'Tools',
                 'restart' => false,
                 'apply' => static fn (int|bool|string $v) => $plugins?->setAuto((bool) $v),
+            ],
+        ];
+    }
+
+    /** @return array<string, Descriptor> */
+    private static function ideUpdateDescriptors(?IdeUpdates $ideUpdates): array
+    {
+        return [
+            'ideUpdateCheck' => [
+                'label' => 'IDE update check',
+                'kind' => SettingsRowKind::Choice,
+                'group' => 'general',
+                'fieldset' => 'Tools',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $ideUpdates?->setCadence((string) $v),
+                'options' => \array_keys(IdeUpdates::CADENCES),
+            ],
+            'ideAutoUpdate' => [
+                'label' => 'Auto-update IDE',
+                'kind' => SettingsRowKind::Bool,
+                'group' => 'general',
+                'fieldset' => 'Tools',
+                'restart' => false,
+                'apply' => static fn (int|bool|string $v) => $ideUpdates?->setAuto((bool) $v),
             ],
         ];
     }

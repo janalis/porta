@@ -3858,10 +3858,6 @@
         <source>Updated %plugins% — reloaded live</source>
         <target>%plugins% עודכנו — נטענו מחדש מיד</target>
       </trans-unit>
-      <trans-unit id="1299">
-        <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
-        <target>%plugins% עודכנו — הפעל מחדש את Porta כדי להשלים את %names%: מחלקות שכבר נטענו שומרות על הקוד הישן</target>
-      </trans-unit>
       <trans-unit id="1300">
         <source>Categories</source>
         <target>קטגוריות</target>
@@ -3901,6 +3897,42 @@
       <trans-unit id="1309">
         <source>In the store</source>
         <target>בחנות</target>
+      </trans-unit>
+      <trans-unit id="1310">
+        <source>IDE update check</source>
+        <target>בדיקת עדכוני IDE</target>
+      </trans-unit>
+      <trans-unit id="1311">
+        <source>Auto-update IDE</source>
+        <target>עדכון IDE אוטומטי</target>
+      </trans-unit>
+      <trans-unit id="1312">
+        <source>Porta will restart when active work stops.</source>
+        <target>Porta יופעל מחדש לאחר סיום העבודה הפעילה.</target>
+      </trans-unit>
+      <trans-unit id="1313">
+        <source>Could not preserve the session; restart postponed.</source>
+        <target>לא ניתן לשמור את ההפעלה; האתחול נדחה.</target>
+      </trans-unit>
+      <trans-unit id="1314">
+        <source>Porta %version% is available. Update from Settings › Command line.</source>
+        <target>Porta %version% זמין. עדכון דרך הגדרות › שורת פקודה.</target>
+      </trans-unit>
+      <trans-unit id="1315">
+        <source>Could not restore the restart snapshot: %path%</source>
+        <target>לא ניתן לשחזר את ההפעלה: %path%</target>
+      </trans-unit>
+      <trans-unit id="1316">
+        <source>Files changed while restarting: %paths%</source>
+        <target>קבצים שהשתנו בזמן האתחול: %paths%</target>
+      </trans-unit>
+      <trans-unit id="1317">
+        <source>The update failed; your session was restored. Check Settings › Command line.</source>
+        <target>העדכון נכשל; ההפעלה שוחזרה. בדוק הגדרות › שורת פקודה.</target>
+      </trans-unit>
+      <trans-unit id="1318">
+        <source>Updated %plugins% — restart scheduled for %names%</source>
+        <target>%plugins% עודכנו — אתחול מתוכנן עבור %names%</target>
       </trans-unit>
     </body>
   </file>

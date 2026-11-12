@@ -49,7 +49,8 @@ if (null !== $pluginCommand) {
 
     return;
 }
-$command = new Porta\Console\PortaCommand(self: Porta\Install\PortaBinary::path(), version: $version, phar: Porta\Install\PortaBinary::phar(), env: getenv());
+$entry = Porta\Install\PortaBinary::entry((string) ($_SERVER['SCRIPT_FILENAME'] ?? ''), Porta\Install\PortaBinary::path());
+$command = new Porta\Console\PortaCommand(self: Porta\Install\PortaBinary::path(), version: $version, phar: '' === Porta\Install\PortaBinary::phar() ? '' : $entry, env: getenv());
 $application = new Symfony\Component\Console\Application('porta', $version);
 $application->addCommand($command);
 $application->setDefaultCommand((string) $command->getName(), true); // single-command app

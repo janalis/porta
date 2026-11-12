@@ -75,7 +75,7 @@ final class FakeComposer
             PHP."\n                exit({$exitCode});\n".<<<'PHP'
             }
 
-            if ('require' === $cmd) {
+            if ('require' === $cmd || 'update' === $cmd) {
             PHP."\n                if (0 !== {$exitCode}) {\n                    exit({$exitCode});\n                }\n".<<<'PHP'
                 $spec = $argv[2] ?? '';
                 $pkg = strtok($spec, ':');
@@ -98,7 +98,9 @@ final class FakeComposer
                     file_put_contents($dest.'/porta.php', $recipe[$pkg]['plugin'] ?? "<?php\n");
                     file_put_contents($dest.'/composer.json', $recipe[$pkg]['composerJson'] ?? json_encode(['name' => $pkg, 'type' => 'porta-plugin']));
                 }
-                $composerJson['require'][$pkg] = explode(':', $spec, limit: 2)[1] ?? '*';
+                if ('require' === $cmd) {
+                    $composerJson['require'][$pkg] = explode(':', $spec, limit: 2)[1] ?? '*';
+                }
                 file_put_contents($composerJsonPath, json_encode($composerJson, \JSON_PRETTY_PRINT));
                 exit(0);
             }

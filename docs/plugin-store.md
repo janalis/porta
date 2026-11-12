@@ -87,7 +87,7 @@ hour old.
 
 ### Updates
 
-Porta checks for newer releases in the background, weekly by default
+Porta checks for newer releases in the background, daily by default
 (`pluginUpdateCheck`: `daily`, `weekly` or `off`). It says once, in a toast,
 what it found. With `pluginAutoUpdate` on, it installs the updates instead.
 Both settings are on the **General** page.
@@ -96,10 +96,29 @@ An update only reaches a plugin you installed from Packagist. A plugin
 installed from a local path or a git URL follows its own source. A built-in
 plugin updates with Porta.
 
-A plugin that is running reloads live with its new version: its menus,
-commands and keys are swapped at once. A class it had already loaded cannot be
-unloaded from PHP, so if it had any, the update says to restart Porta to
-finish.
+Anonymous plugin entrypoints reload live. Loaded named PHP classes or functions
+require a fresh process, including symbols from shared Composer dependencies.
+The running plugin stays unloaded until Porta restarts.
+The restart waits for terminal commands, debugging, installs and remote writes.
+An open shell is conservatively busy until it closes. Unsaved text, tabs, cursor
+positions, pinning and preview arrangements are recovered; terminal scrollback,
+running processes and undo history are not.
+
+Automatic updates select the newest stable release compatible with the installed
+version's caret range, its existing Composer requirement, PHP and the Porta API.
+Major upgrades remain manual. Exact Composer requirements stay pinned.
+
+The General page also has **IDE update check** (`daily`, `weekly`, or `off`) and
+**Auto-update IDE** (off by default). Standalone PHAR, Homebrew and global Composer
+installations update after the UI shuts down. Source checkouts and project
+Composer installations remain manual.
+
+Recovery uses a separate private directory and never overwrites project files.
+Disk conflicts are reported; recovered edits remain unsaved. A failed relaunch
+keeps the snapshot and prints a `PORTA_RESTART_DIRECTORY=… porta /project` command
+to resume. Failed checks wait until the next scheduled check. If a snapshot
+cannot be written, the current IDE stays open. A resumed IDE postpones its next
+IDE and plugin update checks for one day, even if the cadence note could not be saved.
 
 ## Publishing a plugin
 

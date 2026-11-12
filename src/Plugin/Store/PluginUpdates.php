@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace Porta\Plugin\Store;
 
+use Composer\Semver\Semver;
 use Porta\Container\AsIdeService;
 use Porta\I18n\Translator;
 use Porta\Plugin\Lifecycle\InstallScope;
 use Porta\Plugin\Lifecycle\PluginInstaller;
 use Porta\Plugin\Lifecycle\PluginLifecycleOps;
+use Porta\Plugin\Lifecycle\PluginUpdateMode;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Tool\LatestVersions;
 use Porta\Plugin\Tool\ToolUpdates;
 use Porta\Support\HourlyLook;
+use Porta\Support\ProcessEnvironment;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\UpdateRestart;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -39,7 +43,7 @@ final class PluginUpdates
     /** The `pluginUpdateCheck` choices, and the seconds between checks each means; 0 is off — the tools' own. */
     public const array CADENCES = ToolUpdates::CADENCES;
 
-    public const string DEFAULT_CADENCE = 'weekly';
+    public const string DEFAULT_CADENCE = 'daily';
 
     /** The one toast every update outcome rewrites. */
     private const string SLOT = 'plugin-updates';
@@ -73,6 +77,9 @@ final class PluginUpdates
         private readonly Translator $translator,
         private readonly ?PluginLoader $loader = null,
         ?\Closure $clock = null,
+        private readonly ?UpdateRestart $restart = null,
+        #[Autowire('%env(default::PORTA_RESTART_CHECK_AFTER)%')]
+        private readonly ?string $restartCheckAfter = null,
     ) {
         $cadence = $settings['pluginUpdateCheck'] ?? self::DEFAULT_CADENCE;
         $this->cadence = \is_string($cadence) && \array_key_exists($cadence, self::CADENCES) ? $cadence : self::DEFAULT_CADENCE;
@@ -113,7 +120,8 @@ final class PluginUpdates
     public function checkIfDue(): void
     {
         $every = self::CADENCES[$this->cadence];
-        if (0 === $every || $this->catalog->refreshing() || (($this->clock)() - $this->catalog->fetchedAt()) < $every) {
+        $resumeAfter = ProcessEnvironment::restartCheckAfter($this->restartCheckAfter);
+        if (($this->clock)() < $resumeAfter || 0 === $every || $this->catalog->refreshing() || (($this->clock)() - $this->catalog->fetchedAt()) < $every) {
             return;
         }
         // @mago-expect lint:no-boolean-flag-parameter -- the refresh's one answer: whether the shelves were refilled.
@@ -123,7 +131,7 @@ final class PluginUpdates
                 return;
             }
             if ($this->auto) {
-                $this->updateAll();
+                $this->run($this->automaticUpdates($outdated), [], [], PluginUpdateMode::Automatic);
 
                 return;
             }
@@ -146,10 +154,42 @@ final class PluginUpdates
             if (null === $entry || !$entry->compatible || !LatestVersions::newer($copy['version'], $entry->version)) {
                 continue;
             }
-            $outdated[] = new PluginUpdate($copy['name'], $copy['scope'], $copy['package'], $copy['version'], $entry->version, $copy['dir']);
+            $outdated[] = new PluginUpdate($copy['name'], $copy['scope'], $copy['package'], $copy['version'], $entry->version, $copy['dir'], $copy['constraint']);
         }
 
         return $outdated;
+    }
+
+    /**
+     * @param list<PluginUpdate> $outdated
+     * @return list<PluginUpdate>
+     */
+    private function automaticUpdates(array $outdated): array
+    {
+        $updates = [];
+        foreach ($outdated as $update) {
+            $entry = $this->catalog->find($update->package);
+            $compatible = $entry->compatibleVersions ?? [];
+            $versions = [] === $compatible ? [$update->to] : $compatible;
+            try {
+                $target = \array_find(
+                    $versions,
+                    static fn (string $version): bool => (
+                        1 === \preg_match('/^v?\d+\.\d+\.\d+$/D', $version)
+                        && LatestVersions::newer($update->from, $version)
+                        && Semver::satisfies($version, '^'.$update->from)
+                        && Semver::satisfies($version, $update->constraint)
+                    ),
+                );
+            } catch (\UnexpectedValueException) {
+                $target = null;
+            }
+            if (null !== $target) {
+                $updates[] = new PluginUpdate($update->name, $update->scope, $update->package, $update->from, $target, $update->dir, $update->constraint);
+            }
+        }
+
+        return $updates;
     }
 
     /** Whether the update of $name in $scope is running or queued. */
@@ -175,7 +215,7 @@ final class PluginUpdates
      * @param list<string>       $done   `name version` of each that updated
      * @param list<string>       $failed each failure's message
      */
-    private function run(array $left, array $done, array $failed): void
+    private function run(array $left, array $done, array $failed, PluginUpdateMode $mode = PluginUpdateMode::Manual): void
     {
         $next = \array_shift($left);
         if (null === $next) {
@@ -185,7 +225,7 @@ final class PluginUpdates
         }
         $key = $next->scope->value.':'.$next->name;
         if (\array_key_exists($key, $this->updating)) {
-            $this->run($left, $done, $failed);
+            $this->run($left, $done, $failed, $mode);
 
             return;
         }
@@ -195,27 +235,34 @@ final class PluginUpdates
         // rewrites its files, and one it autoloaded mid-swap would be half
         // the old release and half the new — or nothing at all.
         $runs = $this->runs($next);
-        if ($runs && self::loadedFrom($next->dir)) {
-            $this->restartFor[] = $next->name;
-        }
+        $needsRestart = self::loadedFrom($next->dir) || self::loadedFrom(\dirname($next->dir, levels: 2).'/vendor');
         if ($runs) {
             $this->lifecycle->unload($next->name);
         }
         $this->lifecycle->refreshView();
-        $this->installer->update($next->name, $next->scope, $next->to, function (?string $error) use ($next, $key, $runs, $left, $done, $failed): void {
-            unset($this->updating[$key]);
-            // Back on, from whatever is on disk now: the new release, or —
-            // when composer failed — the old one it left in place.
-            $reload = $runs ? $this->lifecycle->activateInstalled($next->dir.'/porta.php') : null;
-            $error ??= $reload;
-            if (null === $error) {
-                $done[] = $next->name.' '.$next->to;
-            }
-            if (null !== $error) {
-                $failed[] = $error;
-            }
-            $this->run($left, $done, $failed);
-        });
+        $this->installer->update(
+            $next->name,
+            $next->scope,
+            $next->to,
+            function (?string $error) use ($next, $key, $runs, $left, $done, $failed, $mode, $needsRestart): void {
+                unset($this->updating[$key]);
+                // Back on, from whatever is on disk now: the new release, or —
+                // when composer failed — the old one it left in place.
+                $reload = $runs && !$needsRestart ? $this->lifecycle->activateInstalled($next->dir.'/porta.php') : null;
+                $error ??= $reload;
+                if ($needsRestart) {
+                    $this->restartFor[] = $next->name;
+                }
+                if (null === $error) {
+                    $done[] = $next->name.' '.$next->to;
+                }
+                if (null !== $error) {
+                    $failed[] = $error;
+                }
+                $this->run($left, $done, $failed, $mode);
+            },
+            $mode,
+        );
     }
 
     /**
@@ -235,15 +282,29 @@ final class PluginUpdates
     }
 
     /**
-     * Whether a class, interface or trait was loaded from under $dir — other
+     * Whether a named symbol was loaded from under $dir — other
      * than its `porta.php`, whose anonymous class is new on every require.
      */
+    // @noinspection MultipleReturnStatementsInspection -- Stop at the first loaded class or function; otherwise the plugin can reload live.
     private static function loadedFrom(string $dir): bool
     {
         $roots = \array_unique([\rtrim($dir, characters: '/').'/', \rtrim((string) \realpath($dir), characters: '/').'/']);
         foreach ([...\get_declared_classes(), ...\get_declared_interfaces(), ...\get_declared_traits()] as $type) {
-            $file = new \ReflectionClass($type)->getFileName();
-            if (\is_string($file) && !\str_ends_with($file, '/porta.php') && [] !== \array_filter($roots, static fn (string $root): bool => '/' !== $root && \str_starts_with($file, $root))) {
+            $reflection = new \ReflectionClass($type);
+            $file = $reflection->getFileName();
+            if (
+                \is_string($file)
+                && (!$reflection->isAnonymous() || !\str_ends_with($file, '/porta.php'))
+                && [] !== \array_filter($roots, static fn (string $root): bool => '/' !== $root && \str_starts_with($file, $root))
+            ) {
+                return true;
+            }
+        }
+
+        // @noinspection PotentialMalwareInspection -- Inspect user function origins to prevent fatal redeclaration when a plugin entrypoint is required again.
+        foreach (\get_defined_functions()['user'] as $function) {
+            $file = new \ReflectionFunction($function)->getFileName();
+            if (\is_string($file) && [] !== \array_filter($roots, static fn (string $root): bool => '/' !== $root && \str_starts_with($file, $root))) {
                 return true;
             }
         }
@@ -260,6 +321,9 @@ final class PluginUpdates
         $restartFor = $this->restartFor;
         $this->restartFor = [];
         $this->lifecycle->refreshView();
+        if ([] !== $restartFor) {
+            $this->restart?->plugins();
+        }
         if ([] !== $failed) {
             $this->notifier->error(\implode(' · ', $failed), 8.0, self::SLOT);
 
@@ -269,7 +333,7 @@ final class PluginUpdates
             $this->notifier->success(
                 [] === $restartFor
                     ? $this->translator->trans('Updated %plugins% — reloaded live', ['%plugins%' => \implode(', ', $done)])
-                    : $this->translator->trans('Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code', [
+                    : $this->translator->trans('Updated %plugins% — restart scheduled for %names%', [
                         '%plugins%' => \implode(', ', $done),
                         '%names%' => \implode(', ', $restartFor),
                     ]),

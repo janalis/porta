@@ -92,7 +92,7 @@ final class JsonRpcTransport
         $cwd = $this->rootDir;
         $pipes = [];
         // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-        $process = @\proc_open($this->command, $descriptors, $pipes, $cwd);
+        $process = @\proc_open($this->command, $descriptors, $pipes, $cwd, ProcessEnvironment::withoutRestart(\getenv()));
         if (!\is_resource($process)) {
             $this->log(\sprintf('cannot start the %s: %s could not be run', $this->peerName, $this->command[0]));
 

@@ -60,6 +60,8 @@ final readonly class IdeContainerFactory
         // later (PtyProcess merges getenv() into child environments). Config
         // arrays travel JSON-encoded and resolve via env()->json() args.
         $_ENV['PORTA_ROOT_DIR'] = $rootDir;
+        $_ENV['PORTA_VERSION'] = Ide::VERSION;
+        $_ENV['PORTA_RESTART_CHECK_AFTER'] = self::env('PORTA_RESTART_CHECK_AFTER');
         $_ENV['PORTA_LOCALE'] = (string) ($config->settings['language'] ?? 'auto');
         $_ENV['PORTA_SYSTEM_LOCALE'] = SystemLocale::fromEnvironment(\getenv(), \extension_loaded('intl') ? \Locale::getDefault() : '');
         $_ENV['PORTA_HOST_KEYMAP'] = KeymapPlatform::detect(\PHP_OS_FAMILY, \getenv())->value;

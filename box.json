@@ -25,6 +25,7 @@
         }
     ],
     "files": [
-        "composer.json"
+        "composer.json",
+        "bin/porta-restart"
     ]
 }

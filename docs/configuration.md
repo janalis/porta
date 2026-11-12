@@ -119,6 +119,7 @@ something to run:
   so does one run elsewhere that reads nothing of the project: assist's relay
   to the host's server);
 - its `.porta/plugins` are not loaded;
+- its update-check and auto-update preferences are ignored; your global update policy still applies;
 - no plugin is installed in it, nor removed from it: composer would run what
   its `.porta/composer.json` says (installing for every project still works);
 - its `.porta.json` loses `lsp`, `enabledPlugins` (`porta --plugin <name>`
@@ -237,8 +238,10 @@ catalog validation and bind if the plugin loads.
 | `displayName` | `""` | Your name, as the others at work on the project see it — beside your caret and in their roster. Empty uses your login name (`$USER`), else `anonymous`. Control characters are dropped and it is cut to 40 characters. The assist plugin uses it too (it replaces that plugin's own `displayName`) |
 | `sharePresence` | `true` | Tell other Porta instances on the same project where you are: your name, your open file and your caret, in `.porta/presence/` — this folder's, or the server's for a remote project. Off, you still see them; they no longer see you (see [Participants](editor.md#participants)) |
 | `toolUpdateCheck` | `"daily"` | How often Porta looks, in the background, for newer versions of the tools your enabled plugins run — `daily`, `weekly` or `off`. Only tools Porta installed and can update are asked about, and not composer ones — `composer update` keeps to your project's constraint, so Packagist's newest may be out of its reach; what it finds is said once, in one toast, and shown beside each tool on its plugin's Settings page. A failed lookup says nothing |
-| `pluginUpdateCheck` | `"weekly"` | How often Porta asks the [plugin store](plugin-store.md), in the background, for newer releases of the plugins you installed from Packagist — `daily`, `weekly` or `off`. Opening the store counts as a check. What it finds is said once, in one toast, and listed under the store's **Updates**. A plugin installed from a path or a git URL, and a bundled one, is never offered an update |
-| `pluginAutoUpdate` | `false` | Install those newer releases as soon as a check finds them, instead of only saying so. A running plugin reloads live; one that had already loaded classes of its own asks for a restart to finish |
+| `ideUpdateCheck` | `"daily"` | How often Porta checks for stable IDE releases: `off`, `daily`, or `weekly` |
+| `ideAutoUpdate` | `false` | Automatically update supported PHAR, Homebrew and global Composer installations once active work stops, then restore the editing session in a fresh process. Source checkouts and project Composer installs remain manual |
+| `pluginUpdateCheck` | `"daily"` | How often Porta asks the [plugin store](plugin-store.md), in the background, for newer releases of the plugins you installed from Packagist — `daily`, `weekly` or `off`. Opening the store counts as a check. What it finds is said once, in one toast, and listed under the store's **Updates**. A plugin installed from a path or a git URL, and a bundled one, is never offered an update |
+| `pluginAutoUpdate` | `false` | Install those newer releases as soon as a check finds them, instead of only saying so. A running plugin reloads live; loaded named classes or functions, including shared dependencies, require a restart to finish |
 
 All of these apply live when changed from the Settings view or the palette
 commands (`Cycle Diagnostic Messages`, `Cycle Inlay Hints`,

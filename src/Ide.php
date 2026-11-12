@@ -18,8 +18,11 @@ use Porta\Container\ToolLaunch;
 use Porta\Container\ToolMode;
 use Porta\Debug\DebugController;
 use Porta\Debug\DebugStatePersistence;
+use Porta\Editor\Buffer;
+use Porta\Editor\BufferManager;
 use Porta\Editor\BufferService;
 use Porta\Editor\ConflictMarkers;
+use Porta\Editor\OpenAs;
 use Porta\Editor\OpenFocus;
 use Porta\Editor\PaneRegistrar;
 use Porta\Event\DiffToolLaunched;
@@ -30,11 +33,13 @@ use Porta\Filesystem\ProjectLocation;
 use Porta\Filesystem\RemoteFilesystem;
 use Porta\History\BookmarkPersistence;
 use Porta\History\RecentProjectsStore;
+use Porta\History\RestartSnapshot;
 use Porta\History\SessionRestorer;
 use Porta\I18n\Translator;
 use Porta\Input\DragDropProtocol;
 use Porta\Input\InputDispatcher;
 use Porta\Input\PixelPointer;
+use Porta\Install\IdeUpdates;
 use Porta\Layout\LayoutController;
 use Porta\Layout\PaneLayout;
 use Porta\Layout\WorkspaceLayout;
@@ -75,6 +80,8 @@ use Porta\Workbench\Menu\MenuRegistrar;
 use Porta\Workbench\Notifier;
 use Porta\Workbench\ReopenRequest;
 use Porta\Workbench\TerminalStateRefresher;
+use Porta\Workbench\UpdateReadiness;
+use Porta\Workbench\UpdateRestart;
 use Porta\Workbench\View\ViewRegistrar;
 use Porta\Workbench\View\ViewRegistry;
 use Revolt\EventLoop;
@@ -148,6 +155,7 @@ final class Ide
         // difftool/mergetool rather than as an editor ({@see ToolLaunch}).
         private readonly ?ToolLaunch $tool = null,
         array $plugins = [],
+        private readonly ?string $restartDirectory = null,
     ) {
         // Boot-phase evidence: the entrypoint hands in a trace whose prelude
         // covers the interpreter and autoload; test rigs get a fresh one so the
@@ -430,6 +438,53 @@ final class Ide
         return $this->service(ReopenRequest::class)->root();
     }
 
+    public function restartDirectory(): ?string
+    {
+        return $this->service(UpdateRestart::class)->directory();
+    }
+
+    public function updatesCore(): bool
+    {
+        return $this->service(UpdateRestart::class)->updatesCore();
+    }
+
+    private function restoreRestart(): bool
+    {
+        $directory = $this->restartDirectory;
+
+        return null !== $directory && $this->loadRestart($directory);
+    }
+
+    private function loadRestart(string $directory): bool
+    {
+        $buffers = $this->service(BufferManager::class);
+        $snapshot = new RestartSnapshot();
+        $conflicts = $snapshot->restore($directory, $this->rootDir, $buffers, function (string $path, OpenAs $as) use ($buffers): ?Buffer {
+            if (\is_file($path)) {
+                $this->bufferService->openFile($path, as: $as);
+            }
+
+            return $buffers->get($path);
+        });
+        if (null === $conflicts) {
+            $this->notifier->error($this->service(Translator::class)->trans('Could not restore the restart snapshot: %path%', ['%path%' => $directory]));
+
+            return false;
+        }
+        if (null !== ($active = $buffers->active())) {
+            $this->bufferService->showBuffer($active);
+        }
+        if ([] !== $conflicts) {
+            $this->notifier->warn($this->service(Translator::class)->trans('Files changed while restarting: %paths%', ['%paths%' => \implode(', ', $conflicts)]));
+        }
+        if (\is_file($directory.'/update-failed')) {
+            $this->notifier->error($this->service(Translator::class)->trans('The update failed; your session was restored. Check Settings › Command line.'));
+        }
+        $snapshot->acknowledge($directory);
+
+        return true;
+    }
+
     public function run(): void
     {
         $this->lspBootstrapper->start();
@@ -568,9 +623,10 @@ final class Ide
             $this->service(ToolUpdates::class)->start();
             // And the plugins themselves: newer releases in the store.
             $this->service(PluginUpdates::class)->start();
+            $this->service(IdeUpdates::class)->start();
 
-            $openedInitial = false;
-            if (null !== $this->initialFile) {
+            $openedInitial = $this->restoreRestart();
+            if (!$openedInitial && null !== $this->initialFile) {
                 $this->openFile($this->initialFile);
                 if (null !== $this->initialLine) {
                     $this->editor->jumpTo($this->initialLine - 1, 0); // CLI lines are 1-based
@@ -586,6 +642,8 @@ final class Ide
             // editor shows, and both claim focus. Welcome has to come after so
             // it takes focus over them, and so Esc reveals a settled editor.
             $this->showWelcomeOnFirstRun();
+            $readiness = $this->service(UpdateReadiness::class);
+            $this->service(UpdateRestart::class)->start($readiness->busy(...));
 
             $this->tui->run();
         } finally {
@@ -607,6 +665,8 @@ final class Ide
                 $this->perf->stop();
                 $this->service(ToolUpdates::class)->stop();
                 $this->service(PluginUpdates::class)->stop();
+                $this->service(IdeUpdates::class)->stop();
+                $this->service(UpdateRestart::class)->stop();
                 // A download, an update check or a version probe still out
                 // would outlive the IDE writing into ~/.porta.
                 $this->service(RunningProcesses::class)->cancel();

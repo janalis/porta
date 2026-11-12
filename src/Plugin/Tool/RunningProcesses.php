@@ -28,6 +28,11 @@ final class RunningProcesses
         unset($this->running[\spl_object_id($process)]);
     }
 
+    public function busy(): bool
+    {
+        return [] !== $this->running;
+    }
+
     /** Stop them all: a cancelled process never calls back. */
     public function cancel(): void
     {

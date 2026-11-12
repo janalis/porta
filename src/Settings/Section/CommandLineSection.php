@@ -18,6 +18,7 @@ use Porta\Settings\SettingsRowKind;
 use Porta\Settings\SettingsSection;
 use Porta\Support\AsyncProcess;
 use Porta\Workbench\Notifier;
+use Porta\Workbench\UpdateRestart;
 use Symfony\Component\DependencyInjection\Attribute\AsTaggedItem;
 use Symfony\Component\Process\ExecutableFinder;
 use Symfony\Component\Process\Process;
@@ -66,6 +67,7 @@ final class CommandLineSection implements SettingsSection
         private readonly Notifier $notifier,
         private readonly ?string $binary = null,
         private readonly ?Installation $installation = null,
+        private readonly ?UpdateRestart $restart = null,
     ) {}
 
     /** @return list<SettingsPage> */
@@ -254,6 +256,7 @@ final class CommandLineSection implements SettingsSection
         match (true) {
             !$installation->method->updatesItself() => null, // the row is inert then
             null !== $this->update => $this->notifier->warn($this->translator->trans('An update is already running')),
+            null !== $this->restart => $this->restart->core(),
             default => $this->startSelfUpdate($installation),
         };
     }

@@ -126,6 +126,7 @@ final class PackagistMetadataTest extends TestCase
         $this->assertTrue($entry->compatible);
         $this->assertSame('Rector', $entry->title, '__unset dropped extra: the default title comes back');
         $this->assertSame(['v2.0.0-beta1', 'v1.3.0', 'v1.2.5'], \array_column($entry->history, 0));
+        $this->assertSame(['v1.2.5'], $entry->compatibleVersions);
     }
 
     public function testWhenNoReleaseRunsHereTheNewestStableIsShownIncompatible(): void

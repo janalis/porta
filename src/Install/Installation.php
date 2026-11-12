@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Install;
 
 use Porta\Support\Files;
+use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
 /**
  * How the running Porta was installed, and so how it is updated: what
@@ -17,11 +18,17 @@ use Porta\Support\Files;
  * other phar is resolved through its links too, so the swap lands on the
  * file, not on a link to it.
  */
+#[Autoconfigure(constructor: 'current')]
 final readonly class Installation
 {
     public const string PACKAGE = 'janalis/porta';
 
     private const string FORMULA = 'janalis/tap/porta';
+
+    public static function current(): self
+    {
+        return self::detect(PortaBinary::phar(), PortaBinary::packageDir(), \getenv());
+    }
 
     /**
      * @param string $path  what the update acts on: the phar's resolved file, or the folder Composer or git runs in

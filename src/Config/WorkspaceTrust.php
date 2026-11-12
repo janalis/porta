@@ -64,7 +64,15 @@ final readonly class WorkspaceTrust
      *
      * @var list<string>
      */
-    private const array RUNNABLE_CORE_SETTINGS = [...self::RUNNABLE_SETTINGS, 'plantuml'];
+    private const array RUNNABLE_CORE_SETTINGS = [
+        ...self::RUNNABLE_SETTINGS,
+        'plantuml',
+        // A cloned project cannot opt the user into replacing installed code.
+        'ideAutoUpdate',
+        'ideUpdateCheck',
+        'pluginAutoUpdate',
+        'pluginUpdateCheck',
+    ];
 
     /** @param list<string> $folders trusted with everything beneath them */
     public function __construct(

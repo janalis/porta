@@ -213,7 +213,19 @@ final class SettingsControllerTest extends TestCase
         $byKey = \array_column($rows, null, 'key');
 
         $this->assertSame(
-            ['autoPairs', 'formatOnSave', 'keymapPlatform', 'searchIncludeVendor', 'displayName', 'sharePresence', 'toolUpdateCheck', 'pluginUpdateCheck', 'pluginAutoUpdate'],
+            [
+                'autoPairs',
+                'formatOnSave',
+                'keymapPlatform',
+                'searchIncludeVendor',
+                'displayName',
+                'sharePresence',
+                'toolUpdateCheck',
+                'ideUpdateCheck',
+                'ideAutoUpdate',
+                'pluginUpdateCheck',
+                'pluginAutoUpdate',
+            ],
             \array_column($rows, 'key'),
             'General holds editor behavior (the viewer-tool paths live on their plugins\' pages now); appearance moved to Interface',
         );

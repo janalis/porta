@@ -199,6 +199,10 @@ return [
         'Input>Ui',
         'Input>Widget',
         'Input>Workbench',
+        'Install>Config', // machine-local update state
+        'Install>Container', // update service locator membership
+        'Install>Plugin', // shared asynchronous HTTP and update cadence
+        'Install>Workbench', // deferred session-preserving restart
         'Install>Support', // Files::ensureDir: the race-safe mkdir every writer of a directory shares
         'Layout>Config',
         'Layout>Container',
@@ -404,6 +408,7 @@ return [
         'Widget>Workbench',
         'Workbench>Config',
         'Workbench>Container',
+        'Workbench>Debug', // update readiness waits for an active debugger
         'Workbench>Editor',
         'Workbench>Filesystem', // quitting asks twice while changes are still on their way to a server
         'Workbench>History', // ProjectSwitcher reads the recent-projects list

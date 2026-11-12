@@ -16,5 +16,6 @@ final readonly class PluginUpdate
         public string $from,
         public string $to,
         public string $dir = '',
+        public string $constraint = '*',
     ) {}
 }

@@ -1,0 +1,62 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Copied into the private handoff before Porta shuts down. No application
+// autoloader: the installation may be replaced while this helper is running.
+$configFile = $argv[1] ?? '';
+$resume = '';
+try {
+    $config = json_decode((string) file_get_contents($configFile), associative: true, flags: JSON_THROW_ON_ERROR);
+    if (!is_array($config) || !is_array($config['launch'] ?? null) || !is_array($config['update'] ?? null)
+        || !is_string($config['root'] ?? null) || !is_string($config['directory'] ?? null)) {
+        throw new RuntimeException('Invalid restart handoff');
+    }
+    $resume = 'Resume with PORTA_RESTART_DIRECTORY='.escapeshellarg($config['directory']).' '.implode(' ', array_map('escapeshellarg', $config['launch']));
+    $run = static function (array $command, array $env) use ($config): int {
+        $pipes = [];
+        $process = proc_open($command, [STDIN, STDOUT, STDERR], $pipes, $config['root'], $env);
+        return is_resource($process) ? proc_close($process) : 1;
+    };
+    $env = getenv();
+    $env['PORTA_RESTART_DIRECTORY'] = $config['directory'];
+    // Even an unwritable cadence note must not create a restart loop.
+    $env['PORTA_RESTART_CHECK_AFTER'] = (string) (time() + 86400);
+    if ([] !== $config['update']) {
+        $lock = is_link($config['lock']) ? false : fopen($config['lock'], 'cb');
+        if (false === $lock) {
+            throw new RuntimeException('Cannot open the installation lease; recovery data retained at '.$config['directory']);
+        }
+        $deadline = time() + 900;
+        $locked = flock($lock, LOCK_EX | LOCK_NB);
+        if (!$locked) {
+            fwrite(STDERR, "porta: Waiting for another update to finish…\n");
+        }
+        while (!$locked && time() < $deadline) {
+            usleep(100000);
+            $locked = flock($lock, LOCK_EX | LOCK_NB);
+        }
+        if (!$locked) {
+            throw new RuntimeException('Another update still owns the installation; recovery data retained at '.$config['directory']);
+        }
+        if (0 !== $run($config['update'], $env)) {
+            file_put_contents($config['directory'].'/update-failed', '1');
+            fwrite(STDERR, "porta: update failed; trying to reopen the installation.\n");
+        }
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+    $code = $run($config['launch'], $env);
+    if (0 !== $code) {
+        fwrite(STDERR, 'porta: recovery data retained at '.$config['directory']."\n");
+        fwrite(STDERR, $resume."\n");
+    }
+    exit($code);
+} catch (Throwable $error) {
+    fwrite(STDERR, 'porta: restart failed: '.$error->getMessage()."\n");
+    if ('' !== $resume) {
+        fwrite(STDERR, $resume."\n");
+    }
+    exit(1);
+}

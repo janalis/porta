@@ -113,10 +113,10 @@ immutable nodes (`Node/`) and the source positions every node carries
 (`SourceRange`, `SourceText`, `MappedText`). It imports nothing feature-owned
 and draws nothing; drawing a tree is `Help/Layout/`'s.
 
-**`Install/`** — Porta outside the IDE: the `porta` link on `PATH`
-(`CommandLink`), git's difftool/mergetool config (`GitToolSetup`) and the
-running binary (`PortaBinary`). Shared by `Console/` (`--git-setup`) and the
-Command line settings page, so neither reaches into the other.
+**`Install/`** — installation ownership and maintenance: the `porta` link on
+`PATH`, git's tool setup, the running binary and its installation method, plus
+the IDE update check and machine-local release note. Update services are
+container-built; the standalone maintenance helpers remain plain objects.
 
 **`Console/PluginCommands`** — `porta <name> …` for a bundled plugin's console
 command (`extra.porta.commands`): the plugin's class, which must extend

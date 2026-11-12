@@ -10,6 +10,7 @@ use Porta\I18n\Translator;
 use Porta\Plugin\Runtime\PluginLoader;
 use Porta\Plugin\Runtime\PluginManifest;
 use Porta\Support\AsyncProcess;
+use Porta\Support\FileLock;
 use Porta\Support\Files;
 use Porta\Support\JsonFile;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
@@ -48,6 +49,11 @@ use Symfony\Component\Process\ExecutableFinder;
 #[Autoconfigure(constructor: 'create')]
 final class PluginInstaller
 {
+    public function busy(): bool
+    {
+        return null !== $this->running;
+    }
+
     /**
      * Written inside a vendor tree Porta's own composer run created, and the
      * only thing that authorises deleting one again.
@@ -712,7 +718,7 @@ final class PluginInstaller
      * composer installed, and whether that came from Packagist (the only kind
      * a newer release updates). A hand-placed directory is no package.
      *
-     * @return list<array{name: string, scope: InstallScope, dir: string, package: string, version: string, packagist: bool}>
+     * @return list<array{name: string, scope: InstallScope, dir: string, package: string, version: string, packagist: bool, constraint: string}>
      */
     public function packages(): array
     {
@@ -732,6 +738,7 @@ final class PluginInstaller
                 'package' => $package,
                 'version' => $versions[$copy['scope']->value][$package] ?? '',
                 'packagist' => $this->project->fromPackagist($root, $package),
+                'constraint' => $this->project->requirements($root)[$package] ?? '',
             ];
         }
 
@@ -753,7 +760,8 @@ final class PluginInstaller
      *
      * @param \Closure(?string): void $onDone the translated error, or null on success
      */
-    public function update(string $name, InstallScope $scope, ?string $version, \Closure $onDone): void
+    // @noinspection MultipleReturnStatementsInspection -- Refuse invalid copies or a conflicting writer before starting the update transaction.
+    public function update(string $name, InstallScope $scope, ?string $version, \Closure $onDone, PluginUpdateMode $mode = PluginUpdateMode::Manual): void
     {
         $root = InstallScope::Embedded === $scope ? null : $this->rootFor($scope);
         $dest = null === $root ? null : $root.'/.porta/plugins/'.$name;
@@ -771,21 +779,37 @@ final class PluginInstaller
 
             return;
         }
-        $args = null === $version
-            ? ['update', $package, '--with-dependencies']
-            : ['require', $package.':'.\ltrim($version, characters: 'v'), '--update-with-dependencies'];
-        $ok = $this->startComposer($composerDir, [...$args, '--no-interaction', '--no-progress', '--no-audit'], function (int $code) use ($dest, $name, $onDone): void {
-            if (0 !== $code) {
-                $onDone($this->translator->trans('Cannot update "%name%"', ['%name%' => $name]));
+        $lease = new FileLock($composerDir.'/.porta-update.lock');
+        if (!$lease->acquire()) {
+            $onDone($this->translator->trans('Cannot update "%name%"', ['%name%' => $name]));
 
-                return;
-            }
-            $this->finishInstall($dest, static function (?string $error) use ($onDone): void {
-                $onDone($error);
-            });
-        });
+            return;
+        }
+        $complete = static function (?string $error) use ($lease, $onDone): void {
+            $lease->release();
+            $onDone($error);
+        };
+        $args =
+            null === $version || PluginUpdateMode::Automatic === $mode
+                ? ['update', null === $version ? $package : $package.':'.\ltrim($version, characters: 'v'), '--with-dependencies']
+                : ['require', $package.':'.\ltrim($version, characters: 'v'), '--update-with-dependencies'];
+        $ok = $this->startComposer(
+            $composerDir,
+            [...$args, '--no-interaction', '--no-progress', '--no-audit'],
+            function (int $code) use ($dest, $name, $complete): void {
+                if (0 !== $code) {
+                    $complete($this->translator->trans('Cannot update "%name%"', ['%name%' => $name]));
+
+                    return;
+                }
+                $this->finishInstall($dest, static function (?string $error) use ($complete): void {
+                    $complete($error);
+                });
+            },
+            $lease,
+        );
         if (!$ok) {
-            $onDone($this->translator->trans('composer is not available'));
+            $complete($this->translator->trans('composer is not available'));
         }
     }
 
@@ -907,6 +931,19 @@ final class PluginInstaller
         return $dest;
     }
 
+    /** @param list<string> $args */
+    private function alreadyUpdated(string $cwd, array $args): bool
+    {
+        $spec = $args[1] ?? '';
+        if ('update' !== ($args[0] ?? '') || !\str_contains($spec, ':')) {
+            return false;
+        }
+        [$package, $target] = \explode(':', $spec, limit: 2);
+        $installed = $this->project->installedVersions(\dirname($cwd))[$package] ?? null;
+
+        return null !== $installed && \version_compare(\ltrim($installed, characters: 'v'), $target, operator: '>=');
+    }
+
     /**
      * Run a composer subcommand in $cwd, taking the single process slot.
      * False means it never started — no composer binary, or (untestable)
@@ -915,20 +952,42 @@ final class PluginInstaller
      * @param list<string>        $args
      * @param \Closure(int): void $onExit
      */
-    private function startComposer(string $cwd, array $args, \Closure $onExit): bool
+    // @noinspection MultipleReturnStatementsInspection -- Fail before spawning on a missing binary, a conflicting writer, or an already-applied update.
+    private function startComposer(string $cwd, array $args, \Closure $onExit, ?FileLock $lease = null): bool
     {
         $composer = $this->composer();
         if (null === $composer) {
             return false;
         }
+        $ownsLease = null === $lease;
+        $lock = $lease ?? new FileLock($cwd.'/.porta-update.lock');
+        if ($ownsLease && !$lock->acquire()) {
+            $onExit(75);
+
+            return true;
+        }
+        if ($this->alreadyUpdated($cwd, $args)) {
+            if ($ownsLease) {
+                $lock->release();
+            }
+            $onExit(0);
+
+            return true;
+        }
         $this->running = new AsyncProcess([$composer, ...$args], $cwd, timeout: AsyncProcess::EXTERNAL_TOOL_TIMEOUT);
-        $started = $this->running->start(function (int $code) use ($onExit): void {
+        $started = $this->running->start(function (int $code) use ($onExit, $lock, $ownsLease): void {
+            if ($ownsLease) {
+                $lock->release();
+            }
             $this->running = null;
             $onExit($code);
         });
         if (!$started) {
             // proc_open failure is environmental (fd exhaustion)
             // @codeCoverageIgnoreStart
+            if ($ownsLease) {
+                $lock->release();
+            }
             $this->running = null;
 
             // @codeCoverageIgnoreEnd

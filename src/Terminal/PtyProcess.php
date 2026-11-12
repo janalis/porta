@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Porta\Terminal;
 
 use Porta\Support\NonBlockingWriter;
+use Porta\Support\ProcessEnvironment;
 use Porta\Support\ProcessReaper;
 use Revolt\EventLoop;
 
@@ -90,7 +91,7 @@ final class PtyProcess
         // @mago-expect lint:no-error-control-operator -- proc_open warns when the system refuses a PTY or cannot spawn the binary; either way the false return drives the pipe fallback below, which answers the second case for good.
         // Irreducible without lying about the descriptor. Re-checked 2026-09-02.
         // @mago-expect analysis:possibly-invalid-argument
-        $process = @\proc_open($this->inItsOwnSession(), $ptyDescriptors, $pipes, $cwd, $env);
+        $process = @\proc_open($this->inItsOwnSession(), $ptyDescriptors, $pipes, $cwd, ProcessEnvironment::withoutRestart($env));
         $this->pty = \is_resource($process);
 
         // Pipe fallback only runs where PTYs are unavailable; unreachable on
@@ -99,7 +100,7 @@ final class PtyProcess
         if (!$this->pty) {
             $pipeDescriptors = [['pipe', 'r'], ['pipe', 'w'], ['pipe', 'w']];
             // @mago-expect lint:no-error-control-operator -- proc_open on a nonexistent/unusable binary emits a spawn ("posix_spawn() failed") warning that guarding the inputs cannot reliably prevent; the false return is handled below.
-            $process = @\proc_open($this->command, $pipeDescriptors, $pipes, $cwd, $env);
+            $process = @\proc_open($this->command, $pipeDescriptors, $pipes, $cwd, ProcessEnvironment::withoutRestart($env));
             if (!\is_resource($process)) {
                 return false;
             }

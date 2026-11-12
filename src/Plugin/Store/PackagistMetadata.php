@@ -133,6 +133,10 @@ final class PackagistMetadata
             \array_map(static fn (array $release): array => [ControlChars::line(self::string($release, 'version')), self::time($release)], $releases),
             self::screenshots([$store['icon'] ?? null])[0] ?? null,
             self::tools($porta['tools'] ?? null),
+            \array_values(\array_map(
+                static fn (array $release): string => self::string($release, 'version'),
+                \array_filter($releases, static fn (array $release): bool => 1 === \preg_match(self::STABLE, self::string($release, 'version_normalized')) && self::runsHere($name, $release)),
+            )),
         );
     }
 

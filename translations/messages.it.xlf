@@ -3858,10 +3858,6 @@
         <source>Updated %plugins% — reloaded live</source>
         <target>%plugins% aggiornati — ricaricati a caldo</target>
       </trans-unit>
-      <trans-unit id="1299">
-        <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
-        <target>%plugins% aggiornati — riavvia Porta per completare %names%: le classi già caricate mantengono il vecchio codice</target>
-      </trans-unit>
       <trans-unit id="1300">
         <source>Categories</source>
         <target>Categorie</target>
@@ -3901,6 +3897,42 @@
       <trans-unit id="1309">
         <source>In the store</source>
         <target>Nello store</target>
+      </trans-unit>
+      <trans-unit id="1310">
+        <source>IDE update check</source>
+        <target>Controllo aggiornamenti IDE</target>
+      </trans-unit>
+      <trans-unit id="1311">
+        <source>Auto-update IDE</source>
+        <target>Aggiorna IDE automaticamente</target>
+      </trans-unit>
+      <trans-unit id="1312">
+        <source>Porta will restart when active work stops.</source>
+        <target>Porta verrà riavviato alla fine delle attività in corso.</target>
+      </trans-unit>
+      <trans-unit id="1313">
+        <source>Could not preserve the session; restart postponed.</source>
+        <target>Impossibile conservare la sessione; riavvio rimandato.</target>
+      </trans-unit>
+      <trans-unit id="1314">
+        <source>Porta %version% is available. Update from Settings › Command line.</source>
+        <target>Porta %version% è disponibile. Aggiorna da Impostazioni › Riga di comando.</target>
+      </trans-unit>
+      <trans-unit id="1315">
+        <source>Could not restore the restart snapshot: %path%</source>
+        <target>Impossibile ripristinare la sessione: %path%</target>
+      </trans-unit>
+      <trans-unit id="1316">
+        <source>Files changed while restarting: %paths%</source>
+        <target>File modificati durante il riavvio: %paths%</target>
+      </trans-unit>
+      <trans-unit id="1317">
+        <source>The update failed; your session was restored. Check Settings › Command line.</source>
+        <target>L’aggiornamento non è riuscito; la sessione è stata ripristinata. Controlla Impostazioni › Riga di comando.</target>
+      </trans-unit>
+      <trans-unit id="1318">
+        <source>Updated %plugins% — restart scheduled for %names%</source>
+        <target>%plugins% aggiornato — riavvio previsto per %names%</target>
       </trans-unit>
     </body>
   </file>

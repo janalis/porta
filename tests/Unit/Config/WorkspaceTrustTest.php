@@ -331,4 +331,21 @@ final class WorkspaceTrustTest extends TestCase
 
         $this->assertSame($runs, Probe::invoke($tool, 'runsProjectCode'));
     }
+
+    public function testUntrustedProjectsCannotOverrideTheUsersUpdatePolicy(): void
+    {
+        $this->untrustProjects();
+        $this->untrustingHome->write('.porta/config.json', '{"settings":{"ideUpdateCheck":"off","pluginUpdateCheck":"off"}}');
+        $project = new TempProject(['.porta.json' => '{"settings":{"ideAutoUpdate":true,"pluginAutoUpdate":true,"ideUpdateCheck":"daily","pluginUpdateCheck":"daily"}}']);
+        $restricted = IdeConfig::load($project->dir);
+        $this->assertFalse($restricted->settings['ideAutoUpdate']);
+        $this->assertFalse($restricted->settings['pluginAutoUpdate']);
+        $this->assertSame('off', $restricted->settings['ideUpdateCheck']);
+        $this->assertSame('off', $restricted->settings['pluginUpdateCheck']);
+        new WorkspaceTrust($this->untrustingHome->dir)->trust($project->dir);
+        $trusted = IdeConfig::load($project->dir);
+        $this->assertTrue($trusted->settings['ideAutoUpdate']);
+        $this->assertTrue($trusted->settings['pluginAutoUpdate']);
+        $this->assertSame('daily', $trusted->settings['ideUpdateCheck']);
+    }
 }

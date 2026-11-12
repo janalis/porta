@@ -101,6 +101,22 @@ final readonly class PluginComposerProject
         return $versions;
     }
 
+    /** @return array<string, string> the scope's declared package constraints */
+    public function requirements(string $scopeBase): array
+    {
+        $data = JsonFile::read($this->composerJsonPath($scopeBase));
+        $requirements = [];
+        /** @var mixed $constraint */
+        foreach (\is_array($data['require'] ?? null) ? $data['require'] : [] as $package => $constraint) {
+            if (!\is_string($package) || !\is_string($constraint)) {
+                continue;
+            }
+            $requirements[$package] = $constraint;
+        }
+
+        return $requirements;
+    }
+
     /**
      * Whether $packageName resolves from Packagist — no path or git
      * repository of its own in $scopeBase's project, which is the one kind of

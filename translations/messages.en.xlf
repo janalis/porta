@@ -3858,10 +3858,6 @@
         <source>Updated %plugins% — reloaded live</source>
         <target>Updated %plugins% — reloaded live</target>
       </trans-unit>
-      <trans-unit id="1299">
-        <source>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</source>
-        <target>Updated %plugins% — restart Porta to finish %names%: classes already loaded keep their old code</target>
-      </trans-unit>
       <trans-unit id="1300">
         <source>Categories</source>
         <target>Categories</target>
@@ -3901,6 +3897,42 @@
       <trans-unit id="1309">
         <source>In the store</source>
         <target>In the store</target>
+      </trans-unit>
+      <trans-unit id="1310">
+        <source>IDE update check</source>
+        <target>IDE update check</target>
+      </trans-unit>
+      <trans-unit id="1311">
+        <source>Auto-update IDE</source>
+        <target>Auto-update IDE</target>
+      </trans-unit>
+      <trans-unit id="1312">
+        <source>Porta will restart when active work stops.</source>
+        <target>Porta will restart when active work stops.</target>
+      </trans-unit>
+      <trans-unit id="1313">
+        <source>Could not preserve the session; restart postponed.</source>
+        <target>Could not preserve the session; restart postponed.</target>
+      </trans-unit>
+      <trans-unit id="1314">
+        <source>Porta %version% is available. Update from Settings › Command line.</source>
+        <target>Porta %version% is available. Update from Settings › Command line.</target>
+      </trans-unit>
+      <trans-unit id="1315">
+        <source>Could not restore the restart snapshot: %path%</source>
+        <target>Could not restore the restart snapshot: %path%</target>
+      </trans-unit>
+      <trans-unit id="1316">
+        <source>Files changed while restarting: %paths%</source>
+        <target>Files changed while restarting: %paths%</target>
+      </trans-unit>
+      <trans-unit id="1317">
+        <source>The update failed; your session was restored. Check Settings › Command line.</source>
+        <target>The update failed; your session was restored. Check Settings › Command line.</target>
+      </trans-unit>
+      <trans-unit id="1318">
+        <source>Updated %plugins% — restart scheduled for %names%</source>
+        <target>Updated %plugins% — restart scheduled for %names%</target>
       </trans-unit>
     </body>
   </file>

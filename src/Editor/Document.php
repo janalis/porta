@@ -1423,7 +1423,7 @@ final class Document
      * reconciler's reload, one undoable step — answering for the shape they
      * arrive in.
      */
-    public function reload(string $bytes): void
+    public function reload(string $bytes, ReloadMode $mode = ReloadMode::Disk): void
     {
         $text = $this->adopt($bytes);
         $this->pushUndo();
@@ -1434,6 +1434,10 @@ final class Document
         $this->cursorCol = TextMetrics::charBoundaryAtOrBefore($this->lines[$this->cursorLine], $this->cursorCol);
         $this->selection->clear();
         $this->touch();
+        if (ReloadMode::Recovery === $mode) {
+            // Recovery does not retain the original undo history.
+            $this->savedDigest = '';
+        }
     }
 
     public function undo(): bool

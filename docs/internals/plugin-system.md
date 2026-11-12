@@ -217,8 +217,11 @@ no release, and falls back to the copy it shipped with. A curated
 and, for a takeover, the bundled plugin's upstream tool.
 
 Get is `PluginInstaller::install()` with the `vendor/name`. Update is
-`PluginInstaller::update()`: `composer require <pkg>:^<new>` in the scope's
-project, so a new major is reachable. Only a Packagist install can be updated
+`PluginInstaller::update()`: manual updates use `composer require <pkg>:<new>`
+in the scope's project, so a new major is reachable. Automatic updates stay
+within the installed version's caret-compatible range and use
+`composer update <pkg>:<new>` as a temporary constraint: Composer enforces
+the existing requirement without rewriting it. Only a Packagist install can be updated
 (`PluginComposerProject::fromPackagist()`). `PluginUpdates` decides what is
 outdated, by comparing composer's `installed.json` with the catalog. Its
 background check uses the catalog's `fetchedAt` as its note: opening the store
@@ -272,14 +275,21 @@ out again when it is ready. A plugin's **In the store** row raises
 `SettingsSectionRequested('plugins', 'store:<package>')`, and
 `PluginStoreWidget::showPage()` answers it.
 
-An updated plugin that is running reloads live. `PluginLifecycle::activateInstalled()`
-swaps out a running plugin of the same name rather than refusing a duplicate, which
-also makes installing a takeover over a running bundled copy work. Re-requiring
-`porta.php` compiles a new anonymous class each time, so the new file's code is what
-runs (checked by hand: a changed `porta.php` required twice in one process answers with
-the new code). A named class the plugin already loaded cannot be
-redeclared, so `PluginUpdates::loadedFrom()` looks for one declared from the plugin's
-directory and names that plugin for a restart.
+An updated plugin without loaded named symbols reloads live through
+`PluginLifecycle::activateInstalled()`. Loaded classes or functions in the shared Composer tree also require a restart,
+even when the updated plugin is disabled. A running plugin with loaded named
+symbols stays unloaded after an update: `PluginUpdates` asks `UpdateRestart` to
+coalesce requests and wait for active work to stop. Its timer captures a private
+`RestartSnapshot` synchronously before stopping the TUI. `PortaCommand` then
+runs a copied, dependency-free helper, which starts a fresh PHP process with
+`PORTA_RESTART_DIRECTORY`. Recovery precedes normal session restoration and is
+acknowledged only after the recovered documents are mounted. The helper also
+applies pending core updates after teardown, using the detected installer.
+
+Composer mutations take a nonblocking per-scope file lease. Automatic updates
+re-read installed versions under that lease, use temporary Composer constraints,
+and skip a target already installed by another Porta process. Core updates take
+a separate installation lease in the user's `.porta/updates` directory.
 
 ## Dependencies follow the enabled state
 

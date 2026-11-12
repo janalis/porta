@@ -45,6 +45,7 @@ foreach (['config.json', 'trusted-projects.json'] as $portaLeaked) {
 // home that never ran it — and running it is a request to Packagist, GitHub,
 // crates.io and npm from the middle of the suite. A note saying "checked just
 // now" keeps it quiet for the run; the check's own tests use a home of their own.
+file_put_contents(__DIR__.'/Support/fixtures/home/.porta/ide-updates.json', json_encode(['checkedAt' => time()], JSON_THROW_ON_ERROR));
 file_put_contents(__DIR__.'/Support/fixtures/home/.porta/tool-updates.json', json_encode(['checkedAt' => time(), 'latest' => []], JSON_THROW_ON_ERROR));
 // The plugin-update check's note is the store's own catalog: an empty one
 // fetched just now keeps every booted Ide off Packagist the same way.

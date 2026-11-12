@@ -25,6 +25,7 @@ plugins/*/vendor/
 # Written by tests/bootstrap.php on every run: "this machine just looked", so
 # no booted Ide in the suite asks a package index whether a tool is outdated.
 /tests/Support/fixtures/home/.porta/tool-updates.json
+/tests/Support/fixtures/home/.porta/ide-updates.json
 /tests/Support/fixtures/home/.porta/cache/
 
 # Claude's per-round checklist (CLAUDE.md, Working style).

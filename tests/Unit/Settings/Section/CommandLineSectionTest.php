@@ -16,6 +16,7 @@ use Porta\Tests\Support\FakeScheduler;
 use Porta\Tests\Support\GitBinary;
 use Porta\Tests\Support\PreservesPath;
 use Porta\Tests\Support\PumpsLoop;
+use Porta\Tests\Support\StoreFixture;
 use Porta\Tests\Support\TempProject;
 use Porta\Tests\Support\TestTui;
 use Porta\Widget\StatusBarWidget;
@@ -333,5 +334,14 @@ final class CommandLineSectionTest extends TestCase
         $section->change(CommandLineSection::ID, 'cli:nothing', '');
 
         $this->assertSame([], $this->toasts->toasts());
+    }
+
+    public function testSupportedManualUpdatesUseTheSessionPreservingRestart(): void
+    {
+        $store = new StoreFixture();
+        $restart = $store->restart();
+        $section = new CommandLineSection($store->translator, $store->notifier, installation: new Installation(InstallMethod::Phar, '/porta.phar'), restart: $restart);
+        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $this->assertTrue($restart->updatesCore());
     }
 }
