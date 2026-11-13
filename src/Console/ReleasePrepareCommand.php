@@ -90,12 +90,24 @@ final class ReleasePrepareCommand extends Command
             $heading = \sprintf('## [%s] - %s', $next, $date ?? \date('Y-m-d'));
             \file_put_contents($changelogFile, \substr($changelog, offset: 0, length: $start).self::UNRELEASED."\n".$heading."\n\n".$body."\n".\substr($changelog, $end));
             \file_put_contents($ideFile, (string) \preg_replace(self::VERSION_LINE, '${1}'.$next.'${2}', $ide));
-            \file_put_contents($notes, $body."\n");
+            \file_put_contents($notes, self::releaseNotes($body)."\n");
             $output->writeln('version='.$next);
             $output->writeln('tag=v'.$next);
         }
 
         return null === $problem ? Command::SUCCESS : Command::FAILURE;
+    }
+
+    /** Unwrap changelog list prose without changing Markdown block structure. */
+    public static function releaseNotes(string $body): string
+    {
+        // Only two-space list continuations are source wrapping. Deeper
+        // indentation, block markers and explicit breaks remain untouched.
+        return (string) \preg_replace_callback(
+            '/^ {0,3}(`{3,}|~{3,})[^\n]*\n[\s\S]*?^ {0,3}\1[^\n]*$|(?<!  )(?<!\\\\)\n {2}(?![ \t]|[-*+>#`~|]|\d+[.)] )(?=\S)/m',
+            static fn (array $match): string => \str_starts_with($match[0], "\n") ? ' ' : $match[0],
+            $body,
+        );
     }
 
     /**

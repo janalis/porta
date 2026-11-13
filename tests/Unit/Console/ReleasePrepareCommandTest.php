@@ -45,6 +45,14 @@ final class ReleasePrepareCommandTest extends TestCase
         return $tester;
     }
 
+    public function testReleaseNotesUnwrapProseAndKeepMarkdownStructure(): void
+    {
+        $source = "### Added\n\n- Wrapped\n  prose.\n- Next  \n  explicit break.\n\n    code\n    preserved\n\n  > quote\n  | table |\n";
+        $expected = \str_replace("Wrapped\n  prose.", replace: 'Wrapped prose.', subject: $source);
+        $this->assertSame($expected, ReleasePrepareCommand::releaseNotes($source));
+        $this->assertSame($expected, ReleasePrepareCommand::releaseNotes($expected));
+    }
+
     public function testAMinorBumpReleasesTheUnreleasedSection(): void
     {
         $project = self::project();
