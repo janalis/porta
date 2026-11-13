@@ -3149,16 +3149,16 @@
         },
         {
             "name": "janalis/custos",
-            "version": "v0.1.7",
+            "version": "v0.1.11",
             "source": {
                 "type": "git",
                 "url": "https://github.com/janalis/custos.git",
-                "reference": "1aea9e118f7c2f1fdf6911525166aee31fbde862"
+                "reference": "b51bc5b388e5ff8015170ba77ee9379d8ada8907"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/janalis/custos/zipball/1aea9e118f7c2f1fdf6911525166aee31fbde862",
-                "reference": "1aea9e118f7c2f1fdf6911525166aee31fbde862",
+                "url": "https://api.github.com/repos/janalis/custos/zipball/b51bc5b388e5ff8015170ba77ee9379d8ada8907",
+                "reference": "b51bc5b388e5ff8015170ba77ee9379d8ada8907",
                 "shasum": ""
             },
             "require": {
@@ -3187,7 +3187,7 @@
                 "issues": "https://github.com/janalis/custos/issues",
                 "source": "https://github.com/janalis/custos"
             },
-            "time": "2026-10-21T10:18:08+00:00"
+            "time": "2026-11-09T01:32:18+00:00"
         },
         {
             "name": "jean85/pretty-package-versions",
