@@ -5,6 +5,8 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-11-13
+
 ### Added
 
 - **Automatic IDE updates**: the General settings page can check for stable
