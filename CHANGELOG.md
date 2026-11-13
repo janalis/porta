@@ -5,6 +5,32 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Automatic IDE updates**: the General settings page can check for stable
+  Porta releases daily or weekly and opt into automatic updates for PHAR,
+  Homebrew and global Composer installations. Source checkouts and project
+  Composer installations remain manual.
+- **Session recovery after updates**: when an update needs a fresh process,
+  Porta waits for terminal jobs, debugging, installs and remote writes, then
+  restores unsaved text, open tabs, cursors, pinning and preview arrangements.
+  Recovery never overwrites project files. Disk conflicts are reported, and a
+  failed relaunch retains the snapshot with a command to resume it.
+
+### Changed
+
+- **Plugin updates**: background checks now default to daily. Automatic updates
+  keep to stable releases within the installed version's caret range and the
+  existing Composer requirement; major upgrades and exact pins remain manual.
+  Anonymous entrypoints reload live. Loaded named classes or functions,
+  including shared dependencies, trigger a fresh process instead.
+
+### Fixed
+
+- **Update safety**: installation locks prevent competing Composer updates.
+  Restricted projects cannot override your global update policy, and restart
+  recovery variables stay out of tool, terminal and language-server processes.
+
 ## [0.1.7] - 2026-11-10
 
 ### Changed
