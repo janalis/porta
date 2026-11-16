@@ -95,11 +95,17 @@ final class IdeViewerPluginsTest extends TestCase
                     // the layout failed, never came, or came and was not drawn. Either
                     // form counts: the cell rendering's box corner, or the half-block
                     // bitmap that replaces it — on a loaded box the PNG can land before
-                    // a frame ever shows the cells, so `┌` alone timed out there.
+                    // a frame ever shows the cells, so `┌` alone timed out there. The
+                    // bitmap is matched where it starts, against the pane's rule:
+                    // chrome draws `▀` too (the menu bar's bleed).
                     $this->awaitOnScreen(
                         $tui,
                         $terminal,
-                        static fn (string $output): bool => [] !== \array_intersect(['┌', '▀'], \mb_str_split(AnsiUtils::stripAnsiCodes($output))),
+                        static function (string $output): bool {
+                            $screen = AnsiUtils::stripAnsiCodes($output);
+
+                            return \str_contains($screen, '┌') || \str_contains($screen, '│▀');
+                        },
                         timeout: 10.0,
                         what: 'the graph (cells or bitmap) to paint',
                     );

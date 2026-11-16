@@ -22,7 +22,8 @@ Worked examples: `git show --stat b4506a85` (mcp), `006b7600` (symfony-lsp). The
    - **The plugin's OWN tests must reach 100%** of its `src/` AND its `porta.php` (`--require=plugins`).
      Core tests don't count.
 5. **`mago.toml`**: add `"plugins/<name>/tests"` to the analyzer `excludes` by hand; mago excludes take no
-   globs. If the plugin vendors dependencies, also add a `plugins/<name>/vendor` source exclude
+   globs. Until mago#2741 ships, also add `"plugins/<name>/tests/"` to the `literal-named-argument`
+   rule's `exclude` list in `[linter.rules]`, or PHPUnit's asserts flood `composer lint`. If the plugin vendors dependencies, also add a `plugins/<name>/vendor` source exclude
    (`BundledPluginVendorTest`).
 6. **Arch**: in `config/arch-allowlist.php`'s `edges`, add one commented
    `'<Ns>>X'` edge per core namespace the plugin's `src/` imports. `<Ns>` is the psr-4 segment after

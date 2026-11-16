@@ -71,8 +71,10 @@ final class AnsiText
      * regex matches only CSI-SGR sequences, so APC cursor markers and every
      * other escape family pass through byte-identical — the same construction
      * {@see \Symfony\Component\Tui\Ansi\AnsiUtils::reapplyBackgroundAfterResets}
-     * uses for backgrounds (Style re-arms only backgrounds, never intensity,
-     * which is why this transform exists). Styles emit SGR 2 even in the
+     * uses for backgrounds. Not a `Style::apply()`: since symfony/tui 8.2 that
+     * re-opens intensity after a `0`, but after a `22` only when the bold or
+     * dim it closes opened inside the same text; this re-arms after every
+     * one, whatever opened it. Styles emit SGR 2 even in the
      * monochrome theme, so a dimmed backdrop reads under --no-ansi too.
      */
     public static function dim(string $line): string
