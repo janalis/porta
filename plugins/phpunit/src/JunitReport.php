@@ -54,7 +54,7 @@ final class JunitReport
         $absolute = '' === $file || \str_starts_with($file, '/') ? $file : $real.'/'.$file;
         $local = \str_starts_with($absolute, $real.'/') ? $root.\substr($absolute, \strlen($real)) : $absolute;
         $method = \explode(' with data set ', $name, limit: 2)[0];
-        // @mago-expect analysis:impossible-condition -- mago 1.60's stub says an attribute offset is never null; PHP gives null for a missing one (checked 2026-11-16)
+        // @mago-expect analysis:impossible-condition -- mago 1.60's stub says an attribute offset is never null; PHP gives null for a missing one: mago#2749
         // @mago-expect analysis:redundant-comparison -- the same stub
         $line = null === $case['line'] ? self::declared($absolute, $method, $sources) : \max(0, (int) $case['line'] - 1);
         $verdict = Xml::all($case, path: 'failure|error|skipped')[0] ?? null;
