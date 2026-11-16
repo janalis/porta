@@ -228,7 +228,12 @@ final class IdeContainerFactoryTest extends TestCase
         $this->build(); // loads the dumped class into this process
         $files = \glob($project->path('container-*.php'));
         [$file] = $files ? $files : [''];
-        \touch($file, mtime: 1); // epoch: older than every tracked resource → stale
+        // Epoch: older than every tracked resource → stale. ConfigCache dates a
+        // build by its .meta file (symfony/config 8.2, "compare resource
+        // freshness with cache build start"), so that is the one that makes it
+        // stale; the dump is aged too, so the rewrite asserted below is real.
+        \touch($file.'.meta', mtime: 1);
+        \touch($file, mtime: 1);
 
         $container = $this->build();
 
