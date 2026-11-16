@@ -17,7 +17,7 @@ final class TestAnalyzerPlugin extends AbstractAnalyzerPlugin
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api, [['composer', 'demo/demo']]);
-        $this->registerAnalysis($api, 'Demo', ['ctrl+alt+d']);
+        $this->registerAnalysis($api, display: 'Demo', keys: ['ctrl+alt+d']);
     }
 
     protected function command(string $binary, string $file): array
@@ -37,7 +37,7 @@ final class TestAnalyzerPlugin extends AbstractAnalyzerPlugin
                 'line' => (int) $row['line'],
                 'message' => (string) $row['message'],
             ],
-            self::rowsAt($report, 'rows'),
+            self::rowsAt($report, key: 'rows'),
         );
     }
 

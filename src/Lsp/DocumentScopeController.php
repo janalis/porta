@@ -40,7 +40,7 @@ final readonly class DocumentScopeController
             return;
         }
 
-        if (false === ($this->lsp->serverCapability($path, 'documentSymbolProvider') ?? false)) {
+        if (false === ($this->lsp->serverCapability($path, name: 'documentSymbolProvider') ?? false)) {
             return;
         }
 

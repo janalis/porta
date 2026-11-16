@@ -20,7 +20,7 @@ final class EditorState
     /** The centered list picker (branches, recent files, quick fixes…) is open. */
     public static function pickerOpen(object $editor): bool
     {
-        return null !== Probe::get(self::host($editor), 'overlay');
+        return null !== Probe::get(self::host($editor), property: 'overlay');
     }
 
     /** The find/replace search modal is open. */
@@ -32,7 +32,7 @@ final class EditorState
     /** The mini prompt (rename, branch name…) is open. */
     public static function promptOpen(object $editor): bool
     {
-        return null !== Probe::get(self::host($editor), 'prompt');
+        return null !== Probe::get(self::host($editor), property: 'prompt');
     }
 
     /** The viewport scroll state. */

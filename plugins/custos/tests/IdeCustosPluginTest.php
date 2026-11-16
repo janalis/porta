@@ -150,9 +150,9 @@ final class IdeCustosPluginTest extends TestCase
                 $commands->run('custos:fix');
                 $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'custos: save a.php first'), what: 'the save-first flash');
                 $this->assertFileDoesNotExist($project->path('fix.log'), 'the fixer never ran over the saved text');
-                $plugin = Probe::get(Probe::get(Services::resolve($ide, PluginLifecycle::class), 'plugins'), 'instances')['custos'] ?? null;
+                $plugin = Probe::get(Probe::get(Services::resolve($ide, PluginLifecycle::class), property: 'plugins'), property: 'instances')['custos'] ?? null;
                 $this->assertIsObject($plugin);
-                $this->assertFalse(Probe::get($plugin, 'running'), 'nor was started: its result would land after this line');
+                $this->assertFalse(Probe::get($plugin, property: 'running'), 'nor was started: its result would land after this line');
 
                 Services::resolve($ide, BufferService::class)->openFile($project->path('notes.txt'), OpenFocus::Editor);
                 $commands->run('custos:fix');

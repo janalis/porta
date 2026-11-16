@@ -397,7 +397,7 @@ final class KeybindingsDocTest extends TestCase
         // @mago-expect lint:inline-variable-return -- getConstant() returns
         // mixed, and the @var on the assignment is what shapes the rows.
         /** @var array<string, list<string>> $keys */
-        $keys = Probe::getStatic(FindInFilesModal::class, 'KEYS');
+        $keys = Probe::getStatic(FindInFilesModal::class, member: 'KEYS');
 
         return $keys;
     }
@@ -415,7 +415,7 @@ final class KeybindingsDocTest extends TestCase
         // @mago-expect lint:inline-variable-return -- invokeStatic() returns
         // mixed, and the @var on the assignment is what shapes the rows.
         /** @var array<string, list<string>> $keys */
-        $keys = Probe::invokeStatic(FindBarWidget::class, 'getDefaultKeybindings');
+        $keys = Probe::invokeStatic(FindBarWidget::class, method: 'getDefaultKeybindings');
 
         return $keys;
     }
@@ -440,7 +440,7 @@ final class KeybindingsDocTest extends TestCase
     {
         /** @var array<string, list<string>> $defaults */
         $defaults = EditorKeymap::defaults();
-        $specs = (string) \json_encode(Probe::getStatic(MenuModel::class, 'DEFS'), \JSON_THROW_ON_ERROR);
+        $specs = (string) \json_encode(Probe::getStatic(MenuModel::class, member: 'DEFS'), \JSON_THROW_ON_ERROR);
 
         $onAMenu = [];
         foreach ($defaults as $id => $keys) {

@@ -88,7 +88,7 @@ final class NarrowPaneRenderTest extends TestCase
         // Role and trails a payload label, and both had never been rendered at
         // a hostile width — the sweep only ever saw a bare, idle tree.
         $dragged = new FileTreeWidget(self::$project->dir);
-        $dragged->setDropTarget(self::$project->path('src'), "\u{2190} 12 files");
+        $dragged->setDropTarget(self::$project->path('src'), label: "\u{2190} 12 files");
         yield 'file tree mid-drag' => [$dragged];
 
         $status = new StatusBarWidget();
@@ -213,7 +213,7 @@ final class NarrowPaneRenderTest extends TestCase
         }
 
         $help = new HelpViewerWidget();
-        $help->show('/docs/help.md', "# Heading\n\nSome help text that is long enough to need truncating.\n");
+        $help->show('/docs/help.md', payload: "# Heading\n\nSome help text that is long enough to need truncating.\n");
         yield 'help viewer' => [$help];
 
         // The read-only preview shows ARBITRARY bytes, so one enormous line is
@@ -278,7 +278,7 @@ final class NarrowPaneRenderTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->openFile('/sticky.php', "<?php\n\nclass A\n{\n    public function one(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 30)."    }\n}\n");
         $editor->setFocused(true);
-        $editor->getDocument()->setCursor(25, 4); // deep inside one(), headers scrolled off
+        $editor->getDocument()->setCursor(25, col: 4); // deep inside one(), headers scrolled off
 
         self::assertFitsEveryWidth($editor);
     }

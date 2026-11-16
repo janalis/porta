@@ -64,7 +64,7 @@ final class DocumentAdoptTest extends TestCase
     public function testTypingAtTheStartOfABomFileDoesNotDisplaceTheMark(): void
     {
         $doc = new Document("\u{FEFF}<?php\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
 
         $doc->insert('X');
 

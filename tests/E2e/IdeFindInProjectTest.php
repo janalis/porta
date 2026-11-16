@@ -169,12 +169,12 @@ final class IdeFindInProjectTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // tree focused
-            [
+            file: null, // tree focused
+            steps: [
                 200 => $rightClickFolder,
                 280 => function (Tui $tui): void {
                     $tui->tick();
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'folder context menu opened');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'folder context menu opened');
                     // New File → New Folder → Find in Files → Replace in Files → Add to Search Scopes.
                     $tui->handleInput("\x1b[B");
                     $tui->handleInput("\x1b[B");
@@ -254,8 +254,8 @@ final class IdeFindInProjectTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no file open → Directory/Current File resolve to the whole project
-            [
+            file: null, // no file open → Directory/Current File resolve to the whole project
+            steps: [
                 200 => self::findInFiles('tok'),
                 600 => function (object $tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);
@@ -279,8 +279,8 @@ final class IdeFindInProjectTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no open file → the modal composites over an empty pane (no file text leaks into asserts)
-            [
+            file: null, // no open file → the modal composites over an empty pane (no file text leaks into asserts)
+            steps: [
                 200 => self::findInFiles('needle'),
                 600 => function ($tui, $terminal, Ide $ide) use ($panelText): void {
                     $this->awaitSearch($ide);
@@ -315,7 +315,7 @@ final class IdeFindInProjectTest extends TestCase
     {
         $project = new TempProject(['src/A.php' => "<?php\n// alpha\n// tok here\n// beta\n"]);
 
-        $panel = $this->contextAroundTheFirstMatch($project, null); // nothing open → context reads from disk
+        $panel = $this->contextAroundTheFirstMatch($project, open: null); // nothing open → context reads from disk
 
         $this->assertStringContainsString('// alpha', $panel, 'the preceding line is read from disk');
         $this->assertStringContainsString('// beta', $panel, 'the following line is read from disk');
@@ -413,13 +413,13 @@ final class IdeFindInProjectTest extends TestCase
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Alt+A waits for the search to land, so the step does too.
-                    $this->awaitPainted($tui, $terminal, '0 results');
+                    $this->awaitPainted($tui, $terminal, needle: '0 results');
                     $tui->handleInput("\t"); // query → replace
                     $tui->handleInput('x');
                     $tui->handleInput("\x1ba"); // alt+a with a multiline query but no matches
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'Nothing to replace');
+                    $this->awaitPainted($tui, $terminal, needle: 'Nothing to replace');
                     $this->assertStringContainsString('Nothing to replace', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -540,7 +540,7 @@ final class IdeFindInProjectTest extends TestCase
                     Services::resolve($ide, CommandRegistry::class)->run('ide_problems');
                 },
                 1100 => function (Tui $tui, VirtualTerminal $terminal, $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'Problems');
+                    $this->awaitPainted($tui, $terminal, needle: 'Problems');
                     $tui->handleInput("\x1bx"); // alt+x on the Problems panel
                 },
                 1250 => function (Tui $tui, $terminal, Ide $ide): void {
@@ -615,14 +615,14 @@ final class IdeFindInProjectTest extends TestCase
                 600 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
                     $this->awaitSearch($ide);
                     $this->promote($tui); // modal → results pane (F5 rerun lives on the pane)
-                    $this->assertStringContainsString('1 result', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText());
-                    $project->write('src/B.php', "// tok added later\n"); // a new match on disk
+                    $this->assertStringContainsString('1 result', Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->statusText());
+                    $project->write('src/B.php', content: "// tok added later\n"); // a new match on disk
                     $tui->handleInput("\x1b[15~"); // F5 → rerun
                 },
                 900 => function (Tui $tui, $terminal, Ide $ide) use ($panelText): void {
                     $this->awaitSearch($ide);
                     $panel = $panelText($tui);
-                    $this->assertStringContainsString('2 results', Widgets::byId($tui, 'results', ResultsPanelWidget::class)->statusText(), 'rerun sees the new file');
+                    $this->assertStringContainsString('2 results', Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->statusText(), 'rerun sees the new file');
                     $this->assertStringContainsString('src/B.php', $panel);
                 },
             ],
@@ -635,8 +635,8 @@ final class IdeFindInProjectTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no open buffer → replace-all writes the file on disk
-            [
+            file: null, // no open buffer → replace-all writes the file on disk
+            steps: [
                 200 => self::findInFiles('oldname'),
                 600 => function (Tui $tui): void {
                     // The grep is a subprocess: await its match landing in the
@@ -670,8 +670,8 @@ final class IdeFindInProjectTest extends TestCase
 
         $this->runIde(
             $project,
-            null, // no open buffer → the editor never bleeds "tok" behind the modal
-            [
+            file: null, // no open buffer → the editor never bleeds "tok" behind the modal
+            steps: [
                 200 => self::findInFiles('tok'),
                 500 => function ($tui, $terminal, Ide $ide): void {
                     $this->awaitSearch($ide);

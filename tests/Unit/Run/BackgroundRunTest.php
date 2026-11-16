@@ -40,7 +40,7 @@ final class BackgroundRunTest extends TestCase
     protected function setUp(): void
     {
         $this->project = new TempProject(['composer.json' => '{"scripts": {"test": "phpunit"}}']);
-        $this->tui = TestTui::create(100, 24);
+        $this->tui = TestTui::create(100, rows: 24);
         $this->runs = TestRunController::create(
             $this->project->dir,
             $this->tui,
@@ -63,7 +63,7 @@ final class BackgroundRunTest extends TestCase
 
     public function testARunInTheBackgroundLeavesTheUsersScreenAloneAndReportsHowItEnded(): void
     {
-        $shell = $this->sessions->create('shell:1', 'zsh 1');
+        $shell = $this->sessions->create('shell:1', title: 'zsh 1');
         $focused = $this->tui->getFocus();
         $exit = null;
 
@@ -103,21 +103,21 @@ final class BackgroundRunTest extends TestCase
         };
         $long = self::php('sleep(30);');
 
-        $this->runs->runInBackground($long, 'agent', $wait('first'));
-        $this->runs->runInBackground(self::php('exit(0);'), 'agent', $wait('second'));
+        $this->runs->runInBackground($long, title: 'agent', onExit: $wait('first'));
+        $this->runs->runInBackground(self::php('exit(0);'), title: 'agent', onExit: $wait('second'));
         $this->assertSame(['first:-1'], $told, 'replaced: a killed process never reports, so the waiter is told now');
         $this->await(static function () use (&$told): bool {
             return \in_array('second:0', $told, strict: true);
         }, what: 'the replacing run to end');
 
-        $this->runs->runInBackground($long, 'other', $wait('closed'));
+        $this->runs->runInBackground($long, title: 'other', onExit: $wait('closed'));
         $index = \array_search($this->runs->runSession('other'), $this->sessions->sessions, strict: true);
         $this->assertIsInt($index);
         $this->runs->closeSession($index);
         $this->assertSame(['first:-1', 'second:0', 'closed:-1'], $told);
 
-        $this->runs->runInBackground($long, 'silent'); // nobody waits: nothing to tell
-        $this->runs->runInBackground(self::php('exit(0);'), 'silent');
+        $this->runs->runInBackground($long, title: 'silent'); // nobody waits: nothing to tell
+        $this->runs->runInBackground(self::php('exit(0);'), title: 'silent');
         $this->assertSame(['first:-1', 'second:0', 'closed:-1'], $told);
     }
 

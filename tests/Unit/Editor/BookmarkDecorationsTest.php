@@ -35,14 +35,14 @@ final class BookmarkDecorationsTest extends TestCase
     {
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/a.php', 1);
+        $bookmarks->toggle('/p/a.php', line: 1);
 
         new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
 
         $lines = $editor->render(new RenderContext(40, 8));
         // The gutter alone: the stripe in the last column draws the diamond
         // too, on whichever row the line lands on in the file's overview.
-        $gutter = static fn (string $row): string => AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 0, 8));
+        $gutter = static fn (string $row): string => AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, startCol: 0, length: 8));
         $this->assertStringContainsString(Glyphs::BOOKMARK, $gutter($lines[1]), 'the marked line carries the diamond');
         $this->assertStringNotContainsString(Glyphs::BOOKMARK, $gutter($lines[2]), 'its neighbour does not');
     }
@@ -57,7 +57,7 @@ final class BookmarkDecorationsTest extends TestCase
         // the line and lists itself in the Problems panel.
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/a.php', 1);
+        $bookmarks->toggle('/p/a.php', line: 1);
         new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
 
         $editor->decorations->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'unused', 'severity' => DiagnosticSeverity::Hint]]]);
@@ -80,7 +80,7 @@ final class BookmarkDecorationsTest extends TestCase
     public function testACommentMarkSitsBetweenTheBookmarkAndTheDiagnostic(): void
     {
         $editor = $this->editor();
-        $gutter = static fn (string $row): string => AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, 0, 8));
+        $gutter = static fn (string $row): string => AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($row, startCol: 0, length: 8));
         $editor->decorations->setCommentMarks([1 => 'alice: rename', 2 => 'bob: why?']);
         $editor->decorations->setDiagnostics([1 => [['col' => 0, 'endCol' => 3, 'message' => 'broken', 'severity' => DiagnosticSeverity::Error]]]);
 
@@ -90,7 +90,7 @@ final class BookmarkDecorationsTest extends TestCase
         $this->assertStringNotContainsString(Glyphs::COMMENT, $gutter($lines[0]), 'not on an unmarked line');
 
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/a.php', 2);
+        $bookmarks->toggle('/p/a.php', line: 2);
         new BookmarkDecorations($bookmarks, $editor->decorations)->apply('/p/a.php');
         $this->assertStringContainsString(Glyphs::BOOKMARK, $gutter($editor->render(new RenderContext(40, 8))[2]), 'the bookmark outranks it');
     }
@@ -101,7 +101,7 @@ final class BookmarkDecorationsTest extends TestCase
         // rather than leave them standing over unrelated lines.
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/a.php', 1);
+        $bookmarks->toggle('/p/a.php', line: 1);
         $decorations = new BookmarkDecorations($bookmarks, $editor->decorations);
 
         $decorations->onBufferSwitched(new BufferSwitched(new Buffer('/p/a.php', new Document(''))));
@@ -115,7 +115,7 @@ final class BookmarkDecorationsTest extends TestCase
     {
         $editor = $this->editor();
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/a.php', 1);
+        $bookmarks->toggle('/p/a.php', line: 1);
         $decorations = new BookmarkDecorations($bookmarks, $editor->decorations);
         $decorations->apply('/p/a.php');
 

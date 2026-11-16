@@ -326,7 +326,7 @@ final class WelcomeModalControllerTest extends TestCase
 
         $controller->close(); // Esc, mid-drag
 
-        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'a closed modal swallows no drag');
+        $this->assertFalse($controller->continueDragTo(10, col: 10, release: false), 'a closed modal swallows no drag');
     }
 
     public function testTheModalIsTitledByItsWidget(): void
@@ -353,7 +353,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertSame($region->col - 1, $moved->col);
 
         // Dragging far past the bottom-right pins to the pane union's edge.
-        $this->assertTrue($controller->continueDragTo(500, 500, release: true));
+        $this->assertTrue($controller->continueDragTo(500, col: 500, release: true));
         $pinned = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $pinned);
         $this->assertSame(40 - $pinned->count, $pinned->top, 'clamped to the pane bottom');
@@ -365,7 +365,7 @@ final class WelcomeModalControllerTest extends TestCase
         // them. Pin the literal, independently-known numbers too.
         $this->assertSame(13, $pinned->top, 'literal clamped row: boundBottom(40) - box rows(27)');
         $this->assertSame(4, $pinned->col, 'literal clamped column: boundRight(80) - box width(76)');
-        $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the drag');
+        $this->assertFalse($controller->continueDragTo(0, col: 0, release: false), 'the release disarmed the drag');
     }
 
     /** A corner drag resizes the box, floored at 20×5 and reset on reopen. */
@@ -393,7 +393,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertInstanceOf(DropdownRegion::class, $floor);
         $this->assertSame(20 + 4 + 1, $floor->width, 'inner width floored at 20 (+ chrome + shadow)');
         $this->assertSame(5 + 4 + 1, $floor->count, 'inner height floored at 5 (+ chrome + shadow)');
-        $this->assertFalse($controller->continueDragTo(0, 0, release: false), 'the release disarmed the resize');
+        $this->assertFalse($controller->continueDragTo(0, col: 0, release: false), 'the release disarmed the resize');
 
         // Reopening re-derives the size — overrides are session-only.
         $controller->close();
@@ -415,7 +415,7 @@ final class WelcomeModalControllerTest extends TestCase
         $spans = $this->pane->modalSpans;
         $joined = \implode('', \array_column($spans, 'segment'));
         $this->assertStringContainsString(Glyphs::MODAL_RESIZE_GRAB, $joined, 'the corner heavied');
-        $this->assertTrue($controller->hoverAt(0, 0), 'off it again');
+        $this->assertTrue($controller->hoverAt(0, col: 0), 'off it again');
         $this->assertStringNotContainsString(Glyphs::MODAL_RESIZE_GRAB, \implode('', \array_column($this->pane->modalSpans, 'segment')));
     }
 
@@ -430,7 +430,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->clickAt($region->top, $region->col + 2); // arm
         $controller->cancelDrag();
 
-        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'the drag was disarmed');
+        $this->assertFalse($controller->continueDragTo(10, col: 10, release: false), 'the drag was disarmed');
     }
 
     public function testAContentClickSelectsItsCardAndAnOutsideClickCloses(): void
@@ -448,7 +448,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->handleKey("\r");
         $this->assertSame([[RecommendedPlugin::LanguageServer->value, true]], $lifecycle->toggled, 'the click selected the second card');
 
-        $this->assertTrue($controller->clickAt(0, 0), 'an outside click is consumed');
+        $this->assertTrue($controller->clickAt(0, col: 0), 'an outside click is consumed');
         $this->assertFalse($controller->isOpen(), 'and closes the modal, as it closes every window');
     }
 
@@ -457,9 +457,9 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = $this->controller();
         $this->frame(80);
 
-        $this->assertFalse($controller->clickAt(5, 5));
-        $this->assertFalse($controller->hoverAt(5, 5));
-        $this->assertFalse($controller->wheelAt(5, 5, 3));
+        $this->assertFalse($controller->clickAt(5, col: 5));
+        $this->assertFalse($controller->hoverAt(5, col: 5));
+        $this->assertFalse($controller->wheelAt(5, col: 5, rows: 3));
     }
 
     public function testHoveringTheCloseRestylesAndAMissRestores(): void
@@ -483,8 +483,8 @@ final class WelcomeModalControllerTest extends TestCase
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
-        $this->assertTrue($controller->wheelAt($region->top + 4, $region->col + 4, 3), 'over the box');
-        $this->assertTrue($controller->wheelAt(0, 79, 3), 'outside: consumed all the same (modal)');
+        $this->assertTrue($controller->wheelAt($region->top + 4, $region->col + 4, rows: 3), 'over the box');
+        $this->assertTrue($controller->wheelAt(0, col: 79, rows: 3), 'outside: consumed all the same (modal)');
     }
 
     /**
@@ -630,7 +630,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertStringContainsString('php-cs-fixer', $before);
         $this->assertStringNotContainsString('mago', $before);
 
-        $magoBinary = $project->write('vendor/bin/mago', '');
+        $magoBinary = $project->write('vendor/bin/mago', content: '');
         \chmod($magoBinary, permissions: 0o755);
         $controller->refresh();
 
@@ -691,9 +691,9 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = $this->controller();
         $controller->open();
 
-        $this->assertFalse($controller->clickAt(5, 5));
-        $this->assertFalse($controller->hoverAt(5, 5));
-        $this->assertFalse($controller->wheelAt(5, 5, 3));
+        $this->assertFalse($controller->clickAt(5, col: 5));
+        $this->assertFalse($controller->hoverAt(5, col: 5));
+        $this->assertFalse($controller->wheelAt(5, col: 5, rows: 3));
     }
 
     /**
@@ -708,14 +708,14 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = $this->controller();
         $this->frame(80);
         $controller->open();
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
         $this->assertSame(20, $box->count, 'pinning the fixture this test depends on');
 
         $lastValidRow = $box->windowTop() + 19;
         $onePastRow = $box->windowTop() + 20;
 
         $this->assertTrue($controller->hoverAt($lastValidRow, $box->col + 2), 'the last row inside the window registers a hover');
-        $this->assertTrue($controller->hoverAt(0, 0), 'off the box entirely clears it');
+        $this->assertTrue($controller->hoverAt(0, col: 0), 'off the box entirely clears it');
         $this->assertFalse($controller->hoverAt($onePastRow, $box->col + 2), 'one row past the window must not register, even though the same step owns that dead row');
     }
 
@@ -786,7 +786,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertTrue($consumed);
         $this->assertFalse($controller->isOpen());
 
-        $this->assertFalse($controller->continueDragTo(10, 10, release: false), 'closing via the ✖ left no drag armed behind it');
+        $this->assertFalse($controller->continueDragTo(10, col: 10, release: false), 'closing via the ✖ left no drag armed behind it');
     }
 
     public function testAFreshDragAfterTheBoxHasAlreadyMovedUsesTheNewOffset(): void
@@ -849,7 +849,7 @@ final class WelcomeModalControllerTest extends TestCase
         // selection outranks hover styling, so move the selection off it
         // first or the hover tint has nothing to add to compare against.
         $controller->handleKey("\x1b[B");
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
 
         $baseline = $this->pane->modalSpans;
         $controller->hoverAt($box->windowTop(), $box->col + 2); // contentRow = 0
@@ -864,7 +864,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->open();
         // Same reason as the sibling test: row 0 starts out selected.
         $controller->handleKey("\x1b[B");
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
 
         $baseline = $this->pane->modalSpans;
         $controller->hoverAt($box->windowTop() - 1, $box->col + 2); // contentRow = -1, the title bar
@@ -885,12 +885,12 @@ final class WelcomeModalControllerTest extends TestCase
         $this->frame(80, rows: 12);
         $controller->open();
         $controller->handleKey("\x1b[B");
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
 
         $baseline = $this->pane->modalSpans;
         // A row that owns a real step, but a column left of the box entirely.
         $this->assertGreaterThan(0, $box->col, 'sanity: column 0 really is left of the box');
-        $controller->hoverAt($box->windowTop() + 1, 0);
+        $controller->hoverAt($box->windowTop() + 1, col: 0);
 
         $this->assertSame($baseline, $this->pane->modalSpans, 'outside the box columns must not tint content just because the row would qualify');
     }
@@ -902,7 +902,7 @@ final class WelcomeModalControllerTest extends TestCase
         $controller->open();
         $before = $this->pane->modalSpans;
 
-        $controller->wheelAt(0, 79, 3); // outside the box: swallowed but must not scroll/repaint
+        $controller->wheelAt(0, col: 79, rows: 3); // outside the box: swallowed but must not scroll/repaint
 
         $this->assertSame($before, $this->pane->modalSpans, 'a wheel outside the box neither scrolled nor repainted');
     }
@@ -916,7 +916,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertInstanceOf(DropdownRegion::class, $region);
         $before = $this->pane->modalSpans;
 
-        $controller->wheelAt($region->top + 4, $region->col + 4, 3);
+        $controller->wheelAt($region->top + 4, $region->col + 4, rows: 3);
 
         $this->assertNotEquals($before, $this->pane->modalSpans, 'the scroll repainted immediately');
     }
@@ -991,25 +991,25 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = $this->controller();
         $this->frame(80);
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $controller->open();
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'open() requests a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'open() requests a render');
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $controller->refresh();
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'refresh() requests a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'refresh() requests a render');
 
         $region = $controller->region();
         $this->assertInstanceOf(DropdownRegion::class, $region);
 
-        Probe::set($this->tui, 'renderRequested', false);
-        $controller->wheelAt($region->top + 4, $region->col + 4, 3);
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'a wheel over the box requests a render');
+        Probe::set($this->tui, property: 'renderRequested', value: false);
+        $controller->wheelAt($region->top + 4, $region->col + 4, rows: 3);
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'a wheel over the box requests a render');
 
         $controller->clickAt($region->top, $region->col + 2); // arm a title-bar drag
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $controller->continueDragTo($region->top + 1, $region->col + 1, release: true);
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'continuing a drag requests a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'continuing a drag requests a render');
 
         // The drag moved the box — re-read its geometry before arming the
         // resize corner, or the click lands on stale coordinates.
@@ -1018,13 +1018,13 @@ final class WelcomeModalControllerTest extends TestCase
         $box = ['top' => $moved->top, 'col' => $moved->col, 'width' => $moved->width - 1, 'rows' => $moved->count - 1];
         $corner = [$box['top'] + $box['rows'] - 1, $box['col'] + $box['width'] - 1];
         $this->assertTrue($controller->clickAt($corner[0], $corner[1]), 'the corner click was consumed (armed the resize)');
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $controller->continueDragTo($corner[0] - 1, $corner[1] - 1, release: false);
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'continuing a resize requests a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'continuing a resize requests a render');
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $controller->close();
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'close() requests a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'close() requests a render');
     }
 
     /**
@@ -1048,7 +1048,7 @@ final class WelcomeModalControllerTest extends TestCase
         $this->assertSame(77, $region->width, 'shadow-inclusive width (box width 76 + 1)');
         $this->assertSame(24, $region->count, 'box rows 24, the whole pane: its shadow falls off the bottom');
 
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
         $this->assertSame(0, $box->startRow);
         $this->assertSame(2, $box->col);
         $this->assertSame(76, $box->width);
@@ -1090,26 +1090,26 @@ final class WelcomeModalControllerTest extends TestCase
         $controller = $this->controller();
         $this->frame(80, rows: 40);
         $controller->open();
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
         $this->assertSame(23, $box->count, 'as tall as the cards, not the 18 rows it was capped at');
         $this->assertStringContainsString('Read the guide', \implode('', \array_column($this->pane->modalSpans, 'segment')), 'the last card shows');
 
         $bottom = $box->startRow + $box->rows - 1;
         $this->assertTrue($controller->clickAt($bottom, $box->col + 10));
         $this->assertTrue($controller->continueDragTo($bottom + 6, $box->col + 10, release: true));
-        $this->assertSame(23, Probe::get($controller, 'box')->count, 'the bottom edge stops where the cards do');
+        $this->assertSame(23, Probe::get($controller, property: 'box')->count, 'the bottom edge stops where the cards do');
 
         // Narrowed, the cards wrap taller, and so far the edge may go.
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
         $right = $box->col + $box->width - 1;
         $this->assertTrue($controller->clickAt($box->startRow + 5, $right));
         $this->assertTrue($controller->continueDragTo($box->startRow + 5, $right - 40, release: true));
-        $box = Probe::get($controller, 'box');
+        $box = Probe::get($controller, property: 'box');
         $bottom = $box->startRow + $box->rows - 1;
         $this->assertTrue($controller->clickAt($bottom, $box->col + 10));
         $this->assertTrue($controller->continueDragTo($bottom + 20, $box->col + 10, release: true));
-        $this->assertSame($this->welcome->naturalHeight($box->width - ModalFrame::CHROME_COLS), Probe::get($controller, 'box')->count, 'as tall as the narrower cards');
-        $this->assertGreaterThan(23, Probe::get($controller, 'box')->count);
+        $this->assertSame($this->welcome->naturalHeight($box->width - ModalFrame::CHROME_COLS), Probe::get($controller, property: 'box')->count, 'as tall as the narrower cards');
+        $this->assertGreaterThan(23, Probe::get($controller, property: 'box')->count);
     }
 
     /** A source with one real backend, i.e. highlighting is configured. */

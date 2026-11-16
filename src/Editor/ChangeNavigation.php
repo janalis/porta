@@ -49,7 +49,7 @@ final readonly class ChangeNavigation
         $target = $direction > 0
             ? \array_find($starts, static fn (int $start): bool => $start > $line) ?? $starts[0]
             : \array_find(\array_reverse($starts), static fn (int $start): bool => $start < $line) ?? \array_last($starts);
-        $this->editor->jumpTo((int) $target, 0);
+        $this->editor->jumpTo((int) $target, utf16Col: 0);
     }
 
     /**

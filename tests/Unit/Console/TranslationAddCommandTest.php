@@ -40,9 +40,9 @@ final class TranslationAddCommandTest extends TestCase
     private function project(string $dir = 'translations'): TempProject
     {
         return new TempProject([
-            $dir.'/messages.en.xlf' => self::catalog('en', self::unit(3, 'Open &quot;%name%&quot; (copy)', 'Open &quot;%name%&quot; (copy)')),
-            $dir.'/messages.fr.xlf' => self::catalog('fr', self::unit(3, 'Open &quot;%name%&quot; (copy)', 'Ouvrir « %name% »').self::unit(9, 'Stale', 'Périmé')),
-            $dir.'/messages.de.xlf' => self::catalog('de', self::unit(3, 'Open &quot;%name%&quot; (copy)', '„%name%“ öffnen')),
+            $dir.'/messages.en.xlf' => self::catalog('en', self::unit(3, source: 'Open &quot;%name%&quot; (copy)', target: 'Open &quot;%name%&quot; (copy)')),
+            $dir.'/messages.fr.xlf' => self::catalog('fr', self::unit(3, source: 'Open &quot;%name%&quot; (copy)', target: 'Ouvrir « %name% »').self::unit(9, source: 'Stale', target: 'Périmé')),
+            $dir.'/messages.de.xlf' => self::catalog('de', self::unit(3, source: 'Open &quot;%name%&quot; (copy)', target: '„%name%“ öffnen')),
         ]);
     }
 
@@ -69,15 +69,18 @@ final class TranslationAddCommandTest extends TestCase
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $this->assertSame("Added id 10 to 3 catalogs in translations\n", $tester->getDisplay(), 'one past the highest id in ANY file of the set');
         $this->assertSame(
-            self::catalog('en', self::unit(3, 'Open &quot;%name%&quot; (copy)', 'Open &quot;%name%&quot; (copy)').self::unit(10, 'Don\'t &quot;save&quot;', 'Don\'t &quot;save&quot;')),
-            self::read($project, 'translations/messages.en.xlf'),
+            self::catalog(
+                'en',
+                self::unit(3, source: 'Open &quot;%name%&quot; (copy)', target: 'Open &quot;%name%&quot; (copy)').self::unit(10, source: 'Don\'t &quot;save&quot;', target: 'Don\'t &quot;save&quot;'),
+            ),
+            self::read($project, path: 'translations/messages.en.xlf'),
             'appended before </body>, escaped the way the catalogs are: &quot; and a literal apostrophe',
         );
         $this->assertStringEndsWith(
-            self::unit(10, 'Don\'t &quot;save&quot;', 'Ne pas « enregistrer » : non')."    </body>\n  </file>\n</xliff>\n",
-            self::read($project, 'translations/messages.fr.xlf'),
+            self::unit(10, source: 'Don\'t &quot;save&quot;', target: 'Ne pas « enregistrer » : non')."    </body>\n  </file>\n</xliff>\n",
+            self::read($project, path: 'translations/messages.fr.xlf'),
         );
-        $this->assertStringContainsString(self::unit(10, 'Don\'t &quot;save&quot;', 'Nicht „speichern“'), self::read($project, 'translations/messages.de.xlf'));
+        $this->assertStringContainsString(self::unit(10, source: 'Don\'t &quot;save&quot;', target: 'Nicht „speichern“'), self::read($project, path: 'translations/messages.de.xlf'));
     }
 
     public function testAPluginsSetIsEditedInsteadOfCores(): void
@@ -88,18 +91,18 @@ final class TranslationAddCommandTest extends TestCase
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $this->assertSame("Added id 10 to 3 catalogs in plugins/git/translations\n", $tester->getDisplay());
-        $this->assertStringContainsString(self::unit(10, 'Blame', 'Annotationen'), self::read($project, 'plugins/git/translations/messages.de.xlf'));
+        $this->assertStringContainsString(self::unit(10, source: 'Blame', target: 'Annotationen'), self::read($project, path: 'plugins/git/translations/messages.de.xlf'));
     }
 
     public function testAFileWithNoBodyToAppendToIsNotACatalog(): void
     {
         $project = $this->project();
-        $project->write('translations/messages.aa.xlf', '<xliff/>');
+        $project->write('translations/messages.aa.xlf', content: '<xliff/>');
 
         $tester = self::execute($project, ['source' => 'New', '--target' => ['fr:Nouveau', 'de:Neu']]);
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), 'aa sorts first and is skipped, not the end of the walk');
-        $this->assertSame('<xliff/>', self::read($project, 'translations/messages.aa.xlf'));
+        $this->assertSame('<xliff/>', self::read($project, path: 'translations/messages.aa.xlf'));
     }
 
     /** @return iterable<string, array{array<string, mixed>, string}> */
@@ -117,13 +120,13 @@ final class TranslationAddCommandTest extends TestCase
     public function testItRefusesTargetsItCannotWriteEveryLocaleFrom(array $input, string $message): void
     {
         $project = $this->project();
-        $before = self::read($project, 'translations/messages.de.xlf');
+        $before = self::read($project, path: 'translations/messages.de.xlf');
 
         $tester = self::execute($project, ['source' => 'New', ...$input]);
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
         $this->assertStringContainsString($message, $tester->getDisplay());
-        $this->assertSame($before, self::read($project, 'translations/messages.de.xlf'), 'nothing written');
+        $this->assertSame($before, self::read($project, path: 'translations/messages.de.xlf'), 'nothing written');
     }
 
     public function testASourceTheEnglishCatalogHasIsReportedWithItsIdNotAddedTwice(): void
@@ -134,7 +137,7 @@ final class TranslationAddCommandTest extends TestCase
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
         $this->assertStringContainsString('the English catalog already has "Open "%name%" (copy)" as id 3', $tester->getDisplay(), 'matched through the escaping, the parentheses quoted');
-        $this->assertStringNotContainsString('id="10"', self::read($project, 'translations/messages.en.xlf'));
+        $this->assertStringNotContainsString('id="10"', self::read($project, path: 'translations/messages.en.xlf'));
     }
 
     public function testWithNoRootItEditsThisCheckoutsCatalogs(): void
@@ -154,7 +157,7 @@ final class TranslationAddCommandTest extends TestCase
 
     public function testASetWithNoEnglishCatalogIsRefused(): void
     {
-        $project = new TempProject(['translations/messages.fr.xlf' => self::catalog('fr', '')]);
+        $project = new TempProject(['translations/messages.fr.xlf' => self::catalog('fr', units: '')]);
 
         $tester = self::execute($project, ['source' => 'New', '--target' => ['fr:Nouveau']]);
 
@@ -164,7 +167,7 @@ final class TranslationAddCommandTest extends TestCase
 
     public function testAnEmptySetStartsAtOne(): void
     {
-        $project = new TempProject(['translations/messages.en.xlf' => self::catalog('en', '')]);
+        $project = new TempProject(['translations/messages.en.xlf' => self::catalog('en', units: '')]);
 
         $tester = self::execute($project, ['source' => 'First']);
 

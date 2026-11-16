@@ -137,7 +137,7 @@ final class ToastPresenterTest extends TestCase
         $presenter->sync();
         $this->assertSame([], $this->pane->toastSpans, 'expiry cleared the slot');
         $this->assertSame([], $presenter->regions());
-        $this->assertFalse($this->toasts->hoverAt(1, 63), 'stale hit-test boxes were cleared along with the spans');
+        $this->assertFalse($this->toasts->hoverAt(1, col: 63), 'stale hit-test boxes were cleared along with the spans');
 
         // A later sync must NOT touch the pane again.
         $this->pane->toastSpans = [['row' => 0, 'col' => 0, 'width' => 1, 'segment' => 'W']];
@@ -172,7 +172,7 @@ final class ToastPresenterTest extends TestCase
 
         $presenter->sync();
 
-        $boxes = Probe::get($this->toasts, 'boxes');
+        $boxes = Probe::get($this->toasts, property: 'boxes');
         $box = $boxes[0]['box'];
         $this->assertSame(1, $box->headerRows, 'one chrome row above the item window');
         $this->assertSame(0, $box->windowStart);
@@ -198,7 +198,7 @@ final class ToastPresenterTest extends TestCase
 
         // Boxes carry the real (non-shadow-inclusive) width the closeHit
         // geometry is defined against — regions() is 1 wider (shadow column).
-        $boxes = Probe::get($this->toasts, 'boxes');
+        $boxes = Probe::get($this->toasts, property: 'boxes');
         $newestBox = $boxes[0]['box'];
         $oldestBox = $boxes[1]['box'];
         $this->assertTrue(

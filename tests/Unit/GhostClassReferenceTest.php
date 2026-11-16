@@ -63,9 +63,9 @@ final class GhostClassReferenceTest extends TestCase
         // scan that found nothing looks exactly like a scan that ran nothing.
         $aliases = ['Role' => 'Porta\\Ui\\Role'];
 
-        $this->assertTrue(self::exists(self::resolve('Role', $aliases, 'Porta\\Tests')), 'an imported class resolves');
-        $this->assertFalse(self::exists(self::resolve('NoSuchThingAnywhere', $aliases, 'Porta\\Tests')), 'and an invented one does not');
-        $this->assertSame('Porta\\Tests\\Local', self::resolve('Local', [], 'Porta\\Tests'), 'an unimported name is namespace-relative');
+        $this->assertTrue(self::exists(self::resolve('Role', $aliases, namespace: 'Porta\\Tests')), 'an imported class resolves');
+        $this->assertFalse(self::exists(self::resolve('NoSuchThingAnywhere', $aliases, namespace: 'Porta\\Tests')), 'and an invented one does not');
+        $this->assertSame('Porta\\Tests\\Local', self::resolve('Local', [], namespace: 'Porta\\Tests'), 'an unimported name is namespace-relative');
     }
 
     /** @return list<string> */

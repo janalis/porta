@@ -45,7 +45,7 @@ final class PaneResizerTest extends TestCase
     private function resizer(bool $declareSidebar = true): PaneResizer
     {
         $project = new TempProject();
-        $tui = TestTui::create(120, 30);
+        $tui = TestTui::create(120, rows: 30);
         $this->regions = new ViewRegions(Styles::dark());
         $this->nav = new SettingsNavWidget(new Translator('en'));
         $region = $this->regions->mint('settings');
@@ -105,7 +105,7 @@ final class PaneResizerTest extends TestCase
     public function testFocusOnTheTreeResizesItByExactlyTwoColumnsPerDirection(): void
     {
         $project = new TempProject();
-        $tui = TestTui::create(120, 30);
+        $tui = TestTui::create(120, rows: 30);
         $tree = new FileTreeWidget($project->dir);
         $regions = new ViewRegions(Styles::dark());
         $layout = new LayoutController(
@@ -149,7 +149,7 @@ final class PaneResizerTest extends TestCase
         // arms above/below it: a focus that IS the dock's own visible panel
         // must claim the chord, not fall through to "not resizable".
         $project = new TempProject();
-        $tui = TestTui::create(120, 30);
+        $tui = TestTui::create(120, rows: 30);
         $debug = new DebugPanelWidget();
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), $debug);
         $debug->open('a.php');

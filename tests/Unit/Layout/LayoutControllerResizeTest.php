@@ -81,7 +81,7 @@ final class LayoutControllerResizeTest extends TestCase
 
         $this->assertTrue($layout->armViewSidebarResize('git', $separator, $this->press(59)));
 
-        $this->assertTrue($layout->continueResizeDrag($this->drag(50), null, $left), 'the view-sidebar drag consumed the event');
+        $this->assertTrue($layout->continueResizeDrag($this->drag(50), treeRect: null, viewLeftRect: $left), 'the view-sidebar drag consumed the event');
         $this->assertSame(50, $this->gitSidebar->width(), 'the git sidebar grows leftward under RTL');
     }
 
@@ -93,7 +93,7 @@ final class LayoutControllerResizeTest extends TestCase
 
         $this->assertTrue($layout->armViewSidebarResize('settings', $separator, $this->press(69)));
 
-        $layout->continueResizeDrag($this->drag(60), null, $left);
+        $layout->continueResizeDrag($this->drag(60), treeRect: null, viewLeftRect: $left);
         $this->assertSame(40, $this->settingsSidebar->width(), 'the settings sidebar grows leftward under RTL');
     }
 
@@ -117,7 +117,7 @@ final class LayoutControllerResizeTest extends TestCase
         $separator = new WidgetRect(row: 0, col: 59, columns: 1, rows: 30);
         $this->assertTrue($layout->armViewSidebarResize('git', $separator, $this->press(59)));
 
-        $this->assertFalse($layout->continueResizeDrag($this->press(70), null, new WidgetRect(row: 0, col: 60, columns: 40, rows: 30)));
+        $this->assertFalse($layout->continueResizeDrag($this->press(70), treeRect: null, viewLeftRect: new WidgetRect(row: 0, col: 60, columns: 40, rows: 30)));
     }
 
     public function testAPlainPressWhileArmedDoesNotResize(): void
@@ -141,11 +141,11 @@ final class LayoutControllerResizeTest extends TestCase
 
         $this->assertTrue($layout->armSidebarResize($separator, $this->press(20)));
         $layout->continueResizeDrag($this->drag(30), $tree);
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $this->assertTrue($layout->continueResizeDrag($this->release(35), $tree), 'the release itself consumes the event');
         $this->assertSame(35, $this->tree->width(), 'the release applies the final pointer position');
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the release requests a render');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'the release requests a render');
 
         $file = $this->project->dir.'/.porta/layout.json';
         $this->assertTrue(\is_file($file), 'the release persisted the new width');
@@ -210,7 +210,7 @@ final class LayoutControllerResizeTest extends TestCase
 
         $this->assertTrue($layout->armViewSidebarResize('git', $separator, $this->press(39)));
 
-        $layout->continueResizeDrag($this->drag(75), null, $left);
+        $layout->continueResizeDrag($this->drag(75), treeRect: null, viewLeftRect: $left);
         $this->assertSame(35, $this->gitSidebar->width(), '75 - 40 = 35, not 75 + 40');
     }
 
@@ -222,7 +222,7 @@ final class LayoutControllerResizeTest extends TestCase
         // public setter reachable without a real TerminalBuffer/session, so
         // it's set directly here — the point of this test is armPanelResize's
         // own guard, not the panel's own open() plumbing.
-        Probe::set($panel, 'open', true);
+        Probe::set($panel, property: 'open', value: true);
         $this->tui->add($panel);
         $this->tui->requestRender();
         $this->tui->processRender();
@@ -241,7 +241,7 @@ final class LayoutControllerResizeTest extends TestCase
     {
         $layout = $this->controller();
         $panel = new TerminalPanelWidget();
-        Probe::set($panel, 'open', true);
+        Probe::set($panel, property: 'open', value: true);
         $this->tui->add($panel);
         $this->tui->requestRender();
         $this->tui->processRender();
@@ -251,7 +251,7 @@ final class LayoutControllerResizeTest extends TestCase
         // Now hide it WITHOUT detaching it — the renderer's cached rect from
         // the render above is still there, so the visibility guard itself
         // (not "no rect") is what must refuse the resize.
-        Probe::set($panel, 'open', false);
+        Probe::set($panel, property: 'open', value: false);
         $mouse = MouseEvent::parse(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1, $rect->row + 1));
         $this->assertInstanceOf(MouseEvent::class, $mouse);
 

@@ -56,7 +56,7 @@ final class ServerProgressTest extends TestCase
     {
         $progress = $this->progress();
 
-        $progress->handle(self::begin(self::FIRST, 'Indexing'));
+        $progress->handle(self::begin(self::FIRST, title: 'Indexing'));
 
         $this->assertSame('Indexing', $progress->label());
         $this->assertTrue($progress->isBusy());
@@ -66,7 +66,7 @@ final class ServerProgressTest extends TestCase
     {
         $progress = $this->progress();
 
-        $progress->handle(self::begin(self::FIRST, 'Indexing'));
+        $progress->handle(self::begin(self::FIRST, title: 'Indexing'));
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'report', 'percentage' => 40]]);
 
         $this->assertSame('Indexing 40%', $progress->label());
@@ -78,7 +78,7 @@ final class ServerProgressTest extends TestCase
         // leave a bare percentage with no idea what it measures.
         $progress = $this->progress();
 
-        $progress->handle(self::begin(self::FIRST, 'Indexing', 10));
+        $progress->handle(self::begin(self::FIRST, title: 'Indexing', percentage: 10));
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'report', 'message' => 'src/']]);
 
         $this->assertSame('Indexing: src/ 10%', $progress->label());
@@ -88,7 +88,7 @@ final class ServerProgressTest extends TestCase
     {
         $progress = $this->progress();
 
-        $progress->handle(self::begin(self::FIRST, 'Indexing'));
+        $progress->handle(self::begin(self::FIRST, title: 'Indexing'));
         $progress->handle(['token' => self::FIRST, 'value' => ['kind' => 'end']]);
 
         $this->assertNull($progress->label());
@@ -101,8 +101,8 @@ final class ServerProgressTest extends TestCase
         // caused.
         $progress = $this->progress();
 
-        $progress->handle(self::begin(self::FIRST, 'Indexing'));
-        $progress->handle(self::begin(self::SECOND, 'Resolving'));
+        $progress->handle(self::begin(self::FIRST, title: 'Indexing'));
+        $progress->handle(self::begin(self::SECOND, title: 'Resolving'));
 
         $this->assertSame('Resolving', $progress->label());
     }
@@ -111,8 +111,8 @@ final class ServerProgressTest extends TestCase
     {
         $progress = $this->progress();
 
-        $progress->handle(self::begin(self::FIRST, 'Indexing'));
-        $progress->handle(self::begin(self::SECOND, 'Resolving'));
+        $progress->handle(self::begin(self::FIRST, title: 'Indexing'));
+        $progress->handle(self::begin(self::SECOND, title: 'Resolving'));
         $progress->handle(['token' => self::SECOND, 'value' => ['kind' => 'end']]);
 
         $this->assertSame('Indexing', $progress->label());

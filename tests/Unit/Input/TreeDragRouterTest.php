@@ -149,7 +149,7 @@ final class TreeDragRouterTest extends TestCase
 
     private function release(int $col, int $relRow): MouseEvent
     {
-        return $this->at(0, $relRow, 'm', $col);
+        return $this->at(0, $relRow, end: 'm', col: $col);
     }
 
     /** @return \Closure(): list<string> every path opened so far, in order */
@@ -171,7 +171,7 @@ final class TreeDragRouterTest extends TestCase
 
     public function testADragWithNothingArmedIsRefused(): void
     {
-        $this->assertFalse($this->router()->continueDrag($this->at(32, 1), self::rect(), null), 'the chain falls through to everything else');
+        $this->assertFalse($this->router()->continueDrag($this->at(32, relRow: 1), self::rect(), editorRect: null), 'the chain falls through to everything else');
     }
 
     /** Arm, cross a row, release on a folder: the drop is reported once. */
@@ -180,8 +180,8 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
 
-        $this->assertTrue($router->continueDrag($this->at(32, 1), self::rect(), null), 'the drag is consumed');
-        $this->assertTrue($router->continueDrag($this->at(0, 1, 'm'), self::rect(), null), 'so is the release');
+        $this->assertTrue($router->continueDrag($this->at(32, relRow: 1), self::rect(), editorRect: null), 'the drag is consumed');
+        $this->assertTrue($router->continueDrag($this->at(0, relRow: 1, end: 'm'), self::rect(), editorRect: null), 'so is the release');
 
         $this->assertCount(1, $this->drops);
         $this->assertSame([$this->project->path('top.php')], $this->drops[0]->sources);
@@ -198,7 +198,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
 
-        $this->assertTrue($router->continueDrag($this->at(0, 1, 'm'), self::rect(), null));
+        $this->assertTrue($router->continueDrag($this->at(0, relRow: 1, end: 'm'), self::rect(), editorRect: null));
 
         $this->assertSame([], $this->drops);
     }
@@ -208,9 +208,9 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->at(32, 1), self::rect(), null);
+        $router->continueDrag($this->at(32, relRow: 1), self::rect(), editorRect: null);
         // SGR 8 is the alt bit; 0 + 8 on a release.
-        $router->continueDrag($this->at(8, 1, 'm'), self::rect(), null);
+        $router->continueDrag($this->at(8, relRow: 1, end: 'm'), self::rect(), editorRect: null);
 
         $this->assertCount(1, $this->drops);
         $this->assertSame(DropAction::Copy, $this->drops[0]->action);
@@ -219,14 +219,9 @@ final class TreeDragRouterTest extends TestCase
     /** Released over the editor instead: the file opens and nothing moves. */
     public function testAReleaseOverTheEditorOpensInsteadOfMoving(): void
     {
-        $router = $this->router();
-        $opened = $this->recordOpens();
-        $router->arm([$this->project->path('top.php')]);
-        $editor = new WidgetRect(row: 0, col: 40, columns: 40, rows: self::ROWS);
-        $router->continueDrag($this->drag(60, 3), self::rect(), $editor);
-        $router->continueDrag($this->release(60, 3), self::rect(), $editor);
+        $opened = $this->dropOnEditor(['top.php']);
 
-        $this->assertSame([$this->project->path('top.php')], $opened());
+        $this->assertSame([$this->project->path('top.php')], $opened);
         $this->assertSame([], $this->drops, 'nothing was moved');
     }
 
@@ -240,14 +235,9 @@ final class TreeDragRouterTest extends TestCase
      */
     public function testAFolderDroppedOnTheEditorIsSkippedAndTheFilesBesideItOpen(): void
     {
-        $router = $this->router();
-        $opened = $this->recordOpens();
-        $router->arm([$this->project->path('src'), $this->project->path('top.php')]);
-        $editor = new WidgetRect(row: 0, col: 40, columns: 40, rows: self::ROWS);
-        $router->continueDrag($this->drag(60, 3), self::rect(), $editor);
-        $router->continueDrag($this->release(60, 3), self::rect(), $editor);
+        $opened = $this->dropOnEditor(['src', 'top.php']);
 
-        $this->assertSame([$this->project->path('top.php')], $opened(), 'the folder was skipped, not a full stop');
+        $this->assertSame([$this->project->path('top.php')], $opened, 'the folder was skipped, not a full stop');
         $this->assertSame([], $this->drops);
     }
 
@@ -257,8 +247,8 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $opened = $this->recordOpens();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(60, 3), self::rect(), null);
-        $router->continueDrag($this->release(60, 3), self::rect(), null);
+        $router->continueDrag($this->drag(60, relRow: 3), self::rect(), editorRect: null);
+        $router->continueDrag($this->release(60, relRow: 3), self::rect(), editorRect: null);
 
         $this->assertSame([], $this->drops);
         // Both halves, because "nothing happened" has two ways to be false and
@@ -282,10 +272,10 @@ final class TreeDragRouterTest extends TestCase
         $router->arm([$this->project->path('top.php')]);
 
         // SGR 2 is the right button: a press, but not the left one.
-        $this->assertFalse($router->continueDrag($this->at(2, 1), self::rect(), null), 'a right-press is not the drag');
+        $this->assertFalse($router->continueDrag($this->at(2, relRow: 1), self::rect(), editorRect: null), 'a right-press is not the drag');
         // Button 3 with motion — a bare hover-move under mode 1003.
-        $this->assertFalse($router->continueDrag($this->at(35, 1), self::rect(), null), 'nor is a hover-move');
-        $this->assertNull(Probe::get($this->tree, 'dropTarget'), 'and neither of them moved the highlight');
+        $this->assertFalse($router->continueDrag($this->at(35, relRow: 1), self::rect(), editorRect: null), 'nor is a hover-move');
+        $this->assertNull(Probe::get($this->tree, property: 'dropTarget'), 'and neither of them moved the highlight');
     }
 
     /** The highlight follows the pointer: that is the only feedback a drop target gets. */
@@ -294,11 +284,11 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->at(32, 1), self::rect(), null); // over src/
-        $this->assertSame($this->project->path('src'), Probe::get($this->tree, 'dropTarget'));
+        $router->continueDrag($this->at(32, relRow: 1), self::rect(), editorRect: null); // over src/
+        $this->assertSame($this->project->path('src'), Probe::get($this->tree, property: 'dropTarget'));
 
-        $router->continueDrag($this->drag(60, 3), self::rect(), null); // off the tree entirely
-        $this->assertNull(Probe::get($this->tree, 'dropTarget'), 'leaving the tree takes the highlight with it');
+        $router->continueDrag($this->drag(60, relRow: 3), self::rect(), editorRect: null); // off the tree entirely
+        $this->assertNull(Probe::get($this->tree, property: 'dropTarget'), 'leaving the tree takes the highlight with it');
     }
 
     /**
@@ -312,13 +302,13 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->at(32, 1), self::rect(), null);
-        $router->continueDrag($this->at(0, 1, 'm'), self::rect(), null);
+        $router->continueDrag($this->at(32, relRow: 1), self::rect(), editorRect: null);
+        $router->continueDrag($this->at(0, relRow: 1, end: 'm'), self::rect(), editorRect: null);
         $this->assertCount(1, $this->drops);
 
-        $this->assertFalse($router->continueDrag($this->at(0, 1, 'm'), self::rect(), null), 'the second release finds nothing armed');
+        $this->assertFalse($router->continueDrag($this->at(0, relRow: 1, end: 'm'), self::rect(), editorRect: null), 'the second release finds nothing armed');
         $this->assertCount(1, $this->drops, 'and moves nothing again');
-        $this->assertNull(Probe::get($this->tree, 'dropTarget'), 'the highlight went with it');
+        $this->assertNull(Probe::get($this->tree, property: 'dropTarget'), 'the highlight went with it');
     }
 
     /**
@@ -334,13 +324,13 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $this->tree->pressRow(1); // press src/ — the toggle is deferred, not applied
-        $this->assertSame(1, Probe::get($this->tree, 'pendingToggle'), 'the press really did defer one');
+        $this->assertSame(1, Probe::get($this->tree, property: 'pendingToggle'), 'the press really did defer one');
 
         $router->arm([$this->project->path('src')]);
-        $router->continueDrag($this->at(32, 3), self::rect(), null);
-        $router->continueDrag($this->at(0, 3, 'm'), self::rect(), null);
+        $router->continueDrag($this->at(32, relRow: 3), self::rect(), editorRect: null);
+        $router->continueDrag($this->at(0, relRow: 3, end: 'm'), self::rect(), editorRect: null);
 
-        $this->assertNull(Probe::get($this->tree, 'pendingToggle'), 'and the drop threw it away');
+        $this->assertNull(Probe::get($this->tree, property: 'pendingToggle'), 'and the drop threw it away');
     }
 
     /**
@@ -358,12 +348,12 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $this->tree->pressRow(1); // press src/: the toggle is deferred
         $router->arm([$this->project->path('src')]);
-        $router->continueDrag($this->at(32, 2), self::rect(), null);
-        $this->assertSame(1, Probe::get($this->tree, 'pendingToggle'), 'the press really did defer one');
+        $router->continueDrag($this->at(32, relRow: 2), self::rect(), editorRect: null);
+        $this->assertSame(1, Probe::get($this->tree, property: 'pendingToggle'), 'the press really did defer one');
 
         $router->cancel(); // Escape
 
-        $this->assertNull(Probe::get($this->tree, 'pendingToggle'), 'the abandoned drag took it along');
+        $this->assertNull(Probe::get($this->tree, property: 'pendingToggle'), 'the abandoned drag took it along');
     }
 
     /** Cancelling forgets the drag and takes its highlight with it. */
@@ -371,11 +361,11 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->at(32, 1), self::rect(), null);
+        $router->continueDrag($this->at(32, relRow: 1), self::rect(), editorRect: null);
 
         $router->cancel();
 
-        $this->assertFalse($router->continueDrag($this->at(0, 1, 'm'), self::rect(), null));
+        $this->assertFalse($router->continueDrag($this->at(0, relRow: 1, end: 'm'), self::rect(), editorRect: null));
         $this->assertSame([], $this->drops);
     }
 
@@ -393,11 +383,11 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->clickRow(1); // collapse src/ again
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
 
         $this->assertCount(1, $this->pending(self::SPRING_DWELL), 'the dwell is running');
         $this->clock->fire($this->pending(self::SPRING_DWELL)[0]);
-        $this->assertTrue(Probe::get($this->tree, 'expanded')[$this->project->path('src')] ?? false);
+        $this->assertTrue(Probe::get($this->tree, property: 'expanded')[$this->project->path('src')] ?? false);
     }
 
     /**
@@ -414,9 +404,9 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->clickRow(1); // collapse src/
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
         $armed = $this->pending(self::SPRING_DWELL);
-        $router->continueDrag($this->drag(3, 1), self::rect(), null); // jitter, same row
+        $router->continueDrag($this->drag(3, relRow: 1), self::rect(), editorRect: null); // jitter, same row
 
         $this->assertSame($armed, $this->pending(self::SPRING_DWELL), 'the same timer, still counting');
         $this->assertNotContains($armed[0], $this->clock->cancelled, 'the dwell was left alone');
@@ -429,9 +419,9 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->clickRow(1); // collapse src/
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->drag(2, 1), self::rect(), null); // src/
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null); // src/
         $first = $this->pending(self::SPRING_DWELL)[0];
-        $router->continueDrag($this->drag(2, 2), self::rect(), null); // top.php → the root
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null); // top.php → the root
 
         $this->assertContains($first, $this->clock->cancelled, 'the old dwell was dropped');
         $this->assertNotSame([$first], $this->pending(self::SPRING_DWELL));
@@ -451,7 +441,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php'), $this->project->path('src/a.php')]);
 
-        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null);
 
         $this->assertStringContainsString('Moving 2 files', $this->statusRow($this->statusBar));
         $this->assertStringContainsString('Alt', $this->statusRow($this->statusBar), 'and the modifier is offered');
@@ -470,10 +460,10 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null);
 
         $this->statusBar->flash('Saved');
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
 
         $this->assertStringContainsString('Saved', $this->statusRow($this->statusBar), 'the hint had already had its say');
     }
@@ -490,7 +480,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
 
         $rows = AnsiUtils::stripAnsiCodes(\implode("\n", $this->tree->render(new RenderContext(40, self::ROWS))));
         // The arrow and its spacing included: asserting only the count leaves
@@ -504,7 +494,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->release(2, 2), self::rect(), null);
+        $router->continueDrag($this->release(2, relRow: 2), self::rect(), editorRect: null);
 
         $this->assertStringNotContainsString('Moving', $this->statusRow($this->statusBar));
     }
@@ -521,10 +511,10 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null);
         $this->assertStringContainsString('Moving', $this->statusRow($this->statusBar));
 
-        $router->continueDrag($this->release(2, 1), self::rect(), null);
+        $router->continueDrag($this->release(2, relRow: 1), self::rect(), editorRect: null);
 
         $this->assertStringNotContainsString('Moving', $this->statusRow($this->statusBar), 'the status bar is free again');
     }
@@ -534,7 +524,7 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null);
 
         $router->cancel();
 
@@ -551,7 +541,7 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 2), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null);
         $this->statusBar->flash('Saved');
 
         $router->cancel();
@@ -570,8 +560,8 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(60, 20), self::rect(), null); // off the tree
-        $router->continueDrag($this->release(60, 20), self::rect(), null);
+        $router->continueDrag($this->drag(60, relRow: 20), self::rect(), editorRect: null); // off the tree
+        $router->continueDrag($this->release(60, relRow: 20), self::rect(), editorRect: null);
 
         $this->assertStringContainsString('Drop on a folder', $this->statusRow($this->statusBar));
         $this->assertSame([], $this->drops, 'and nothing moved');
@@ -582,8 +572,8 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
-        $router->continueDrag($this->release(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
+        $router->continueDrag($this->release(2, relRow: 1), self::rect(), editorRect: null);
 
         $this->assertStringNotContainsString('Drop on a folder', $this->statusRow($this->statusBar));
         $this->assertCount(1, $this->drops);
@@ -603,11 +593,11 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $this->tree->clickRow(1); // collapse src/
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
         $router->cancel();
 
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
 
         $this->assertCount(1, $this->pending(self::SPRING_DWELL), 'the second drag armed its own dwell');
     }
@@ -623,19 +613,19 @@ final class TreeDragRouterTest extends TestCase
         $src = $this->project->path('src');
         $this->tree->clickRow(1); // collapse src/ — rows: 1 src/, 2 top.php
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
         $this->clock->fire($this->pending(self::SPRING_DWELL)[0]);
-        $this->assertTrue(Probe::get($this->tree, 'expanded')[$src], 'sprung open — rows: 1 src/, 2 src/a.php, 3 top.php');
+        $this->assertTrue(Probe::get($this->tree, property: 'expanded')[$src], 'sprung open — rows: 1 src/, 2 src/a.php, 3 top.php');
 
-        $router->continueDrag($this->drag(2, 2), self::rect(), null);
-        $router->continueDrag($this->release(2, 2), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 2), self::rect(), editorRect: null);
+        $router->continueDrag($this->release(2, relRow: 2), self::rect(), editorRect: null);
 
         $this->assertSame($src, $this->drops[0]->targetDir ?? null);
-        $this->assertTrue(Probe::get($this->tree, 'expanded')[$src], 'still open where the file landed');
+        $this->assertTrue(Probe::get($this->tree, property: 'expanded')[$src], 'still open where the file landed');
 
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 3), self::rect(), null);
-        $this->assertTrue(Probe::get($this->tree, 'expanded')[$src], 'the user\'s tree now: the next drag passing by leaves it open');
+        $router->continueDrag($this->drag(2, relRow: 3), self::rect(), editorRect: null);
+        $this->assertTrue(Probe::get($this->tree, property: 'expanded')[$src], 'the user\'s tree now: the next drag passing by leaves it open');
     }
 
     public function testASprungFolderClosesOnceTheDragMovesOffIt(): void
@@ -644,12 +634,12 @@ final class TreeDragRouterTest extends TestCase
         $src = $this->project->path('src');
         $this->tree->clickRow(1);
         $router->arm([$this->project->path('src/a.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
         $this->clock->fire($this->pending(self::SPRING_DWELL)[0]);
 
-        $router->continueDrag($this->drag(2, 3), self::rect(), null); // top.php: the project root
+        $router->continueDrag($this->drag(2, relRow: 3), self::rect(), editorRect: null); // top.php: the project root
 
-        $this->assertFalse(Probe::get($this->tree, 'expanded')[$src]);
+        $this->assertFalse(Probe::get($this->tree, property: 'expanded')[$src]);
         $this->assertSame($this->project->path('top.php'), $this->tree->nodeAtRow(2)?->path, 'its rows are gone from the tree');
     }
 
@@ -659,9 +649,9 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $this->tree->clickRow(1);
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
 
-        $router->continueDrag($this->drag(60, 1), self::rect(), null);
+        $router->continueDrag($this->drag(60, relRow: 1), self::rect(), editorRect: null);
 
         $this->assertSame([], $this->pending(self::SPRING_DWELL));
     }
@@ -672,7 +662,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $this->tree->clickRow(1);
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::rect(), editorRect: null);
 
         $router->cancel();
 
@@ -698,7 +688,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->tallRouter();
         $router->arm([$this->project->path('d00')]);
 
-        $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), null);
+        $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), editorRect: null);
 
         $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the edge armed a tick');
         $before = $this->tree->getRenderRevision();
@@ -715,7 +705,7 @@ final class TreeDragRouterTest extends TestCase
         $this->tree->scrollDuringDrag(2); // somewhere to scroll back from
         $before = $this->tree->getRenderRevision();
 
-        $router->continueDrag($this->drag(2, 1), self::tallRect(), null);
+        $router->continueDrag($this->drag(2, relRow: 1), self::tallRect(), editorRect: null);
         $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the top edge armed a tick');
         $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
 
@@ -735,7 +725,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->tallRouter();
         $router->arm([$this->project->path('d00')]);
 
-        $router->continueDrag($this->drag(2, self::TALL_ROWS - 2), self::tallRect(), null);
+        $router->continueDrag($this->drag(2, self::TALL_ROWS - 2), self::tallRect(), editorRect: null);
 
         $this->assertSame([], $this->pending(self::SCROLL_TICK), 'one row in from the bottom is still ordinary tree');
     }
@@ -746,7 +736,7 @@ final class TreeDragRouterTest extends TestCase
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
 
-        $router->continueDrag($this->drag(2, 3), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 3), self::rect(), editorRect: null);
 
         $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
@@ -756,9 +746,9 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), editorRect: null);
 
-        $router->continueDrag($this->drag(2, 3), self::rect(), null);
+        $router->continueDrag($this->drag(2, relRow: 3), self::rect(), editorRect: null);
 
         $this->assertSame([], $this->pending(self::SCROLL_TICK), 'the pending tick was cancelled');
     }
@@ -768,9 +758,9 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), editorRect: null);
 
-        $router->continueDrag($this->drag(60, self::ROWS - 1), self::rect(), null);
+        $router->continueDrag($this->drag(60, self::ROWS - 1), self::rect(), editorRect: null);
 
         $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
@@ -785,9 +775,9 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), editorRect: null);
 
-        $router->continueDrag($this->release(2, self::ROWS - 1), self::rect(), null);
+        $router->continueDrag($this->release(2, self::ROWS - 1), self::rect(), editorRect: null);
 
         $this->assertSame([], $this->pending(self::SCROLL_TICK));
     }
@@ -797,7 +787,7 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->router();
         $router->arm([$this->project->path('top.php')]);
-        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), null);
+        $router->continueDrag($this->drag(2, self::ROWS - 1), self::rect(), editorRect: null);
 
         $router->cancel();
 
@@ -812,7 +802,7 @@ final class TreeDragRouterTest extends TestCase
     {
         $router = $this->tallRouter();
         $router->arm([$this->project->path('d00')]);
-        $router->continueDrag($this->drag(2, 1), self::tallRect(), null); // top edge, already at the top
+        $router->continueDrag($this->drag(2, relRow: 1), self::tallRect(), editorRect: null); // top edge, already at the top
 
         $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the edge armed a tick');
         $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
@@ -834,12 +824,33 @@ final class TreeDragRouterTest extends TestCase
         $router->arm([$this->project->path('d00')]);
 
         // The bottom visible row is d04; one scrolled row puts d05 there.
-        $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), null);
-        $this->assertSame($this->project->path('d04'), Probe::get($this->tree, 'dropTarget'));
+        $router->continueDrag($this->drag(2, self::TALL_ROWS - 1), self::tallRect(), editorRect: null);
+        $this->assertSame($this->project->path('d04'), Probe::get($this->tree, property: 'dropTarget'));
 
         $this->assertCount(1, $this->pending(self::SCROLL_TICK), 'the edge armed a tick');
         $this->clock->fire($this->pending(self::SCROLL_TICK)[0]);
 
-        $this->assertSame($this->project->path('d05'), Probe::get($this->tree, 'dropTarget'), 'resolved again, not left behind');
+        $this->assertSame($this->project->path('d05'), Probe::get($this->tree, property: 'dropTarget'), 'resolved again, not left behind');
+    }
+
+    /**
+     * Arm a drag of the project's $relativePaths, carry it over the editor and
+     * release it there. The paths resolve after {@see router()}, which makes
+     * the project.
+     *
+     * @param list<string> $relativePaths
+     *
+     * @return list<string> what was opened
+     */
+    private function dropOnEditor(array $relativePaths): array
+    {
+        $router = $this->router();
+        $opened = $this->recordOpens();
+        $router->arm(\array_map($this->project->path(...), $relativePaths));
+        $editor = new WidgetRect(row: 0, col: 40, columns: 40, rows: self::ROWS);
+        $router->continueDrag($this->drag(60, relRow: 3), self::rect(), $editor);
+        $router->continueDrag($this->release(60, relRow: 3), self::rect(), $editor);
+
+        return $opened();
     }
 }

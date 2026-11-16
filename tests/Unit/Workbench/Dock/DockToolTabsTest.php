@@ -21,33 +21,33 @@ final class DockToolTabsTest extends TestCase
     {
         $tabs = new DockToolTabs();
         $this->assertNull($tabs->active(), 'no tabs yet');
-        $this->assertCount(0, Probe::get($tabs, 'tabs'));
+        $this->assertCount(0, Probe::get($tabs, property: 'tabs'));
 
-        $foo = $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::searchResults());
-        $bar = $tabs->openOrReuse(ResultsPanelMode::Search, 'bar', ResultsPanelFields::searchResults());
-        $this->assertCount(2, Probe::get($tabs, 'tabs'), 'a different title appends');
+        $foo = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'foo', fields: ResultsPanelFields::searchResults());
+        $bar = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'bar', fields: ResultsPanelFields::searchResults());
+        $this->assertCount(2, Probe::get($tabs, property: 'tabs'), 'a different title appends');
         $this->assertSame($bar, $tabs->active(), 'the newest tab is active');
         $this->assertSame([1, 2], \array_map(static fn (DockToolTab $tab): int => $tab->id, $tabs->tabs), 'ids are monotonic');
 
-        $again = $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::resultsOnly());
+        $again = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'foo', fields: ResultsPanelFields::resultsOnly());
         $this->assertSame($foo, $again, 'the same (mode, title) reuses its tab');
         $this->assertSame($foo, $tabs->active(), 'and re-activates it');
         $this->assertFalse($foo->fields->grouped, 'the fields refresh on reuse');
 
-        $problems = $tabs->openOrReuse(ResultsPanelMode::Problems, 'foo', ResultsPanelFields::resultsOnly());
+        $problems = $tabs->openOrReuse(ResultsPanelMode::Problems, title: 'foo', fields: ResultsPanelFields::resultsOnly());
         $this->assertNotSame($foo, $problems, 'the same title under another mode is a different tool');
     }
 
     public function testLookupsAndActivation(): void
     {
         $tabs = new DockToolTabs();
-        $foo = $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::searchResults());
-        $todo = $tabs->openOrReuse(ResultsPanelMode::Notifications, 'Notifications', ResultsPanelFields::resultsOnly());
+        $foo = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'foo', fields: ResultsPanelFields::searchResults());
+        $todo = $tabs->openOrReuse(ResultsPanelMode::Notifications, title: 'Notifications', fields: ResultsPanelFields::resultsOnly());
 
         // find() is private (its public face is openOrReuse's identity rule):
         // reusing the same (mode, title) returns the same tab, a new title appends.
-        $this->assertSame($foo, $tabs->openOrReuse(ResultsPanelMode::Search, 'foo', ResultsPanelFields::searchResults()));
-        $this->assertNotSame($foo, $tabs->openOrReuse(ResultsPanelMode::Search, 'missing', ResultsPanelFields::searchResults()));
+        $this->assertSame($foo, $tabs->openOrReuse(ResultsPanelMode::Search, title: 'foo', fields: ResultsPanelFields::searchResults()));
+        $this->assertNotSame($foo, $tabs->openOrReuse(ResultsPanelMode::Search, title: 'missing', fields: ResultsPanelFields::searchResults()));
         $this->assertSame($todo, $tabs->findByMode(ResultsPanelMode::Notifications));
         $this->assertNull($tabs->findByMode(ResultsPanelMode::Problems));
         $this->assertSame($foo, $tabs->findById(1));
@@ -63,9 +63,9 @@ final class DockToolTabsTest extends TestCase
     public function testCloseMovesTheActivePointerToTheNearestNeighbour(): void
     {
         $tabs = new DockToolTabs();
-        $a = $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
-        $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
-        $c = $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
+        $a = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'a', fields: ResultsPanelFields::searchResults());
+        $b = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'b', fields: ResultsPanelFields::searchResults());
+        $c = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'c', fields: ResultsPanelFields::searchResults());
 
         $tabs->makeActive($b);
         $this->assertSame($b, $tabs->close($c), 'closing behind the active tab keeps it');
@@ -74,7 +74,7 @@ final class DockToolTabsTest extends TestCase
 
         $this->assertSame($a, $tabs->close($c), 'closing an unknown tab is a no-op');
         $this->assertNull($tabs->close($a), 'the last close empties the strip');
-        $this->assertCount(0, Probe::get($tabs, 'tabs'));
+        $this->assertCount(0, Probe::get($tabs, property: 'tabs'));
     }
 
     /**
@@ -87,10 +87,10 @@ final class DockToolTabsTest extends TestCase
     public function testCloseOnTheActiveTabLandsOnItsSuccessorNotItsPredecessor(): void
     {
         $tabs = new DockToolTabs();
-        $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
-        $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
-        $c = $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
-        $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, title: 'a', fields: ResultsPanelFields::searchResults());
+        $b = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'b', fields: ResultsPanelFields::searchResults());
+        $c = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'c', fields: ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, title: 'd', fields: ResultsPanelFields::searchResults());
 
         $tabs->makeActive($b);
 
@@ -106,10 +106,10 @@ final class DockToolTabsTest extends TestCase
     public function testCloseBeforeTheActiveTabShiftsItsIndexByExactlyOne(): void
     {
         $tabs = new DockToolTabs();
-        $a = $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
-        $c = $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
-        $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults());
-        $tabs->openOrReuse(ResultsPanelMode::Search, 'e', ResultsPanelFields::searchResults());
+        $a = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'a', fields: ResultsPanelFields::searchResults());
+        $c = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'c', fields: ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, title: 'd', fields: ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, title: 'e', fields: ResultsPanelFields::searchResults());
 
         $tabs->makeActive($c);
 
@@ -119,31 +119,31 @@ final class DockToolTabsTest extends TestCase
     public function testMoveReordersKeepingTheActivePointerOnItsTab(): void
     {
         $tabs = new DockToolTabs();
-        $tabs->openOrReuse(ResultsPanelMode::Search, 'a', ResultsPanelFields::searchResults());
-        $b = $tabs->openOrReuse(ResultsPanelMode::Search, 'b', ResultsPanelFields::searchResults());
-        $tabs->openOrReuse(ResultsPanelMode::Search, 'c', ResultsPanelFields::searchResults());
-        $d = $tabs->openOrReuse(ResultsPanelMode::Search, 'd', ResultsPanelFields::searchResults()); // active
+        $tabs->openOrReuse(ResultsPanelMode::Search, title: 'a', fields: ResultsPanelFields::searchResults());
+        $b = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'b', fields: ResultsPanelFields::searchResults());
+        $tabs->openOrReuse(ResultsPanelMode::Search, title: 'c', fields: ResultsPanelFields::searchResults());
+        $d = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'd', fields: ResultsPanelFields::searchResults()); // active
         $order = static fn (): array => \array_map(static fn (DockToolTab $tab): string => $tab->title, $tabs->tabs);
 
-        $tabs->move(9, 0);
+        $tabs->move(9, to: 0);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'an out-of-range source is a no-op');
-        $tabs->move(1, 1);
+        $tabs->move(1, to: 1);
         $this->assertSame(['a', 'b', 'c', 'd'], $order(), 'a same-slot move is a no-op');
 
-        $tabs->move(3, 0); // the active tab itself moves
+        $tabs->move(3, to: 0); // the active tab itself moves
         $this->assertSame(['d', 'a', 'b', 'c'], $order());
         $this->assertSame($d, $tabs->active(), 'the pointer follows the moved tab');
 
-        $tabs->move(1, 99); // 'a' to the end (clamped); the active stays in front
+        $tabs->move(1, to: 99); // 'a' to the end (clamped); the active stays in front
         $this->assertSame(['d', 'b', 'c', 'a'], $order());
         $this->assertSame($d, $tabs->active());
 
         $tabs->makeActive($b);
-        $tabs->move(0, 2); // a tab from before the active one passes it
+        $tabs->move(0, to: 2); // a tab from before the active one passes it
         $this->assertSame(['b', 'c', 'd', 'a'], $order());
         $this->assertSame($b, $tabs->active());
 
-        $tabs->move(3, 0); // a tab from behind lands in front
+        $tabs->move(3, to: 0); // a tab from behind lands in front
         $this->assertSame(['a', 'b', 'c', 'd'], $order());
         $this->assertSame($b, $tabs->active());
     }
@@ -151,7 +151,7 @@ final class DockToolTabsTest extends TestCase
     public function testASearchTabCarriesItsQueryDefinition(): void
     {
         $tabs = new DockToolTabs();
-        $tab = $tabs->openOrReuse(ResultsPanelMode::Search, 'Find in Project: foo', ResultsPanelFields::searchResults());
+        $tab = $tabs->openOrReuse(ResultsPanelMode::Search, title: 'Find in Project: foo', fields: ResultsPanelFields::searchResults());
         $tab->searchState = new SearchTabState('foo', new SearchOptions(regex: true), ['src'], '*.php', ScopeKind::Project);
 
         $this->assertSame('foo', $tab->searchState->query, 'the frozen definition rides the tab');
@@ -165,9 +165,9 @@ final class DockToolTabsTest extends TestCase
         // let a core caller bind, refresh or clobber somebody's plugin tab. A
         // null matches no case at all.
         $tabs = new DockToolTabs();
-        $core = $tabs->openOrReuse(ResultsPanelMode::Problems, 'Problems', ResultsPanelFields::resultsOnly());
-        $mine = $tabs->openOrReuse(null, 'TODO', ResultsPanelFields::resultsOnly(), new DockToolHandlers('todo:todo'));
-        $theirs = $tabs->openOrReuse(null, 'TODO', ResultsPanelFields::resultsOnly(), new DockToolHandlers('other:todo'));
+        $core = $tabs->openOrReuse(ResultsPanelMode::Problems, title: 'Problems', fields: ResultsPanelFields::resultsOnly());
+        $mine = $tabs->openOrReuse(null, title: 'TODO', fields: ResultsPanelFields::resultsOnly(), handlers: new DockToolHandlers('todo:todo'));
+        $theirs = $tabs->openOrReuse(null, title: 'TODO', fields: ResultsPanelFields::resultsOnly(), handlers: new DockToolHandlers('other:todo'));
 
         $this->assertNotSame($mine, $theirs, 'same title, different plugins, different tabs');
         $this->assertSame($mine, $tabs->findByToolId('todo:todo'));
@@ -177,7 +177,7 @@ final class DockToolTabsTest extends TestCase
             $this->assertNotSame($mine, $tabs->findByMode($mode), $mode->name.' must not reach a contributed tab');
         }
 
-        $reused = $tabs->openOrReuse(null, 'TODO (renamed)', ResultsPanelFields::resultsOnly(), new DockToolHandlers('todo:todo'));
+        $reused = $tabs->openOrReuse(null, title: 'TODO (renamed)', fields: ResultsPanelFields::resultsOnly(), handlers: new DockToolHandlers('todo:todo'));
         $this->assertSame($mine, $reused, 'the id reuses the tab; the title is only the plugin\'s label');
         $this->assertSame('TODO', $reused->title, 'and the title it was created with stands');
     }

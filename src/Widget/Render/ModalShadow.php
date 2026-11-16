@@ -43,7 +43,7 @@ final class ModalShadow
             if (($col + $width) >= $columns || $row >= \count($lines)) {
                 continue;
             }
-            $lines[$row] = OverlayCompositor::into($lines[$row], $col + $width, 1, $columns, $cell);
+            $lines[$row] = OverlayCompositor::into($lines[$row], $col + $width, width: 1, columns: $columns, popup: $cell);
         }
         $bottom = $startRow + $rows;
         if ($bottom < \count($lines)) {
@@ -76,7 +76,7 @@ final class ModalShadow
         $mirrored = BaseDirection::Rtl === $shown;
 
         return [
-            ...SpanSlicer::localSpans(\array_fill(0, \max(0, $rows - 1), $cell), $rect, $top + 1, $mirrored ? $col - 1 : $col + $width, 1),
+            ...SpanSlicer::localSpans(\array_fill(0, \max(0, $rows - 1), $cell), $rect, $top + 1, $mirrored ? $col - 1 : $col + $width, panelWidth: 1),
             ...SpanSlicer::localSpans([$band], $rect, $top + $rows, $mirrored ? $col - 1 : $col + 1, $width),
         ];
     }

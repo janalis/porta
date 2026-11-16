@@ -132,7 +132,7 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertNotContains('acme', $lifecycle->listedNames());
         $lifecycle->enable('acme');
-        $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'the project\'s code never ran');
+        $this->assertFalse($this->hasCommand($ide, id: 'acme:boom'), 'the project\'s code never ran');
     }
 
     /** `porta --plugin` turns on a bundled plugin the config leaves off — for that launch. */
@@ -156,7 +156,7 @@ final class PluginLifecycleTest extends TestCase
         Services::resolve($off, Notifier::class)->dismissAll();
         $ide = $this->boot(plugins: ['kit']);
         $this->assertFalse($this->lifecycle($ide)->isDisabled('kit'));
-        $this->assertTrue($this->hasCommand($ide, 'kit:go'));
+        $this->assertTrue($this->hasCommand($ide, id: 'kit:go'));
     }
 
     /**
@@ -179,13 +179,13 @@ final class PluginLifecycleTest extends TestCase
         \putenv('PORTA_EMBEDDED_PLUGINS='.$embedded->dir);
         $ide = $this->boot(['enabledPlugins' => ['kit'], 'disabledPlugins' => ['kit']]);
         $lifecycle = $this->lifecycle($ide);
-        $this->assertFalse($this->hasCommand($ide, 'kit:go'), 'boot skipped it');
+        $this->assertFalse($this->hasCommand($ide, id: 'kit:go'), 'boot skipped it');
         $this->assertTrue($lifecycle->isDisabled('kit'), 'and its toggle says so');
 
         $lifecycle->enable('kit');
 
         $this->assertFalse($lifecycle->isDisabled('kit'));
-        $this->assertTrue($this->hasCommand($ide, 'kit:go'));
+        $this->assertTrue($this->hasCommand($ide, id: 'kit:go'));
         $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertNotContains('kit', $onDisk['disabledPlugins'] ?? [], 'the next boot loads it too');
         $this->assertContains('kit', $onDisk['enabledPlugins'] ?? []);
@@ -201,7 +201,7 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle->enable('acme');
 
         $this->assertFalse($lifecycle->isDisabled('acme'), 'enable() flips the live state');
-        $this->assertTrue($this->hasCommand($ide, 'acme:boom'), 'enable() actually loads the plugin');
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:boom'), 'enable() actually loads the plugin');
         $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame([], $onDisk['disabledPlugins'] ?? [], 'the choice is persisted, not just held in memory');
     }
@@ -212,12 +212,12 @@ final class PluginLifecycleTest extends TestCase
         $this->writePlugin('acme');
         $lifecycle = $this->lifecycle($ide);
         $lifecycle->enable('acme');
-        $this->assertTrue($this->hasCommand($ide, 'acme:boom'));
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:boom'));
 
         $lifecycle->disable('acme');
 
         $this->assertTrue($lifecycle->isDisabled('acme'));
-        $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'no other copy exists, so nothing reloads');
+        $this->assertFalse($this->hasCommand($ide, id: 'acme:boom'), 'no other copy exists, so nothing reloads');
         $onDisk = \json_decode((string) \file_get_contents($this->project->dir.'/.porta.json'), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(['acme'], $onDisk['disabledPlugins'] ?? []);
     }
@@ -233,8 +233,8 @@ final class PluginLifecycleTest extends TestCase
 
         $this->assertFalse($lifecycle->isDisabled('base'), 'the requirement was pulled in transitively');
         $this->assertFalse($lifecycle->isDisabled('dependent'));
-        $this->assertTrue($this->hasCommand($ide, 'base:boom'));
-        $this->assertTrue($this->hasCommand($ide, 'dependent:boom'));
+        $this->assertTrue($this->hasCommand($ide, id: 'base:boom'));
+        $this->assertTrue($this->hasCommand($ide, id: 'dependent:boom'));
     }
 
     public function testDisableCascadesToItsDependents(): void
@@ -245,14 +245,14 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle = $this->lifecycle($ide);
         $lifecycle->enable('base');
         $lifecycle->enable('dependent');
-        $this->assertTrue($this->hasCommand($ide, 'dependent:boom'));
+        $this->assertTrue($this->hasCommand($ide, id: 'dependent:boom'));
 
         $lifecycle->disable('base');
 
         $this->assertTrue($lifecycle->isDisabled('base'));
         $this->assertTrue($lifecycle->isDisabled('dependent'), 'what needed it goes too');
-        $this->assertFalse($this->hasCommand($ide, 'dependent:boom'));
-        $this->assertFalse($this->hasCommand($ide, 'base:boom'));
+        $this->assertFalse($this->hasCommand($ide, id: 'dependent:boom'));
+        $this->assertFalse($this->hasCommand($ide, id: 'base:boom'));
     }
 
     public function testActivateInstalledLoadsAndRegistersCommands(): void
@@ -265,7 +265,7 @@ final class PluginLifecycleTest extends TestCase
         $result = $lifecycle->activateInstalled($file);
 
         $this->assertNull($result, 'success reports nothing');
-        $this->assertTrue($this->hasCommand($ide, 'acme:greet'));
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:greet'));
     }
 
     public function testActivateInstalledReturnsATranslatedErrorOnFailure(): void
@@ -278,7 +278,7 @@ final class PluginLifecycleTest extends TestCase
         $result = $lifecycle->activateInstalled($file);
 
         $this->assertNotNull($result, 'a malformed plugin file must be reported, not silently ignored');
-        $this->assertFalse($this->hasCommand($ide, 'broken:boom'));
+        $this->assertFalse($this->hasCommand($ide, id: 'broken:boom'));
     }
 
     /**
@@ -293,26 +293,26 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle = $this->lifecycle($ide);
         $file = $this->project->dir.'/.porta/plugins/acme/porta.php';
         $this->assertNull($lifecycle->activateInstalled($file));
-        $this->assertTrue($this->hasCommand($ide, 'acme:greet'));
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:greet'));
 
         \unlink($file);
         \rmdir(\dirname($file));
         $this->writePlugin('acme', command: 'wave'); // the new release
 
         $this->assertNull($lifecycle->activateInstalled($file), 'swapped, not refused as a duplicate');
-        $this->assertTrue($this->hasCommand($ide, 'acme:wave'), 'the new code runs');
-        $this->assertFalse($this->hasCommand($ide, 'acme:greet'), 'the old one is gone');
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:wave'), 'the new code runs');
+        $this->assertFalse($this->hasCommand($ide, id: 'acme:greet'), 'the old one is gone');
 
         $lifecycle->unload('acme'); // stopped for an update: nothing in its place, nothing persisted
-        $this->assertFalse($this->hasCommand($ide, 'acme:wave'));
+        $this->assertFalse($this->hasCommand($ide, id: 'acme:wave'));
         $this->assertFalse($lifecycle->isDisabled('acme'), 'an unload is no switch-off');
         $lifecycle->unload('acme'); // and again: nothing runs, nothing to stop
         $this->assertNull($lifecycle->activateInstalled($file));
-        $this->assertTrue($this->hasCommand($ide, 'acme:wave'), 'back on once its files are in place');
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:wave'), 'back on once its files are in place');
 
         \file_put_contents($file, data: '<?php return 42;'); // a release that cannot load
         $this->assertNotNull($lifecycle->activateInstalled($file));
-        $this->assertFalse($this->hasCommand($ide, 'acme:wave'), 'the old copy stopped all the same: its commands do not linger');
+        $this->assertFalse($this->hasCommand($ide, id: 'acme:wave'), 'the old copy stopped all the same: its commands do not linger');
     }
 
     /**
@@ -344,9 +344,9 @@ final class PluginLifecycleTest extends TestCase
         $keys = Probe::object($lifecycle, 'keys');
         $this->assertInstanceOf(LiveKeybindings::class, $keys);
         $pool = Services::resolve($ide, LspSessionPool::class);
-        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'), \JSON_THROW_ON_ERROR);
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, property: 'servers'), \JSON_THROW_ON_ERROR);
         $menuBar = Services::resolve($ide, MenuBarWidget::class);
-        $menus = static fn (): array => \array_column(Probe::get($menuBar, 'menus'), 'title');
+        $menus = static fn (): array => \array_column(Probe::get($menuBar, property: 'menus'), 'title');
 
         $this->assertNull($lifecycle->activateInstalled($dir.'/porta.php'));
         $this->assertContains('Acme', $menus());
@@ -354,7 +354,7 @@ final class PluginLifecycleTest extends TestCase
         $this->assertStringContainsString('acme-ls', $servers());
         $panes = Probe::object($lifecycle, 'panes', 'panes');
         $this->assertInstanceOf(EditorPanes::class, $panes);
-        $this->assertSame('v1', $panes->load('acmepane', 'a.x'));
+        $this->assertSame('v1', $panes->load('acmepane', path: 'a.x'));
 
         $lifecycle->unload('acme');
         $this->assertNull($panes->ownerOf('acmepane'), 'its pane goes');
@@ -368,8 +368,8 @@ final class PluginLifecycleTest extends TestCase
         $this->assertNotContains('Acme', $menus(), 'the old copy\'s menu went with the swap');
         $this->assertSame([], $keys->getBindings('acme:greet'));
         $this->assertStringNotContainsString('acme-ls', $servers(), 'the old copy\'s server stopped with the swap');
-        $this->assertTrue($this->hasCommand($ide, 'acme:wave'));
-        $this->assertSame('v2', $panes->load('acmepane', 'a.x'), 'the new release\'s pane, never the old instance kept standing');
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:wave'));
+        $this->assertSame('v2', $panes->load('acmepane', path: 'a.x'), 'the new release\'s pane, never the old instance kept standing');
     }
 
     public function testDeactivateRemovesCommandsAndPanesWhenNoShadowCopyExists(): void
@@ -378,7 +378,7 @@ final class PluginLifecycleTest extends TestCase
         $this->writePlugin('acme');
         $lifecycle = $this->lifecycle($ide);
         $lifecycle->enable('acme');
-        $this->assertTrue($this->hasCommand($ide, 'acme:boom'));
+        $this->assertTrue($this->hasCommand($ide, id: 'acme:boom'));
 
         // deactivate()'s contract: the caller already removed the plugin from
         // disk (that is what makes this a real "removal", not a live reload of
@@ -387,7 +387,7 @@ final class PluginLifecycleTest extends TestCase
         new Filesystem()->remove($this->project->dir.'/.porta/plugins/acme');
         $lifecycle->deactivate('acme');
 
-        $this->assertFalse($this->hasCommand($ide, 'acme:boom'), 'its command dies with it');
+        $this->assertFalse($this->hasCommand($ide, id: 'acme:boom'), 'its command dies with it');
     }
 
     public function testIsDisabledForAProjectPluginTracksTheDisabledSet(): void
@@ -431,7 +431,7 @@ final class PluginLifecycleTest extends TestCase
         // Must not throw: 'acme' provides no language server, so this exercises
         // the "not a provider, no reconfigure" branch of onProviderSettingChanged
         // via the onPluginSettingChanged delegation.
-        $lifecycle->onPluginSettingChanged('acme', 'someKey', 'someValue');
+        $lifecycle->onPluginSettingChanged('acme', key: 'someKey', value: 'someValue');
         $this->addToAssertionCount(1);
     }
 
@@ -463,7 +463,7 @@ final class PluginLifecycleTest extends TestCase
         $lifecycle->enable('acme-ls');
         $lifecycle->enable('other');
         $pool = Services::resolve($ide, LspSessionPool::class);
-        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'), \JSON_THROW_ON_ERROR);
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, property: 'servers'), \JSON_THROW_ON_ERROR);
         $this->assertStringContainsString('acme-ls-1', $servers());
 
         \file_put_contents($this->project->dir.'/ls-argv', data: '/opt/acme-ls-2');
@@ -492,7 +492,7 @@ final class PluginLifecycleTest extends TestCase
             PHP);
         $lifecycle = $this->lifecycle($ide);
         $pool = Services::resolve($ide, LspSessionPool::class);
-        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, 'servers'), \JSON_THROW_ON_ERROR);
+        $servers = static fn (): string => (string) \json_encode(Probe::get($pool, property: 'servers'), \JSON_THROW_ON_ERROR);
 
         $this->assertNull($lifecycle->activateInstalled($dir.'/porta.php'));
         $this->assertStringContainsString('acme-ls', $servers(), 'its server is known at once');
@@ -531,7 +531,7 @@ final class PluginLifecycleTest extends TestCase
 
         $lifecycle->refreshNav();
 
-        $ids = \array_column(Probe::get($nav, 'entries'), 'id');
+        $ids = \array_column(Probe::get($nav, property: 'entries'), 'id');
         $this->assertContains('plugin:acme', $ids, 'refreshNav() syncs the sidebar to the current listedNames()');
     }
 }

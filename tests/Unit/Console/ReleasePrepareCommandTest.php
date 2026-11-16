@@ -56,7 +56,7 @@ final class ReleasePrepareCommandTest extends TestCase
     public function testAMinorBumpReleasesTheUnreleasedSection(): void
     {
         $project = self::project();
-        $tester = self::prepare($project, 'minor');
+        $tester = self::prepare($project, version: 'minor');
 
         $this->assertSame(Command::SUCCESS, $tester->getStatusCode(), $tester->getDisplay());
         $this->assertSame("version=0.3.0\ntag=v0.3.0\n", $tester->getDisplay(), 'neither a pre-release, a non-version tag, nor the tag git lists last');
@@ -87,7 +87,7 @@ final class ReleasePrepareCommandTest extends TestCase
     public function testTheFirstReleaseOfAChangelogWithNothingBelowIt(): void
     {
         $project = self::project(tags: [], changelog: "# Changelog\n\n## [Unreleased]\n\n- First.\n");
-        $tester = self::prepare($project, 'patch', options: []);
+        $tester = self::prepare($project, version: 'patch', options: []);
 
         $this->assertSame("version=0.0.1\ntag=v0.0.1\n", $tester->getDisplay(), 'no tag counts as 0.0.0');
         $this->assertSame("# Changelog\n\n## [Unreleased]\n\n## [0.0.1] - ".\date('Y-m-d')."\n\n- First.\n", \file_get_contents($project->path('CHANGELOG.md')));
@@ -126,7 +126,7 @@ final class ReleasePrepareCommandTest extends TestCase
     public function testOutsideAGitCheckoutItRefusesRatherThanCountFromNoTag(): void
     {
         $project = new TempProject(['CHANGELOG.md' => self::CHANGELOG, 'src/Ide.php' => self::IDE]);
-        $tester = self::prepare($project, 'patch');
+        $tester = self::prepare($project, version: 'patch');
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
         $this->assertSame('release:prepare: git could not list the tags of '.$project->dir." — the newest one is what the version must be above\n", $tester->getDisplay());

@@ -50,7 +50,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // the question being asked right now — and because the other two keep
         // their other surfaces: the diagnostic has its squiggle, its gutter
         // mark, its stripe cell and the Problems panel; blame has Alt+B.
-        $editor = $this->editor("<?php\n\$count = 41;\n", 'debug.php');
+        $editor = $this->editor("<?php\n\$count = 41;\n", path: 'debug.php');
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago']);
         $editor->decorations->setDebugValues([1 => '$count = 41']);
@@ -61,7 +61,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         $this->assertStringContainsString('$count = 41', $row);
         $this->assertStringNotContainsString('Boom', $row, 'the diagnostic keeps every surface but this one');
         $this->assertStringNotContainsString('3 days ago', $row);
-        self::assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, width: 80);
     }
 
     public function testWithoutADebugValueTheCellFallsBackToWhatItAlwaysShowed(): void
@@ -69,7 +69,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // The regression that matters: every line in every file with no
         // debugger running takes this path, and a precedence chain that got the
         // empty case wrong would blank the inline diagnostics everywhere.
-        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", path: 'debug.php');
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations->setLineAnnotations([2 => 'you, 3 days ago']);
         $editor->decorations->setDebugValues([]);
@@ -78,18 +78,18 @@ final class CodeEditorTrailingCellTest extends TestCase
 
         $this->assertStringContainsString('Boom', AnsiUtils::stripAnsiCodes($rows[1]));
         $this->assertStringContainsString('3 days ago', AnsiUtils::stripAnsiCodes($rows[2]));
-        self::assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, width: 80);
     }
 
     public function testAnAgentAtWorkOnALineTakesTheCellSecondAndPaintsItsCaret(): void
     {
-        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'agent.php');
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", path: 'agent.php');
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago', 2 => 'them, today']);
         $editor->decorations->setDebugValues([2 => '$other = 1']);
-        $editor->decorations->setRemoteCaret('agent.php', 'a', ['line' => 1, 'col' => 1, 'label' => '✦ Claude', 'slot' => 1]);
-        $editor->decorations->setRemoteCaret('agent.php', 'b', ['line' => 2, 'col' => 0, 'label' => '✦ Codex', 'slot' => 0]);
-        $editor->decorations->setRemoteCaret('elsewhere.php', 'c', ['line' => 0, 'col' => 0, 'label' => '✦ Nobody here', 'slot' => 2]);
+        $editor->decorations->setRemoteCaret('agent.php', owner: 'a', caret: ['line' => 1, 'col' => 1, 'label' => '✦ Claude', 'slot' => 1]);
+        $editor->decorations->setRemoteCaret('agent.php', owner: 'b', caret: ['line' => 2, 'col' => 0, 'label' => '✦ Codex', 'slot' => 0]);
+        $editor->decorations->setRemoteCaret('elsewhere.php', owner: 'c', caret: ['line' => 0, 'col' => 0, 'label' => '✦ Nobody here', 'slot' => 2]);
 
         $rows = $editor->render(new RenderContext(80, 10));
 
@@ -100,7 +100,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // The agent's background (Agent2's, dark: 130) opens on the second
         // character; the highlighter's own foreground may re-assert inside it.
         $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*c/', $rows[1], 'the caret cell, on the second character, in the agent\'s colour');
-        self::assertExactWidth($rows, 80);
+        self::assertExactWidth($rows, width: 80);
     }
 
     public function testOnlyInlineDiagnosticMessagesTakeTheCell(): void
@@ -108,7 +108,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // In the menu, or nowhere, the message leaves the line — and the cell
         // goes back to the annotation it had been outranking.
         foreach ([DiagnosticMessageMode::Menu, DiagnosticMessageMode::None] as $mode) {
-            $editor = $this->editor("<?php\n\$count = 41;\n", 'messages.php');
+            $editor = $this->editor("<?php\n\$count = 41;\n", path: 'messages.php');
             $editor->display->setDiagnosticMessages($mode);
             $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
             $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago']);
@@ -124,7 +124,7 @@ final class CodeEditorTrailingCellTest extends TestCase
     {
         // Per line, not per file: stopping on line 2 must not silence a
         // diagnostic on line 1.
-        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'debug.php');
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", path: 'debug.php');
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'Boom', 'col' => 0, 'endCol' => 6]]]);
         $editor->decorations->setDebugValues([2 => '$other = 1']);
 
@@ -142,7 +142,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // annotation, an inline diagnostic and a debug value alike were
         // silently dropped. Pre-existing, and inherited by every consumer of
         // that cell; found by rendering the combination rather than the pieces.
-        $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", 'wrapped.php');
+        $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", path: 'wrapped.php');
         $editor->display->setSoftWrap(true);
         $editor->decorations->setLineAnnotations([1 => 'you, 3 days ago']);
 
@@ -154,7 +154,7 @@ final class CodeEditorTrailingCellTest extends TestCase
 
     public function testADebugValueOnASoftWrappedLineFollowsTheSameRule(): void
     {
-        $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", 'wrapped.php');
+        $editor = $this->editor("<?php\n\$total = 'aaaa' . 'bbbb' . 'cccc' . 'dddd';\n", path: 'wrapped.php');
         $editor->display->setSoftWrap(true);
         $editor->decorations->setDebugValues([1 => 'V = 1']);
 
@@ -171,7 +171,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // document line's width, so anything placed by the raw width slices
         // into them. The debug value rides the same slot as the inline
         // diagnostic and inherits the same rule.
-        $editor = $this->editor("<?php\n\$r = add(1, 2);\n", 'hints.php');
+        $editor = $this->editor("<?php\n\$r = add(1, 2);\n", path: 'hints.php');
         $editor->decorations->setInlayHints([1 => [new InlayHint(9, 'a:'), new InlayHint(12, 'b:')]]);
         $editor->decorations->setDebugValues([1 => '$r = 3']);
 
@@ -186,7 +186,7 @@ final class CodeEditorTrailingCellTest extends TestCase
         // An inlay hint is what the code MEANS and is always there; a debug
         // value is what it currently HOLDS and only while stopped. Reading the
         // same would make a live value look like part of the source.
-        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", 'pen.php');
+        $editor = $this->editor("<?php\n\$count = 41;\n\$other = 1;\n", path: 'pen.php');
         $editor->decorations->setDebugValues([1 => '$count = 41']);
         $editor->decorations->setLineAnnotations([2 => 'you, 3 days ago']);
 

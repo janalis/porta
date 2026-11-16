@@ -80,7 +80,7 @@ final class FlowchartEdgeStylesTest extends TestCase
         $this->assertInstanceOf(Mark::class, $label);
         $this->assertSame('#008000', $label->stroke);
         $view = new ZoomPanModel((int) \ceil($scene->graph->width), (int) \ceil($scene->graph->height), [1.0]);
-        $rows = GraphRenderer::render($scene->graph, $view, null, 80, 24, Styles::dark());
+        $rows = GraphRenderer::render($scene->graph, $view, selected: null, cols: 80, rows: 24, styles: Styles::dark());
         $this->assertStringContainsString('38;2;0;128;0', \implode("\n", $rows));
         $this->assertNotEmpty(\array_filter($marks, static fn (Mark $mark): bool => MarkKind::Polygon === $mark->kind && '#ff0000' === $mark->fill));
     }

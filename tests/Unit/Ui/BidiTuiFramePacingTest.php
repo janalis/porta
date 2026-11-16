@@ -92,7 +92,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->microTurn();
 
         $this->assertStringNotContainsString('line 1', $this->terminal->getOutput(), 'the frame inside the window was not generated');
-        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the request stays pending');
+        $this->assertTrue((bool) Probe::get($tui, property: 'renderRequested'), 'the request stays pending');
         $this->assertCount(1, $this->scheduler->delays, 'one trailing wakeup armed');
         $this->assertEqualsWithDelta(BidiTui::MIN_FRAME_INTERVAL - 0.005, \array_first($this->scheduler->delays), 0.0005, 'armed for the remainder of the window');
         $tui->stop();
@@ -145,7 +145,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->microTurn(); // the wakeup's deferred tick
 
         $this->assertStringContainsString('line 1', $this->terminal->getOutput(), 'the flood\'s last state landed');
-        $this->assertFalse((bool) Probe::get($tui, 'renderRequested'));
+        $this->assertFalse((bool) Probe::get($tui, property: 'renderRequested'));
         $tui->stop();
     }
 
@@ -219,8 +219,8 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->scroll($tui);
         $this->microTurn();
 
-        $this->assertSame(1, Probe::get($perf, 'capSkips'));
-        $this->assertSame(1, Probe::get($perf, 'paints'), 'only the initial frame painted; the capped one fed the skip counter');
+        $this->assertSame(1, Probe::get($perf, property: 'capSkips'));
+        $this->assertSame(1, Probe::get($perf, property: 'paints'), 'only the initial frame painted; the capped one fed the skip counter');
         $tui->stop();
     }
 
@@ -247,7 +247,7 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->scheduler->fire();
         $this->microTurn();
         $this->assertStringContainsString('1', $this->terminal->getOutput(), 'and its trailing frame stamps lastFrameAt');
-        $this->assertFalse((bool) Probe::get($tui, 'renderRequested'), 'the mirrored paint consumed the request');
+        $this->assertFalse((bool) Probe::get($tui, property: 'renderRequested'), 'the mirrored paint consumed the request');
         $tui->stop();
     }
 
@@ -276,10 +276,10 @@ final class BidiTuiFramePacingTest extends TestCase
         $tui->start();
         $this->microTurn();
 
-        $durations = Probe::get($perf, 'renderDurations');
+        $durations = Probe::get($perf, property: 'renderDurations');
         $this->assertIsArray($durations);
         $this->assertEqualsWithDelta(0.003, $durations[0], 0.0001, 'the widget-tree time lands in the render split');
-        $writes = Probe::get($perf, 'writeDurations');
+        $writes = Probe::get($perf, property: 'writeDurations');
         $this->assertIsArray($writes);
         $this->assertEqualsWithDelta(0.0, $writes[0], 0.0001, 'the frozen clock puts nothing in the write split');
         $tui->stop();
@@ -323,13 +323,13 @@ final class BidiTuiFramePacingTest extends TestCase
         $tui->start();
         $this->microTurn();
 
-        $bidi = Probe::get($perf, 'bidiDurations');
+        $bidi = Probe::get($perf, property: 'bidiDurations');
         $this->assertIsArray($bidi);
         $this->assertEqualsWithDelta(0.004, $bidi[0], 0.0001, 'the reorder time lands in its own split');
-        $writes = Probe::get($perf, 'writeDurations');
+        $writes = Probe::get($perf, property: 'writeDurations');
         $this->assertIsArray($writes);
         $this->assertEqualsWithDelta(0.0, $writes[0], 0.0001, 'and NOT in the terminal write, which cost nothing');
-        $totals = Probe::get($perf, 'paintDurations');
+        $totals = Probe::get($perf, property: 'paintDurations');
         $this->assertIsArray($totals);
         $this->assertEqualsWithDelta(0.004, $totals[0], 0.0001, 'the frame total still counts it');
         $tui->stop();
@@ -378,13 +378,13 @@ final class BidiTuiFramePacingTest extends TestCase
         $tui->start();
         $this->microTurn();
 
-        $this->assertSame([0.0], Probe::get($perf, 'paintDurations'), 'no clock wired: paints count with a zero duration');
+        $this->assertSame([0.0], Probe::get($perf, property: 'paintDurations'), 'no clock wired: paints count with a zero duration');
         // Every stage, not just the total: the stamps are all 0.0 on this path,
         // and a single wrong one would leave the total right and the splits
         // nonsense — one stage a second long and the next a second short.
-        $this->assertSame([0.0], Probe::get($perf, 'renderDurations'));
-        $this->assertSame([0.0], Probe::get($perf, 'bidiDurations'));
-        $this->assertSame([0.0], Probe::get($perf, 'writeDurations'));
+        $this->assertSame([0.0], Probe::get($perf, property: 'renderDurations'));
+        $this->assertSame([0.0], Probe::get($perf, property: 'bidiDurations'));
+        $this->assertSame([0.0], Probe::get($perf, property: 'writeDurations'));
         $tui->stop();
     }
 
@@ -395,13 +395,13 @@ final class BidiTuiFramePacingTest extends TestCase
         $this->microTurn();
 
         $this->scroll($tui); // queues a deferred tick
-        $this->assertTrue((bool) Probe::get($tui, 'immediateTickQueued'));
-        $deferId = Probe::get($tui, 'immediateTickId');
+        $this->assertTrue((bool) Probe::get($tui, property: 'immediateTickQueued'));
+        $deferId = Probe::get($tui, property: 'immediateTickId');
         $this->assertIsString($deferId);
         $tui->stop();
 
-        $this->assertFalse((bool) Probe::get($tui, 'immediateTickQueued'), 'the flag reset with the cancel');
-        $this->assertNull(Probe::get($tui, 'immediateTickId'));
+        $this->assertFalse((bool) Probe::get($tui, property: 'immediateTickQueued'), 'the flag reset with the cancel');
+        $this->assertNull(Probe::get($tui, property: 'immediateTickId'));
         $this->assertNotContains($deferId, EventLoop::getIdentifiers(), 'the pending defer was cancelled, not leaked');
         $this->assertFalse($tui->isRunning(), 'the override still delegates to the vendor stop');
     }
@@ -442,14 +442,14 @@ final class BidiTuiFramePacingTest extends TestCase
             $this->microTurn();
         }
 
-        $this->assertNotNull(Probe::get($tui, 'lastFrameAt'), 'frames stamped the cap window');
-        $painted = Probe::get($perf, 'paints');
+        $this->assertNotNull(Probe::get($tui, property: 'lastFrameAt'), 'frames stamped the cap window');
+        $painted = Probe::get($perf, property: 'paints');
         // Events land on a 5ms grid, so paints land on the 20ms grid (the first
         // event past each 16.7ms window): 500ms of flood ≈ 25 paints + the
         // initial frame — versus 101 unpaced (the companion test below).
         $this->assertGreaterThanOrEqual(24, $painted, 'the flood still paints near the cap rate');
         $this->assertLessThanOrEqual(31, $painted, 'the flood cannot exceed the cap rate');
-        $this->assertGreaterThanOrEqual(69, Probe::get($perf, 'capSkips'), 'the majority of events were coalesced away');
+        $this->assertGreaterThanOrEqual(69, Probe::get($perf, property: 'capSkips'), 'the majority of events were coalesced away');
         $tui->stop();
     }
 
@@ -479,7 +479,7 @@ final class BidiTuiFramePacingTest extends TestCase
             $this->microTurn();
         }
 
-        $this->assertSame(51, Probe::get($perf, 'paints'), 'one frame per event, plus the initial frame');
+        $this->assertSame(51, Probe::get($perf, property: 'paints'), 'one frame per event, plus the initial frame');
         $tui->stop();
     }
 }

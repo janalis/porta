@@ -87,11 +87,11 @@ final class MenuModelTest extends TestCase
     {
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
 
-        $item = $this->item($menus, 'Edit', 'Toggle Block Comment');
+        $item = $this->item($menus, title: 'Edit', label: 'Toggle Block Comment');
         $this->assertSame('Ctrl+Shift+/', $item->shortcut);
 
         // Beside the line verb, not instead of it: they are two verbs.
-        $this->assertSame('Ctrl+/', $this->item($menus, 'Edit', 'Toggle Comment')->shortcut);
+        $this->assertSame('Ctrl+/', $this->item($menus, title: 'Edit', label: 'Toggle Comment')->shortcut);
     }
 
     public function testAViewlessContributionAddsItsMenuAndNoViewSafeEntry(): void
@@ -245,34 +245,34 @@ final class MenuModelTest extends TestCase
         $menus = $this->build($commands, new CodeEditorWidget()); // filePath === null
 
         // Editor document actions + file-scoped IDE commands are disabled.
-        $this->assertFalse($this->item($menus, 'Edit', 'Undo')->enabled());
-        $this->assertFalse($this->item($menus, 'File', 'Save File')->enabled());
-        $this->assertFalse($this->item($menus, 'Navigate', 'Go to Line')->enabled());
-        $this->assertFalse($this->item($menus, 'Edit', 'Reformat File')->enabled());
-        $this->assertFalse($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
+        $this->assertFalse($this->item($menus, title: 'Edit', label: 'Undo')->enabled());
+        $this->assertFalse($this->item($menus, title: 'File', label: 'Save File')->enabled());
+        $this->assertFalse($this->item($menus, title: 'Navigate', label: 'Go to Line')->enabled());
+        $this->assertFalse($this->item($menus, title: 'Edit', label: 'Reformat File')->enabled());
+        $this->assertFalse($this->item($menus, title: 'Git', label: 'Git: Stage Current File')->enabled());
         // Adopted by the local-history plugin now, so it is only in the menu
         // when that plugin registered it — which is what $commands does here.
-        $this->assertFalse($this->item($menus, 'File', 'Show Local History')->enabled());
+        $this->assertFalse($this->item($menus, title: 'File', label: 'Show Local History')->enabled());
 
         // The git view itself is not file-scoped.
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Changes')->enabled());
+        $this->assertTrue($this->item($menus, title: 'Git', label: 'Git: Changes')->enabled());
 
         // Ways back into a file + global commands stay enabled.
-        $this->assertTrue($this->item($menus, 'File', 'Recent Files')->enabled());
-        $this->assertTrue($this->item($menus, 'File', 'Go to File')->enabled());
-        $this->assertTrue($this->item($menus, 'File', 'Quit')->enabled(), 'null predicate → always enabled');
+        $this->assertTrue($this->item($menus, title: 'File', label: 'Recent Files')->enabled());
+        $this->assertTrue($this->item($menus, title: 'File', label: 'Go to File')->enabled());
+        $this->assertTrue($this->item($menus, title: 'File', label: 'Quit')->enabled(), 'null predicate → always enabled');
     }
 
     public function testEverythingEnabledOnceAFileIsOpen(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "<?php\n");
+        $editor->openFile('x.php', content: "<?php\n");
         $menus = $this->build($this->gitCommands(), $editor);
 
-        $this->assertTrue($this->item($menus, 'Edit', 'Undo')->enabled());
-        $this->assertTrue($this->item($menus, 'File', 'Save File')->enabled());
-        $this->assertTrue($this->item($menus, 'Edit', 'Reformat File')->enabled());
-        $this->assertTrue($this->item($menus, 'Git', 'Git: Stage Current File')->enabled());
+        $this->assertTrue($this->item($menus, title: 'Edit', label: 'Undo')->enabled());
+        $this->assertTrue($this->item($menus, title: 'File', label: 'Save File')->enabled());
+        $this->assertTrue($this->item($menus, title: 'Edit', label: 'Reformat File')->enabled());
+        $this->assertTrue($this->item($menus, title: 'Git', label: 'Git: Stage Current File')->enabled());
     }
 
     /**
@@ -283,7 +283,7 @@ final class MenuModelTest extends TestCase
     public function testEveryItemRunsThroughTheGateAndNoneGreysOut(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "<?php\n");
+        $editor->openFile('x.php', content: "<?php\n");
         $ran = [];
         $order = [];
         $commands = $this->gitCommands()->add(
@@ -315,8 +315,8 @@ final class MenuModelTest extends TestCase
             $this->assertTrue($this->item($menus, $menu, $label)->enabled(), $label.' stays enabled');
         }
 
-        ($this->item($menus, 'File', 'Settings…')->run)();
-        ($this->item($menus, 'Edit', 'Undo')->run)();
+        ($this->item($menus, title: 'File', label: 'Settings…')->run)();
+        ($this->item($menus, title: 'Edit', label: 'Undo')->run)();
         $this->assertSame(['i:ide_settings', 'e:undo'], $ran, 'each item names its scope and id to the gate');
         $this->assertSame(['gate', 'run', 'gate'], $order, 'the gate is asked before the command runs');
     }
@@ -324,17 +324,17 @@ final class MenuModelTest extends TestCase
     public function testSettingsIsListedInTheFileMenu(): void
     {
         $menus = $this->build(new CommandRegistry(), new CodeEditorWidget());
-        $this->assertSame('Settings…', $this->item($menus, 'File', 'Settings…')->label);
+        $this->assertSame('Settings…', $this->item($menus, title: 'File', label: 'Settings…')->label);
     }
 
     public function testEditorItemRunsRunActionAndShowsShortcut(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "<?php\necho 1;\n");
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->openFile('x.php', content: "<?php\necho 1;\n");
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $menus = $this->build(new CommandRegistry(), $editor);
-        $dup = $this->item($menus, 'Edit', 'Duplicate Line or Selection');
+        $dup = $this->item($menus, title: 'Edit', label: 'Duplicate Line or Selection');
 
         $this->assertSame('Ctrl+D', $dup->shortcut, 'shortcut resolved from editor keybindings');
         ($dup->run)();
@@ -354,7 +354,7 @@ final class MenuModelTest extends TestCase
         );
 
         $menus = $this->build($commands, new CodeEditorWidget());
-        $run = $this->item($menus, 'Run', 'Run…');
+        $run = $this->item($menus, title: 'Run', label: 'Run…');
 
         $this->assertSame('Ctrl+Shift+R', $run->shortcut, 'shortcut resolved from IDE keybindings');
         ($run->run)();
@@ -375,7 +375,7 @@ final class MenuModelTest extends TestCase
         );
 
         $menus = $this->build($commands, new CodeEditorWidget());
-        $item = $this->item($menus, 'Navigate', 'Search Everywhere');
+        $item = $this->item($menus, title: 'Navigate', label: 'Search Everywhere');
 
         $this->assertSame('Ctrl+Shift+E', $item->shortcut, 'shortcut resolved from IDE keybindings');
         $this->assertTrue($item->enabled(), 'available without an open file');
@@ -389,7 +389,7 @@ final class MenuModelTest extends TestCase
         $commands->add('cycle_inlay_hints', static function (): void {}, label: 'Cycle Inlay Hints');
 
         $menus = $this->build($commands, new CodeEditorWidget());
-        $item = $this->item($menus, 'View', 'Cycle Inlay Hints');
+        $item = $this->item($menus, title: 'View', label: 'Cycle Inlay Hints');
         $this->assertFalse($item->separator);
     }
 
@@ -485,7 +485,7 @@ final class MenuModelTest extends TestCase
     {
         $paused = false;
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "<?php\n");
+        $editor->openFile('x.php', content: "<?php\n");
         $commands = $this->gitCommands()
             ->add(
                 'debug_step_over',
@@ -496,7 +496,7 @@ final class MenuModelTest extends TestCase
             );
 
         $menus = $this->build($commands, $editor);
-        $item = $this->item($menus, 'Run', 'Step Over');
+        $item = $this->item($menus, title: 'Run', label: 'Step Over');
 
         $this->assertFalse($item->enabled(), 'no session → greyed');
         $paused = true;
@@ -511,12 +511,12 @@ final class MenuModelTest extends TestCase
     public function testACommandWithNoWhenIsUntouchedByTheGate(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "<?php\n");
+        $editor->openFile('x.php', content: "<?php\n");
         $commands = $this->gitCommands()->add('debug_step_over', static function (): void {});
 
         $menus = $this->build($commands, $editor);
 
-        $this->assertTrue($this->item($menus, 'Run', 'Step Over')->enabled(), 'no gate → enabled');
+        $this->assertTrue($this->item($menus, title: 'Run', label: 'Step Over')->enabled(), 'no gate → enabled');
     }
 
     /** A command registered with a state is a toggle all the way to its menu item, which reads the state live. */

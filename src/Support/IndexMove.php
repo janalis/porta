@@ -22,7 +22,7 @@ final class IndexMove
         if ($from < 0 || $from >= $count) {
             return null;
         }
-        $to = IntMath::clamp($to, 0, $count - 1);
+        $to = IntMath::clamp($to, lo: 0, hi: $count - 1);
 
         return $from === $to ? null : $to;
     }

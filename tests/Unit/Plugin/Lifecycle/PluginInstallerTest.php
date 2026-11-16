@@ -225,13 +225,13 @@ final class PluginInstallerTest extends TestCase
         $this->untrustProjects();
         $refused = 'composer runs code of the project\'s own: trust the project to use it';
 
-        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/mylint');
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), source: 'acme/mylint');
         $this->assertSame($refused, $error);
         $this->assertNull($file);
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins');
-        $this->assertSame($refused, $this->remove($this->installer(composer: $this->fakeComposer()), 'demo'));
+        $this->assertSame($refused, $this->remove($this->installer(composer: $this->fakeComposer()), name: 'demo'));
 
-        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/mylint', InstallScope::Global);
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), source: 'acme/mylint', scope: InstallScope::Global);
         $this->assertNull($error, 'for every project: the user\'s own');
     }
 
@@ -239,7 +239,7 @@ final class PluginInstallerTest extends TestCase
     {
         $installer = new PluginInstaller($this->project->dir, $this->global->dir, new Translator('en'), null, null, self::found($this->fakeComposer()), trust: static fn (): bool => false);
 
-        [$error] = $this->install($installer, 'acme/mylint');
+        [$error] = $this->install($installer, source: 'acme/mylint');
 
         $this->assertSame('composer runs code of the project\'s own: trust the project to use it', $error);
     }
@@ -248,7 +248,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testNameInstallLandsAsASymlink(): void
     {
-        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/mylint');
+        [$error, $file] = $this->install($this->installer(composer: $this->fakeComposer()), source: 'acme/mylint');
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/mylint/porta.php', $file);
         $this->assertFileExists((string) $file);
@@ -258,31 +258,31 @@ final class PluginInstallerTest extends TestCase
     public function testAPortaPrefixedPackageLandsUnderItsPluginName(): void
     {
         $installer = $this->installer(composer: $this->fakeComposer());
-        [$error, $file] = $this->install($installer, 'janalis/porta-todo');
+        [$error, $file] = $this->install($installer, source: 'janalis/porta-todo');
 
         $this->assertNull($error);
         $this->assertSame($this->project->dir.'/.porta/plugins/todo/porta.php', $file, 'the name a bundled todo goes by, so it shadows it');
-        $this->assertNull($this->remove($installer, 'todo'));
+        $this->assertNull($this->remove($installer, name: 'todo'));
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/todo');
     }
 
     public function testNameInstallGuards(): void
     {
         $installer = $this->installer(composer: $this->fakeComposer());
-        $this->install($installer, 'acme/mylint');
-        [$error] = $this->install($installer, 'acme/mylint');
+        $this->install($installer, source: 'acme/mylint');
+        [$error] = $this->install($installer, source: 'acme/mylint');
         $this->assertSame('Plugin "mylint" is already installed', $error);
 
         // A dotted project segment passes the vendor/name classification but
         // fails the plugin directory-name pattern, which forbids dots.
-        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), 'acme/a.b');
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer()), source: 'acme/a.b');
         $this->assertSame('"a.b" is not a valid plugin name', $error);
     }
 
     public function testNameInstallRollsBackAPackageThatIsNotAPortaPlugin(): void
     {
         $composer = $this->fakeComposer(packages: ['acme/wrong' => ['composerJson' => (string) \json_encode(['name' => 'acme/wrong', 'type' => 'library'], \JSON_THROW_ON_ERROR)]]);
-        [$error, $file] = $this->install($this->installer(composer: $composer), 'acme/wrong');
+        [$error, $file] = $this->install($this->installer(composer: $composer), source: 'acme/wrong');
 
         $this->assertSame('"acme/wrong" is not a Porta plugin package', $error);
         $this->assertNull($file);
@@ -295,7 +295,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testNameInstallReportsAComposerFailure(): void
     {
-        [$error] = $this->install($this->installer(composer: $this->fakeComposer(3)), 'acme/mylint');
+        [$error] = $this->install($this->installer(composer: $this->fakeComposer(3)), source: 'acme/mylint');
         $this->assertStringContainsString('composer require failed (exit code 3)', (string) $error);
     }
 
@@ -304,7 +304,7 @@ final class PluginInstallerTest extends TestCase
         $composer = $this->fakeComposer();
         \chmod($this->project->dir, permissions: 0o555);
         try {
-            [$error] = $this->install($this->installer(composer: $composer), 'acme/mylint');
+            [$error] = $this->install($this->installer(composer: $composer), source: 'acme/mylint');
         } finally {
             \chmod($this->project->dir, permissions: 0o755);
         }
@@ -314,7 +314,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testNameInstallWithoutComposerFails(): void
     {
-        [$error] = $this->install($this->installer(), 'acme/mylint');
+        [$error] = $this->install($this->installer(), source: 'acme/mylint');
         $this->assertSame('composer is not available', $error);
     }
 
@@ -322,7 +322,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testAnUnrecognizedSourceIsRefusedWithoutTouchingComposer(): void
     {
-        [$error] = $this->install($this->installer(), 'not a valid source at all');
+        [$error] = $this->install($this->installer(), source: 'not a valid source at all');
         $this->assertSame('"not a valid source at all" is not a git URL, a local directory, or a vendor/name package', $error);
     }
 
@@ -348,7 +348,7 @@ final class PluginInstallerTest extends TestCase
     {
         $git = $this->git();
 
-        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), 'file:///nonexistent/nowhere');
+        [$error] = $this->install($this->installer(git: $git, composer: $this->fakeComposer()), source: 'file:///nonexistent/nowhere');
         $this->assertStringContainsString('git clone failed (exit code', (string) $error);
 
         $repoNoPlugin = $this->repo(withPluginPhp: Presence::Without);
@@ -399,7 +399,7 @@ final class PluginInstallerTest extends TestCase
 
     public function testUrlSourcesRequireGit(): void
     {
-        [$error] = $this->install($this->installer(), 'https://example.com/x/demo.git');
+        [$error] = $this->install($this->installer(), source: 'https://example.com/x/demo.git');
         $this->assertSame('git is not available', $error);
     }
 
@@ -484,7 +484,7 @@ final class PluginInstallerTest extends TestCase
         $landed = $this->project->dir.'/.porta/vendor/test/demo';
         $this->assertFileExists($landed.'/porta.php', 'sanity: composer "landed" the package');
 
-        $error = $this->remove($installer, 'demo', InstallScope::Project);
+        $error = $this->remove($installer, name: 'demo', scope: InstallScope::Project);
 
         $this->assertNull($error);
         $this->assertFileDoesNotExist($this->project->dir.'/.porta/plugins/demo', 'the symlink is gone');
@@ -499,7 +499,7 @@ final class PluginInstallerTest extends TestCase
 
         // A fresh installer pointed at a composer stub that now fails.
         $installer2 = $this->installer(composer: $this->fakeComposer(3));
-        $error = $this->remove($installer2, 'demo', InstallScope::Project);
+        $error = $this->remove($installer2, name: 'demo', scope: InstallScope::Project);
 
         $this->assertSame('Cannot remove "demo"', $error);
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo', 'a failed composer remove leaves the plugin standing');
@@ -517,7 +517,7 @@ final class PluginInstallerTest extends TestCase
         \mkdir(\dirname($dest), permissions: 0o777, recursive: true);
         \symlink($target, $dest);
 
-        $error = $this->remove($this->installer(), 'broken', InstallScope::Project);
+        $error = $this->remove($this->installer(), name: 'broken', scope: InstallScope::Project);
 
         $this->assertSame('Cannot remove "broken"', $error);
         $this->assertTrue(\is_link($dest), 'left standing — nothing safe to do');
@@ -529,7 +529,7 @@ final class PluginInstallerTest extends TestCase
         $installer = $this->installer(composer: $this->fakeComposer());
         $this->install($installer, $source);
 
-        $error = $this->remove($this->installer(), 'demo', InstallScope::Project);
+        $error = $this->remove($this->installer(), name: 'demo', scope: InstallScope::Project);
 
         $this->assertSame('Cannot remove "demo"', $error);
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
@@ -543,7 +543,7 @@ final class PluginInstallerTest extends TestCase
         \mkdir($dir, permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/porta.php', data: "<?php\n");
 
-        $error = $this->remove($this->installer(), 'legacy', InstallScope::Project);
+        $error = $this->remove($this->installer(), name: 'legacy', scope: InstallScope::Project);
 
         $this->assertNull($error);
         $this->assertDirectoryDoesNotExist($dir);
@@ -562,7 +562,7 @@ final class PluginInstallerTest extends TestCase
         \chmod($this->project->dir.'/.porta/plugins', permissions: 0o555);
 
         try {
-            $error = $this->remove($this->installer(), 'stuck', InstallScope::Project);
+            $error = $this->remove($this->installer(), name: 'stuck', scope: InstallScope::Project);
             $this->assertSame('Cannot remove "stuck"', $error);
             $this->assertDirectoryExists($dir);
         } finally {
@@ -572,8 +572,8 @@ final class PluginInstallerTest extends TestCase
 
     public function testRemoveAndItsErrors(): void
     {
-        $this->assertNull($this->remove($this->installer(), 'gone', InstallScope::Project), 'removing a missing dir is a quiet success');
-        $this->assertSame('Cannot remove "x"', $this->remove($this->installer(globalBase: null), 'x', InstallScope::Global));
+        $this->assertNull($this->remove($this->installer(), name: 'gone', scope: InstallScope::Project), 'removing a missing dir is a quiet success');
+        $this->assertSame('Cannot remove "x"', $this->remove($this->installer(globalBase: null), name: 'x', scope: InstallScope::Global));
     }
 
     public function testRemoveFailsClearlyWhenTheScaffoldCannotBeRewritten(): void
@@ -589,7 +589,7 @@ final class PluginInstallerTest extends TestCase
         \unlink($this->project->dir.'/.porta/composer.json');
         \chmod($this->project->dir.'/.porta', permissions: 0o555);
         try {
-            $error = $this->remove($installer, 'demo', InstallScope::Project);
+            $error = $this->remove($installer, name: 'demo', scope: InstallScope::Project);
         } finally {
             \chmod($this->project->dir.'/.porta', permissions: 0o755);
         }
@@ -612,7 +612,7 @@ final class PluginInstallerTest extends TestCase
             $installer->installed(),
         );
 
-        $this->assertSame('Built-in plugins cannot be removed', $this->remove($installer, 'bundled', InstallScope::Embedded));
+        $this->assertSame('Built-in plugins cannot be removed', $this->remove($installer, name: 'bundled', scope: InstallScope::Embedded));
         $this->assertDirectoryExists($embedded->dir.'/bundled');
     }
 
@@ -788,15 +788,15 @@ final class PluginInstallerTest extends TestCase
             self::fail('composer ran for a plugin that owes nothing');
         };
 
-        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nodeps', '{"require":{"php":">=8.4"}}'), $never));
-        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nomanifest', '{}'), $never));
+        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nodeps', json: '{"require":{"php":">=8.4"}}'), $never));
+        $this->assertSame(DependencyInstall::NotNeeded, $installer->installDependencies($this->pluginDir('nomanifest', json: '{}'), $never));
         $unasked = new PluginInstaller($this->project->dir, null, new Translator('en'), null, null, static function (): never {
             self::fail('composer looked up for a plugin that owes nothing: a PATH walk per plugin of a chain');
         });
-        $this->assertSame(DependencyInstall::NotNeeded, $unasked->installDependencies($this->pluginDir('nodeps2', '{"require":{"php":">=8.4"}}'), $never));
+        $this->assertSame(DependencyInstall::NotNeeded, $unasked->installDependencies($this->pluginDir('nodeps2', json: '{"require":{"php":">=8.4"}}'), $never));
         $this->assertSame(
             DependencyInstall::NoComposer,
-            $this->installer()->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), $never),
+            $this->installer()->installDependencies($this->pluginDir('needy', json: '{"require":{"vend/lib":"^1.0"}}'), $never),
             'no composer on this machine',
         );
     }
@@ -808,7 +808,7 @@ final class PluginInstallerTest extends TestCase
         \symlink(\PHP_BINARY, $bin->path('php')); // the fake composer is a php script
         \putenv('PATH='.$bin->dir);
         $installer = PluginInstaller::create($this->project->dir, new Translator('en'));
-        $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('needy', json: '{"require":{"vend/lib":"^1.0"}}');
         $code = null;
         $onExit = static function (int $exit) use (&$code): void {
             $code = $exit;
@@ -827,7 +827,7 @@ final class PluginInstallerTest extends TestCase
     public function testInstallingDependenciesRunsComposerAndReportsItsExitCode(): void
     {
         $installer = $this->installer(composer: $this->fakeComposer());
-        $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('needy', json: '{"require":{"vend/lib":"^1.0"}}');
 
         $code = null;
         $this->assertSame(DependencyInstall::Started, $installer->installDependencies($dir, static function (int $exit) use (&$code): void {
@@ -849,7 +849,7 @@ final class PluginInstallerTest extends TestCase
         $installer = $this->installer(composer: $this->fakeComposer(3));
 
         $code = null;
-        $installer->installDependencies($this->pluginDir('flaky', '{"require":{"vend/lib":"^1.0"}}'), static function (int $exit) use (&$code): void {
+        $installer->installDependencies($this->pluginDir('flaky', json: '{"require":{"vend/lib":"^1.0"}}'), static function (int $exit) use (&$code): void {
             $code = $exit;
         });
         $this->await(static function () use (&$code): bool {
@@ -873,14 +873,14 @@ final class PluginInstallerTest extends TestCase
 
         $this->assertSame(
             DependencyInstall::Busy,
-            $installer->installDependencies($this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}'), static fn (int $exit): null => null),
+            $installer->installDependencies($this->pluginDir('needy', json: '{"require":{"vend/lib":"^1.0"}}'), static fn (int $exit): null => null),
         );
 
         // …and a plugin that owes nothing is NOT refused, because NotNeeded is
         // answered before the slot is ever consulted.
         $this->assertSame(
             DependencyInstall::NotNeeded,
-            $installer->installDependencies($this->pluginDir('nodeps', '{}'), static fn (int $exit): null => null),
+            $installer->installDependencies($this->pluginDir('nodeps', json: '{}'), static fn (int $exit): null => null),
         );
 
         // Let the install finish rather than ending on an armed stream watcher.
@@ -895,7 +895,7 @@ final class PluginInstallerTest extends TestCase
         // later, so it is written on success and only on success: a
         // half-installed tree is not one we should claim we made.
         $installer = $this->installer(composer: $this->fakeComposer());
-        $dir = $this->pluginDir('needy', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('needy', json: '{"require":{"vend/lib":"^1.0"}}');
 
         $code = null;
         $installer->installDependencies($dir, static function (int $exit) use (&$code): void {
@@ -913,7 +913,7 @@ final class PluginInstallerTest extends TestCase
     public function testAFailedInstallLeavesNoClaimOnTheTree(): void
     {
         $installer = $this->installer(composer: $this->fakeComposer(3));
-        $dir = $this->pluginDir('flaky', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('flaky', json: '{"require":{"vend/lib":"^1.0"}}');
 
         $code = null;
         $installer->installDependencies($dir, static function (int $exit) use (&$code): void {
@@ -933,7 +933,7 @@ final class PluginInstallerTest extends TestCase
         // The case the marker exists for: a plugin that commits its vendor/
         // must not lose tracked files to a checkbox.
         $installer = $this->installer();
-        $dir = $this->pluginDir('shipped', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('shipped', json: '{"require":{"vend/lib":"^1.0"}}');
         \mkdir($dir.'/vendor/vend', permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/vendor/vend/Thing.php', data: "<?php\n");
 
@@ -942,7 +942,7 @@ final class PluginInstallerTest extends TestCase
 
         $this->assertSame(
             DependencyRemoval::NotOurs,
-            $installer->removeDependencies($this->pluginDir('bare', '{}')),
+            $installer->removeDependencies($this->pluginDir('bare', json: '{}')),
             'and no vendor at all is not a failure either',
         );
     }
@@ -952,7 +952,7 @@ final class PluginInstallerTest extends TestCase
         // Deleting a tree composer is writing into leaves a half-vendor that
         // needsInstall() would then call complete.
         $installer = $this->installer(git: $this->git(), composer: $this->fakeComposer());
-        $dir = $this->pluginDir('marked', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('marked', json: '{"require":{"vend/lib":"^1.0"}}');
         \mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
 
@@ -975,7 +975,7 @@ final class PluginInstallerTest extends TestCase
             $this->markTestSkipped('root deletes anything');
         }
         $installer = $this->installer();
-        $dir = $this->pluginDir('stuck', '{"require":{"vend/lib":"^1.0"}}');
+        $dir = $this->pluginDir('stuck', json: '{"require":{"vend/lib":"^1.0"}}');
         \mkdir($dir.'/vendor', permissions: 0o777, recursive: true);
         \file_put_contents($dir.'/'.PluginInstaller::MARKER, data: "x\n");
         // No write bit on the PLUGIN directory, so its `vendor` entry cannot be

@@ -306,7 +306,7 @@ final class ProjectSwitcherTest extends TestCase
         $switcher->open();
 
         /** @var array{items: list<array{label: string, hint: string, value: string}>} $list */
-        $list = Probe::get(Probe::get($this->editor, 'overlayHost'), 'overlay');
+        $list = Probe::get(Probe::get($this->editor, property: 'overlayHost'), property: 'overlay');
         $this->assertSame(['label' => 'app', 'hint' => 'deploy@example.org:/srv/app', 'value' => $cache], $list['items'][0], 'most recent first');
         $this->assertSame(\basename($local->dir), $list['items'][1]['label'], 'a local one by its folder');
     }
@@ -327,7 +327,7 @@ final class ProjectSwitcherTest extends TestCase
     {
         $other = new TempProject(['composer.json' => '{}']);
         $switcher = $this->switcher($other->dir);
-        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($this->here->path('a.php'), content: "<?php\n")->document->insert('x');
 
         $switcher->open();
         $this->editor->handleInput("\r");
@@ -351,15 +351,15 @@ final class ProjectSwitcherTest extends TestCase
     {
         $other = new TempProject(['composer.json' => '{}']);
         $switcher = $this->switcher();
-        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($this->here->path('a.php'), content: "<?php\n")->document->insert('x');
 
-        $switcher->openPath($other->dir, 'Pick it again to switch worktree');
+        $switcher->openPath($other->dir, repeat: 'Pick it again to switch worktree');
 
         $this->assertSame([], $this->requested);
         $this->assertStringContainsString('Pick it again to switch worktree', $this->flashText($this->statusBar));
         $this->assertStringNotContainsString('Ctrl+Shift+O', $this->flashText($this->statusBar));
 
-        $switcher->openPath($other->dir, 'Pick it again to switch worktree');
+        $switcher->openPath($other->dir, repeat: 'Pick it again to switch worktree');
 
         $this->assertSame([(string) \realpath($other->dir)], $this->requested, 'and repeating it goes through');
     }
@@ -368,7 +368,7 @@ final class ProjectSwitcherTest extends TestCase
     {
         $other = new TempProject(['composer.json' => '{}']);
         $switcher = $this->switcher();
-        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($this->here->path('a.php'), content: "<?php\n")->document->insert('x');
 
         $switcher->openPath($other->dir);
 
@@ -384,9 +384,9 @@ final class ProjectSwitcherTest extends TestCase
     {
         $other = new TempProject(['composer.json' => '{}']);
         $switcher = $this->switcher($other->dir);
-        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($this->here->path('a.php'), content: "<?php\n")->document->insert('x');
 
-        $this->guard->confirmed('quit', 'press again'); // the user pressed Ctrl+Q once
+        $this->guard->confirmed('quit', repeat: 'press again'); // the user pressed Ctrl+Q once
         $switcher->open();
         $this->editor->handleInput("\r");
 
@@ -424,7 +424,7 @@ final class ProjectSwitcherTest extends TestCase
         $this->assertSame([], $this->requested, 'not yet: asked first');
         $this->assertTrue(EditorState::pickerOpen($this->editor), 'trust, or open restricted');
         /** @var array{title: string, items: list<array{label: string, hint: string, value: string}>} $asked */
-        $asked = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay');
+        $asked = Probe::get(Probe::object($this->editor, 'overlayHost'), property: 'overlay');
         $this->assertSame('Trust '.\basename($root).'?', $asked['title']);
         $this->assertSame(
             [
@@ -541,7 +541,7 @@ final class ProjectSwitcherTest extends TestCase
         $this->trustNothing = true;
         $this->untrustProjects();
         $switcher = $this->switcher();
-        $this->buffers->open($this->here->path('a.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($this->here->path('a.php'), content: "<?php\n")->document->insert('x');
 
         $switcher->trustCurrent();
 
@@ -599,7 +599,7 @@ final class ProjectSwitcherTest extends TestCase
         $parent = new TempProject(['other/a' => '', 'here/composer.json' => '{}']);
         $this->keep = $parent;
         $switcher = $this->switcherIn($parent->path('here'));
-        $this->buffers->open($parent->path('here/x.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($parent->path('here/x.php'), content: "<?php\n")->document->insert('x');
 
         ($switcher->siblingItems()[1]->run)(); // other
 

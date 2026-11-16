@@ -25,7 +25,7 @@ final class ProjectLocationTest extends TestCase
         $project = new TempProject([ProjectLocation::MARKER => '{"url": 42}']);
         $this->assertFalse(ProjectLocation::forRoot($project->dir)->isRemote());
 
-        $project->write(ProjectLocation::MARKER, '{"url": "/not/remote"}');
+        $project->write(ProjectLocation::MARKER, content: '{"url": "/not/remote"}');
         $this->assertFalse(ProjectLocation::forRoot($project->dir)->isRemote());
     }
 

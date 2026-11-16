@@ -30,7 +30,7 @@ final class TestDockTools
     /** @param list<array{plugin: string, id: string, title: string, rerun: (\Closure(): void)|null, activate: (\Closure(string, int): void)|null}> $tools */
     public static function controller(array $tools = [], ?BottomDock $dock = null, string $rootDir = '/p'): DockToolController
     {
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
 
         return new DockToolController(
             self::source($tools),

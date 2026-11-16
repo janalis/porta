@@ -67,10 +67,10 @@ abstract class EditorPaneWidget extends AbstractWidget implements FocusableInter
     {
         $kb = $this->getKeybindings();
         match (true) {
-            $kb->matches($data, 'next_buffer') => $this->handler?->cycleBuffer(1),
-            $kb->matches($data, 'prev_buffer') => $this->handler?->cycleBuffer(-1),
-            $kb->matches($data, 'close_buffer') => $this->handler?->closeBuffer(),
-            $kb->matches($data, 'save_all') => $this->handler?->saveAll(),
+            $kb->matches($data, action: 'next_buffer') => $this->handler?->cycleBuffer(1),
+            $kb->matches($data, action: 'prev_buffer') => $this->handler?->cycleBuffer(-1),
+            $kb->matches($data, action: 'close_buffer') => $this->handler?->closeBuffer(),
+            $kb->matches($data, action: 'save_all') => $this->handler?->saveAll(),
             default => null,
         };
     }

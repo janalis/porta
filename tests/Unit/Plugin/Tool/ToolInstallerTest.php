@@ -166,7 +166,7 @@ final class ToolInstallerTest extends TestCase
         $this->assertSame(ToolOutcome::Installed, $this->drive($installer, $tool)->outcome);
         $this->assertSame(['/bin/cargo install x-cli --locked'], $this->ran);
 
-        $this->assertSame(ToolOutcome::Updated, $this->drive($installer, $tool, $tool->sources[0], '/home/me/.cargo/bin/x')->outcome);
+        $this->assertSame(ToolOutcome::Updated, $this->drive($installer, $tool, $tool->sources[0], updating: '/home/me/.cargo/bin/x')->outcome);
         $this->assertSame('/bin/cargo install x-cli --locked --force', $this->ran[1]);
     }
 
@@ -190,7 +190,7 @@ final class ToolInstallerTest extends TestCase
     {
         $tool = self::tool([new ToolSource(ToolManager::Npm, 'x')]);
 
-        $result = $this->drive($this->installer(), $tool, $tool->sources[0], '/usr/lib/node_modules/x/bin/x');
+        $result = $this->drive($this->installer(), $tool, $tool->sources[0], updating: '/usr/lib/node_modules/x/bin/x');
         $this->assertSame('npm is not on the PATH', $result->why);
         $this->assertSame([], $this->ran);
     }

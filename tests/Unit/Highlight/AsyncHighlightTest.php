@@ -46,12 +46,12 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $provisional = $highlighter->highlight(['<?php', 'echo 1;'], 1);
+        $provisional = $highlighter->highlight(['<?php', 'echo 1;'], version: 1);
         $this->assertSame(['<?php', 'echo 1;'], $provisional, 'painted plain while waiting');
 
         $provider->deliverPending();
 
-        $resolved = $highlighter->highlight(['<?php', 'echo 1;'], 1);
+        $resolved = $highlighter->highlight(['<?php', 'echo 1;'], version: 1);
         $this->assertStringContainsString(self::PAINT, \implode('', $resolved));
         $this->assertSame(['<?php', 'echo 1;'], \array_map(AnsiUtils::stripAnsiCodes(...), $resolved));
     }
@@ -65,7 +65,7 @@ final class AsyncHighlightTest extends TestCase
             ++$repaints;
         });
 
-        $highlighter->highlight(['<?php'], 1);
+        $highlighter->highlight(['<?php'], version: 1);
         $this->assertSame(0, $repaints, 'nothing to repaint yet');
 
         $provider->deliverPending();
@@ -82,7 +82,7 @@ final class AsyncHighlightTest extends TestCase
         });
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['<?php'], 1);
+        $highlighter->highlight(['<?php'], version: 1);
 
         $this->assertSame(0, $repaints);
     }
@@ -93,11 +93,11 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['<?php', 'echo 1;'], 1);
+        $highlighter->highlight(['<?php', 'echo 1;'], version: 1);
         $provider->deliverPending();
-        $highlighter->highlight(['<?php', 'echo 1;'], 1);
+        $highlighter->highlight(['<?php', 'echo 1;'], version: 1);
 
-        $provisional = $highlighter->highlight(['<?php', 'echo 2;'], 2);
+        $provisional = $highlighter->highlight(['<?php', 'echo 2;'], version: 2);
 
         $this->assertStringContainsString(self::PAINT, \implode('', $provisional), 'kept the old colors');
     }
@@ -108,11 +108,11 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['<?php', 'echo 1;'], 1);
+        $highlighter->highlight(['<?php', 'echo 1;'], version: 1);
         $provider->deliverPending();
-        $highlighter->highlight(['<?php', 'echo 1;'], 1);
+        $highlighter->highlight(['<?php', 'echo 1;'], version: 1);
 
-        $provisional = $highlighter->highlight(['<?php', 'echo 1;', 'echo 2;'], 2);
+        $provisional = $highlighter->highlight(['<?php', 'echo 1;', 'echo 2;'], version: 2);
 
         $this->assertSame(['<?php', 'echo 1;', 'echo 2;'], $provisional);
     }
@@ -126,12 +126,12 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['one'], 1); // asked about v1
-        $highlighter->highlight(['two'], 2); // superseded by v2
+        $highlighter->highlight(['one'], version: 1); // asked about v1
+        $highlighter->highlight(['two'], version: 2); // superseded by v2
 
         $provider->deliverPending(); // both answers arrive; only v2's is wanted
 
-        $this->assertSame(['two'], \array_map(AnsiUtils::stripAnsiCodes(...), $highlighter->highlight(['two'], 2)));
+        $this->assertSame(['two'], \array_map(AnsiUtils::stripAnsiCodes(...), $highlighter->highlight(['two'], version: 2)));
     }
 
     public function testUnsolicitedDeliveryIsIgnored(): void
@@ -139,9 +139,9 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->deliver('/x/a.php', 99, 'GARBAGE');
+        $highlighter->deliver('/x/a.php', version: 99, markup: 'GARBAGE');
 
-        $this->assertSame(['a'], $highlighter->highlight(['a'], 1));
+        $this->assertSame(['a'], $highlighter->highlight(['a'], version: 1));
     }
 
     /** A backend that answers with the wrong line count is a fault, not a render error. */
@@ -150,10 +150,10 @@ final class AsyncHighlightTest extends TestCase
         $provider = new ClosureHighlightProvider(static fn (): string => "only\none\nline\ncount\nwrong", async: true);
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a', 'b'], 1);
+        $highlighter->highlight(['a', 'b'], version: 1);
         $provider->deliverPending();
 
-        $this->assertSame(['a', 'b'], $highlighter->highlight(['a', 'b'], 1));
+        $this->assertSame(['a', 'b'], $highlighter->highlight(['a', 'b'], version: 1));
     }
 
     /** An explicit give-up leaves the current paint alone. */
@@ -162,10 +162,10 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a'], 1);
-        $highlighter->fail('/x/a.php', 1, new \RuntimeException('gave up'));
+        $highlighter->highlight(['a'], version: 1);
+        $highlighter->fail('/x/a.php', version: 1, error: new \RuntimeException('gave up'));
 
-        $this->assertSame(['a'], $highlighter->highlight(['a'], 1));
+        $this->assertSame(['a'], $highlighter->highlight(['a'], version: 1));
     }
 
     public function testFailForASupersededVersionIsIgnored(): void
@@ -173,11 +173,11 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a'], 1);
-        $highlighter->fail('/x/a.php', 99, new \RuntimeException('stale'));
+        $highlighter->highlight(['a'], version: 1);
+        $highlighter->fail('/x/a.php', version: 99, error: new \RuntimeException('stale'));
         $provider->deliverPending();
 
-        $this->assertStringContainsString(self::PAINT, \implode('', $highlighter->highlight(['a'], 1)));
+        $this->assertStringContainsString(self::PAINT, \implode('', $highlighter->highlight(['a'], version: 1)));
     }
 
     /**
@@ -194,7 +194,7 @@ final class AsyncHighlightTest extends TestCase
         }
 
         $callsBefore = $provider->calls;
-        $highlighter->highlight(['a'], 4);
+        $highlighter->highlight(['a'], version: 4);
 
         $this->assertSame($callsBefore, $provider->calls, 'tripped: the backend is no longer called');
     }
@@ -208,10 +208,10 @@ final class AsyncHighlightTest extends TestCase
         $sink = new CapturingHighlightSink();
         $this->assertNull($sink->markup, 'nothing captured yet');
 
-        $sink->deliver('/x/a.php', 1, 'PAINTED');
+        $sink->deliver('/x/a.php', version: 1, markup: 'PAINTED');
         $this->assertSame('PAINTED', $sink->markup);
 
-        $sink->fail('/x/a.php', 1, new \RuntimeException('gave up'));
+        $sink->fail('/x/a.php', version: 1, error: new \RuntimeException('gave up'));
         $this->assertNull($sink->markup, 'a give-up must not leave the old markup behind');
     }
 
@@ -228,16 +228,16 @@ final class AsyncHighlightTest extends TestCase
         });
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a'], 1);
-        $highlighter->highlight(['a'], 2);
+        $highlighter->highlight(['a'], version: 1);
+        $highlighter->highlight(['a'], version: 2);
         $fail = false;
-        $highlighter->highlight(['a'], 3); // success resets
+        $highlighter->highlight(['a'], version: 3); // success resets
         $fail = true;
-        $highlighter->highlight(['a'], 4);
-        $highlighter->highlight(['a'], 5);
+        $highlighter->highlight(['a'], version: 4);
+        $highlighter->highlight(['a'], version: 5);
 
         $callsBefore = $provider->calls;
-        $highlighter->highlight(['a'], 6);
+        $highlighter->highlight(['a'], version: 6);
 
         $this->assertGreaterThan($callsBefore, $provider->calls, 'still live: never hit three in a row');
     }
@@ -254,7 +254,7 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $this->assertCount(1, $scheduler->scheduled, 'a deadline was armed');
 
         $scheduler->fire();
@@ -262,7 +262,7 @@ final class AsyncHighlightTest extends TestCase
         // The request is forgotten, so a late answer is dropped by the ordinary
         // staleness check rather than clobbering a newer paint.
         $provider->deliverPending();
-        $this->assertSame(['a'], $highlighter->highlight(['a'], 1));
+        $this->assertSame(['a'], $highlighter->highlight(['a'], version: 1));
     }
 
     /** Three timeouts in a row trip the backend, like three failures do. */
@@ -279,7 +279,7 @@ final class AsyncHighlightTest extends TestCase
         }
 
         $callsBefore = $provider->calls;
-        $highlighter->highlight(['a'], 4);
+        $highlighter->highlight(['a'], version: 4);
 
         $this->assertSame($callsBefore, $provider->calls, 'tripped: the backend is no longer called');
     }
@@ -292,7 +292,7 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $provider->deliverPending();
 
         $this->assertSame([], $scheduler->scheduled, 'no deadline left pending');
@@ -313,15 +313,15 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $highlighter->invalidate();
         $scheduler->fire(); // the request is gone; this must not count a strike
 
         // Still live: a fresh request is dispatched and delivers normally.
-        $highlighter->highlight(['a'], 2);
+        $highlighter->highlight(['a'], version: 2);
         $provider->deliverPending();
 
-        $this->assertStringContainsString(self::PAINT, \implode('', $highlighter->highlight(['a'], 2)));
+        $this->assertStringContainsString(self::PAINT, \implode('', $highlighter->highlight(['a'], version: 2)));
     }
 
     /** A synchronous backend never arms a deadline — it has already answered. */
@@ -332,7 +332,7 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
 
         $this->assertSame([], $scheduler->scheduled);
     }
@@ -346,9 +346,9 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
 
-        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'inFlightVersion'));
     }
 
     /**
@@ -364,10 +364,10 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
 
         $this->assertSame([], $scheduler->scheduled, 'no answer deadline armed — there is no answer coming');
-        $this->assertFalse(Probe::get($highlighter, 'asyncBackend'), 'a thrown exception is not evidence of an async backend');
+        $this->assertFalse(Probe::get($highlighter, property: 'asyncBackend'), 'a thrown exception is not evidence of an async backend');
     }
 
     /** A mangled-line-count delivery resets inFlightVersion to the exact idle sentinel. */
@@ -376,10 +376,10 @@ final class AsyncHighlightTest extends TestCase
         $provider = new ClosureHighlightProvider(static fn (): string => "only\none\nline", async: true);
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a', 'b'], 1);
+        $highlighter->highlight(['a', 'b'], version: 1);
         $provider->deliverPending();
 
-        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'inFlightVersion'));
     }
 
     /** A mangled-line-count delivery is a real fault: three in a row trip the backend. */
@@ -393,7 +393,7 @@ final class AsyncHighlightTest extends TestCase
             $provider->deliverPending();
         }
 
-        $this->assertInstanceOf(PlainTextHighlightProvider::class, Probe::get($highlighter, 'provider'), 'three mangled deliveries trip the backend like three failures');
+        $this->assertInstanceOf(PlainTextHighlightProvider::class, Probe::get($highlighter, property: 'provider'), 'three mangled deliveries trip the backend like three failures');
     }
 
     /** A successful delivery resets every counter to its exact idle value, not just clears it. */
@@ -402,14 +402,14 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a'], 1);
-        Probe::set($highlighter, 'staleEdits', 7);
-        Probe::set($highlighter, 'strikes', 2);
+        $highlighter->highlight(['a'], version: 1);
+        Probe::set($highlighter, property: 'staleEdits', value: 7);
+        Probe::set($highlighter, property: 'strikes', value: 2);
         $provider->deliverPending();
 
-        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
-        $this->assertSame(0, Probe::get($highlighter, 'staleEdits'));
-        $this->assertSame(0, Probe::get($highlighter, 'strikes'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'inFlightVersion'));
+        $this->assertSame(0, Probe::get($highlighter, property: 'staleEdits'));
+        $this->assertSame(0, Probe::get($highlighter, property: 'strikes'));
     }
 
     /** An explicit give-up both disarms the deadline and counts as a failure. */
@@ -420,14 +420,14 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $this->assertCount(1, $scheduler->scheduled);
 
-        $highlighter->fail('/x/a.php', 1, new \RuntimeException('gave up'));
+        $highlighter->fail('/x/a.php', version: 1, error: new \RuntimeException('gave up'));
 
         $this->assertSame([], $scheduler->scheduled, 'the deadline was disarmed');
         $this->assertCount(1, $scheduler->cancelled);
-        $this->assertSame(1, Probe::get($highlighter, 'strikes'), 'an explicit fail() counts as a failure');
+        $this->assertSame(1, Probe::get($highlighter, property: 'strikes'), 'an explicit fail() counts as a failure');
     }
 
     /** fail() resets inFlightVersion to the exact idle sentinel. */
@@ -436,10 +436,10 @@ final class AsyncHighlightTest extends TestCase
         $provider = $this->asyncProvider();
         $highlighter = $this->highlighter($provider);
 
-        $highlighter->highlight(['a'], 1);
-        $highlighter->fail('/x/a.php', 1, new \RuntimeException('gave up'));
+        $highlighter->highlight(['a'], version: 1);
+        $highlighter->fail('/x/a.php', version: 1, error: new \RuntimeException('gave up'));
 
-        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'inFlightVersion'));
     }
 
     /** Re-dispatching (a second edit before the first answer) cancels the first deadline. */
@@ -450,9 +450,9 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $firstTimer = (string) \array_key_first($scheduler->scheduled);
-        $highlighter->highlight(['b'], 2);
+        $highlighter->highlight(['b'], version: 2);
 
         $this->assertCount(1, $scheduler->scheduled, 'only one deadline pending at a time');
         $this->assertContains($firstTimer, $scheduler->cancelled, 'the superseded deadline was cancelled, not left dangling');
@@ -466,11 +466,11 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $highlighter->invalidate();
         $scheduler->fire();
 
-        $this->assertSame(0, Probe::get($highlighter, 'strikes'), 'a superseded deadline firing is a no-op, not a fault');
+        $this->assertSame(0, Probe::get($highlighter, property: 'strikes'), 'a superseded deadline firing is a no-op, not a fault');
     }
 
     /** An answer-deadline that genuinely fires resets inFlightVersion to the exact idle sentinel. */
@@ -481,10 +481,10 @@ final class AsyncHighlightTest extends TestCase
         $highlighter = new CodeHighlighter($provider, null, null, $scheduler);
         $highlighter->setFile('/x/a.php');
 
-        $highlighter->highlight(['a'], 1);
+        $highlighter->highlight(['a'], version: 1);
         $scheduler->fire();
 
-        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'inFlightVersion'));
     }
 
     /** disarmAnswerDeadline() is safe even if forced to run with a timer set but no scheduler wired. */
@@ -492,10 +492,10 @@ final class AsyncHighlightTest extends TestCase
     {
         $highlighter = new CodeHighlighter($this->asyncProvider());
         $highlighter->setFile('/x/a.php');
-        Probe::set($highlighter, 'timeoutTimer', 'orphaned-timer-id');
+        Probe::set($highlighter, property: 'timeoutTimer', value: 'orphaned-timer-id');
 
-        Probe::invoke($highlighter, 'disarmAnswerDeadline');
+        Probe::invoke($highlighter, method: 'disarmAnswerDeadline');
 
-        $this->assertNull(Probe::get($highlighter, 'timeoutTimer'));
+        $this->assertNull(Probe::get($highlighter, property: 'timeoutTimer'));
     }
 }

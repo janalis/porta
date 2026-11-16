@@ -31,7 +31,7 @@ trait GitBinary
 
     private function whichGit(): ?string
     {
-        foreach (\explode(\PATH_SEPARATOR, (string) \PORTA_TEST_PRISTINE_PATH) as $d) {
+        foreach (\explode(\PATH_SEPARATOR, \PORTA_TEST_PRISTINE_PATH) as $d) {
             if (\is_file($d.'/git') && \is_executable($d.'/git')) {
                 return $d.'/git';
             }

@@ -14,8 +14,8 @@ final class SeparatorTooltipTest extends TestCase
     {
         $divider = new SeparatorWidget();
 
-        $top = $divider->tooltipAt(2, 0);
-        $low = $divider->tooltipAt(9, 0);
+        $top = $divider->tooltipAt(2, col: 0);
+        $low = $divider->tooltipAt(9, col: 0);
 
         $this->assertSame(['separator', 'Drag to resize', 2, 0, 1], [$top?->key, $top?->text, $top?->row, $top?->colStart, $top?->colEnd]);
         $this->assertSame(['separator', 9], [$low?->key, $low?->row]);

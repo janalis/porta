@@ -54,7 +54,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function binary(PluginApi $api): ?string
     {
-        return $api->toolBinary($this->binaryName, 'binary', $this->search);
+        return $api->toolBinary($this->binaryName, setting: 'binary', lookup: $this->search);
     }
 
     /**
@@ -88,7 +88,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
         }
         $binary = null === $refusal ? $this->binary($api) : null;
         if (null === $binary) {
-            $api->flash($refusal ?? $this->missingBinaryMessage($api), 4.0);
+            $api->flash($refusal ?? $this->missingBinaryMessage($api), seconds: 4.0);
         }
         // Only a resolved binary takes the slot; a refusal leaves it as it was.
         $this->running = $this->running || null !== $binary;
@@ -147,7 +147,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function registerBinarySetting(PluginApi $api, array $via = [], ?string $hint = null): void
     {
-        $api->registerSetting('binary', $this->binaryName.' binary', 'text', '', hint: $hint ?? $this->binaryHint());
+        $api->registerSetting('binary', $this->binaryName.' binary', kind: 'text', default: '', hint: $hint ?? $this->binaryHint());
         if ([] !== $via) {
             $api->registerInstaller($this->binaryName, $this->binaryAvailable($api), $via);
         }
@@ -204,7 +204,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
     protected function flashExit(PluginApi $api, int $code, string $success): void
     {
         if (0 === $code) {
-            $api->notify($success, ToastSeverity::Success, 4.0);
+            $api->notify($success, ToastSeverity::Success, seconds: 4.0);
 
             return;
         }
@@ -255,7 +255,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
      */
     protected function flashFailure(PluginApi $api, int $code): void
     {
-        $api->notify($api->trans('%tool%: exited with code %code%', ['%tool%' => $this->name(), '%code%' => $code]), ToastSeverity::Error, 5.0);
+        $api->notify($api->trans('%tool%: exited with code %code%', ['%tool%' => $this->name(), '%code%' => $code]), ToastSeverity::Error, seconds: 5.0);
     }
 
     /**
@@ -283,7 +283,7 @@ abstract class AbstractToolPlugin extends AbstractPlugin
             0 === $count
                 ? $api->trans('%tool%: no %nouns% in %file%', $params)
                 : $api->trans('%tool%: %count% %noun% in %file%|%tool%: %count% %nouns% in %file%', $params),
-            4.0,
+            seconds: 4.0,
         );
     }
 

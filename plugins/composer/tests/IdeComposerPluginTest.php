@@ -102,7 +102,7 @@ final class IdeComposerPluginTest extends TestCase
     private function awaitChecked(Tui $tui): void
     {
         $results = $tui->getById('results');
-        $this->await(static fn (): bool => !Probe::get($results, 'searching'), what: 'the check to finish');
+        $this->await(static fn (): bool => !Probe::get($results, property: 'searching'), what: 'the check to finish');
     }
 
     /** @return list<string> what the stand-in was asked, call by call */
@@ -122,8 +122,8 @@ final class IdeComposerPluginTest extends TestCase
             $project->path('composer.json'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->command($ide, $terminal, 'outdated');
-                    $this->awaitPainted($tui, $terminal, '2 direct dependencies have');
+                    $this->command($ide, $terminal, id: 'outdated');
+                    $this->awaitPainted($tui, $terminal, needle: '2 direct dependencies have');
                     $this->assertSame(['outdated --direct --format=json --no-plugins --no-interaction'], self::calls($project), 'its plugins off: asking runs nothing of the project\'s');
                     $screen = $this->screen($tui, $terminal);
                     $this->assertStringContainsString('a/one 1.0.0 ↑ 1.1.0', $screen, 'a row per package');
@@ -133,7 +133,7 @@ final class IdeComposerPluginTest extends TestCase
                     $this->assertMatchesRegularExpression('~"a/one": "\^1\.0"\s+↑ 1\.1\.0~u', $screen, 'and a mark after the line requiring it');
 
                     // Away and back: the editor drops the marks with the file, and they come back with it.
-                    $project->write('a.php', "<?php\n");
+                    $project->write('a.php', content: "<?php\n");
                     $buffers = Services::resolve($ide, BufferService::class);
                     $decorations = Widgets::editor($tui)->decorations;
                     $buffers->openFile($project->path('a.php'));
@@ -144,10 +144,10 @@ final class IdeComposerPluginTest extends TestCase
                 150 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // An edit not yet saved: composer reads the file on disk, so it is saved first.
                     $tui->setFocus(Widgets::editor($tui));
-                    Widgets::editor($tui)->jumpTo(4, 0);
+                    Widgets::editor($tui)->jumpTo(4, utf16Col: 0);
                     $tui->handleInput(' ');
-                    $this->command($ide, $terminal, 'update_at_caret');
-                    $this->awaitPainted($tui, $terminal, 'composer update finished');
+                    $this->command($ide, $terminal, id: 'update_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer update finished');
                     $this->assertStringStartsWith("{\n    \"name\"", (string) \file_get_contents($project->path('composer.json')));
                     $this->assertStringContainsString("\n         \"a/one\"", (string) \file_get_contents($project->path('composer.json')), 'the edit was saved first');
                     $this->await(static fn (): bool => 3 === \count(self::calls($project)), what: 'the list to be asked for again');
@@ -155,18 +155,18 @@ final class IdeComposerPluginTest extends TestCase
                     $this->assertSame('update a/one', self::calls($project)[1]);
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    Widgets::editor($tui)->jumpTo(1, 0);
-                    $this->command($ide, $terminal, 'remove_at_caret');
-                    $this->awaitPainted($tui, $terminal, 'Put the caret on a package');
+                    Widgets::editor($tui)->jumpTo(1, utf16Col: 0);
+                    $this->command($ide, $terminal, id: 'remove_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: 'Put the caret on a package');
                 },
                 250 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // Asked from the dock: the question takes the keys from it.
                     $tui->setFocus($tui->getById('results'));
-                    $this->command($ide, $terminal, 'require');
-                    $this->awaitPainted($tui, $terminal, 'Require (vendor/name');
+                    $this->command($ide, $terminal, id: 'require');
+                    $this->awaitPainted($tui, $terminal, needle: 'Require (vendor/name');
                     $tui->handleInput('b/two   --dev ');
                     $tui->handleInput("\r");
-                    $this->awaitPainted($tui, $terminal, 'composer require finished');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer require finished');
                     $this->assertContains('require b/two --dev', self::calls($project));
                     // composer rewrote the file: the buffer follows it, and the marks their lines.
                     $this->await(static fn (): bool => 5 === \count(self::calls($project)), what: 'the list to be asked for again');
@@ -191,12 +191,12 @@ final class IdeComposerPluginTest extends TestCase
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // Nothing typed: nothing run.
                     $calls = \count(self::calls($project));
-                    $this->command($ide, $terminal, 'require');
-                    $this->awaitPainted($tui, $terminal, 'Require (vendor/name');
+                    $this->command($ide, $terminal, id: 'require');
+                    $this->awaitPainted($tui, $terminal, needle: 'Require (vendor/name');
                     $tui->handleInput("  \r");
-                    Widgets::editor($tui)->jumpTo(9, 0); // c/three, two lines lower for the added ones
-                    $this->command($ide, $terminal, 'remove_at_caret');
-                    $this->awaitPainted($tui, $terminal, 'composer remove finished');
+                    Widgets::editor($tui)->jumpTo(9, utf16Col: 0); // c/three, two lines lower for the added ones
+                    $this->command($ide, $terminal, id: 'remove_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer remove finished');
                     $this->assertSame('remove c/three', self::calls($project)[$calls]);
                 },
             ],
@@ -212,47 +212,47 @@ final class IdeComposerPluginTest extends TestCase
             $project->path('composer.json'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->command($ide, $terminal, 'install');
-                    $this->awaitPainted($tui, $terminal, 'composer install finished');
+                    $this->command($ide, $terminal, id: 'install');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer install finished');
                     $this->assertSame(['install'], self::calls($project), 'with no list asked for, none is asked for after');
 
-                    $this->command($ide, $terminal, 'outdated');
-                    $this->awaitPainted($tui, $terminal, '2 direct dependencies have');
+                    $this->command($ide, $terminal, id: 'outdated');
+                    $this->awaitPainted($tui, $terminal, needle: '2 direct dependencies have');
                     $this->awaitChecked($tui);
 
                     // The list was asked for, but the run failed: it changed nothing to ask about.
-                    $project->write('exit-code', '3');
-                    $this->command($ide, $terminal, 'update');
-                    $this->awaitPainted($tui, $terminal, 'exited with code 3');
-                    $this->assertFalse(Probe::get($tui->getById('results'), 'searching'), 'no check after a failed run');
+                    $project->write('exit-code', content: '3');
+                    $this->command($ide, $terminal, id: 'update');
+                    $this->awaitPainted($tui, $terminal, needle: 'exited with code 3');
+                    $this->assertFalse(Probe::get($tui->getById('results'), property: 'searching'), 'no check after a failed run');
                     $this->assertSame('update', \array_last(self::calls($project)));
 
                     \unlink($project->path('outdated.json'));
-                    $this->command($ide, $terminal, 'outdated');
-                    $this->awaitPainted($tui, $terminal, 'composer outdated exited with code 2');
+                    $this->command($ide, $terminal, id: 'outdated');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer outdated exited with code 2');
                 },
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $project->write('outdated.json', '{"installed": []}');
-                    $this->command($ide, $terminal, 'outdated');
-                    $this->awaitPainted($tui, $terminal, 'Every direct dependency is on its');
+                    $project->write('outdated.json', content: '{"installed": []}');
+                    $this->command($ide, $terminal, id: 'outdated');
+                    $this->awaitPainted($tui, $terminal, needle: 'Every direct dependency is on its');
 
                     // Another composer.json — a library's inside the project — is not the project's.
                     $project->write('lib/composer.json', self::MANIFEST);
                     $terminal->consumeOutput();
                     Services::resolve($ide, BufferService::class)->openFile($project->path('lib/composer.json'));
-                    Widgets::editor($tui)->jumpTo(4, 0);
-                    $this->command($ide, $terminal, 'update_at_caret');
-                    $this->awaitPainted($tui, $terminal, 'Put the caret on a package');
+                    Widgets::editor($tui)->jumpTo(4, utf16Col: 0);
+                    $this->command($ide, $terminal, id: 'update_at_caret');
+                    $this->awaitPainted($tui, $terminal, needle: 'Put the caret on a package');
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     // Stopped before it finished, a run says so.
-                    $project->write('sleep', '');
-                    $this->command($ide, $terminal, 'install');
+                    $project->write('sleep', content: '');
+                    $this->command($ide, $terminal, id: 'install');
                     $runs = Services::resolve($ide, RunController::class);
-                    $sessions = Probe::get($runs, 'sessions');
+                    $sessions = Probe::get($runs, property: 'sessions');
                     $this->assertInstanceOf(TerminalSessions::class, $sessions);
                     $runs->closeSession((int) \array_search($sessions->find('run:Composer'), $sessions->sessions, strict: true));
-                    $this->awaitPainted($tui, $terminal, 'composer install was stopped');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer install was stopped');
                     \unlink($project->path('sleep'));
                 },
                 350 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
@@ -264,8 +264,8 @@ final class IdeComposerPluginTest extends TestCase
                     $project->write('composer.json', self::MANIFEST."\n\n");
                     $ide->pollFilesystem();
                     $calls = self::calls($project);
-                    $this->command($ide, $terminal, 'install');
-                    $this->awaitPainted($tui, $terminal, 'it changed on disk');
+                    $this->command($ide, $terminal, id: 'install');
+                    $this->awaitPainted($tui, $terminal, needle: 'it changed on disk');
                     $this->assertSame($calls, self::calls($project), 'composer was not run');
                 },
             ],
@@ -291,8 +291,8 @@ final class IdeComposerPluginTest extends TestCase
             $project->path('composer.json'),
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->command($ide, $terminal, 'outdated');
-                    $this->awaitPainted($tui, $terminal, 'composer could not be started');
+                    $this->command($ide, $terminal, id: 'outdated');
+                    $this->awaitPainted($tui, $terminal, needle: 'composer could not be started');
                 },
             ],
         );

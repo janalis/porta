@@ -39,7 +39,7 @@ final class DebugStateStoreTest extends TestCase
     {
         $project = new TempProject();
         $store = new DebugStateStore($project->dir);
-        $store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], null);
+        $store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], exceptionFilters: null);
 
         $this->assertStringNotContainsString('exceptionFilters', (string) \file_get_contents($project->path('.porta/debug.json')));
         $this->assertNull($store->load()['exceptionFilters']);
@@ -49,10 +49,10 @@ final class DebugStateStoreTest extends TestCase
     {
         $project = new TempProject();
         $store = new DebugStateStore($project->dir);
-        $store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], null);
+        $store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], exceptionFilters: null);
         $this->assertFileExists($project->path('.porta/debug.json'));
 
-        $this->assertTrue($store->save([], [], null));
+        $this->assertTrue($store->save([], [], exceptionFilters: null));
         $this->assertFileDoesNotExist($project->path('.porta/debug.json'));
     }
 
@@ -62,7 +62,7 @@ final class DebugStateStoreTest extends TestCase
         $store = new DebugStateStore($project->dir);
         $this->assertNull($store->load(), 'no file');
 
-        $project->write('.porta/debug.json', '{not json');
+        $project->write('.porta/debug.json', content: '{not json');
         $this->assertNull($store->load(), 'corrupt file');
 
         $project->write('.porta/debug.json', \json_encode(
@@ -100,7 +100,7 @@ final class DebugStateStoreTest extends TestCase
         // strict schema reader downstream would reject it.
         $project = new TempProject();
         $store = new DebugStateStore($project->dir);
-        $store->save([], ['$x'], null);
+        $store->save([], ['$x'], exceptionFilters: null);
 
         $decoded = \json_decode((string) \file_get_contents($project->path('.porta/debug.json')), associative: false, flags: \JSON_THROW_ON_ERROR);
         $this->assertInstanceOf(\stdClass::class, $decoded->breakpoints, 'an empty map must decode as an object, not an array');
@@ -109,9 +109,9 @@ final class DebugStateStoreTest extends TestCase
     public function testIoFailureReportsFalse(): void
     {
         $project = new TempProject();
-        $project->write('.porta', ''); // a FILE where the directory must go
+        $project->write('.porta', content: ''); // a FILE where the directory must go
         $store = new DebugStateStore($project->dir);
-        $this->assertFalse($store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], null));
+        $this->assertFalse($store->save(['/p/a.php' => [['line' => 1, 'condition' => null, 'hitCondition' => null]]], [], exceptionFilters: null));
     }
 
     public function testPersistenceRestoreHydratesAndSkipsVanishedFiles(): void
@@ -137,7 +137,7 @@ final class DebugStateStoreTest extends TestCase
         $persistence->restore();
 
         $this->assertSame([0], $breakpoints->linesFor($real));
-        $this->assertSame(['condition' => '$x', 'hitCondition' => null, 'logMessage' => null], $breakpoints->conditionAt($real, 0));
+        $this->assertSame(['condition' => '$x', 'hitCondition' => null, 'logMessage' => null], $breakpoints->conditionAt($real, line: 0));
         $this->assertSame([], $breakpoints->linesFor($project->path('gone.php')), 'vanished files are skipped');
         $this->assertSame(['$watched'], $watches->expressions);
         $this->assertSame(['exception'], $filters->selection());
@@ -167,15 +167,15 @@ final class DebugStateStoreTest extends TestCase
         [$first, $firstBreakpoints, $firstWatches, $firstFilters] = $window();
         [$second, $secondBreakpoints, $secondWatches, $secondFilters] = $window();
 
-        $firstBreakpoints->toggle($a, 1);
+        $firstBreakpoints->toggle($a, line: 1);
         $firstWatches->add('$y');
         $firstFilters->setSelection(['uncaught']);
         $first->save();
         $second->save();
         $this->assertSame([1, 3], \array_column($store->load()['breakpoints'][$a] ?? [], 'line'), 'the idle window took nothing away, in line order');
 
-        $secondBreakpoints->toggle($b, 7);
-        $secondBreakpoints->toggle($a, 3); // removes the one it loaded
+        $secondBreakpoints->toggle($b, line: 7);
+        $secondBreakpoints->toggle($a, line: 3); // removes the one it loaded
         $secondWatches->add('$z');
         $secondFilters->setSelection(['exception']); // the same choice: not a change of its own
         $second->save();
@@ -194,7 +194,7 @@ final class DebugStateStoreTest extends TestCase
         // would abort the rest of the shutdown sequence.
         $project = new TempProject();
 
-        $saved = new DebugStateStore($project->dir)->save([], ["\$x\xB1"], null);
+        $saved = new DebugStateStore($project->dir)->save([], ["\$x\xB1"], exceptionFilters: null);
 
         $this->assertFalse($saved);
         $this->assertFalse(\is_file($project->path('.porta/debug.json')), 'nothing half-written');

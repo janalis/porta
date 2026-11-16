@@ -67,14 +67,14 @@ final class PointerDropTest extends TestCase
         $this->send("t=m:x={$col}:y={$row}:o=3");
 
         $this->assertSame("\x1b]72;t=m:o=1;text/uri-list text/plain\x1b\\", $this->replies());
-        $this->assertSame($this->project->path('src'), Probe::get($this->tree(), 'dropTarget'));
+        $this->assertSame($this->project->path('src'), Probe::get($this->tree(), property: 'dropTarget'));
     }
 
     /** The hover's half-second spring timer has fired: awaited, never a fixed pump a loaded machine outlasts. */
     private function awaitSprungOpen(string $folder): void
     {
         $path = $this->project->path($folder);
-        $this->await(fn (): bool => Probe::get($this->tree(), 'expanded')[$path] ?? false, what: $folder.' to spring open');
+        $this->await(fn (): bool => Probe::get($this->tree(), property: 'expanded')[$path] ?? false, what: $folder.' to spring open');
     }
 
     public function testAFolderHoveredLongEnoughSpringsOpenAndClosesOnceTheDragMovesOff(): void
@@ -86,12 +86,12 @@ final class PointerDropTest extends TestCase
         $this->frame($this->tui());
         [$row, $col] = $this->treeCell('src/A.php');
         $this->send("t=m:x={$col}:y={$row}");
-        $this->assertTrue(Probe::get($this->tree(), 'expanded')[$this->project->path('src')], 'a row inside it keeps it open');
+        $this->assertTrue(Probe::get($this->tree(), property: 'expanded')[$this->project->path('src')], 'a row inside it keeps it open');
 
         [$row, $col] = $this->treeCell('lib');
         $this->send("t=m:x={$col}:y={$row}");
-        $this->assertFalse(Probe::get($this->tree(), 'expanded')[$this->project->path('src')], 'moving off closes it');
-        $this->assertSame($this->project->path('lib'), Probe::get($this->tree(), 'dropTarget'), 'and the new folder is the destination');
+        $this->assertFalse(Probe::get($this->tree(), property: 'expanded')[$this->project->path('src')], 'moving off closes it');
+        $this->assertSame($this->project->path('lib'), Probe::get($this->tree(), property: 'dropTarget'), 'and the new folder is the destination');
     }
 
     public function testLeavingTheWindowClearsTheHighlightAndClosesWhatSprangOpen(): void
@@ -102,8 +102,8 @@ final class PointerDropTest extends TestCase
 
         $this->send('t=m:x=-1:y=-1');
 
-        $this->assertNull(Probe::get($this->tree(), 'dropTarget'));
-        $this->assertFalse(Probe::get($this->tree(), 'expanded')[$this->project->path('src')]);
+        $this->assertNull(Probe::get($this->tree(), property: 'dropTarget'));
+        $this->assertFalse(Probe::get($this->tree(), property: 'expanded')[$this->project->path('src')]);
     }
 
     public function testADropOnAFolderCopiesTheFilesInChunksAndKeepsTheFolderOpen(): void
@@ -122,8 +122,8 @@ final class PointerDropTest extends TestCase
 
         $this->assertSame("\x1b]72;t=r:o=1\x1b\\", $this->replies());
         $this->assertSame("<?php\n// x\n", \file_get_contents($this->project->path('src/x.php')));
-        $this->assertTrue(Probe::get($this->tree(), 'expanded')[$this->project->path('src')], 'the folder it landed in stays open');
-        $this->assertNull(Probe::get($this->tree(), 'dropTarget'));
+        $this->assertTrue(Probe::get($this->tree(), property: 'expanded')[$this->project->path('src')], 'the folder it landed in stays open');
+        $this->assertNull(Probe::get($this->tree(), property: 'dropTarget'));
     }
 
     public function testADropBelowTheLastRowLandsInTheProjectRoot(): void
@@ -151,7 +151,7 @@ final class PointerDropTest extends TestCase
 
     public function testADropOnTheTabStripOpensTheFile(): void
     {
-        $panes = Probe::get($this->dropTarget(), 'panes');
+        $panes = Probe::get($this->dropTarget(), property: 'panes');
         $this->assertInstanceOf(EditorLayoutPanes::class, $panes);
         $rect = $this->hit()->rect($panes->tabBar);
         $this->assertInstanceOf(WidgetRect::class, $rect);
@@ -184,9 +184,9 @@ final class PointerDropTest extends TestCase
     public function testTheCaretFollowsADragOverTheTextAndStaysWhereItLands(): void
     {
         $doc = $this->openLines();
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
 
-        [$row, $col] = $this->textCell(2, 3);
+        [$row, $col] = $this->textCell(2, col: 3);
         $this->send("t=m:x={$col}:y={$row}");
         $this->assertSame([2, 3], [$doc->cursorLine, $doc->cursorCol], 'the caret is under the pointer');
 
@@ -203,8 +203,8 @@ final class PointerDropTest extends TestCase
     public function testADragThatMovesOnPutsTheCaretAndSelectionBack(): void
     {
         $doc = $this->openLines();
-        $doc->setSelectionRange(1, 0, 1, 5);
-        [$row, $col] = $this->textCell(3, 2);
+        $doc->setSelectionRange(1, startCol: 0, endLine: 1, endCol: 5);
+        [$row, $col] = $this->textCell(3, col: 2);
 
         $this->send("t=m:x={$col}:y={$row}");
         $this->assertSame(3, $doc->cursorLine);
@@ -221,8 +221,8 @@ final class PointerDropTest extends TestCase
     public function testABareCaretIsPutBackToo(): void
     {
         $doc = $this->openLines();
-        $doc->setCursor(1, 4);
-        [$row, $col] = $this->textCell(3, 2);
+        $doc->setCursor(1, col: 4);
+        [$row, $col] = $this->textCell(3, col: 2);
 
         $this->send("t=m:x={$col}:y={$row}");
         $this->send('t=m:x=-1:y=-1');
@@ -234,12 +234,12 @@ final class PointerDropTest extends TestCase
     public function testAFileSwitchedAwayFromGetsItsOwnCaretBack(): void
     {
         $lines = $this->openLines();
-        $lines->setCursor(1, 1);
-        [$row, $col] = $this->textCell(3, 2);
+        $lines->setCursor(1, col: 1);
+        [$row, $col] = $this->textCell(3, col: 2);
         $this->send("t=m:x={$col}:y={$row}");
         Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('top.php'), OpenFocus::Editor);
         $top = $this->editor()->getDocument();
-        $top->setCursor(0, 3);
+        $top->setCursor(0, col: 3);
 
         $this->send('t=m:x=-1:y=-1');
 
@@ -250,7 +250,7 @@ final class PointerDropTest extends TestCase
     public function testADragOverTheErrorStripeLeavesTheCaretAlone(): void
     {
         $doc = $this->openLines();
-        $doc->setCursor(1, 2);
+        $doc->setCursor(1, col: 2);
         $rect = $this->hit()->rect($this->editor());
         $this->assertInstanceOf(WidgetRect::class, $rect);
         $stripe = $rect->col + $this->editor()->viewport()->stripeCol;
@@ -263,7 +263,7 @@ final class PointerDropTest extends TestCase
     public function testAUrlDroppedOnAFieldIsTypedThere(): void
     {
         $typed = null;
-        $this->editor()->openPrompt('Name', '', static function (string $value) use (&$typed): void {
+        $this->editor()->openPrompt('Name', initial: '', onSubmit: static function (string $value) use (&$typed): void {
             $typed = $value;
         });
         [$row, $col] = $this->editorCell();
@@ -294,8 +294,8 @@ final class PointerDropTest extends TestCase
     public function testAPastedDropOnAnOpenFileInsertsWhereItWasLetGo(): void
     {
         $doc = $this->openLines();
-        $doc->setCursor(0, 0);
-        [$row, $col] = $this->textCell(2, 3);
+        $doc->setCursor(0, col: 0);
+        [$row, $col] = $this->textCell(2, col: 3);
 
         $this->paste(\str_replace(search: ' ', replace: '\ ', subject: $this->outside->path('a b.txt')));
         $this->tui()->handleInput($this->motion($row, $col));
@@ -310,7 +310,7 @@ final class PointerDropTest extends TestCase
         $this->tui()->setFocus($this->tree());
 
         $this->paste($this->outside->path('x.php'));
-        $this->tui()->handleInput($this->motion($this->rows - 1, 0)); // the status bar
+        $this->tui()->handleInput($this->motion($this->rows - 1, col: 0)); // the status bar
 
         $this->assertFileExists($this->project->path('src/x.php'), 'the selected folder, as with no pointer at all');
     }
@@ -380,7 +380,7 @@ final class PointerDropTest extends TestCase
     public function testADropOnAnOpenPickerIsTypedIntoItPlainly(): void
     {
         $typed = null;
-        $this->editor()->openPrompt('Name', '', static function (string $value) use (&$typed): void {
+        $this->editor()->openPrompt('Name', initial: '', onSubmit: static function (string $value) use (&$typed): void {
             $typed = $value;
         });
         [$row, $col] = $this->treeCell('src');
@@ -412,7 +412,7 @@ final class PointerDropTest extends TestCase
     {
         [$row, $col] = $this->editorCell();
 
-        $this->drop($row, $col, '/no/such/file');
+        $this->drop($row, $col, path: '/no/such/file');
 
         $this->assertSame("\x1b]72;t=r:x=1\x1b\\\x1b]72;t=r:o=0\x1b\\", $this->replies());
         $this->assertSame('Only files and folders can be dropped here', Toasts::last($this->ide));
@@ -516,7 +516,7 @@ final class PointerDropTest extends TestCase
 
     private function dropTarget(): DropTarget
     {
-        $target = Probe::get(Services::resolve($this->ide, DragDropProtocol::class), 'target');
+        $target = Probe::get(Services::resolve($this->ide, DragDropProtocol::class), property: 'target');
         $this->assertInstanceOf(DropTarget::class, $target);
 
         return $target;
@@ -530,7 +530,7 @@ final class PointerDropTest extends TestCase
     private function hit(): HitTester
     {
         // Inlined into its consumers, so reached through one of them.
-        $hit = Probe::get($this->dropTarget(), 'hit');
+        $hit = Probe::get($this->dropTarget(), property: 'hit');
         $this->assertInstanceOf(HitTester::class, $hit);
 
         return $hit;

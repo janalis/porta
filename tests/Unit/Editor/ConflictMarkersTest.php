@@ -60,10 +60,10 @@ final class ConflictMarkersTest extends TestCase
     public function testRegionAt(): void
     {
         $lines = $this->lines("<<<<<<< a\nx\n=======\ny\n>>>>>>> b\ntail");
-        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 0), 'the opener line itself is inside the region');
-        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 1));
-        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, 4));
-        $this->assertNull(ConflictMarkers::regionAt($lines, 5), 'tail line is outside the region');
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, line: 0), 'the opener line itself is inside the region');
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, line: 1));
+        $this->assertSame(['start' => 0, 'base' => null, 'sep' => 2, 'end' => 4], ConflictMarkers::regionAt($lines, line: 4));
+        $this->assertNull(ConflictMarkers::regionAt($lines, line: 5), 'tail line is outside the region');
     }
 
     public function testASecondSeparatorInsideARegionIsIgnored(): void

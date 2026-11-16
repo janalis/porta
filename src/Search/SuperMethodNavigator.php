@@ -71,7 +71,7 @@ final readonly class SuperMethodNavigator
             return null;
         }
 
-        return $this->climb(self::parentsOf($source, $type), $method, [], 0);
+        return $this->climb(self::parentsOf($source, $type), $method, [], depth: 0);
     }
 
     /**

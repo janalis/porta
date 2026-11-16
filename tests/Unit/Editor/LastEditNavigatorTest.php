@@ -32,7 +32,7 @@ final class LastEditNavigatorTest extends TestCase
 
     private function navigator(EditHistory $history): LastEditNavigator
     {
-        $this->tui = TestTui::create(80, 24);
+        $this->tui = TestTui::create(80, rows: 24);
         $this->status = new StatusBarWidget();
         $this->editor = new CodeEditorWidget();
         $this->files = new RecordingFileOpener();
@@ -78,7 +78,7 @@ final class LastEditNavigatorTest extends TestCase
         $history = new EditHistory();
         $history->record('/b.php', line: 3);
         $navigator = $this->navigator($history);
-        $this->editor->openFile('/a.php', "one\n");
+        $this->editor->openFile('/a.php', content: "one\n");
 
         $navigator->goBack();
 
@@ -95,8 +95,8 @@ final class LastEditNavigatorTest extends TestCase
         $history = new EditHistory();
         $history->record('/gone.php', line: 40);
         $navigator = $this->navigator($history);
-        $this->editor->openFile('/a.php', "one\ntwo\nthree\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->editor->openFile('/a.php', content: "one\ntwo\nthree\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $navigator->goBack();
 
@@ -115,8 +115,8 @@ final class LastEditNavigatorTest extends TestCase
         $history = new EditHistory();
         $history->record('/a.php', line: 2);
         $navigator = $this->navigator($history);
-        $this->editor->openFile('/a.php', "aaaa\nbbbb\ncccc\n");
-        $this->editor->getDocument()->setCursor(0, 3);
+        $this->editor->openFile('/a.php', content: "aaaa\nbbbb\ncccc\n");
+        $this->editor->getDocument()->setCursor(0, col: 3);
         $this->tui->tick(); // clears any pending render request
         $revision = $this->editor->getRenderRevision();
 
@@ -125,7 +125,7 @@ final class LastEditNavigatorTest extends TestCase
         $this->assertSame(2, $this->editor->getDocument()->cursorLine);
         $this->assertSame(0, $this->editor->getDocument()->cursorCol, 'the start of the line, not the old column');
         $this->assertGreaterThan($revision, $this->editor->getRenderRevision(), 'the widget dropped its cached rows');
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'and a frame was asked for');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'and a frame was asked for');
     }
 
     public function testAnEditInTheFileYouAreALREADYInDoesNotReopenIt(): void
@@ -136,7 +136,7 @@ final class LastEditNavigatorTest extends TestCase
         $history = new EditHistory();
         $history->record('/a.php', line: 6);
         $navigator = $this->navigator($history);
-        $this->editor->openFile('/a.php', "1\n2\n3\n4\n5\n6\n7\n");
+        $this->editor->openFile('/a.php', content: "1\n2\n3\n4\n5\n6\n7\n");
 
         $navigator->goBack();
 

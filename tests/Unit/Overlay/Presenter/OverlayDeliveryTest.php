@@ -60,18 +60,18 @@ final class OverlayDeliveryTest extends TestCase
     public function testBoundsRequestsAFrameUntilTheFirstRectLands(): void
     {
         $delivery = $this->delivery();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $this->assertNull($delivery->bounds(), 'no frame yet: nothing to lay out against');
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'no bounds yet — a frame is requested to try again');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'no bounds yet — a frame is requested to try again');
 
         $this->frame();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $bounds = $delivery->bounds();
         $this->assertNotNull($bounds);
         [$top, $left, $bottom, $right] = $bounds;
         $this->assertSame([0, 0], [$top, $left]);
         $this->assertGreaterThan(0, $bottom * $right);
-        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'bounds already available — no need to ask for another frame');
+        $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'), 'bounds already available — no need to ask for another frame');
     }
 
     public function testDeliverModalSlicesSpansAndDimsAndSkipsRectlessPanes(): void
@@ -164,24 +164,24 @@ final class OverlayDeliveryTest extends TestCase
     {
         $bounds = [0, 0, 24, 100];
 
-        $region = DropdownRegion::shadowClamped(2, 4, 10, 5, $bounds, shown: BaseDirection::Rtl);
+        $region = DropdownRegion::shadowClamped(2, col: 4, width: 10, rows: 5, bounds: $bounds, shown: BaseDirection::Rtl);
         $this->assertSame([2, 3, 11, 6], [$region->top, $region->col, $region->width, $region->count]);
         $this->assertSame([3, 10], $region->columnsOn(7), 'the band: from the side column, the box wide');
         $this->assertSame([3, 11], $region->columnsOn(6), 'a box row: the box and its side column');
         $this->assertSame([4, 10], $region->columnsOn(2), 'the top row: the box alone, no shadow beside it');
-        $this->assertFalse($region->contains(2, 3));
-        $this->assertTrue($region->contains(7, 12));
-        $this->assertFalse($region->contains(7, 13), 'the far corner is not the band');
-        $this->assertTrue($region->contains(6, 13));
+        $this->assertFalse($region->contains(2, col: 3));
+        $this->assertTrue($region->contains(7, col: 12));
+        $this->assertFalse($region->contains(7, col: 13), 'the far corner is not the band');
+        $this->assertTrue($region->contains(6, col: 13));
 
-        $edge = DropdownRegion::shadowClamped(2, 0, 10, 5, $bounds, shown: BaseDirection::Rtl);
+        $edge = DropdownRegion::shadowClamped(2, col: 0, width: 10, rows: 5, bounds: $bounds, shown: BaseDirection::Rtl);
         $this->assertSame([0, 10], [$edge->col, $edge->width], 'flush against the left edge: no side column to claim');
         $this->assertSame([0, 9], $edge->columnsOn(7));
 
         $this->assertSame([0, 10], $edge->columnsOn(2), 'no side column, so the top row is the box as it is');
         $this->assertNull($edge->firstRow);
 
-        $flush = DropdownRegion::shadowClamped(19, 4, 10, 5, $bounds, shown: BaseDirection::Rtl);
+        $flush = DropdownRegion::shadowClamped(19, col: 4, width: 10, rows: 5, bounds: $bounds, shown: BaseDirection::Rtl);
         $this->assertSame(5, $flush->count, 'flush against the bottom: no band');
         $this->assertSame([3, 11], $flush->columnsOn(23), 'and so no row of its own');
     }
@@ -221,18 +221,18 @@ final class OverlayDeliveryTest extends TestCase
         $delivery->deliverModal([$box]);
         $this->assertSame([], $this->pane->modalSpans, 'the pane carries none of it');
         $this->assertTrue($this->pane->backdrop, 'but still dims beneath it');
-        $canvas = $layer->rows(20, 6);
-        $this->assertSame('abc', AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($canvas[2], 10, length: 3)));
+        $canvas = $layer->rows(20, rows: 6);
+        $this->assertSame('abc', AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($canvas[2], startCol: 10, length: 3)));
         $this->assertTrue($shadowAt($canvas[3], col: 9), 'mirrored: the side band left of the box');
         $this->assertFalse($shadowAt($canvas[3], col: 13));
 
         $delivery->deliverModal([[...$box, 'ltr' => true]]);
-        $canvas = $layer->rows(20, 6);
+        $canvas = $layer->rows(20, rows: 6);
         $this->assertTrue($shadowAt($canvas[3], col: 13), 'verbatim: the side band right of it');
         $this->assertFalse($shadowAt($canvas[3], col: 9));
 
         $delivery->clearModal();
-        $this->assertSame(\array_fill(0, count: 6, value: \str_repeat(' ', times: 20)), $layer->rows(20, 6), 'cleared off the layer too');
+        $this->assertSame(\array_fill(0, count: 6, value: \str_repeat(' ', times: 20)), $layer->rows(20, rows: 6), 'cleared off the layer too');
     }
 
     /**
@@ -250,11 +250,11 @@ final class OverlayDeliveryTest extends TestCase
         $box = ['rows' => ['toast'], 'top' => 1, 'col' => 2, 'width' => 5];
 
         $delivery->deliverToast([$box]);
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'a new toast on the layer');
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'), 'a new toast on the layer');
 
         $this->tui->processRender();
         $delivery->deliverToast([$box]);
-        $this->assertFalse((bool) Probe::get($this->tui, 'renderRequested'), 'the same toast again');
+        $this->assertFalse((bool) Probe::get($this->tui, property: 'renderRequested'), 'the same toast again');
     }
 
     /** Each slot goes to the layer when mirrored, and to the panes otherwise. */
@@ -270,21 +270,21 @@ final class OverlayDeliveryTest extends TestCase
 
             $delivery->deliverToast([$box]);
             $this->assertSame($mirrored, [] === $this->pane->toastSpans, "{$locale}: the toast's pane spans");
-            $this->assertSame($mirrored, \str_contains($layer->rows(12, 3)[1], 'toast'), "{$locale}: the toast on the layer");
+            $this->assertSame($mirrored, \str_contains($layer->rows(12, rows: 3)[1], 'toast'), "{$locale}: the toast on the layer");
             $delivery->clearToast();
             $delivery->deliverTooltip([$box]);
             $this->assertSame($mirrored, [] === $this->pane->tooltipSpans, "{$locale}: the tooltip's pane spans");
-            $canvas = $layer->rows(12, 3);
+            $canvas = $layer->rows(12, rows: 3);
             $this->assertSame($mirrored, \str_contains($canvas[1], 'toast'), "{$locale}: the tooltip on the layer");
             $this->assertStringNotContainsString('48;', $canvas[2], "{$locale}: casting no shadow");
             $delivery->clearToast();
             $delivery->clearTooltip();
-            $this->assertStringNotContainsString('toast', \implode('', $layer->rows(12, 3)), "{$locale}: both cleared");
+            $this->assertStringNotContainsString('toast', \implode('', $layer->rows(12, rows: 3)), "{$locale}: both cleared");
             $delivery->deliverWindow([$box]);
             $this->assertSame($mirrored, [] === $this->pane->windowSpans, "{$locale}: the window's pane spans");
-            $this->assertSame($mirrored, \str_contains($layer->rows(12, 3)[1], 'toast'), "{$locale}: the window on the layer");
+            $this->assertSame($mirrored, \str_contains($layer->rows(12, rows: 3)[1], 'toast'), "{$locale}: the window on the layer");
             $delivery->clearWindow();
-            $this->assertStringNotContainsString('toast', \implode('', $layer->rows(12, 3)), "{$locale}: the window cleared");
+            $this->assertStringNotContainsString('toast', \implode('', $layer->rows(12, rows: 3)), "{$locale}: the window cleared");
         }
     }
 
@@ -292,14 +292,14 @@ final class OverlayDeliveryTest extends TestCase
     {
         $bounds = [0, 0, 24, 100];
 
-        $inner = DropdownRegion::shadowClamped(2, 4, 10, 5, $bounds, ltr: true);
+        $inner = DropdownRegion::shadowClamped(2, col: 4, width: 10, rows: 5, bounds: $bounds, ltr: true);
         $this->assertSame([2, 4, 11, 6], [$inner->top, $inner->col, $inner->width, $inner->count], 'one shadow column and band added');
         $this->assertSame([4, 10], $inner->columnsOn(2), 'the top row casts no side shadow');
         $this->assertSame([5, 10], $inner->columnsOn(7), 'the band, one column in');
         $this->assertSame([4, 11], $inner->columnsOn(4));
         $this->assertTrue($inner->ltr);
 
-        $flush = DropdownRegion::shadowClamped(19, 90, 10, 5, $bounds);
+        $flush = DropdownRegion::shadowClamped(19, col: 90, width: 10, rows: 5, bounds: $bounds);
         $this->assertSame(10, $flush->width, 'flush against the right edge: no shadow column to claim');
         $this->assertNull($flush->firstRow, 'nor a first row of its own');
         $this->assertNull($flush->lastRow);

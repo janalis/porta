@@ -49,10 +49,10 @@ final class TinyTerminalFrameTest extends TestCase
         $this->assertInstanceOf(BidiTui::class, $tui);
 
         $tui->requestRender(true);
-        Probe::invoke($tui, 'processRender');
+        Probe::invoke($tui, method: 'processRender');
 
         // What Porta composed, kept for .porta/frame.txt — one entry per row.
-        $frame = Probe::get($ide, 'lastFrame');
+        $frame = Probe::get($ide, property: 'lastFrame');
         $this->assertIsArray($frame);
         $this->assertLessThanOrEqual($rows, \count($frame), 'the composed frame fits the screen');
         $this->assertNotSame([], $frame, 'and something was composed at all');
@@ -70,7 +70,7 @@ final class TinyTerminalFrameTest extends TestCase
         $this->assertInstanceOf(BidiTui::class, $tui);
 
         $tui->requestRender(true);
-        Probe::invoke($tui, 'processRender');
+        Probe::invoke($tui, method: 'processRender');
 
         $written = 1 + \preg_match_all('/\r\n|\x1b\[\d*B/', $this->terminal->getOutput());
         $this->assertLessThanOrEqual($rows, $written, 'one row past the last is enough to scroll the alternate screen for good');

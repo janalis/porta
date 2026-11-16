@@ -79,9 +79,9 @@ final class ThemeRefreshSweepTest extends TestCase
     private function applier(ViewRegions $regions, EditorPanes $panes = new EditorPanes()): LiveSettingsApplier
     {
         return new LiveSettingsApplier(
-            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new StyleSheetThemer(new Renderer(new StyleSheet())),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new CursorStyle(),
             new Translator('en'),
             $regions,
@@ -106,10 +106,10 @@ final class ThemeRefreshSweepTest extends TestCase
         return new FormatOnSave(
             $pool,
             $editor,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new Translator('en'),
             new FakeScheduler(),
-            TestTui::create(80, 24),
+            TestTui::create(80, rows: 24),
         );
     }
 
@@ -185,9 +185,9 @@ final class ThemeRefreshSweepTest extends TestCase
 
     public function testTheThreeThemeHoldersAllSwitchToTheNewDefinition(): void
     {
-        $styles = Themes::createSwitchable(ColorMode::Ansi, 'dark');
+        $styles = Themes::createSwitchable(ColorMode::Ansi, theme: 'dark');
         $renderer = new Renderer(new StyleSheet());
-        $syntaxTheme = TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark');
+        $syntaxTheme = TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark');
         $applier = new LiveSettingsApplier(
             $styles,
             new StyleSheetThemer($renderer),
@@ -210,17 +210,17 @@ final class ThemeRefreshSweepTest extends TestCase
         $applier->applyTheme('light');
 
         $this->assertSame(
-            Themes::definition(ColorMode::Ansi, 'light')->of(Role::Gutter)->apply('x'),
+            Themes::definition(ColorMode::Ansi, theme: 'light')->of(Role::Gutter)->apply('x'),
             $styles->of(Role::Gutter)->apply('x'),
             'the shared Styles holder switched to the light definition',
         );
         $this->assertSame(
-            Themes::definition(ColorMode::Ansi, 'light')->of(Role::Gutter)->apply('x'),
+            Themes::definition(ColorMode::Ansi, theme: 'light')->of(Role::Gutter)->apply('x'),
             $renderer->getStyleSheet()->getRules()[Role::Gutter->selector()]->apply('x'),
             'the renderer\'s live stylesheet carries the light theme\'s rule',
         );
         $this->assertSame(
-            TerminalThemeFactory::create(ColorMode::Ansi, 'light')->before(TokenTypeEnum::KEYWORD),
+            TerminalThemeFactory::create(ColorMode::Ansi, theme: 'light')->before(TokenTypeEnum::KEYWORD),
             $syntaxTheme->before(TokenTypeEnum::KEYWORD),
             'the syntax-theme holder switched to the light terminal theme',
         );
@@ -228,11 +228,11 @@ final class ThemeRefreshSweepTest extends TestCase
 
     public function testAnAnsiFalseIdeSelectsThePlainColorModeRegardlessOfTheThemeId(): void
     {
-        $styles = Themes::createSwitchable(ColorMode::Ansi, 'dark');
+        $styles = Themes::createSwitchable(ColorMode::Ansi, theme: 'dark');
         $applier = new LiveSettingsApplier(
             $styles,
             new StyleSheetThemer(new Renderer(new StyleSheet())),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new CursorStyle(),
             new Translator('en'),
             new ViewRegions(Styles::dark()),

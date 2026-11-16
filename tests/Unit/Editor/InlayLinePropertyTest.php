@@ -45,7 +45,7 @@ final class InlayLinePropertyTest extends TestCase
                 );
             }
             $wrap = 0 === self::roll(0, max: 2) ? null : self::roll(2, max: 9);
-            $line = InlayLine::place($hints, $doc, 0, $wrap);
+            $line = InlayLine::place($hints, $doc, line: 0, wrapWidth: $wrap);
             $this->assertLaws(
                 $line,
                 $doc,

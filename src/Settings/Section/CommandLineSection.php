@@ -241,7 +241,7 @@ final class CommandLineSection implements SettingsSection
 
     private function report(?string $error, string $done): void
     {
-        null === $error ? $this->notifier->success($done, 5.0) : $this->notifier->error($this->translator->trans('Could not do it: %why%', ['%why%' => $error]));
+        null === $error ? $this->notifier->success($done, seconds: 5.0) : $this->notifier->error($this->translator->trans('Could not do it: %why%', ['%why%' => $error]));
     }
 
     /**
@@ -270,9 +270,9 @@ final class CommandLineSection implements SettingsSection
             $said = self::said($out."\n".(string) $this->update?->errorOutput());
             $this->update = null;
             match (true) {
-                0 !== $code => $this->notifier->error($said, 8.0, self::UPDATE_SLOT),
-                $installation->fingerprint() !== $before => $this->notifier->success($said.' '.$this->translator->trans('Restart Porta to use it.'), 8.0, self::UPDATE_SLOT),
-                default => $this->notifier->success($said, 5.0, self::UPDATE_SLOT),
+                0 !== $code => $this->notifier->error($said, seconds: 8.0, slot: self::UPDATE_SLOT),
+                $installation->fingerprint() !== $before => $this->notifier->success($said.' '.$this->translator->trans('Restart Porta to use it.'), seconds: 8.0, slot: self::UPDATE_SLOT),
+                default => $this->notifier->success($said, seconds: 5.0, slot: self::UPDATE_SLOT),
             };
         });
         if (!$started) {

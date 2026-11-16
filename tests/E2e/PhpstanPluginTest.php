@@ -103,7 +103,7 @@ final class PhpstanPluginTest extends TestCase
                     $tui->handleInput("\x1b"); // close the panel
 
                     // Swap in a clean stub and re-analyse: diagnostics clear.
-                    $this->installStub($project, "echo json_encode(['files' => [], 'errors' => []]); exit(0);");
+                    $this->installStub($project, body: "echo json_encode(['files' => [], 'errors' => []]); exit(0);");
                     $tui->handleInput("\x1b\x01");
                     $this->await(static fn (): bool => \str_contains($screen(), 'phpstan: no errors in a.php'), what: 'the clean-run toast');
                     // A negative on a FRESH render: await the clearing itself.
@@ -123,7 +123,7 @@ final class PhpstanPluginTest extends TestCase
             [
                 100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, CommandRegistry::class)->run('phpstan:toggle-on-save');
-                    $this->awaitPainted($tui, $terminal, 'phpstan on save: on');
+                    $this->awaitPainted($tui, $terminal, needle: 'phpstan on save: on');
                     $this->assertStringContainsString('phpstan on save: on', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $this->assertTrue((bool) (IdeConfig::load($project->dir)->plugins['phpstan']['autoLint'] ?? false), 'the toggle persisted to .porta.json');
                     $tui->handleInput("\x13"); // ctrl+s → save → analyse

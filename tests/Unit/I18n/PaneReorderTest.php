@@ -19,7 +19,7 @@ final class PaneReorderTest extends TestCase
     {
         // [ Hebrew chrome (0..3, RTL) | LTR code (4..15) ]
         $line = self::SHALOM.'<?php echo;';
-        $line = AnsiUtils::truncateToWidth($line, 16, pad: true);
+        $line = AnsiUtils::truncateToWidth($line, maxWidth: 16, pad: true);
         $runs = [
             ['start' => 0, 'width' => 4, 'ltr' => false],
             ['start' => 4, 'width' => 12, 'ltr' => true],
@@ -59,7 +59,7 @@ final class PaneReorderTest extends TestCase
             ['start' => 4, 'width' => 4, 'ltr' => false],
         ];
 
-        $this->assertSame(7, new PaneReorder()->logicalColumn($line, 4, $runs), 'run 2 (RTL) claims the boundary column, not run 1');
+        $this->assertSame(7, new PaneReorder()->logicalColumn($line, visualCol: 4, runs: $runs), 'run 2 (RTL) claims the boundary column, not run 1');
     }
 
     public function testLogicalColumnOnAnLtrRunIsIdentityEvenForRtlScriptContent(): void
@@ -69,7 +69,7 @@ final class PaneReorderTest extends TestCase
         // property the content needs to satisfy.
         $runs = [['start' => 0, 'width' => 4, 'ltr' => true]];
 
-        $this->assertSame(2, new PaneReorder()->logicalColumn(self::SHALOM, 2, $runs), 'ltr run: identity, no bidi reorder applied');
+        $this->assertSame(2, new PaneReorder()->logicalColumn(self::SHALOM, visualCol: 2, runs: $runs), 'ltr run: identity, no bidi reorder applied');
     }
 
     public function testResetAfterEveryRunStopsBackgroundBleedAcrossPanes(): void
@@ -99,12 +99,12 @@ final class PaneReorderTest extends TestCase
         $reorder = new PaneReorder();
 
         // RTL pane: visual 0 ↔ logical 3 (reversed within [0,4)).
-        $this->assertSame(3, $reorder->logicalColumn($line, 0, $runs));
-        $this->assertSame(0, $reorder->logicalColumn($line, 3, $runs));
+        $this->assertSame(3, $reorder->logicalColumn($line, visualCol: 0, runs: $runs));
+        $this->assertSame(0, $reorder->logicalColumn($line, visualCol: 3, runs: $runs));
         // LTR pane: identity.
-        $this->assertSame(5, $reorder->logicalColumn($line, 5, $runs));
+        $this->assertSame(5, $reorder->logicalColumn($line, visualCol: 5, runs: $runs));
         // A column past all runs is identity.
-        $this->assertSame(99, $reorder->logicalColumn($line, 99, $runs));
+        $this->assertSame(99, $reorder->logicalColumn($line, visualCol: 99, runs: $runs));
     }
 
     /**
@@ -115,7 +115,7 @@ final class PaneReorderTest extends TestCase
      */
     public function testAWelcomeStepLineMirrorsAsAWhole(): void
     {
-        $line = AnsiUtils::truncateToWidth('  [ ]  '.self::SHALOM.'  ['.self::SHALOM.']', 24, pad: true);
+        $line = AnsiUtils::truncateToWidth('  [ ]  '.self::SHALOM.'  ['.self::SHALOM.']', maxWidth: 24, pad: true);
         $runs = [['start' => 0, 'width' => 24, 'ltr' => false]];
 
         $out = new PaneReorder()->reorderRow($line, $runs);
@@ -198,11 +198,11 @@ final class PaneReorderTest extends TestCase
             ['start' => 0, 'width' => 2, 'ltr' => true],
             ['start' => 2, 'width' => 4, 'ltr' => false],
         ];
-        $slice = AnsiUtils::sliceByColumn($line, 2, 4, strict: true);
+        $slice = AnsiUtils::sliceByColumn($line, startCol: 2, length: 4, strict: true);
 
         $this->assertSame(
-            2 + Bidi::visualToLogicalColumn($slice, 1, BaseDirection::Rtl),
-            new PaneReorder()->logicalColumn($line, 3, $runs),
+            2 + Bidi::visualToLogicalColumn($slice, visualCol: 1, direction: BaseDirection::Rtl),
+            new PaneReorder()->logicalColumn($line, visualCol: 3, runs: $runs),
         );
     }
 
@@ -317,7 +317,7 @@ final class PaneReorderTest extends TestCase
         $reorder = new PaneReorder();
         $pane = [['start' => 0, 'width' => 10, 'ltr' => true]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow('abcdefghij', $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], '[AB]      '));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow('abcdefghij', $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], surfaces: '[AB]      '));
 
         $this->assertSame('abcdef[AB]', $out, 'the box at the far end, and the text it logically sat on still there');
     }
@@ -330,7 +330,7 @@ final class PaneReorderTest extends TestCase
         $line = "\u{05D0}\u{05D1}\u{05D2}\u{05D3}";
         $pane = [['start' => 0, 'width' => 4, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 2, 'width' => 9, 'ltr' => true]], '  XY'));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow($line, $pane, [['start' => 2, 'width' => 9, 'ltr' => true]], surfaces: '  XY'));
 
         // The surface claims nine columns but only two exist past its start, so
         // it is clamped to those. What must never happen is the row coming back
@@ -403,7 +403,7 @@ final class PaneReorderTest extends TestCase
         $reorder = new PaneReorder();
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow(\str_repeat(' ', times: 10), $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], '[AB]      '));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow(\str_repeat(' ', times: 10), $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], surfaces: '[AB]      '));
 
         $this->assertSame('[AB]', AnsiUtils::sliceByColumn($out, startCol: 6, length: 4), 'the box mirrors to the far end');
         $this->assertSame(10, AnsiUtils::visibleWidth($out), 'and the row keeps its width');
@@ -445,7 +445,7 @@ final class PaneReorderTest extends TestCase
         $reorder = new PaneReorder();
         $pane = [['start' => 0, 'width' => 10, 'ltr' => false]];
 
-        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow(\str_repeat(' ', times: 10), $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], '[AB]      '));
+        $out = AnsiUtils::stripAnsiCodes($reorder->reorderRow(\str_repeat(' ', times: 10), $pane, [['start' => 0, 'width' => 4, 'ltr' => true]], surfaces: '[AB]      '));
 
         $this->assertSame(1, \substr_count($out, needle: '[AB]'), 'exactly one copy of the box');
     }

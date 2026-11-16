@@ -36,10 +36,10 @@ final class PluginSettingsTest extends TestCase
     {
         $settings = new PluginSettings('/p', ['demo' => ['binary' => '/usr/bin/x', 'strict' => 1, 'level' => 'bogus']]);
         $settings->registerFor('demo', [
-            $this->descriptor('binary', 'text', ''),
-            $this->descriptor('strict', 'bool', false),
-            $this->descriptor('level', 'choice', 'low', ['low', 'high']),
-            $this->descriptor('jobs', 'int', 4),
+            $this->descriptor('binary', kind: 'text', default: ''),
+            $this->descriptor('strict', kind: 'bool', default: false),
+            $this->descriptor('level', kind: 'choice', default: 'low', options: ['low', 'high']),
+            $this->descriptor('jobs', kind: 'int', default: 4),
         ]);
 
         $rows = $settings->rows('demo');
@@ -51,7 +51,7 @@ final class PluginSettingsTest extends TestCase
         $this->assertSame(['low', 'high'], $rows[2]->options);
 
         $this->assertSame([], $settings->rows('unknown'), 'no descriptors → no rows');
-        $this->assertSame('', $settings->value('demo', 'nope'), 'an unregistered key reads empty');
+        $this->assertSame('', $settings->value('demo', key: 'nope'), 'an unregistered key reads empty');
     }
 
     public function testChangeCoercesPersistsAndRemoveForDropsDescriptorsOnly(): void
@@ -59,38 +59,38 @@ final class PluginSettingsTest extends TestCase
         $project = new TempProject();
         $settings = new PluginSettings($project->dir, [], null, self::projectScope($project->dir));
         $settings->registerFor('demo', [
-            $this->descriptor('binary', 'text', ''),
-            $this->descriptor('level', 'choice', 'low', ['low', 'high']),
-            $this->descriptor('jobs', 'int', 4),
+            $this->descriptor('binary', kind: 'text', default: ''),
+            $this->descriptor('level', kind: 'choice', default: 'low', options: ['low', 'high']),
+            $this->descriptor('jobs', kind: 'int', default: 4),
         ]);
 
-        $settings->change('demo', 'binary', '/opt/tool');
-        $settings->change('demo', 'level', 'nonsense'); // coerces to the default
-        $settings->change('demo', 'jobs', '9'); // coerces to the declared int kind
-        $settings->change('demo', 'ghost', 'x'); // unregistered → no-op
+        $settings->change('demo', key: 'binary', value: '/opt/tool');
+        $settings->change('demo', key: 'level', value: 'nonsense'); // coerces to the default
+        $settings->change('demo', key: 'jobs', value: '9'); // coerces to the declared int kind
+        $settings->change('demo', key: 'ghost', value: 'x'); // unregistered → no-op
 
-        $this->assertSame('/opt/tool', $settings->value('demo', 'binary'), 'the live map updated');
-        $this->assertSame('low', $settings->value('demo', 'level'));
-        $this->assertSame(9, $settings->value('demo', 'jobs'));
+        $this->assertSame('/opt/tool', $settings->value('demo', key: 'binary'), 'the live map updated');
+        $this->assertSame('low', $settings->value('demo', key: 'level'));
+        $this->assertSame(9, $settings->value('demo', key: 'jobs'));
         $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('/opt/tool', $config['plugins']['demo']['binary'], 'persisted to .porta.json');
         $this->assertArrayNotHasKey('ghost', $config['plugins']['demo']);
 
         $settings->removeFor('demo');
         $this->assertSame([], $settings->rows('demo'), 'descriptors gone');
-        $this->assertSame('/opt/tool', $settings->raw('demo', 'binary'), 'persisted values survive a removal');
+        $this->assertSame('/opt/tool', $settings->raw('demo', key: 'binary'), 'persisted values survive a removal');
     }
 
     public function testResetDropsTheLiveValueAndThePersistedOne(): void
     {
         $project = new TempProject(['.porta.json' => (string) \json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]]], \JSON_THROW_ON_ERROR)]);
         $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x', 'strict' => true]], null, self::projectScope($project->dir));
-        $settings->registerFor('demo', [$this->descriptor('binary', 'text', '/default/bin'), $this->descriptor('strict', 'bool', false)]);
-        $this->assertSame('/usr/bin/x', $settings->value('demo', 'binary'));
+        $settings->registerFor('demo', [$this->descriptor('binary', kind: 'text', default: '/default/bin'), $this->descriptor('strict', kind: 'bool', default: false)]);
+        $this->assertSame('/usr/bin/x', $settings->value('demo', key: 'binary'));
 
-        $settings->reset('demo', 'binary');
+        $settings->reset('demo', key: 'binary');
 
-        $this->assertSame('/default/bin', $settings->value('demo', 'binary'), 'the live value falls back to the descriptor default');
+        $this->assertSame('/default/bin', $settings->value('demo', key: 'binary'), 'the live value falls back to the descriptor default');
         $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertArrayNotHasKey('binary', $file['plugins']['demo'], 'and the key is gone from disk, not set to the default');
         $this->assertArrayHasKey('strict', $file['plugins']['demo'], 'the plugin\'s other settings are untouched');
@@ -101,9 +101,9 @@ final class PluginSettingsTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => (string) \json_encode(['plugins' => ['demo' => ['binary' => '/usr/bin/x']]], \JSON_THROW_ON_ERROR)]);
         $settings = new PluginSettings($project->dir, ['demo' => ['binary' => '/usr/bin/x']], null, self::projectScope($project->dir));
-        $settings->registerFor('demo', [$this->descriptor('binary', 'text', '')]);
+        $settings->registerFor('demo', [$this->descriptor('binary', kind: 'text', default: '')]);
 
-        $settings->reset('demo', 'binary');
+        $settings->reset('demo', key: 'binary');
 
         $file = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertArrayNotHasKey('plugins', $file);

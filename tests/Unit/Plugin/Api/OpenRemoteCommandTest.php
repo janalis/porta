@@ -96,7 +96,7 @@ final class OpenRemoteCommandTest extends TestCase
     public function testARefusedConnectionOpensNothing(): void
     {
         $home = new TempProject();
-        $tester = $this->command($home->dir, 'Cannot log in');
+        $tester = $this->command($home->dir, refusal: 'Cannot log in');
 
         $this->assertSame(1, $tester->execute(['location' => 'ftp://example.org/']));
         $this->assertStringContainsString('Cannot log in', $tester->getDisplay());

@@ -123,7 +123,7 @@ final class LanguageMapTest extends TestCase
 
     public function testLspIdsAreDistinctAndExcludePlaintext(): void
     {
-        $ids = \array_values(\array_unique(\array_filter(\array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, 'EXTENSIONS')))));
+        $ids = \array_values(\array_unique(\array_filter(\array_map(static fn (array $entry): ?string => $entry[1], Probe::getStatic(LanguageMap::class, member: 'EXTENSIONS')))));
 
         $this->assertSame(\array_values(\array_unique($ids)), $ids, 'no duplicates');
         $this->assertNotContains('plaintext', $ids);

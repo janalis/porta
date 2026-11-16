@@ -34,7 +34,7 @@ final class SourceRevealTest extends TestCase
 
     private function previewed(PreviewMode $mode): void
     {
-        $buffer = $this->buffers->open('/p/a.md', "# Title\n\nsome text\n");
+        $buffer = $this->buffers->open('/p/a.md', content: "# Title\n\nsome text\n");
         $buffer->previewId = 'markdown';
         $buffer->previewMode = $mode;
         $this->editor->showDocument($buffer->path, $buffer->document);
@@ -48,7 +48,7 @@ final class SourceRevealTest extends TestCase
         $this->tui->add($this->editor);
         $this->tui->setFocus($pane);
 
-        $this->reveal->reveal(2, 5);
+        $this->reveal->reveal(2, byteCol: 5);
 
         $this->assertSame([2, 5], [$this->editor->getDocument()->cursorLine, $this->editor->getDocument()->cursorCol]);
         $this->assertSame($this->editor, $this->tui->getFocus());
@@ -61,24 +61,24 @@ final class SourceRevealTest extends TestCase
         $this->tui->add($pane);
         $this->tui->setFocus($pane);
 
-        $this->reveal->reveal(99, 99);
+        $this->reveal->reveal(99, byteCol: 99);
 
         $this->assertSame([3, 0], [$this->editor->getDocument()->cursorLine, $this->editor->getDocument()->cursorCol], 'the last line, its end');
         $this->assertSame($pane, $this->tui->getFocus(), 'the editor is off screen: it cannot take them');
 
-        $this->reveal->reveal(2, 99);
+        $this->reveal->reveal(2, byteCol: 99);
         $this->assertSame([2, 9], [$this->editor->getDocument()->cursorLine, $this->editor->getDocument()->cursorCol], 'a column past the line stops at its end');
     }
 
     public function testATabWithNoTextToGoToIsLeftAlone(): void
     {
-        $this->reveal->reveal(1, 1); // nothing open
+        $this->reveal->reveal(1, byteCol: 1); // nothing open
 
-        $this->buffers->openPane('/p/g.dot', 'graph', 'digraph {}');
-        $this->reveal->reveal(1, 1); // a viewer tab
+        $this->buffers->openPane('/p/g.dot', paneId: 'graph', payload: 'digraph {}');
+        $this->reveal->reveal(1, byteCol: 1); // a viewer tab
 
-        $this->buffers->open('/p/a.php', "<?php\n\necho 1;\n");
-        $this->reveal->reveal(2, 2); // text, but nothing previews it
+        $this->buffers->open('/p/a.php', content: "<?php\n\necho 1;\n");
+        $this->reveal->reveal(2, byteCol: 2); // text, but nothing previews it
 
         $this->assertSame(0, $this->editor->getDocument()->cursorLine);
     }

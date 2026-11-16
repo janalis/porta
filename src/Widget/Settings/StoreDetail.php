@@ -225,7 +225,7 @@ final class StoreDetail
         $width = AnsiUtils::visibleWidth($line);
 
         return (
-            AnsiText::columnsFrom($line, 0, $from)
+            AnsiText::columnsFrom($line, startCol: 0, length: $from)
             .Sgr::RESET
             .$this->styles->of(Role::SelectedRow)->apply(AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($line, $from, $to - $from)))
             .AnsiText::columnsFrom($line, $to, \max(0, $width - $to))

@@ -116,7 +116,7 @@ final readonly class StoreTile
     private function initials(StoreCard $card, bool $boxed): array
     {
         $accent = $this->styles->of(Role::TabAccent);
-        $initials = AnsiText::padRight($card->initials(), 2);
+        $initials = AnsiText::padRight($card->initials(), width: 2);
 
         return (
             $boxed

@@ -32,7 +32,7 @@ final class EditorRendererTest extends TestCase
     public function testMatchingBracketsFindsTheCloseOnTheSameLine(): void
     {
         $doc = new Document("(x)\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $this->assertSame([[0, 0], [0, 2]], EditorRenderer::matchingBrackets($doc));
     }
 
@@ -42,7 +42,7 @@ final class EditorRendererTest extends TestCase
         // back one column first (the col>=0 boundary) before it can see the
         // close bracket and scan backward to its match.
         $doc = new Document("()\n");
-        $doc->setCursor(0, 2);
+        $doc->setCursor(0, col: 2);
         $this->assertSame([[0, 1], [0, 0]], EditorRenderer::matchingBrackets($doc));
     }
 
@@ -52,7 +52,7 @@ final class EditorRendererTest extends TestCase
         // column 0 exactly — the col>=0 vs col>0 boundary only a bracket AT
         // column 0 (reached via the decrement, not directly) distinguishes.
         $doc = new Document("(x)\n");
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
         $this->assertSame([[0, 0], [0, 2]], EditorRenderer::matchingBrackets($doc));
     }
 
@@ -61,14 +61,14 @@ final class EditorRendererTest extends TestCase
         // A direction magnitude of 2 would jump straight past the inner pair
         // and run off the end of the line without ever finding the match.
         $doc = new Document("(())\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $this->assertSame([[0, 0], [0, 3]], EditorRenderer::matchingBrackets($doc));
     }
 
     public function testMatchingBracketsWrapsToThePreviousLineWithTheRightStartColumn(): void
     {
         $doc = new Document("(\nx)\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $this->assertSame([[0, 0], [1, 1]], EditorRenderer::matchingBrackets($doc));
     }
 
@@ -77,7 +77,7 @@ final class EditorRendererTest extends TestCase
         // The close bracket sits at column 0 of the next line: starting there
         // (not at the new line's last column) is the only way to find it.
         $doc = new Document("(\n)y\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $this->assertSame([[0, 0], [1, 0]], EditorRenderer::matchingBrackets($doc));
     }
 
@@ -87,28 +87,28 @@ final class EditorRendererTest extends TestCase
         // current line must resume from the END of the previous line, not
         // column 0 — the `?:` branch only a backward-crossing test reaches.
         $doc = new Document("(\nx)\n");
-        $doc->setCursor(1, 2); // just after the ')' on line 1
+        $doc->setCursor(1, col: 2); // just after the ')' on line 1
         $this->assertSame([[1, 1], [0, 0]], EditorRenderer::matchingBrackets($doc));
     }
 
     public function testMatchingBracketsReturnsNullWhenNoMatchExistsAnywhere(): void
     {
         $doc = new Document("(\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $this->assertNull(EditorRenderer::matchingBrackets($doc));
     }
 
     public function testIdentifierUnderCaretIncludesTheLeadingDollarSign(): void
     {
         $doc = new Document("\$needle = 1;\n");
-        $doc->setCursor(0, 3); // inside "needle"
+        $doc->setCursor(0, col: 3); // inside "needle"
         $this->assertSame('$needle', EditorRenderer::identifierUnderCaret($doc));
     }
 
     public function testIdentifierUnderCaretIsNullWhenCaretIsNotOnAWordChar(): void
     {
         $doc = new Document("a = b;\n");
-        $doc->setCursor(0, 2); // the space between "a" and "="
+        $doc->setCursor(0, col: 2); // the space between "a" and "="
         $this->assertNull(EditorRenderer::identifierUnderCaret($doc));
     }
 
@@ -117,7 +117,7 @@ final class EditorRendererTest extends TestCase
         // start (2) is nonzero here: an end-start vs end+start mix-up only
         // shows up once the identifier doesn't begin at column 0.
         $doc = new Document("  \$needle;\n");
-        $doc->setCursor(0, 5); // inside "needle"
+        $doc->setCursor(0, col: 5); // inside "needle"
         $this->assertSame('$needle', EditorRenderer::identifierUnderCaret($doc));
     }
 
@@ -127,30 +127,30 @@ final class EditorRendererTest extends TestCase
         // would match — the leading anchor must reject it, not just search
         // for a valid suffix anywhere inside the run.
         $doc = new Document("3abc;\n");
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
         $this->assertNull(EditorRenderer::identifierUnderCaret($doc));
     }
 
     public function testIdentifierOccurrencesRequiresAtLeastTwoMatches(): void
     {
         $doc = new Document("\$needle = 1;\n");
-        $doc->setCursor(0, 3);
-        $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 0));
+        $doc->setCursor(0, col: 3);
+        $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, fromLine: 0, toLine: 0));
     }
 
     public function testIdentifierOccurrencesFindsBothMatchesWhenThereAreTwo(): void
     {
         $doc = new Document("\$needle = \$needle + 1;\n");
-        $doc->setCursor(0, 3);
-        $occurrences = EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 0);
+        $doc->setCursor(0, col: 3);
+        $occurrences = EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, fromLine: 0, toLine: 0);
         $this->assertCount(2, $occurrences);
     }
 
     public function testIdentifierOccurrencesIsEmptyWhenThePaneIsBlurred(): void
     {
         $doc = new Document("\$needle = \$needle + 1;\n");
-        $doc->setCursor(0, 3);
-        $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Blurred, 0, 0));
+        $doc->setCursor(0, col: 3);
+        $this->assertSame([], EditorRenderer::identifierOccurrences($doc, PaneFocus::Blurred, fromLine: 0, toLine: 0));
     }
 
     public function testManyInlayHintsOnOneLineStayLinearInSize(): void
@@ -165,9 +165,9 @@ final class EditorRendererTest extends TestCase
         }
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.php');
-        $hlLine = $highlighter->highlight([\str_repeat('fn(x), ', times: 12)], 1)[0];
+        $hlLine = $highlighter->highlight([\str_repeat('fn(x), ', times: 12)], version: 1)[0];
 
-        $out = EditorRenderer::applyInlayHints(InlayLine::place($hints, $doc, 0), $hlLine, $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place($hints, $doc, line: 0), $hlLine, $this->styles());
 
         $this->assertLessThan(4_096, \strlen($out), 'hint insertion must stay linear, never multiply per hint');
         $this->assertSame(12, \substr_count(AnsiUtils::stripAnsiCodes($out), needle: 'p:'), 'every hint landed');
@@ -184,12 +184,12 @@ final class EditorRendererTest extends TestCase
         $doc = new Document("enum StatusTone: string\n");
         $highlighted = LineDecorator::applyAll('enum StatusTone: string', [[5, 15, "\x1b[48;5;100m", Sgr::DEFAULT_BG, null]]);
 
-        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(15, '46 references', null, padLeft: true)], $doc, 0), $highlighted, $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(15, '46 references', null, padLeft: true)], $doc, line: 0), $highlighted, $this->styles());
 
         $this->assertSame('enum StatusTone 46 references: string', AnsiUtils::stripAnsiCodes($out));
-        $this->assertTrue(self::backgroundOpenBefore($out, 'StatusTone'), 'the word itself keeps its highlight');
-        $this->assertFalse(self::backgroundOpenBefore($out, '46 references'), 'the hint does not');
-        $this->assertFalse(self::backgroundOpenBefore($out, ': string'), 'nor does the code after it');
+        $this->assertTrue(self::backgroundOpenBefore($out, needle: 'StatusTone'), 'the word itself keeps its highlight');
+        $this->assertFalse(self::backgroundOpenBefore($out, needle: '46 references'), 'the hint does not');
+        $this->assertFalse(self::backgroundOpenBefore($out, needle: ': string'), 'nor does the code after it');
     }
 
     /** A span that runs on past the hint is picked up again after it. */
@@ -198,10 +198,10 @@ final class EditorRendererTest extends TestCase
         $doc = new Document("enum StatusTone: string\n");
         $selected = LineDecorator::applyAll('enum StatusTone: string', [[0, 23, "\x1b[48;5;100m", Sgr::DEFAULT_BG, null]]);
 
-        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(15, '46 references', null, padLeft: true)], $doc, 0), $selected, $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(15, '46 references', null, padLeft: true)], $doc, line: 0), $selected, $this->styles());
 
-        $this->assertFalse(self::backgroundOpenBefore($out, '46 references'), 'the hint is off the span');
-        $this->assertTrue(self::backgroundOpenBefore($out, ': string'), 'and the span resumes after it');
+        $this->assertFalse(self::backgroundOpenBefore($out, needle: '46 references'), 'the hint is off the span');
+        $this->assertTrue(self::backgroundOpenBefore($out, needle: ': string'), 'and the span resumes after it');
     }
 
     /**
@@ -230,7 +230,7 @@ final class EditorRendererTest extends TestCase
         // Two hints at one column: the fold inserted rightmost-first, so the
         // LATER-listed hint ended up left. The single pass must match.
         $doc = new Document("abcd\n");
-        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(2, 'A'), new InlayHint(2, 'B')], $doc, 0), 'abcd', $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(2, 'A'), new InlayHint(2, 'B')], $doc, line: 0), hlLine: 'abcd', styles: $this->styles());
 
         $this->assertSame('abBAcd', AnsiUtils::stripAnsiCodes($out));
     }
@@ -238,14 +238,14 @@ final class EditorRendererTest extends TestCase
     public function testAnInlayHintAtColumnZeroPrependsCleanly(): void
     {
         $doc = new Document("abcd\n");
-        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(0, 'H'), new InlayHint(2, 'I')], $doc, 0), 'abcd', $this->styles());
+        $out = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(0, 'H'), new InlayHint(2, 'I')], $doc, line: 0), hlLine: 'abcd', styles: $this->styles());
 
         // Exact: a stale segment cursor would duplicate or drop characters.
         $this->assertSame('HabIcd', AnsiUtils::stripAnsiCodes($out));
 
         // Interior gaps with a non-zero start: an over-long segment slice
         // would duplicate the characters after the gap.
-        $mid = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(1, 'H'), new InlayHint(3, 'I')], $doc, 0), 'abcd', $this->styles());
+        $mid = EditorRenderer::applyInlayHints(InlayLine::place([new InlayHint(1, 'H'), new InlayHint(3, 'I')], $doc, line: 0), hlLine: 'abcd', styles: $this->styles());
         $this->assertSame('aHbcId', AnsiUtils::stripAnsiCodes($mid));
     }
 
@@ -257,13 +257,13 @@ final class EditorRendererTest extends TestCase
         // row and a 5MB frame (a deeply indented ASCII-art block in a README).
         $indent = \str_repeat(' ', times: 32); // 8 guide columns at the default indent width of 4
         $doc = new Document($indent."x\n");
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $styles = $this->styles();
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.md');
-        $hlLine = $highlighter->highlight([$indent.'x'], 1)[0];
+        $hlLine = $highlighter->highlight([$indent.'x'], version: 1)[0];
 
-        $guided = EditorRenderer::applyIndentGuides($doc, $hlLine, 0, $styles);
+        $guided = EditorRenderer::applyIndentGuides($doc, $hlLine, lineIndex: 0, styles: $styles);
 
         $this->assertLessThan(2_048, \strlen($guided), 'guide overlay must stay linear, never double per glyph');
         $this->assertSame(
@@ -280,9 +280,9 @@ final class EditorRendererTest extends TestCase
         // code-like sibling line keeps its highlighting.
         $dense = \implode(' ', \array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE + 1, value: 'the'));
         $doc = new Document($dense."\nthe end of the\n");
-        $doc->setCursor(0, 1); // caret on the first 'the'
+        $doc->setCursor(0, col: 1); // caret on the first 'the'
 
-        $occurrences = EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 1);
+        $occurrences = EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, fromLine: 0, toLine: 1);
 
         $this->assertCount(2, $occurrences, 'only line 1\'s two matches survive');
         $this->assertSame([1, 1], \array_column($occurrences, 0), 'both from the sibling line');
@@ -292,11 +292,11 @@ final class EditorRendererTest extends TestCase
     {
         $atCap = \implode(' ', \array_fill(0, EditorRenderer::MAX_OCCURRENCES_PER_LINE, value: 'the'));
         $doc = new Document($atCap."\n");
-        $doc->setCursor(0, 1);
+        $doc->setCursor(0, col: 1);
 
         $this->assertCount(
             EditorRenderer::MAX_OCCURRENCES_PER_LINE,
-            EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 0),
+            EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, fromLine: 0, toLine: 0),
             'the cap is exclusive: exactly MAX matches still highlight',
         );
     }
@@ -306,26 +306,26 @@ final class EditorRendererTest extends TestCase
         // ltrim($word, '$') === "ab", length exactly 2 — the boundary between
         // "too short" and "long enough" the < vs <= mutant lands on.
         $doc = new Document("\$ab = \$ab + 1;\n");
-        $doc->setCursor(0, 1);
-        $this->assertCount(2, EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, 0, 0));
+        $doc->setCursor(0, col: 1);
+        $this->assertCount(2, EditorRenderer::identifierOccurrences($doc, PaneFocus::Focused, fromLine: 0, toLine: 0));
     }
 
     public function testApplyInlayHintsIsANoOpWithNoHints(): void
     {
         $doc = new Document("x\n");
-        $this->assertSame('x', EditorRenderer::applyInlayHints(InlayLine::place([], $doc, 0), 'x', $this->styles()));
+        $this->assertSame('x', EditorRenderer::applyInlayHints(InlayLine::place([], $doc, line: 0), hlLine: 'x', styles: $this->styles()));
     }
 
     public function testApplyIndentGuidesIsANoOpWithNoLeadingWhitespace(): void
     {
         $doc = new Document("x\n");
-        $this->assertSame('x', EditorRenderer::applyIndentGuides($doc, 'x', 0, $this->styles()));
+        $this->assertSame('x', EditorRenderer::applyIndentGuides($doc, hlLine: 'x', lineIndex: 0, styles: $this->styles()));
     }
 
     public function testApplyIndentGuidesOverlaysAGuideInsideLeadingWhitespace(): void
     {
         $doc = new Document("  x\n");
-        $result = EditorRenderer::applyIndentGuides($doc, '  x', 0, $this->styles());
+        $result = EditorRenderer::applyIndentGuides($doc, hlLine: '  x', lineIndex: 0, styles: $this->styles());
         $this->assertStringContainsString(Glyphs::INDENT_GUIDE, $result);
     }
 

@@ -237,8 +237,8 @@ final class ResultsPanelWidgetTest extends TestCase
         $raw = $panel->render(new RenderContext(60, 4))[0];
 
         // prefixWidth = 1 (leading space) + strwidth('src/A.php:5') (11) + 2 (gutter) = 14; range start 4 → column 18.
-        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 17, 1, strict: true), 'column 17 is not tinted');
-        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 18, 1, strict: true), 'column 18 ("n" of needle) is tinted');
+        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, startCol: 17, length: 1, strict: true), 'column 17 is not tinted');
+        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, startCol: 18, length: 1, strict: true), 'column 18 ("n" of needle) is tinted');
     }
 
     /** A location-less row (log tools) starts its text with a leading space, not the reverse. */
@@ -264,8 +264,8 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $raw = $panel->render(new RenderContext(60, 4))[0];
 
-        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 0, 1, strict: true), 'column 0 (the leading space) is not tinted');
-        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 1, 1, strict: true), 'column 1 ("n" of needle) is tinted');
+        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, startCol: 0, length: 1, strict: true), 'column 0 (the leading space) is not tinted');
+        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, startCol: 1, length: 1, strict: true), 'column 1 ("n" of needle) is tinted');
     }
 
     public function testResultsWithoutRangesRenderUnhighlighted(): void
@@ -423,8 +423,8 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->open('Find in Project', ResultsPanelFields::searchResults()); // reopen: everything above must reset
 
-        $this->assertSame('', Probe::get($panel, 'filter')->value());
-        $this->assertFalse(Probe::get($panel, 'searching'));
+        $this->assertSame('', Probe::get($panel, property: 'filter')->value());
+        $this->assertFalse(Probe::get($panel, property: 'searching'));
         $lines = AnsiUtils::stripAnsiCodes(\implode("\n", $panel->render(new RenderContext(80, 12))));
         $this->assertStringNotContainsString('match zero', $lines, 'the stale results are gone — setResults([]) via open()');
     }
@@ -536,7 +536,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->handleInput("\x7f"); // backspace: filter now ""
 
-        $this->assertSame('', Probe::get($panel, 'filter')->value(), 'the character was actually removed');
+        $this->assertSame('', Probe::get($panel, property: 'filter')->value(), 'the character was actually removed');
         $this->assertGreaterThan($before, $panel->getRenderRevision(), 'the successful backspace requested a repaint');
     }
 
@@ -1246,8 +1246,8 @@ final class ResultsPanelWidgetTest extends TestCase
         $raw = $panel->render(new RenderContext(30, 6))[4]; // the match row, under the filter box and the file header
 
         // prefixWidth = 4 (matchIndent) + 1 (label "5") + 2 (gutter) = 7.
-        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 6, 1, strict: true), 'column 6 (the gutter) is not tinted');
-        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, 7, 1, strict: true), 'column 7 ("n" of needle) is tinted');
+        $this->assertStringNotContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, startCol: 6, length: 1, strict: true), 'column 6 (the gutter) is not tinted');
+        $this->assertStringContainsString('48;5;58', AnsiUtils::sliceByColumn($raw, startCol: 7, length: 1, strict: true), 'column 7 ("n" of needle) is tinted');
     }
 
     /** The filter's legend and hint, exactly worded and where the box puts them, not reordered or dropped. */
@@ -1284,7 +1284,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->open('Usages', ResultsPanelFields::resultsOnly()); // no setResults() yet
 
-        $this->assertSame(0, Probe::get($panel, 'list')->selected());
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected());
     }
 
     /**
@@ -1314,7 +1314,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->setResults([]); // no rows: selectFirstMatch() cannot relocate anything
 
-        $this->assertSame(0, Probe::get($panel, 'list')->selected());
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected());
     }
 
     /** setResults() requests a render on its own. */
@@ -1459,12 +1459,12 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->restoreViewState($state); // fallbackIndex way past the end
 
-        $this->assertSame(2, Probe::get($panel, 'list')->selected(), 'clamped to the last row, count-1');
+        $this->assertSame(2, Probe::get($panel, property: 'list')->selected(), 'clamped to the last row, count-1');
 
         $state2 = new ResultsViewState('', ResultGrouping::File, [], null, null, null, -5, [], []);
         $panel->restoreViewState($state2); // fallbackIndex before the start
 
-        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'clamped to the first row, not left negative');
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected(), 'clamped to the first row, not left negative');
     }
 
     /** With zero display rows, relocateSelection's fallback must not call select() at all — never a negative index. */
@@ -1477,7 +1477,7 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->restoreViewState($state);
 
-        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'zero rows: the fallback clamp never fires, selection stays at its prior (reset) value, never goes negative');
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected(), 'zero rows: the fallback clamp never fires, selection stays at its prior (reset) value, never goes negative');
     }
 
     /** rebuildView()'s own clamp: a shrinking list (here, a filter narrowing it) must pull an out-of-range selection back to the new last row, exactly. */
@@ -1497,7 +1497,7 @@ final class ResultsPanelWidgetTest extends TestCase
             $panel->handleInput($ch);
         } // narrows to exactly 2 rows (A, B) — selection (2) now equals the new count
 
-        $this->assertSame(1, Probe::get($panel, 'list')->selected(), 'clamped to the new last row, count - 1 exactly');
+        $this->assertSame(1, Probe::get($panel, property: 'list')->selected(), 'clamped to the new last row, count - 1 exactly');
     }
 
     /** matchIndex 0 (the very first result) is a real, non-header candidate for identity relocation, not skipped as if it were a header's -1 sentinel. */
@@ -1512,6 +1512,6 @@ final class ResultsPanelWidgetTest extends TestCase
 
         $panel->restoreViewState($state);
 
-        $this->assertSame(0, Probe::get($panel, 'list')->selected(), 'the first result relocated by identity, not by falling through to the fallback clamp');
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected(), 'the first result relocated by identity, not by falling through to the fallback clamp');
     }
 }

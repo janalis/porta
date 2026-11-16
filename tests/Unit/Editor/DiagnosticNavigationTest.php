@@ -40,7 +40,7 @@ final class DiagnosticNavigationTest extends TestCase
         $this->buffers->setActive('/p/a.php');
         $buffer->diagnostics = $diagnostics;
         $this->editor->showDocument('/p/a.php', $buffer->document);
-        $buffer->document->setCursor($caret, 0);
+        $buffer->document->setCursor($caret, col: 0);
 
         $this->revealed = [];
         $events = new EventDispatcher();
@@ -48,7 +48,7 @@ final class DiagnosticNavigationTest extends TestCase
             $this->revealed[] = $event;
         });
 
-        return new DiagnosticNavigation($this->buffers, $this->editor, new Notifier($this->status, TestTui::create(80, 24)), new Translator('en'), $events);
+        return new DiagnosticNavigation($this->buffers, $this->editor, new Notifier($this->status, TestTui::create(80, rows: 24)), new Translator('en'), $events);
     }
 
     /** @return array<int, list<array{severity: DiagnosticSeverity, message: string, col: int}>> */

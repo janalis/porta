@@ -49,7 +49,7 @@ final class MarkdownFenceLayoutTest extends TestCase
         $session = new FenceSession($registry, new FenceRenderQueue($scheduler), static function (): void {});
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), fences: $session);
         $markdown = "Before\n\n> ```mermaid\n> first\n> second\n> ```\n\nAfter\n";
-        $renderer->prepareFences($markdown, '/doc.md', width: 30);
+        $renderer->prepareFences($markdown, path: '/doc.md', width: 30);
         $pending = $renderer->render($markdown, width: 40);
         $this->assertStringContainsString('Rendering diagram…', $this->plain($pending->lines));
         $this->assertStringContainsString('second', $this->plain($pending->lines));
@@ -64,7 +64,7 @@ final class MarkdownFenceLayoutTest extends TestCase
         $this->assertSame([4, 0], $drawn->sourcePointAt($line + 2, col: 6));
         $this->assertStringContainsString('mmdc warning', \implode("\n", $plain));
         $edited = \str_replace('second', replace: 'invalid', subject: $markdown);
-        $renderer->prepareFences($edited, '/doc.md', width: 30);
+        $renderer->prepareFences($edited, path: '/doc.md', width: 30);
         $scheduler->fire();
         $error('line 2: bad syntax');
         $failed = $this->plain($renderer->render($edited, width: 40)->lines);
@@ -81,7 +81,7 @@ final class MarkdownFenceLayoutTest extends TestCase
     {
         [$graphics, $terminal] = PixelGraphics::answered();
         $layout = new ImageLayout($graphics);
-        $bytes = PngFixture::bytes(120, 80);
+        $bytes = PngFixture::bytes(120, height: 80);
         $rows = $layout->png($bytes, width: 20);
         $this->assertCount(5, $rows);
         $this->assertSame(15, $rows[0]->width);
@@ -99,9 +99,9 @@ final class MarkdownFenceLayoutTest extends TestCase
         $this->assertNull($fallback->png('bad PNG', width: 20));
         $this->assertNull(new ImageLayout(raster: new PngRaster(available: false))->png($bytes, width: 20));
         for ($width = 1; $width < 67; ++$width) {
-            $fallback->png(PngFixture::bytes(800, 16), $width);
+            $fallback->png(PngFixture::bytes(800, height: 16), $width);
         }
-        $this->assertCount(24, $fallback->png(PngFixture::bytes(1000, 5000), width: 200));
+        $this->assertCount(24, $fallback->png(PngFixture::bytes(1000, height: 5000), width: 200));
         $fallback->clear();
     }
 
@@ -113,7 +113,7 @@ final class MarkdownFenceLayoutTest extends TestCase
             'plugin' => 'diagrams',
             'languages' => ['mermaid'],
             'render' => static function (string $language, string $source, string $path, int $width, \Closure $ok): \Closure {
-                $ok(FenceResult::png(PngFixture::bytes(16, 16)));
+                $ok(FenceResult::png(PngFixture::bytes(16, height: 16)));
 
                 return static function (): void {};
             },
@@ -121,7 +121,7 @@ final class MarkdownFenceLayoutTest extends TestCase
         $session = new FenceSession($registry, new FenceRenderQueue($scheduler), static function (): void {});
         $markdown = "```mermaid\nA-->B\n```\n";
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), graphics: PixelGraphics::answered()[0], fences: $session);
-        $renderer->prepareFences($markdown, '/doc.md', width: 30);
+        $renderer->prepareFences($markdown, path: '/doc.md', width: 30);
         $scheduler->fire();
         $doc = $renderer->render($markdown, width: 40);
         $this->assertSame([1, 0], $doc->sourcePointAt(1, col: 2));

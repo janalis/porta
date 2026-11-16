@@ -80,7 +80,7 @@ final readonly class RenderedDoc
                 continue;
             }
 
-            return '' === $text ? $source : $source + \strlen(AnsiUtils::sliceByColumn($text, 0, $col - $start));
+            return '' === $text ? $source : $source + \strlen(AnsiUtils::sliceByColumn($text, startCol: 0, length: $col - $start));
         }
 
         return null;

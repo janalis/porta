@@ -64,7 +64,7 @@ final class RasterImageTest extends TestCase
     public function testItTellsWhatAPictureIs(): void
     {
         [$jpeg, $gif] = self::gd();
-        $this->assertSame('png', RasterImage::kind(PngFixture::bytes(2, 2)));
+        $this->assertSame('png', RasterImage::kind(PngFixture::bytes(2, height: 2)));
         $this->assertSame('jpeg', RasterImage::kind($jpeg));
         $this->assertSame('gif', RasterImage::kind($gif));
         $this->assertSame('gif', RasterImage::kind('GIF87a...'));
@@ -82,12 +82,12 @@ final class RasterImageTest extends TestCase
         $raster = new RasterImage(function (): never {
             $this->fail('no SVG here');
         });
-        $png = PngFixture::bytes(3, 3);
+        $png = PngFixture::bytes(3, height: 3);
         $this->assertSame($png, $this->png($raster, $png));
         $this->assertSame([RasterImage::MAX_WIDTH, 5], PngDimensions::read((string) $this->png($raster, $jpeg)), 'narrowed to the widest kept');
         $this->assertSame([30, 20], PngDimensions::read((string) $this->png($raster, $gif)));
-        $this->assertNull($this->png($raster, 'GIF89a broken'));
-        $this->assertNull($this->png($raster, 'neither'));
+        $this->assertNull($this->png($raster, bytes: 'GIF89a broken'));
+        $this->assertNull($this->png($raster, bytes: 'neither'));
         $this->assertNull($this->png(new RasterImage(gd: false), $jpeg), 'no GD, no JPEG');
     }
 
@@ -112,7 +112,7 @@ final class RasterImageTest extends TestCase
         $handed = [];
         $raster = new RasterImage(static function (string $svg, int $width, \Closure $onPng) use (&$handed): void {
             $handed[] = $svg;
-            $onPng(1 === \count($handed) ? PngFixture::bytes(512, 256) : 'not a png');
+            $onPng(1 === \count($handed) ? PngFixture::bytes(512, height: 256) : 'not a png');
         });
         $this->assertSame([512, 256], PngDimensions::read((string) $this->png($raster, self::SVG)));
         $this->assertNull($this->png($raster, self::SVG), 'what the converter answers must be a PNG');
@@ -124,14 +124,14 @@ final class RasterImageTest extends TestCase
         $lent = [];
         $converter = static function (string $svg, int $width, \Closure $onPng) use (&$lent): void {
             $lent[] = [$svg, $width];
-            $onPng(PngFixture::bytes($width, 4));
+            $onPng(PngFixture::bytes($width, height: 4));
             $onPng('answered twice');
         };
         $rsvg = [];
         $raster = new RasterImage(
             static function (string $svg, int $width, \Closure $onPng) use (&$rsvg): void {
                 $rsvg[] = $svg;
-                $onPng(PngFixture::bytes(7, 7));
+                $onPng(PngFixture::bytes(7, height: 7));
             },
             lent: static fn (): \Closure => $converter,
         );
@@ -147,7 +147,7 @@ final class RasterImageTest extends TestCase
 
         $none = new RasterImage(
             static function (string $svg, int $width, \Closure $onPng): void {
-                $onPng(PngFixture::bytes(7, 7));
+                $onPng(PngFixture::bytes(7, height: 7));
             },
             lent: static fn (): ?\Closure => null,
         );
@@ -164,7 +164,7 @@ final class RasterImageTest extends TestCase
         $this->assertNull($this->png($raster, self::SVG));
 
         $answeredFirst = new RasterImage(lent: static fn (): \Closure => static function (string $svg, int $width, \Closure $onPng): never {
-            $onPng(PngFixture::bytes(3, 3));
+            $onPng(PngFixture::bytes(3, height: 3));
 
             throw new \RuntimeException('after answering');
         });
@@ -206,7 +206,7 @@ final class RasterImageTest extends TestCase
         \putenv('PATH='.$bin->dir);
         $this->assertNull($this->png(new RasterImage(), self::SVG), 'what it drew is no PNG');
 
-        $bin->write('rsvg-convert', "#!/bin/sh\ncat >/dev/null\nexit 1\n");
+        $bin->write('rsvg-convert', content: "#!/bin/sh\ncat >/dev/null\nexit 1\n");
         $this->assertNull($this->png(new RasterImage(), self::SVG), 'a failed conversion is nothing');
 
         \putenv('PATH='.$bin->path('missing'));

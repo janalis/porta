@@ -43,7 +43,7 @@ final class MenuOverlayControllerTest extends TestCase
         // inside refreshContextMenu() below would throw before ever reaching
         // the assertions — that failure IS the test for that mutant.
         $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
-        $controller->setContextAnchor(5, 10);
+        $controller->setContextAnchor(5, col: 10);
         $controller->refreshContextMenu();
 
         $this->assertInstanceOf(DropdownRegion::class, $controller->contextMenuDropdown());
@@ -79,7 +79,7 @@ final class MenuOverlayControllerTest extends TestCase
         );
         $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
 
-        $controller->setContextAnchor(5, 10);
+        $controller->setContextAnchor(5, col: 10);
         $controller->refreshContextMenu();
         $box = $controller->contextMenuDropdown();
         $this->assertInstanceOf(DropdownRegion::class, $box);
@@ -88,19 +88,19 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertSame([9, $box->width], $shadow->columnsOn($box->top + $box->count), 'the band row: the band alone');
         $this->assertSame([10, $box->width], $shadow->columnsOn($box->top), 'the top row: the box alone');
 
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'the layer changed: a frame is asked for');
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'), 'the layer changed: a frame is asked for');
         // The menu rides the floating layer; the pane beneath keeps its own text.
-        $this->assertStringContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $layer->rows(100, 24))));
+        $this->assertStringContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $layer->rows(100, rows: 24))));
         $this->assertStringNotContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $pane->render(new RenderContext(100, 24)))));
 
-        $controller->setContextAnchor(5, 0);
+        $controller->setContextAnchor(5, col: 0);
         $controller->refreshContextMenu();
         [$edge] = $controller->regions();
         $this->assertSame([0, $box->width], [$edge->col, $edge->width], 'flush left: the box alone, from its own first column');
 
         $contextMenu->close();
         $controller->refreshContextMenu();
-        $this->assertStringNotContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $layer->rows(100, 24))), 'closed: off the layer');
+        $this->assertStringNotContainsString('Copy', AnsiUtils::stripAnsiCodes(\implode("\n", $layer->rows(100, rows: 24))), 'closed: off the layer');
     }
 
     /**
@@ -123,7 +123,7 @@ final class MenuOverlayControllerTest extends TestCase
             layer: new FloatingLayer(),
         );
         $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
-        $controller->setContextAnchor(5, 10);
+        $controller->setContextAnchor(5, col: 10);
         $rendered = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $pane->render(new RenderContext(100, 24))));
 
         $controller->refreshContextMenu();
@@ -185,13 +185,13 @@ final class MenuOverlayControllerTest extends TestCase
             layer: new FloatingLayer(),
         );
         $contextMenu->open([new MenuItem('Copy', 'Ctrl+C', null)]);
-        $controller->setContextAnchor(5, 10);
+        $controller->setContextAnchor(5, col: 10);
         $controller->refreshContextMenu();
         $this->tui->processRender(); // the frame the first refresh asked for
 
         $controller->refreshContextMenu();
 
-        $this->assertFalse((bool) Probe::get($this->tui, 'renderRequested'));
+        $this->assertFalse((bool) Probe::get($this->tui, property: 'renderRequested'));
     }
 
     public function testAListboxIsHeavyFramedAndFlipsAboveItsControl(): void
@@ -200,8 +200,8 @@ final class MenuOverlayControllerTest extends TestCase
         $contextMenu = new ContextMenu();
         $controller = new MenuOverlayController($this->renderer, new MenuBarWidget(), $contextMenu, new MenuOverlayPanes([$pane]));
 
-        $contextMenu->openListbox([new MenuItem('dark', '', null), new MenuItem('light', '', null), new MenuItem('high', '', null)], 0, 20);
-        $controller->setContextAnchor(23, 10, above: 20); // the select occupies rows 20-22
+        $contextMenu->openListbox([new MenuItem('dark', '', null), new MenuItem('light', '', null), new MenuItem('high', '', null)], current: 0, minWidth: 20);
+        $controller->setContextAnchor(23, col: 10, above: 20); // the select occupies rows 20-22
         $controller->refreshContextMenu();
 
         $region = $controller->contextMenuDropdown();
@@ -212,7 +212,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertStringContainsString('┃', $rendered);
 
         $contextMenu->open([new MenuItem('Copy', '', null)]);
-        $controller->setContextAnchor(23, 10); // a right-click: no control to clear
+        $controller->setContextAnchor(23, col: 10); // a right-click: no control to clear
         $controller->refreshContextMenu();
         $this->assertSame(20, $controller->contextMenuDropdown()?->top, 'a menu flips to end on its anchor row, as before');
         $this->assertStringContainsString('┏', \implode("\n", $pane->render(new RenderContext(100, 24))), 'a menu holds the keys too: heavy');
@@ -237,19 +237,19 @@ final class MenuOverlayControllerTest extends TestCase
         $rows = static fn (): array => \array_map(AnsiUtils::stripAnsiCodes(...), $pane->render(new RenderContext(100, 24)));
 
         $contextMenu->open($items);
-        $controller->setContextAnchor(5, 10);
+        $controller->setContextAnchor(5, col: 10);
         $controller->refreshContextMenu();
         $region = $controller->contextMenuDropdown();
         $this->assertSame([5, 19], [$region?->top, $region?->count], 'more room below row 5: down, to the screen\'s last row');
         $this->assertStringContainsString('▼', $rows()[23]);
 
-        $controller->setContextAnchor(18, 10);
+        $controller->setContextAnchor(18, col: 10);
         $controller->refreshContextMenu();
         $region = $controller->contextMenuDropdown();
         $this->assertSame([0, 18], [$region?->top, $region?->count], 'more room above row 18: up, from the screen\'s top');
 
-        $contextMenu->openListbox($items, 25, 10);
-        $controller->setContextAnchor(5, 10);
+        $contextMenu->openListbox($items, current: 25, minWidth: 10);
+        $controller->setContextAnchor(5, col: 10);
         $controller->refreshContextMenu();
         $this->assertSame(9, $controller->contextMenuDropdown()?->first, 'the current option, 25, is the window\'s last row');
         $this->assertStringContainsString('▲', $rows()[5]);
@@ -307,7 +307,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->assertStringContainsString('Item 2', $rows[1]);
         $this->assertStringContainsString('▲', $rows[0], 'more above');
         $this->assertStringContainsString('▼', $rows[7], 'and below');
-        $this->assertSame(2, $controller->menuDropdown()?->itemAt(2, 3), 'a click on the first item row picks the item it shows');
+        $this->assertSame(2, $controller->menuDropdown()?->itemAt(2, col: 3), 'a click on the first item row picks the item it shows');
     }
 
     /**
@@ -320,13 +320,13 @@ final class MenuOverlayControllerTest extends TestCase
         [$menuBar, $pane] = $this->aFileMenuOfTenOn(rows: 12);
         $contextMenu = new ContextMenu();
         $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane]), frameHooks: $this->tui, tui: $this->tui);
-        $pending = fn (): bool => (bool) Probe::get($this->tui, 'renderRequested');
+        $pending = fn (): bool => (bool) Probe::get($this->tui, property: 'renderRequested');
         $this->tui->processRender(); // the frame adding the widgets asked for
 
-        $this->frame(30, 8);
+        $this->frame(30, rows: 8);
         $this->tui->processRender();
         $this->assertFalse($pending(), 'no menu open: a changed screen asks for nothing');
-        $this->frame(30, 12);
+        $this->frame(30, rows: 12);
 
         $menuBar->open(0);
         $controller->refreshMenu();
@@ -335,7 +335,7 @@ final class MenuOverlayControllerTest extends TestCase
         $this->tui->processRender();
         $this->assertFalse($pending(), 'the same screen: nothing to redo, no frame asked for');
 
-        $this->frame(30, 8);
+        $this->frame(30, rows: 8);
         $this->tui->processRender();
         $this->assertSame(8, $controller->menuDropdown()?->count, 'laid out again for the shrunk screen');
         $this->assertTrue($pending(), 'and the frame that shows it asked for');
@@ -346,10 +346,10 @@ final class MenuOverlayControllerTest extends TestCase
         $menuBar->close();
         $controller->refreshMenu();
         $contextMenu->open(\array_map(static fn (int $i): MenuItem => new MenuItem("Item {$i}", '', null), \range(0, end: 9)));
-        $controller->setContextAnchor(1, 0);
+        $controller->setContextAnchor(1, col: 0);
         $controller->refreshContextMenu();
         $this->assertSame(8, $controller->contextMenuDropdown()?->count, 'rows 1-8 of the short screen');
-        $this->frame(30, 12);
+        $this->frame(30, rows: 12);
         $this->tui->processRender();
         $this->assertSame(12, $controller->contextMenuDropdown()?->count, 'all ten items on the grown one');
     }
@@ -369,7 +369,7 @@ final class MenuOverlayControllerTest extends TestCase
         $contextMenu = new ContextMenu();
         $this->tui->add($menuBar);
         $this->tui->add($pane);
-        $this->frame(24, 12);
+        $this->frame(24, rows: 12);
         $controller = new MenuOverlayController($this->renderer, $menuBar, $contextMenu, new MenuOverlayPanes([$pane]));
         $topRow = static fn (): string => AnsiUtils::stripAnsiCodes($pane->render(new RenderContext(24, 11))[0]);
 
@@ -385,7 +385,7 @@ final class MenuOverlayControllerTest extends TestCase
         $menuBar->close();
         $controller->refreshMenu();
         $contextMenu->open([new MenuItem('Copy', '', null)]);
-        $controller->setContextAnchor(1, 0); // the pane's first row
+        $controller->setContextAnchor(1, col: 0); // the pane's first row
         $controller->refreshContextMenu();
         $this->assertStringStartsWith('┏━', $topRow(), 'a context menu keeps its closed border');
     }

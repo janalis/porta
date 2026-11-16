@@ -28,7 +28,7 @@ final class FileLockTest extends TestCase
         $this->assertSame(0, $child->run());
         $this->assertFalse(new FileLock($project->path('missing/lease'))->acquire());
         $this->assertFalse(new FileLock($project->dir)->acquire());
-        $project->write('target', 'data');
+        $project->write('target', content: 'data');
         \symlink($project->path('target'), $project->path('link'));
         $this->assertFalse(new FileLock($project->path('link'))->acquire());
         $this->assertSame('data', \file_get_contents($project->path('target')));

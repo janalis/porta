@@ -93,7 +93,7 @@ final class AdapterSetupTest extends TestCase
     {
         $api = $this->api();
         $home = new TempProject();
-        $setup = $this->adapterSetup($api, $home->dir, 'fail');
+        $setup = $this->adapterSetup($api, $home->dir, url: 'fail');
 
         $setup->install();
         $status = $this->status;
@@ -109,7 +109,7 @@ final class AdapterSetupTest extends TestCase
     {
         $api = $this->api();
 
-        $this->adapterSetup($api, null, 'unused')->install();
+        $this->adapterSetup($api, home: null, url: 'unused')->install();
 
         $this->assertSame('No home directory to install the php-debug adapter into', $this->flashText($this->status));
     }

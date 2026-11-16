@@ -55,7 +55,7 @@ final class ActionCatalogTest extends TestCase
         $widgetBound = [];
         foreach (self::WIDGETS as $widget) {
             /** @var array<string, string[]> $bindings */
-            $bindings = Probe::invokeStatic($widget, 'getDefaultKeybindings');
+            $bindings = Probe::invokeStatic($widget, method: 'getDefaultKeybindings');
             foreach (\array_keys($bindings) as $id) {
                 $widgetBound[$id] = true;
             }
@@ -115,7 +115,7 @@ final class ActionCatalogTest extends TestCase
 
         $actual = [];
         /** @var array<string, array<string, mixed>> $actions */
-        $actions = Probe::getStatic(ActionCatalog::class, 'ACTIONS');
+        $actions = Probe::getStatic(ActionCatalog::class, member: 'ACTIONS');
         foreach (\array_keys($actions) as $id) {
             if (!\str_starts_with((string) $id, 'git_')) {
                 continue;

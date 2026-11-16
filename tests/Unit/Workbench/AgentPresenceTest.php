@@ -40,9 +40,9 @@ final class AgentPresenceTest extends TestCase
     {
         $presence = $this->presence();
 
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/a.php', line: 3, column: -2));
-        $presence->onAgentActivity(self::at('b', 'Codex', '/p/a.php', AgentActivityKind::Reading, line: 1, column: 4));
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/b.php', AgentActivityKind::Reading));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/a.php', line: 3, column: -2));
+        $presence->onAgentActivity(self::at('b', name: 'Codex', path: '/p/a.php', kind: AgentActivityKind::Reading, line: 1, column: 4));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/b.php', kind: AgentActivityKind::Reading));
 
         $this->assertSame(
             [['name' => 'Claude', 'kind' => AgentActivityKind::Editing, 'slot' => 0], ['name' => 'Codex', 'kind' => AgentActivityKind::Reading, 'slot' => 1]],
@@ -57,7 +57,7 @@ final class AgentPresenceTest extends TestCase
         );
         $this->assertSame([], $this->editor->decorations->remoteCaretsIn('/p/other.php'));
 
-        $presence->onAgentActivity(self::at('b', 'Codex', '/p/c.php', line: -1));
+        $presence->onAgentActivity(self::at('b', name: 'Codex', path: '/p/c.php', line: -1));
         $this->assertCount(1, $presence->in('/p/c.php'), 'on the file');
         $this->assertSame([], $this->editor->decorations->remoteCaretsIn('/p/c.php'), 'with no caret in it');
         $this->assertSame([], $this->editor->decorations->remoteCaretsIn(null));
@@ -84,9 +84,9 @@ final class AgentPresenceTest extends TestCase
     public function testQuietFadesEachFileOnItsOwnAndAnotherReportReArmsIt(): void
     {
         $presence = $this->presence();
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/a.php', fade: 5.0));
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/b.php'));
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/a.php', fade: 7.0));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/a.php', fade: 5.0));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/b.php'));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/a.php', fade: 7.0));
 
         $this->assertSame(['1'], $this->scheduler->cancelled, 'the second report on a.php re-armed its timer');
         $this->assertSame([2, 3], \array_keys($this->scheduler->scheduled), 'numeric ids come back as ints');
@@ -101,8 +101,8 @@ final class AgentPresenceTest extends TestCase
     public function testAFadeFollowsTheFileWhereARenameMovedIt(): void
     {
         $presence = $this->presence();
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/src/a.php'));
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/b.php'));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/src/a.php'));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/b.php'));
 
         $presence->onFileRenamed(new FileRenamed('/p/src', '/p/lib'));
 
@@ -117,22 +117,22 @@ final class AgentPresenceTest extends TestCase
     public function testLeavingOrADeleteTakesItAllAtOnce(): void
     {
         $presence = $this->presence();
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/a.php'));
-        $presence->onAgentActivity(self::at('a', 'Claude', '/p/b.php'));
-        $presence->onAgentActivity(self::at('b', 'Codex', '/p/b.php'));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/a.php'));
+        $presence->onAgentActivity(self::at('a', name: 'Claude', path: '/p/b.php'));
+        $presence->onAgentActivity(self::at('b', name: 'Codex', path: '/p/b.php'));
 
         $presence->onFileDeleted(new FileDeleted('/p/b.php'));
         $this->assertSame(['/p/a.php'], $presence->files());
         $this->assertSame(['2', '3'], $this->scheduler->cancelled, 'both timers on the deleted file');
 
-        $presence->onAgentActivity(self::at('b', 'Codex', '/p/d.php'));
+        $presence->onAgentActivity(self::at('b', name: 'Codex', path: '/p/d.php'));
         $presence->onAgentLeft(new AgentLeft('a'));
         $this->assertSame(['/p/d.php'], $presence->files(), 'another agent\'s file stays');
         $presence->onAgentLeft(new AgentLeft('b'));
         $this->assertSame([], $presence->files());
         $this->assertSame(['2', '3', '1', '4'], $this->scheduler->cancelled);
 
-        $presence->onAgentActivity(self::at('c', 'Third', '/p/c.php'));
+        $presence->onAgentActivity(self::at('c', name: 'Third', path: '/p/c.php'));
         $this->assertSame(0, $presence->in('/p/c.php')[0]['slot'], 'a slot left free is handed out again');
     }
 

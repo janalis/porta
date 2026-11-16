@@ -560,7 +560,11 @@ final class StatusBarWidget extends AbstractWidget implements TooltipProvider
     /** $text with $length columns from $from underlined: the clickable span under the pointer. */
     private static function underlined(string $text, int $from, int $length, int $width): string
     {
-        return AnsiText::columnsFrom($text, 0, $from).new Style(underline: true)->apply(AnsiText::columnsFrom($text, $from, $length)).AnsiText::columnsFrom($text, $from + $length, $width);
+        return (
+            AnsiText::columnsFrom($text, startCol: 0, length: $from)
+            .new Style(underline: true)->apply(AnsiText::columnsFrom($text, $from, $length))
+            .AnsiText::columnsFrom($text, $from + $length, $width)
+        );
     }
 
     /** ` │ `, the one column of rule between two cells and after the last. */

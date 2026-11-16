@@ -58,6 +58,6 @@ final class SearchPatternTest extends TestCase
             $latin1,
             'a Latin-1 line is matched byte for byte',
         );
-        $this->assertSame($pattern, SearchPattern::fit($pattern, 'café'), 'a UTF-8 line keeps the Unicode pattern');
+        $this->assertSame($pattern, SearchPattern::fit($pattern, subject: 'café'), 'a UTF-8 line keeps the Unicode pattern');
     }
 }

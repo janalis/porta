@@ -170,11 +170,11 @@ final readonly class EditorActions
         }
 
         $handled = self::perform(match (true) {
-            $kb->matches($keys, 'select_all_occurrences') => $this->multiCaret->selectAllOccurrences(...),
+            $kb->matches($keys, action: 'select_all_occurrences') => $this->multiCaret->selectAllOccurrences(...),
             // Block copy/cut: intercept before MultiCaret::handleInput (which does
             // not know the copy/cut verbs and would collapse the carets first).
-            $this->multiCaret->hasMultiple() && $kb->matches($keys, 'cut') => $this->cutBlock(...),
-            $this->multiCaret->hasMultiple() && $kb->matches($keys, 'copy') => $this->copyBlock(...),
+            $this->multiCaret->hasMultiple() && $kb->matches($keys, action: 'cut') => $this->cutBlock(...),
+            $this->multiCaret->hasMultiple() && $kb->matches($keys, action: 'copy') => $this->copyBlock(...),
             default => null,
         });
 
@@ -240,7 +240,7 @@ final readonly class EditorActions
     private function tryColumnMode(string $keys, Keybindings $kb): bool
     {
         $doc = $this->document;
-        if (!$this->column->isActive() || $kb->matches($keys, 'select_cancel')) {
+        if (!$this->column->isActive() || $kb->matches($keys, action: 'select_cancel')) {
             if ($this->column->isActive()) {
                 $this->column->cancel();
             }
@@ -271,14 +271,16 @@ final readonly class EditorActions
 
         return self::perform(match (true) {
             // Move the current statement over blank-line gaps.
-            $kb->matches($keys, 'move_statement_up') || $kb->matches($keys, 'move_statement_down') => fn () => $this->notifyIfChanged(
-                static fn (): bool => $doc->moveStatement($kb->matches($keys, 'move_statement_up') ? -1 : 1),
+            $kb->matches($keys, action: 'move_statement_up') || $kb->matches($keys, action: 'move_statement_down') => fn () => $this->notifyIfChanged(
+                static fn (): bool => $doc->moveStatement($kb->matches($keys, action: 'move_statement_up') ? -1 : 1),
             ),
             // Surround the selection with a chosen pair or snippet.
-            $kb->matches($keys, 'surround_with') => fn () => $this->run('surround_with'),
+            $kb->matches($keys, action: 'surround_with') => fn () => $this->run('surround_with'),
             // Merge-conflict navigation and resolution.
-            $kb->matches($keys, 'next_conflict') || $kb->matches($keys, 'prev_conflict') => fn () => $this->structural->gotoConflict($kb->matches($keys, 'next_conflict') ? 1 : -1),
-            $kb->matches($keys, 'resolve_conflict') => $this->structural->openResolveConflictMenu(...),
+            $kb->matches($keys, action: 'next_conflict') || $kb->matches($keys, action: 'prev_conflict') => fn () => $this->structural->gotoConflict(
+                $kb->matches($keys, action: 'next_conflict') ? 1 : -1,
+            ),
+            $kb->matches($keys, action: 'resolve_conflict') => $this->structural->openResolveConflictMenu(...),
             default => null,
         });
     }
@@ -373,11 +375,11 @@ final readonly class EditorActions
         }
 
         return self::perform(match (true) {
-            $kb->matches($keys, 'select_all') => fn () => $this->run('select_all'),
-            $kb->matches($keys, 'document_start') => fn () => $this->jump($doc->moveToDocumentStart(...)),
-            $kb->matches($keys, 'document_end') => fn () => $this->jump($doc->moveToDocumentEnd(...)),
-            $kb->matches($keys, 'page_up') || $kb->matches($keys, 'page_down') => function () use ($doc, $keys, $kb): void {
-                $delta = $kb->matches($keys, 'page_up') ? -$this->host->contentRows() : $this->host->contentRows();
+            $kb->matches($keys, action: 'select_all') => fn () => $this->run('select_all'),
+            $kb->matches($keys, action: 'document_start') => fn () => $this->jump($doc->moveToDocumentStart(...)),
+            $kb->matches($keys, action: 'document_end') => fn () => $this->jump($doc->moveToDocumentEnd(...)),
+            $kb->matches($keys, action: 'page_up') || $kb->matches($keys, action: 'page_down') => function () use ($doc, $keys, $kb): void {
+                $delta = $kb->matches($keys, action: 'page_up') ? -$this->host->contentRows() : $this->host->contentRows();
                 $this->jump(static fn () => $doc->setCursor($doc->cursorLine + $delta, $doc->cursorCol));
             },
             default => null,
@@ -408,13 +410,13 @@ final readonly class EditorActions
 
         $edit = match (true) {
             // Editing
-            $kb->matches($keys, 'new_line') => $doc->insertNewLine(...),
+            $kb->matches($keys, action: 'new_line') => $doc->insertNewLine(...),
             // Tab/Shift+Tab over a selection indent/outdent the whole block of lines;
             // reached only in the single-caret path (snippet/completion/multi-caret
             // Tab all returned earlier).
-            $kb->matches($keys, 'indent') && $doc->hasSelection() => $doc->indentSelection(...),
-            $kb->matches($keys, 'prev_tab_stop') => $doc->dedentSelection(...),
-            $kb->matches($keys, 'indent') => static fn () => $doc->insert($doc->indentUnit()),
+            $kb->matches($keys, action: 'indent') && $doc->hasSelection() => $doc->indentSelection(...),
+            $kb->matches($keys, action: 'prev_tab_stop') => $doc->dedentSelection(...),
+            $kb->matches($keys, action: 'indent') => static fn () => $doc->insert($doc->indentUnit()),
             default => null,
         };
 
@@ -435,19 +437,21 @@ final readonly class EditorActions
 
         return self::perform(match (true) {
             // Auto-pairs: backspacing between an empty pair removes both chars.
-            $this->host->autoPairsEnabled() && $kb->matches($keys, 'delete_char_backward') && !$doc->hasSelection() && $this->autoPair->isBetweenEmptyPair($doc) => function () use ($doc): void {
+            $this->host->autoPairsEnabled() && $kb->matches($keys, action: 'delete_char_backward') && !$doc->hasSelection() && $this->autoPair->isBetweenEmptyPair($doc) => function () use (
+                $doc,
+            ): void {
                 $doc->transact(static function () use ($doc): void {
                     $doc->deleteForward();
                     $doc->deleteBackward();
                 });
                 $this->host->notifyChange();
             },
-            $kb->matches($keys, 'delete_line') => fn () => $this->run('delete_line'),
-            $kb->matches($keys, 'delete_char_backward') => fn () => $this->notifyIfChanged($doc->deleteBackward(...)),
-            $kb->matches($keys, 'delete_char_forward') => fn () => $this->notifyIfChanged($doc->deleteForward(...)),
-            $kb->matches($keys, 'delete_word_backward') => fn () => $this->notifyIfChanged($doc->deleteWordBackward(...)),
-            $kb->matches($keys, 'delete_to_line_end') => fn () => $this->notifyIfChanged($doc->deleteToLineEnd(...)),
-            $kb->matches($keys, 'select_cancel') => function () use ($doc): void {
+            $kb->matches($keys, action: 'delete_line') => fn () => $this->run('delete_line'),
+            $kb->matches($keys, action: 'delete_char_backward') => fn () => $this->notifyIfChanged($doc->deleteBackward(...)),
+            $kb->matches($keys, action: 'delete_char_forward') => fn () => $this->notifyIfChanged($doc->deleteForward(...)),
+            $kb->matches($keys, action: 'delete_word_backward') => fn () => $this->notifyIfChanged($doc->deleteWordBackward(...)),
+            $kb->matches($keys, action: 'delete_to_line_end') => fn () => $this->notifyIfChanged($doc->deleteToLineEnd(...)),
+            $kb->matches($keys, action: 'select_cancel') => function () use ($doc): void {
                 if ($doc->hasSelection()) {
                     $doc->clearSelection();
                     $this->host->invalidate();
@@ -697,7 +701,7 @@ final readonly class EditorActions
 
     private function promptGotoLine(): void
     {
-        $this->host->openPrompt('Go to line', '', function (string $value): void {
+        $this->host->openPrompt('Go to line', initial: '', onSubmit: function (string $value): void {
             // Accept "line" or "line:column" (both 1-based); jump 0-based, column 0 by default.
             $parts = \explode(':', \trim($value));
             $count = \count($parts);

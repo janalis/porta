@@ -72,10 +72,10 @@ final class MermaidEngineTest extends TestCase
         $this->assertSame('graph', $manager->previewFor('/p/diagram.mmd'));
         $this->assertSame('graph', $manager->viewerFor('/p/diagram.mermaid'));
         $this->assertNull($manager->previewFor('/p/readme.md'));
-        $settings->change('graph-viewer', 'mermaid', false);
+        $settings->change('graph-viewer', key: 'mermaid', value: false);
         $this->assertNull($manager->previewFor('/p/diagram.mmd'));
         $this->assertNull($manager->viewerFor('/p/diagram.mermaid'));
-        $settings->change('graph-viewer', 'mermaid', true);
+        $settings->change('graph-viewer', key: 'mermaid', value: true);
         $this->assertSame('graph', $manager->previewFor('/p/diagram.mmd'));
         $this->assertFileExists($project->path('.porta.json'));
         $this->assertJsonStringEqualsJsonString('{"plugins":{"graph-viewer":{"mermaid":true}}}', (string) \file_get_contents($project->path('.porta.json')));
@@ -95,15 +95,15 @@ final class MermaidEngineTest extends TestCase
         $api = new PluginManager(new EventDispatcher(), $settings)->api('graph-viewer', $project->dir, $settings);
         $plugin = require \dirname(__DIR__, levels: 2).'/porta.php';
         $plugin->activate($api);
-        $engine = Probe::get($plugin, 'mermaid');
+        $engine = Probe::get($plugin, property: 'mermaid');
         $this->assertInstanceOf(MermaidEngine::class, $engine);
 
         $this->assertSame(self::stub(), $engine->binary());
-        $this->render($engine, 'flowchart LR');
+        $this->render($engine, source: 'flowchart LR');
         $this->assertArrayNotHasKey('--puppeteerConfigFile', $this->mermaidOptions(), 'trusted (as the suite\'s projects are): remote images load');
 
         $this->untrustProjects();
-        $this->render($engine, 'flowchart LR');
+        $this->render($engine, source: 'flowchart LR');
         $this->assertSame(MermaidEngine::OFFLINE, $this->mermaidOptions()['--puppeteerConfigFile'] ?? null);
         $plugin->deactivate();
     }
@@ -127,7 +127,7 @@ final class MermaidEngineTest extends TestCase
     public function testQuietStdinExplicitPngAndScaleWithIsolatedCleanup(): void
     {
         $engine = new MermaidEngine(self::stub());
-        [$png, $error] = $this->render($engine, "flowchart LR\nA[été] --> B", 192);
+        [$png, $error] = $this->render($engine, source: "flowchart LR\nA[été] --> B", dpi: 192);
         $this->assertNull($error);
         $this->assertSame(96, $engine->baseDpi());
         $image = new ImageDecoder()->decodeBytes((string) $png);
@@ -152,7 +152,7 @@ final class MermaidEngineTest extends TestCase
             'a directory of its own, under a name no one can guess',
         );
         $this->assertSame('700', \file_get_contents($this->fakeReports->path('mermaid-output-dir-mode.txt')), 'that only this user can open');
-        [$png] = $this->render($engine, 'flowchart TD', 0);
+        [$png] = $this->render($engine, source: 'flowchart TD', dpi: 0);
         $this->assertNotNull($png, 'even a nonpositive dpi has a positive scale');
         $engine->cancel();
         $engine->cancel();
@@ -162,7 +162,7 @@ final class MermaidEngineTest extends TestCase
     {
         $engine = new MermaidEngine(self::stub(), browserConfig: static fn (): string => MermaidEngine::OFFLINE);
 
-        [, $error] = $this->render($engine, 'flowchart LR');
+        [, $error] = $this->render($engine, source: 'flowchart LR');
 
         $this->assertNull($error);
         $this->assertSame(MermaidEngine::OFFLINE, $this->mermaidOptions()['--puppeteerConfigFile'] ?? null);
@@ -191,14 +191,14 @@ final class MermaidEngineTest extends TestCase
         $mark = static function () use (&$fired): void {
             $fired = true;
         };
-        $engine->render('slow', 96, $mark, $mark);
+        $engine->render('slow', dpi: 96, onPng: $mark, onError: $mark);
         $request = $this->fakeReports->path('mermaid-request.json');
         $this->await(static fn (): bool => \is_file($request), what: 'the stub to start');
         [$options] = \json_decode((string) \file_get_contents($this->fakeReports->path('mermaid-request.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $engine->cancel();
         $engine->cancel();
         $this->assertDirectoryDoesNotExist(\dirname($options['--output']));
-        [$png, $error] = $this->render($engine, 'flowchart TD');
+        [$png, $error] = $this->render($engine, source: 'flowchart TD');
         $this->assertNotNull($png);
         $this->assertNull($error);
         $this->assertFalse($fired);
@@ -214,13 +214,13 @@ final class MermaidEngineTest extends TestCase
             $mark = static function () use (&$fired): void {
                 $fired = true;
             };
-            $engine->render($source, 96, $mark, $mark);
+            $engine->render($source, dpi: 96, onPng: $mark, onError: $mark);
             $this->await(static function () use ($slot): bool {
-                $process = Probe::get($slot, 'current');
+                $process = Probe::get($slot, property: 'current');
 
-                return $process instanceof AsyncProcess && null === Probe::get($process, 'process');
+                return $process instanceof AsyncProcess && null === Probe::get($process, property: 'process');
             }, what: 'EOF to hand the child to the reaper');
-            [$png, $error] = $this->render($engine, 'flowchart LR');
+            [$png, $error] = $this->render($engine, source: 'flowchart LR');
             $this->assertNotNull($png);
             $this->assertNull($error);
             $this->pump(0.3);
@@ -238,7 +238,7 @@ final class MermaidEngineTest extends TestCase
         $this->assertSame(self::stub(), $engine->binary());
         $configured = null;
         \putenv('PATH=/nonexistent');
-        [$png, $error] = $this->render($engine, 'flowchart TD');
+        [$png, $error] = $this->render($engine, source: 'flowchart TD');
         $this->assertNull($png);
         $this->assertStringContainsString('"mermaidPath" setting', (string) $error);
         \symlink(self::stub(), $project->path('mmdc'));

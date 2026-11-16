@@ -32,8 +32,8 @@ final class PopupFrameTest extends TestCase
 
     public function testRailEnforcesTheInnerWidth(): void
     {
-        $short = AnsiUtils::stripAnsiCodes(PopupFrame::rail('ab', 6, Styles::dark()));
-        $long = PopupFrame::rail(\str_repeat('x', times: 40), 6, Styles::dark());
+        $short = AnsiUtils::stripAnsiCodes(PopupFrame::rail('ab', innerWidth: 6, styles: Styles::dark()));
+        $long = PopupFrame::rail(\str_repeat('x', times: 40), innerWidth: 6, styles: Styles::dark());
 
         $this->assertSame('│ab    │', $short, 'short content pads to the inner width');
         $this->assertSame(6 + PopupFrame::CHROME_COLS, AnsiUtils::visibleWidth($long), 'wide content clips to the inner width');
@@ -47,8 +47,8 @@ final class PopupFrameTest extends TestCase
                 ['segment' => '', 'separator' => true],
                 ['segment' => \str_repeat('w', times: 50), 'separator' => false],
             ],
-            12,
-            Styles::dark(),
+            innerWidth: 12,
+            styles: Styles::dark(),
         );
 
         foreach ($rows as $i => $row) {
@@ -65,8 +65,8 @@ final class PopupFrameTest extends TestCase
                 ['segment' => '', 'separator' => true],
                 ['segment' => 'Copy', 'separator' => false],
             ],
-            4,
-            Styles::dark(),
+            innerWidth: 4,
+            styles: Styles::dark(),
         ));
 
         $this->assertSame(['╭────╮', '│Cut │', '├────┤', '│Copy│', '╰────╯'], $rows);
@@ -95,7 +95,7 @@ final class PopupFrameTest extends TestCase
     /** A heavy frame's separators are heavy tees, joining the frame they cut across. */
     public function testAHeavyFramesSeparatorIsAHeavyTee(): void
     {
-        $rows = PopupFrame::wrapMenu([['segment' => 'a', 'separator' => false], ['segment' => '', 'separator' => true]], 3, Styles::dark(), FieldState::Focused);
+        $rows = PopupFrame::wrapMenu([['segment' => 'a', 'separator' => false], ['segment' => '', 'separator' => true]], innerWidth: 3, styles: Styles::dark(), state: FieldState::Focused);
 
         $this->assertSame('┣━━━┫', AnsiUtils::stripAnsiCodes($rows[2]));
         $this->assertSame('├───┤', AnsiUtils::stripAnsiCodes(PopupFrame::tee(3, Styles::dark())), 'the idle frame keeps light tees');
@@ -131,15 +131,18 @@ final class PopupFrameTest extends TestCase
     /** The corners are the frame state's own, so an idle frame opens in its light, rounded glyphs. */
     public function testTheOpeningUsesTheStatesGlyphs(): void
     {
-        $this->assertSame('╭─╯  ╰─╮', AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(6, Styles::dark(), FieldState::Idle, 2, 4)));
+        $this->assertSame('╭─╯  ╰─╮', AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(6, Styles::dark(), FieldState::Idle, offset: 2, width: 4)));
     }
 
     public function testWrapMenuOpensItsTopBorderOnlyWhenAsked(): void
     {
         $item = [['segment' => 'a', 'separator' => false]];
 
-        $this->assertSame('┃ ┗━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, 3, Styles::dark(), FieldState::Focused, ['offset' => 0, 'width' => 3])[0]));
-        $this->assertSame('┏━━━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, 3, Styles::dark(), FieldState::Focused)[0]));
+        $this->assertSame('┃ ┗━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, innerWidth: 3, styles: Styles::dark(), state: FieldState::Focused, opening: [
+            'offset' => 0,
+            'width' => 3,
+        ])[0]));
+        $this->assertSame('┏━━━┓', AnsiUtils::stripAnsiCodes(PopupFrame::wrapMenu($item, innerWidth: 3, styles: Styles::dark(), state: FieldState::Focused)[0]));
     }
 
     /**
@@ -150,7 +153,10 @@ final class PopupFrameTest extends TestCase
     public function testAPartlyShownListMarksItsBorders(): void
     {
         $item = [['segment' => 'a', 'separator' => false]];
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), PopupFrame::wrapMenu($item, 5, Styles::dark(), FieldState::Focused, null, Glyphs::SCROLL_UP, Glyphs::SCROLL_DOWN));
+        $rows = \array_map(
+            AnsiUtils::stripAnsiCodes(...),
+            PopupFrame::wrapMenu($item, innerWidth: 5, styles: Styles::dark(), state: FieldState::Focused, above: Glyphs::SCROLL_UP, below: Glyphs::SCROLL_DOWN),
+        );
         $this->assertSame(['┏━━▲━━┓', '┃a    ┃', '┗━━▼━━┛'], $rows);
 
         $top = static fn (int $offset): string => AnsiUtils::stripAnsiCodes(PopupFrame::topOpenAt(10, Styles::dark(), FieldState::Focused, $offset, width: 4, mark: Glyphs::SCROLL_UP));
@@ -177,10 +183,14 @@ final class PopupFrameTest extends TestCase
         $this->assertSame($frame->apply('╭────╮'), PopupFrame::top(4, $styles));
         $this->assertSame($frame->apply('╰────╯'), PopupFrame::bottom(4, $styles));
         $this->assertSame($frame->apply('├────┤'), PopupFrame::tee(4, $styles));
-        $this->assertSame($edge."\x1b[48;5;236mab    \x1b[49m".$edge, PopupFrame::rail('ab', 6, $styles), 'the edges, and the pad past a short row — the shade alone, no colour of the row\'s');
+        $this->assertSame(
+            $edge."\x1b[48;5;236mab    \x1b[49m".$edge,
+            PopupFrame::rail('ab', innerWidth: 6, styles: $styles),
+            'the edges, and the pad past a short row — the shade alone, no colour of the row\'s',
+        );
         $this->assertSame(
             $frame->apply('╭─╯').$styles->of(Role::PopupRow)->apply('  ').$frame->apply('╰─╮'),
-            PopupFrame::topOpenAt(6, $styles, FieldState::Idle, 2, 4),
+            PopupFrame::topOpenAt(6, $styles, FieldState::Idle, offset: 2, width: 4),
             'an opened border too, around the title\'s gap',
         );
     }
@@ -190,7 +200,7 @@ final class PopupFrameTest extends TestCase
     {
         $styles = Styles::dark();
         $frame = $styles->merge(Role::HeaderBar, Role::TabAccent);
-        $rows = PopupFrame::wrapMenu([['segment' => 'ab', 'separator' => false], ['segment' => '', 'separator' => true]], 4, $styles, panel: Role::HeaderBar);
+        $rows = PopupFrame::wrapMenu([['segment' => 'ab', 'separator' => false], ['segment' => '', 'separator' => true]], innerWidth: 4, styles: $styles, panel: Role::HeaderBar);
 
         $this->assertSame(
             [$frame->apply('╭────╮'), $frame->apply('│')."\x1b[48;5;237mab  \x1b[49m".$frame->apply('│'), $frame->apply('├────┤'), $frame->apply('╰────╯')],
@@ -198,9 +208,9 @@ final class PopupFrameTest extends TestCase
         );
         $this->assertSame(
             $frame->apply('╭─╯').$styles->of(Role::HeaderBar)->apply('  ').$frame->apply('╰─╮'),
-            PopupFrame::wrapMenu([], 6, $styles, opening: ['offset' => 2, 'width' => 4], panel: Role::HeaderBar)[0],
+            PopupFrame::wrapMenu([], innerWidth: 6, styles: $styles, opening: ['offset' => 2, 'width' => 4], panel: Role::HeaderBar)[0],
             'and an opened border, the title\'s gap too',
         );
-        $this->assertSame($frame->apply('╭────╮'), PopupFrame::topOpenAt(4, $styles, FieldState::Idle, -1, 4, panel: Role::HeaderBar), 'a title it cannot hold closes it, in the same shade');
+        $this->assertSame($frame->apply('╭────╮'), PopupFrame::topOpenAt(4, $styles, FieldState::Idle, -1, width: 4, panel: Role::HeaderBar), 'a title it cannot hold closes it, in the same shade');
     }
 }

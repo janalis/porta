@@ -54,7 +54,7 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
 
     public function activate(PluginApi $api): void
     {
-        $api->registerSetting('binary', 'curl binary', 'text', 'curl', hint: 'the curl to run; a name on PATH or a full path');
+        $api->registerSetting('binary', label: 'curl binary', kind: 'text', default: 'curl', hint: 'the curl to run; a name on PATH or a full path');
         $this->api = $api;
     }
 
@@ -86,8 +86,8 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
         $label = $api->trans('Password for %user%@%host%', ['%user%' => $spec->user, '%host%' => $spec->host]);
         $api->prompt(
             $label,
-            '',
-            function (#[\SensitiveParameter] string $password) use ($api, $spec, $home): void {
+            initial: '',
+            onSubmit: function (#[\SensitiveParameter] string $password) use ($api, $spec, $home): void {
                 if (null === Credentials::store($home, $spec, $password)) {
                     $api->notify($api->trans('Cannot keep the password in %dir%', ['%dir%' => \dirname(Credentials::file($home, $spec))]), ToastSeverity::Error);
 
@@ -102,7 +102,7 @@ return new class('ftp') extends AbstractPlugin implements RemoteProjectPlugin {
                     $transport->passwordGiven();
                 }
             },
-            TextEcho::Masked,
+            echo: TextEcho::Masked,
         );
     }
 };

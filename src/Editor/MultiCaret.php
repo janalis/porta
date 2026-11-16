@@ -272,7 +272,7 @@ final class MultiCaret
     public function handleInput(string $keys, Keybindings $kb, string $clipboard, \Closure $isInsertable): bool
     {
         $act = match (true) {
-            $kb->matches($keys, 'select_cancel') => function (): void {
+            $kb->matches($keys, action: 'select_cancel') => function (): void {
                 $this->clear();
                 $this->document->clearSelection();
             },
@@ -283,8 +283,8 @@ final class MultiCaret
             // Editing operations applied at every caret: the bare Document verbs are
             // table-driven; indent and paste carry an argument, so they stay explicit.
             null !== ($edit = self::methodFor(self::EDIT_METHODS, $keys, $kb)) => fn () => $this->applyEdit(static fn (Document $d) => $d->{$edit}()),
-            $kb->matches($keys, 'indent') => fn () => $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit())),
-            $kb->matches($keys, 'paste') && '' !== $clipboard => fn () => $this->pasteBlock($clipboard),
+            $kb->matches($keys, action: 'indent') => fn () => $this->applyEdit(static fn (Document $d) => $d->insert($d->indentUnit())),
+            $kb->matches($keys, action: 'paste') && '' !== $clipboard => fn () => $this->pasteBlock($clipboard),
             // Plain text input at every caret.
             $isInsertable($keys) => fn () => $this->applyEdit(static fn (Document $d) => $d->insert($keys)),
             default => null,

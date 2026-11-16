@@ -31,7 +31,7 @@ final class TestRunController
         ?CodeEditorWidget $editor = null,
         ?LocalOnly $localOnly = null,
     ): RunController {
-        $tui ??= TestTui::create(100, 24);
+        $tui ??= TestTui::create(100, rows: 24);
 
         return new RunController(
             new RunConfigs($root),

@@ -109,7 +109,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         }
         $this->dropped = true;
         $this->markOpen();
-        $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
+        $this->openIndex = IntMath::clamp($index, lo: 0, hi: \count($this->menus) - 1);
         $this->selected = $this->firstSelectable($this->openIndex);
         $this->scroll = 0;
         $this->afterNavigate();
@@ -123,7 +123,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         }
         $this->dropped = false;
         $this->markOpen();
-        $this->openIndex = IntMath::clamp($index, 0, \count($this->menus) - 1);
+        $this->openIndex = IntMath::clamp($index, lo: 0, hi: \count($this->menus) - 1);
         $this->afterNavigate();
     }
 
@@ -347,7 +347,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
             return;
         }
         match (true) {
-            $this->getKeybindings()->matches($data, 'menu_close') => $this->close(),
+            $this->getKeybindings()->matches($data, action: 'menu_close') => $this->close(),
             $this->dropped => $this->handleDroppedInput($data),
             default => $this->handleArmedInput($data),
         };
@@ -366,11 +366,11 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $letter = MenuPanel::itemForKey($this->menus[$this->openIndex]->items, $data);
         match (true) {
             null !== $letter => $this->runItemAt($letter),
-            $kb->matches($data, 'menu_left') => $this->open(($this->openIndex - 1 + $count) % $count),
-            $kb->matches($data, 'menu_right') => $this->open(($this->openIndex + 1) % $count),
-            $kb->matches($data, 'menu_up') => $this->stepSelection(-1),
-            $kb->matches($data, 'menu_down') => $this->stepSelection(1),
-            $kb->matches($data, 'menu_select') => $this->runSelected(),
+            $kb->matches($data, action: 'menu_left') => $this->open(($this->openIndex - 1 + $count) % $count),
+            $kb->matches($data, action: 'menu_right') => $this->open(($this->openIndex + 1) % $count),
+            $kb->matches($data, action: 'menu_up') => $this->stepSelection(-1),
+            $kb->matches($data, action: 'menu_down') => $this->stepSelection(1),
+            $kb->matches($data, action: 'menu_select') => $this->runSelected(),
             default => null,
         };
     }
@@ -398,8 +398,8 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
         $kb = $this->getKeybindings();
         $count = \count($this->menus);
         $step = match (true) {
-            $kb->matches($data, 'menu_left') => -1,
-            $kb->matches($data, 'menu_right') => 1,
+            $kb->matches($data, action: 'menu_left') => -1,
+            $kb->matches($data, action: 'menu_right') => 1,
             default => 0,
         };
         if (0 !== $step) {
@@ -408,7 +408,7 @@ final class MenuBarWidget extends OverlayWidget implements FocusableInterface
 
             return;
         }
-        if ($kb->matches($data, 'menu_down') || $kb->matches($data, 'menu_select')) {
+        if ($kb->matches($data, action: 'menu_down') || $kb->matches($data, action: 'menu_select')) {
             $this->open($this->openIndex);
 
             return;

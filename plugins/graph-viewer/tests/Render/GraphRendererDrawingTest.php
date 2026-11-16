@@ -25,7 +25,7 @@ final class GraphRendererDrawingTest extends TestCase
 {
     public function testEveryKindOfElementLandsOnItsOwnCells(): void
     {
-        $lines = GraphRenderer::render(self::layout(), self::view(), null, 64, 30, Styles::dark());
+        $lines = GraphRenderer::render(self::layout(), self::view(), selected: null, cols: 64, rows: 30, styles: Styles::dark());
 
         $this->assertSame(
             [
@@ -67,7 +67,7 @@ final class GraphRendererDrawingTest extends TestCase
     public function testTheSelectedNodeIsDrawnInTheSelectionsColour(): void
     {
         $styles = Styles::dark();
-        $lines = GraphRenderer::render(self::layout(), self::view(), 0, 64, 30, $styles);
+        $lines = GraphRenderer::render(self::layout(), self::view(), selected: 0, cols: 64, rows: 30, styles: $styles);
 
         $this->assertStringContainsString($styles->of(Role::SelectedRow)->apply('┌───────────────┐'), $lines[3], 'Box, selected');
         $this->assertStringNotContainsString($styles->of(Role::SelectedRow)->apply('┌╌╌╌╌╌╌'), $lines[12], 'Two, not');
@@ -82,10 +82,10 @@ final class GraphRendererDrawingTest extends TestCase
         $node = static fn (int $id, float $x, float $y): GraphNode => new GraphNode($id, (string) $id, '', $x, $y, 20.0, 20.0, null, null, false);
         $layout = new GraphLayout(100.0, 100.0, [$node(id: 0, x: 21.0, y: 50.0), $node(id: 1, x: 79.0, y: 50.0), $node(id: 2, x: 50.0, y: 21.0), $node(id: 3, x: 50.0, y: 79.0)], [], []);
         $view = new ZoomPanModel(100, 100);
-        $view->actualSize(40, 40); // centred: the world from (30, 30) to (70, 70)
-        $this->assertSame([30, 30], [$view->visibleRect(40, 40)['srcX'], $view->visibleRect(40, 40)['srcY']]);
+        $view->actualSize(40, pxRows: 40); // centred: the world from (30, 30) to (70, 70)
+        $this->assertSame([30, 30], [$view->visibleRect(40, pxRows: 40)['srcX'], $view->visibleRect(40, pxRows: 40)['srcY']]);
 
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), GraphRenderer::render($layout, $view, null, 40, 20, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), GraphRenderer::render($layout, $view, selected: null, cols: 40, rows: 20, styles: Styles::dark()));
 
         $this->assertSame('│', \mb_substr($rows[10], start: 1, length: 1), 'the left one\'s right side');
         $this->assertSame('│', \mb_substr($rows[10], start: 39, length: 1), 'the right one\'s left side');
@@ -144,7 +144,7 @@ final class GraphRendererDrawingTest extends TestCase
     private static function view(): ZoomPanModel
     {
         $view = new ZoomPanModel(64, 60);
-        $view->actualSize(64, 60);
+        $view->actualSize(64, pxRows: 60);
 
         return $view;
     }

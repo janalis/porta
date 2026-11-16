@@ -20,7 +20,7 @@ final class ProcessDapClientFactoryTest extends TestCase
         $client = $factory->create([\PHP_BINARY, '-v']);
 
         $this->assertInstanceOf(DapClient::class, $client);
-        $logger = Probe::get(Probe::object($client, 'transport'), 'logger');
+        $logger = Probe::get(Probe::object($client, 'transport'), property: 'logger');
         $this->assertIsCallable($logger, 'the factory hands the transport a logger — a dead adapter must leave forensics');
         $logger('adapter said something');
         $this->assertStringContainsString('adapter said something', (string) \file_get_contents($project->dir.'/.porta/dap.log'));

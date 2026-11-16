@@ -37,7 +37,7 @@ final class IdeResponsiveTest extends TestCase
     /** @return list<string> */
     private function mainIds(Tui $tui): array
     {
-        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), Widgets::byId($tui, 'main', ContainerWidget::class)->all());
+        return \array_map(static fn (AbstractWidget $w): string => $w->getId(), Widgets::byId($tui, id: 'main', class: ContainerWidget::class)->all());
     }
 
     /**
@@ -67,19 +67,19 @@ final class IdeResponsiveTest extends TestCase
             $project->path('src/Demo.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitMainIds($tui, ['tree', 'separator', 'editor-pane'], 'wide boot shows the sidebar');
+                    $this->awaitMainIds($tui, ['tree', 'separator', 'editor-pane'], what: 'wide boot shows the sidebar');
 
-                    $terminal->simulateResize(50, 30);
+                    $terminal->simulateResize(50, rows: 30);
                     $tui->requestRender();
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitMainIds($tui, ['editor-pane'], 'narrow: the sidebar collapsed');
+                    $this->awaitMainIds($tui, ['editor-pane'], what: 'narrow: the sidebar collapsed');
 
-                    $terminal->simulateResize(100, 30);
+                    $terminal->simulateResize(100, rows: 30);
                     $tui->requestRender();
                 },
                 900 => function (Tui $tui): void {
-                    $this->awaitMainIds($tui, ['tree', 'separator', 'editor-pane'], 'wide again: the sidebar restored');
+                    $this->awaitMainIds($tui, ['tree', 'separator', 'editor-pane'], what: 'wide again: the sidebar restored');
                 },
             ],
             columns: 100,
@@ -113,7 +113,7 @@ final class IdeResponsiveTest extends TestCase
                     $this->assertSame('▄', \mb_substr($grid[28], $divider, length: 1), 'the divider ends at the bar: no join');
                     $roomy = $editorRows($tui, $ide);
 
-                    $terminal->simulateResize(100, 29);
+                    $terminal->simulateResize(100, rows: 29);
                     $tui->requestRender();
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($editorRows, &$roomy): void {
@@ -160,7 +160,7 @@ final class IdeResponsiveTest extends TestCase
                     $tui->handleInput("\r"); // and drops File
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal) use ($at, &$divider): void {
-                    $this->awaitPainted($tui, $terminal, 'Open Project');
+                    $this->awaitPainted($tui, $terminal, needle: 'Open Project');
                     $grid = $this->screenGrid($tui, $terminal);
                     $this->assertSame('━', $at($grid, $divider), 'the dropdown\'s top border, not the bar\'s half');
 

@@ -42,12 +42,12 @@ final class Catalogs
         if (false === $xml) {
             throw new \RuntimeException($file.' is not valid XML');
         }
-        $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
+        $xml->registerXPathNamespace('x', namespace: 'urn:oasis:names:tc:xliff:document:1.2');
 
         $sources = [];
         $units = $xml->xpath('//x:trans-unit');
         foreach ($units ? $units : [] as $unit) {
-            $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
+            $unit->registerXPathNamespace('x', namespace: 'urn:oasis:names:tc:xliff:document:1.2');
             $node = $unit->xpath('x:source');
             $node = $node ? $node : [];
             if ([] !== $node) {

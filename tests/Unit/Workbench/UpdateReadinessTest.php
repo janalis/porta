@@ -31,28 +31,28 @@ final class UpdateReadinessTest extends TestCase
         $readiness = new UpdateReadiness($sessions, $runs, $store->installer, $files, $debug);
         $this->assertFalse($readiness->busy());
         $session = new DapSession(new FakeDapClient(), 'php', static fn (): array => [], new RecordingDebugObserver(static function (string $event): void {}), static fn (): array => []);
-        Probe::set($debug, 'session', $session);
-        Probe::set($session, 'state', DebugState::Running);
+        Probe::set($debug, property: 'session', value: $session);
+        Probe::set($session, property: 'state', value: DebugState::Running);
         $this->assertTrue($readiness->busy());
-        Probe::set($session, 'state', DebugState::Terminated);
+        Probe::set($session, property: 'state', value: DebugState::Terminated);
         $this->assertFalse($readiness->busy());
         $process = new AsyncProcess([\PHP_BINARY, '-r', ''], $store->project->dir);
         $runs->keep($process);
         $this->assertTrue($readiness->busy());
         $runs->forget($process);
-        Probe::set($store->installer, 'running', $process);
+        Probe::set($store->installer, property: 'running', value: $process);
         $this->assertTrue($readiness->busy());
-        Probe::set($store->installer, 'running', null);
+        Probe::set($store->installer, property: 'running', value: null);
         $files->pendingWrites = 1;
         $this->assertTrue($readiness->busy());
         $files->pendingWrites = 0;
-        $session = $sessions->create('shell', 'Shell');
+        $session = $sessions->create('shell', title: 'Shell');
         $this->assertFalse($readiness->busy());
         $pty = new PtyProcess([\PHP_BINARY], $store->project->dir);
         $session->attach($pty);
-        Probe::set($pty, 'running', true);
+        Probe::set($pty, property: 'running', value: true);
         $this->assertTrue($readiness->busy());
-        Probe::set($pty, 'running', false);
+        Probe::set($pty, property: 'running', value: false);
         $this->assertFalse($readiness->busy());
     }
 }

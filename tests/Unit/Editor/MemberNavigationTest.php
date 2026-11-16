@@ -60,7 +60,7 @@ final class MemberNavigationTest extends TestCase
     {
         // 0-based: class Svc on 4, one() on 6, two() on 10.
         $navigation = $this->navigation();
-        $this->editor->getDocument()->setCursor(0, 0);
+        $this->editor->getDocument()->setCursor(0, col: 0);
 
         $navigation->next();
         $this->assertSame(4, $this->caretLine());
@@ -75,7 +75,7 @@ final class MemberNavigationTest extends TestCase
     public function testPreviousWalksBackTheSameWay(): void
     {
         $navigation = $this->navigation();
-        $this->editor->getDocument()->setCursor(12, 0);
+        $this->editor->getDocument()->setCursor(12, col: 0);
 
         $navigation->previous();
         $this->assertSame(10, $this->caretLine());
@@ -88,7 +88,7 @@ final class MemberNavigationTest extends TestCase
     {
         // "you have arrived" is not the useful part; which member is.
         $navigation = $this->navigation();
-        $this->editor->getDocument()->setCursor(0, 0);
+        $this->editor->getDocument()->setCursor(0, col: 0);
 
         $navigation->next();
 
@@ -102,7 +102,7 @@ final class MemberNavigationTest extends TestCase
     {
         // A silent no-op at the last method reads as a broken key.
         $navigation = $this->navigation();
-        $this->editor->getDocument()->setCursor(12, 0);
+        $this->editor->getDocument()->setCursor(12, col: 0);
 
         $navigation->next();
 
@@ -113,7 +113,7 @@ final class MemberNavigationTest extends TestCase
     public function testBeforeTheFirstDeclarationPreviousWrapsToTheLast(): void
     {
         $navigation = $this->navigation();
-        $this->editor->getDocument()->setCursor(0, 0);
+        $this->editor->getDocument()->setCursor(0, col: 0);
 
         $navigation->previous();
 
@@ -126,7 +126,7 @@ final class MemberNavigationTest extends TestCase
         // It spans the whole file, so stepping to it is stepping nowhere. It is
         // on line 2, ahead of the class, so it would be the first stop.
         $navigation = $this->navigation();
-        $this->editor->getDocument()->setCursor(0, 0);
+        $this->editor->getDocument()->setCursor(0, col: 0);
 
         $navigation->next();
 
@@ -136,7 +136,7 @@ final class MemberNavigationTest extends TestCase
     public function testAFileWithNoDeclarationsSaysSoRatherThanMovingTheCaret(): void
     {
         $navigation = $this->navigation("<?php\n\necho 1;\n");
-        $this->editor->getDocument()->setCursor(2, 0);
+        $this->editor->getDocument()->setCursor(2, col: 0);
 
         $navigation->next();
 
@@ -147,8 +147,8 @@ final class MemberNavigationTest extends TestCase
     public function testANonPhpBufferHasNothingToStepThrough(): void
     {
         // scopes() is empty for these, so the two cases share one answer.
-        $navigation = $this->navigation("# Title\n\nsome prose\n", '/p/README.md');
-        $this->editor->getDocument()->setCursor(1, 0);
+        $navigation = $this->navigation("# Title\n\nsome prose\n", path: '/p/README.md');
+        $this->editor->getDocument()->setCursor(1, col: 0);
 
         $navigation->next();
 
@@ -159,7 +159,7 @@ final class MemberNavigationTest extends TestCase
     public function testAFreeFunctionCountsAsADeclaration(): void
     {
         $navigation = $this->navigation("<?php\n\nfunction helper(): void\n{\n}\n");
-        $this->editor->getDocument()->setCursor(0, 0);
+        $this->editor->getDocument()->setCursor(0, col: 0);
 
         $navigation->next();
 

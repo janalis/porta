@@ -63,17 +63,21 @@ final class FtpRealServerTest extends TestCase
         $names = \array_map(static fn (RemoteEntry $e): string => $e->name.($e->isDir ? '/' : ''), $entries);
         \sort($names);
         $this->assertSame(['README.md', 'src/'], $names);
-        $this->assertEquals($this->stampOf($app, 'README.md'), \array_first(\array_filter($entries, static fn (RemoteEntry $e): bool => 'README.md' === $e->name))->stamp, 'MLSD and MDTM, one clock');
+        $this->assertEquals(
+            $this->stampOf($app, relative: 'README.md'),
+            \array_first(\array_filter($entries, static fn (RemoteEntry $e): bool => 'README.md' === $e->name))->stamp,
+            'MLSD and MDTM, one clock',
+        );
 
         $file = $this->answer(static fn (\Closure $done) => $transport->fetch('README.md', $done));
         $this->assertInstanceOf(RemoteFile::class, $file);
         $this->assertSame("# hi\n", $file->bytes);
 
-        $written = $this->answer(static fn (\Closure $done) => $transport->put('README.md', "# changed\n", $file->stamp, $done));
+        $written = $this->answer(static fn (\Closure $done) => $transport->put('README.md', bytes: "# changed\n", expected: $file->stamp, done: $done));
         $this->assertInstanceOf(RemoteStamp::class, $written);
         $this->assertSame("# changed\n", \file_get_contents($this->root->path('README.md')));
-        $this->assertNull($this->answer(static fn (\Closure $done) => $transport->put('README.md', 'lost', $file->stamp, $done)), 'changed since: refused');
-        $this->assertInstanceOf(RemoteStamp::class, $this->answer(static fn (\Closure $done) => $transport->put('deep/new/file.txt', 'new', null, $done)));
+        $this->assertNull($this->answer(static fn (\Closure $done) => $transport->put('README.md', bytes: 'lost', expected: $file->stamp, done: $done)), 'changed since: refused');
+        $this->assertInstanceOf(RemoteStamp::class, $this->answer(static fn (\Closure $done) => $transport->put('deep/new/file.txt', bytes: 'new', expected: null, done: $done)));
         $this->assertSame('new', \file_get_contents($this->root->path('deep/new/file.txt')), 'the directories made on the way');
 
         $this->assertTheStructuralVerbs($transport, $app);
@@ -86,7 +90,8 @@ final class FtpRealServerTest extends TestCase
         $this->assertIsString($answer);
         $this->assertStringContainsString('(7)', $answer, 'curl could not connect');
 
-        $this->server = DummyServer::ftp($this->root->dir, 'secret');
+        // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+        $this->server = DummyServer::ftp($this->root->dir, password: 'secret');
         $this->spec = new RemoteSpec('ftp', '127.0.0.1', '/', 'ada', $this->server->port);
         $home = new TempProject();
         $refused = 0;
@@ -97,7 +102,8 @@ final class FtpRealServerTest extends TestCase
         $this->assertSame(1, $refused, 'a refused login is said, so the plugin can ask for the password');
         $this->assertIsString($answer);
 
-        Credentials::store($home->dir, $this->spec, 'secret');
+        // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+        Credentials::store($home->dir, $this->spec, password: 'secret');
         $this->assertIsArray($this->answer(fn (\Closure $done) => $this->transport(Credentials::file($home->dir, $this->spec))->list('', $done)), 'with it, in');
     }
 

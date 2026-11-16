@@ -76,7 +76,7 @@ final class SettingsLanguageControllerTest extends TestCase
     public function testApplyToEditorPushesTheMap(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "\ttabbed\n");
+        $editor->openFile('x.php', content: "\ttabbed\n");
         $tempProject = new TempProject();
         $controller = $this->controller($tempProject->dir, $editor, new StatusBarWidget(), ['php' => ['indentStyle' => 'spaces', 'indentSize' => 4]]);
 
@@ -89,15 +89,15 @@ final class SettingsLanguageControllerTest extends TestCase
     {
         $project = new TempProject();
         $editor = new CodeEditorWidget();
-        $editor->openFile('x.php', "code\n");
+        $editor->openFile('x.php', content: "code\n");
         $controller = $this->controller($project->dir, $editor, $status = new StatusBarWidget());
 
-        $controller->changeLanguageSetting('php', 'indentStyle', 'tabs');
+        $controller->changeLanguageSetting('php', key: 'indentStyle', value: 'tabs');
         $this->assertTrue($editor->getDocument()->usesTabs(), 'applied to the open .php document');
         $this->assertSame('tabs', IdeConfig::load($project->dir)->languages['php']['indentStyle']);
         $this->assertStringContainsString('PHP indent style: tabs', $this->flashText($status));
 
-        $controller->changeLanguageSetting('php', 'indentSize', '4');
+        $controller->changeLanguageSetting('php', key: 'indentSize', value: '4');
         $this->assertSame(4, $editor->getDocument()->indentSize());
         $this->assertSame(4, IdeConfig::load($project->dir)->languages['php']['indentSize'], 'numeric size stored as int');
         $this->assertStringContainsString('PHP indent size: 4', $this->flashText($status));
@@ -108,7 +108,7 @@ final class SettingsLanguageControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['php' => ['indentSize' => 4]]);
 
-        $controller->changeLanguageSetting('php', 'indentSize', 'auto');
+        $controller->changeLanguageSetting('php', key: 'indentSize', value: 'auto');
         $this->assertSame('auto', IdeConfig::load($project->dir)->languages['php']['indentSize']);
     }
 
@@ -122,19 +122,19 @@ final class SettingsLanguageControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
 
-        $controller->changeLanguageSetting('php', 'indentSize', '4');
+        $controller->changeLanguageSetting('php', key: 'indentSize', value: '4');
         $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(4, $raw['languages']['php']['indentSize'], 'a numeric, non-auto indentSize is stored as a JSON int');
 
         // The int-cast is gated on the key being indentSize specifically, not
         // merely on the value looking numeric.
-        $controller->changeLanguageSetting('php', 'indentStyle', '4');
+        $controller->changeLanguageSetting('php', key: 'indentStyle', value: '4');
         $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('4', $raw['languages']['php']['indentStyle'], 'a numeric-looking value for a non-indentSize key stays a string');
 
         // The false branch's own (string) cast: an already-non-string value
         // routed there must still come out as a genuine string.
-        $controller->changeLanguageSetting('php', 'indentStyle', true);
+        $controller->changeLanguageSetting('php', key: 'indentStyle', value: true);
         $raw = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('1', $raw['languages']['php']['indentStyle']);
     }
@@ -144,14 +144,14 @@ final class SettingsLanguageControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeLanguageSetting('php', 'runCommand', 'frankenphp php-cli');
+        $controller->changeLanguageSetting('php', key: 'runCommand', value: 'frankenphp php-cli');
         $this->assertSame('frankenphp php-cli', IdeConfig::load($project->dir)->languages['php']['runCommand'] ?? null);
         $flash = $this->flashText($status);
         $this->assertStringContainsString('PHP run command: frankenphp php-cli', $flash);
         $this->assertStringContainsString('frankenphp php-cli · applies on restart', $flash, 'the separator sits between the command and the note, in that order');
 
         // Clearing it shows the bundled-php default and the row reflects empty.
-        $controller->changeLanguageSetting('php', 'runCommand', '  ');
+        $controller->changeLanguageSetting('php', key: 'runCommand', value: '  ');
         $this->assertStringContainsString('PHP run command: bundled php', $this->flashText($status));
         $this->assertSame('', $controller->runRows('php')[0]->value);
     }
@@ -161,11 +161,11 @@ final class SettingsLanguageControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeLanguageSetting('klingon', 'indentStyle', 'tabs');
+        $controller->changeLanguageSetting('klingon', key: 'indentStyle', value: 'tabs');
         $this->assertStringContainsString('Unknown language setting "klingon.indentStyle"', $this->flashText($status));
         $this->assertFalse(\is_file($project->path('.porta.json')), 'nothing persisted');
 
-        $controller->changeLanguageSetting('php', 'bogus', 'x');
+        $controller->changeLanguageSetting('php', key: 'bogus', value: 'x');
         $this->assertStringContainsString('Unknown language setting "php.bogus"', $this->flashText($status));
     }
 
@@ -175,7 +175,7 @@ final class SettingsLanguageControllerTest extends TestCase
         \mkdir($project->path('.porta.json'));
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeLanguageSetting('php', 'indentStyle', 'tabs');
+        $controller->changeLanguageSetting('php', key: 'indentStyle', value: 'tabs');
         $this->assertStringContainsString('(not saved)', $this->flashText($status));
     }
 }

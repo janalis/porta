@@ -90,8 +90,8 @@ final class WorkspaceEditorTest extends TestCase
         // Deliberately unsorted, and length-changing: applying top-down would
         // shift the second edit's byte offsets before it runs.
         $edits = [
-            self::edit(['start' => ['line' => 0, 'character' => 1], 'end' => ['line' => 0, 'character' => 3]], 'AAAA'), // "12" -> "AAAA" (+2)
-            self::edit(['start' => ['line' => 0, 'character' => 6], 'end' => ['line' => 0, 'character' => 8]], 'B'), // "67" -> "B" (-1)
+            self::edit(['start' => ['line' => 0, 'character' => 1], 'end' => ['line' => 0, 'character' => 3]], newText: 'AAAA'), // "12" -> "AAAA" (+2)
+            self::edit(['start' => ['line' => 0, 'character' => 6], 'end' => ['line' => 0, 'character' => 8]], newText: 'B'), // "67" -> "B" (-1)
         ];
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
@@ -104,13 +104,13 @@ final class WorkspaceEditorTest extends TestCase
         $doc = new Document("0123456789\n");
         $edits = [
             // Explicit, mid-line: nothing to default.
-            self::edit(['start' => ['line' => 0, 'character' => 5], 'end' => ['line' => 0, 'character' => 5]], 'X'),
+            self::edit(['start' => ['line' => 0, 'character' => 5], 'end' => ['line' => 0, 'character' => 5]], newText: 'X'),
             // Both start keys entirely absent: must default to (0, 0) — the very
             // start of the line — and therefore sort BEFORE the edit above.
-            self::edit(['start' => [], 'end' => ['line' => 0, 'character' => 0]], 'Y'),
+            self::edit(['start' => [], 'end' => ['line' => 0, 'character' => 0]], newText: 'Y'),
             // 'line' present, 'character' absent on both ends: must default to
             // column 0, landing at the start of the (only) line too.
-            self::edit(['start' => ['line' => 0], 'end' => ['line' => 0]], 'Z'),
+            self::edit(['start' => ['line' => 0], 'end' => ['line' => 0]], newText: 'Z'),
         ];
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
@@ -123,7 +123,7 @@ final class WorkspaceEditorTest extends TestCase
         $doc = new Document("AAAA\nBBBB\nCCCC\n");
         // 'line' entirely absent on both start and end: a wrong default of 1
         // (instead of 0) would edit the second line, not the first.
-        $edits = [self::edit(['start' => ['character' => 0], 'end' => ['character' => 4]], 'X')];
+        $edits = [self::edit(['start' => ['character' => 0], 'end' => ['character' => 4]], newText: 'X')];
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
 
@@ -135,7 +135,7 @@ final class WorkspaceEditorTest extends TestCase
         $doc = new Document("0123456789\n");
         // 'character' entirely absent on start: a wrong default of 1 (instead
         // of 0) would insert after the leading digit instead of before it.
-        $edits = [self::edit(['start' => ['line' => 0], 'end' => ['line' => 0, 'character' => 0]], 'X')];
+        $edits = [self::edit(['start' => ['line' => 0], 'end' => ['line' => 0, 'character' => 0]], newText: 'X')];
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
 
@@ -145,7 +145,7 @@ final class WorkspaceEditorTest extends TestCase
     public function testPureInsertionDoesNotDeleteTheFollowingCharacter(): void
     {
         $doc = new Document("0123456789\n");
-        $edits = [self::edit(['start' => ['line' => 0, 'character' => 3], 'end' => ['line' => 0, 'character' => 3]], 'X')];
+        $edits = [self::edit(['start' => ['line' => 0, 'character' => 3], 'end' => ['line' => 0, 'character' => 3]], newText: 'X')];
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
 
@@ -155,7 +155,7 @@ final class WorkspaceEditorTest extends TestCase
     public function testReplacementDeletesTheRangeBeforeInserting(): void
     {
         $doc = new Document("0123456789\n");
-        $edits = [self::edit(['start' => ['line' => 0, 'character' => 3], 'end' => ['line' => 0, 'character' => 6]], 'X')];
+        $edits = [self::edit(['start' => ['line' => 0, 'character' => 3], 'end' => ['line' => 0, 'character' => 6]], newText: 'X')];
 
         $this->workspaceEditor()->applyTextEdits($doc, $edits);
 
@@ -165,11 +165,11 @@ final class WorkspaceEditorTest extends TestCase
     public function testChangesMapEditsAnOpenBufferInPlace(): void
     {
         $we = $this->workspaceEditor();
-        $buffer = $this->buffers->open('/p/a.php', "0123456789\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "0123456789\n");
 
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
-                Uri::fromPath('/p/a.php') => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+                Uri::fromPath('/p/a.php') => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')],
             ],
         ]);
 
@@ -185,13 +185,13 @@ final class WorkspaceEditorTest extends TestCase
     public function testDocumentChangesWinOutrightOverChangesForTheSameUri(): void
     {
         $we = $this->workspaceEditor();
-        $buffer = $this->buffers->open('/p/a.php', "0123456789\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "0123456789\n");
         $uri = Uri::fromPath('/p/a.php');
 
         $outcome = $we->applyWorkspaceEdit([
-            'changes' => [$uri => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'A')]],
+            'changes' => [$uri => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'A')]],
             'documentChanges' => [
-                ['textDocument' => ['uri' => $uri], 'edits' => [self::edit(['start' => ['line' => 0, 'character' => 9], 'end' => ['line' => 0, 'character' => 10]], 'B')]],
+                ['textDocument' => ['uri' => $uri], 'edits' => [self::edit(['start' => ['line' => 0, 'character' => 9], 'end' => ['line' => 0, 'character' => 10]], newText: 'B')]],
             ],
         ]);
 
@@ -202,11 +202,11 @@ final class WorkspaceEditorTest extends TestCase
     public function testMalformedDocumentChangesEntriesAreSkippedWithoutAbortingTheRest(): void
     {
         $we = $this->workspaceEditor();
-        $a = $this->buffers->open('/p/a.php', "0123456789\n");
-        $b = $this->buffers->open('/p/b.php', "0123456789\n");
+        $a = $this->buffers->open('/p/a.php', content: "0123456789\n");
+        $b = $this->buffers->open('/p/b.php', content: "0123456789\n");
         $uriA = Uri::fromPath('/p/a.php');
         $uriB = Uri::fromPath('/p/b.php');
-        $validEdit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $validEdit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
         $outcome = $we->applyWorkspaceEdit([
             'documentChanges' => [
@@ -225,8 +225,8 @@ final class WorkspaceEditorTest extends TestCase
     public function testByUriSkipsAnEmptyOrUnresolvableTargetWithoutAbortingTheRest(): void
     {
         $we = $this->workspaceEditor();
-        $b = $this->buffers->open('/p/b.php', "0123456789\n");
-        $validEdit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $b = $this->buffers->open('/p/b.php', content: "0123456789\n");
+        $validEdit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
@@ -243,17 +243,17 @@ final class WorkspaceEditorTest extends TestCase
     public function testInvalidatesTheEditorOnlyWhenTheEditedBufferIsActive(): void
     {
         $we = $this->workspaceEditor();
-        $active = $this->buffers->open('/p/active.php', "0123456789\n");
-        $inactive = $this->buffers->open('/p/inactive.php', "0123456789\n");
+        $active = $this->buffers->open('/p/active.php', content: "0123456789\n");
+        $inactive = $this->buffers->open('/p/inactive.php', content: "0123456789\n");
         $this->buffers->setActive('/p/active.php');
-        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
-        $revisionBefore = Probe::get($this->editor, 'renderRevision');
+        $revisionBefore = Probe::get($this->editor, property: 'renderRevision');
         $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/inactive.php') => $edit]]);
-        $this->assertSame($revisionBefore, Probe::get($this->editor, 'renderRevision'), 'editing a buffer that is not active does not invalidate the editor');
+        $this->assertSame($revisionBefore, Probe::get($this->editor, property: 'renderRevision'), 'editing a buffer that is not active does not invalidate the editor');
 
         $we->applyWorkspaceEdit(['changes' => [Uri::fromPath('/p/active.php') => $edit]]);
-        $this->assertGreaterThan($revisionBefore, Probe::get($this->editor, 'renderRevision'), 'editing the active buffer invalidates the editor');
+        $this->assertGreaterThan($revisionBefore, Probe::get($this->editor, property: 'renderRevision'), 'editing the active buffer invalidates the editor');
 
         $this->assertSame("X123456789\n", $active->document->getText());
         $this->assertSame("X123456789\n", $inactive->document->getText());
@@ -263,7 +263,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $project = new TempProject(['a.php' => "0123456789\n"]);
         $we = $this->workspaceEditor();
-        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
         $outcome = $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => $edit]]);
 
@@ -282,7 +282,7 @@ final class WorkspaceEditorTest extends TestCase
         $original = "\u{FEFF}0123\r\nabc\r\n";
         $project = new TempProject(['a.php' => $original]);
         $we = $this->workspaceEditor();
-        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
         $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($project->path('a.php')) => $edit]]);
 
@@ -311,7 +311,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $we->applyWorkspaceEdit([
             'changes' => [
-                Uri::fromPath($project->path('a.php')) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+                Uri::fromPath($project->path('a.php')) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')],
             ],
         ]);
 
@@ -332,11 +332,11 @@ final class WorkspaceEditorTest extends TestCase
             ++$seen;
         });
         $we = $this->workspaceEditor($events);
-        $this->buffers->open('/p/a.php', "0123456789\n");
+        $this->buffers->open('/p/a.php', content: "0123456789\n");
 
         $we->applyWorkspaceEdit([
             'changes' => [
-                Uri::fromPath('/p/a.php') => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+                Uri::fromPath('/p/a.php') => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')],
             ],
         ]);
 
@@ -359,7 +359,7 @@ final class WorkspaceEditorTest extends TestCase
         try {
             $we->applyWorkspaceEdit([
                 'changes' => [
-                    Uri::fromPath($path) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')],
+                    Uri::fromPath($path) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')],
                 ],
             ]);
         } finally {
@@ -375,7 +375,7 @@ final class WorkspaceEditorTest extends TestCase
         $path = $project->path('a.php');
         \chmod($path, permissions: 0o444);
         $we = $this->workspaceEditor();
-        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
         try {
             $outcome = $we->applyWorkspaceEdit(['changes' => [Uri::fromPath($path) => $edit]]);
@@ -400,13 +400,13 @@ final class WorkspaceEditorTest extends TestCase
     public function testOverlappingEditsSkipAnOpenBufferAndSayWhich(): void
     {
         $we = $this->workspaceEditor();
-        $buffer = $this->buffers->open('/p/a.php', "0123456789\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "0123456789\n");
 
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
                 Uri::fromPath('/p/a.php') => [
-                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], 'X'),
-                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], 'Y'),
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], newText: 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], newText: 'Y'),
                 ],
             ],
         ]);
@@ -424,8 +424,8 @@ final class WorkspaceEditorTest extends TestCase
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
                 Uri::fromPath($project->path('a.php')) => [
-                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], 'X'),
-                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], 'Y'),
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], newText: 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], newText: 'Y'),
                 ],
             ],
         ]);
@@ -446,17 +446,17 @@ final class WorkspaceEditorTest extends TestCase
     public function testAFileWithOverlappingEditsDoesNotStopTheRest(): void
     {
         $we = $this->workspaceEditor();
-        $good = $this->buffers->open('/p/good.php', "0123456789\n");
-        $this->buffers->open('/p/bad.php', "0123456789\n");
+        $good = $this->buffers->open('/p/good.php', content: "0123456789\n");
+        $this->buffers->open('/p/bad.php', content: "0123456789\n");
 
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
                 Uri::fromPath('/p/bad.php') => [
-                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], 'X'),
-                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], 'Y'),
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 5]], newText: 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 2], 'end' => ['line' => 0, 'character' => 7]], newText: 'Y'),
                 ],
                 Uri::fromPath('/p/good.php') => [
-                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'Z'),
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'Z'),
                 ],
             ],
         ]);
@@ -481,8 +481,8 @@ final class WorkspaceEditorTest extends TestCase
         // server would send it — carries the non-canonical alias raw, with no
         // realpath() applied. Only the fallback in WorkspaceEditor unifies them.
         $we = $this->workspaceEditor();
-        $buffer = $this->buffers->open($canonical, "0123456789\n");
-        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $buffer = $this->buffers->open($canonical, content: "0123456789\n");
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
         $nonCanonicalUri = 'file://'.$aliased.'/a.php';
 
         $outcome = $we->applyWorkspaceEdit(['changes' => [$nonCanonicalUri => $edit]]);
@@ -510,7 +510,7 @@ final class WorkspaceEditorTest extends TestCase
                 [
                     'textDocument' => ['uri' => Uri::fromPath($new)],
                     'edits' => [
-                        self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], "<?php\nclass Extracted {}\n"),
+                        self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], newText: "<?php\nclass Extracted {}\n"),
                     ],
                 ],
             ],
@@ -714,7 +714,7 @@ final class WorkspaceEditorTest extends TestCase
             $deleted[] = $e->previousText;
         });
         $we = $this->workspaceEditor($events);
-        $this->buffers->open((string) \realpath($project->path('open.php')), "<?php\n")->document->insert('// mine ');
+        $this->buffers->open((string) \realpath($project->path('open.php')), content: "<?php\n")->document->insert('// mine ');
 
         $we->applyWorkspaceEdit([
             'documentChanges' => [
@@ -736,7 +736,7 @@ final class WorkspaceEditorTest extends TestCase
             $deleted[] = $e->previousText;
         });
         $we = $this->workspaceEditor($events);
-        $this->buffers->open((string) \realpath($project->path('open.php')), "\u{FEFF}<?php\r\n")->document->insert('// mine ');
+        $this->buffers->open((string) \realpath($project->path('open.php')), content: "\u{FEFF}<?php\r\n")->document->insert('// mine ');
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($project->path('open.php'))]]]);
 
@@ -755,7 +755,7 @@ final class WorkspaceEditorTest extends TestCase
         });
         $we = $this->workspaceEditor($events);
         $real = (string) \realpath($project->path('real.php'));
-        $this->buffers->open($real, "<?php\n");
+        $this->buffers->open($real, content: "<?php\n");
 
         $we->applyWorkspaceEdit([
             // Spelled by hand: Uri::fromPath() resolves the link, as a server's own URI does not.
@@ -868,7 +868,7 @@ final class WorkspaceEditorTest extends TestCase
         $project = new TempProject(['locked/a.php' => "<?php\n"]);
         $path = (string) \realpath($project->path('locked/a.php'));
         $we = $this->workspaceEditor();
-        $this->buffers->open($path, "<?php\n")->document->insert('// mine');
+        $this->buffers->open($path, content: "<?php\n")->document->insert('// mine');
         \chmod($project->path('locked'), permissions: 0o555);
 
         try {
@@ -943,7 +943,7 @@ final class WorkspaceEditorTest extends TestCase
                 [
                     'textDocument' => ['uri' => Uri::fromPath($project->path('a.php'))],
                     'edits' => [
-                        self::edit(['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 3]], 'new'),
+                        self::edit(['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 3]], newText: 'new'),
                     ],
                 ],
             ],
@@ -1053,8 +1053,8 @@ final class WorkspaceEditorTest extends TestCase
         $out = new TempProject(['rc' => "keep\n", 'open.php' => "<?php\nold\n"]);
         $in = new TempProject(['a.php' => "<?php\nold\n"]);
         $editor = $this->workspaceEditor(root: $in->dir);
-        $this->buffers->open((string) \realpath($out->path('open.php')), "<?php\nold\n");
-        $edit = static fn (string $path): array => [Uri::fromPath($path) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'evil ')]];
+        $this->buffers->open((string) \realpath($out->path('open.php')), content: "<?php\nold\n");
+        $edit = static fn (string $path): array => [Uri::fromPath($path) => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], newText: 'evil ')]];
 
         $outcome = $editor->applyWorkspaceEdit(['changes' => [...$edit($out->path('rc')), ...$edit((string) \realpath($out->path('open.php'))), ...$edit($in->path('a.php'))]]);
 
@@ -1107,7 +1107,7 @@ final class WorkspaceEditorTest extends TestCase
     {
         $outcome = $this->workspaceEditor()->applyWorkspaceEdit([
             'changes' => ['file:///does/not/exist.php' => [
-                self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], 'x'),
+                self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], newText: 'x'),
             ]],
         ]);
 
@@ -1160,7 +1160,7 @@ final class WorkspaceEditorTest extends TestCase
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $we = $this->workspaceEditor();
         $path = (string) \realpath($project->path('gone.php'));
-        $this->buffers->open($path, "<?php\n");
+        $this->buffers->open($path, content: "<?php\n");
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
 
@@ -1219,7 +1219,7 @@ final class WorkspaceEditorTest extends TestCase
 
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
-                Uri::fromPath($project->path('a.php')) => [self::edit(['start' => ['line' => 3, 'character' => 0], 'end' => ['line' => 3, 'character' => 3]], 'Bar')],
+                Uri::fromPath($project->path('a.php')) => [self::edit(['start' => ['line' => 3, 'character' => 0], 'end' => ['line' => 3, 'character' => 3]], newText: 'Bar')],
             ],
         ]);
 
@@ -1235,10 +1235,10 @@ final class WorkspaceEditorTest extends TestCase
     public function testAnEditForAnOlderVersionOfAnOpenBufferIsNotApplied(): void
     {
         $we = $this->workspaceEditor();
-        $buffer = $this->buffers->open('/tmp/proj/a.php', "abc\n");
+        $buffer = $this->buffers->open('/tmp/proj/a.php', content: "abc\n");
         $version = $buffer->document->version;
         $buffer->document->insert('typed ');
-        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X')];
+        $edit = [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X')];
 
         $stated = $we->applyWorkspaceEdit(['documentChanges' => [['textDocument' => ['uri' => 'file:///tmp/proj/a.php', 'version' => $version], 'edits' => $edit]]]);
         $asked = $we->applyWorkspaceEdit(['changes' => ['file:///tmp/proj/a.php' => $edit]], ['/tmp/proj/a.php' => $version]);
@@ -1256,11 +1256,11 @@ final class WorkspaceEditorTest extends TestCase
             'documentChanges' => [
                 [
                     'textDocument' => ['uri' => 'file:///tmp/proj/a.php', 'version' => $now],
-                    'edits' => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], '1')],
+                    'edits' => [self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 0]], newText: '1')],
                 ],
                 [
                     'textDocument' => ['uri' => 'file:///tmp/proj/a.php', 'version' => $now],
-                    'edits' => [self::edit(['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], '2')],
+                    'edits' => [self::edit(['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 0]], newText: '2')],
                 ],
             ],
         ]);
@@ -1289,7 +1289,7 @@ final class WorkspaceEditorTest extends TestCase
         $outcome = $we->applyWorkspaceEdit([
             'changes' => [
                 Uri::fromPath($project->path('a.php')) => [
-                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], 'X'),
+                    self::edit(['start' => ['line' => 0, 'character' => 0], 'end' => ['line' => 0, 'character' => 1]], newText: 'X'),
                 ],
             ],
         ]);
@@ -1415,7 +1415,7 @@ final class WorkspaceEditorTest extends TestCase
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $we = $this->workspaceEditor();
         $path = (string) \realpath($project->path('gone.php'));
-        $this->buffers->open($path, "<?php\n")->document->insert('// edited');
+        $this->buffers->open($path, content: "<?php\n")->document->insert('// edited');
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
 
@@ -1429,7 +1429,7 @@ final class WorkspaceEditorTest extends TestCase
         $project = new TempProject(['gone.php' => "<?php\n"]);
         $we = $this->workspaceEditor();
         $path = (string) \realpath($project->path('gone.php'));
-        $this->buffers->open($path, "<?php\n");
+        $this->buffers->open($path, content: "<?php\n");
 
         $we->applyWorkspaceEdit(['documentChanges' => [['kind' => 'delete', 'uri' => Uri::fromPath($path)]]]);
 

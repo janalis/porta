@@ -31,9 +31,9 @@ final class ResultsPanelKeysTest extends TestCase
         $this->assertGreaterThan(1, $page, 'the premise: a page of more than one row');
 
         $panel->handleInput("\x1b[6~");
-        $this->assertSame($page, Probe::get($panel, 'list')->selected());
+        $this->assertSame($page, Probe::get($panel, property: 'list')->selected());
         $panel->handleInput("\x1b[5~");
-        $this->assertSame(0, Probe::get($panel, 'list')->selected());
+        $this->assertSame(0, Probe::get($panel, property: 'list')->selected());
     }
 
     /** Esc clears a typed filter first and keeps the panel open; the next Esc closes it. */
@@ -44,10 +44,10 @@ final class ResultsPanelKeysTest extends TestCase
         $panel->open('Find', ResultsPanelFields::searchResults());
         $panel->setResults([['path' => 'src/A.php', 'line' => 1, 'text' => 'alpha'], ['path' => 'src/B.php', 'line' => 2, 'text' => 'beta']]);
         $panel->handleInput('b');
-        $this->assertSame('b', Probe::get($panel, 'filter')->value(), 'the premise: a filter is typed');
+        $this->assertSame('b', Probe::get($panel, property: 'filter')->value(), 'the premise: a filter is typed');
 
         $panel->handleInput("\x1b");
-        $this->assertSame('', Probe::get($panel, 'filter')->value());
+        $this->assertSame('', Probe::get($panel, property: 'filter')->value());
         $this->assertTrue($panel->isOpen(), 'the first Esc spends itself on the filter');
 
         $panel->handleInput("\x1b");
@@ -65,6 +65,6 @@ final class ResultsPanelKeysTest extends TestCase
         $panel->handleInput("\x1b[D");
         $panel->handleInput("\x1b[200~alph\x1b[201~");
 
-        $this->assertSame('alpha', Probe::get($panel, 'filter')->value());
+        $this->assertSame('alpha', Probe::get($panel, property: 'filter')->value());
     }
 }

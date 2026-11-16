@@ -73,7 +73,7 @@ final class UnsavedChangesGuard
                         '%noun%' => $this->translator->trans('1 file has|%count% files have', ['%count%' => $dirty]),
                         '%repeat%' => $repeat,
                     ]),
-                3.0,
+                seconds: 3.0,
             );
         }
 

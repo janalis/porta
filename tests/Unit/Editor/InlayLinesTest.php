@@ -26,11 +26,11 @@ final class InlayLinesTest extends TestCase
         $lines = new InlayLines($store, $display);
         $doc = new Document("\$x\n");
 
-        $this->assertCount(1, $lines->forLine($doc, 0)->placed(), 'inline: drawn');
+        $this->assertCount(1, $lines->forLine($doc, line: 0)->placed(), 'inline: drawn');
         foreach ([InlayHintMode::Tooltip, InlayHintMode::None] as $mode) {
             $display->setInlayHints($mode);
-            $this->assertSame([], $lines->forLine($doc, 0)->placed(), "{$mode->value}: not drawn");
-            $this->assertSame([$hint], $lines->shown($doc, 0), "{$mode->value}: still the line's hints, for a card");
+            $this->assertSame([], $lines->forLine($doc, line: 0)->placed(), "{$mode->value}: not drawn");
+            $this->assertSame([$hint], $lines->shown($doc, line: 0), "{$mode->value}: still the line's hints, for a card");
         }
     }
 
@@ -54,7 +54,7 @@ final class InlayLinesTest extends TestCase
     /** @return list<string> */
     private static function labels(InlayLines $lines): array
     {
-        return \array_map(static fn (InlayHint $hint): string => $hint->label, $lines->shown(new Document("f(42, \$y, \$z);\n"), 0));
+        return \array_map(static fn (InlayHint $hint): string => $hint->label, $lines->shown(new Document("f(42, \$y, \$z);\n"), line: 0));
     }
 
     public function testByDefaultAParameterIsNamedOnlyBeforeALiteralOrByReference(): void
@@ -76,6 +76,6 @@ final class InlayLinesTest extends TestCase
 
     public function testALineWithoutHintsShowsNone(): void
     {
-        $this->assertSame([], $this->lines()->shown(new Document("x\ny\n"), 1));
+        $this->assertSame([], $this->lines()->shown(new Document("x\ny\n"), line: 1));
     }
 }

@@ -172,7 +172,7 @@ final class PreviewSplitTest extends TestCase
         $this->frame($this->tui);
         $this->tui->setFocus($this->editor);
 
-        $this->terminal->simulateResize(100, 10);
+        $this->terminal->simulateResize(100, rows: 10);
         $this->frame($this->tui);
         $this->plain()->fit();
 

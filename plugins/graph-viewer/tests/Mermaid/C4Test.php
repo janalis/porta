@@ -58,9 +58,9 @@ final class C4Test extends TestCase
         $nodes = \array_column($scene->graph->nodes, null, 'name');
         $this->assertSame(['c4-person', 'c4-queue', 'cylinder', 'circle'], \array_values($scene->shapes));
         $this->assertSame(['#800080', '#ffffff', '#ff0000'], [$nodes['person']->fillColor, $nodes['person']->textColor, $nodes['person']->color]);
-        $this->assertTrue(MermaidOutline::contains($nodes['person'], 'c4-person', $nodes['person']->x, $nodes['person']->y - ($nodes['person']->h / 2) + 2));
-        $this->assertCount(2, MermaidOutline::marks($nodes['person'], 'c4-person'));
-        $this->assertCount(3, MermaidOutline::marks($nodes['queue'], 'c4-queue'));
+        $this->assertTrue(MermaidOutline::contains($nodes['person'], shape: 'c4-person', x: $nodes['person']->x, y: $nodes['person']->y - ($nodes['person']->h / 2) + 2));
+        $this->assertCount(2, MermaidOutline::marks($nodes['person'], shape: 'c4-person'));
+        $this->assertCount(3, MermaidOutline::marks($nodes['queue'], shape: 'c4-queue'));
         $svg = NativeFixtureExport::render($source, Format::Svg);
         $this->assertStringContainsString('#800080', $svg);
         $this->assertStringContainsString('Database', $svg);

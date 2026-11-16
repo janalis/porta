@@ -66,8 +66,8 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['clean.php' => "<?php\n", 'broken.php' => "<?php\n", 'edited.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
-        $buffers->open((string) \realpath($project->dir.'/edited.php'), "<?php\n")->document->insert('x');
+        $buffers->open((string) \realpath($project->dir.'/broken.php'), content: "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
+        $buffers->open((string) \realpath($project->dir.'/edited.php'), content: "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
@@ -83,7 +83,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['src/a.php' => "<?php\n", 'b.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffer = $buffers->open((string) \realpath($project->dir.'/src/a.php'), "<?php\n");
+        $buffer = $buffers->open((string) \realpath($project->dir.'/src/a.php'), content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'hmm', 'col' => 0]]];
         $buffer->document->insert('x');
         $statuses = new FileStatuses();
@@ -96,14 +96,14 @@ final class FileTreeWidgetTest extends TestCase
         $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'a.php')));
         $this->assertNotNull($row);
 
-        $tip = $tree->tooltipAt($row, 3);
+        $tip = $tree->tooltipAt($row, col: 3);
         $this->assertSame("src/a.php\nVersion control: Modified\nHas warnings\nUnsaved changes", $tip?->text);
         $this->assertSame([$row, 0, 30], [$tip?->row, $tip?->colStart, $tip?->colEnd], 'the whole row');
         $this->assertSame('tree:'.$project->dir.'/src/a.php', $tip?->key);
 
         $clean = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'b.php')));
-        $this->assertNull($tree->tooltipAt((int) $clean, 3), 'a whole name with no mark says nothing more');
-        $this->assertNull($tree->tooltipAt(0, 3), 'nor the header');
+        $this->assertNull($tree->tooltipAt((int) $clean, col: 3), 'a whole name with no mark says nothing more');
+        $this->assertNull($tree->tooltipAt(0, col: 3), 'nor the header');
     }
 
     public function testAFileAnAgentIsAtWorkOnIsStarredAndSaysWho(): void
@@ -119,24 +119,24 @@ final class FileTreeWidgetTest extends TestCase
         $row = \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, 'a.php')));
 
         $this->assertMatchesRegularExpression('/a\.php\s+'.Glyphs::AGENT.'$/', $rows[(int) $row], 'the star, last of the marks, on a file nobody opened');
-        $this->assertSame("a.php\nClaude is editing it\nCodex is reading it", $tree->tooltipAt((int) $row, 3)?->text);
+        $this->assertSame("a.php\nClaude is editing it\nCodex is reading it", $tree->tooltipAt((int) $row, col: 3)?->text);
     }
 
     public function testACutNameIsSaidWholeAndAnErrorIsAnError(): void
     {
         $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n", 'broken.php' => "<?php\n", 'notes.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffers->open((string) \realpath($project->dir.'/broken.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
-        $buffers->open((string) \realpath($project->dir.'/notes.php'), "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'tip', 'col' => 0]]];
+        $buffers->open((string) \realpath($project->dir.'/broken.php'), content: "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
+        $buffers->open((string) \realpath($project->dir.'/notes.php'), content: "<?php\n")->diagnostics = [0 => [['severity' => DiagnosticSeverity::Hint, 'message' => 'tip', 'col' => 0]]];
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
         $rows = \explode("\n", $this->plain($tree->render(new RenderContext(20, 10))));
         $find = static fn (string $needle): int => (int) \array_key_first(\array_filter($rows, static fn (string $r): bool => \str_contains($r, $needle)));
 
-        $this->assertSame('a-really-quite-long-file-name.php', $tree->tooltipAt($find('a-really'), 3)?->text, 'no mark, but cut');
-        $this->assertSame("broken.php\nHas errors", $tree->tooltipAt($find('broken'), 3)?->text);
-        $this->assertNull($tree->tooltipAt($find('notes'), 3), 'a hint is no mark, so nothing to spell out');
+        $this->assertSame('a-really-quite-long-file-name.php', $tree->tooltipAt($find('a-really'), col: 3)?->text, 'no mark, but cut');
+        $this->assertSame("broken.php\nHas errors", $tree->tooltipAt($find('broken'), col: 3)?->text);
+        $this->assertNull($tree->tooltipAt($find('notes'), col: 3), 'a hint is no mark, so nothing to spell out');
     }
 
     /** Both marks on one row: the diagnostic first, then the dirty dot, so the columns stay stable. */
@@ -144,7 +144,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
+        $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'hmm', 'col' => 0]]];
         $buffer->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
@@ -160,7 +160,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a-really-quite-long-file-name.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffers->open((string) \realpath($project->dir.'/a-really-quite-long-file-name.php'), "<?php\n")->document->insert('x');
+        $buffers->open((string) \realpath($project->dir.'/a-really-quite-long-file-name.php'), content: "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
@@ -181,7 +181,7 @@ final class FileTreeWidgetTest extends TestCase
     {
         $project = new TempProject(['a.php' => "<?php\n"]);
         $buffers = new BufferManager();
-        $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), "<?php\n");
+        $buffer = $buffers->open((string) \realpath($project->dir.'/a.php'), content: "<?php\n");
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
@@ -215,7 +215,7 @@ final class FileTreeWidgetTest extends TestCase
         try {
             $buffers = new BufferManager();
             // What BufferService does: realpath() before keying.
-            $buffers->open((string) \realpath($link.'/a.php'), "<?php\n")->document->insert('x');
+            $buffers->open((string) \realpath($link.'/a.php'), content: "<?php\n")->document->insert('x');
             $tree = new FileTreeWidget($link, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
             $tree->beforeRender();
@@ -284,7 +284,7 @@ final class FileTreeWidgetTest extends TestCase
         $statuses = new FileStatuses();
         $statuses->applyFileStatuses([$path => ChangeMarkKind::Modified]);
         $buffers = new BufferManager();
-        $buffer = $buffers->open($path, "<?php\n");
+        $buffer = $buffers->open($path, content: "<?php\n");
         $buffer->diagnostics = [0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]];
         $buffer->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, $statuses, TestAgentPresence::create()));
@@ -305,7 +305,7 @@ final class FileTreeWidgetTest extends TestCase
         // A buffer keyed on the directory's own path: the widget must reject it
         // by asking whether the NODE is a directory, not by trusting the lookup
         // to miss.
-        $buffers->open((string) \realpath($project->dir.'/sub'), "<?php\n")->document->insert('x');
+        $buffers->open((string) \realpath($project->dir.'/sub'), content: "<?php\n")->document->insert('x');
         $tree = new FileTreeWidget($project->dir, fileDecorations: new FileDecorations($buffers, new FileStatuses(), TestAgentPresence::create()));
 
         $tree->beforeRender();
@@ -529,13 +529,13 @@ final class FileTreeWidgetTest extends TestCase
 
         $this->assertFalse($tree->refreshIfChanged(), 'nothing changed on disk');
 
-        $project->write('c.php', ''); // new file in the root (a scanned dir)
+        $project->write('c.php', content: ''); // new file in the root (a scanned dir)
         $this->assertTrue($tree->refreshIfChanged(), 'a new root entry is detected');
         $this->assertStringContainsString('c.php', $this->plain($tree->render($context)));
         $this->assertStringContainsString('b.php', $this->plain($tree->render($context)), 'sub/ stayed expanded across the refresh');
 
         $this->assertFalse($tree->refreshIfChanged(), 'no further change');
-        $project->write('sub/d.php', ''); // new file inside the expanded sub/
+        $project->write('sub/d.php', content: ''); // new file inside the expanded sub/
         $this->assertTrue($tree->refreshIfChanged(), 'a change in an expanded subdir is detected');
         $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
     }
@@ -553,7 +553,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree->render($context);
         $tree->clearRenderCache(); // what the measure pass does to the stock cache
 
-        Probe::set($tree, 'memoLines', ['SENTINEL']);
+        Probe::set($tree, property: 'memoLines', value: ['SENTINEL']);
         $this->assertSame(['SENTINEL'], $tree->render($context), 'same revision: the memo answered, no re-render happened');
 
         $this->assertTrue($tree->hoverRow(1), 'hovering the a.php row changes the tint state');
@@ -610,11 +610,11 @@ final class FileTreeWidgetTest extends TestCase
         $tree->render($context);
 
         $this->assertFalse($tree->refreshDirsSlice(1), 'slice 1: the root is unchanged');
-        $this->assertSame(1, Probe::get($tree, 'dirCursor'));
+        $this->assertSame(1, Probe::get($tree, property: 'dirCursor'));
 
-        $project->write('sub/d.php', '');
+        $project->write('sub/d.php', content: '');
         $this->assertTrue($tree->refreshDirsSlice(1), 'slice 2: the cursor reached sub/ and saw the change');
-        $this->assertSame(0, Probe::get($tree, 'dirCursor'), 'a hit rewinds the cursor');
+        $this->assertSame(0, Probe::get($tree, property: 'dirCursor'), 'a hit rewinds the cursor');
         $this->assertStringContainsString('d.php', $this->plain($tree->render($context)));
     }
 
@@ -649,7 +649,7 @@ final class FileTreeWidgetTest extends TestCase
 
         $this->assertFalse($tree->refreshDirsSlice(1));
         $this->assertFalse($tree->refreshDirsSlice(1));
-        $this->assertSame(0, Probe::get($tree, 'dirCursor'), 'the cursor wrapped back to the front');
+        $this->assertSame(0, Probe::get($tree, property: 'dirCursor'), 'the cursor wrapped back to the front');
     }
 
     public function testRefreshDirsSliceBudgetIsCappedAtTheDirCount(): void
@@ -661,9 +661,9 @@ final class FileTreeWidgetTest extends TestCase
         $tree->render(new RenderContext(30, 10));
 
         $this->assertFalse($tree->refreshDirsSlice(10), 'each dir is checked at most once per call');
-        $this->assertSame(0, Probe::get($tree, 'dirCursor'), 'two checks over two dirs land back at the front');
+        $this->assertSame(0, Probe::get($tree, property: 'dirCursor'), 'two checks over two dirs land back at the front');
 
-        $project->write('c.php', '');
+        $project->write('c.php', content: '');
         $this->assertTrue($tree->refreshDirsSlice(10), 'an over-budget slice still sees the change');
     }
 
@@ -678,7 +678,7 @@ final class FileTreeWidgetTest extends TestCase
         $this->assertFalse($tree->refreshDirsSlice(1)); // cursor now 1
 
         $tree->handleInput("\r"); // collapse sub/ → the map shrinks to [root]
-        $project->write('c.php', '');
+        $project->write('c.php', content: '');
         $this->assertTrue($tree->refreshDirsSlice(1), 'the stale cursor re-clamps instead of missing the only dir');
         $this->assertStringContainsString('c.php', $this->plain($tree->render($context)));
     }
@@ -693,7 +693,7 @@ final class FileTreeWidgetTest extends TestCase
         // A change the mtime does not betray: add an entry, then restore the
         // old dir mtime. Outside the grace window the poll trusts the mtime
         // and skips the scandir, so the change goes (deliberately) unseen.
-        $project->write('b.php', '');
+        $project->write('b.php', content: '');
         \touch($project->dir, $past);
         $this->assertFalse($tree->refreshIfChanged(), 'unchanged old mtime short-circuits the scandir');
 
@@ -708,7 +708,7 @@ final class FileTreeWidgetTest extends TestCase
         $tree = new FileTreeWidget($project->dir); // dir mtime is "now": inside the grace window
 
         $mtime = (int) \filemtime($project->dir);
-        $project->write('b.php', '');
+        $project->write('b.php', content: '');
         \touch($project->dir, $mtime); // same-second change: mtime identical
         $this->assertTrue($tree->refreshIfChanged(), 'fresh dirs are scandir-compared even with an identical mtime');
     }
@@ -723,7 +723,7 @@ final class FileTreeWidgetTest extends TestCase
 
         // A same-mtime change AT the boundary: strictly-older-than is what
         // trusts an mtime, so the boundary itself still gets the scandir.
-        $project->write('b.php', '');
+        $project->write('b.php', content: '');
         \touch($project->dir, $boundary);
         $this->assertTrue($tree->refreshIfChanged(), 'the boundary mtime is not yet trusted');
     }
@@ -785,7 +785,7 @@ final class FileTreeWidgetTest extends TestCase
         $context = new RenderContext(30, 10);
         $tree->render($context);
 
-        $project->write('second.php', '');
+        $project->write('second.php', content: '');
         $tree->handleInput('r');
 
         $this->assertStringContainsString('second.php', $this->plain($tree->render($context)));

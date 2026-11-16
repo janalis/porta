@@ -413,9 +413,9 @@ final class WelcomeWidget extends AbstractWidget implements FocusableInterface, 
         $kb = $this->getKeybindings();
 
         match (true) {
-            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, action: 'exit_view') => $this->fire($this->onExit),
             ListNavigation::handleKey($data, $kb, $this->list, \count($this->steps), page: $this->lastPage) => $this->invalidate(),
-            $kb->matches($data, 'confirm') => $this->runSelected(),
+            $kb->matches($data, action: 'confirm') => $this->runSelected(),
             default => null,
         };
     }

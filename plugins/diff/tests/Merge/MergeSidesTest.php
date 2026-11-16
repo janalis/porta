@@ -100,24 +100,24 @@ final class MergeSidesTest extends TestCase
 
     public function testTheCurrentConflictIsTheOneTheLineIsInOrTheNextOrTheLast(): void
     {
-        $this->assertSame(0, MergeSides::current(self::RESULT, 0), 'above the first: the first');
-        $this->assertSame(0, MergeSides::current(self::RESULT, 6), 'on its closer');
-        $this->assertSame(1, MergeSides::current(self::RESULT, 7), 'between: the next');
-        $this->assertSame(1, MergeSides::current(self::RESULT, 16), 'below the last: the last');
-        $this->assertNull(MergeSides::current(['clean'], 0));
+        $this->assertSame(0, MergeSides::current(self::RESULT, line: 0), 'above the first: the first');
+        $this->assertSame(0, MergeSides::current(self::RESULT, line: 6), 'on its closer');
+        $this->assertSame(1, MergeSides::current(self::RESULT, line: 7), 'between: the next');
+        $this->assertSame(1, MergeSides::current(self::RESULT, line: 16), 'below the last: the last');
+        $this->assertNull(MergeSides::current(['clean'], line: 0));
     }
 
     public function testAcceptingASideReplacesThatConflictAlone(): void
     {
         $this->assertSame(
             ['a', 'ours 1', 'ours 2', 'b', '<<<<<<< HEAD', 'o', '||||||| base', 'was', '=======', 't1', 't2', '>>>>>>> topic', 'c'],
-            MergeSides::accept(self::RESULT, 0, ConflictSide::Ours),
+            MergeSides::accept(self::RESULT, index: 0, side: ConflictSide::Ours),
         );
         $this->assertSame(
             ['a', '<<<<<<< HEAD', 'ours 1', 'ours 2', '=======', 'theirs', '>>>>>>> topic', 'b', 'o', 't1', 't2', 'c'],
-            MergeSides::accept(self::RESULT, 1, ConflictSide::Both),
+            MergeSides::accept(self::RESULT, index: 1, side: ConflictSide::Both),
         );
-        $this->assertNull(MergeSides::accept(self::RESULT, 2, ConflictSide::Theirs), 'no third conflict');
+        $this->assertNull(MergeSides::accept(self::RESULT, index: 2, side: ConflictSide::Theirs), 'no third conflict');
     }
 
     public function testAConflictedFileHasAnOpenerAtTheStartOfALine(): void

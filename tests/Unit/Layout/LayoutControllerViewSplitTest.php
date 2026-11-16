@@ -71,26 +71,26 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->assertFalse($layout->armViewSplitResize('git', self::mouse("\x1b[<0;50;3M")), 'column 49 is the lead');
         $this->assertFalse($layout->armViewSplitResize('settings', self::mouse("\x1b[<0;51;3M")), 'another view has no such split');
         $this->assertTrue($layout->armViewSplitResize('git', self::mouse("\x1b[<0;51;3M")));
-        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null));
+        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), treeRect: null));
         $this->frame($this->tui);
         $this->assertSame(30, $this->leadColumns());
         $this->assertSame([], $this->layoutFile(), 'nothing written mid-drag');
 
-        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<0;31;3m"), null));
+        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<0;31;3m"), treeRect: null));
         $this->assertSame(['viewSplitPercent' => ['git:history' => 30]], $this->layoutFile());
-        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;60;3M"), null), 'the release disarmed it');
+        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;60;3M"), treeRect: null), 'the release disarmed it');
     }
 
     public function testAPressThatNeverMovedWritesNothingAndAFreshPressCancels(): void
     {
         $layout = $this->onScreen();
         $layout->armViewSplitResize('git', self::mouse("\x1b[<0;51;3M"));
-        $layout->continueResizeDrag(self::mouse("\x1b[<0;51;3m"), null);
+        $layout->continueResizeDrag(self::mouse("\x1b[<0;51;3m"), treeRect: null);
         $this->assertSame([], $this->layoutFile());
 
         $layout->armViewSplitResize('git', self::mouse("\x1b[<0;51;3M"));
         $layout->cancelDrags();
-        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null));
+        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), treeRect: null));
         $this->assertSame(50, $this->split->percent());
     }
 
@@ -100,8 +100,8 @@ final class LayoutControllerViewSplitTest extends TestCase
         $layout->armViewSplitResize('git', self::mouse("\x1b[<0;51;3M"));
         $this->tui->remove($this->split->area);
 
-        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null), 'still the drag\'s motion');
-        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<0;31;3m"), null));
+        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), treeRect: null), 'still the drag\'s motion');
+        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<0;31;3m"), treeRect: null));
         $this->assertSame(50, $this->split->percent());
         $this->assertSame([], $this->layoutFile());
     }
@@ -128,15 +128,15 @@ final class LayoutControllerViewSplitTest extends TestCase
 
         $this->tui->remove($this->split->area);
         $this->assertFalse($resizer->canResize(), 'off screen, the chord is not the split\'s');
-        $layout->nudgeViewSplit('git', 'history', 10);
-        $layout->nudgeViewSplit('git', 'nowhere', 10);
+        $layout->nudgeViewSplit('git', key: 'history', delta: 10);
+        $layout->nudgeViewSplit('git', key: 'nowhere', delta: 10);
         $this->assertSame(58, $this->split->percent());
     }
 
     public function testTheNextSessionRestoresTheShareOnLoadAndForASplitMintedAfterIt(): void
     {
         $layout = $this->onScreen();
-        $layout->nudgeViewSplit('git', 'history', -20);
+        $layout->nudgeViewSplit('git', key: 'history', delta: -20);
         $written = (string) \file_get_contents($this->project->dir.'/.porta/layout.json');
 
         $next = $this->onScreen();
@@ -146,10 +146,10 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->assertSame(30, $this->split->percent(), 'a split already minted takes it on load');
 
         $later = $this->regions->mint('settings')->split('history');
-        $next->fitViewSidebar('settings', 100);
+        $next->fitViewSidebar('settings', innerWidth: 100);
         $this->assertSame(50, $later->percent(), 'another view\'s split keeps its own default');
         $this->regions->mint('git')->split('history')->setPercent(70);
-        $next->fitViewSidebar('git', 100);
+        $next->fitViewSidebar('git', innerWidth: 100);
         $this->assertSame(30, $this->split->percent(), 'and its window\'s next fit puts it back');
     }
 
@@ -168,7 +168,7 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->tui->setFocus($this->lead);
         $this->assertTrue($resizer->canResize());
 
-        $this->terminal->simulateResize(40, 30);
+        $this->terminal->simulateResize(40, rows: 30);
         $this->frame($this->tui);
         $this->split->fit();
 
@@ -189,7 +189,7 @@ final class LayoutControllerViewSplitTest extends TestCase
         $this->frame($this->tui);
         $onPreviewDivider = self::mouse("\x1b[<0;51;3M");
 
-        $this->assertFalse($layout->armDividerResize('git', null, $onPreviewDivider), 'a view open: the preview is behind it');
-        $this->assertTrue($layout->armDividerResize(null, null, $onPreviewDivider), 'no view: the preview divider is the one under the press');
+        $this->assertFalse($layout->armDividerResize('git', viewSeparatorRect: null, mouse: $onPreviewDivider), 'a view open: the preview is behind it');
+        $this->assertTrue($layout->armDividerResize(null, viewSeparatorRect: null, mouse: $onPreviewDivider), 'no view: the preview divider is the one under the press');
     }
 }

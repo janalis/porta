@@ -219,7 +219,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
     {
         $heights = $this->heights();
         $this->scrollSegment = \min($this->scrollSegment, \max(0, $heights->height($this->scroll) - 1));
-        [$this->scroll, $this->scrollSegment] = $heights->scrolled($this->scroll, $this->scrollSegment, 0, $rows - $this->headerRows);
+        [$this->scroll, $this->scrollSegment] = $heights->scrolled($this->scroll, $this->scrollSegment, by: 0, visible: $rows - $this->headerRows);
     }
 
     /** The body rows below the toolbar, from the last render. */
@@ -336,7 +336,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ($this->wrap) {
             return;
         }
-        $this->hScroll = IntMath::clamp($this->hScroll + $cols, 0, \max(0, $this->maxLineWidth - 20));
+        $this->hScroll = IntMath::clamp($this->hScroll + $cols, lo: 0, hi: \max(0, $this->maxLineWidth - 20));
         $this->invalidate();
     }
 
@@ -353,20 +353,20 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         $kb = $this->getKeybindings();
 
         match (true) {
-            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
-            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'cursor_up') => $this->moveCursor(-1),
-            $kb->matches($data, 'cursor_down') => $this->moveCursor(1),
-            $kb->matches($data, 'page_up') => $this->moveCursor(-$this->page()),
-            $kb->matches($data, 'page_down') => $this->moveCursor($this->page()),
-            $kb->matches($data, 'range_anchor') => $this->toggleRangeAnchor(),
-            $kb->matches($data, 'copy') => $this->fireCopy(),
-            $kb->matches($data, 'stage_selection') => $this->fireStageSelection(),
-            $kb->matches($data, 'cycle_context') => $this->requestContextCycle(),
-            $kb->matches($data, 'toggle_layout') => $this->toggleLayout(), // display-only: allowed in read-only mode too
-            $kb->matches($data, 'toggle_whitespace') => $this->events?->dispatch(new DiffWhitespaceToggleRequested()), // allowed in read-only mode too
-            $kb->matches($data, 'scroll_left') => $this->scrollHBy(-8),
-            $kb->matches($data, 'scroll_right') => $this->scrollHBy(8),
+            $kb->matches($data, action: 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, action: 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, action: 'cursor_up') => $this->moveCursor(-1),
+            $kb->matches($data, action: 'cursor_down') => $this->moveCursor(1),
+            $kb->matches($data, action: 'page_up') => $this->moveCursor(-$this->page()),
+            $kb->matches($data, action: 'page_down') => $this->moveCursor($this->page()),
+            $kb->matches($data, action: 'range_anchor') => $this->toggleRangeAnchor(),
+            $kb->matches($data, action: 'copy') => $this->fireCopy(),
+            $kb->matches($data, action: 'stage_selection') => $this->fireStageSelection(),
+            $kb->matches($data, action: 'cycle_context') => $this->requestContextCycle(),
+            $kb->matches($data, action: 'toggle_layout') => $this->toggleLayout(), // display-only: allowed in read-only mode too
+            $kb->matches($data, action: 'toggle_whitespace') => $this->events?->dispatch(new DiffWhitespaceToggleRequested()), // allowed in read-only mode too
+            $kb->matches($data, action: 'scroll_left') => $this->scrollHBy(-8),
+            $kb->matches($data, action: 'scroll_right') => $this->scrollHBy(8),
             default => null,
         };
     }
@@ -505,7 +505,7 @@ final class DiffViewWidget extends AbstractWidget implements FocusableInterface,
         if ([] === $this->rows) {
             return;
         }
-        $this->cursor = IntMath::clamp($this->cursor + $delta, 0, \count($this->rows) - 1);
+        $this->cursor = IntMath::clamp($this->cursor + $delta, lo: 0, hi: \count($this->rows) - 1);
         $this->revealCursor();
     }
 

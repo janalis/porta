@@ -351,8 +351,8 @@ final class RefactorController extends AbstractLspController implements EditorRe
                 'range' => $this->actionRange($line, $col, $diagnostics),
                 'context' => $context,
             ],
-            'codeActionProvider',
-            function (mixed $result, ?array $error, string $owner) use ($present, $empty, $generation): void {
+            capability: 'codeActionProvider',
+            onResult: function (mixed $result, ?array $error, string $owner) use ($present, $empty, $generation): void {
                 if ($generation !== $this->actionGeneration) {
                     return; // a later request is what the user is waiting on
                 }
@@ -475,7 +475,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
         }
 
         [$owner, $bare] = ServerOwner::take($action);
-        $this->lsp->requestTo($owner, 'codeAction/resolve', $bare, function (mixed $result, ?array $error) use ($action): void {
+        $this->lsp->requestTo($owner, method: 'codeAction/resolve', params: $bare, onResult: function (mixed $result, ?array $error) use ($action): void {
             // Falling back to the unresolved action is deliberate: it flashes
             // "nothing to apply", which is the truth when a resolve fails.
             /** @var array<string, mixed> $resolved */
@@ -497,7 +497,7 @@ final class RefactorController extends AbstractLspController implements EditorRe
     {
         [$owner] = ServerOwner::take($action);
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or a CodeActionOptions object */
-        $capability = $this->lsp->capabilityOf($owner, 'codeActionProvider');
+        $capability = $this->lsp->capabilityOf($owner, name: 'codeActionProvider');
 
         return \is_array($capability) && true === ($capability['resolveProvider'] ?? null);
     }
@@ -542,12 +542,12 @@ final class RefactorController extends AbstractLspController implements EditorRe
             // would at best answer "unknown command".
             $this->lsp->requestTo(
                 $owner,
-                'workspace/executeCommand',
-                [
+                method: 'workspace/executeCommand',
+                params: [
                     'command' => $command['command'],
                     'arguments' => $command['arguments'] ?? [],
                 ],
-                function (mixed $result, ?array $error) use ($title): void {
+                onResult: function (mixed $result, ?array $error) use ($title): void {
                     $this->flash(
                         null !== $error
                             ? $this->trans('"%title%" failed: %message%', ['%title%' => $title, '%message%' => (string) ($error['message'] ?? 'unknown error')])

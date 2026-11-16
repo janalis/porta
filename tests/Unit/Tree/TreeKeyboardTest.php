@@ -113,8 +113,8 @@ final class TreeKeyboardTest extends TestCase
     /** Each file of a deleted folder is told of with its text — an open one's unsaved text — for what keeps it. */
     public function testAFoldersFilesGoWithTheirText(): void
     {
-        $this->project->write('src/deep/B.php', "<?php // b\n");
-        $this->project->write('src/.git/HEAD', "ref: refs/heads/main\n"); // a repository's own, not the project's text
+        $this->project->write('src/deep/B.php', content: "<?php // b\n");
+        $this->project->write('src/.git/HEAD', content: "ref: refs/heads/main\n"); // a repository's own, not the project's text
         $deleted = [];
         Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$deleted): void {
             $deleted[\basename($event->path)] = $event->previousText;
@@ -139,7 +139,7 @@ final class TreeKeyboardTest extends TestCase
      */
     public function testAnOpenFilesTextGoesWithItInTheFilesOwnShape(): void
     {
-        $this->project->write('d.php', "\u{FEFF}<?php\r\n// d\r\n");
+        $this->project->write('d.php', content: "\u{FEFF}<?php\r\n// d\r\n");
         $this->tree()->refresh();
         Services::resolve($this->ide, BufferService::class)->openFile($this->project->path('d.php'), focus: OpenFocus::Editor);
         $this->editor()->getDocument()->insert('// unsaved ');
@@ -160,7 +160,7 @@ final class TreeKeyboardTest extends TestCase
     public function testAHugeFoldersFilesAreKeptOnlyUpToTheCap(): void
     {
         for ($i = 0; $i <= 500; ++$i) {
-            $this->project->write("src/many/f{$i}.txt", "x\n");
+            $this->project->write("src/many/f{$i}.txt", content: "x\n");
         }
         $kept = 0;
         Services::resolve($this->ide, EventDispatcherInterface::class)->addListener(FileDeleted::class, static function (FileDeleted $event) use (&$kept): void {
@@ -342,7 +342,7 @@ final class TreeKeyboardTest extends TestCase
 
     public function testAnEmptyTreeCreatesAtTheProjectRoot(): void
     {
-        Probe::set($this->tree(), 'visible', []);
+        Probe::set($this->tree(), property: 'visible', value: []);
 
         $this->tui()->handleInput(self::CTRL_N);
         $this->type("\rroot.php\r");
@@ -469,7 +469,7 @@ final class TreeKeyboardTest extends TestCase
 
     public function testRenameOrDeleteWithNothingSelectedDoesNothing(): void
     {
-        Probe::set($this->tree(), 'visible', []);
+        Probe::set($this->tree(), property: 'visible', value: []);
 
         $this->tui()->handleInput(self::SHIFT_F6);
         $this->tui()->handleInput(self::DELETE);

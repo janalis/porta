@@ -74,7 +74,7 @@ final class ArchitectureArtifact
                 return;
             }
             if ('' === \trim($stdout)) {
-                self::fail($done, 'Architecture command produced no output');
+                self::fail($done, error: 'Architecture command produced no output');
 
                 return;
             }
@@ -84,7 +84,7 @@ final class ArchitectureArtifact
             // proc_open spawns even unusable binaries — unreachable in tests.
             // @codeCoverageIgnoreStart
             $this->running = null;
-            self::fail($done, 'Architecture command failed: could not start');
+            self::fail($done, error: 'Architecture command failed: could not start');
 
             // @codeCoverageIgnoreEnd
         }

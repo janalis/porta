@@ -49,7 +49,7 @@ final class SurfaceKeymaps
                 /** @var class-string $class */
                 $class = $prefix.\str_replace(search: '/', replace: '\\', subject: $relative);
                 /** @var array<string, list<string>> $keys */
-                $keys = Probe::invokeStatic($class, 'getDefaultKeybindings');
+                $keys = Probe::invokeStatic($class, method: 'getDefaultKeybindings');
                 $maps[$class] = $keys;
             }
         }

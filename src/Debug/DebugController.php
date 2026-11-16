@@ -412,7 +412,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->state->clear();
         $this->frames = [];
         $this->currentFrameId = null;
-        $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', '');
+        $session = $this->sessions->find('debug') ?? $this->sessions->create('debug', title: '');
         $session->buffer->clear();
         // Not 'Debug: …': that is the debug panel's own tab, beside this one
         // on the same strip — two tabs of one name, and the output was the
@@ -435,7 +435,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         );
         if (!$this->session->start($arguments($config))) {
             $this->session = null;
-            $this->panel->setSessionState(DebugState::Terminated, null);
+            $this->panel->setSessionState(DebugState::Terminated, location: null);
             $this->notifier->error($this->translator->trans('Could not start the debug adapter'));
         }
         $this->dispatcher->dispatch(new DebugStatusChanged());
@@ -607,7 +607,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             $display = \array_map(fn (array $frame): array => [...$frame, 'path' => $this->paths->relative($frame['path'])], $frames);
             $top = $frames[0] ?? null;
             if (null === $top || '' === $top['path']) {
-                $this->panel->setSessionState(DebugState::Paused, null);
+                $this->panel->setSessionState(DebugState::Paused, location: null);
                 $this->panel->setFrames($display);
                 $this->dispatcher->dispatch(new DebugStatusChanged());
                 $this->tui->requestRender();
@@ -666,7 +666,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->state->stopAt($path, $line);
         $this->inlineValues->stoppedAt($path, $line, $frameId);
         $this->files->openFile($path);
-        $this->editor->jumpTo($line, 0);
+        $this->editor->jumpTo($line, utf16Col: 0);
         $this->applyEditorDecorations($path);
     }
 
@@ -701,7 +701,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             return;
         }
         $this->files->openFile($frame['path']);
-        $this->editor->jumpTo($frame['line'], 0);
+        $this->editor->jumpTo($frame['line'], utf16Col: 0);
         $this->loadScopes($session, $frameId);
         $this->tui->requestRender();
     }
@@ -710,7 +710,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     public function addWatch(): void
     {
         $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
-        $this->editor->openPrompt($this->translator->trans('Watch expression'), '', function (string $expression): void {
+        $this->editor->openPrompt($this->translator->trans('Watch expression'), initial: '', onSubmit: function (string $expression): void {
             $expression = \trim($expression);
             if ('' === $expression) {
                 return;
@@ -735,13 +735,13 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             return;
         }
         $this->tui->setFocus($this->editor); // drivable from a focused dock panel too
-        $this->editor->openPrompt($this->translator->trans('Evaluate expression'), '', function (string $expression): void {
+        $this->editor->openPrompt($this->translator->trans('Evaluate expression'), initial: '', onSubmit: function (string $expression): void {
             $expression = \trim($expression);
             if ('' === $expression || null === $this->session) {
                 return;
             }
-            $this->session->evaluate($expression, $this->currentFrameId, 'repl', function (array $result) use ($expression): void {
-                $this->notifier->flash($expression.' = '.($result['error'] ?? $result['result']), 5.0);
+            $this->session->evaluate($expression, $this->currentFrameId, context: 'repl', deliver: function (array $result) use ($expression): void {
+                $this->notifier->flash($expression.' = '.($result['error'] ?? $result['result']), seconds: 5.0);
             });
         });
     }
@@ -754,7 +754,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
             return;
         }
         foreach ($this->watches->expressions as $index => $expression) {
-            $session->evaluate($expression, $this->currentFrameId, 'watch', function (array $result) use ($index): void {
+            $session->evaluate($expression, $this->currentFrameId, context: 'watch', deliver: function (array $result) use ($index): void {
                 $this->panel->setWatchResult($index, $result['result'], $result['variablesReference'], $result['error']);
                 $this->tui->requestRender();
             });
@@ -768,7 +768,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         // The values were facts about a frame that is running again.
         $this->inlineValues->clear();
         $this->editor->decorations->setDebugLine(null);
-        $this->panel->setSessionState(DebugState::Running, null);
+        $this->panel->setSessionState(DebugState::Running, location: null);
         $this->dispatcher->dispatch(new DebugStatusChanged());
         $this->tui->requestRender();
     }
@@ -791,7 +791,7 @@ final class DebugController implements DebugSessionObserver, StatusSegment
         $this->frames = [];
         $this->inlineValues->clear();
         $this->editor->decorations->setDebugLine(null);
-        $this->panel->setSessionState(DebugState::Terminated, null);
+        $this->panel->setSessionState(DebugState::Terminated, location: null);
         $this->dispatcher->dispatch(new DebugStatusChanged());
         $this->tui->requestRender();
     }
@@ -799,14 +799,14 @@ final class DebugController implements DebugSessionObserver, StatusSegment
     #[\Override]
     public function onCrashed(): void
     {
-        $this->notifier->error($this->translator->trans('The debug adapter stopped unexpectedly'), 5.0);
+        $this->notifier->error($this->translator->trans('The debug adapter stopped unexpectedly'), seconds: 5.0);
         $this->onTerminated();
     }
 
     #[\Override]
     public function onError(string $message): void
     {
-        $this->notifier->error($this->translator->trans('Could not start the debug adapter').' — '.$message, 5.0);
+        $this->notifier->error($this->translator->trans('Could not start the debug adapter').' — '.$message, seconds: 5.0);
         $this->onTerminated();
     }
 }

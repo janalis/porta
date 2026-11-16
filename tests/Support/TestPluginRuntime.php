@@ -42,7 +42,7 @@ final class TestPluginRuntime
         ?DockToolController $dock = null,
         ?RecordingChangeMarkSink $changeMarks = null,
     ): PluginRuntime {
-        $tui ??= TestTui::create(120, 24);
+        $tui ??= TestTui::create(120, rows: 24);
         $buffers = new BufferManager();
 
         return new PluginRuntime(

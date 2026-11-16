@@ -100,7 +100,7 @@ final class EditHistoryTest extends TestCase
         $history->record('/a.php', line: 4);
         $history->record('/b.php', line: 9);
 
-        $history->rename('/a.php', '/renamed.php');
+        $history->rename('/a.php', to: '/renamed.php');
 
         $this->assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
         $this->assertSame(['path' => '/renamed.php', 'line' => 4], $history->walkBack());
@@ -115,7 +115,7 @@ final class EditHistoryTest extends TestCase
         $history->record('/b.php', line: 5);
         $history->record('/c.php', line: 1);
 
-        $history->rename('/b.php', '/a.php');
+        $history->rename('/b.php', to: '/a.php');
 
         $this->assertSame(['path' => '/c.php', 'line' => 1], $history->walkBack());
         $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
@@ -130,7 +130,7 @@ final class EditHistoryTest extends TestCase
         $history->record('/b.php', line: 9);
         $history->record('/x.php', line: 5);
 
-        $history->rename('/x.php', '/a.php');
+        $history->rename('/x.php', to: '/a.php');
 
         $this->assertSame(['path' => '/a.php', 'line' => 5], $history->walkBack());
         $this->assertSame(['path' => '/b.php', 'line' => 9], $history->walkBack());
@@ -145,9 +145,9 @@ final class EditHistoryTest extends TestCase
     public function testForgetDropsEverySiteInADeletedFile(): void
     {
         $history = new EditHistory();
-        $history->record('/p/gone.php', 1);
-        $history->record('/p/kept.php', 2);
-        $history->record('/p/gone.php', 5);
+        $history->record('/p/gone.php', line: 1);
+        $history->record('/p/kept.php', line: 2);
+        $history->record('/p/gone.php', line: 5);
 
         $history->forget('/p/gone.php');
 
@@ -161,9 +161,9 @@ final class EditHistoryTest extends TestCase
         // each other, and one place is one entry — otherwise a press appears to
         // do nothing. rename() collapses for the same reason.
         $history = new EditHistory();
-        $history->record('/p/a.php', 4);
-        $history->record('/p/gone.php', 1);
-        $history->record('/p/a.php', 4);
+        $history->record('/p/a.php', line: 4);
+        $history->record('/p/gone.php', line: 1);
+        $history->record('/p/a.php', line: 4);
 
         $history->forget('/p/gone.php');
 
@@ -177,9 +177,9 @@ final class EditHistoryTest extends TestCase
         // that count pointing at a different site than the user last saw, so
         // the next press would skip one.
         $history = new EditHistory();
-        $history->record('/p/a.php', 1);
-        $history->record('/p/b.php', 2);
-        $history->record('/p/gone.php', 3);
+        $history->record('/p/a.php', line: 1);
+        $history->record('/p/b.php', line: 2);
+        $history->record('/p/gone.php', line: 3);
         $history->walkBack();
         $history->walkBack();
 
@@ -191,10 +191,10 @@ final class EditHistoryTest extends TestCase
     public function testRenamingADirectoryMovesTheSitesInsideIt(): void
     {
         $history = new EditHistory();
-        $history->record('/p/olden/b.php', 1);
-        $history->record('/p/old/a.php', 4);
+        $history->record('/p/olden/b.php', line: 1);
+        $history->record('/p/old/a.php', line: 4);
 
-        $history->rename('/p/old', '/p/new');
+        $history->rename('/p/old', to: '/p/new');
 
         $this->assertSame(['path' => '/p/new/a.php', 'line' => 4], $history->walkBack());
         $this->assertSame(['path' => '/p/olden/b.php', 'line' => 1], $history->walkBack(), 'the sibling stayed where it was');

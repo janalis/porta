@@ -59,14 +59,14 @@ final class TodoScanTest extends TestCase
         $scope->set(ConfigScope::Project);
         $settings = new PluginSettings($project->dir, [], null, $scope);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $tui = TestTui::create(120, 24);
+        $tui = TestTui::create(120, rows: 24);
         $this->results = new ResultsPanelWidget();
         $this->dock = TestBottomDock::create($tui, new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
         $manager->wireRuntime(TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget(), $tui, dock: new DockToolController($manager, $this->dock, new ProjectPaths($project->dir))));
 
         $api = $manager->api('todo', $project->dir, $settings);
-        $api->registerSetting('tags', 'Tags', 'text', '' === $tags ? TodoTags::DEFAULT : $tags);
-        $api->registerListTool(TodoScan::TOOL, 'TODO');
+        $api->registerSetting('tags', label: 'Tags', kind: 'text', default: '' === $tags ? TodoTags::DEFAULT : $tags);
+        $api->registerListTool(TodoScan::TOOL, title: 'TODO');
         $manager->commit($api);
 
         return $api;
@@ -116,7 +116,7 @@ final class TodoScanTest extends TestCase
 
         // The setting is read per RUN, so an edit lands on the next scan with
         // nothing to invalidate — the live-apply path the core version needed.
-        $api->changeSetting('tags', '  ,  ');
+        $api->changeSetting('tags', value: '  ,  ');
         $this->scan($api, $project);
         $this->assertStringContainsString('TODO later', $this->panel(), 'blank tags fall back to TODO|FIXME');
     }

@@ -30,7 +30,7 @@ final class StatusBarRefreshListenerTest extends TestCase
         $bar->setProvider(static function () use (&$cell): array {
             return ['cells' => [['text' => $cell, 'menu' => null]], 'left' => '', 'right' => ''];
         });
-        $tui = TestTui::create(60, 3);
+        $tui = TestTui::create(60, rows: 3);
         $terminal = $tui->getTerminal();
         Assert::assertInstanceOf(VirtualTerminal::class, $terminal, 'the test rig\'s terminal');
         $tui->add(new ContainerWidget()->add($bar));

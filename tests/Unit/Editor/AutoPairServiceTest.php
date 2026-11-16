@@ -22,9 +22,9 @@ final class AutoPairServiceTest extends TestCase
     public function testAQuoteAtTheStartOfALineEndingInALetterStillPairs(): void
     {
         $doc = new Document(' abc'); // a space after the caret, a letter at the end
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
 
-        $this->assertTrue(new AutoPairService()->handle($doc, "'"));
+        $this->assertTrue(new AutoPairService()->handle($doc, keys: "'"));
         $this->assertSame("'' abc", $doc->getText());
     }
 
@@ -32,9 +32,9 @@ final class AutoPairServiceTest extends TestCase
     public function testAQuoteRightAfterAWordCharacterDoesNotPairEvenWithASpaceBeforeIt(): void
     {
         $doc = new Document('x b');
-        $doc->setCursor(0, 3);
+        $doc->setCursor(0, col: 3);
 
-        $this->assertFalse(new AutoPairService()->handle($doc, "'"), "b' is an apostrophe, not the start of a string");
+        $this->assertFalse(new AutoPairService()->handle($doc, keys: "'"), "b' is an apostrophe, not the start of a string");
     }
 
     /**
@@ -62,11 +62,11 @@ final class AutoPairServiceTest extends TestCase
     public function testWrappingASelectionIsUndoneInOneStep(): void
     {
         $doc = new Document('abc');
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 3, selection: SelectionMode::Keep);
+        $doc->setCursor(0, col: 3, selection: SelectionMode::Keep);
 
-        $this->assertTrue(new AutoPairService()->handle($doc, '('));
+        $this->assertTrue(new AutoPairService()->handle($doc, keys: '('));
         $this->assertSame('(abc)', $doc->getText());
         $this->assertSame('abc', $doc->getSelectedText(), 'the wrapped text is re-selected');
 
@@ -84,7 +84,7 @@ final class AutoPairServiceTest extends TestCase
     {
         $doc = new Document('abc');
 
-        new AutoPairService()->wrapSelection($doc, '<<<<<', '>>>>>', ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 3]);
+        new AutoPairService()->wrapSelection($doc, open: '<<<<<', close: '>>>>>', range: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 3]);
         $this->assertSame('<<<<<abc>>>>>', $doc->getText());
 
         $doc->undo();
@@ -95,8 +95,8 @@ final class AutoPairServiceTest extends TestCase
     public function testTheEditAfterAWrapUndoesSeparately(): void
     {
         $doc = new Document('abc');
-        new AutoPairService()->wrapSelection($doc, '<<<<<', '>>>>>', ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 3]);
-        $doc->setCursor(0, 13);
+        new AutoPairService()->wrapSelection($doc, open: '<<<<<', close: '>>>>>', range: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 3]);
+        $doc->setCursor(0, col: 13);
         $doc->insert(' tail');
 
         $doc->undo();

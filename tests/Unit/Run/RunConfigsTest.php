@@ -71,7 +71,7 @@ final class RunConfigsTest extends TestCase
             'composer.json' => \json_encode(['scripts' => ['test' => 'phpunit']], \JSON_THROW_ON_ERROR),
             'Makefile' => "build:\n\techo\n",
         ]);
-        $current = $project->write('src/Foo.php', "<?php\n");
+        $current = $project->write('src/Foo.php', content: "<?php\n");
 
         $tasks = new RunConfigs($project->dir)->discover($current);
         $labels = \array_column($tasks, 'label');
@@ -99,7 +99,7 @@ final class RunConfigsTest extends TestCase
     public function testRunCurrentFileUsesTheConfiguredPhpRunCommand(): void
     {
         $project = new TempProject();
-        $current = $project->write('src/Foo.php', "<?php\n");
+        $current = $project->write('src/Foo.php', content: "<?php\n");
 
         $tasks = new RunConfigs($project->dir, ['php' => ['runCommand' => 'frankenphp php-cli']])->discover($current);
         $this->assertSame(['frankenphp', 'php-cli', $current], $tasks[0]['command'], 'the run command becomes the interpreter argv prefix');
@@ -115,7 +115,7 @@ final class RunConfigsTest extends TestCase
         // matched by Argv::split()'s \s-based tokenizer — an obscure input
         // where the two disagree about "blank."
         $project = new TempProject();
-        $current = $project->write('src/Foo.php', "<?php\n");
+        $current = $project->write('src/Foo.php', content: "<?php\n");
 
         $tasks = new RunConfigs($project->dir, ['php' => ['runCommand' => "\x0C"]])->discover($current);
         $this->assertSame([\PHP_BINARY, $current], $tasks[0]['command']);
@@ -151,7 +151,7 @@ final class RunConfigsTest extends TestCase
         // The shared Argv tokenizer: the same space-in-path bug fixed for the
         // LSP seam must not live on in the run seam.
         $project = new TempProject();
-        $current = $project->write('src/Foo.php', "<?php\n");
+        $current = $project->write('src/Foo.php', content: "<?php\n");
 
         $tasks = new RunConfigs($project->dir, ['php' => ['runCommand' => '"/opt/my php/bin/php" -d memory_limit=1G']])->discover($current);
 

@@ -296,13 +296,13 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->setProvider(self::trail(...)); // App › Widget › render
         $bar->render(new RenderContext(18, 1)); // ' … › render '
 
-        $lead = $bar->tooltipAt(0, 1);
+        $lead = $bar->tooltipAt(0, col: 1);
         $this->assertSame(['crumbs:lead', 'App › Widget', 0, 3], [$lead?->key, $lead?->text, $lead?->colStart, $lead?->colEnd], 'the whole ` … ` pill');
-        $this->assertNull($bar->tooltipAt(0, 6), 'render is drawn whole');
-        $this->assertNull($bar->tooltipAt(1, 1), 'one row');
+        $this->assertNull($bar->tooltipAt(0, col: 6), 'render is drawn whole');
+        $this->assertNull($bar->tooltipAt(1, col: 1), 'one row');
 
         $bar->render(new RenderContext(40, 1));
-        $this->assertNull($bar->tooltipAt(0, 1), 'nothing hidden, nothing to say');
+        $this->assertNull($bar->tooltipAt(0, col: 1), 'nothing hidden, nothing to say');
     }
 
     /** Wider by one column, the root fits and the lead goes: never `… ›` in front of nothing hidden. */
@@ -323,7 +323,7 @@ final class BreadcrumbsWidgetTest extends TestCase
         $bar->setProvider(static fn (): array => [['label' => 'handleIncomingRequest', 'line' => 9]]);
         $bar->render(new RenderContext(12, 1));
 
-        $this->assertSame('handleIncomingRequest', $bar->tooltipAt(0, 3)?->text);
+        $this->assertSame('handleIncomingRequest', $bar->tooltipAt(0, col: 3)?->text);
     }
 
     /** Alone and still too wide, the current scope keeps both of its ends. */
@@ -457,7 +457,7 @@ final class BreadcrumbsWidgetTest extends TestCase
         $this->assertCount(2, $rows);
         $this->assertSame(Rule::under(40, Styles::dark(), CrumbBar::SHADE), $rows[1]);
         $this->assertSame(\str_repeat('▀', times: 40), AnsiUtils::stripAnsiCodes($rows[1]), 'the bar\'s half, not a rule');
-        $this->assertNull($bar->tooltipAt(1, 1), 'the half has no card');
+        $this->assertNull($bar->tooltipAt(1, col: 1), 'the half has no card');
 
         $density->observe(24);
         $bar->beforeRender();

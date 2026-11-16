@@ -46,7 +46,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testDownStepsThroughAWrappedLineSegmentBySegment(): void
     {
         $editor = $this->editor(wrap: true);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput(self::DOWN);
         [$line, $column] = $this->caret();
@@ -67,7 +67,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testDownEventuallyLeavesTheLineForTheNextOne(): void
     {
         $editor = $this->editor(wrap: true);
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         // Press Down until the document line changes: however many segments the
         // rendered width produced, the line it lands on is the one below.
@@ -85,7 +85,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testUpStepsBackThroughTheSegments(): void
     {
         $editor = $this->editor(wrap: true);
-        $editor->getDocument()->setCursor(2, 0);
+        $editor->getDocument()->setCursor(2, col: 0);
 
         $editor->handleInput(self::UP);
         [$line, $column] = $this->caret();
@@ -101,7 +101,7 @@ final class WrapCaretMotionTest extends TestCase
     public function testWithoutWrapDownIsStillOneDocumentLine(): void
     {
         $editor = $this->editor(wrap: false);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput(self::DOWN);
         $this->assertSame(1, $this->caret()[0]);
@@ -211,10 +211,10 @@ final class WrapCaretMotionTest extends TestCase
         $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
 
         // aaa, two lenses, BBB — four rows in five, so nothing needs to scroll.
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $painted = $screen();
 
-        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll, 'everything fits, so the viewport stays at the top');
+        $this->assertSame(0, Probe::get($editor, property: 'scroll')->vScroll, 'everything fits, so the viewport stays at the top');
         $this->assertStringContainsString('aaa', $painted, 'and the first line is still there');
         $this->assertStringContainsString('BBB', $painted);
         $this->assertStringContainsString('lens two', $painted);
@@ -234,10 +234,10 @@ final class WrapCaretMotionTest extends TestCase
         $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
 
-        $editor->getDocument()->setCursor(0, 110);
+        $editor->getDocument()->setCursor(0, col: 110);
         $editor->render(new RenderContext(30, 4));
 
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::get($editor, property: 'scroll');
         $this->assertSame(0, $scroll->vScroll, 'still the same document line — there is no other');
         // Exactly, not merely "some": a 120-column line at width 22 is six
         // segments, the caret at column 110 is in the sixth (index 5), and four
@@ -259,14 +259,14 @@ final class WrapCaretMotionTest extends TestCase
         $editor->setFocused(true);
         $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
-        $editor->getDocument()->setCursor(0, 110);
+        $editor->getDocument()->setCursor(0, col: 110);
         $editor->render(new RenderContext(30, 4));
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment);
+        $this->assertGreaterThan(0, Probe::get($editor, property: 'scroll')->vScrollSegment);
 
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->render(new RenderContext(30, 4));
 
-        $this->assertSame(0, Probe::get($editor, 'scroll')->vScrollSegment, 'back to the line\'s first row');
+        $this->assertSame(0, Probe::get($editor, property: 'scroll')->vScrollSegment, 'back to the line\'s first row');
     }
 
     /** A viewport scrolled INTO a tall line, for the reset tests below. */
@@ -277,9 +277,9 @@ final class WrapCaretMotionTest extends TestCase
         $editor->setFocused(true);
         $editor->display->setSoftWrap(true);
         $editor->render(new RenderContext(30, 4));
-        $editor->getDocument()->setCursor(0, 110);
+        $editor->getDocument()->setCursor(0, col: 110);
         $editor->render(new RenderContext(30, 4));
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScrollSegment, 'the fixture must actually be scrolled into the line');
+        $this->assertGreaterThan(0, Probe::get($editor, property: 'scroll')->vScrollSegment, 'the fixture must actually be scrolled into the line');
 
         return $editor;
     }
@@ -290,7 +290,7 @@ final class WrapCaretMotionTest extends TestCase
      */
     public function testAWheelScrollClearsTheHiddenRows(): void
     {
-        $scroll = Probe::get($this->scrolledIntoATallLine(), 'scroll');
+        $scroll = Probe::get($this->scrolledIntoATallLine(), property: 'scroll');
 
         $scroll->scrollBy(1);
 
@@ -300,7 +300,7 @@ final class WrapCaretMotionTest extends TestCase
     /** And so does centring on a line, for the same reason. */
     public function testCentringOnALineClearsTheHiddenRows(): void
     {
-        $scroll = Probe::get($this->scrolledIntoATallLine(), 'scroll');
+        $scroll = Probe::get($this->scrolledIntoATallLine(), property: 'scroll');
 
         $scroll->centerOnLine(2);
 
@@ -320,13 +320,13 @@ final class WrapCaretMotionTest extends TestCase
         $editor->decorations->setLineBlocks([1 => ['one', 'two', 'three']]);
         $screen = static fn (): string => AnsiUtils::stripAnsiCodes(\implode("\n", $editor->render(new RenderContext(30, 5))));
 
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $screen();
-        $this->assertSame(0, Probe::get($editor, 'scroll')->vScroll, 'aaa, BBB and its block fit: nothing scrolls');
+        $this->assertSame(0, Probe::get($editor, property: 'scroll')->vScroll, 'aaa, BBB and its block fit: nothing scrolls');
 
-        $editor->getDocument()->setCursor(3, 0);
+        $editor->getDocument()->setCursor(3, col: 0);
         $painted = $screen();
         $this->assertStringContainsString('ddd', $painted, 'the caret line two past the block is brought on screen');
-        $this->assertGreaterThan(0, Probe::get($editor, 'scroll')->vScroll, 'by scrolling past the block\'s rows');
+        $this->assertGreaterThan(0, Probe::get($editor, property: 'scroll')->vScroll, 'by scrolling past the block\'s rows');
     }
 }

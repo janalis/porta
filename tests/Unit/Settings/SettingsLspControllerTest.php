@@ -138,7 +138,7 @@ final class SettingsLspControllerTest extends TestCase
     private function toolsOnPath(string $binary): TempProject
     {
         $tools = new TempProject([], 'porta-bin-');
-        \chmod($tools->write($binary, "#!/bin/sh\n"), permissions: 0o755);
+        \chmod($tools->write($binary, content: "#!/bin/sh\n"), permissions: 0o755);
         \putenv('PATH='.$tools->dir);
 
         return $tools;
@@ -149,7 +149,7 @@ final class SettingsLspControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget());
 
-        $controller->changeLspServer('typescript', 'typescript-language-server --stdio');
+        $controller->changeLspServer('typescript', command: 'typescript-language-server --stdio');
 
         $this->assertSame('typescript-language-server --stdio', IdeConfig::load($project->dir)->lspServers['typescript']);
         $this->assertSame(1, $this->reopened, 'buffers reopened so the server relaunches');
@@ -163,7 +163,7 @@ final class SettingsLspControllerTest extends TestCase
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), ['php' => 'phpactor language-server']);
 
-        $controller->changeLspServer('php', '   ');
+        $controller->changeLspServer('php', command: '   ');
 
         $this->assertArrayNotHasKey('lsp', \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR), 'empty map pruned');
         $this->assertSame('', $controller->rows('php')[0]->value);
@@ -173,9 +173,9 @@ final class SettingsLspControllerTest extends TestCase
     public function testAnLspCliOverrideRefusesTheEdit(): void
     {
         $project = new TempProject();
-        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), [], 'my-ls --stdio');
+        $controller = $this->controller($project->dir, $status = new StatusBarWidget(), [], lspOverride: 'my-ls --stdio');
 
-        $controller->changeLspServer('php', 'phpactor');
+        $controller->changeLspServer('php', command: 'phpactor');
 
         $this->assertStringContainsString('set via --lsp', $this->flashText($status));
         $this->assertSame(0, $this->reopened, 'nothing reopened');
@@ -188,7 +188,7 @@ final class SettingsLspControllerTest extends TestCase
         \mkdir($project->path('.porta.json'));
         $controller = $this->controller($project->dir, $status = new StatusBarWidget());
 
-        $controller->changeLspServer('php', 'phpactor');
+        $controller->changeLspServer('php', command: 'phpactor');
         $this->assertStringContainsString('(not saved)', $this->flashText($status));
     }
 }

@@ -32,7 +32,7 @@ trait TakesScreenshots
     /** $name is what the docs reference: `/screenshots/<name>.svg`. */
     private function screenshot(string $name, Tui $tui, VirtualTerminal $terminal, Ide $ide): void
     {
-        self::assertContains($name, Screenshots::names(), 'a screenshot is listed in Screenshots, where the docs gate can see it');
+        self::assertContains($name, Screenshots::names(), message: 'a screenshot is listed in Screenshots, where the docs gate can see it');
         // A toast is the moment after an action, not the screen a page describes.
         Services::resolve($ide, Notifier::class)->dismissAll();
         // Kept, not dropped: the pictures a frame shows were sent before it.

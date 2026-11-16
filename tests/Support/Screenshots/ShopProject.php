@@ -52,7 +52,7 @@ final class ShopProject
             \JSON_THROW_ON_ERROR,
         ));
         // "This machine just looked": no tool asks a package index if it is outdated.
-        $fs->copy((string) \PORTA_TEST_PRISTINE_PORTA_HOME.'/.porta/tool-updates.json', $root.'/home/.porta/tool-updates.json');
+        $fs->copy(\PORTA_TEST_PRISTINE_PORTA_HOME.'/.porta/tool-updates.json', $root.'/home/.porta/tool-updates.json');
         \putenv('PORTA_HOME='.$root.'/home');
 
         return $project;

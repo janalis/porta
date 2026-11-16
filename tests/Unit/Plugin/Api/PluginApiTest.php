@@ -129,7 +129,7 @@ final class PluginApiTest extends TestCase
         $this->diagnostics = new RecordingDiagnosticsSink();
         $this->buffers = new BufferManager();
         if (Presence::With === $wired) {
-            $tui = TestTui::create(100, 24);
+            $tui = TestTui::create(100, rows: 24);
             $manager->wireRuntime(
                 new PluginRuntime(
                     new Notifier($this->status, $tui),
@@ -165,14 +165,14 @@ final class PluginApiTest extends TestCase
             });
         }
 
-        return $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        return $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', [], null, self::projectScope('/p')));
     }
 
     public function testRegistrationBuffersNamespacedCommandsAndValidatesIds(): void
     {
         $api = $this->api(wired: Presence::Without);
         $this->assertSame('/p', $api->projectRoot(), 'static config, available during activate()');
-        $api->registerCommand('hello', 'Say Hello', static function (): void {}, ['f8']);
+        $api->registerCommand('hello', label: 'Say Hello', handler: static function (): void {}, keys: ['f8']);
         $api->onFileSaved(static function (): void {});
 
         $this->assertSame('demo:hello', $api->bufferedCommands()[0]['id']);
@@ -184,13 +184,13 @@ final class PluginApiTest extends TestCase
         $this->assertSame([['id' => 'demo:hello', 'when' => null, 'surface' => MenuSurface::Plugins]], $api->bufferedMenuItems(), 'the trailing Plugins menu is the default surface');
 
         try {
-            $api->registerCommand('hello', 'Again', static function (): void {});
+            $api->registerCommand('hello', label: 'Again', handler: static function (): void {});
             $this->fail('duplicate id must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Duplicate command id', $e->getMessage());
         }
         try {
-            $api->registerCommand('bad:name', 'Bad', static function (): void {});
+            $api->registerCommand('bad:name', label: 'Bad', handler: static function (): void {});
             $this->fail('invalid id must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Invalid command id', $e->getMessage());
@@ -311,7 +311,7 @@ final class PluginApiTest extends TestCase
     {
         $api = $this->api(wired: Presence::Without);
         $resolve = static fn (): array => ['/bin/ls'];
-        $api->registerLanguageServer('php', 'my-ls', $resolve);
+        $api->registerLanguageServer('php', name: 'my-ls', resolveCommand: $resolve);
 
         $buffered = $api->contributions()->languageServers->all();
         $this->assertCount(1, $buffered);
@@ -321,13 +321,13 @@ final class PluginApiTest extends TestCase
         $this->assertSame(['/bin/ls'], $buffered[0]['resolve']());
         $this->assertNull($buffered[0]['initOptions'], 'options are opt-in');
 
-        $api->registerLanguageServer('twig', 'my-ls', $resolve, static fn (): array => ['environment' => 'dev']);
+        $api->registerLanguageServer('twig', name: 'my-ls', resolveCommand: $resolve, initializationOptions: static fn (): array => ['environment' => 'dev']);
         $options = $api->contributions()->languageServers->all()[1]['initOptions'];
         $this->assertNotNull($options);
         $this->assertSame(['environment' => 'dev'], $options());
 
         try {
-            $api->registerLanguageServer('bad:id', 'X', static fn (): ?array => null);
+            $api->registerLanguageServer('bad:id', name: 'X', resolveCommand: static fn (): ?array => null);
             $this->fail('invalid language id must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Invalid language id', $e->getMessage());
@@ -387,7 +387,7 @@ final class PluginApiTest extends TestCase
     public function testAnInstallerCanNameThePluginsOwnCommandAndDescribeWhatIsInstalled(): void
     {
         $api = $this->api(wired: Presence::Without);
-        $api->registerCommand('install', 'Install Server', static function (): void {});
+        $api->registerCommand('install', label: 'Install Server', handler: static function (): void {});
         $api->registerInstaller(
             'symfony-lsp',
             static fn (): bool => true,
@@ -404,13 +404,13 @@ final class PluginApiTest extends TestCase
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $seeded = new PluginSettings('/p', ['demo' => ['binary' => '/opt/x', 'strict' => 'yes', 'level' => 'nope', 'jobs' => '7']], null, self::projectScope('/p'));
-        $api = $manager->api('demo', '/p', $seeded);
+        $api = $manager->api('demo', rootDir: '/p', settings: $seeded);
 
         // Reads work immediately after registration — i.e. during activate().
-        $api->registerSetting('binary', 'Binary', 'text', '');
-        $api->registerSetting('strict', 'Strict', 'bool', false);
-        $api->registerSetting('level', 'Level', 'choice', 'low', ['low', 'high']);
-        $api->registerSetting('jobs', 'Jobs', 'int', 4, min: 1, max: 64, step: 2);
+        $api->registerSetting('binary', label: 'Binary', kind: 'text', default: '');
+        $api->registerSetting('strict', label: 'Strict', kind: 'bool', default: false);
+        $api->registerSetting('level', label: 'Level', kind: 'choice', default: 'low', options: ['low', 'high']);
+        $api->registerSetting('jobs', label: 'Jobs', kind: 'int', default: 4, min: 1, max: 64, step: 2);
         $this->assertSame('/opt/x', $api->setting('binary'));
         $this->assertTrue($api->setting('strict'), 'coerced to the declared bool kind');
         $this->assertSame('low', $api->setting('level'), 'out-of-options choice falls back to the default');
@@ -419,17 +419,17 @@ final class PluginApiTest extends TestCase
         $this->assertCount(4, $api->bufferedSettings());
 
         foreach ([
-            ['bad key', static fn () => $api->registerSetting('bad:key', 'X')],
-            ['duplicate', static fn () => $api->registerSetting('binary', 'Again')],
-            ['bad kind', static fn () => $api->registerSetting('x', 'X', 'float')],
-            ['choice needs options', static fn () => $api->registerSetting('y', 'Y', 'choice', 'a')],
-            ['default not in options', static fn () => $api->registerSetting('z', 'Z', 'choice', 'a', ['b'])],
+            ['bad key', static fn () => $api->registerSetting('bad:key', label: 'X')],
+            ['duplicate', static fn () => $api->registerSetting('binary', label: 'Again')],
+            ['bad kind', static fn () => $api->registerSetting('x', label: 'X', kind: 'float')],
+            ['choice needs options', static fn () => $api->registerSetting('y', label: 'Y', kind: 'choice', default: 'a')],
+            ['default not in options', static fn () => $api->registerSetting('z', label: 'Z', kind: 'choice', default: 'a', options: ['b'])],
             // A bound on anything but a number would advertise a range nothing
             // keeps: the stepper only clamps ints.
-            ['range on a bool', static fn () => $api->registerSetting('r1', 'R', 'bool', false, min: 1)],
-            ['range on a text', static fn () => $api->registerSetting('r2', 'R', 'text', '', max: 9)],
-            ['step on a choice', static fn () => $api->registerSetting('r3', 'R', 'choice', 'a', ['a'], step: 2)],
-            ['inverted range', static fn () => $api->registerSetting('r4', 'R', 'int', 1, min: 9, max: 2)],
+            ['range on a bool', static fn () => $api->registerSetting('r1', label: 'R', kind: 'bool', default: false, min: 1)],
+            ['range on a text', static fn () => $api->registerSetting('r2', label: 'R', kind: 'text', default: '', max: 9)],
+            ['step on a choice', static fn () => $api->registerSetting('r3', label: 'R', kind: 'choice', default: 'a', options: ['a'], step: 2)],
+            ['inverted range', static fn () => $api->registerSetting('r4', label: 'R', kind: 'int', default: 1, min: 9, max: 2)],
             ['unknown read', static fn (): bool|int|string => $api->setting('ghost')],
         ] as [$label, $action]) {
             try {
@@ -444,8 +444,8 @@ final class PluginApiTest extends TestCase
     public function testEveryActionMethodThrowsBeforeTheRuntimeIsWired(): void
     {
         $api = $this->api(wired: Presence::Without);
-        $api->registerSetting('flag', 'Flag', 'bool', false); // a registered key, so changeSetting reaches the runtime gate
-        $api->registerListTool('todo', 'TODO'); // likewise: a registered tool, so showList reaches the gate
+        $api->registerSetting('flag', label: 'Flag', kind: 'bool', default: false); // a registered key, so changeSetting reaches the runtime gate
+        $api->registerListTool('todo', title: 'TODO'); // likewise: a registered tool, so showList reaches the gate
         $actions = [
             static fn () => $api->flash('x'),
             $api->activeFile(...),
@@ -453,7 +453,7 @@ final class PluginApiTest extends TestCase
             $api->caretPosition(...),
             static fn () => $api->insertAtCaret('x'),
             static fn () => $api->openFile('/x'),
-            static fn () => $api->openProject('/x', 'again'),
+            static fn () => $api->openProject('/x', repeat: 'again'),
             static fn () => $api->jumpTo(0),
             static fn () => $api->setDiagnostics('/x', []),
             static fn () => $api->setLineAnnotations([]),
@@ -465,13 +465,13 @@ final class PluginApiTest extends TestCase
             static fn () => $api->openView('git'),
             static fn () => $api->closeView('git'),
             static fn () => $api->copyToClipboard('x'),
-            static fn () => $api->changeSetting('flag', true),
+            static fn () => $api->changeSetting('flag', value: true),
             static fn () => $api->showList('todo'),
             static fn () => $api->updateList('todo', []),
             static fn (): \Closure => $api->pick('t', [], static function (string $v): void {}),
             static fn () => $api->replaceDocument('x'),
             static fn (): string => $api->trans('x'),
-            static fn () => $api->prompt('t', '', static function (string $v): void {}),
+            static fn () => $api->prompt('t', initial: '', onSubmit: static function (string $v): void {}),
             $api->openBuffers(...),
             $api->runs(...),
             $api->tools(...),
@@ -491,7 +491,7 @@ final class PluginApiTest extends TestCase
     {
         $project = new TempProject();
         $manager = new PluginManager(new EventDispatcher(), $settings = new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $manager->wireRuntime(
             new PluginRuntime(
                 new Notifier(new StatusBarWidget(), $tui),
@@ -524,10 +524,10 @@ final class PluginApiTest extends TestCase
         );
         $api = $manager->api('demo', $project->dir, $settings);
 
-        $api->registerSetting('jobs', 'Jobs', 'int', 4, min: 1, max: 64, step: 2);
+        $api->registerSetting('jobs', label: 'Jobs', kind: 'int', default: 4, min: 1, max: 64, step: 2);
         $settings->registerFor('demo', $api->bufferedSettings()); // what PluginManager::commit does
 
-        $api->changeSetting('jobs', '7');
+        $api->changeSetting('jobs', value: '7');
 
         $this->assertSame(7, $api->setting('jobs'), 'coerced to the declared int kind, live');
         $this->assertSame(7, IdeConfig::load($project->dir)->plugins['demo']['jobs'], 'persisted to .porta.json');
@@ -538,7 +538,7 @@ final class PluginApiTest extends TestCase
         );
 
         try {
-            $api->changeSetting('ghost', true);
+            $api->changeSetting('ghost', value: true);
             $this->fail('an unregistered key must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Unknown setting "ghost"', $e->getMessage());
@@ -549,7 +549,7 @@ final class PluginApiTest extends TestCase
     {
         $api = $this->api();
 
-        $api->flash('hi', 1.5);
+        $api->flash('hi', seconds: 1.5);
         $this->assertStringContainsString('hi', $this->statusRow($this->status));
 
         // No file open: reads are null, insert is a no-op.
@@ -559,8 +559,8 @@ final class PluginApiTest extends TestCase
         $api->insertAtCaret('nope');
 
         $this->editor->showDocument('/p/a.php', new Document("hello\nworld\n"));
-        $this->buffers->open('/p/a.php', "hello\nworld\n"); // activeFile() is buffer truth
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->buffers->open('/p/a.php', content: "hello\nworld\n"); // activeFile() is buffer truth
+        $this->editor->getDocument()->setCursor(1, col: 2);
         $this->assertSame('/p/a.php', $api->activeFile());
         $this->assertSame("hello\nworld\n", $api->documentText());
         $this->assertSame(['line' => 1, 'column' => 2, 'top' => 0, 'segment' => 0, 'sticky' => []], $api->caretPosition());
@@ -568,9 +568,9 @@ final class PluginApiTest extends TestCase
         $api->insertAtCaret('XY');
         $this->assertSame("hello\nwoXYrld\n", $this->editor->getDocument()->getText());
 
-        $api->jumpTo(0, 1);
+        $api->jumpTo(0, column: 1);
         $this->assertSame(['line' => 0, 'column' => 1, 'top' => 0, 'segment' => 0, 'sticky' => []], $api->caretPosition());
-        $api->jumpTo(0, 1, top: 1);
+        $api->jumpTo(0, column: 1, top: 1);
         $this->assertSame(['line' => 0, 'column' => 1, 'top' => 1, 'segment' => 0, 'sticky' => []], $api->caretPosition(), 'the view shows line 1 first, the caret where it was put');
 
         $api->openFile('/p/b.php');
@@ -619,7 +619,7 @@ final class PluginApiTest extends TestCase
         $this->assertSame(['line' => 1, 'segment' => null, 'of' => 1], $screen[$of], 'the lens above short: no text');
         $this->assertSame(['line' => 1, 'segment' => 0, 'of' => 1], $screen[$of + 1]);
 
-        $this->editor->getDocument()->setCursor(0, 100);
+        $this->editor->getDocument()->setCursor(0, col: 100);
         $this->editor->render(new RenderContext(60, 1));
         $this->assertSame($this->editor->viewport()->vScrollSegment, $api->caretPosition()['segment'] ?? null);
         $this->assertGreaterThan(0, $api->caretPosition()['segment'] ?? 0, 'a one-row pane scrolled into the line to show the caret');
@@ -630,8 +630,8 @@ final class PluginApiTest extends TestCase
     public function testEditorScreenPutsThePinnedHeadersOnTop(): void
     {
         $api = $this->api();
-        $this->buffers->open('/p/a.php', "a\nb\nc\n");
-        Probe::set($this->editor, 'stickyLines', [0, 1]);
+        $this->buffers->open('/p/a.php', content: "a\nb\nc\n");
+        Probe::set($this->editor, property: 'stickyLines', value: [0, 1]);
 
         $this->assertSame([['line' => 0, 'segment' => 0, 'of' => 1]], $api->editorScreen(1));
         $this->assertSame(['line' => 1, 'segment' => 0, 'of' => 1], $api->editorScreen(3)[1]);
@@ -660,13 +660,13 @@ final class PluginApiTest extends TestCase
     {
         $api = $this->api();
         $other = new TempProject(['composer.json' => '{}']);
-        $this->buffers->open('/p/a.php', "<?php\n")->document->insert('x');
+        $this->buffers->open('/p/a.php', content: "<?php\n")->document->insert('x');
 
-        $api->openProject($other->dir, 'Pick it again');
+        $api->openProject($other->dir, repeat: 'Pick it again');
 
         $this->assertSame([], $this->reopened, 'an unsaved buffer holds it, as it holds File › Open Project');
 
-        $api->openProject($other->dir, 'Pick it again');
+        $api->openProject($other->dir, repeat: 'Pick it again');
 
         $this->assertSame([(string) \realpath($other->dir)], $this->reopened);
     }
@@ -675,8 +675,8 @@ final class PluginApiTest extends TestCase
     {
         $api = $this->api();
         $handler = static fn (array $arguments): string => 'ok';
-        $api->registerTool('status', 'The status', ['type' => 'object'], $handler);
-        $api->registerTool('push', 'Push', ['type' => 'object'], $handler, ToolEffect::Writes);
+        $api->registerTool('status', description: 'The status', inputSchema: ['type' => 'object'], handler: $handler);
+        $api->registerTool('push', description: 'Push', inputSchema: ['type' => 'object'], handler: $handler, effect: ToolEffect::Writes);
 
         $this->assertSame(
             [
@@ -688,7 +688,7 @@ final class PluginApiTest extends TestCase
         $this->assertSame([], $api->tools(), 'buffered, not yet committed');
         $caller = new ToolCaller('mcp-1', 'Claude Code');
         $seen = null;
-        $api->registerTool('who', 'Who is calling', ['type' => 'object'], static function (array $arguments, ToolCaller $by) use (&$seen): string {
+        $api->registerTool('who', description: 'Who is calling', inputSchema: ['type' => 'object'], handler: static function (array $arguments, ToolCaller $by) use (&$seen): string {
             $seen = [$by->id, $by->name];
 
             return 'ok';
@@ -697,11 +697,11 @@ final class PluginApiTest extends TestCase
         $this->assertSame(['mcp-1', 'Claude Code'], $seen, 'the caller rides as the second argument');
 
         $refusals = [
-            'Invalid tool id "bad:id"' => static fn () => $api->registerTool('bad:id', 'x', ['type' => 'object'], $handler),
-            'Duplicate tool id "status"' => static fn () => $api->registerTool('status', 'x', ['type' => 'object'], $handler),
-            'Tool "blank" needs a description' => static fn () => $api->registerTool('blank', ' ', ['type' => 'object'], $handler),
-            'Tool "untyped" needs an object input schema' => static fn () => $api->registerTool('untyped', 'x', [], $handler),
-            'Tool "listy" needs an object input schema' => static fn () => $api->registerTool('listy', 'x', ['type' => 'array'], $handler),
+            'Invalid tool id "bad:id"' => static fn () => $api->registerTool('bad:id', description: 'x', inputSchema: ['type' => 'object'], handler: $handler),
+            'Duplicate tool id "status"' => static fn () => $api->registerTool('status', description: 'x', inputSchema: ['type' => 'object'], handler: $handler),
+            'Tool "blank" needs a description' => static fn () => $api->registerTool('blank', description: ' ', inputSchema: ['type' => 'object'], handler: $handler),
+            'Tool "untyped" needs an object input schema' => static fn () => $api->registerTool('untyped', description: 'x', inputSchema: [], handler: $handler),
+            'Tool "listy" needs an object input schema' => static fn () => $api->registerTool('listy', description: 'x', inputSchema: ['type' => 'array'], handler: $handler),
         ];
         foreach ($refusals as $says => $register) {
             try {
@@ -720,9 +720,9 @@ final class PluginApiTest extends TestCase
         $this->assertSame([], $api->openBuffers()->files());
         $this->assertSame([], $api->codeIntelligence()->diagnostics());
 
-        $a = $this->buffers->open('/p/a.php', "one\n");
-        $b = $this->buffers->open('/p/b.php', "two\n");
-        $this->buffers->openPane('/p/c.png', 'image', null);
+        $a = $this->buffers->open('/p/a.php', content: "one\n");
+        $b = $this->buffers->open('/p/b.php', content: "two\n");
+        $this->buffers->openPane('/p/c.png', paneId: 'image', payload: null);
         $b->document->insert('!');
         $a->diagnostics = [
             3 => [
@@ -757,12 +757,12 @@ final class PluginApiTest extends TestCase
     public function testOpenBuffersEditARangeAsOneUndoStepAndReadTheSelection(): void
     {
         $api = $this->api();
-        $a = $this->buffers->open('/p/a.php', "one é\ntwo\n");
-        $this->buffers->openPane('/p/c.png', 'image', null);
+        $a = $this->buffers->open('/p/a.php', content: "one é\ntwo\n");
+        $this->buffers->openPane('/p/c.png', paneId: 'image', payload: null);
 
-        $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 4, 1, 1, 'X'), 'byte columns: after "one ", into "two"');
+        $this->assertNull($api->openBuffers()->edit('/p/a.php', line: 0, column: 4, endLine: 1, endColumn: 1, text: 'X'), 'byte columns: after "one ", into "two"');
         $this->assertSame("one Xwo\n", $a->document->getText());
-        $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 0, 0, 0, '>'), 'an empty range inserts');
+        $this->assertNull($api->openBuffers()->edit('/p/a.php', line: 0, column: 0, endLine: 0, endColumn: 0, text: '>'), 'an empty range inserts');
         $this->assertSame(">one Xwo\n", $a->document->getText());
         $a->document->undo();
         $this->assertSame("one Xwo\n", $a->document->getText(), 'each edit is one undo step');
@@ -781,9 +781,9 @@ final class PluginApiTest extends TestCase
             '0:0–2:1 is not a range' => ['/p/a.php', 0, 0, 2, 1],
         ];
         foreach ($refusals as $says => [$path, $line, $column, $endLine, $endColumn]) {
-            $this->assertStringContainsString($says, (string) $api->openBuffers()->edit($path, $line, $column, $endLine, $endColumn, 'x'), $says);
+            $this->assertStringContainsString($says, (string) $api->openBuffers()->edit($path, $line, $column, $endLine, $endColumn, text: 'x'), $says);
         }
-        $this->assertNull($api->openBuffers()->edit('/p/a.php', 0, 6, 2, 0, ''), 'the very end of each line, and of the text, are inside');
+        $this->assertNull($api->openBuffers()->edit('/p/a.php', line: 0, column: 6, endLine: 2, endColumn: 0, text: ''), 'the very end of each line, and of the text, are inside');
         $this->assertSame('one é', $a->document->getText());
 
         $this->assertNull($api->openBuffers()->open('/p/a.php'), 'already open as text');
@@ -794,9 +794,9 @@ final class PluginApiTest extends TestCase
         $this->assertNull($api->openBuffers()->selection('/p/a.php'), 'nothing selected');
         $this->assertNull($api->openBuffers()->selection('/p/c.png'));
         $this->assertNull($api->openBuffers()->selection('/p/nope.php'));
-        $a->document->setCursor(0, 6);
+        $a->document->setCursor(0, col: 6);
         $a->document->beginSelect();
-        $a->document->setCursor(0, 4, SelectionMode::Keep);
+        $a->document->setCursor(0, col: 4, selection: SelectionMode::Keep);
         $this->assertSame(
             ['line' => 0, 'column' => 4, 'endLine' => 0, 'endColumn' => 6, 'text' => 'é'],
             $api->openBuffers()->selection('/p/a.php'),
@@ -807,7 +807,7 @@ final class PluginApiTest extends TestCase
     public function testOpenBuffersApplySeveralRangesAsOneStepOrNoneAtAll(): void
     {
         $api = $this->api();
-        $a = $this->buffers->open('/p/a.php', "one\ntwo\n");
+        $a = $this->buffers->open('/p/a.php', content: "one\ntwo\n");
         $buffers = $api->openBuffers();
         $version = $buffers->version('/p/a.php');
 
@@ -836,8 +836,8 @@ final class PluginApiTest extends TestCase
     public function testOpenBuffersHandUndoToAPluginAndRefuseTheUsersKeys(): void
     {
         $api = $this->api();
-        $a = $this->buffers->open('/p/a.php', "one\n");
-        $this->buffers->openPane('/p/c.png', 'image', null);
+        $a = $this->buffers->open('/p/a.php', content: "one\n");
+        $this->buffers->openPane('/p/c.png', paneId: 'image', payload: null);
         $buffers = $api->openBuffers();
         $undone = 0;
 
@@ -875,11 +875,11 @@ final class PluginApiTest extends TestCase
         $files = $api->openBuffers();
         $at = static fn (string $name): string => \realpath($project->dir).'/'.$name;
 
-        $this->assertNull($files->create($at('new/b.php'), "<?php\n// b\n"));
+        $this->assertNull($files->create($at('new/b.php'), text: "<?php\n// b\n"));
         $this->assertSame("<?php\n// b\n", \file_get_contents($at('new/b.php')), 'folders on the way too');
         $this->assertNull($files->create($at('empty.txt')));
         $this->assertSame('', \file_get_contents($at('empty.txt')));
-        $this->assertSame('a.php already exists', $files->create($at('a.php'), 'x'));
+        $this->assertSame('a.php already exists', $files->create($at('a.php'), text: 'x'));
         // Judged fine, refused by the disk: a file cannot hold a folder. Said, not taken for done.
         $this->assertSame($at('a.php').'/under/c.php could not be written', $files->create($at('a.php/under/c.php')));
 
@@ -895,7 +895,7 @@ final class PluginApiTest extends TestCase
         $this->assertStringContainsString('outside the project', (string) $files->move($at('dirty.php'), $outside.'/x.php'));
         $this->assertDirectoryDoesNotExist($outside, 'nor for one refused outside the project');
 
-        $this->buffers->open($at('dirty.php'), "<?php\n")->document->insert('x');
+        $this->buffers->open($at('dirty.php'), content: "<?php\n")->document->insert('x');
         $this->assertStringContainsString('unsaved changes', (string) $files->delete($at('dirty.php')));
         $this->assertFileExists($at('dirty.php'));
         // A plugin may hold the other side of a symlink: the buffer is found, and its edits kept.
@@ -928,11 +928,11 @@ final class PluginApiTest extends TestCase
         };
 
         $code = $api->codeIntelligence();
-        $transport = $code->serverTransport(['command' => ['phpactor', 'language-server'], 'name' => 'phpactor'], '/p', 'phpactor (for Ana)');
-        $this->assertSame(['phpactor', 'language-server'], Probe::get($transport, 'command'), 'a server a plugin runs on someone else\'s behalf, run as the IDE runs its own');
-        $code->definition('/p/a.php', 0, 0, $keep);
-        $code->references('/p/a.php', 0, 0, $keep);
-        $code->hover('/p/a.php', 0, 0, $keep);
+        $transport = $code->serverTransport(['command' => ['phpactor', 'language-server'], 'name' => 'phpactor'], rootDir: '/p', peerName: 'phpactor (for Ana)');
+        $this->assertSame(['phpactor', 'language-server'], Probe::get($transport, property: 'command'), 'a server a plugin runs on someone else\'s behalf, run as the IDE runs its own');
+        $code->definition('/p/a.php', line: 0, column: 0, onDone: $keep);
+        $code->references('/p/a.php', line: 0, column: 0, onDone: $keep);
+        $code->hover('/p/a.php', line: 0, column: 0, onDone: $keep);
         $code->symbols('A', $keep);
 
         $this->assertSame(
@@ -954,13 +954,13 @@ final class PluginApiTest extends TestCase
             $asked[] = $event->path;
             $this->buffers->get($event->path)?->document->markSaved(); // what the real save leaves behind
         });
-        $clean = $this->buffers->open('/p/clean.php', "<?php\n");
-        $edited = $this->buffers->open('/p/edited.php', "<?php\n");
+        $clean = $this->buffers->open('/p/clean.php', content: "<?php\n");
+        $edited = $this->buffers->open('/p/edited.php', content: "<?php\n");
         $edited->document->insert('// x');
-        $moved = $this->buffers->open('/p/moved.php', "<?php\n");
+        $moved = $this->buffers->open('/p/moved.php', content: "<?php\n");
         $moved->document->insert('// y');
         $moved->diskChangedUnderEdit = true;
-        $this->buffers->openPane('/p/c.png', 'image', null);
+        $this->buffers->openPane('/p/c.png', paneId: 'image', payload: null);
         $buffers = $api->openBuffers();
 
         $this->assertNull($buffers->save('/p/clean.php'), 'nothing to save is not a failure');
@@ -1130,7 +1130,7 @@ final class PluginApiTest extends TestCase
     public function testSetLineBlocksWritesUnderThePluginsNameAndLeavesAnotherOwnersRows(): void
     {
         $api = $this->api();
-        $this->editor->decorations->setLineBlocks([1 => ['theirs']], 'other');
+        $this->editor->decorations->setLineBlocks([1 => ['theirs']], owner: 'other');
 
         $api->setLineBlocks([1 => ['mine', 'more']]);
         $this->assertSame(['theirs', 'mine', 'more'], $this->editor->decorations->lineBlocksAt(1));
@@ -1142,7 +1142,7 @@ final class PluginApiTest extends TestCase
     public function testSetLineAnnotationsWritesUnderThePluginsNameAndLeavesAnotherOwnersNotes(): void
     {
         $api = $this->api();
-        $this->editor->decorations->setLineAnnotations([0 => 'theirs'], 'other');
+        $this->editor->decorations->setLineAnnotations([0 => 'theirs'], owner: 'other');
 
         $api->setLineAnnotations([0 => 'mine']);
         $this->assertSame([0 => 'theirs  · mine'], $this->editor->decorations->lineAnnotations);
@@ -1244,7 +1244,7 @@ final class PluginApiTest extends TestCase
         // The whole path a plugin's tool takes: register, commit, publish by
         // bare id, and land in the dock under the namespaced one.
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
         $manager->wireRuntime(TestPluginRuntime::create(
             new CodeEditorWidget(),
@@ -1253,8 +1253,8 @@ final class PluginApiTest extends TestCase
             dock: new DockToolController($manager, $dock, new ProjectPaths('/p')), // the manager IS the source
             changeMarks: $this->changeMarks = new RecordingChangeMarkSink(),
         ));
-        $api = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
-        $api->registerListTool('todo', 'TODO');
+        $api = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $api->registerListTool('todo', title: 'TODO');
         $manager->commit($api);
 
         $api->showList('todo', [['path' => 'a.php', 'line' => 0, 'text' => 'first']], ToolRun::Running);
@@ -1273,7 +1273,7 @@ final class PluginApiTest extends TestCase
         // a command that acts on a pair has to know which pair.
         $project = new TempProject(['a.php' => "<?php\n", 'b.php' => "<?php\n"]);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings($project->dir, [], null, self::projectScope($project->dir)));
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $dock = TestBottomDock::create($tui, new TerminalPanelWidget(), new ResultsPanelWidget(), new DebugPanelWidget());
         $tree = new FileTreeWidget($project->dir);
         $manager->wireRuntime(new PluginRuntime(
@@ -1338,7 +1338,7 @@ final class PluginApiTest extends TestCase
         $this->assertTrue(EditorState::pickerOpen($this->editor), 'the list overlay is up');
 
         /** @var array{items: list<array{label: string, hint: string, value: string}>, onPick: \Closure} $overlay */
-        $overlay = Probe::get(Probe::get($this->editor, 'overlayHost'), 'overlay');
+        $overlay = Probe::get(Probe::get($this->editor, property: 'overlayHost'), property: 'overlay');
         $this->assertSame(
             [
                 ['label' => 'Alpha', 'hint' => '', 'value' => 'a'],
@@ -1348,7 +1348,7 @@ final class PluginApiTest extends TestCase
             'value => label, in the order given',
         );
 
-        $api->prompt('New name', 'old', static function (string $value) use (&$typed): void {
+        $api->prompt('New name', initial: 'old', onSubmit: static function (string $value) use (&$typed): void {
             $typed = $value;
         });
         $this->assertTrue(EditorState::promptOpen($this->editor), 'and the prompt over it');
@@ -1357,7 +1357,7 @@ final class PluginApiTest extends TestCase
         $overlay['onPick']('b');
         $this->assertSame('b', $picked);
         /** @var array{onSubmit: \Closure} $prompt */
-        $prompt = Probe::get(Probe::get($this->editor, 'overlayHost'), 'prompt');
+        $prompt = Probe::get(Probe::get($this->editor, property: 'overlayHost'), property: 'prompt');
         $prompt['onSubmit']('new');
         $this->assertSame('new', $typed);
     }
@@ -1371,7 +1371,7 @@ final class PluginApiTest extends TestCase
         $api->replaceDocument("nothing open\n"); // no buffer: silent
 
         $this->editor->showDocument('/p/a.php', new Document("one\ntwo\n"));
-        $this->buffers->open('/p/a.php', "one\ntwo\n");
+        $this->buffers->open('/p/a.php', content: "one\ntwo\n");
         $this->buffers->setActive('/p/a.php');
         $this->editor->getDocument()->markSaved();
 
@@ -1415,7 +1415,7 @@ final class PluginApiTest extends TestCase
     /** A manually-wired runtime for tests that need a collaborator the shared {@see api()} helper does not expose. */
     private function wiredApi(Notifier $notifier, MenuFileContext $menuFile, BufferManager $buffers, CodeEditorWidget $editor, PluginManager $manager, ?StatusBarWidget $statusBar = null): PluginApi
     {
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $manager->wireRuntime(new PluginRuntime(
             $notifier,
             new Translator('en'),
@@ -1445,17 +1445,17 @@ final class PluginApiTest extends TestCase
             TestProjectSwitcher::create(),
         ));
 
-        return $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        return $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', [], null, self::projectScope('/p')));
     }
 
     public function testSyntaxThemeReturnsTheGivenThemeOrDefaultsToDark(): void
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
-        $noTheme = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')));
+        $noTheme = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', [], null, self::projectScope('/p')));
         $this->assertInstanceOf(DarkTerminalTheme::class, $noTheme->syntaxTheme(), 'no theme given: falls back to the default');
 
         $theme = new DarkTerminalTheme();
-        $withTheme = $manager->api('demo', '/p', new PluginSettings('/p', [], null, self::projectScope('/p')), $theme);
+        $withTheme = $manager->api('demo', rootDir: '/p', settings: new PluginSettings('/p', [], null, self::projectScope('/p')), syntaxTheme: $theme);
         $this->assertSame($theme, $withTheme->syntaxTheme(), 'a given theme is returned as-is, not wrapped');
     }
 
@@ -1463,10 +1463,10 @@ final class PluginApiTest extends TestCase
     {
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $settings = new PluginSettings('/p', [], null, self::projectScope('/p'));
-        $this->assertFalse($manager->api('demo', '/p', $settings)->softWrap(), 'no options given: off');
+        $this->assertFalse($manager->api('demo', rootDir: '/p', settings: $settings)->softWrap(), 'no options given: off');
 
         $display = new EditorDisplayOptions(static function (): void {});
-        $api = $manager->api('demo', '/p', $settings, null, static fn (): EditorDisplayOptions => $display);
+        $api = $manager->api('demo', rootDir: '/p', settings: $settings, display: static fn (): EditorDisplayOptions => $display);
         $this->assertFalse($api->softWrap());
         $display->setSoftWrap(true);
         $this->assertTrue($api->softWrap(), 'read per call, so a switch is seen at once');
@@ -1574,22 +1574,22 @@ final class PluginApiTest extends TestCase
     public function testRegisterListToolValidatesIdDuplicateAndTitle(): void
     {
         $api = $this->api(wired: Presence::Without);
-        $api->registerListTool('todo', 'TODO');
+        $api->registerListTool('todo', title: 'TODO');
 
         try {
-            $api->registerListTool('bad id', 'X');
+            $api->registerListTool('bad id', title: 'X');
             $this->fail('an invalid list tool id must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Invalid list tool id', $e->getMessage());
         }
         try {
-            $api->registerListTool('todo', 'Again');
+            $api->registerListTool('todo', title: 'Again');
             $this->fail('a duplicate list tool id must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('Duplicate list tool id', $e->getMessage());
         }
         try {
-            $api->registerListTool('other', '   ');
+            $api->registerListTool('other', title: '   ');
             $this->fail('a whitespace-only title must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('needs a title', $e->getMessage());
@@ -1619,7 +1619,7 @@ final class PluginApiTest extends TestCase
         $api = $this->api(wired: Presence::Without);
         $visible = static fn (): bool => true;
 
-        $api->registerMenu('Tools', 'View', ['i:demo:hello'], $visible, 'vcs', ['i:demo:hello']);
+        $api->registerMenu('Tools', after: 'View', items: ['i:demo:hello'], visible: $visible, viewId: 'vcs', viewSafe: ['i:demo:hello']);
 
         $contribution = $api->contributions()->menus->all()[0]['contribution'];
         $this->assertSame('Tools', $contribution->title);
@@ -1630,7 +1630,7 @@ final class PluginApiTest extends TestCase
         $this->assertSame(['i:demo:hello'], $contribution->viewSafe);
 
         try {
-            $api->registerMenu('', 'View', []);
+            $api->registerMenu('', after: 'View', items: []);
             $this->fail('an empty title must throw');
         } catch (PluginException $e) {
             $this->assertStringContainsString('needs a title', $e->getMessage());
@@ -1639,7 +1639,7 @@ final class PluginApiTest extends TestCase
 
     public function testRefreshStatusSegmentsInvalidatesTheBar(): void
     {
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $statusBar = new StatusBarWidget();
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
         $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager, $statusBar);
@@ -1718,13 +1718,13 @@ final class PluginApiTest extends TestCase
         $editor = new CodeEditorWidget();
         $buffers = new BufferManager();
         $menuFile = new MenuFileContext();
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), $menuFile, $buffers, $editor, $manager);
 
         $this->assertNull($api->contextFile(), 'nothing open at all');
 
         $editor->showDocument('/p/a.php', new Document("x\n"));
-        $buffers->open('/p/a.php', "x\n");
+        $buffers->open('/p/a.php', content: "x\n");
         $this->assertSame('/p/a.php', $api->contextFile(), 'falls back to the active file outside a context-menu invocation');
 
         $menuFile->with('/p/other.php', function () use ($api): void {
@@ -1736,7 +1736,7 @@ final class PluginApiTest extends TestCase
 
     public function testNotifySendsTheGivenSeverityToTheToastCenter(): void
     {
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $toasts = new ToastCenter(new FakeScheduler(), $tui);
         $notifier = new Notifier(new StatusBarWidget(), $tui, toasts: $toasts);
         $manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', [], null, self::projectScope('/p')));
@@ -1811,7 +1811,7 @@ final class PluginApiTest extends TestCase
     {
         $dispatcher = new EventDispatcher();
         $manager = new PluginManager($dispatcher, new PluginSettings('/p', [], null, self::projectScope('/p')));
-        $tui = TestTui::create(100, 24);
+        $tui = TestTui::create(100, rows: 24);
         $api = $this->wiredApi(new Notifier(new StatusBarWidget(), $tui), new MenuFileContext(), new BufferManager(), new CodeEditorWidget(), $manager);
 
         $received = null;

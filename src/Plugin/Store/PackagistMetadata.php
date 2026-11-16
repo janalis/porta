@@ -85,7 +85,7 @@ final class PackagistMetadata
         if (null === $name || [] === $releases) {
             return null;
         }
-        $stable = \array_values(\array_filter($releases, static fn (array $release): bool => 1 === \preg_match(self::STABLE, self::string($release, 'version_normalized'))));
+        $stable = \array_values(\array_filter($releases, static fn (array $release): bool => 1 === \preg_match(self::STABLE, self::string($release, key: 'version_normalized'))));
         $candidates = [] === $stable ? $releases : $stable;
         $runs = \array_find($candidates, static fn (array $release): bool => self::runsHere($name, $release));
         $release = $runs ?? $candidates[0];
@@ -107,8 +107,8 @@ final class PackagistMetadata
         $title = '' !== $title ? $title : \ucwords(\str_replace('-', replace: ' ', subject: $name));
         $source = \is_array($release['source'] ?? null) ? $release['source'] : [];
         $match = [];
-        $github = 1 === \preg_match(self::GITHUB, self::string($source, 'url'), $match) ? $match[1] : null;
-        $reference = self::string($source, 'reference');
+        $github = 1 === \preg_match(self::GITHUB, self::string($source, key: 'url'), $match) ? $match[1] : null;
+        $reference = self::string($source, key: 'reference');
         $file = static fn (string $key, string $default): ?string => null === $github || '' === $reference ? null : self::raw($github, $reference, $store[$key] ?? $default);
 
         return new StoreEntry(
@@ -116,9 +116,9 @@ final class PackagistMetadata
             $name,
             $title,
             ControlChars::line(self::author($package, $release)),
-            ControlChars::line(self::string($release, 'description')),
+            ControlChars::line(self::string($release, key: 'description')),
             $curated->category ?? StoreCategory::read($store['category'] ?? null),
-            ControlChars::line(self::string($release, 'version')),
+            ControlChars::line(self::string($release, key: 'version')),
             self::time($release),
             $downloads,
             self::screenshots($store['screenshots'] ?? null),
@@ -130,12 +130,12 @@ final class PackagistMetadata
             $curated->featured ?? false,
             $curated?->replaces,
             $compatible,
-            \array_map(static fn (array $release): array => [ControlChars::line(self::string($release, 'version')), self::time($release)], $releases),
+            \array_map(static fn (array $release): array => [ControlChars::line(self::string($release, key: 'version')), self::time($release)], $releases),
             self::screenshots([$store['icon'] ?? null])[0] ?? null,
             self::tools($porta['tools'] ?? null),
             \array_values(\array_map(
-                static fn (array $release): string => self::string($release, 'version'),
-                \array_filter($releases, static fn (array $release): bool => 1 === \preg_match(self::STABLE, self::string($release, 'version_normalized')) && self::runsHere($name, $release)),
+                static fn (array $release): string => self::string($release, key: 'version'),
+                \array_filter($releases, static fn (array $release): bool => 1 === \preg_match(self::STABLE, self::string($release, key: 'version_normalized')) && self::runsHere($name, $release)),
             )),
         );
     }
@@ -162,7 +162,7 @@ final class PackagistMetadata
      */
     private static function runsHere(string $name, array $release): bool
     {
-        $manifest = PluginManifest::fromData($name, '', $release);
+        $manifest = PluginManifest::fromData($name, directory: '', data: $release);
 
         return (null === $manifest->api || PluginApi::API_VERSION === $manifest->api) && [] === $manifest->unmetPlatform();
     }
@@ -213,7 +213,7 @@ final class PackagistMetadata
     /** @param array<array-key, mixed> $release */
     private static function time(array $release): int
     {
-        $time = \strtotime(self::string($release, 'time'));
+        $time = \strtotime(self::string($release, key: 'time'));
 
         return false === $time ? 0 : $time;
     }
@@ -278,7 +278,7 @@ final class PackagistMetadata
         $source = \is_array($first) && \is_array($first['source'] ?? null) ? $first['source'] : [];
         $match = [];
 
-        return 1 === \preg_match(self::GITHUB, self::string($source, 'url'), $match) ? $match[1] : null;
+        return 1 === \preg_match(self::GITHUB, self::string($source, key: 'url'), $match) ? $match[1] : null;
     }
 
     /**

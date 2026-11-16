@@ -34,8 +34,8 @@ final class NativePreviewTest extends TestCase
         $dot = new FakeLayoutEngine();
         $mermaid = new FakeLayoutEngine();
         $widget = new GraphViewerWidget($dot, new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: $mermaid);
-        Probe::invoke($widget, 'requestNative');
-        $widget->show('/a.mmd', 'graph LR; A[Hello]-->B[World]');
+        Probe::invoke($widget, method: 'requestNative');
+        $widget->show('/a.mmd', payload: 'graph LR; A[Hello]-->B[World]');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
@@ -46,16 +46,16 @@ final class NativePreviewTest extends TestCase
         $this->assertStringContainsString('World', $screen);
         $this->assertSame('2 nodes · 1 edges', $widget->statusInfo());
         $widget->handleInput('1');
-        $widget->show('/a.mmd', 'graph LR; A[');
+        $widget->show('/a.mmd', payload: 'graph LR; A[');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
         $this->assertStringContainsString('Unclosed', $this->plain($widget->render($context)));
         $this->assertStringContainsString('Hello', $this->plain($widget->render($context)));
-        $widget->show('/a.mmd', 'graph LR; A[Hello]-->B[World]');
+        $widget->show('/a.mmd', payload: 'graph LR; A[Hello]-->B[World]');
         $this->assertSame([], $scheduler->scheduled, 'a successful scene is cached');
         $widget->setRenderMode('bitmap');
-        $mermaid->nextPng = PngFixture::bytes(120, 80);
+        $mermaid->nextPng = PngFixture::bytes(120, height: 80);
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
@@ -69,7 +69,7 @@ final class NativePreviewTest extends TestCase
                 $scheduler->fire();
             }
         }
-        $this->assertCount(8, Probe::get($widget, 'nativeCache'));
+        $this->assertCount(8, Probe::get($widget, property: 'nativeCache'));
         $widget->show('/a.mmd', 'graph TD; '.\implode(';', \array_map(static fn (int $i): string => 'N'.$i, \range(0, end: 200))));
         $scheduler->fire();
         $widget->hide();
@@ -78,28 +78,28 @@ final class NativePreviewTest extends TestCase
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertSame(201, Probe::get($widget, 'nativeScene')->graph->nodeCount());
+        $this->assertSame(201, Probe::get($widget, property: 'nativeScene')->graph->nodeCount());
         $widget->clear();
-        $this->assertNull(Probe::get($widget, 'nativeScene'));
+        $this->assertNull(Probe::get($widget, property: 'nativeScene'));
     }
 
     public function testStandaloneFrontMatterRetainsSceneForUnsupportedConfiguration(): void
     {
         $scheduler = new FakeScheduler();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: new FakeLayoutEngine());
-        $widget->show('/front.mmd', "---\ntitle: Native caption\n---\nflowchart LR\nA[First]-->B[Second]");
+        $widget->show('/front.mmd', payload: "---\ntitle: Native caption\n---\nflowchart LR\nA[First]-->B[Second]");
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $scene = Probe::get($widget, 'nativeScene');
+        $scene = Probe::get($widget, property: 'nativeScene');
         $this->assertSame(['First', 'Second'], \array_column($widget->nodeChoices(), 'label'));
         $this->assertSame([4, 4], \array_values($scene->elements));
         $this->assertStringContainsString('Native caption', $this->plain($widget->render(new RenderContext(100, 25))));
-        $widget->show('/front.mmd', "---\nconfig: {sequence: {mirrorActors: true}}\n---\nflowchart LR; A");
+        $widget->show('/front.mmd', payload: "---\nconfig: {sequence: {mirrorActors: true}}\n---\nflowchart LR; A");
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertSame($scene, Probe::get($widget, 'nativeScene'));
+        $this->assertSame($scene, Probe::get($widget, property: 'nativeScene'));
         $this->assertStringContainsString('configuration does not apply to this diagram family', $this->plain($widget->render(new RenderContext(100, 25))));
         $widget->clear();
     }
@@ -108,11 +108,11 @@ final class NativePreviewTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: new FakeLayoutEngine());
-        $widget->show('/configured.mmd', "---\nconfig: {pie: {highlightSlice: Cats}}\n---\npie\n\"Dogs\":3\n\"Cats\":1");
+        $widget->show('/configured.mmd', payload: "---\nconfig: {pie: {highlightSlice: Cats}}\n---\npie\n\"Dogs\":3\n\"Cats\":1");
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $scene = Probe::get($widget, 'nativeScene');
+        $scene = Probe::get($widget, property: 'nativeScene');
         $this->assertSame(['Dogs (75.00%)', '* Cats (25.00%)'], \array_column($widget->nodeChoices(), 'label'));
         $this->assertSame([4, 5], \array_values($scene->elements));
         $this->assertStringContainsString('* Cats', $this->plain($widget->render(new RenderContext(120, 35))));
@@ -121,7 +121,7 @@ final class NativePreviewTest extends TestCase
             while ([] !== $scheduler->scheduled) {
                 $scheduler->fire();
             }
-            $this->assertSame($scene, Probe::get($widget, 'nativeScene'));
+            $this->assertSame($scene, Probe::get($widget, property: 'nativeScene'));
         }
         $this->assertStringContainsString('does not apply', $this->plain($widget->render(new RenderContext(120, 35))));
         $widget->clear();
@@ -131,36 +131,36 @@ final class NativePreviewTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: new FakeLayoutEngine());
-        $widget->show('/menus.mmd', 'sequenceDiagram; participant A; link A: Docs @ https://example.test; A->B: hi');
+        $widget->show('/menus.mmd', payload: 'sequenceDiagram; participant A; link A: Docs @ https://example.test; A->B: hi');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $scene = Probe::get($widget, 'nativeScene');
+        $scene = Probe::get($widget, property: 'nativeScene');
         $this->assertStringContainsString('https://example.test', $this->plain($widget->render(new RenderContext(100, 25))));
-        $widget->show('/menus.mmd', 'sequenceDiagram; links A: {invalid}');
+        $widget->show('/menus.mmd', payload: 'sequenceDiagram; links A: {invalid}');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertSame($scene, Probe::get($widget, 'nativeScene'));
+        $this->assertSame($scene, Probe::get($widget, property: 'nativeScene'));
     }
 
     public function testStandalonePieRetainsChartForInvalidValues(): void
     {
         $scheduler = new FakeScheduler();
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: new FakeLayoutEngine());
-        $widget->show('/pie.mmd', "pie showData title Pets\n\"Dogs\":3\n\"Cats\":1");
+        $widget->show('/pie.mmd', payload: "pie showData title Pets\n\"Dogs\":3\n\"Cats\":1");
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $scene = Probe::get($widget, 'nativeScene');
+        $scene = Probe::get($widget, property: 'nativeScene');
         $this->assertCount(2, $scene->elements);
         $context = new RenderContext(124, 30);
         $this->assertStringContainsString('Dogs: 3 (75.00%)', $this->plain($widget->render($context)));
-        $widget->show('/pie.mmd', "pie\n\"Dogs\":-1");
+        $widget->show('/pie.mmd', payload: "pie\n\"Dogs\":-1");
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertSame($scene, Probe::get($widget, 'nativeScene'));
+        $this->assertSame($scene, Probe::get($widget, property: 'nativeScene'));
         $this->assertStringContainsString('nonnegative', $this->plain($widget->render($context)));
         $widget->clear();
     }
@@ -171,25 +171,25 @@ final class NativePreviewTest extends TestCase
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, renderMode: 'cells', mermaid: new FakeLayoutEngine());
         $widget->show(
             '/sequence.mmd',
-            'sequenceDiagram; title Lifecycle; box Team; participant A@{type: boundary} as Alice; end; loop retry; create participant B; A->>+B: Hello; destroy B; B-->>-A: reply; end',
+            payload: 'sequenceDiagram; title Lifecycle; box Team; participant A@{type: boundary} as Alice; end; loop retry; create participant B; A->>+B: Hello; destroy B; B-->>-A: reply; end',
         );
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $scene = Probe::get($widget, 'nativeScene');
+        $scene = Probe::get($widget, property: 'nativeScene');
         $this->assertCount(2, $scene->graph->clusters);
         $this->assertStringContainsString('Alice', $this->plain($widget->render(new RenderContext(100, 25))));
-        $widget->show('/sequence.mmd', 'sequenceDiagram; loop pending');
+        $widget->show('/sequence.mmd', payload: 'sequenceDiagram; loop pending');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertSame($scene, Probe::get($widget, 'nativeScene'));
+        $this->assertSame($scene, Probe::get($widget, property: 'nativeScene'));
         $this->assertStringContainsString('Unclosed sequence control block', $this->plain($widget->render(new RenderContext(100, 25))));
-        $widget->show('/sequence.mmd', 'sequenceDiagram; participant A@{alias: true}');
+        $widget->show('/sequence.mmd', payload: 'sequenceDiagram; participant A@{alias: true}');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
-        $this->assertSame($scene, Probe::get($widget, 'nativeScene'));
+        $this->assertSame($scene, Probe::get($widget, property: 'nativeScene'));
         $this->assertStringContainsString('Unsupported sequence participant configuration field', $this->plain($widget->render(new RenderContext(100, 25))));
         $widget->clear();
     }
@@ -200,7 +200,7 @@ final class NativePreviewTest extends TestCase
         $mermaid = new FakeLayoutEngine();
         $mermaid->binary = null;
         $widget = new GraphViewerWidget(new FakeLayoutEngine(), new Translator('en'), scheduler: $scheduler, mermaid: $mermaid);
-        $widget->show('/a.mmd', 'graph TD; A[Native]');
+        $widget->show('/a.mmd', payload: 'graph TD; A[Native]');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
@@ -208,26 +208,26 @@ final class NativePreviewTest extends TestCase
         $screen = $this->plain($widget->render($context));
         $this->assertStringContainsString('mmdc not found', $screen);
         $this->assertStringContainsString('▀', $screen);
-        $this->assertTrue(Probe::get($widget, 'nativeBitmap'));
+        $this->assertTrue(Probe::get($widget, property: 'nativeBitmap'));
         $this->assertSame('Native', $widget->nodeChoices()[0]['label']);
         $mermaid->binary = '/fake/mmdc';
         $mermaid->pngIsError = true;
         $mermaid->nextPng = 'renderer failure';
-        $widget->show('/b.mmd', 'graph LR; B[Fallback]');
+        $widget->show('/b.mmd', payload: 'graph LR; B[Fallback]');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
         $this->assertStringContainsString('renderer failure', $this->plain($widget->render($context)));
-        $this->assertTrue(Probe::get($widget, 'nativeBitmap'));
+        $this->assertTrue(Probe::get($widget, property: 'nativeBitmap'));
         $this->assertSame('Fallback', $widget->nodeChoices()[0]['label']);
         $mermaid->pngIsError = false;
         $mermaid->nextPng = 'not PNG';
-        $widget->show('/b.mmd', 'graph LR; B[Undecodable]');
+        $widget->show('/b.mmd', payload: 'graph LR; B[Undecodable]');
         while ([] !== $scheduler->scheduled) {
             $scheduler->fire();
         }
         $this->assertStringContainsString('could not be decoded', $this->plain($widget->render($context)));
-        $this->assertTrue(Probe::get($widget, 'nativeBitmap'));
+        $this->assertTrue(Probe::get($widget, property: 'nativeBitmap'));
         $this->assertSame('Undecodable', $widget->nodeChoices()[0]['label']);
         $widget->hide();
     }

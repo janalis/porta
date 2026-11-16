@@ -27,17 +27,17 @@ final class DockPanelsTest extends TestCase
         $contributed = new TerminalPanelWidget(); // any DockPanelWidget will do
 
         $panels = new DockPanels();
-        $panels->register($core, 'debug', static fn (): string => 'Debug', DockTab::Debug);
-        $panels->register($contributed, 'acme:logs', static fn (): string => 'Logs');
+        $panels->register($core, id: 'debug', label: static fn (): string => 'Debug', tab: DockTab::Debug);
+        $panels->register($contributed, id: 'acme:logs', label: static fn (): string => 'Logs');
 
-        $this->assertSame($core, $panels->find(DockTab::Debug, ''), 'the core panel answers to its case');
-        $this->assertSame($contributed, $panels->find(null, 'acme:logs'), 'the contributed one answers to its id');
+        $this->assertSame($core, $panels->find(DockTab::Debug, id: ''), 'the core panel answers to its case');
+        $this->assertSame($contributed, $panels->find(null, id: 'acme:logs'), 'the contributed one answers to its id');
 
         // The point: asking for a case can never reach a contributed panel,
         // whatever it was named, and asking for an unknown id reaches nothing.
-        $this->assertNull($panels->find(DockTab::Terminal, 'acme:logs'), 'a case never falls through to an id');
-        $this->assertNull($panels->find(null, 'acme:nope'));
-        $this->assertNull($panels->find(null, ''), 'and no panel can carry the empty id — see below');
+        $this->assertNull($panels->find(DockTab::Terminal, id: 'acme:logs'), 'a case never falls through to an id');
+        $this->assertNull($panels->find(null, id: 'acme:nope'));
+        $this->assertNull($panels->find(null, id: ''), 'and no panel can carry the empty id — see below');
     }
 
     public function testAPanelWithNoIdIsRefusedAtRegistration(): void
@@ -47,7 +47,7 @@ final class DockPanelsTest extends TestCase
         $this->expectException(\InvalidArgumentException::class);
         // Nothing could reveal or close it, so it is refused where it is given
         // rather than tolerated where it is looked up.
-        $panels->register(new DebugPanelWidget(), '', static fn (): string => 'Nameless');
+        $panels->register(new DebugPanelWidget(), id: '', label: static fn (): string => 'Nameless');
     }
 
     public function testTwoContributedPanelsAreToldApartById(): void
@@ -58,11 +58,11 @@ final class DockPanelsTest extends TestCase
         $panels = new DockPanels();
         // Same label on purpose — two plugins may choose one title, so the id
         // is what identity rests on.
-        $panels->register($first, 'a:logs', static fn (): string => 'Logs');
-        $panels->register($second, 'b:logs', static fn (): string => 'Logs');
+        $panels->register($first, id: 'a:logs', label: static fn (): string => 'Logs');
+        $panels->register($second, id: 'b:logs', label: static fn (): string => 'Logs');
 
-        $this->assertSame($first, $panels->find(null, 'a:logs'));
-        $this->assertSame($second, $panels->find(null, 'b:logs'));
+        $this->assertSame($first, $panels->find(null, id: 'a:logs'));
+        $this->assertSame($second, $panels->find(null, id: 'b:logs'));
     }
 
     public function testTheLabelIsReadPerCallSoAPanelMayRetitleItself(): void
@@ -73,11 +73,11 @@ final class DockPanelsTest extends TestCase
         $panels = new DockPanels();
         $panels->register(
             $panel,
-            'debug',
-            static function () use (&$title): string {
+            id: 'debug',
+            label: static function () use (&$title): string {
                 return $title;
             },
-            DockTab::Debug,
+            tab: DockTab::Debug,
         );
 
         $this->assertSame('first', $panels->panels[0]['label']());

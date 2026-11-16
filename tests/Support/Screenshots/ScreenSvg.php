@@ -306,7 +306,7 @@ final class ScreenSvg
     private function arc(array $edges, int $row, int $col, string $fg): true
     {
         [$cx, $cy] = $this->centre($row, $col);
-        $this->stroke($fg, '1.2', '', \sprintf(
+        $this->stroke($fg, width: '1.2', dash: '', path: \sprintf(
             'M%s %sQ%s %s %s %s',
             self::n($cx + (($edges[0] * self::CELL_WIDTH) / 2)),
             self::n($cy),

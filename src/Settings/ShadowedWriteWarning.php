@@ -42,7 +42,7 @@ final readonly class ShadowedWriteWarning
      */
     public function afterSave(?SettingsRow $row): void
     {
-        $this->warnIf($row, 'Saved to %global% — %project% overrides it in this project');
+        $this->warnIf($row, message: 'Saved to %global% — %project% overrides it in this project');
     }
 
     /**
@@ -54,7 +54,7 @@ final readonly class ShadowedWriteWarning
      */
     public function afterReset(?SettingsRow $row): void
     {
-        $this->warnIf($row, 'Cleared from %global% — %project% still overrides it here');
+        $this->warnIf($row, message: 'Cleared from %global% — %project% still overrides it here');
     }
 
     /**

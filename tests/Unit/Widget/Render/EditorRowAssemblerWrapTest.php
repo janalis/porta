@@ -75,10 +75,10 @@ final class EditorRowAssemblerWrapTest extends TestCase
             \array_map($document->getLine(...), \range(0, $document->getLineCount() - 1)),
             \array_fill(0, $contentRows, value: ''),
             $contentRows,
-            0,
-            0,
-            0,
-            0,
+            vScroll: 0,
+            cursorLine: 0,
+            cursorDisplayCol: 0,
+            hScroll: 0,
         );
 
         return \array_map(static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)), $rendered);
@@ -216,7 +216,7 @@ final class EditorRowAssemblerWrapTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->showDocument('/p/a.php', new Document("<?php\nclass A {}\nfunction b() {}\n"));
         $editor->decorations->setCodeLenses([1 => [['title' => '3 usages', 'command' => 'x', 'arguments' => []]]]);
-        $editor->decorations->setLineBlocks([1 => ['alice: rename A', "\tbob: agreed"]], 'review');
+        $editor->decorations->setLineBlocks([1 => ['alice: rename A', "\tbob: agreed"]], owner: 'review');
 
         $rows = \array_map(
             static fn (string $r): string => \trim(AnsiUtils::stripAnsiCodes($r)),

@@ -131,9 +131,9 @@ final class TestAffectedCommandTest extends TestCase
     public function testADeletedTestIsNotSelectedButItsNameStillIs(): void
     {
         $project = self::project();
-        $project->write('tests/Unit/Editor/GoneHelperTest.php', '<?php');
+        $project->write('tests/Unit/Editor/GoneHelperTest.php', content: '<?php');
         \unlink($project->path('tests/Unit/Editor/GoneHelperTest.php'));
-        $project->write('tests/Unit/Editor/UsesGoneTest.php', '<?php // GoneHelperTest');
+        $project->write('tests/Unit/Editor/UsesGoneTest.php', content: '<?php // GoneHelperTest');
 
         $this->affected($project, ['tests/Unit/Editor/GoneHelperTest.php']);
 
@@ -222,7 +222,7 @@ final class TestAffectedCommandTest extends TestCase
     public function testAConfigurationWithNoSuitesToReplaceRunsNothing(): void
     {
         $project = self::project();
-        $project->write('phpunit.xml.dist', '<?xml version="1.0"?><phpunit/>');
+        $project->write('phpunit.xml.dist', content: '<?xml version="1.0"?><phpunit/>');
 
         $tester = $this->affected($project, ['src/Editor/Buffer.php']);
 
@@ -246,7 +246,7 @@ final class TestAffectedCommandTest extends TestCase
     public function testAChangeNoTestNamesRunsTheWholeSuiteRatherThanNothing(): void
     {
         $project = self::project();
-        $project->write('src/Orphan.php', '<?php final class Orphan {}');
+        $project->write('src/Orphan.php', content: '<?php final class Orphan {}');
 
         $tester = $this->affected($project, ['src/Editor/Buffer.php', 'src/Orphan.php'], ['src/Orphan.php']);
 
@@ -258,7 +258,7 @@ final class TestAffectedCommandTest extends TestCase
     public function testAPluginWithNoTestsReachesNothing(): void
     {
         $project = self::project();
-        $project->write('plugins/bare/plugin.php', '<?php');
+        $project->write('plugins/bare/plugin.php', content: '<?php');
 
         $tester = $this->affected($project, ['plugins/bare/plugin.php'], options: ['--list' => true]);
 
@@ -268,7 +268,7 @@ final class TestAffectedCommandTest extends TestCase
     public function testCoverageOverAnUnreachedFileIsTheGatesJob(): void
     {
         $project = self::project();
-        $project->write('src/Orphan.php', '<?php final class Orphan {}');
+        $project->write('src/Orphan.php', content: '<?php final class Orphan {}');
 
         $tester = $this->affected($project, ['src/Orphan.php'], options: ['--coverage' => true]);
 
@@ -324,7 +324,7 @@ final class TestAffectedCommandTest extends TestCase
     /**
      * @param array<string, list<array{int, int}>> $files root-relative path => [line, count] stmt entries
      */
-    private static function clover(TempProject $project, array $files): string
+    private static function clover(TempProject $project, array $files): void
     {
         $xml = '<?xml version="1.0"?><coverage><project>';
         foreach ($files as $path => $lines) {
@@ -337,13 +337,13 @@ final class TestAffectedCommandTest extends TestCase
             $xml .= '</file>';
         }
 
-        return $project->write(TestAffectedCommand::CLOVER, $xml.'</project></coverage>');
+        $project->write(TestAffectedCommand::CLOVER, $xml.'</project></coverage>');
     }
 
     public function testACoverageRunNamesEachChangedSourcesMissedLines(): void
     {
         $project = self::project();
-        $project->write(TestAffectedCommand::CLOVER, 'stale');
+        $project->write(TestAffectedCommand::CLOVER, content: 'stale');
 
         $tester = $this->affected(
             $project,
@@ -423,7 +423,7 @@ final class TestAffectedCommandTest extends TestCase
         $project = self::project();
 
         $tester = $this->affected($project, ['src/Editor/Buffer.php'], options: ['--coverage' => true], during: static function () use ($project): void {
-            $project->write(TestAffectedCommand::CLOVER, 'not xml');
+            $project->write(TestAffectedCommand::CLOVER, content: 'not xml');
         });
 
         $this->assertSame(Command::FAILURE, $tester->getStatusCode());
@@ -460,7 +460,7 @@ final class TestAffectedCommandTest extends TestCase
     {
         $project = self::project();
 
-        $project->write('tests/Unit/Editor/RemovedTest.php', '<?php // the Removed class is gone');
+        $project->write('tests/Unit/Editor/RemovedTest.php', content: '<?php // the Removed class is gone');
 
         $tester = $this->affected($project, ['src/Editor/Buffer.php', 'src/Editor/Removed.php'], options: ['--coverage' => true], during: static function () use ($project): void {
             self::clover($project, ['src/Editor/Buffer.php' => [[3, 1]]]);
@@ -481,12 +481,12 @@ final class TestAffectedCommandTest extends TestCase
         $project = self::project();
         $project->initGit();
         $project->commitAll('init');
-        $project->write('src/Editor/Buffer.php', '<?php final class Buffer { public int $x = 1; }');
-        $project->write('src/Editor/BufferView.php', '<?php final class BufferView { public int $y = 1; }');
+        $project->write('src/Editor/Buffer.php', content: '<?php final class Buffer { public int $x = 1; }');
+        $project->write('src/Editor/BufferView.php', content: '<?php final class BufferView { public int $y = 1; }');
         $project->git('add', 'src/Editor/BufferView.php');
-        $project->write('plugins/git/src/Blame.php', '<?php final class Blame { public int $z = 1; }');
-        $project->write('src/Fresh.php', '<?php final class Fresh {}');
-        $project->write('tests/Unit/NewTest.php', '<?php new Fresh();');
+        $project->write('plugins/git/src/Blame.php', content: '<?php final class Blame { public int $z = 1; }');
+        $project->write('src/Fresh.php', content: '<?php final class Fresh {}');
+        $project->write('tests/Unit/NewTest.php', content: '<?php new Fresh();');
 
         $tester = new CommandTester(new TestAffectedCommand($project->dir));
         $tester->execute(['--processes' => '1']);

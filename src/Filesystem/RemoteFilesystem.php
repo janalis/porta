@@ -142,7 +142,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
             },
             function (array $root) use ($host): void {
                 $this->troubled(null);
-                $this->notifier->flash($this->translator->trans('Back in touch with %host%', ['%host%' => $host]), 2.5, self::SLOT);
+                $this->notifier->flash($this->translator->trans('Back in touch with %host%', ['%host%' => $host]), seconds: 2.5, slot: self::SLOT);
                 // Applied as it is: whatever was changed while the link was
                 // down is still queued, which ours() leaves alone.
                 $this->reconcile('', $root);
@@ -244,7 +244,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         // Across the edge of what is synced: to the server it is a file that
         // appeared, or one that went.
         if (null !== $target) {
-            $this->uploadTree($target, null);
+            $this->uploadTree($target, source: null);
         }
         if (null !== $source) {
             $this->removeRemote($source, \is_dir($to));
@@ -597,7 +597,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
         if ($alreadyFetching) {
             return;
         }
-        $this->notifier->flash($this->translator->trans('Fetching %file%…', ['%file%' => $relative]), 2.0, self::SLOT);
+        $this->notifier->flash($this->translator->trans('Fetching %file%…', ['%file%' => $relative]), seconds: 2.0, slot: self::SLOT);
         $transport->fetch($relative, function (RemoteFile|string $answer) use ($relative, $transport): void {
             ['then' => $then, 'failed' => $failed] = $this->fetching[$relative];
             unset($this->fetching[$relative]);
@@ -808,7 +808,7 @@ final class RemoteFilesystem implements ProjectFilesystem, StatusSegment
                     }
                     $this->fs->dumpFile($this->absolute($target), $answer->bytes);
                     // Sent with no stamp to check, so never refused as a conflict.
-                    $transport->put($target, $answer->bytes, null, function (RemoteStamp|string|null $stamp) use ($target, $answered): void {
+                    $transport->put($target, $answer->bytes, expected: null, done: function (RemoteStamp|string|null $stamp) use ($target, $answered): void {
                         if (\is_string($stamp)) {
                             $answered($stamp);
 

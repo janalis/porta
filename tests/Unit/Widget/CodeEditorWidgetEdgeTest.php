@@ -73,7 +73,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testPlainEnterInsertsNewLine(): void
     {
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(1, 4);
+        $editor->getDocument()->setCursor(1, col: 4);
         $editor->handleInput("\r");
 
         $this->assertSame('line', $editor->getDocument()->getLine(1));
@@ -83,7 +83,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testTabIndentsAndRedoKeystroke(): void
     {
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->handleInput("\t");
         $this->assertSame('    line one', $editor->getDocument()->getLine(1));
 
@@ -97,11 +97,11 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         // A tab-indented file: Tab inserts a real tab, and rendering expands
         // it to spaces so widths line up.
-        $editor = $this->editor("<?php\n\tfoo();\n", 'tabbed.php');
+        $editor = $this->editor("<?php\n\tfoo();\n", path: 'tabbed.php');
         $doc = $editor->getDocument();
         $this->assertTrue($doc->usesTabs());
 
-        $doc->setCursor(2, 0);
+        $doc->setCursor(2, col: 0);
         $editor->handleInput("\t");
         $this->assertSame("\tfoo();", $doc->getLine(1), 'existing tab preserved');
         $this->assertSame("\t", $doc->getLine(2), 'Tab inserted a real tab, not spaces');
@@ -141,7 +141,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("abc def\n");
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         for ($i = 0; $i < 3; ++$i) {
             $editor->handleInput("\x1b[1;2C"); // select "abc"
         }
@@ -150,7 +150,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertSame(' def', $doc->getLine(0));
 
         // Select " def" and paste over it
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         for ($i = 0; $i < 4; ++$i) {
             $editor->handleInput("\x1b[1;2C");
         }
@@ -173,7 +173,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionFilterNarrowingAndDivergence(): void
     {
         $editor = $this->editor("<?php\nstr\n");
-        $editor->getDocument()->setCursor(1, 3);
+        $editor->getDocument()->setCursor(1, col: 3);
         $items = [
             new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: ''),
             new CompletionItem(label: 'strrev', insertText: 'strrev', kind: 'fn', detail: ''),
@@ -200,7 +200,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionFuzzyCamelHumpRanking(): void
     {
         $editor = $this->editor("<?php\ng\n");
-        $editor->getDocument()->setCursor(1, 1);
+        $editor->getDocument()->setCursor(1, col: 1);
         $editor->showCompletions([
             new CompletionItem(label: 'genericmoment', insertText: 'genericmoment', kind: 'fn', detail: ''),
             new CompletionItem(label: 'getMessage', insertText: 'getMessage', kind: 'fn', detail: ''),
@@ -224,7 +224,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testSnippetExpansionWithTabStops(): void
     {
         $editor = $this->editor("<?php\n\n");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->showCompletions([new CompletionItem(
             label: 'foo',
             insertText: 'foo',
@@ -262,7 +262,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testSnippetShiftTabAndEscape(): void
     {
         $editor = $this->editor("<?php\n\n");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->showCompletions([new CompletionItem(
             label: 'pair',
             insertText: 'pair',
@@ -291,7 +291,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testSnippetBackspaceAndArrowExit(): void
     {
         $editor = $this->editor("<?php\n\n");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->showCompletions([new CompletionItem(
             label: 'p',
             insertText: 'p',
@@ -343,7 +343,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testFoldCollapsesRegionAndUnfolds(): void
     {
         $editor = $this->foldFixture();
-        $editor->getDocument()->setCursor(1, 0); // on "function f() {"
+        $editor->getDocument()->setCursor(1, col: 0); // on "function f() {"
 
         $editor->handleInput(self::CTRL_DOT); // fold
         $joined = \implode("\n", $this->screenRows($editor));
@@ -360,31 +360,31 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testClickMapsThroughFoldedLines(): void
     {
         $editor = $this->foldFixture();
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->handleInput(self::CTRL_DOT); // fold lines 2-4
         $this->screenRows($editor); // render to settle vScroll
 
         // Screen row 2 is the first line after the fold ("after();", doc line 5).
-        $editor->clickAt(2, 20);
+        $editor->clickAt(2, relCol: 20);
         $this->assertSame(5, $editor->getDocument()->cursorLine);
     }
 
     public function testMovingIntoFoldedRegionAutoUnfolds(): void
     {
         $editor = $this->foldFixture();
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->handleInput(self::CTRL_DOT);
         $this->assertStringNotContainsString('a();', \implode("\n", $this->screenRows($editor)));
 
         // Placing the caret inside the collapsed region reveals it on render.
-        $editor->getDocument()->setCursor(3, 0);
+        $editor->getDocument()->setCursor(3, col: 0);
         $this->assertStringContainsString('a();', \implode("\n", $this->screenRows($editor)));
     }
 
     public function testToggleFoldWithNoRegionDoesNothing(): void
     {
         $editor = $this->foldFixture();
-        $editor->getDocument()->setCursor(0, 0); // "<?php" — no enclosing block
+        $editor->getDocument()->setCursor(0, col: 0); // "<?php" — no enclosing block
         $editor->handleInput(self::CTRL_DOT);
         $joined = \implode("\n", $this->screenRows($editor));
         $this->assertStringNotContainsString('⋯', $joined);
@@ -402,11 +402,11 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor($lines);
         $editor->setFocused(true);
 
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->handleInput(self::CTRL_DOT); // fold the function
-        $editor->getDocument()->setCursor(20, 0); // well below the viewport
+        $editor->getDocument()->setCursor(20, col: 0); // well below the viewport
 
-        $rows = $this->screenRows($editor, 60, 6);
+        $rows = $this->screenRows($editor, w: 60, h: 6);
         $this->assertStringContainsString('line15();', \implode("\n", $rows), 'caret line is scrolled into view');
     }
 
@@ -425,13 +425,13 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor = $this->editor($lines);
         $editor->setFocused(true);
 
-        $editor->getDocument()->setCursor(1, 0); // "function big() {"
+        $editor->getDocument()->setCursor(1, col: 0); // "function big() {"
         $editor->handleInput(self::CTRL_DOT); // fold lines 2..14
-        $editor->getDocument()->setCursor(15, 0); // "tail();" just after the fold
+        $editor->getDocument()->setCursor(15, col: 0); // "tail();" just after the fold
 
         // Height 2 with the caret at the bottom forces the anchor above the
         // caret to land inside the collapsed region and snap to line 1.
-        $rows = $this->screenRows($editor, 60, 2);
+        $rows = $this->screenRows($editor, w: 60, h: 2);
         $joined = \implode("\n", $rows);
         $this->assertStringContainsString('tail();', $joined);
         $this->assertStringContainsString('⋯', $joined, 'fold start becomes the scroll anchor');
@@ -440,7 +440,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionClosesWhenWordFullyDeleted(): void
     {
         $editor = $this->editor("<?php\ns\n");
-        $editor->getDocument()->setCursor(1, 1);
+        $editor->getDocument()->setCursor(1, col: 1);
         $editor->showCompletions([new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: '')]);
 
         $editor->handleInput("\x7f"); // deletes the "s"; popup stays open one more key
@@ -451,7 +451,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionNonIdentifierKeyClosesAndExecutes(): void
     {
         $editor = $this->editor("<?php\nstr\n");
-        $editor->getDocument()->setCursor(1, 3);
+        $editor->getDocument()->setCursor(1, col: 3);
         $editor->showCompletions([new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: '')]);
 
         $editor->handleInput(';');
@@ -462,7 +462,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionUpArrowWrapsAndTabAccepts(): void
     {
         $editor = $this->editor("<?php\nstr\n");
-        $editor->getDocument()->setCursor(1, 3);
+        $editor->getDocument()->setCursor(1, col: 3);
         $editor->showCompletions([
             new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: ''),
             new CompletionItem(label: 'strrev', insertText: 'strrev', kind: 'fn', detail: ''),
@@ -476,7 +476,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionPopupWindowScrollsPastEightItems(): void
     {
         $editor = $this->editor("<?php\nit\n");
-        $editor->getDocument()->setCursor(1, 2);
+        $editor->getDocument()->setCursor(1, col: 2);
         $items = [];
         for ($i = 0; $i < 12; ++$i) {
             $items[] = new CompletionItem(label: \sprintf('item%02d', $i), insertText: 'x', kind: 'fn', detail: '');
@@ -528,7 +528,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testSignatureHintClearedOnCloseParenAndVerticalMove(): void
     {
         $editor = $this->editor("<?php\nf(\n");
-        $editor->getDocument()->setCursor(1, 2);
+        $editor->getDocument()->setCursor(1, col: 2);
         $editor->setSignatureHint('f(int $x)');
 
         $editor->handleInput(')');
@@ -568,7 +568,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         ];
         foreach ($cases as [$file, $before, $after]) {
             $editor = $this->editor($before."\n", $file);
-            $editor->getDocument()->setCursor(0, 0);
+            $editor->getDocument()->setCursor(0, col: 0);
             $editor->handleInput("\x1f"); // toggle_comment
             $this->assertSame($after, $editor->getDocument()->getLine(0), $file);
         }
@@ -586,8 +586,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
      */
     public function testCtrlShiftSlashReachesTheBlockCommentVerb(): void
     {
-        $editor = $this->editor("    return 1;\n", 'demo.php');
-        $editor->getDocument()->setCursor(0, 8);
+        $editor = $this->editor("    return 1;\n", path: 'demo.php');
+        $editor->getDocument()->setCursor(0, col: 8);
 
         $editor->handleInput("\x1b[47;6u"); // ctrl+shift+/
         $this->assertSame('    /* return 1; */', $editor->getDocument()->getLine(0));
@@ -602,8 +602,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
      */
     public function testCtrlShiftSlashFallsBackToTheLineFormWhereThereIsNoBlock(): void
     {
-        $editor = $this->editor("print(1)\n", 'demo.py');
-        $editor->getDocument()->setCursor(0, 0);
+        $editor = $this->editor("print(1)\n", path: 'demo.py');
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1b[47;6u");
         $this->assertSame('# print(1)', $editor->getDocument()->getLine(0));
@@ -626,10 +626,10 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $lines = \implode("\n", \array_map(static fn (int $i): string => "row {$i}", \range(0, end: 99)));
         $editor = $this->editor($lines);
-        $editor->getDocument()->setCursor(80, 0);
+        $editor->getDocument()->setCursor(80, col: 0);
         $editor->render(new RenderContext(40, 10)); // scrolls down
 
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $rendered = $editor->render(new RenderContext(40, 10)); // vScroll snaps back up
         $this->assertStringContainsString('row 0', AnsiUtils::stripAnsiCodes($rendered[0]));
     }
@@ -639,10 +639,10 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $long = \str_repeat('x', times: 200);
         $editor = $this->editor("<?php\n{$long}\n");
         $doc = $editor->getDocument();
-        $doc->setCursor(1, 150);
+        $doc->setCursor(1, col: 150);
         $editor->render(new RenderContext(40, 5)); // hScroll follows right
 
-        $doc->setCursor(1, 2);
+        $doc->setCursor(1, col: 2);
         $rendered = $editor->render(new RenderContext(40, 5)); // hScroll snaps back left
         foreach ($rendered as $line) {
             $this->assertSame(40, AnsiUtils::visibleWidth($line));
@@ -655,18 +655,18 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // Unmatched opening brace with > 20k characters of scan distance
         $filler = \str_repeat(\str_repeat('x', times: 100)."\n", times: 250);
         $editor = $this->editor("{\n".$filler);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $rendered = $editor->render(new RenderContext(120, 5));
         $this->assertSame(0, \substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"), 'no highlight for unmatched bracket');
 
         // No bracket near the cursor at all
         $editor2 = $this->editor("plain text\n");
-        $editor2->getDocument()->setCursor(0, 5);
+        $editor2->getDocument()->setCursor(0, col: 5);
         $editor2->render(new RenderContext(40, 3));
 
         // Closing bracket scans backwards
         $editor3 = $this->editor("(a)\n");
-        $editor3->getDocument()->setCursor(0, 3); // just after ')'
+        $editor3->getDocument()->setCursor(0, col: 3); // just after ')'
         $rendered = $editor3->render(new RenderContext(40, 3));
         $this->assertSame(2, \substr_count($rendered[0], needle: "\x1b[1m\x1b[7m"));
     }
@@ -685,7 +685,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionPopupClampedInTinyViewport(): void
     {
         $editor = $this->editor("<?php\nst\n");
-        $editor->getDocument()->setCursor(1, 2);
+        $editor->getDocument()->setCursor(1, col: 2);
         $items = [];
         for ($i = 0; $i < 6; ++$i) {
             $items[] = new CompletionItem(label: "opt{$i}", insertText: 'x', kind: 'fn', detail: '');
@@ -722,7 +722,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testCompletionPopupWithNoFilteredItemsRendersNothing(): void
     {
         $editor = $this->editor("<?php\nst\n");
-        $editor->getDocument()->setCursor(1, 2);
+        $editor->getDocument()->setCursor(1, col: 2);
         $editor->showCompletions([new CompletionItem(label: 'strlen', insertText: 'strlen', kind: 'fn', detail: '')]);
 
         // Mutate the document directly (bypassing handleInput) so the popup
@@ -840,7 +840,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $long = \str_repeat('x', times: 70);
         $editor = $this->editor("<?php\n{$long}\n");
         $editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline); // the message after the code is what this is about
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->decorations->setDiagnostics([1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'a warning here', 'col' => 0]]]);
 
         $rendered = $editor->render(new RenderContext(40, 5));
@@ -871,7 +871,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
                 },
             ),
         ));
-        $editor->getDocument()->setCursor(1, 1);
+        $editor->getDocument()->setCursor(1, col: 1);
 
         $editor->handleInput("\x1b[105;6u"); // ctrl+shift+i
         $this->assertSame([1, 1], $peekedAt);
@@ -910,7 +910,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertStringContainsString("\x1b[38;5;114m▎", $rendered[1], 'covered: the green bar');
         $this->assertStringContainsString("\x1b[38;5;203m▌", $rendered[2], 'never ran: the heavier red one');
         $this->assertSame(' ', \mb_substr(AnsiUtils::stripAnsiCodes($rendered[3]), start: 0, length: 1), 'a line the run did not report shows nothing');
-        $this->assertFalse($editor->changeMarkAt(0, 3), 'and a click there opens no change it cannot see');
+        $this->assertFalse($editor->changeMarkAt(0, docLine: 3), 'and a click there opens no change it cannot see');
         foreach ($rendered as $line) {
             $this->assertSame(60, AnsiUtils::visibleWidth($line));
         }
@@ -918,7 +918,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $editor->decorations->setCoverage([]);
         $rendered = $editor->render(new RenderContext(60, 6));
         $this->assertStringContainsString("\x1b[38;5;75m┆", $rendered[0], 'cleared, the strip is the change marks\' again');
-        $this->assertTrue($editor->changeMarkAt(0, 3));
+        $this->assertTrue($editor->changeMarkAt(0, docLine: 3));
 
         $editor->setVcsGutter(false);
         $editor->decorations->setCoverage([1 => CoverageMark::Covered]);
@@ -928,7 +928,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testSignatureHintOnFirstLineRendersBelow(): void
     {
         $editor = $this->editor("f(x\nmore\n");
-        $editor->getDocument()->setCursor(0, 3);
+        $editor->getDocument()->setCursor(0, col: 3);
         $editor->setSignatureHint('f(int $x): void');
 
         $rendered = $editor->render(new RenderContext(60, 4));
@@ -942,7 +942,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // Two rows: neither three-row framed slot fits (above is negative,
         // below overflows), so the hint degrades to the unframed single row.
         $editor = $this->editor("f(x\nmore\n");
-        $editor->getDocument()->setCursor(0, 3);
+        $editor->getDocument()->setCursor(0, col: 3);
         $editor->setSignatureHint('f(int $x): void');
 
         $rendered = $editor->render(new RenderContext(60, 2));
@@ -953,7 +953,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     public function testSignatureHintWithSingleRowViewportIsDropped(): void
     {
         $editor = $this->editor("f(x\n");
-        $editor->getDocument()->setCursor(0, 3);
+        $editor->getDocument()->setCursor(0, col: 3);
         $editor->setSignatureHint('f(int $x): void');
 
         $rendered = $editor->render(new RenderContext(60, 1));
@@ -977,8 +977,8 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor("<?php\nline1\nline2\nline3\n");
         $doc = $editor->getDocument();
-        $mc = Probe::get($editor, 'multiCaret');
-        $mc->toggleCaretAt(2, 0);
+        $mc = Probe::get($editor, property: 'multiCaret');
+        $mc->toggleCaretAt(2, col: 0);
         $this->assertTrue($mc->hasMultiple(), 'sanity: extra caret added');
 
         $doc->insert('x'); // pushUndo() snapshots the pre-edit state, including the extra caret
@@ -1021,7 +1021,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         $editor->handleFindModalInput('x');
 
-        $this->assertSame('x', Probe::get($editor->findModal, 'query')->value(), 'the keystroke must actually reach the modal');
+        $this->assertSame('x', Probe::get($editor->findModal, property: 'query')->value(), 'the keystroke must actually reach the modal');
     }
 
     // --- Display toggles --------------------------------------------------------
@@ -1080,10 +1080,10 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $editor = $this->editor();
 
-        $editor->openPrompt('Go to line', '', static function (string $v): void {});
+        $editor->openPrompt('Go to line', initial: '', onSubmit: static function (string $v): void {});
 
-        $overlayHost = Probe::get($editor, 'overlayHost');
-        $prompt = Probe::get($overlayHost, 'prompt');
+        $overlayHost = Probe::get($editor, property: 'overlayHost');
+        $prompt = Probe::get($overlayHost, property: 'prompt');
         $this->assertSame(PromptTone::Plain, $prompt['tone'], 'openPrompt must default to a non-destructive (non-danger) styled prompt');
     }
 
@@ -1118,7 +1118,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         // Content that WOULD scan non-empty if BreadcrumbScanner ran on it —
         // proves the non-.php guard actually short-circuits rather than just
         // coincidentally producing an empty scan result.
-        $editor = $this->editor("<?php\nclass Demo\n{\n    public function foo(): void {}\n}\n", 'notes.txt');
+        $editor = $this->editor("<?php\nclass Demo\n{\n    public function foo(): void {}\n}\n", path: 'notes.txt');
 
         $this->assertSame([], $editor->scopes(), 'a non-.php file must never scan, regardless of content');
     }
@@ -1146,7 +1146,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
         $this->assertNotSame([], $first);
 
         // Same document object, edited (version bumps) — must recompute.
-        $editor->getDocument()->setCursor(1, 10);
+        $editor->getDocument()->setCursor(1, col: 10);
         $editor->getDocument()->insert('X');
         $second = $editor->scopes();
 
@@ -1172,7 +1172,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $editor = new CodeEditorWidget(scheduler: $scheduler);
-        $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
+        $editor->openFile('demo.php', content: "<?php\nclass Alpha\n{\n}\n");
 
         $first = $editor->scopes();
         $this->assertSame(['Alpha'], \array_column($first, 'label'), 'the first look scans in place, scheduler or not');
@@ -1180,7 +1180,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
 
         // Rename the class: the trail must stay stale (no per-keystroke
         // tokenizer pass), with one 150ms rescan armed.
-        $editor->getDocument()->setCursor(1, 11);
+        $editor->getDocument()->setCursor(1, col: 11);
         $editor->getDocument()->insert('X');
         $this->assertSame($first, $editor->scopes(), 'mid-typing the stale trail is served');
         $this->assertSame([0.15], \array_values($scheduler->delays), 'one idle rescan armed');
@@ -1199,10 +1199,10 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $editor = new CodeEditorWidget(scheduler: $scheduler);
-        $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
+        $editor->openFile('demo.php', content: "<?php\nclass Alpha\n{\n}\n");
         $editor->scopes();
 
-        $editor->getDocument()->setCursor(1, 11);
+        $editor->getDocument()->setCursor(1, col: 11);
         $editor->getDocument()->insert('X');
         $editor->scopes();
         $editor->getDocument()->insert('Y');
@@ -1219,7 +1219,7 @@ final class CodeEditorWidgetEdgeTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $editor = new CodeEditorWidget(scheduler: $scheduler);
-        $editor->openFile('demo.php', "<?php\nclass Alpha\n{\n}\n");
+        $editor->openFile('demo.php', content: "<?php\nclass Alpha\n{\n}\n");
         $editor->scopes();
 
         // Another buffer must never show Alpha's trail for a debounce window.

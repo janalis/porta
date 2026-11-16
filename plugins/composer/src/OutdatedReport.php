@@ -43,7 +43,7 @@ final class OutdatedReport
     /** @param array<array-key, mixed> $entry */
     private static function package(array $entry): ?OutdatedPackage
     {
-        [$name, $version, $latest, $status] = [self::text($entry, 'name'), self::text($entry, 'version'), self::text($entry, 'latest'), self::text($entry, 'latest-status')];
+        [$name, $version, $latest, $status] = [self::text($entry, key: 'name'), self::text($entry, key: 'version'), self::text($entry, key: 'latest'), self::text($entry, key: 'latest-status')];
         if (\in_array('', [$name, $version, $latest], strict: true)) {
             return null;
         }

@@ -25,7 +25,7 @@ final class TooltipCardTest extends TestCase
 
     public function testEveryRowIsTheCardsWidth(): void
     {
-        $lines = TooltipCard::lines("Match case\tAlt+C\nand a second line", 48);
+        $lines = TooltipCard::lines("Match case\tAlt+C\nand a second line", maxText: 48);
         $width = TooltipCard::width($lines);
 
         foreach (TooltipCard::render($lines, Styles::dark()) as $row) {
@@ -35,12 +35,12 @@ final class TooltipCardTest extends TestCase
 
     public function testThePlainFrame(): void
     {
-        $this->assertSame(['╭───────╮', '│ Close │', '╰───────╯'], self::plain(TooltipCard::render(TooltipCard::lines('Close', 48), Styles::dark())));
+        $this->assertSame(['╭───────╮', '│ Close │', '╰───────╯'], self::plain(TooltipCard::render(TooltipCard::lines('Close', maxText: 48), Styles::dark())));
     }
 
     public function testAKeySitsApartAtTheEndOfItsLine(): void
     {
-        $rows = self::plain(TooltipCard::render(TooltipCard::lines("Match case\tAlt+C\nWhole word", 48), Styles::dark()));
+        $rows = self::plain(TooltipCard::render(TooltipCard::lines("Match case\tAlt+C\nWhole word", maxText: 48), Styles::dark()));
 
         $this->assertSame('│ Match case  Alt+C │', $rows[1]);
         $this->assertSame('│ Whole word        │', $rows[2]);
@@ -48,14 +48,14 @@ final class TooltipCardTest extends TestCase
 
     public function testTheKeyIsDimmedApartFromTheWords(): void
     {
-        $row = TooltipCard::render(TooltipCard::lines("Match case\tAlt+C", 48), Styles::dark())[1];
+        $row = TooltipCard::render(TooltipCard::lines("Match case\tAlt+C", maxText: 48), Styles::dark())[1];
 
         $this->assertStringContainsString(Styles::dark()->of(Role::Muted)->apply('Alt+C'), $row);
     }
 
     public function testALineWithoutAKeyWraps(): void
     {
-        $lines = TooltipCard::lines('one two three four', 9);
+        $lines = TooltipCard::lines('one two three four', maxText: 9);
 
         $this->assertEquals([new TooltipLine('one two'), new TooltipLine('three'), new TooltipLine('four')], $lines);
     }
@@ -63,7 +63,7 @@ final class TooltipCardTest extends TestCase
     /** A path longer than the card breaks after a slash, not mid-name. */
     public function testALongPathWrapsAtItsSlashes(): void
     {
-        $lines = TooltipCard::lines('installed at ~/.porta/bin/symfony-lsp', 16);
+        $lines = TooltipCard::lines('installed at ~/.porta/bin/symfony-lsp', maxText: 16);
 
         $this->assertEquals([new TooltipLine('installed at'), new TooltipLine('~/.porta/bin/'), new TooltipLine('symfony-lsp')], $lines);
     }
@@ -71,7 +71,7 @@ final class TooltipCardTest extends TestCase
     /** A line carrying a key is cut, never wrapped: the key must stay on its row. */
     public function testALineWithAKeyIsCutToKeepTheKey(): void
     {
-        $lines = TooltipCard::lines("Select all matches\tAlt+Enter", 20);
+        $lines = TooltipCard::lines("Select all matches\tAlt+Enter", maxText: 20);
 
         $this->assertSame('Alt+Enter', $lines[0]->key);
         $this->assertSame(20, AnsiUtils::visibleWidth($lines[0]->text) + 2 + AnsiUtils::visibleWidth($lines[0]->key));
@@ -80,13 +80,13 @@ final class TooltipCardTest extends TestCase
 
     public function testAnEmptyKeyIsNoKey(): void
     {
-        $this->assertEquals([new TooltipLine('Close')], TooltipCard::lines("Close\t", 48));
+        $this->assertEquals([new TooltipLine('Close')], TooltipCard::lines("Close\t", maxText: 48));
         $this->assertSame(9, TooltipCard::width([new TooltipLine('Close')]));
     }
 
     public function testATallTextIsCutWithAnEllipsis(): void
     {
-        $lines = TooltipCard::lines(\implode("\n", \range(1, end: 12)), 48);
+        $lines = TooltipCard::lines(\implode("\n", \range(1, end: 12)), maxText: 48);
 
         $this->assertCount(TooltipCard::MAX_LINES, $lines);
         $this->assertSame('8 …', $lines[TooltipCard::MAX_LINES - 1]->text);
@@ -111,7 +111,7 @@ final class TooltipCardTest extends TestCase
             new TooltipLine('phpstan · variable.undefined', role: Role::Faint),
             new TooltipLine('Fix: Import class', 'Alt+Shift+Enter'),
         ], maxText: 60);
-        $lines = TooltipCard::layout($body, 20);
+        $lines = TooltipCard::layout($body, maxText: 20);
         $rows = TooltipCard::render($lines, $styles);
 
         $this->assertSame(
@@ -136,7 +136,7 @@ final class TooltipCardTest extends TestCase
 
     public function testABodyIsCutAtItsOwnLineLimit(): void
     {
-        $lines = TooltipCard::layout(new TooltipBody([new TooltipLine('a'), new TooltipLine('b'), new TooltipLine('c', lead: '› ')], maxLines: 2), 40);
+        $lines = TooltipCard::layout(new TooltipBody([new TooltipLine('a'), new TooltipLine('b'), new TooltipLine('c', lead: '› ')], maxLines: 2), maxText: 40);
 
         $this->assertSame(['a', 'b …'], \array_map(static fn (TooltipLine $line): string => $line->text, $lines));
     }

@@ -29,7 +29,7 @@ trait UntrustsProjects
     protected function trustProjectsAgain(): void
     {
         \putenv('PORTA_TRUSTED_FOLDERS='.(string) \PORTA_TEST_TRUSTED_FOLDERS);
-        $home = (string) \PORTA_TEST_PRISTINE_PORTA_HOME;
+        $home = \PORTA_TEST_PRISTINE_PORTA_HOME;
         \putenv('' !== $home ? 'PORTA_HOME='.$home : 'PORTA_HOME');
     }
 }

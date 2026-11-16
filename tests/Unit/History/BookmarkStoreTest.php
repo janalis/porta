@@ -15,7 +15,7 @@ final class BookmarkStoreTest extends TestCase
     public function testRoundTripsThroughTheProjectFile(): void
     {
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $marks = [$project->path('src/A.php') => [2, 40]];
 
@@ -29,7 +29,7 @@ final class BookmarkStoreTest extends TestCase
         // Otherwise clearing your last bookmark still leaves .porta/bookmarks.json
         // sitting in the project, which reads as state that is no longer there.
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([$project->path('src/A.php') => [1]]);
 
@@ -41,8 +41,8 @@ final class BookmarkStoreTest extends TestCase
     public function testMarksOnAVanishedFileAreDroppedOnLoad(): void
     {
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
-        $project->write('src/Gone.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
+        $project->write('src/Gone.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([$project->path('src/A.php') => [1], $project->path('src/Gone.php') => [3]]);
         \unlink($project->path('src/Gone.php'));
@@ -53,7 +53,7 @@ final class BookmarkStoreTest extends TestCase
     public function testMalformedPayloadsLoadAsNothingRatherThanThrowing(): void
     {
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
         $file = $project->path('.porta/bookmarks.json');
         \mkdir(\dirname($file), permissions: 0o777, recursive: true);
 
@@ -73,7 +73,7 @@ final class BookmarkStoreTest extends TestCase
     public function testPersistenceRestoresIntoTheLiveSetAndSavesItBack(): void
     {
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([$project->path('src/A.php') => [5]]);
 
@@ -82,7 +82,7 @@ final class BookmarkStoreTest extends TestCase
         $persistence->restore();
         $this->assertSame([5], $bookmarks->linesFor($project->path('src/A.php')));
 
-        $bookmarks->toggle($project->path('src/A.php'), 8);
+        $bookmarks->toggle($project->path('src/A.php'), line: 8);
         $persistence->save();
 
         $this->assertSame([$project->path('src/A.php') => [5, 8]], $store->load(), 'the session boundary wrote what the session held');
@@ -96,8 +96,8 @@ final class BookmarkStoreTest extends TestCase
     public function testTwoWindowsKeepEachOthersBookmarks(): void
     {
         $project = new TempProject();
-        $a = $project->write('src/A.php', "<?php\n");
-        $b = $project->write('src/B.php', "<?php\n");
+        $a = $project->write('src/A.php', content: "<?php\n");
+        $b = $project->write('src/B.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([$a => [1]]);
         [$first, $firstMarks] = [new BookmarkPersistence($store, $m1 = new Bookmarks()), $m1];
@@ -105,13 +105,13 @@ final class BookmarkStoreTest extends TestCase
         $first->restore();
         $second->restore();
 
-        $firstMarks->toggle($a, 5);
+        $firstMarks->toggle($a, line: 5);
         $first->save();
         $second->save();
         $this->assertSame([$a => [1, 5]], $store->load(), 'the idle window took nothing away');
 
-        $secondMarks->toggle($b, 2);
-        $secondMarks->toggle($a, 1); // removes the one it loaded
+        $secondMarks->toggle($b, line: 2);
+        $secondMarks->toggle($a, line: 1); // removes the one it loaded
         $second->save();
         $this->assertSame([$a => [5], $b => [2]], $store->load(), 'its own changes, over the other\'s');
     }
@@ -124,7 +124,7 @@ final class BookmarkStoreTest extends TestCase
     public function testLineZeroSurvivesTheRoundTrip(): void
     {
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([$project->path('src/A.php') => [0, 4]]);
 
@@ -138,9 +138,9 @@ final class BookmarkStoreTest extends TestCase
     public function testAVanishedFileDoesNotTakeTheFilesAfterItWithIt(): void
     {
         $project = new TempProject();
-        $project->write('a-gone.php', "<?php\n");
-        $project->write('b-kept.php', "<?php\n");
-        $project->write('c-kept.php', "<?php\n");
+        $project->write('a-gone.php', content: "<?php\n");
+        $project->write('b-kept.php', content: "<?php\n");
+        $project->write('c-kept.php', content: "<?php\n");
         $store = new BookmarkStore($project->dir);
         $store->save([
             $project->path('a-gone.php') => [1],
@@ -160,7 +160,7 @@ final class BookmarkStoreTest extends TestCase
     public function testAnObjectShapedLineListIsStillRead(): void
     {
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\n");
+        $project->write('src/A.php', content: "<?php\n");
         $file = $project->path('.porta/bookmarks.json');
         \mkdir(\dirname($file), permissions: 0o777, recursive: true);
         \file_put_contents($file, (string) \json_encode(['bookmarks' => [$project->path('src/A.php') => ['1' => 7, '0' => 2]]], \JSON_THROW_ON_ERROR));

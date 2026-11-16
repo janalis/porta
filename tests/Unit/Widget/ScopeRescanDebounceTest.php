@@ -72,11 +72,11 @@ final class ScopeRescanDebounceTest extends TestCase
         $editor = $this->editor($scheduler);
         $editor->getDocument()->replaceAll(self::AFTER);
         $editor->scopes();
-        $before = Probe::get($editor, 'renderRevision');
+        $before = Probe::get($editor, property: 'renderRevision');
 
         $scheduler->fire();
 
-        $this->assertNotSame($before, Probe::get($editor, 'renderRevision'), 'the settled trail needs a frame to show');
+        $this->assertNotSame($before, Probe::get($editor, property: 'renderRevision'), 'the settled trail needs a frame to show');
     }
 
     public function testARE_EDITDoesNotPushTheRescanOutForever(): void

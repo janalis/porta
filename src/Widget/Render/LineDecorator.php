@@ -38,7 +38,7 @@ final class LineDecorator
             return $line;
         }
 
-        $before = 0 === $startCol ? '' : AnsiUtils::sliceByColumn($line, 0, $startCol);
+        $before = 0 === $startCol ? '' : AnsiUtils::sliceByColumn($line, startCol: 0, length: $startCol);
         $middle = AnsiUtils::sliceByColumn($line, $startCol, $endCol - $startCol);
         $after = $endCol >= $lineWidth ? '' : AnsiUtils::sliceByColumn($line, $endCol, $lineWidth - $endCol);
 
@@ -102,7 +102,7 @@ final class LineDecorator
         $bounds = \array_keys($bounds);
         \sort($bounds);
 
-        $out = $bounds[0] > 0 ? AnsiUtils::sliceByColumn($line, 0, $bounds[0]) : '';
+        $out = $bounds[0] > 0 ? AnsiUtils::sliceByColumn($line, startCol: 0, length: $bounds[0]) : '';
         /** @var array<int, array{0: int, 1: int, 2: string, 3: string, 4: ?string}> $active keyed by application index */
         $active = [];
         foreach ($bounds as $bi => $col) {

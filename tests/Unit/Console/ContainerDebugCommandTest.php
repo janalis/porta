@@ -146,7 +146,7 @@ final class ContainerDebugCommandTest extends TestCase
         }
 
         /** @var array<string, string> $defaults */
-        $defaults = Probe::getStatic(ContainerDebugCommand::class, 'ENV_DEFAULTS');
+        $defaults = Probe::getStatic(ContainerDebugCommand::class, member: 'ENV_DEFAULTS');
         $this->assertEqualsCanonicalizing(
             [...\array_keys($defaults), 'PORTA_ROOT_DIR'],
             $seeded,

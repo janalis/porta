@@ -46,7 +46,7 @@ final class ViewPointerStagesTest extends TestCase
 
         return new SettingsMouseRouter(
             new HitTester(new Renderer(new StyleSheet())),
-            TestTui::create(100, 24),
+            TestTui::create(100, rows: 24),
             new SettingsNavWidget($translator),
             new SettingsFormWidget($translator),
             new KeybindingsListWidget($translator),
@@ -171,12 +171,12 @@ final class ViewPointerStagesTest extends TestCase
         $onTitle = MouseEvent::parse("\x1b[<0;3;1M");
         $this->assertInstanceOf(MouseEvent::class, $onTitle);
         $tui->processRender();
-        Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, property: 'renderRequested', value: false);
         $router->hover($onTitle); // tints the Settings crumb
-        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'a crumb that took the tint repaints');
-        Probe::set($tui, 'renderRequested', false);
+        $this->assertTrue(Probe::get($tui, property: 'renderRequested'), 'a crumb that took the tint repaints');
+        Probe::set($tui, property: 'renderRequested', value: false);
         $router->hover($onTitle);
-        $this->assertFalse(Probe::get($tui, 'renderRequested'), 'the same crumb again changes nothing, and repaints nothing');
+        $this->assertFalse(Probe::get($tui, property: 'renderRequested'), 'the same crumb again changes nothing, and repaints nothing');
         $this->assertTrue($router->press($onTitle));
         $this->assertSame(['general'], $crumbs);
         $router->hover($this->mouse());
@@ -193,16 +193,16 @@ final class ViewPointerStagesTest extends TestCase
         $renderer = new Renderer(new StyleSheet());
         $tui = new Tui(terminal: new VirtualTerminal(columns: 100, rows: 24), renderer: $renderer);
         $store = new PluginStoreWidget($translator);
-        $store->setStore([new StoreRow(new StoreEntry('a/porta-b', 'b', 'B', 'A', '', StoreCategory::Other, '1'), StoreAction::Get)], false, 0);
+        $store->setStore([new StoreRow(new StoreEntry('a/porta-b', 'b', 'B', 'A', '', StoreCategory::Other, '1'), StoreAction::Get)], refreshing: false, updateCount: 0);
         $tui->add($store);
         $tui->requestRender();
         $tui->processRender();
         $router = new SettingsMouseRouter(new HitTester($renderer), $tui, new SettingsNavWidget($translator), new SettingsFormWidget($translator), new KeybindingsListWidget($translator), $store);
         $onRow = MouseEvent::parse("\x1b[<35;10;8M"); // the tile, under its shelf's heading
         $this->assertInstanceOf(MouseEvent::class, $onRow);
-        Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, property: 'renderRequested', value: false);
         $router->hover($onRow);
-        $this->assertTrue(Probe::get($tui, 'renderRequested'), 'a store tile took the tint');
+        $this->assertTrue(Probe::get($tui, property: 'renderRequested'), 'a store tile took the tint');
 
         $form = new SettingsFormWidget($translator);
         $form->setRows([], [['label' => 'Settings', 'id' => 'general'], ['label' => 'General', 'id' => 'general']]);
@@ -213,8 +213,8 @@ final class ViewPointerStagesTest extends TestCase
         $formRouter = new SettingsMouseRouter(new HitTester($renderer), $formTui, new SettingsNavWidget($translator), $form, new KeybindingsListWidget($translator));
         $onTitle = MouseEvent::parse("\x1b[<35;3;1M");
         $this->assertInstanceOf(MouseEvent::class, $onTitle);
-        Probe::set($formTui, 'renderRequested', false);
+        Probe::set($formTui, property: 'renderRequested', value: false);
         $formRouter->hover($onTitle);
-        $this->assertTrue(Probe::get($formTui, 'renderRequested'), 'the form\'s crumb took the tint');
+        $this->assertTrue(Probe::get($formTui, property: 'renderRequested'), 'the form\'s crumb took the tint');
     }
 }

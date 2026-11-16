@@ -52,11 +52,11 @@ final class RemoteLinkTest extends TestCase
         foreach (['one', 'two'] as $name) {
             $link->failed(
                 $this->transport,
-                'denied',
-                static function () use (&$outcomes, $name): void {
+                why: 'denied',
+                retry: static function () use (&$outcomes, $name): void {
                     $outcomes[] = 'retry '.$name;
                 },
-                static function () use (&$outcomes, $name): void {
+                refused: static function () use (&$outcomes, $name): void {
                     $outcomes[] = 'refused '.$name;
                 },
             );
@@ -74,17 +74,17 @@ final class RemoteLinkTest extends TestCase
     {
         $link = $this->link();
         $this->transport->down = 'gone';
-        $link->failed($this->transport, 'gone', static function (): void {}, static function (): void {});
+        $link->failed($this->transport, why: 'gone', retry: static function (): void {}, refused: static function (): void {});
         $calls = \count($this->transport->calls);
         $ran = false;
 
         $link->failed(
             $this->transport,
-            'gone',
-            static function () use (&$ran): void {
+            why: 'gone',
+            retry: static function () use (&$ran): void {
                 $ran = true;
             },
-            static function (): void {},
+            refused: static function (): void {},
         );
 
         $this->assertCount($calls, $this->transport->calls, 'no listing: it is known to be down');
@@ -99,7 +99,7 @@ final class RemoteLinkTest extends TestCase
     {
         $link = $this->link();
         $this->transport->down = 'gone';
-        $link->failed($this->transport, 'gone', static function (): void {}, static function (): void {});
+        $link->failed($this->transport, why: 'gone', retry: static function (): void {}, refused: static function (): void {});
         $this->transport->down = null;
         $this->transport->hold = true;
         $link->reconnect($this->transport);
@@ -124,7 +124,7 @@ final class RemoteLinkTest extends TestCase
     {
         $link = $this->link();
         $this->transport->down = 'gone';
-        $link->failed($this->transport, 'gone', static function (): void {}, static function (): void {});
+        $link->failed($this->transport, why: 'gone', retry: static function (): void {}, refused: static function (): void {});
         $this->transport->down = FakeRemoteTransport::LOGIN_DENIED;
 
         $this->heard = [];
@@ -133,7 +133,7 @@ final class RemoteLinkTest extends TestCase
         $this->assertSame(FakeRemoteTransport::LOGIN_DENIED, $link->down());
         $this->assertTrue($link->loginRefused());
         $this->assertSame(['changed'], $this->heard, 'the cell shows the latest reason');
-        $this->assertSame(1, Probe::get($link, 'tries'), 'one more try: the next backoff is longer');
+        $this->assertSame(1, Probe::get($link, property: 'tries'), 'one more try: the next backoff is longer');
 
         $this->transport->down = null;
         $link->reconnect($this->transport);
@@ -144,7 +144,7 @@ final class RemoteLinkTest extends TestCase
     {
         $link = $this->link();
         $this->transport->down = 'gone';
-        $link->failed($this->transport, 'gone', static function (): void {}, static function (): void {});
+        $link->failed($this->transport, why: 'gone', retry: static function (): void {}, refused: static function (): void {});
         $this->transport->hold = true;
         $calls = \count($this->transport->calls);
 

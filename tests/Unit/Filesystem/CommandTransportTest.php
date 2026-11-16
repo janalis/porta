@@ -30,7 +30,7 @@ final class CommandTransportTest extends TestCase
 
     public function testItAnswersTheExitCodeOutputAndErrors(): void
     {
-        $this->assertSame([3, 'IN', "oops\n"], $this->exec(new TestCommandTransport(), ['sh', '-c', 'cat; echo oops >&2; exit 3'], 'IN'));
+        $this->assertSame([3, 'IN', "oops\n"], $this->exec(new TestCommandTransport(), ['sh', '-c', 'cat; echo oops >&2; exit 3'], stdin: 'IN'));
     }
 
     public function testACommandThatCannotStartAnswersAsAShellWould(): void
@@ -42,16 +42,16 @@ final class CommandTransportTest extends TestCase
     {
         $transport = new TestCommandTransport();
 
-        $this->assertSame('Permission denied (publickey).', $transport::say(255, "Warning: something\nPermission denied (publickey).\n\n"));
-        $this->assertSame('exit code 2', $transport::say(2, " \n"));
-        $this->assertSame('no answer in 600 seconds', $transport::say(-1, ''));
+        $this->assertSame('Permission denied (publickey).', $transport::say(255, stderr: "Warning: something\nPermission denied (publickey).\n\n"));
+        $this->assertSame('exit code 2', $transport::say(2, stderr: " \n"));
+        $this->assertSame('no answer in 600 seconds', $transport::say(-1, stderr: ''));
     }
 
     public function testClosingCancelsWhatIsInFlight(): void
     {
         $transport = new TestCommandTransport();
         $answered = false;
-        $transport->exec(['sleep', '5'], null, static function () use (&$answered): void {
+        $transport->exec(['sleep', '5'], stdin: null, done: static function () use (&$answered): void {
             $answered = true;
         });
 
@@ -67,21 +67,21 @@ final class CommandTransportTest extends TestCase
         $transport->atMost(1);
         $order = [];
         foreach (['one', 'two', 'three'] as $word) {
-            $transport->exec([\PHP_BINARY, '-r', 'usleep(50000); echo "'.$word.'";'], null, static function (int $code, string $out) use (&$order): void {
+            $transport->exec([\PHP_BINARY, '-r', 'usleep(50000); echo "'.$word.'";'], stdin: null, done: static function (int $code, string $out) use (&$order): void {
                 $order[] = $out;
             });
         }
-        $this->assertCount(1, Probe::get($transport, 'running'), 'one at a time');
+        $this->assertCount(1, Probe::get($transport, property: 'running'), 'one at a time');
 
         $this->await(static function () use (&$order): bool {
             return 3 === \count($order);
         }, what: 'all three');
 
         $this->assertSame(['one', 'two', 'three'], $order);
-        $transport->exec(['true'], null, static function (): void {});
+        $transport->exec(['true'], stdin: null, done: static function (): void {});
         $transport->atMost(0);
         $transport->close();
-        $this->assertSame([], Probe::get($transport, 'waiting'), 'closing forgets what waited');
+        $this->assertSame([], Probe::get($transport, property: 'waiting'), 'closing forgets what waited');
     }
 
     public function testAFailureIsNoRefusedLoginUnlessTheTransportKnowsOne(): void
@@ -94,13 +94,13 @@ final class CommandTransportTest extends TestCase
         $transport = new TestCommandTransport();
         $transport->atMost(1);
         $answers = [];
-        $transport->exec([\PHP_BINARY, '-r', 'usleep(100000);'], null, static function (int $code) use (&$answers): void {
+        $transport->exec([\PHP_BINARY, '-r', 'usleep(100000);'], stdin: null, done: static function (int $code) use (&$answers): void {
             $answers[] = 'first '.$code;
         });
-        $transport->exec(['/porta-no-such-binary'], null, static function (int $code) use (&$answers): void {
+        $transport->exec(['/porta-no-such-binary'], stdin: null, done: static function (int $code) use (&$answers): void {
             $answers[] = 'missing '.$code;
         });
-        $transport->exec([\PHP_BINARY, '-r', 'echo 1;'], null, static function (int $code) use (&$answers): void {
+        $transport->exec([\PHP_BINARY, '-r', 'echo 1;'], stdin: null, done: static function (int $code) use (&$answers): void {
             $answers[] = 'last '.$code;
         });
 

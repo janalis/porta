@@ -36,35 +36,35 @@ return new class('mago', 'mago') extends AbstractAnalyzerPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $api->registerSetting('autoFormat', 'Format on save', 'bool', false);
-        $api->registerSetting('autoLint', 'Lint on save', 'bool', false);
+        $api->registerSetting('autoFormat', label: 'Format on save', kind: 'bool', default: false);
+        $api->registerSetting('autoLint', label: 'Lint on save', kind: 'bool', default: false);
 
         $api->registerCommand(
             'format',
-            'Mago: Format Current File',
-            function () use ($api): void {
+            label: 'Mago: Format Current File',
+            handler: function () use ($api): void {
                 $file = $this->activeFileOrFlash($api);
                 if (null !== $file) {
                     $this->format($api, $file, andLint: false);
                 }
             },
-            ['ctrl+alt+g'],
+            keys: ['ctrl+alt+g'],
         );
 
         $api->registerCommand(
             'lint',
-            'Mago: Lint Current File',
-            function () use ($api): void {
+            label: 'Mago: Lint Current File',
+            handler: function () use ($api): void {
                 $file = $this->activeFileOrFlash($api);
                 if (null !== $file) {
                     $this->analyse($api, $file);
                 }
             },
-            ['ctrl+alt+e'],
+            keys: ['ctrl+alt+e'],
         );
 
-        $this->registerToggle($api, 'toggle-auto-format', 'Mago: Toggle Format on Save', 'autoFormat', 'mago format on save');
-        $this->registerToggle($api, 'toggle-auto-lint', 'Mago: Toggle Lint on Save', 'autoLint', 'mago lint on save');
+        $this->registerToggle($api, id: 'toggle-auto-format', label: 'Mago: Toggle Format on Save', settingKey: 'autoFormat', phrase: 'mago format on save');
+        $this->registerToggle($api, id: 'toggle-auto-lint', label: 'Mago: Toggle Lint on Save', settingKey: 'autoLint', phrase: 'mago lint on save');
 
         $usable = $this->binaryAvailable($api);
         $api->addMenuItem('format', $usable);
@@ -107,7 +107,7 @@ return new class('mago', 'mago') extends AbstractAnalyzerPlugin {
     protected function diagnostics(array $report): array
     {
         $diagnostics = [];
-        foreach (self::rowsAt($report, 'issues') as $issue) {
+        foreach (self::rowsAt($report, key: 'issues') as $issue) {
             $diagnostics[] = [
                 'line' => $this->primaryLine($issue),
                 'message' => trim((string) ($issue['message'] ?? '')),
@@ -151,7 +151,7 @@ return new class('mago', 'mago') extends AbstractAnalyzerPlugin {
                 return;
             }
             $this->applyFormatted($api, $file, $before);
-            $api->flash($api->trans('%tool%: formatted %file%', ['%tool%' => $this->name(), '%file%' => basename($file)]), 4.0);
+            $api->flash($api->trans('%tool%: formatted %file%', ['%tool%' => $this->name(), '%file%' => basename($file)]), seconds: 4.0);
             if ($andLint) {
                 $this->analyseWith($api, $binary, $file); // keeps the slot for the chain
 
@@ -164,11 +164,11 @@ return new class('mago', 'mago') extends AbstractAnalyzerPlugin {
     /** The 0-based line of the issue's Primary annotation (mago spans are already 0-based). */
     private function primaryLine(array $issue): int
     {
-        foreach (self::rowsAt($issue, 'annotations') as $annotation) {
+        foreach (self::rowsAt($issue, key: 'annotations') as $annotation) {
             if ('Primary' !== ($annotation['kind'] ?? '')) {
                 continue;
             }
-            $start = self::arrayAt(self::arrayAt($annotation, 'span'), 'start');
+            $start = self::arrayAt(self::arrayAt($annotation, key: 'span'), key: 'start');
 
             return max(0, (int) ($start['line'] ?? 0));
         }

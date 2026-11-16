@@ -52,14 +52,14 @@ final class SettingsSearchTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Auto-pairs'), 'the view opens on General');
-                    $this->assertNull($this->rowOf($grid, 'Sticky scroll'), 'and Interface rows are elsewhere');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Auto-pairs'), 'the view opens on General');
+                    $this->assertNull($this->rowOf($grid, needle: 'Sticky scroll'), 'and Interface rows are elsewhere');
 
                     $tui->handleInput("\x06"); // ctrl+f
                 },
                 700 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
-                        $this->rowOf($this->screenGrid($tui, $terminal), 'Find Setting'),
+                        $this->rowOf($this->screenGrid($tui, $terminal), needle: 'Find Setting'),
                         'the picker paints over the full-screen settings view',
                     );
                     foreach (\str_split('sticky') as $char) {
@@ -68,15 +68,15 @@ final class SettingsSearchTest extends TestCase
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
-                        $this->rowOf($this->screenGrid($tui, $terminal), 'Sticky scroll'),
+                        $this->rowOf($this->screenGrid($tui, $terminal), needle: 'Sticky scroll'),
                         'the hit is listed while its page is not the one showing',
                     );
                     $tui->handleInput("\r");
                 },
                 1100 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNull($this->rowOf($grid, 'Find Setting'), 'the picker closed');
-                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the Interface page is showing');
+                    $this->assertNull($this->rowOf($grid, needle: 'Find Setting'), 'the picker closed');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Sticky scroll'), 'the Interface page is showing');
 
                     $form = $this->settingsForm($tui);
                     $this->assertStringContainsString(
@@ -113,7 +113,7 @@ final class SettingsSearchTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
-                        $this->rowOf($this->screenGrid($tui, $terminal), 'Find Setting'),
+                        $this->rowOf($this->screenGrid($tui, $terminal), needle: 'Find Setting'),
                         'the picker opens over the editor',
                     );
                     foreach (\str_split('sticky') as $char) {
@@ -125,8 +125,8 @@ final class SettingsSearchTest extends TestCase
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the settings view opened on Interface');
-                    $this->assertNull($this->rowOf($grid, 'Auto-pairs'), 'NOT on General, which is where open() resets to');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Sticky scroll'), 'the settings view opened on Interface');
+                    $this->assertNull($this->rowOf($grid, needle: 'Auto-pairs'), 'NOT on General, which is where open() resets to');
 
                     $form = $this->settingsForm($tui);
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
@@ -156,7 +156,7 @@ final class SettingsSearchTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertNotNull(
-                        $this->rowOf($this->screenGrid($tui, $terminal), 'Search Everywhere'),
+                        $this->rowOf($this->screenGrid($tui, $terminal), needle: 'Search Everywhere'),
                         'the aggregate picker opened',
                     );
                     foreach (\str_split('sticky scroll') as $char) {
@@ -165,13 +165,13 @@ final class SettingsSearchTest extends TestCase
                 },
                 800 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Settings'), 'under a Settings group header');
-                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'the setting is a hit');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Settings'), 'under a Settings group header');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Sticky scroll'), 'the setting is a hit');
                     $tui->handleInput("\r");
                 },
                 1000 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Sticky scroll'), 'picking it opened the settings view on Interface');
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Sticky scroll'), 'picking it opened the settings view on Interface');
 
                     $form = $this->settingsForm($tui);
                     $this->assertStringContainsString('Sticky scroll', $this->selectedSettingRow($form), 'landed on the row');
@@ -204,7 +204,7 @@ final class SettingsSearchTest extends TestCase
                     $index = Services::resolve($ide, SettingsSearchIndex::class);
                     $labels = \array_map(
                         static fn (SettingsSearchEntry $e): string => $e->label,
-                        $index->search('save', 60),
+                        $index->search('save', limit: 60),
                     );
 
                     $this->assertNotContains('Save changes to', $labels, 'the chooser is not indexed');
@@ -247,7 +247,7 @@ final class SettingsSearchTest extends TestCase
             $project->path('A.php'),
             [
                 300 => function ($tui, $terminal, Ide $ide): void {
-                    $hits = Services::resolve($ide, SettingsSearchIndex::class)->search('klaxon', 10);
+                    $hits = Services::resolve($ide, SettingsSearchIndex::class)->search('klaxon', limit: 10);
 
                     $this->assertNotEmpty($hits, 'a plugin setting is in the index');
                     $this->assertSame('Klaxon volume', $hits[0]->label);
@@ -261,7 +261,7 @@ final class SettingsSearchTest extends TestCase
                 },
                 700 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $grid = $this->screenGrid($tui, $terminal);
-                    $this->assertNotNull($this->rowOf($grid, 'Klaxon volume'), "the plugin's own page is showing");
+                    $this->assertNotNull($this->rowOf($grid, needle: 'Klaxon volume'), "the plugin's own page is showing");
 
                     $form = $this->settingsForm($tui);
                     $this->assertStringContainsString(

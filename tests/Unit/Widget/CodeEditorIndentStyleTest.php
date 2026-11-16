@@ -31,13 +31,13 @@ final class CodeEditorIndentStyleTest extends TestCase
     public function testDocumentSetIndentSetsUnitAndSize(): void
     {
         $document = new Document("    spaces\n");
-        $document->setIndent(IndentKind::Tabs, 3);
+        $document->setIndent(IndentKind::Tabs, size: 3);
         $this->assertTrue($document->usesTabs());
         $this->assertSame("\t", $document->indentUnit());
         $this->assertSame(3, $document->indentSize());
         $this->assertSame(3, $document->tabWidth());
 
-        $document->setIndent(IndentKind::Spaces, 2);
+        $document->setIndent(IndentKind::Spaces, size: 2);
         $this->assertFalse($document->usesTabs());
         $this->assertSame('  ', $document->indentUnit());
     }
@@ -45,7 +45,7 @@ final class CodeEditorIndentStyleTest extends TestCase
     public function testExplicitStyleAndSizeWinForTheLanguage(): void
     {
         $editor = $this->editor(['php' => new LanguageIndent(IndentStyle::Tabs, 4)]);
-        $editor->openFile('x.php', "    four spaces\n"); // content would detect spaces
+        $editor->openFile('x.php', content: "    four spaces\n"); // content would detect spaces
         $this->assertTrue($editor->getDocument()->usesTabs(), 'explicit tabs win');
         $this->assertSame(4, $editor->getDocument()->indentSize());
     }
@@ -58,21 +58,21 @@ final class CodeEditorIndentStyleTest extends TestCase
         // file now, which is what "detect existing indents" means everywhere
         // else.
         $editor = $this->editor(['php' => new LanguageIndent()]); // auto/auto
-        $editor->openFile('x.php', "\ttabbed\n");
+        $editor->openFile('x.php', content: "\ttabbed\n");
         $this->assertTrue($editor->getDocument()->usesTabs(), 'auto follows the file');
 
-        $editor->openFile('y.php', "<?php\nclass A\n{\n    public function b(): void\n    {\n    }\n}\n");
+        $editor->openFile('y.php', content: "<?php\nclass A\n{\n    public function b(): void\n    {\n    }\n}\n");
         $this->assertFalse($editor->getDocument()->usesTabs());
         $this->assertSame(4, $editor->getDocument()->indentSize(), 'four-space file, four-space indent');
 
-        $editor->openFile('z.php', "<?php\nclass A\n{\n  public function b(): void\n  {\n  }\n}\n");
+        $editor->openFile('z.php', content: "<?php\nclass A\n{\n  public function b(): void\n  {\n  }\n}\n");
         $this->assertSame(2, $editor->getDocument()->indentSize(), 'and a two-space file keeps two');
     }
 
     public function testAFileThatIndentsNothingKeepsTheDefault(): void
     {
         $editor = $this->editor(['php' => new LanguageIndent()]);
-        $editor->openFile('x.php', "<?php\necho 1;\n");
+        $editor->openFile('x.php', content: "<?php\necho 1;\n");
 
         $this->assertSame(4, $editor->getDocument()->indentSize(), 'there is nothing to read, so PHP\'s own default stands');
     }
@@ -102,10 +102,10 @@ final class CodeEditorIndentStyleTest extends TestCase
             'php' => new LanguageIndent(IndentStyle::Tabs, 4),
             'css' => new LanguageIndent(IndentStyle::Spaces, 2),
         ]);
-        $editor->openFile('a.php', "x\n");
+        $editor->openFile('a.php', content: "x\n");
         $this->assertTrue($editor->getDocument()->usesTabs());
 
-        $editor->openFile('b.css', "y\n");
+        $editor->openFile('b.css', content: "y\n");
         $this->assertFalse($editor->getDocument()->usesTabs(), 'the switch re-applied the css config');
         $this->assertSame(2, $editor->getDocument()->indentSize());
     }
@@ -114,14 +114,14 @@ final class CodeEditorIndentStyleTest extends TestCase
     {
         // No entry for python → the editor leaves the document's own detection.
         $editor = $this->editor(['php' => new LanguageIndent(IndentStyle::Spaces, 2)]);
-        $editor->openFile('x.py', "\ttabbed\n");
+        $editor->openFile('x.py', content: "\ttabbed\n");
         $this->assertTrue($editor->getDocument()->usesTabs(), 'unconfigured language keeps auto-detection');
     }
 
     public function testSettingLanguageIndentsReAppliesToTheCurrentDocument(): void
     {
         $editor = $this->editor([]);
-        $editor->openFile('x.php', "x\n");
+        $editor->openFile('x.php', content: "x\n");
         $this->assertFalse($editor->getDocument()->usesTabs());
 
         $editor->setLanguageIndents(['php' => new LanguageIndent(IndentStyle::Tabs, 4)]);

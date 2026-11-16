@@ -99,7 +99,7 @@ final class SearchHistoryStoreTest extends TestCase
 
         // Malformed JSON → empty.
         $bad = new TempProject([]);
-        $bad->write('.porta/search-history.json', 'not json');
+        $bad->write('.porta/search-history.json', content: 'not json');
         $this->assertSame([], new SearchHistoryStore($bad->dir)->queries);
 
         // Non-string entries are filtered out.

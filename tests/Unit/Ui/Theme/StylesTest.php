@@ -73,7 +73,7 @@ final class StylesTest extends TestCase
 
     public function testCreateSwitchableSelectsFromTheBootFlags(): void
     {
-        $this->assertEquals(new Styles(MonochromeTheme::definition()), Themes::createSwitchable(ColorMode::Plain, 'dark'));
-        $this->assertEquals(new Styles(LightTheme::definition()), Themes::createSwitchable(ColorMode::Ansi, 'light'));
+        $this->assertEquals(new Styles(MonochromeTheme::definition()), Themes::createSwitchable(ColorMode::Plain, theme: 'dark'));
+        $this->assertEquals(new Styles(LightTheme::definition()), Themes::createSwitchable(ColorMode::Ansi, theme: 'light'));
     }
 }

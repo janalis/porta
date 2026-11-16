@@ -37,7 +37,7 @@ final readonly class StartupWiring
         // Everything plugin handlers reach exists now — hand them the live seam.
         $this->plugins->wireRuntime($this->runtime);
         foreach ([...$this->config->warnings, ...$this->plugins->warnings] as $warning) {
-            $this->notifier->flash($this->translator->trans($warning->key, $warning->params), 5.0);
+            $this->notifier->flash($this->translator->trans($warning->key, $warning->params), seconds: 5.0);
         }
         // Enabled plugins whose packages are missing: boot recorded them rather
         // than shelling out mid-discovery. The subprocesses are armed here and

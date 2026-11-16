@@ -94,11 +94,11 @@ final class EventModelingTest extends TestCase
         $finished = [];
         $cancel = new NativeMermaidRenderer(new MermaidTask($scheduler))->rows(
             $source,
-            80,
-            static function () use (&$finished): void {
+            width: 80,
+            success: static function () use (&$finished): void {
                 $finished[] = 'success';
             },
-            static function () use (&$finished): void {
+            error: static function () use (&$finished): void {
                 $finished[] = 'failure';
             },
         );

@@ -38,17 +38,20 @@ final class LatestVersionsTest extends TestCase
 
     public function testEachSourceAsksItsOwnIndex(): void
     {
-        $this->assertSame('16.1.0', $this->latest($this->versions(0, '{"formulae":[{"versions":{"stable":"16.1.0"}}],"casks":[]}'), new ToolSource(ToolManager::Brew, 'graphviz')));
+        $this->assertSame('16.1.0', $this->latest($this->versions(0, answer: '{"formulae":[{"versions":{"stable":"16.1.0"}}],"casks":[]}'), new ToolSource(ToolManager::Brew, 'graphviz')));
         $this->assertSame(['brew', 'info', '--json=v2', '--formula', 'graphviz'], $this->ran[0]);
 
-        $this->assertSame('0.1.7', $this->latest($this->versions(0, '{"formulae":[],"casks":[{"version":"0.1.7"}]}'), new ToolSource(ToolManager::BrewCask, 'janalis/tap/custos')));
+        $this->assertSame('0.1.7', $this->latest($this->versions(0, answer: '{"formulae":[],"casks":[{"version":"0.1.7"}]}'), new ToolSource(ToolManager::BrewCask, 'janalis/tap/custos')));
         $this->assertSame(['brew', 'info', '--json=v2', '--cask', 'janalis/tap/custos'], $this->ran[1]);
 
-        $this->assertSame('0.5.0', $this->latest($this->versions(0, '{"crate":{"max_stable_version":"0.5.0","max_version":"0.6.0-rc.1"}}'), new ToolSource(ToolManager::Cargo, 'phpantom_lsp')));
+        $this->assertSame('0.5.0', $this->latest(
+            $this->versions(0, answer: '{"crate":{"max_stable_version":"0.5.0","max_version":"0.6.0-rc.1"}}'),
+            new ToolSource(ToolManager::Cargo, 'phpantom_lsp'),
+        ));
         $this->assertContains('-A', $this->ran[2], 'crates.io refuses a request without a User-Agent');
         $this->assertStringEndsWith('https://crates.io/api/v1/crates/phpantom_lsp', \implode(' ', $this->ran[2]));
 
-        $this->assertSame('11.4.0', $this->latest($this->versions(0, '{"version":"v11.4.0"}'), new ToolSource(ToolManager::Npm, '@mermaid-js/mermaid-cli')));
+        $this->assertSame('11.4.0', $this->latest($this->versions(0, answer: '{"version":"v11.4.0"}'), new ToolSource(ToolManager::Npm, '@mermaid-js/mermaid-cli')));
         $this->assertStringEndsWith('https://registry.npmjs.org/@mermaid-js%2Fmermaid-cli/latest', \implode(' ', $this->ran[3]), 'a scoped name keeps its scope in one segment');
     }
 
@@ -56,18 +59,18 @@ final class LatestVersionsTest extends TestCase
     {
         $source = new ToolSource(ToolManager::Github, 'janalis/custos', new GithubAsset('custos_{os}_{arch}', ['Darwin' => 'darwin'], ['arm64' => 'arm64']));
 
-        $this->assertSame('0.1.7', $this->latest($this->versions(0, "HTTP/2 302\r\nlocation: https://github.com/janalis/custos/releases/tag/v0.1.7\r\n\r\n"), $source));
+        $this->assertSame('0.1.7', $this->latest($this->versions(0, answer: "HTTP/2 302\r\nlocation: https://github.com/janalis/custos/releases/tag/v0.1.7\r\n\r\n"), $source));
     }
 
     public function testAFailureOrAnUnusableAnswerIsNull(): void
     {
         $npm = new ToolSource(ToolManager::Npm, 'a');
 
-        $this->assertNull($this->latest($this->versions(6, '{"version":"1.0.0"}'), $npm), 'the network was not there');
-        $this->assertNull($this->latest($this->versions(0, 'not json'), $npm));
-        $this->assertNull($this->latest($this->versions(0, '{}'), $npm));
-        $this->assertNull($this->latest($this->versions(0, '{"version":"dev-main"}'), $npm), 'not a version');
-        $this->assertNull($this->latest($this->versions(0, ''), new ToolSource(ToolManager::Plugin, 'install')), 'a plugin\'s own installer has no index');
+        $this->assertNull($this->latest($this->versions(6, answer: '{"version":"1.0.0"}'), $npm), 'the network was not there');
+        $this->assertNull($this->latest($this->versions(0, answer: 'not json'), $npm));
+        $this->assertNull($this->latest($this->versions(0, answer: '{}'), $npm));
+        $this->assertNull($this->latest($this->versions(0, answer: '{"version":"dev-main"}'), $npm), 'not a version');
+        $this->assertNull($this->latest($this->versions(0, answer: ''), new ToolSource(ToolManager::Plugin, 'install')), 'a plugin\'s own installer has no index');
         $this->assertSame([], \array_slice($this->ran, offset: 4), 'and asks nothing');
     }
 
@@ -78,18 +81,18 @@ final class LatestVersionsTest extends TestCase
      */
     public function testAComposerToolIsNeverSaidToBeOutdated(): void
     {
-        $this->assertNull($this->latest($this->versions(0, '{"packages":{"a/b":[{"version":"9.0.0"}]}}'), new ToolSource(ToolManager::Composer, 'a/b')));
+        $this->assertNull($this->latest($this->versions(0, answer: '{"packages":{"a/b":[{"version":"9.0.0"}]}}'), new ToolSource(ToolManager::Composer, 'a/b')));
         $this->assertSame([], $this->ran, 'nothing is asked');
     }
 
     public function testNewerComparesVersionsNotStrings(): void
     {
-        $this->assertTrue(LatestVersions::newer('1.9.0', '1.10.0'));
-        $this->assertTrue(LatestVersions::newer('v1.0.0', '1.0.1'), 'a v on either side is not a difference');
-        $this->assertFalse(LatestVersions::newer('1.10.0', '1.9.0'));
-        $this->assertFalse(LatestVersions::newer('1.0.0', '1.0.0'));
-        $this->assertFalse(LatestVersions::newer('', '1.0.0'), 'an unknown installed version is never "out of date"');
-        $this->assertFalse(LatestVersions::newer('1.0.0', null));
-        $this->assertFalse(LatestVersions::newer('1.0.0', ''));
+        $this->assertTrue(LatestVersions::newer('1.9.0', latest: '1.10.0'));
+        $this->assertTrue(LatestVersions::newer('v1.0.0', latest: '1.0.1'), 'a v on either side is not a difference');
+        $this->assertFalse(LatestVersions::newer('1.10.0', latest: '1.9.0'));
+        $this->assertFalse(LatestVersions::newer('1.0.0', latest: '1.0.0'));
+        $this->assertFalse(LatestVersions::newer('', latest: '1.0.0'), 'an unknown installed version is never "out of date"');
+        $this->assertFalse(LatestVersions::newer('1.0.0', latest: null));
+        $this->assertFalse(LatestVersions::newer('1.0.0', latest: ''));
     }
 }

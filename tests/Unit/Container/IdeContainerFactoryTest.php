@@ -68,7 +68,7 @@ final class IdeContainerFactoryTest extends TestCase
         $project = new TempProject();
         \putenv('PORTA_CACHE_DIR='.$project->dir);
 
-        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled, 'custom-lsp-command');
+        new IdeContainerFactory()->build('/tmp/porta-factory-test', IdeConfig::load('/tmp/porta-factory-test'), Ansi::Enabled, lspCommand: 'custom-lsp-command');
 
         $this->assertSame('custom-lsp-command', $_ENV['PORTA_LSP_COMMAND']);
     }
@@ -412,7 +412,7 @@ final class IdeContainerFactoryTest extends TestCase
         $locator = $container->get('porta.ide');
         $this->assertInstanceOf(ServiceLocator::class, $locator, 'porta.ide resolves to a service locator');
         $store = $locator->get(SessionStore::class);
-        $this->assertSame('/tmp/porta-factory-test/.porta/session.json', Probe::get($store, 'file'));
+        $this->assertSame('/tmp/porta-factory-test/.porta/session.json', Probe::get($store, property: 'file'));
     }
 
     public function testXdgAndHomeFallbacksDeriveThePortaCacheDir(): void

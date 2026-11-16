@@ -210,7 +210,7 @@ final class NonBlockingWriterTest extends TestCase
         [$write, $read] = $this->pair();
         $writer = $this->writer($write);
 
-        Probe::invoke($writer, 'flush');
+        Probe::invoke($writer, method: 'flush');
 
         $this->assertSame(0, $writer->pendingBytes());
         $this->assertSame([], $this->errors);
@@ -358,7 +358,7 @@ final class NonBlockingWriterTest extends TestCase
                 $writer->write('y'); // each write lets the peer take another kilobyte
             }
 
-            $held = \strlen((string) Probe::get($writer, 'buffer'));
+            $held = \strlen((string) Probe::get($writer, property: 'buffer'));
             $this->assertGreaterThan(0, $writer->pendingBytes(), 'the queue never emptied');
             $this->assertLessThan($writer->pendingBytes() + 1_048_576, $held, 'over 2 MB written, and the buffer holds under a mebibyte of it');
             $writer->close(); // the watcher it armed is on a stream no loop can select

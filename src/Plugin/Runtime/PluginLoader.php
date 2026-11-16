@@ -187,7 +187,7 @@ final readonly class PluginLoader
             if (null === $dir) {
                 continue;
             }
-            foreach (Files::childFiles($dir, 'porta.php') as $file) {
+            foreach (Files::childFiles($dir, name: 'porta.php') as $file) {
                 $name = \basename(\dirname($file));
                 if (!\array_key_exists($name, $seen)) {
                     $seen[$name] = true;
@@ -197,7 +197,7 @@ final readonly class PluginLoader
         }
 
         // Bundled (embedded) plugins are off unless opted into `enabledPlugins`.
-        foreach (null === $this->embeddedDir ? [] : Files::childFiles($this->embeddedDir, 'porta.php') as $file) {
+        foreach (null === $this->embeddedDir ? [] : Files::childFiles($this->embeddedDir, name: 'porta.php') as $file) {
             $name = \basename(\dirname($file));
             if (\array_key_exists($name, $seen)) {
                 continue; // shadowed by a project/global copy, or explicitly disabled

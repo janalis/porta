@@ -84,7 +84,7 @@ final class PaneSplit
         private readonly int $minSide = self::MIN_SIDE,
         private readonly ?\Closure $keysTo = null,
     ) {
-        $this->share = IntMath::clamp($share, 10, 990);
+        $this->share = IntMath::clamp($share, lo: 10, hi: 990);
         $this->drawn = $this->share;
         $this->area = LayoutWidgets::container($id, new Style(direction: Direction::Horizontal, gap: 0, flex: 1));
         $this->leadSide = LayoutWidgets::container($id.'-lead', new Style());
@@ -140,7 +140,7 @@ final class PaneSplit
     /** Restore a persisted proportion; out-of-range values are clamped rather than refused. */
     public function setPercent(int $percent): void
     {
-        $this->setShare(IntMath::clamp($percent, 1, 99) * 10);
+        $this->setShare(IntMath::clamp($percent, lo: 1, hi: 99) * 10);
     }
 
     /**
@@ -325,7 +325,7 @@ final class PaneSplit
         if (null === $focus || ($focus !== $this->lead && $focus !== $this->rest)) {
             return;
         }
-        $this->tui?->setFocus(null !== $focus->getContext() ? $focus : $this->shownAlone());
+        $this->tui->setFocus(null !== $focus->getContext() ? $focus : $this->shownAlone());
     }
 
     /** Who takes the keys in a narrow area: the side it keeps — the lead, unless told to keep the rest — or whom that side names. */

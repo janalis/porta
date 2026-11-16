@@ -17,12 +17,12 @@ final class BookmarkRowsTest extends TestCase
     public function testReadsTheLineFromTheOpenBufferAndSortsByPathThenLine(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/src/B.php', "<?php\nsecond file;\n");
-        $buffers->open('/p/src/A.php', "<?php\n    indented line;\nthird line;\n");
+        $buffers->open('/p/src/B.php', content: "<?php\nsecond file;\n");
+        $buffers->open('/p/src/A.php', content: "<?php\n    indented line;\nthird line;\n");
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/src/B.php', 1);
-        $bookmarks->toggle('/p/src/A.php', 2);
-        $bookmarks->toggle('/p/src/A.php', 1);
+        $bookmarks->toggle('/p/src/B.php', line: 1);
+        $bookmarks->toggle('/p/src/A.php', line: 2);
+        $bookmarks->toggle('/p/src/A.php', line: 1);
 
         $rows = new BookmarkRows($bookmarks, new LineTextReader($buffers), new ProjectPaths('/p'))->build();
 
@@ -42,9 +42,9 @@ final class BookmarkRowsTest extends TestCase
         // A bookmark outlives the buffer that made it, and a list of bare line
         // numbers with no text would be no help at all.
         $project = new TempProject();
-        $project->write('src/A.php', "<?php\nremembered line;\n");
+        $project->write('src/A.php', content: "<?php\nremembered line;\n");
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle($project->path('src/A.php'), 1);
+        $bookmarks->toggle($project->path('src/A.php'), line: 1);
 
         $rows = new BookmarkRows($bookmarks, new LineTextReader(new BufferManager()), new ProjectPaths($project->dir))->build();
 
@@ -54,7 +54,7 @@ final class BookmarkRowsTest extends TestCase
     public function testAnUnreadableFileOrAnOutOfRangeLineStillYieldsAJumpableRow(): void
     {
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/src/Gone.php', 3);
+        $bookmarks->toggle('/p/src/Gone.php', line: 3);
 
         $rows = new BookmarkRows($bookmarks, new LineTextReader(new BufferManager()), new ProjectPaths('/p'))->build();
 

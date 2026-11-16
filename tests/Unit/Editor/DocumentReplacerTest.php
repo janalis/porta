@@ -48,10 +48,10 @@ final class DocumentReplacerTest extends TestCase
     public function testTheSwapIsOneUndoStepAndKeepsTheCaretInTheNewText(): void
     {
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open('/p/a.php', "one\ntwo\nthree\n");
-        $buffer->document->setCursor(2, 4);
+        $buffer = $this->buffers->open('/p/a.php', content: "one\ntwo\nthree\n");
+        $buffer->document->setCursor(2, col: 4);
 
-        $this->assertTrue($replacer->replace($buffer, "new\n"));
+        $this->assertTrue($replacer->replace($buffer, text: "new\n"));
         $this->assertSame("new\n", $buffer->document->getText());
         $this->assertSame(1, $buffer->document->cursorLine, 'the caret is clamped into the shorter text, not dumped at the end');
 
@@ -64,10 +64,10 @@ final class DocumentReplacerTest extends TestCase
         // A tool that changed nothing must not look like it did: no undo entry,
         // no modified flag, no didChange, no repaint.
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open('/p/a.php', "same\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "same\n");
         $buffer->document->markSaved();
 
-        $this->assertFalse($replacer->replace($buffer, "same\n"));
+        $this->assertFalse($replacer->replace($buffer, text: "same\n"));
         $this->assertFalse($buffer->document->isDirty(), 'the buffer is not marked modified');
 
         $buffer->document->undo();
@@ -80,9 +80,9 @@ final class DocumentReplacerTest extends TestCase
         // early-returns on '', so restoring a snapshot of an empty file did
         // nothing while reporting success.
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open('/p/a.php', "was not empty\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "was not empty\n");
 
-        $this->assertTrue($replacer->replace($buffer, ''));
+        $this->assertTrue($replacer->replace($buffer, text: ''));
         $this->assertSame('', $buffer->document->getText());
     }
 
@@ -91,14 +91,14 @@ final class DocumentReplacerTest extends TestCase
         // Counted, not eyeballed: an assertion that the editor "still renders"
         // would pass whether or not the parked swap invalidated it.
         $replacer = $this->replacer();
-        $shown = $this->buffers->open('/p/a.php', "a\n");
-        $parked = $this->buffers->open('/p/b.php', "b\n");
+        $shown = $this->buffers->open('/p/a.php', content: "a\n");
+        $parked = $this->buffers->open('/p/b.php', content: "b\n");
         $this->buffers->setActive($shown->path);
 
-        $replacer->replace($parked, "changed\n");
+        $replacer->replace($parked, text: "changed\n");
         $this->assertSame(0, $this->invalidations->count, 'a buffer nobody is looking at does not repaint the editor');
 
-        $replacer->replace($shown, "changed\n");
+        $replacer->replace($shown, text: "changed\n");
         $this->assertSame(1, $this->invalidations->count, 'the one on screen does');
     }
 
@@ -109,11 +109,11 @@ final class DocumentReplacerTest extends TestCase
 
         // A viewer tab's document is neutralized — writing into it would edit a
         // buffer whose real content is an image.
-        $viewer = $this->buffers->openPane('/p/img.png', 'image', payload: 'pixels');
+        $viewer = $this->buffers->openPane('/p/img.png', paneId: 'image', payload: 'pixels');
         $this->buffers->setActive($viewer->path);
         $this->assertFalse($replacer->replaceActive("x\n"), 'a viewer pane holds the slot');
 
-        $text = $this->buffers->open('/p/a.php', "old\n");
+        $text = $this->buffers->open('/p/a.php', content: "old\n");
         $this->buffers->setActive($text->path);
         $this->assertTrue($replacer->replaceActive("new\n"));
         $this->assertSame("new\n", $text->document->getText());
@@ -127,11 +127,11 @@ final class DocumentReplacerTest extends TestCase
         // flashes "Reloaded a.php" after every format.
         $project = new TempProject(['a.php' => "formatted\n"]);
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open($project->path('a.php'), "unformatted\n");
+        $buffer = $this->buffers->open($project->path('a.php'), content: "unformatted\n");
 
-        $this->assertTrue($replacer->replace($buffer, "formatted\n"));
+        $this->assertTrue($replacer->replace($buffer, text: "formatted\n"));
         $this->assertFalse($buffer->document->isDirty(), 'the buffer IS what is on disk');
-        $this->assertSame($buffer->diskStampNow(), Probe::get($buffer, 'diskStamp'), 'and the poller will recognise it');
+        $this->assertSame($buffer->diskStampNow(), Probe::get($buffer, property: 'diskStamp'), 'and the poller will recognise it');
     }
 
     /** A formatter that wrote a CRLF, BOM file: its text is the buffer's, in the file's own shape. */
@@ -139,9 +139,9 @@ final class DocumentReplacerTest extends TestCase
     {
         $project = new TempProject(['a.php' => "\u{FEFF}formatted\r\n"]);
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open($project->path('a.php'), "\u{FEFF}unformatted\r\n");
+        $buffer = $this->buffers->open($project->path('a.php'), content: "\u{FEFF}unformatted\r\n");
 
-        $this->assertTrue($replacer->replace($buffer, "formatted\n"));
+        $this->assertTrue($replacer->replace($buffer, text: "formatted\n"));
         $this->assertFalse($buffer->document->isDirty(), 'the buffer IS what is on disk');
     }
 
@@ -150,10 +150,10 @@ final class DocumentReplacerTest extends TestCase
         // The project-replace case: the buffer is edited, disk is not.
         $project = new TempProject(['a.php' => "on disk\n"]);
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open($project->path('a.php'), "on disk\n");
+        $buffer = $this->buffers->open($project->path('a.php'), content: "on disk\n");
         $buffer->document->markSaved();
 
-        $this->assertTrue($replacer->replace($buffer, "edited\n"));
+        $this->assertTrue($replacer->replace($buffer, text: "edited\n"));
         $this->assertTrue($buffer->document->isDirty());
     }
 
@@ -161,17 +161,17 @@ final class DocumentReplacerTest extends TestCase
     {
         $project = new TempProject(['a.php' => "one\nTWO\n"]);
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open($project->path('a.php'), "one\ntwo\nthree\n");
+        $buffer = $this->buffers->open($project->path('a.php'), content: "one\ntwo\nthree\n");
         $this->buffers->setActive($buffer->path);
 
-        $replacer->replaceRange($buffer, 1, 0, 2, 5, 'TWO');
+        $replacer->replaceRange($buffer, line: 1, column: 0, endLine: 2, endColumn: 5, text: 'TWO');
 
         $this->assertSame("one\nTWO\n", $buffer->document->getText());
         $this->assertSame([0, 0], [$buffer->document->cursorLine, $buffer->document->cursorCol], 'the caret before the range stays');
         $this->assertFalse($buffer->document->isDirty(), 'it now IS the disk copy');
         $this->assertSame(1, $this->invalidations->count, 'the buffer on screen repaints');
 
-        $replacer->replaceRange($buffer, 0, 3, 0, 3, '!');
+        $replacer->replaceRange($buffer, line: 0, column: 3, endLine: 0, endColumn: 3, text: '!');
         $this->assertSame("one!\nTWO\n", $buffer->document->getText(), 'an empty range inserts');
         $buffer->document->undo();
         $buffer->document->undo();
@@ -181,38 +181,38 @@ final class DocumentReplacerTest extends TestCase
     public function testTheUsersCaretAndSelectionStayWithTheTextTheySatIn(): void
     {
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open('/p/a.php', "abcdef\nghij\nklm\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "abcdef\nghij\nklm\n");
         $document = $buffer->document;
         $at = static fn (): array => [$document->cursorLine, $document->cursorCol];
 
-        $document->setCursor(1, 3); // "ghi|j"
-        $replacer->replaceRange($buffer, 0, 2, 1, 1, "X\nYZ"); // "ab[cdef\ng]hij" → "abX\nYZhij"
+        $document->setCursor(1, col: 3); // "ghi|j"
+        $replacer->replaceRange($buffer, line: 0, column: 2, endLine: 1, endColumn: 1, text: "X\nYZ"); // "ab[cdef\ng]hij" → "abX\nYZhij"
         $this->assertSame("abX\nYZhij\nklm\n", $document->getText());
         $this->assertSame([1, 4], $at(), 'on the range\'s last line: shifted by columns too');
 
-        $replacer->replaceRange($buffer, 0, 0, 0, 1, '');
+        $replacer->replaceRange($buffer, line: 0, column: 0, endLine: 0, endColumn: 1, text: '');
         $this->assertSame([1, 4], $at(), 'an edit on an earlier line leaves the columns');
 
-        $document->setCursor(2, 1);
-        $replacer->replaceRange($buffer, 0, 0, 0, 0, "new\n");
+        $document->setCursor(2, col: 1);
+        $replacer->replaceRange($buffer, line: 0, column: 0, endLine: 0, endColumn: 0, text: "new\n");
         $this->assertSame([3, 1], $at(), 'a line inserted above moves it down');
 
-        $document->setCursor(1, 1);
-        $replacer->replaceRange($buffer, 1, 0, 2, 2, 'Q');
+        $document->setCursor(1, col: 1);
+        $replacer->replaceRange($buffer, line: 1, column: 0, endLine: 2, endColumn: 2, text: 'Q');
         $this->assertSame("new\nQhij\nklm\n", $document->getText());
         $this->assertSame([1, 1], $at(), 'swallowed by the range: at the end of the new text');
 
-        $document->setCursor(2, 3);
+        $document->setCursor(2, col: 3);
         $document->beginSelect();
-        $document->setCursor(2, 1, SelectionMode::Keep); // selected "lm", backwards
-        $replacer->replaceRange($buffer, 2, 0, 2, 0, '>>');
+        $document->setCursor(2, col: 1, selection: SelectionMode::Keep); // selected "lm", backwards
+        $replacer->replaceRange($buffer, line: 2, column: 0, endLine: 2, endColumn: 0, text: '>>');
         $this->assertSame(['startLine' => 2, 'startCol' => 3, 'endLine' => 2, 'endCol' => 5], $document->getSelectionRange(), 'the selection moved with its text');
         $this->assertSame([2, 3], $at(), 'and the caret is still at the end it was at');
 
-        $document->setCursor(2, 5);
+        $document->setCursor(2, col: 5);
         $document->beginSelect();
-        $document->setCursor(1, 0, SelectionMode::Keep);
-        $replacer->replaceRange($buffer, 0, 0, 0, 3, 'NEW');
+        $document->setCursor(1, col: 0, selection: SelectionMode::Keep);
+        $replacer->replaceRange($buffer, line: 0, column: 0, endLine: 0, endColumn: 3, text: 'NEW');
         $this->assertSame(['startLine' => 1, 'startCol' => 0, 'endLine' => 2, 'endCol' => 5], $document->getSelectionRange(), 'forwards or backwards, across lines');
     }
 
@@ -241,10 +241,10 @@ final class DocumentReplacerTest extends TestCase
             public function invalidate(): void {}
         };
         $replacer = new DocumentReplacer($this->buffers, $invalidations, $lsp);
-        $buffer = $this->buffers->open('/p/a.php', "one\n");
-        $lsp->notifyDidOpen('/p/a.php', "one\n", 'php', 1); // starts the session
+        $buffer = $this->buffers->open('/p/a.php', content: "one\n");
+        $lsp->notifyDidOpen('/p/a.php', text: "one\n", languageId: 'php', version: 1); // starts the session
 
-        $replacer->replace($buffer, "two\n");
+        $replacer->replace($buffer, text: "two\n");
 
         $this->assertInstanceOf(FakeLspClient::class, $client);
         $this->assertSame(
@@ -256,11 +256,11 @@ final class DocumentReplacerTest extends TestCase
     public function testSeveralRangesAreOneUndoStepAndTheCaretShiftsThroughEach(): void
     {
         $replacer = $this->replacer();
-        $buffer = $this->buffers->open('/p/a.php', "one\ntwo\nthree\n");
+        $buffer = $this->buffers->open('/p/a.php', content: "one\ntwo\nthree\n");
         $document = $buffer->document;
-        $document->setCursor(2, 2); // "th|ree"
+        $document->setCursor(2, col: 2); // "th|ree"
         $document->beginSelect();
-        $document->setCursor(2, 4, SelectionMode::Keep); // "ee" selected, the caret after it
+        $document->setCursor(2, col: 4, selection: SelectionMode::Keep); // "ee" selected, the caret after it
 
         $replacer->replaceRanges($buffer, [
             ['line' => 0, 'column' => 0, 'endLine' => 0, 'endColumn' => 3, 'text' => "ONE\nAND A HALF"],

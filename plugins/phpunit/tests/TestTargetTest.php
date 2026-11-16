@@ -75,20 +75,20 @@ final class TestTargetTest extends TestCase
 
     public function testTheClassNeedsNoNamespaceButMustExist(): void
     {
-        $this->assertSame('DemoTest', TestTarget::at("<?php\nabstract class DemoTest {}\n", 0)?->class);
-        $this->assertSame('A\B\CTest', TestTarget::at("<?php\nnamespace A\\B;\n\nreadonly final class CTest {}\n", 3)?->class);
-        $this->assertNull(TestTarget::at("<?php\nfunction helper() {}\n", 1));
+        $this->assertSame('DemoTest', TestTarget::at("<?php\nabstract class DemoTest {}\n", line: 0)?->class);
+        $this->assertSame('A\B\CTest', TestTarget::at("<?php\nnamespace A\\B;\n\nreadonly final class CTest {}\n", line: 3)?->class);
+        $this->assertNull(TestTarget::at("<?php\nfunction helper() {}\n", line: 1));
     }
 
     public function testTheEdgesOfTheScan(): void
     {
-        $this->assertSame('testLast', TestTarget::at("<?php\nclass ATest {\npublic function testLast() {}", 2)?->method, 'a caret past the end stops on the last line, which may be the method');
-        $this->assertSame('check', TestTarget::at("#[Test]\npublic function check(): void {}\nclass ATest {}\n", 1)?->method, 'a marker on the first line counts');
-        $this->assertSame('testTop', TestTarget::at("function testTop() {}\nclass ATest {}\n", 0)?->method, 'so does a method on it');
-        $this->assertSame('marked', TestTarget::at("<?php\nclass ATest {\n#[Test]\npublic function marked() {}\n}\n", 3)?->method, 'a marker right above counts');
-        $this->assertNull(TestTarget::at("<?php\nclass ATest {\n/**\n * Not a #[Test], a helper\n */\npublic function helper() {}\n}\n", 5)?->method, 'a marker inside prose is no marker');
+        $this->assertSame('testLast', TestTarget::at("<?php\nclass ATest {\npublic function testLast() {}", line: 2)?->method, 'a caret past the end stops on the last line, which may be the method');
+        $this->assertSame('check', TestTarget::at("#[Test]\npublic function check(): void {}\nclass ATest {}\n", line: 1)?->method, 'a marker on the first line counts');
+        $this->assertSame('testTop', TestTarget::at("function testTop() {}\nclass ATest {}\n", line: 0)?->method, 'so does a method on it');
+        $this->assertSame('marked', TestTarget::at("<?php\nclass ATest {\n#[Test]\npublic function marked() {}\n}\n", line: 3)?->method, 'a marker right above counts');
+        $this->assertNull(TestTarget::at("<?php\nclass ATest {\n/**\n * Not a #[Test], a helper\n */\npublic function helper() {}\n}\n", line: 5)?->method, 'a marker inside prose is no marker');
 
-        $commented = TestTarget::at("<?php\n// was in namespace Old\\Place; moved\nnamespace New\\Place;\n\n/**\n * The class Helper below is gone.\n */\nfinal class DemoTest {}\n", 7);
+        $commented = TestTarget::at("<?php\n// was in namespace Old\\Place; moved\nnamespace New\\Place;\n\n/**\n * The class Helper below is gone.\n */\nfinal class DemoTest {}\n", line: 7);
         $this->assertSame('New\\Place\\DemoTest', $commented?->class, 'a namespace or a class named in a comment is not the declaration');
     }
 
@@ -99,17 +99,17 @@ final class TestTargetTest extends TestCase
         foreach ([4 => 'testB', 5 => 'testB', 7 => 'testB', 8 => 'testB', 9 => 'testB', 3 => 'testA', 10 => 'testB', 11 => 'testB'] as $line => $method) {
             $this->assertSame($method, TestTarget::at($text, $line)?->method, 'line '.$line);
         }
-        $this->assertSame('testB', TestTarget::at("<?php\nclass ATest {\n#[Test]\npublic function testB() {}", 2)?->method, 'an attribute on the last lines still reaches its method');
+        $this->assertSame('testB', TestTarget::at("<?php\nclass ATest {\n#[Test]\npublic function testB() {}", line: 2)?->method, 'an attribute on the last lines still reaches its method');
     }
 
     public function testTheClassIsTheOneAroundTheCaret(): void
     {
         $text = "<?php\nnamespace App;\n\nfinal class FakeClock {}\n\nfinal class ClockTest extends TestCase {\npublic function testA() {}\n}\n\nfinal class Helper {}\n";
 
-        $this->assertSame('App\\ClockTest', TestTarget::at($text, 6)?->class, 'not the fixture declared before it');
-        $this->assertSame('App\\FakeClock', TestTarget::at($text, 3)?->class, 'on a class, that class');
-        $this->assertSame('App\\ClockTest', TestTarget::at($text, 1)?->class, 'above every class: the one named like a test');
-        $this->assertSame('App\\Helper', TestTarget::at("<?php\nnamespace App;\nfinal class Helper {}\nfinal class Other {}\n", 0)?->class, 'and with none named so, the first');
+        $this->assertSame('App\\ClockTest', TestTarget::at($text, line: 6)?->class, 'not the fixture declared before it');
+        $this->assertSame('App\\FakeClock', TestTarget::at($text, line: 3)?->class, 'on a class, that class');
+        $this->assertSame('App\\ClockTest', TestTarget::at($text, line: 1)?->class, 'above every class: the one named like a test');
+        $this->assertSame('App\\Helper', TestTarget::at("<?php\nnamespace App;\nfinal class Helper {}\nfinal class Other {}\n", line: 0)?->class, 'and with none named so, the first');
     }
 
     public function testTheFilterRunsEachMethodWithEveryDataSet(): void
@@ -131,15 +131,15 @@ final class TestTargetTest extends TestCase
     {
         $file = PestTestsTest::FILE;
 
-        $this->assertEquals(new TestTarget('', 'it fails (on purpose)'), TestTarget::at($file, 7), 'inside its closure');
-        $this->assertEquals(new TestTarget('', 'it fails (on purpose)'), TestTarget::at($file, 6), 'on its first line');
-        $this->assertEquals(new TestTarget('', '`outer` → it says "hi"'), TestTarget::at($file, 14), 'in a group');
-        $this->assertEquals(new TestTarget('', null), TestTarget::at($file, 5), 'between two: the whole file');
-        $this->assertEquals(new TestTarget('', null), TestTarget::at($file, 10), 'in a group, outside its tests: the whole file');
-        $this->assertNull(TestTarget::at("<?php\nfunction helper() {}\n", 1), 'neither a class nor a test');
+        $this->assertEquals(new TestTarget('', 'it fails (on purpose)'), TestTarget::at($file, line: 7), 'inside its closure');
+        $this->assertEquals(new TestTarget('', 'it fails (on purpose)'), TestTarget::at($file, line: 6), 'on its first line');
+        $this->assertEquals(new TestTarget('', '`outer` → it says "hi"'), TestTarget::at($file, line: 14), 'in a group');
+        $this->assertEquals(new TestTarget('', null), TestTarget::at($file, line: 5), 'between two: the whole file');
+        $this->assertEquals(new TestTarget('', null), TestTarget::at($file, line: 10), 'in a group, outside its tests: the whole file');
+        $this->assertNull(TestTarget::at("<?php\nfunction helper() {}\n", line: 1), 'neither a class nor a test');
         $this->assertEquals(
             new TestTarget('', 'it charges'),
-            TestTarget::at("<?php\nfinal class FakeGateway {}\n\nit('charges', function () {\n    expect(1)->toBe(1);\n});\n", 4),
+            TestTarget::at("<?php\nfinal class FakeGateway {}\n\nit('charges', function () {\n    expect(1)->toBe(1);\n});\n", line: 4),
             'a Pest file that declares a fake of its own is still Pest\'s',
         );
     }

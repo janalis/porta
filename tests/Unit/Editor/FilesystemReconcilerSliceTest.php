@@ -48,8 +48,8 @@ final class FilesystemReconcilerSliceTest extends TestCase
 
     public function testAnExternalEditIsPickedUpByTheSlicedPoll(): void
     {
-        $a = (string) \realpath($this->project->write('a.php', "<?php // a\n"));
-        $b = (string) \realpath($this->project->write('b.php', "<?php // b\n"));
+        $a = (string) \realpath($this->project->write('a.php', content: "<?php // a\n"));
+        $b = (string) \realpath($this->project->write('b.php', content: "<?php // b\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffers->openFile($b, focus: OpenFocus::Editor);
@@ -66,7 +66,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     /** A reload is the disk's: a file someone converted to LF saves as LF from then on. */
     public function testAReloadTakesTheFilesNewLineEnding(): void
     {
-        $a = (string) \realpath($this->project->write('a.php', "<?php\r\n// a\r\n"));
+        $a = (string) \realpath($this->project->write('a.php', content: "<?php\r\n// a\r\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
 
@@ -82,7 +82,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
     /** Someone wrote exactly the unsaved text, CRLF and all: saved, not a clash. */
     public function testACrlfFileWrittenWithTheBuffersTextIsSaved(): void
     {
-        $a = (string) \realpath($this->project->write('a.php', "<?php\r\n"));
+        $a = (string) \realpath($this->project->write('a.php', content: "<?php\r\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffer = Services::resolve($this->ide, BufferManager::class)->get($a);
@@ -102,14 +102,14 @@ final class FilesystemReconcilerSliceTest extends TestCase
         // The pacer's own arithmetic is {@see PollBackoffTest}'s; this is the
         // wiring — that a stood-down tick reaches no filesystem at all, and that
         // the detection it costs comes back on its own.
-        $a = (string) \realpath($this->project->write('a.php', "<?php // a\n"));
+        $a = (string) \realpath($this->project->write('a.php', content: "<?php // a\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $manager = Services::resolve($this->ide, BufferManager::class);
         $this->assertInstanceOf(BufferManager::class, $manager, 'the locator serves the buffer manager');
 
         $backoff = Probe::object(Probe::object($buffers, 'reconciler'), 'backoff');
-        Probe::set($backoff, 'skips', 2); // as a slow slice would have left it
+        Probe::set($backoff, property: 'skips', value: 2); // as a slow slice would have left it
 
         \file_put_contents($a, data: "<?php // a v2 is longer\n");
         \touch($a, \time() + 2);
@@ -131,8 +131,8 @@ final class FilesystemReconcilerSliceTest extends TestCase
         // performs. A plugin listener this slow is not hypothetical; it is the
         // shape of every freeze.log backtrace, with a stat in place of the
         // listener.
-        $a = (string) \realpath($this->project->write('a.php', "<?php // a\n"));
-        $b = (string) \realpath($this->project->write('b.php', "<?php // b\n"));
+        $a = (string) \realpath($this->project->write('a.php', content: "<?php // a\n"));
+        $b = (string) \realpath($this->project->write('b.php', content: "<?php // b\n"));
         $buffers = $this->buffers();
         $buffers->openFile($a, focus: OpenFocus::Editor);
         $buffers->openFile($b, focus: OpenFocus::Editor);
@@ -165,14 +165,14 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers = $this->buffers();
         $paths = [];
         foreach (['a', 'b', 'c', 'd', 'e'] as $name) {
-            $paths[] = (string) \realpath($this->project->write($name.'.php', "<?php\n"));
+            $paths[] = (string) \realpath($this->project->write($name.'.php', content: "<?php\n"));
             $buffers->openFile((string) \end($paths), focus: OpenFocus::Editor);
         }
 
         $buffers->pollFilesystemSlice();
 
         $reconciler = Probe::object($buffers, 'reconciler'); // inlined service: only reachable through its owner
-        $this->assertSame([$paths[4]], Probe::get($reconciler, 'pendingPaths'), 'the slice takes from the FRONT and leaves the last-opened buffer for the next tick');
+        $this->assertSame([$paths[4]], Probe::get($reconciler, property: 'pendingPaths'), 'the slice takes from the FRONT and leaves the last-opened buffer for the next tick');
     }
 
     public function testABufferClosedMidCycleIsNeverStattedOrFlashed(): void
@@ -180,7 +180,7 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $buffers = $this->buffers();
         $paths = [];
         foreach (['a', 'b', 'c', 'd', 'e'] as $name) {
-            $paths[$name] = (string) \realpath($this->project->write($name.'.php', "<?php\n"));
+            $paths[$name] = (string) \realpath($this->project->write($name.'.php', content: "<?php\n"));
             $buffers->openFile($paths[$name], focus: OpenFocus::Editor);
         }
         $buffers->pollFilesystemSlice(); // e.php (opened last) is the one left pending
@@ -194,14 +194,14 @@ final class FilesystemReconcilerSliceTest extends TestCase
 
     public function testTheTreeSliceIsBoundedToEightDirsPerTick(): void
     {
-        $deep = $this->project->write('d1/d2/d3/d4/d5/d6/d7/d8/d9/leaf.php', "<?php\n");
+        $deep = $this->project->write('d1/d2/d3/d4/d5/d6/d7/d8/d9/leaf.php', content: "<?php\n");
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
         $this->assertInstanceOf(FileTreeWidget::class, $tree, 'the locator serves the file tree');
         $tree->revealPath((string) \realpath($deep)); // ten scanned dirs: root + d1..d9
 
         $this->buffers()->pollFilesystemSlice();
 
-        $this->assertSame(8, Probe::get($tree, 'dirCursor'), 'one tick advances the tree scan by exactly eight dirs');
+        $this->assertSame(8, Probe::get($tree, property: 'dirCursor'), 'one tick advances the tree scan by exactly eight dirs');
     }
 
     public function testATreeChangeFoundByTheSliceRequestsARender(): void
@@ -209,12 +209,12 @@ final class FilesystemReconcilerSliceTest extends TestCase
         $tree = Services::resolve($this->ide, FileTreeWidget::class);
         $this->assertInstanceOf(FileTreeWidget::class, $tree, 'the locator serves the file tree');
         $tui = Services::resolve($this->ide, Tui::class);
-        Probe::invoke($tui, 'processRender'); // settle: clear any pending request
+        Probe::invoke($tui, method: 'processRender'); // settle: clear any pending request
 
-        $this->project->write('new-entry.php', "<?php\n");
+        $this->project->write('new-entry.php', content: "<?php\n");
         $this->buffers()->pollFilesystemSlice();
 
-        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'the tree refresh asked for a repaint');
+        $this->assertTrue((bool) Probe::get($tui, property: 'renderRequested'), 'the tree refresh asked for a repaint');
         $this->assertStringContainsString('new-entry.php', \implode("\n", \array_map(
             AnsiUtils::stripAnsiCodes(...),
             $tree->render(new RenderContext(30, 20)),

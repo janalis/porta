@@ -20,16 +20,16 @@ final class AnsiTextTest extends TestCase
     {
         $path = 'src/Some/Deep/Namespace/ExampleClass.php';
 
-        $this->assertSame($path, AnsiText::elideMiddle($path, 40), 'nothing to cut, byte-identical');
-        $this->assertSame('src/Some/De…pleClass.php', AnsiText::elideMiddle($path, 24));
-        $this->assertSame(24, AnsiUtils::visibleWidth(AnsiText::elideMiddle($path, 24)));
+        $this->assertSame($path, AnsiText::elideMiddle($path, width: 40), 'nothing to cut, byte-identical');
+        $this->assertSame('src/Some/De…pleClass.php', AnsiText::elideMiddle($path, width: 24));
+        $this->assertSame(24, AnsiUtils::visibleWidth(AnsiText::elideMiddle($path, width: 24)));
     }
 
     /** Below the mark's own width there are no two ends to keep, so it degrades to the ordinary cut. */
     public function testElideMiddleFallsBackWhenThereIsNoRoomForTwoEnds(): void
     {
-        $this->assertSame('…', AnsiText::elideMiddle('abcdef', 1));
-        $this->assertSame(1, AnsiUtils::visibleWidth(AnsiText::elideMiddle('abcdef', 1)));
+        $this->assertSame('…', AnsiText::elideMiddle('abcdef', width: 1));
+        $this->assertSame(1, AnsiUtils::visibleWidth(AnsiText::elideMiddle('abcdef', width: 1)));
     }
 
     /**
@@ -66,30 +66,30 @@ final class AnsiTextTest extends TestCase
     {
         // The point of the wrapper: the vendor's own default is '...', so a
         // site that forgets the mark would silently render three ASCII dots.
-        $this->assertSame('abc…', AnsiText::truncate('abcdefgh', 4));
-        $this->assertSame('abcd', AnsiText::truncate('abcd', 4), 'a line that fits is untouched');
+        $this->assertSame('abc…', AnsiText::truncate('abcdefgh', width: 4));
+        $this->assertSame('abcd', AnsiText::truncate('abcd', width: 4), 'a line that fits is untouched');
     }
 
     public function testTruncatePadsOnlyWhenAsked(): void
     {
-        $this->assertSame('ab   ', AnsiText::truncate('ab', 5, pad: true));
-        $this->assertSame('ab', AnsiText::truncate('ab', 5), 'unpadded by default');
+        $this->assertSame('ab   ', AnsiText::truncate('ab', width: 5, pad: true));
+        $this->assertSame('ab', AnsiText::truncate('ab', width: 5), 'unpadded by default');
     }
 
     public function testTruncateTakesAnEmptyMarkForTheDeliberateNoMarkSites(): void
     {
-        $this->assertSame('abcd', AnsiText::truncate('abcdefgh', 4, ellipsis: ''));
-        $this->assertSame('abcd', AnsiText::truncate('abcdefgh', 4, pad: true, ellipsis: ''));
+        $this->assertSame('abcd', AnsiText::truncate('abcdefgh', width: 4, ellipsis: ''));
+        $this->assertSame('abcd', AnsiText::truncate('abcdefgh', width: 4, pad: true, ellipsis: ''));
     }
 
     public function testTruncateMeasuresDisplayColumnsNotBytes(): void
     {
-        $this->assertSame(6, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', 6)), 'three wide glyphs fit exactly');
+        $this->assertSame(6, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', width: 6)), 'three wide glyphs fit exactly');
         // A wide glyph cannot straddle the cut, so the result can land one
         // column SHORT of the width — never over it, which is what would
         // garble the row. Pad when the caller needs the column filled.
-        $this->assertSame(3, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', 4)), '日 + the mark; 本 will not fit in the remaining column');
-        $this->assertSame(4, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', 4, pad: true)), 'padding fills the short column');
+        $this->assertSame(3, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', width: 4)), '日 + the mark; 本 will not fit in the remaining column');
+        $this->assertSame(4, AnsiUtils::visibleWidth(AnsiText::truncate('日本語', width: 4, pad: true)), 'padding fills the short column');
     }
 
     public function testTruncateNeverExceedsTheRequestedWidth(): void
@@ -107,14 +107,14 @@ final class AnsiTextTest extends TestCase
     public function testCaretWindowKeepsShortTextIntactWithTheMarkerAtTheCaret(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $this->assertSame('abc'.$m, AnsiText::caretWindow('abc', 3, 10, $m), 'caret at end');
-        $this->assertSame('a'.$m.'bc', AnsiText::caretWindow('abc', 1, 10, $m), 'caret mid-line');
+        $this->assertSame('abc'.$m, AnsiText::caretWindow('abc', caretCol: 3, width: 10, marker: $m), 'caret at end');
+        $this->assertSame('a'.$m.'bc', AnsiText::caretWindow('abc', caretCol: 1, width: 10, marker: $m), 'caret mid-line');
     }
 
     public function testCaretWindowScrollsToTheTailWhenTheCaretIsAtTheEnd(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $out = AnsiText::caretWindow('0123456789', 10, 5, $m);
+        $out = AnsiText::caretWindow('0123456789', caretCol: 10, width: 5, marker: $m);
         $this->assertSame('6789'.$m, $out, 'shows the trailing window with the marker');
         $this->assertLessThanOrEqual(5, AnsiUtils::visibleWidth($out));
     }
@@ -122,7 +122,7 @@ final class AnsiTextTest extends TestCase
     public function testCaretWindowBracketsAMidLineCaret(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $out = AnsiText::caretWindow('0123456789', 5, 5, $m);
+        $out = AnsiText::caretWindow('0123456789', caretCol: 5, width: 5, marker: $m);
         $this->assertSame('1234'.$m.'5', $out);
         $this->assertLessThanOrEqual(5, AnsiUtils::visibleWidth($out));
     }
@@ -130,7 +130,7 @@ final class AnsiTextTest extends TestCase
     public function testCaretWindowHandlesWideCharacters(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $out = AnsiText::caretWindow('あいうえお', 10, 3, $m); // 5 wide chars = 10 columns, caret at end
+        $out = AnsiText::caretWindow('あいうえお', caretCol: 10, width: 3, marker: $m); // 5 wide chars = 10 columns, caret at end
         $this->assertSame(1, \substr_count($out, $m), 'exactly one marker');
         $this->assertLessThanOrEqual(3, AnsiUtils::visibleWidth($out));
     }
@@ -138,10 +138,10 @@ final class AnsiTextTest extends TestCase
     /** Plain text comes back exactly as the vendor slice would give it. */
     public function testColumnsFromIsAPlainSliceWhenNothingStraddles(): void
     {
-        $this->assertSame('cde', AnsiText::columnsFrom('abcdefg', 2, 3));
-        $this->assertSame('efg', AnsiText::columnsFrom('abcdefg', 4, 10), 'a tail past the end is not padded');
-        $this->assertSame('', AnsiText::columnsFrom('abc', 5, 3), 'starting past the end is empty, not a blank');
-        $this->assertSame('ab', AnsiText::columnsFrom('ab中', 0, 3), 'a prefix drops an end straddler too');
+        $this->assertSame('cde', AnsiText::columnsFrom('abcdefg', startCol: 2, length: 3));
+        $this->assertSame('efg', AnsiText::columnsFrom('abcdefg', startCol: 4, length: 10), 'a tail past the end is not padded');
+        $this->assertSame('', AnsiText::columnsFrom('abc', startCol: 5, length: 3), 'starting past the end is empty, not a blank');
+        $this->assertSame('ab', AnsiText::columnsFrom('ab中', startCol: 0, length: 3), 'a prefix drops an end straddler too');
     }
 
     /**
@@ -152,10 +152,10 @@ final class AnsiTextTest extends TestCase
      */
     public function testColumnsFromKeepsAlignmentWhenAWideGlyphStraddlesTheStart(): void
     {
-        $this->assertSame(' b', AnsiText::columnsFrom('a中b', 2, 5));
-        $this->assertSame(' ', AnsiText::columnsFrom('a中b', 2, 1));
-        $this->assertSame('', AnsiText::columnsFrom('a中b', 2, 0), 'no room, no blank: a popup flush with the right edge leaves a zero-width tail');
-        $this->assertSame(' bc', AnsiText::columnsFrom('a中bcd', 2, 3), 'the blank takes one column of the budget, not two');
+        $this->assertSame(' b', AnsiText::columnsFrom('a中b', startCol: 2, length: 5));
+        $this->assertSame(' ', AnsiText::columnsFrom('a中b', startCol: 2, length: 1));
+        $this->assertSame('', AnsiText::columnsFrom('a中b', startCol: 2, length: 0), 'no room, no blank: a popup flush with the right edge leaves a zero-width tail');
+        $this->assertSame(' bc', AnsiText::columnsFrom('a中bcd', startCol: 2, length: 3), 'the blank takes one column of the budget, not two');
     }
 
     /**
@@ -165,8 +165,8 @@ final class AnsiTextTest extends TestCase
      */
     public function testColumnsFromNeverExceedsTheAskedWidth(): void
     {
-        $this->assertSame('', AnsiText::columnsFrom('a中b', 1, 1));
-        $this->assertSame('中', AnsiText::columnsFrom('a中b', 1, 2));
+        $this->assertSame('', AnsiText::columnsFrom('a中b', startCol: 1, length: 1));
+        $this->assertSame('中', AnsiText::columnsFrom('a中b', startCol: 1, length: 2));
         foreach (['中文字', 'a中文字b', '😀x😀', "\e[31m中\e[0m文字"] as $line) {
             $total = AnsiUtils::visibleWidth($line);
             for ($start = 0; $start < $total; ++$start) {
@@ -180,7 +180,7 @@ final class AnsiTextTest extends TestCase
     /** The active style at the cut survives: the vendor slice re-emits it. */
     public function testColumnsFromCarriesTheStyleAcrossTheCut(): void
     {
-        $out = AnsiText::columnsFrom("\e[31mab中cd\e[0m", 3, 3);
+        $out = AnsiText::columnsFrom("\e[31mab中cd\e[0m", startCol: 3, length: 3);
 
         $this->assertSame(' cd', AnsiUtils::stripAnsiCodes($out));
         $this->assertStringContainsString("\e[31m", $out);
@@ -198,7 +198,7 @@ final class AnsiTextTest extends TestCase
 
     public function testScrollLineToCaretClipsAndPadsAMarkerlessLine(): void
     {
-        $out = AnsiText::scrollLineToCaret('a short line', 20);
+        $out = AnsiText::scrollLineToCaret('a short line', width: 20);
 
         $this->assertSame(20, AnsiUtils::visibleWidth($out), 'padded to width');
         $this->assertStringStartsWith('a short line', AnsiUtils::stripAnsiCodes($out), 'clipped from the start');
@@ -210,7 +210,7 @@ final class AnsiTextTest extends TestCase
         // "Find: " + long query + marker at the caret, then trailing chrome.
         $line = 'Find: '.\str_repeat('q', times: 40).$m.'  [0/0]';
 
-        $out = AnsiText::scrollLineToCaret($line, 20);
+        $out = AnsiText::scrollLineToCaret($line, width: 20);
 
         $this->assertSame(1, \substr_count($out, $m), 'the caret survives');
         $this->assertSame(20, AnsiUtils::visibleWidth($out), 'clipped and padded to width');
@@ -222,7 +222,7 @@ final class AnsiTextTest extends TestCase
     {
         // The marker is found by its APC prefix, whatever the configured shape.
         $block = AnsiUtils::cursorMarker(CursorShape::Block);
-        $out = AnsiText::scrollLineToCaret('ab'.$block.'cd', 10);
+        $out = AnsiText::scrollLineToCaret('ab'.$block.'cd', width: 10);
 
         $this->assertSame(1, \substr_count($out, $block), 'a block marker survives untouched');
         $this->assertSame(10, AnsiUtils::visibleWidth($out));
@@ -230,78 +230,78 @@ final class AnsiTextTest extends TestCase
 
     public function testScrollLineToCaretTreatsAnUnterminatedMarkerPrefixAsPlainText(): void
     {
-        $out = AnsiText::scrollLineToCaret('ab'.AnsiUtils::CURSOR_MARKER_PREFIX, 10);
+        $out = AnsiText::scrollLineToCaret('ab'.AnsiUtils::CURSOR_MARKER_PREFIX, width: 10);
 
         $this->assertSame(10, AnsiUtils::visibleWidth($out), 'falls back to a plain clip');
     }
 
     public function testPadsWithTrailingSpacesToReachTheWidth(): void
     {
-        $this->assertSame('ab   ', AnsiText::padRight('ab', 5));
+        $this->assertSame('ab   ', AnsiText::padRight('ab', width: 5));
     }
 
     public function testIsANoOpWhenAlreadyAtLeastAsWide(): void
     {
-        $this->assertSame('abcd', AnsiText::padRight('abcd', 4));
-        $this->assertSame('abcdef', AnsiText::padRight('abcdef', 4));
+        $this->assertSame('abcd', AnsiText::padRight('abcd', width: 4));
+        $this->assertSame('abcdef', AnsiText::padRight('abcdef', width: 4));
     }
 
     public function testCountsVisibleWidthOnlyIgnoringSgrCodes(): void
     {
         // "ab" styled is two visible columns, so it pads to five.
-        $this->assertSame("\x1b[31mab\x1b[0m   ", AnsiText::padRight("\x1b[31mab\x1b[0m", 5));
+        $this->assertSame("\x1b[31mab\x1b[0m   ", AnsiText::padRight("\x1b[31mab\x1b[0m", width: 5));
     }
 
     public function testWrapBreaksGreedilyOnSpaces(): void
     {
-        $this->assertSame(['aa bb', 'cc'], AnsiText::wrap('aa bb cc', 5));
+        $this->assertSame(['aa bb', 'cc'], AnsiText::wrap('aa bb cc', width: 5));
     }
 
     public function testWrapKeepsAnExactFitOnOneLine(): void
     {
-        $this->assertSame(['aa bb'], AnsiText::wrap('aa bb', 5));
+        $this->assertSame(['aa bb'], AnsiText::wrap('aa bb', width: 5));
     }
 
     /** A single word wider than a whole line hard-breaks rather than overflows. */
     public function testWrapHardBreaksAnOverWideWord(): void
     {
-        $this->assertSame(['abcde', 'fg'], AnsiText::wrap('abcdefg', 5));
-        $this->assertSame(['aa', 'bbbb', 'bb', 'cc'], AnsiText::wrap('aa bbbbbb cc', 4));
+        $this->assertSame(['abcde', 'fg'], AnsiText::wrap('abcdefg', width: 5));
+        $this->assertSame(['aa', 'bbbb', 'bb', 'cc'], AnsiText::wrap('aa bbbbbb cc', width: 4));
     }
 
     public function testWrapMeasuresDisplayColumnsNotBytes(): void
     {
         // Two CJK characters are four columns, so only one fits per three-column line.
-        $this->assertSame(['编', '辑'], AnsiText::wrap('编辑', 3));
+        $this->assertSame(['编', '辑'], AnsiText::wrap('编辑', width: 3));
     }
 
     /** A glyph wider than the whole line cannot break — it passes through for the caller's clip. */
     public function testWrapPassesThroughAGlyphWiderThanTheLine(): void
     {
-        $this->assertSame(['编'], AnsiText::wrap('编', 1));
+        $this->assertSame(['编'], AnsiText::wrap('编', width: 1));
     }
 
     public function testWrapOfAnEmptyStringIsOneEmptyLine(): void
     {
-        $this->assertSame([''], AnsiText::wrap('', 10));
+        $this->assertSame([''], AnsiText::wrap('', width: 10));
     }
 
     public function testWrapClampsANonPositiveWidth(): void
     {
-        $this->assertSame(['a', 'b'], AnsiText::wrap('a b', 0));
+        $this->assertSame(['a', 'b'], AnsiText::wrap('a b', width: 0));
     }
 
     /** Prose breaks an over-wide word after its last hyphen or slash that fits, and only then mid-letter. */
     public function testWrapProseBreaksAWordAtAHyphenOrSlash(): void
     {
-        $this->assertSame(['comma-', 'separated; *'], AnsiText::wrapProse('comma-separated; *', 13));
-        $this->assertSame(['~/.porta/bin/', 'symfony-lsp'], AnsiText::wrapProse('~/.porta/bin/symfony-lsp', 13));
-        $this->assertSame(['see ~/.porta/', 'binaries'], AnsiText::wrapProse('see ~/.porta/binaries', 13), 'the head joins the line before it');
-        $this->assertSame(['abc-', 'defghijklmno', 'p'], AnsiText::wrapProse('abc-defghijklmnop', 12), 'no break left in the rest: cut');
-        $this->assertSame(['abcdefghijkl', 'mnop'], AnsiText::wrapProse('abcdefghijklmnop', 12));
-        $this->assertSame(['-abcdefghijk', 'lmnop'], AnsiText::wrapProse('-abcdefghijklmnop', 12), 'a leading hyphen is no break');
-        $this->assertSame(['a-b'], AnsiText::wrapProse('a-b', 3), 'a word that fits is left alone');
-        $this->assertSame(['a', 'b'], AnsiText::wrapProse('a b', 0), 'a non-positive width clamps, as wrap does');
+        $this->assertSame(['comma-', 'separated; *'], AnsiText::wrapProse('comma-separated; *', width: 13));
+        $this->assertSame(['~/.porta/bin/', 'symfony-lsp'], AnsiText::wrapProse('~/.porta/bin/symfony-lsp', width: 13));
+        $this->assertSame(['see ~/.porta/', 'binaries'], AnsiText::wrapProse('see ~/.porta/binaries', width: 13), 'the head joins the line before it');
+        $this->assertSame(['abc-', 'defghijklmno', 'p'], AnsiText::wrapProse('abc-defghijklmnop', width: 12), 'no break left in the rest: cut');
+        $this->assertSame(['abcdefghijkl', 'mnop'], AnsiText::wrapProse('abcdefghijklmnop', width: 12));
+        $this->assertSame(['-abcdefghijk', 'lmnop'], AnsiText::wrapProse('-abcdefghijklmnop', width: 12), 'a leading hyphen is no break');
+        $this->assertSame(['a-b'], AnsiText::wrapProse('a-b', width: 3), 'a word that fits is left alone');
+        $this->assertSame(['a', 'b'], AnsiText::wrapProse('a b', width: 0), 'a non-positive width clamps, as wrap does');
     }
 
     public function testDimWrapsAPlainLine(): void
@@ -360,7 +360,7 @@ final class AnsiTextTest extends TestCase
     public function testCaretWindowDropsAWideGlyphStraddlingTheRightEdge(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $out = AnsiText::caretWindow('aaaaaaaaaa漢bbbb', 10, 5, $m);
+        $out = AnsiText::caretWindow('aaaaaaaaaa漢bbbb', caretCol: 10, width: 5, marker: $m);
 
         $this->assertSame('aaaa'.$m, $out, 'the straddling 漢 is dropped whole');
         $this->assertSame(4, AnsiUtils::visibleWidth($out), 'four columns, never five-plus-one');
@@ -374,7 +374,7 @@ final class AnsiTextTest extends TestCase
     public function testCaretWindowKeepsANarrowGlyphAtTheSameRightEdge(): void
     {
         $m = AnsiUtils::cursorMarker(CursorShape::Bar);
-        $out = AnsiText::caretWindow('aaaaaaaaaaXbbbb', 10, 5, $m);
+        $out = AnsiText::caretWindow('aaaaaaaaaaXbbbb', caretCol: 10, width: 5, marker: $m);
 
         $this->assertSame('aaaa'.$m.'X', $out);
         $this->assertSame(5, AnsiUtils::visibleWidth($out), 'the full window');
@@ -433,7 +433,7 @@ final class AnsiTextTest extends TestCase
     {
         $total = AnsiUtils::visibleWidth($line);
         for ($cut = 0; $cut <= $total; ++$cut) {
-            $joined = AnsiText::columnsFrom($line, 0, $cut).AnsiText::columnsFrom($line, $cut, $total - $cut);
+            $joined = AnsiText::columnsFrom($line, startCol: 0, length: $cut).AnsiText::columnsFrom($line, $cut, $total - $cut);
 
             $this->assertSame(AnsiUtils::stripAnsiCodes($line), AnsiUtils::stripAnsiCodes($joined), "cut at {$cut}");
         }

@@ -59,11 +59,11 @@ final class FormatOnSaveTest extends TestCase
             $counting,
             new Notifier(
                 $this->status = new StatusBarWidget(),
-                TestTui::create(80, 24),
+                TestTui::create(80, rows: 24),
             ),
             new Translator('en'),
             $this->scheduler,
-            $this->tui = TestTui::create(80, 24),
+            $this->tui = TestTui::create(80, rows: 24),
         );
         $formatOnSave->enable();
 
@@ -74,7 +74,7 @@ final class FormatOnSaveTest extends TestCase
     {
         $buffer = new BufferManager()->open('/tmp/proj/a.php', $text);
         // The pool routes by extension; opening starts the fake server.
-        $this->pool->notifyDidOpen($buffer->path, $text, 'php', 1);
+        $this->pool->notifyDidOpen($buffer->path, $text, languageId: 'php', version: 1);
 
         return $buffer;
     }
@@ -112,7 +112,7 @@ final class FormatOnSaveTest extends TestCase
     public function testNoReadyServerSavesImmediately(): void
     {
         $formatOnSave = $this->formatOnSave();
-        $buffer = new BufferManager()->open('/tmp/proj/readme.weird', "x\n"); // no server for the language
+        $buffer = new BufferManager()->open('/tmp/proj/readme.weird', content: "x\n"); // no server for the language
 
         $formatOnSave->formatThenSave($buffer, $this->save());
 
@@ -150,7 +150,7 @@ final class FormatOnSaveTest extends TestCase
         $this->editor->showDocument($buffer->path, $buffer->document);
 
         $formatOnSave->formatThenSave($buffer, $this->save());
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $notificationsBefore = \count($this->client->notifications);
 
         $this->respond([[
@@ -160,7 +160,7 @@ final class FormatOnSaveTest extends TestCase
 
         $this->assertGreaterThan($notificationsBefore, \count($this->client->notifications), 'the pool was told about the full change');
         $this->assertSame('textDocument/didChange', \end($this->client->notifications)['method']);
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'a render was requested');
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'), 'a render was requested');
         // COUNTED, not rendered. The editor composes its rows from the document
         // either way, so a screen assertion passes whether or not the memoised
         // lines were dropped — this one did, for as long as it existed.
@@ -264,8 +264,8 @@ final class FormatOnSaveTest extends TestCase
     {
         $formatOnSave = $this->formatOnSave();
         $a = $this->buffer();
-        $b = new BufferManager()->open('/tmp/proj/b.php', "<?php \$b=1;\n");
-        $this->pool->notifyDidOpen($b->path, $b->document->getText(), 'php', 1);
+        $b = new BufferManager()->open('/tmp/proj/b.php', content: "<?php \$b=1;\n");
+        $this->pool->notifyDidOpen($b->path, $b->document->getText(), languageId: 'php', version: 1);
         $saved = [];
 
         $formatOnSave->formatThenSave($a, static function () use (&$saved): void {

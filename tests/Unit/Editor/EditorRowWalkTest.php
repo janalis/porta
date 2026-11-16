@@ -24,7 +24,7 @@ final class EditorRowWalkTest extends TestCase
         $document = new Document("a\nb\nc\nd\ne\n".\str_repeat('x', times: 25)."\ng\nh");
         $folds = new FoldModel($document);
         $folds->setRegions([[1, 3]], $document->version);
-        $document->setCursor(1, 0);
+        $document->setCursor(1, col: 0);
         $folds->toggle();
         $decorations = new DecorationStore(static function (): void {});
         $decorations->setCodeLenses([0 => [['title' => '3 usages', 'command' => 'x', 'arguments' => [], 'owner' => 'php']]]);

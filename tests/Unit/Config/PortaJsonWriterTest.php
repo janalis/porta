@@ -26,10 +26,10 @@ final class PortaJsonWriterTest extends TestCase
         $project = new TempProject();
         $writer = new PortaJsonWriter(new ConfigFiles($project->dir));
 
-        $this->assertFalse($writer->persistSetting(ConfigScope::Global, 'theme', 'light'));
+        $this->assertFalse($writer->persistSetting(ConfigScope::Global, key: 'theme', value: 'light'));
 
         $this->assertTrue(
-            $writer->persistSetting(ConfigScope::Project, 'theme', 'light'),
+            $writer->persistSetting(ConfigScope::Project, key: 'theme', value: 'light'),
             'and the project scope is unaffected — it needs no home',
         );
     }
@@ -41,7 +41,7 @@ final class PortaJsonWriterTest extends TestCase
         $project = new TempProject(['.porta.json' => \json_encode(['disabledPlugins' => ['already-off']], \JSON_THROW_ON_ERROR)]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
-        $this->assertTrue($writer->persistPluginDisabled(ConfigScope::Project, 'newly-off'));
+        $this->assertTrue($writer->persistPluginDisabled(ConfigScope::Project, plugin: 'newly-off'));
 
         $this->assertSame(['already-off', 'newly-off'], IdeConfig::load($project->dir)->disabledPlugins);
     }
@@ -52,7 +52,7 @@ final class PortaJsonWriterTest extends TestCase
         $before = "{\n  \"env\": {},\n  \"settings\": {\n    \"theme\": \"dark\"\n  },\n  \"tasks\": []\n}\n";
         $project = new TempProject(['.porta.json' => $before]);
 
-        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, 'theme', value: 'light'));
+        $this->assertTrue(new PortaJsonWriter(ConfigFiles::for($project->dir))->persistSetting(ConfigScope::Project, key: 'theme', value: 'light'));
 
         $this->assertSame(\str_replace('dark', replace: 'light', subject: $before), \file_get_contents($project->path('.porta.json')));
     }
@@ -62,7 +62,7 @@ final class PortaJsonWriterTest extends TestCase
         $project = new TempProject();
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
-        $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'theme', 'light'));
+        $this->assertTrue($writer->persistSetting(ConfigScope::Project, key: 'theme', value: 'light'));
 
         $raw = (string) \file_get_contents($project->path('.porta.json'));
         $this->assertStringEndsWith(\PHP_EOL, $raw);
@@ -90,7 +90,7 @@ final class PortaJsonWriterTest extends TestCase
         $project = new TempProject(['.porta.json' => $malformed]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
-        $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'autoPairs', false), 'the setting still saves');
+        $this->assertTrue($writer->persistSetting(ConfigScope::Project, key: 'autoPairs', value: false), 'the setting still saves');
         $this->assertSame(
             $malformed,
             \file_get_contents($project->path('.porta.json.invalid')),
@@ -136,7 +136,7 @@ final class PortaJsonWriterTest extends TestCase
 
         \error_clear_last();
         \ob_start();
-        $saved = $writer->persistSetting(ConfigScope::Project, 'autoPairs', false);
+        $saved = $writer->persistSetting(ConfigScope::Project, key: 'autoPairs', value: false);
         $printed = (string) \ob_get_clean();
 
         $this->assertTrue($saved, 'the setting still saves');
@@ -153,7 +153,7 @@ final class PortaJsonWriterTest extends TestCase
         $project = new TempProject(['.porta.json' => \json_encode(['settings' => ['theme' => 'light']], \JSON_THROW_ON_ERROR)]);
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
-        $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'autoPairs', false));
+        $this->assertTrue($writer->persistSetting(ConfigScope::Project, key: 'autoPairs', value: false));
 
         $this->assertFileDoesNotExist($project->path('.porta.json.invalid'));
         $config = IdeConfig::load($project->dir);
@@ -166,7 +166,7 @@ final class PortaJsonWriterTest extends TestCase
         $project = new TempProject();
         $writer = new PortaJsonWriter(ConfigFiles::for($project->dir));
 
-        $this->assertTrue($writer->persistSetting(ConfigScope::Project, 'theme', 'light'));
+        $this->assertTrue($writer->persistSetting(ConfigScope::Project, key: 'theme', value: 'light'));
         $this->assertFileExists($project->path('.porta.json'));
     }
 }

@@ -57,7 +57,7 @@ final class MarkdownPageCornersTest extends TestCase
         $doc = $this->render("```\na\tb\n```\n");
         $this->assertSame('  a   b', self::plain($doc)[1]);
         $this->assertSame([], $doc->cells[1]);
-        $this->assertSame([1, 0], $doc->sourcePointAt(1, 3), 'the line, not the byte');
+        $this->assertSame([1, 0], $doc->sourcePointAt(1, col: 3), 'the line, not the byte');
         $this->assertSame(['  abcde   b', "  \u{00E9}   c"], \array_slice(self::plain($this->render("```\nabcde\tb\n\u{00E9}\tc\n```\n")), offset: 1, length: 2), 'stops every four columns');
     }
 
@@ -66,27 +66,29 @@ final class MarkdownPageCornersTest extends TestCase
         $provider = new ClosureHighlightProvider(static fn (string $code, string $language): string => $code);
         $renderer = new MarkdownRenderer($this->styles, new CodeHighlighter($provider));
         $blocks = \implode("\n", \array_map(static fn (int $n): string => "```php\n\$a = {$n};\n```\n", \range(0, end: 256)));
-        $renderer->render($blocks, 40);
+        $renderer->render($blocks, width: 40);
         $this->assertSame(257, $provider->calls);
-        $renderer->render("```php\n\$a = 0;\n```\n", 40);
+        $renderer->render("```php\n\$a = 0;\n```\n", width: 40);
         $this->assertSame(258, $provider->calls, 'the 257th block emptied the memo, so the first is coloured again');
         $renderer->refreshTheme();
-        $renderer->render("```php\n\$a = 0;\n```\n", 40);
+        $renderer->render("```php\n\$a = 0;\n```\n", width: 40);
         $this->assertSame(259, $provider->calls, 'a theme switch forgets every colouring');
     }
 
     public function testADetailsSectionKeepsBothItsOwnTextAndTheBlocksAfterIt(): void
     {
         $markdown = "<details><summary>S</summary>\nown text\n\nMarkdown *after*.\n</details>\n";
-        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' S', '  own text', '', '  Markdown after.'], self::plain(new MarkdownRenderer($this->styles)->render($markdown, 30, [0 => true])));
+        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' S', '  own text', '', '  Markdown after.'], self::plain(new MarkdownRenderer($this->styles)->render($markdown, width: 30, openDetails: [
+            0 => true,
+        ])));
     }
 
     public function testInlineHtmlThatNestsOddlyStillUnwinds(): void
     {
-        $doc = $this->render('<b><i>both</b> plain</i> <?php echo 1; ?> <span>kept</span> <x-tag>shown</x-tag>', 70);
+        $doc = $this->render('<b><i>both</b> plain</i> <?php echo 1; ?> <span>kept</span> <x-tag>shown</x-tag>', width: 70);
         $this->assertSame(['both plain <?php echo 1; ?> kept <x-tag>shown</x-tag>'], self::plain($doc));
         $this->assertStringContainsString(Sgr::BOLD.Sgr::ITALIC.'both'.Sgr::RESET.' plain', $doc->lines[0], 'closing <b> closes the <i> opened inside it');
-        $line = $this->render('<b><i>x</i> y</b> z <b>a <b>b</b> c</b> d', 60)->lines[0];
+        $line = $this->render('<b><i>x</i> y</b> z <b>a <b>b</b> c</b> d', width: 60)->lines[0];
         $this->assertStringEndsWith(Sgr::BOLD.'y'.Sgr::RESET.' z '.Sgr::BOLD.'a'.Sgr::RESET.' '.Sgr::BOLD.'b'.Sgr::RESET.' '.Sgr::BOLD.'c'.Sgr::RESET.' d', $line, 'a nested <b> closes only itself');
     }
 
@@ -104,7 +106,7 @@ final class MarkdownPageCornersTest extends TestCase
 
     public function testALinkInsideALinkReadsAsTextAndAnImageInsideOneLeadsWhereItDoes(): void
     {
-        $doc = $this->render('<a href="out.md">see [inner](in.md) and ![pic](p.png)</a> then <img src="s.png" alt="Small">', 70);
+        $doc = $this->render('<a href="out.md">see [inner](in.md) and ![pic](p.png)</a> then <img src="s.png" alt="Small">', width: 70);
         $this->assertSame(['see inner and [pic] then [Small]'], self::plain($doc));
         $this->assertSame(['out.md', 's.png'], [$doc->target(0), $doc->target(1)]);
         $this->assertSame(2, $doc->groupCount());
@@ -121,9 +123,9 @@ final class MarkdownPageCornersTest extends TestCase
     {
         $doc = $this->render('[a](x)');
         $this->assertNull($doc->target(7));
-        $this->assertNull($doc->sourcePointAt(5, 0));
-        $this->assertSame([0, 1], $doc->sourcePointAt(0, 0), 'inside the link, the byte after its [');
-        $this->assertSame([3, 0], new RenderedDoc(['x'], [], [3])->sourcePointAt(0, 0), 'a page without its source maps to its lines');
+        $this->assertNull($doc->sourcePointAt(5, col: 0));
+        $this->assertSame([0, 1], $doc->sourcePointAt(0, col: 0), 'inside the link, the byte after its [');
+        $this->assertSame([3, 0], new RenderedDoc(['x'], [], [3])->sourcePointAt(0, col: 0), 'a page without its source maps to its lines');
     }
 
     public function testAnUnclosedTagEndsWithItsParagraph(): void
@@ -137,16 +139,16 @@ final class MarkdownPageCornersTest extends TestCase
         $faq = "<details>\n<summary>A</summary>\n\nBody A.\n\n</details>\n<details>\n<summary>B</summary>\n\nBody B.\n\n</details>\n\nAfter.\n";
         $this->assertSame([$closed.' A', '', $closed.' B', '', 'After.'], self::plain($this->render($faq)));
         $this->assertSame([$closed.' A', '', $closed.' B'], self::plain($this->render("<details><summary>A</summary>a</details>\n<details><summary>B</summary>b</details>\n")));
-        $open = new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($faq, 40, [1 => true]);
+        $open = new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($faq, width: 40, openDetails: [1 => true]);
         $this->assertSame([$closed.' A', '', Glyphs::MD_DETAILS_OPEN.' B', '  Body B.', '', 'After.'], self::plain($open), 'the second opens by its own number');
-        $this->assertSame(6, $open->sourcePointAt(2, 0)[0] ?? null, 'B starts on its own line');
+        $this->assertSame(6, $open->sourcePointAt(2, col: 0)[0] ?? null, 'B starts on its own line');
     }
 
     public function testEachRowOfMarkupShownAsWrittenLeadsToItsOwnLine(): void
     {
         $doc = $this->render("<ul>\n<li>x</li>\n</ul>\n");
-        $this->assertSame([1, 2], $doc->sourcePointAt(1, 2), 'the row clicked, the byte under the pointer');
-        $this->assertSame(\strlen("<ul>\n<l"), $doc->sourceAt(1, 2));
+        $this->assertSame([1, 2], $doc->sourcePointAt(1, col: 2), 'the row clicked, the byte under the pointer');
+        $this->assertSame(\strlen("<ul>\n<l"), $doc->sourceAt(1, col: 2));
     }
 
     public function testASummaryWrittenOverSeveralLinesIsOneLine(): void
@@ -161,10 +163,10 @@ final class MarkdownPageCornersTest extends TestCase
 
     public function testHtmlTagsAndAttributesAreReadWhateverTheirCaseOrQuoting(): void
     {
-        $doc = $this->render("<P ALIGN=\"center\">Hi <B>there</B></P>\n", 30);
+        $doc = $this->render("<P ALIGN=\"center\">Hi <B>there</B></P>\n", width: 30);
         $this->assertSame([\str_repeat(' ', times: 11).'Hi there'], self::plain($doc));
         $this->assertStringContainsString(Sgr::BOLD.'there', $doc->lines[0]);
-        $doc = $this->render("<p>It&apos;s &quot;so&quot; <img src='a.png' alt='Single'> <img src=b.png alt=Bare> <img src=\"c.png\" alt=\" It&apos;s \"></p>\n", 60);
+        $doc = $this->render("<p>It&apos;s &quot;so&quot; <img src='a.png' alt='Single'> <img src=b.png alt=Bare> <img src=\"c.png\" alt=\" It&apos;s \"></p>\n", width: 60);
         $this->assertSame(['It\'s "so" [Single] [Bare] [It\'s]'], self::plain($doc));
         $this->assertSame(['a.png', 'b.png', 'c.png'], [$doc->target(0), $doc->target(1), $doc->target(2)]);
     }
@@ -173,7 +175,7 @@ final class MarkdownPageCornersTest extends TestCase
     {
         $bright = $this->styles->of(Role::Bright)->getAnsiRestore();
         $this->assertSame([$bright.Sgr::BOLD.'Two'.Sgr::RESET, '', Sgr::BOLD.'Three'.Sgr::RESET, '', 'plain'], $this->render("<h2>Two</h2>\n<h3>Three</h3>\n<p>plain</p>\n")->lines);
-        $this->assertSame(['left', '', \str_repeat(' ', times: 13).'mid'], self::plain($this->render("<div>left<p align=\"center\">mid</p></div>\n", 30)));
+        $this->assertSame(['left', '', \str_repeat(' ', times: 13).'mid'], self::plain($this->render("<div>left<p align=\"center\">mid</p></div>\n", width: 30)));
         $this->assertSame(['a b'], self::plain($this->render("<p><b>a</b> <i>b</i></p>\n")));
     }
 
@@ -194,9 +196,12 @@ final class MarkdownPageCornersTest extends TestCase
         $renderer = new MarkdownRenderer($this->styles);
         $this->assertSame(
             [Glyphs::MD_DETAILS_OPEN.' S', '  aaaa bbbb cccc', '  dddd eeee'],
-            self::plain($renderer->render("<details><summary>S</summary>\n\naaaa bbbb cccc dddd eeee\n</details>\n", 20, [0 => true])),
+            self::plain($renderer->render("<details><summary>S</summary>\n\naaaa bbbb cccc dddd eeee\n</details>\n", width: 20, openDetails: [0 => true])),
         );
-        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' S', '  last', '', '  tail'], self::plain($renderer->render("<details>\n<summary>S</summary>\n\nlast\n\n<div>tail</div>\n", 30, [0 => true])));
+        $this->assertSame(
+            [Glyphs::MD_DETAILS_OPEN.' S', '  last', '', '  tail'],
+            self::plain($renderer->render("<details>\n<summary>S</summary>\n\nlast\n\n<div>tail</div>\n", width: 30, openDetails: [0 => true])),
+        );
     }
 
     public function testAThemeSwitchRebuildsABackendThatBakesColours(): void
@@ -233,9 +238,13 @@ final class MarkdownPageCornersTest extends TestCase
         $one = "<details><summary>A</summary>a</details><details><summary>B</summary>b</details><details><summary>C</summary>c</details>\n";
         $this->assertSame([$closed.' A', '', $closed.' B', '', $closed.' C'], self::plain($this->render($one)), 'no whitespace between them either');
         $faq = "<details><summary>A</summary>a</details>\n<details><summary>B</summary>b</details>\n<details><summary>C</summary>c</details>\n";
-        $this->assertSame([Glyphs::MD_DETAILS_OPEN.' A', '  a', '', $closed.' B', '', $closed.' C'], self::plain(new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($faq, 40, [
-            0 => true,
-        ])), 'A opens to its own text only');
+        $this->assertSame(
+            [Glyphs::MD_DETAILS_OPEN.' A', '  a', '', $closed.' B', '', $closed.' C'],
+            self::plain(new MarkdownRenderer(new Styles(DarkTheme::definition()))->render($faq, width: 40, openDetails: [
+                0 => true,
+            ])),
+            'A opens to its own text only',
+        );
     }
 
     public function testARowOfMarkupDrawnWithATabLeadsToItsLinesStart(): void

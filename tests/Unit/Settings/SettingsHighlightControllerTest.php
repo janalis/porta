@@ -123,7 +123,7 @@ final class SettingsHighlightControllerTest extends TestCase
         $this->lifecycle->names = [RecommendedPlugin::Highlighter->value];
         $controller = $this->controller();
 
-        $controller->change(SettingsHighlightController::ENABLE_KEY, '');
+        $controller->change(SettingsHighlightController::ENABLE_KEY, value: '');
 
         $this->assertSame([[RecommendedPlugin::Highlighter->value, true]], $this->lifecycle->toggled);
         $this->assertFalse(\is_file($this->project->path('.porta.json')), 'enabling the engine must not also persist a bogus highlighter entry');
@@ -150,7 +150,7 @@ final class SettingsHighlightControllerTest extends TestCase
             new SettingsProvenance(ConfigFiles::for($this->project->dir)),
         );
 
-        $controller->change(SettingsHighlightController::ENABLE_KEY, '');
+        $controller->change(SettingsHighlightController::ENABLE_KEY, value: '');
 
         $this->addToAssertionCount(1);
     }
@@ -216,7 +216,7 @@ final class SettingsHighlightControllerTest extends TestCase
     {
         $controller = $this->controller([$this->provider('chroma', ['rust'])]);
 
-        $controller->change(SettingsHighlightController::DEFAULT_KEY, 'chroma');
+        $controller->change(SettingsHighlightController::DEFAULT_KEY, value: 'chroma');
 
         $this->assertSame(['default' => 'chroma'], $this->written()['highlight'] ?? null);
     }
@@ -225,7 +225,7 @@ final class SettingsHighlightControllerTest extends TestCase
     {
         $controller = $this->controller([$this->provider('chroma', ['rust'])]);
 
-        $controller->change('lang:rust', 'chroma');
+        $controller->change('lang:rust', value: 'chroma');
 
         $this->assertSame(['languages' => ['rust' => 'chroma']], $this->written()['highlight'] ?? null);
     }
@@ -235,11 +235,11 @@ final class SettingsHighlightControllerTest extends TestCase
     {
         $controller = $this->controller(
             [$this->provider('chroma', ['rust'])],
-            '{"highlight":{"default":"chroma","languages":{"rust":"chroma"}}}',
+            config: '{"highlight":{"default":"chroma","languages":{"rust":"chroma"}}}',
         );
 
-        $controller->change('lang:rust', '');
-        $controller->change(SettingsHighlightController::DEFAULT_KEY, '');
+        $controller->change('lang:rust', value: '');
+        $controller->change(SettingsHighlightController::DEFAULT_KEY, value: '');
 
         $this->assertArrayNotHasKey('highlight', $this->written());
     }
@@ -247,7 +247,7 @@ final class SettingsHighlightControllerTest extends TestCase
     /** A configured language keeps its row even once nothing contests it. */
     public function testAConfiguredLanguageKeepsItsRowSoItCanBeCleared(): void
     {
-        $rows = $this->controller([], '{"highlight":{"languages":{"rust":"chroma"}}}')->rows();
+        $rows = $this->controller([], config: '{"highlight":{"languages":{"rust":"chroma"}}}')->rows();
 
         $keys = \array_column($rows, 'key');
         $this->assertContains('lang:rust', $keys);
@@ -308,7 +308,7 @@ final class SettingsHighlightControllerTest extends TestCase
     {
         $controller = $this->controller([$this->provider('chroma', ['rust'])]);
 
-        $controller->change(SettingsHighlightController::DEFAULT_KEY, 'chroma');
+        $controller->change(SettingsHighlightController::DEFAULT_KEY, value: 'chroma');
 
         $this->assertSame('chroma', $controller->rows()[0]->value, 'the form must repaint the new value with no restart');
         $this->assertSame(['default' => 'chroma'], $this->written()['highlight'] ?? null, 'and it still persists');
@@ -318,7 +318,7 @@ final class SettingsHighlightControllerTest extends TestCase
     public function testAChangeMovesLiveResolution(): void
     {
         $this->controller([$this->provider('chroma', ['rust'])])
-            ->change('lang:rust', 'chroma');
+            ->change('lang:rust', value: 'chroma');
 
         $this->assertSame('chroma', $this->preferences->preferredFor('rust'));
     }
@@ -326,9 +326,9 @@ final class SettingsHighlightControllerTest extends TestCase
     /** Clearing an override live drops its configured row along with the entry. */
     public function testClearingAnOverrideClearsTheLiveRows(): void
     {
-        $controller = $this->controller([], '{"highlight":{"languages":{"rust":"chroma"}}}');
+        $controller = $this->controller([], config: '{"highlight":{"languages":{"rust":"chroma"}}}');
 
-        $controller->change('lang:rust', '');
+        $controller->change('lang:rust', value: '');
 
         $this->assertNotContains('lang:rust', \array_column($controller->rows(), 'key'));
     }

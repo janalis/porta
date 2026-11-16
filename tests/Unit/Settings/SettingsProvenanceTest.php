@@ -36,7 +36,7 @@ final class SettingsProvenanceTest extends TestCase
 
     public function testAValueNoFileSetsHasNoOrigin(): void
     {
-        $provenance = $this->provenance(null, null);
+        $provenance = $this->provenance(null, project: null);
 
         $this->assertNull($provenance->originOf(['settings', 'theme']), 'a default is not "from" anywhere');
         $this->assertFalse($provenance->shadowsGlobal(['settings', 'theme']));
@@ -44,7 +44,7 @@ final class SettingsProvenanceTest extends TestCase
 
     public function testAValueOnlyTheGlobalFileSetsComesFromGlobal(): void
     {
-        $provenance = $this->provenance(['settings' => ['theme' => 'light']], null);
+        $provenance = $this->provenance(['settings' => ['theme' => 'light']], project: null);
 
         $this->assertSame(ConfigScope::Global, $provenance->originOf(['settings', 'theme']));
         $this->assertFalse($provenance->shadowsGlobal(['settings', 'theme']), 'nothing to shadow');
@@ -94,7 +94,7 @@ final class SettingsProvenanceTest extends TestCase
      */
     public function testAFalseValueCountsAsSet(): void
     {
-        $provenance = $this->provenance(['settings' => ['stickyScroll' => false]], null);
+        $provenance = $this->provenance(['settings' => ['stickyScroll' => false]], project: null);
 
         $this->assertSame(ConfigScope::Global, $provenance->originOf(['settings', 'stickyScroll']));
     }
@@ -107,7 +107,7 @@ final class SettingsProvenanceTest extends TestCase
      */
     public function testAPathEndingOnABlockIsSet(): void
     {
-        $provenance = $this->provenance(['languages' => ['php' => ['indentStyle' => 'tabs']]], null);
+        $provenance = $this->provenance(['languages' => ['php' => ['indentStyle' => 'tabs']]], project: null);
 
         $this->assertSame(ConfigScope::Global, $provenance->originOf(['languages', 'php']));
         $this->assertNull($provenance->originOf(['languages', 'rust']), 'a block it does not have');
@@ -120,7 +120,7 @@ final class SettingsProvenanceTest extends TestCase
      */
     public function testAPathThroughAScalarIsNotSet(): void
     {
-        $provenance = $this->provenance(['settings' => 'not-an-object'], null);
+        $provenance = $this->provenance(['settings' => 'not-an-object'], project: null);
 
         $this->assertNull($provenance->originOf(['settings', 'theme']));
     }
@@ -128,7 +128,7 @@ final class SettingsProvenanceTest extends TestCase
     /** The files are read once and dropped when the row set moves. */
     public function testTheFilesAreRereadAfterSettingsRowsStale(): void
     {
-        $provenance = $this->provenance(null, null);
+        $provenance = $this->provenance(null, project: null);
         $this->assertNull($provenance->originOf(['settings', 'theme']));
 
         \file_put_contents(

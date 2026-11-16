@@ -89,18 +89,28 @@ final readonly class LatestVersions
     /** `brew info --json=v2`: a formula's stable version, or a cask's version. */
     public static function brew(string $json): ?string
     {
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
         return self::at($json, 'formulae', 0, 'versions', 'stable') ?? self::at($json, 'casks', 0, 'version');
     }
 
     /** crates.io: the newest version that is not a pre-release. */
     public static function crate(string $json): ?string
     {
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
         return self::at($json, 'crate', 'max_stable_version');
     }
 
     /** The npm registry's `<package>/latest` manifest. */
     public static function npm(string $json): ?string
     {
+        // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
         return self::at($json, 'version');
     }
 

@@ -45,7 +45,7 @@ final class HighlightControllerTest extends TestCase
     {
         $this->editor->showDocument($path, new Document($text));
         $this->activeFile->set($path);
-        Probe::get($controller, 'lsp')->notifyDidOpen($path, $text, 'php', 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen($path, $text, languageId: 'php', version: 1);
     }
 
     /** @return list<array{method: string, params: mixed, respond?: \Closure}> */
@@ -57,7 +57,7 @@ final class HighlightControllerTest extends TestCase
     public function testAServerWithoutTheCapabilityIsNeverAsked(): void
     {
         $controller = $this->controller(capabilities: []);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\n");
 
         $controller->requestHighlights();
 
@@ -67,8 +67,8 @@ final class HighlightControllerTest extends TestCase
     public function testItAsksAtTheCaretAndHandsTheSpansToTheEditor(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\necho \$name;\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\necho \$name;\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $controller->requestHighlights();
         $request = $this->highlightRequests()[0];
@@ -80,7 +80,7 @@ final class HighlightControllerTest extends TestCase
         ], error: null);
 
         $this->assertTrue(
-            $this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->version, 1, 2),
+            $this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->version, line: 1, utf16Col: 2),
             'the answer is stamped with the file, version and caret it was asked about',
         );
     }
@@ -89,8 +89,8 @@ final class HighlightControllerTest extends TestCase
     public function testAParkedCaretIsNotAskedTwice(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $controller->requestHighlights();
         $this->highlightRequests()[0]['respond']([], error: null);
@@ -103,12 +103,12 @@ final class HighlightControllerTest extends TestCase
     public function testMovingTheCaretAsksAgain(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\necho \$name;\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\necho \$name;\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $controller->requestHighlights();
         $this->highlightRequests()[0]['respond']([], error: null);
-        $this->editor->getDocument()->setCursor(2, 6);
+        $this->editor->getDocument()->setCursor(2, col: 6);
         $controller->requestHighlights();
 
         $this->assertCount(2, $this->highlightRequests());
@@ -122,7 +122,7 @@ final class HighlightControllerTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $controller = $this->controller(scheduler: $scheduler);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\necho \$name;\n");
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\necho \$name;\n");
 
         $doc = $this->editor->getDocument();
         foreach ([[1, 1], [1, 3], [2, 6]] as [$line, $col]) {
@@ -140,13 +140,13 @@ final class HighlightControllerTest extends TestCase
     public function testAnErrorResponseLeavesNoStampedAnswer(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $controller->requestHighlights();
         $this->highlightRequests()[0]['respond'](null, error: ['code' => -32_601, 'message' => 'unsupported']);
 
-        $this->assertFalse($this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->version, 1, 2));
+        $this->assertFalse($this->occurrences->isFresh('/p/a.php', $this->editor->getDocument()->version, line: 1, utf16Col: 2));
     }
 
     /**
@@ -157,8 +157,8 @@ final class HighlightControllerTest extends TestCase
     public function testWithNoSchedulerTheCaretMoveAsksImmediately(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $controller->caretMoved();
 
@@ -174,8 +174,8 @@ final class HighlightControllerTest extends TestCase
     {
         $scheduler = new FakeScheduler();
         $controller = $this->controller(scheduler: $scheduler);
-        $this->readyOn($controller, '/p/a.php', "<?php\n\$name = 1;\n");
-        $this->editor->getDocument()->setCursor(1, 2);
+        $this->readyOn($controller, path: '/p/a.php', text: "<?php\n\$name = 1;\n");
+        $this->editor->getDocument()->setCursor(1, col: 2);
 
         $controller->caretMoved();
         $controller->caretMoved();

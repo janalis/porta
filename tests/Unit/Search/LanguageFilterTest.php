@@ -42,7 +42,7 @@ final class LanguageFilterTest extends TestCase
     public function testInCommentsStringsKeepsOnlyCommentAndStringMatches(): void
     {
         $project = $this->project();
-        $kept = $this->filter($project)->apply($this->results(), 'needle', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
+        $kept = $this->filter($project)->apply($this->results(), query: 'needle', options: new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
 
         $this->assertSame([2, 3], \array_column($kept, 'line'), 'only the string and comment lines survive');
     }
@@ -50,7 +50,7 @@ final class LanguageFilterTest extends TestCase
     public function testExceptCommentsStringsKeepsOnlyCodeMatches(): void
     {
         $project = $this->project();
-        $kept = $this->filter($project)->apply($this->results(), 'needle', new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
+        $kept = $this->filter($project)->apply($this->results(), query: 'needle', options: new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
 
         $this->assertSame([1], \array_column($kept, 'line'), 'only the code line survives');
     }
@@ -59,7 +59,7 @@ final class LanguageFilterTest extends TestCase
     {
         $project = $this->project();
         $results = $this->results();
-        $this->assertSame($results, $this->filter($project)->apply($results, 'needle', new SearchOptions()));
+        $this->assertSame($results, $this->filter($project)->apply($results, query: 'needle', options: new SearchOptions()));
     }
 
     public function testUnknownLanguageIsANoOp(): void
@@ -70,7 +70,7 @@ final class LanguageFilterTest extends TestCase
             ['path' => 'notes.unknownext', 'line' => 1, 'text' => '// needle', 'ranges' => []],
         ];
 
-        $kept = $this->filter($project)->apply($results, 'needle', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
+        $kept = $this->filter($project)->apply($results, query: 'needle', options: new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
         $this->assertCount(2, $kept, 'a file with no known language is left untouched');
     }
 
@@ -79,7 +79,7 @@ final class LanguageFilterTest extends TestCase
         $project = new TempProject([]); // the .php file never existed on disk
         $results = [['path' => 'gone.php', 'line' => 0, 'text' => 'needle', 'ranges' => []]];
 
-        $kept = $this->filter($project)->apply($results, 'needle', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
+        $kept = $this->filter($project)->apply($results, query: 'needle', options: new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
         $this->assertCount(1, $kept, 'an unreadable file is left untouched');
     }
 
@@ -97,12 +97,12 @@ final class LanguageFilterTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n\$foo = 'foo';\n"]);
         $filter = $this->filter($project);
 
-        $inStrings = $filter->approvedSpans('a.php', "<?php\n\$foo = 'foo';\n", 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
+        $inStrings = $filter->approvedSpans('a.php', content: "<?php\n\$foo = 'foo';\n", query: 'foo', options: new SearchOptions(tokenScope: TokenScope::InCommentsStrings));
         $this->assertNotNull($inStrings);
         // Line 1 is `$foo = 'foo';` — the variable at 1, the string body at 8.
         $this->assertSame([['start' => 8, 'length' => 3]], $inStrings[1] ?? [], 'only the occurrence inside the string');
 
-        $except = $filter->approvedSpans('a.php', "<?php\n\$foo = 'foo';\n", 'foo', new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
+        $except = $filter->approvedSpans('a.php', content: "<?php\n\$foo = 'foo';\n", query: 'foo', options: new SearchOptions(tokenScope: TokenScope::ExceptCommentsStrings));
         $this->assertNotNull($except);
         $this->assertSame([['start' => 1, 'length' => 3]], $except[1] ?? [], 'only the occurrence outside it');
     }
@@ -117,8 +117,11 @@ final class LanguageFilterTest extends TestCase
         $project = new TempProject(['a.php' => "<?php\n\$foo = 'foo';\n", 'notes.xyz' => "foo\n"]);
         $filter = $this->filter($project);
 
-        $this->assertNull($filter->approvedSpans('a.php', "<?php\n\$foo = 'foo';\n", 'foo', new SearchOptions(tokenScope: TokenScope::Any)), 'no scope to apply');
-        $this->assertNull($filter->approvedSpans('notes.xyz', "foo\n", 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'unknown language');
-        $this->assertNull($filter->approvedSpans('gone.php', '', 'foo', new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'no content: a file gone or unreadable');
+        $this->assertNull($filter->approvedSpans('a.php', content: "<?php\n\$foo = 'foo';\n", query: 'foo', options: new SearchOptions(tokenScope: TokenScope::Any)), 'no scope to apply');
+        $this->assertNull($filter->approvedSpans('notes.xyz', content: "foo\n", query: 'foo', options: new SearchOptions(tokenScope: TokenScope::InCommentsStrings)), 'unknown language');
+        $this->assertNull(
+            $filter->approvedSpans('gone.php', content: '', query: 'foo', options: new SearchOptions(tokenScope: TokenScope::InCommentsStrings)),
+            'no content: a file gone or unreadable',
+        );
     }
 }

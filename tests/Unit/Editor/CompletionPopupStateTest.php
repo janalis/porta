@@ -26,7 +26,7 @@ final class CompletionPopupStateTest extends TestCase
     private function completion(\Closure $request, Document $document = new Document("<?php\n\$a")): EditorCompletion
     {
         $noop = static function (): void {};
-        $document->setCursor(1, 2);
+        $document->setCursor(1, col: 2);
 
         return new EditorCompletion(
             $document,
@@ -142,7 +142,7 @@ final class CompletionPopupStateTest extends TestCase
     public function testTheDocblockScrollsWithinItsLength(): void
     {
         $completion = $this->completion(static fn (): bool => true);
-        $completion->show(self::items(3, 'doc'));
+        $completion->show(self::items(3, documentation: 'doc'));
         $completion->setBox(new CompletionBox(1, 10, 1, 3, 0, doc: [0, 12, 20, 5], docMaxScroll: 2));
 
         $this->assertTrue($completion->handleInput("\x1b[1;5B", $this->keys()));
@@ -171,13 +171,13 @@ final class CompletionPopupStateTest extends TestCase
         $completion->show(self::items(3));
         $completion->setBox(new CompletionBox(5, 10, 3, 3, 0, doc: [2, 17, 20, 4]));
 
-        $this->assertTrue($completion->handleClick(2, 8), 'the top border');
-        $this->assertTrue($completion->handleClick(4, 4), 'the left rail');
-        $this->assertTrue($completion->handleClick(4, 15), 'the right rail');
-        $this->assertTrue($completion->handleClick(6, 8), 'the bottom border');
-        $this->assertTrue($completion->handleClick(3, 20), 'the docblock');
+        $this->assertTrue($completion->handleClick(2, relCol: 8), 'the top border');
+        $this->assertTrue($completion->handleClick(4, relCol: 4), 'the left rail');
+        $this->assertTrue($completion->handleClick(4, relCol: 15), 'the right rail');
+        $this->assertTrue($completion->handleClick(6, relCol: 8), 'the bottom border');
+        $this->assertTrue($completion->handleClick(3, relCol: 20), 'the docblock');
         $this->assertTrue($completion->isOpen(), 'and none of them accepted anything');
-        $this->assertFalse($completion->handleClick(10, 30), 'the code beneath');
-        $this->assertFalse($completion->handleClick(2, 37), 'just past the docblock');
+        $this->assertFalse($completion->handleClick(10, relCol: 30), 'the code beneath');
+        $this->assertFalse($completion->handleClick(2, relCol: 37), 'just past the docblock');
     }
 }

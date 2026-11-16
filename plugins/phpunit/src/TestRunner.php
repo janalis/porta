@@ -65,7 +65,7 @@ final class TestRunner
     public function runFile(): void
     {
         $file = $this->testFile($this->api->contextFile());
-        if (null !== $file && null !== $this->target($file, 0)) {
+        if (null !== $file && null !== $this->target($file, line: 0)) {
             $this->run([$file]);
         }
     }
@@ -138,7 +138,7 @@ final class TestRunner
     /** @param list<string> $arguments */
     private function run(array $arguments): void
     {
-        $this->start($arguments, null);
+        $this->start($arguments, clover: null);
     }
 
     /**
@@ -210,7 +210,7 @@ final class TestRunner
         }
         $this->coverage->show($files);
         if ([] === $files) {
-            $this->api->notify($this->api->trans('No coverage: PHPUnit measures it with pcov or Xdebug, for what <source> in phpunit.xml names'), ToastSeverity::Warn, 6.0);
+            $this->api->notify($this->api->trans('No coverage: PHPUnit measures it with pcov or Xdebug, for what <source> in phpunit.xml names'), ToastSeverity::Warn, seconds: 6.0);
         }
     }
 
@@ -286,7 +286,7 @@ final class TestRunner
             0 === $broken => [$this->api->trans('%count% test passed|%count% tests passed', $params), ToastSeverity::Success],
             default => [$this->api->trans('%failed% of %count% tests failed', $params), ToastSeverity::Error],
         };
-        $this->api->notify($message, $severity, 5.0);
+        $this->api->notify($message, $severity, seconds: 5.0);
     }
 
     /** @return array{path: string, line: int, text: string} */
@@ -308,7 +308,7 @@ final class TestRunner
             default => $this->api->openBuffers()->save($path),
         };
         if (null !== $refusal) {
-            $this->api->flash($refusal, 4.0);
+            $this->api->flash($refusal, seconds: 4.0);
         }
 
         return null === $refusal ? $path : null;

@@ -16,7 +16,7 @@ final class OverlayCompositorTest extends TestCase
         $line = \str_repeat(' ', times: 20);
         $popup = "\x1b[7m[popup]\x1b[0m"; // 7 visible columns
 
-        $out = OverlayCompositor::into($line, 5, 7, 20, $popup);
+        $out = OverlayCompositor::into($line, col: 5, width: 7, columns: 20, popup: $popup);
 
         $this->assertSame(20, AnsiUtils::visibleWidth($out), 'the row stays exactly the terminal width');
         $this->assertStringContainsString('[popup]', AnsiUtils::stripAnsiCodes($out));
@@ -29,7 +29,7 @@ final class OverlayCompositorTest extends TestCase
      */
     public function testATailGlyphHalfCoveredByThePopupDoesNotShiftTheTail(): void
     {
-        $out = OverlayCompositor::into('abcde中gh', 2, 4, 10, '[pp]');
+        $out = OverlayCompositor::into('abcde中gh', col: 2, width: 4, columns: 10, popup: '[pp]');
 
         $this->assertSame('ab[pp] gh ', AnsiUtils::stripAnsiCodes($out));
     }
@@ -37,7 +37,7 @@ final class OverlayCompositorTest extends TestCase
     /** The same glyph straddling the popup's LEFT edge: the head keeps its width too. */
     public function testAHeadGlyphHalfCoveredByThePopupDoesNotShiftThePopup(): void
     {
-        $out = OverlayCompositor::into('a中defgh', 2, 3, 9, '[p]');
+        $out = OverlayCompositor::into('a中defgh', col: 2, width: 3, columns: 9, popup: '[p]');
 
         $this->assertSame('a [p]fgh ', AnsiUtils::stripAnsiCodes($out));
     }
@@ -51,11 +51,11 @@ final class OverlayCompositorTest extends TestCase
         $line = \str_repeat(' ', times: 40); // blank pane (no styling of its own)
         $clippedPopup = "\x1b[48;5;236mBOX"; // opens a background, never resets
 
-        $out = OverlayCompositor::into($line, 4, 3, 40, $clippedPopup);
+        $out = OverlayCompositor::into($line, col: 4, width: 3, columns: 40, popup: $clippedPopup);
 
         // The background active over the tail (a blank column past the popup) must
         // be the default, not the popup's — i.e. a reset separates them.
-        $this->assertSame('default', SgrReads::backgroundAt($out, 20), 'the popup background must not bleed across the tail');
+        $this->assertSame('default', SgrReads::backgroundAt($out, col: 20), 'the popup background must not bleed across the tail');
         $this->assertSame(40, AnsiUtils::visibleWidth($out));
     }
 
@@ -72,7 +72,7 @@ final class OverlayCompositorTest extends TestCase
         $line = \str_repeat('.', times: 8).$marker.\str_repeat('.', times: 12);
         $popup = $marker.'XXX'; // the popup carries a marker of its own; the head does not
 
-        $out = OverlayCompositor::into($line, 5, 3, 20, $popup);
+        $out = OverlayCompositor::into($line, col: 5, width: 3, columns: 20, popup: $popup);
 
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'only the popup\'s marker survives — the tail\'s duplicate is stripped');
     }
@@ -89,7 +89,7 @@ final class OverlayCompositorTest extends TestCase
         // literally where the marker sits in the original line.
         $line = \str_repeat('.', times: 10).$marker.\str_repeat('.', times: 10);
 
-        $out = OverlayCompositor::into($line, 2, 3, 20, 'XXX');
+        $out = OverlayCompositor::into($line, col: 2, width: 3, columns: 20, popup: 'XXX');
 
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX), 'the tail\'s own marker is not a duplicate — it must not be stripped');
     }
@@ -113,7 +113,7 @@ final class OverlayCompositorTest extends TestCase
     {
         $line = '$order->'.AnsiUtils::cursorMarker().\str_repeat(' ', times: 12);
 
-        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+        $out = OverlayCompositor::into($line, col: 8, width: 5, columns: 20, popup: '#####');
 
         $this->assertSame(8, self::caretColumn($out), 'the caret keeps its column');
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX));
@@ -125,7 +125,7 @@ final class OverlayCompositorTest extends TestCase
     {
         $line = \str_repeat('.', times: 10).AnsiUtils::cursorMarker().\str_repeat('.', times: 10);
 
-        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+        $out = OverlayCompositor::into($line, col: 8, width: 5, columns: 20, popup: '#####');
 
         $this->assertNull(self::caretColumn($out), 'under the overlay, the caret is not shown at the overlay\'s far edge');
     }
@@ -135,7 +135,7 @@ final class OverlayCompositorTest extends TestCase
     {
         $line = \str_repeat('.', times: 13).AnsiUtils::cursorMarker().\str_repeat('.', times: 7);
 
-        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+        $out = OverlayCompositor::into($line, col: 8, width: 5, columns: 20, popup: '#####');
 
         $this->assertSame(13, self::caretColumn($out));
     }
@@ -145,7 +145,7 @@ final class OverlayCompositorTest extends TestCase
     {
         $line = \str_repeat('.', times: 8).AnsiUtils::cursorMarker().\str_repeat('.', times: 12);
 
-        $out = OverlayCompositor::into($line, 8, 5, 20, '##'.AnsiUtils::cursorMarker().'###');
+        $out = OverlayCompositor::into($line, col: 8, width: 5, columns: 20, popup: '##'.AnsiUtils::cursorMarker().'###');
 
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX));
         $this->assertSame(10, self::caretColumn($out), 'inside the popup, where it put it');
@@ -156,7 +156,7 @@ final class OverlayCompositorTest extends TestCase
     {
         $line = \str_repeat('.', times: 3).AnsiUtils::cursorMarker().\str_repeat('.', times: 17);
 
-        $out = OverlayCompositor::into($line, 8, 5, 20, '#####');
+        $out = OverlayCompositor::into($line, col: 8, width: 5, columns: 20, popup: '#####');
 
         $this->assertSame(3, self::caretColumn($out));
         $this->assertSame(1, \substr_count($out, AnsiUtils::CURSOR_MARKER_PREFIX));
@@ -165,7 +165,7 @@ final class OverlayCompositorTest extends TestCase
     /** The tail's blank for a half-covered glyph is painted in the row's own background. */
     public function testATailGlyphsBlankKeepsTheRowBackground(): void
     {
-        $out = OverlayCompositor::into("\e[44mabcde中gh\e[0m", 2, 4, 10, '[pp]');
+        $out = OverlayCompositor::into("\e[44mabcde中gh\e[0m", col: 2, width: 4, columns: 10, popup: '[pp]');
 
         $tail = \substr($out, (int) \strpos($out, needle: '[pp]') + 4);
         $this->assertMatchesRegularExpression('/^(?:\e\[[0-9;:]*m)*?\e\[44m gh/', $tail, 'the background opens before the blank');
@@ -179,7 +179,7 @@ final class OverlayCompositorTest extends TestCase
         $row = "\x1b[32mcafe\u{0301}\x1b[0m au lait, cre\u{0300}me bru\u{0302}le\u{0301}e".\str_repeat(' ', times: 10);
         $columns = AnsiUtils::visibleWidth($row);
 
-        $composed = OverlayCompositor::into($row, 12, 6, $columns, '[MENU]');
+        $composed = OverlayCompositor::into($row, col: 12, width: 6, columns: $columns, popup: '[MENU]');
 
         $this->assertSame($columns, AnsiUtils::visibleWidth($composed));
         $plain = AnsiUtils::stripAnsiCodes($composed);

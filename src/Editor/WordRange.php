@@ -21,7 +21,7 @@ final class WordRange
      */
     public static function at(string $line, int $col): ?array
     {
-        $col = IntMath::clamp($col, 0, \strlen($line));
+        $col = IntMath::clamp($col, lo: 0, hi: \strlen($line));
         // Matched as UTF-8, so `\w` is a letter of any script: byte by byte,
         // double-clicking `$café` selected `$caf`, and `名前` nothing. A line
         // that is not UTF-8 (a Latin-1 file) is read by bytes, as it was: with

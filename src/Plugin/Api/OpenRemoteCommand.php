@@ -63,7 +63,7 @@ abstract class OpenRemoteCommand extends PluginCommand
 
         return match (true) {
             null === $spec || !$known => self::fail($errors, \sprintf('Not a %s location: %s', \implode('/', $this->schemes()), OutputFormatter::escape($location))),
-            null === $home => self::fail($errors, 'No home directory to keep the project in (set HOME)'),
+            null === $home => self::fail($errors, message: 'No home directory to keep the project in (set HOME)'),
             default => $this->connectAndOpen($spec, $home, $input, $output, $errors),
         };
     }

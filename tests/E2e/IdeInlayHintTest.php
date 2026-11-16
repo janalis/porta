@@ -62,7 +62,7 @@ final class IdeInlayHintTest extends TestCase
             [
                 100 => self::hint(...),
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'f(n: 42, $y);');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(n: 42, $y);');
                     $editor = Widgets::editor($tui);
                     [$row, $col] = $this->lineOne($ide, $editor);
 
@@ -86,7 +86,7 @@ final class IdeInlayHintTest extends TestCase
             [
                 100 => self::hint(...),
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'f(n: 42, $y);');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(n: 42, $y);');
                     $editor = Widgets::editor($tui);
                     [$row, $col] = $this->lineOne($ide, $editor);
 
@@ -116,17 +116,17 @@ final class IdeInlayHintTest extends TestCase
             [
                 100 => self::hint(...),
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
-                    $this->awaitPainted($tui, $terminal, 'f(n: 42, $y);');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(n: 42, $y);');
                     $editor = Widgets::editor($tui);
                     [$row, $col] = $this->lineOne($ide, $editor);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
 
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 4, $row + 1)); // right-press on the hint
-                    $this->awaitPainted($tui, $terminal, 'Hide Parameter Name Hints');
+                    $this->awaitPainted($tui, $terminal, needle: 'Hide Parameter Name Hints');
                     $this->assertSame([0, 0], [$editor->getDocument()->cursorLine, $editor->getDocument()->cursorCol], 'the caret stays where it was');
 
                     $tui->handleInput("\r"); // the first item
-                    $this->awaitPainted($tui, $terminal, 'f(42, $y);');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(42, $y);');
                     $written = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame('none', $written['settings']['inlayParameterHints'] ?? null, 'and the project remembers');
                 },
@@ -149,17 +149,17 @@ final class IdeInlayHintTest extends TestCase
                     new InlayHint(10, '3 uses', padLeft: true),
                 ]]),
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'f(42, $y: Y); 3 uses');
+                    $this->awaitPainted($tui, $terminal, needle: 'f(42, $y: Y); 3 uses');
                     [$row, $col] = $this->lineOne($ide, Widgets::editor($tui));
 
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 9, $row + 1)); // on `: Y`
-                    $this->awaitPainted($tui, $terminal, 'Hide Type Hints');
-                    $this->assertFalse($this->onScreen($tui, $terminal, 'Hide Parameter Name Hints'), 'not a parameter name');
+                    $this->awaitPainted($tui, $terminal, needle: 'Hide Type Hints');
+                    $this->assertFalse($this->onScreen($tui, $terminal, needle: 'Hide Parameter Name Hints'), 'not a parameter name');
                     $tui->handleInput("\x1b");
 
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $col + 16, $row + 1)); // on `3 uses`
-                    $this->awaitPainted($tui, $terminal, 'Hide All Inlay Hints');
-                    $this->assertFalse($this->onScreen($tui, $terminal, 'Hide Type Hints'), 'a hint with no kind has only the mode to turn off');
+                    $this->awaitPainted($tui, $terminal, needle: 'Hide All Inlay Hints');
+                    $this->assertFalse($this->onScreen($tui, $terminal, needle: 'Hide Type Hints'), 'a hint with no kind has only the mode to turn off');
                 },
             ],
         );

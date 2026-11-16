@@ -21,7 +21,7 @@ final class HighlightPreferencesTest extends TestCase
     {
         $preferences = new HighlightPreferences();
 
-        $preferences->change(null, 'chroma');
+        $preferences->change(null, id: 'chroma');
 
         $this->assertSame('chroma', $preferences->defaultId());
         $this->assertSame('chroma', $preferences->preferredFor('php'));
@@ -31,7 +31,7 @@ final class HighlightPreferencesTest extends TestCase
     {
         $preferences = new HighlightPreferences(default: 'tempest');
 
-        $preferences->change(null, '');
+        $preferences->change(null, id: '');
 
         $this->assertSame('', $preferences->defaultId());
         $this->assertNull($preferences->preferredFor('php'));
@@ -44,10 +44,10 @@ final class HighlightPreferencesTest extends TestCase
     public function testClearingALanguageFallsBackToTheDefault(): void
     {
         $preferences = new HighlightPreferences(default: 'tempest');
-        $preferences->change('rust', 'chroma');
+        $preferences->change('rust', id: 'chroma');
         $this->assertSame('chroma', $preferences->preferredFor('rust'));
 
-        $preferences->change('rust', '');
+        $preferences->change('rust', id: '');
 
         $this->assertSame('tempest', $preferences->preferredFor('rust'));
         $this->assertSame([], $preferences->languages(), 'a cleared language is not "configured"');
@@ -57,7 +57,7 @@ final class HighlightPreferencesTest extends TestCase
     {
         $preferences = new HighlightPreferences(languages: ['rust' => 'chroma']);
 
-        $preferences->change('php', 'tempest');
+        $preferences->change('php', id: 'tempest');
 
         $this->assertSame(['rust' => 'chroma', 'php' => 'tempest'], $preferences->languages());
     }
@@ -72,7 +72,7 @@ final class HighlightPreferencesTest extends TestCase
         );
         $this->assertSame('alpha', $registry->providerFor('php')->id);
 
-        $preferences->change('php', 'beta');
+        $preferences->change('php', id: 'beta');
 
         $this->assertSame('beta', $registry->providerFor('php')->id);
     }

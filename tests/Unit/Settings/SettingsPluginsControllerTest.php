@@ -72,7 +72,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->global = new TempProject();
         $this->status = new StatusBarWidget();
         $this->lifecycle = new FakePluginLifecycle();
-        $tui = TestTui::create(80, 24);
+        $tui = TestTui::create(80, rows: 24);
 
         $files = ConfigFiles::for($this->project->dir);
         // Pinned to Project — the scope defaults to Global for a project with
@@ -148,7 +148,7 @@ final class SettingsPluginsControllerTest extends TestCase
         // registerInstaller() checks that it exists — so the command has to be
         // registered on the same api first.
         if (null !== \array_find($via, static fn (array $candidate): bool => PluginApi::INSTALL_SELF === $candidate[0])) {
-            $api->registerCommand('install', 'Install it', function () use ($name): void {
+            $api->registerCommand('install', label: 'Install it', handler: function () use ($name): void {
                 $this->commandsRun[] = $name.':install';
             });
         }
@@ -185,7 +185,7 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testTheIndexListsEachPluginWithWhatItIsAndAButtonToItsPage(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'local');
+        $this->seedPlugin($this->project, name: 'local');
         \file_put_contents(
             $this->project->dir.'/.porta/plugins/local/composer.json',
             data: (string) \json_encode(
@@ -193,7 +193,7 @@ final class SettingsPluginsControllerTest extends TestCase
                 \JSON_THROW_ON_ERROR,
             ),
         );
-        $this->seedPlugin($this->global, 'shared');
+        $this->seedPlugin($this->global, name: 'shared');
         $this->lifecycle->names = ['local', 'shared'];
         $this->lifecycle->disabledNames = ['shared'];
 
@@ -217,8 +217,8 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $this->trusted = false;
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'dup');
-        $this->seedPlugin($this->global, 'dup');
+        $this->seedPlugin($this->project, name: 'dup');
+        $this->seedPlugin($this->global, name: 'dup');
         $this->lifecycle->names = ['dup'];
 
         $this->assertSame('on · global', $controller->rows()[2]->hint);
@@ -232,7 +232,7 @@ final class SettingsPluginsControllerTest extends TestCase
             $requested[] = [$event->section, $event->row];
         });
 
-        $controller->change('pluginOpen:local', 'Open');
+        $controller->change('pluginOpen:local', value: 'Open');
 
         $this->assertSame([['plugin:local', 'pluginEnabled']], $requested, 'its page, on its first own row');
     }
@@ -253,8 +253,8 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testRemoveIsOnThePluginsPageOncePerCopy(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'twice');
-        $this->seedPlugin($this->global, 'twice');
+        $this->seedPlugin($this->project, name: 'twice');
+        $this->seedPlugin($this->global, name: 'twice');
         $this->lifecycle->names = ['twice'];
 
         $removes = \array_values(\array_filter($controller->pluginRows('twice'), static fn (SettingsRow $row): bool => \str_starts_with($row->key, 'pluginRemove:')));
@@ -263,7 +263,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame(['Remove', 'Remove'], \array_column($removes, 'value'));
         $this->assertFalse($removes[0]->danger);
 
-        $controller->changePlugin('twice', 'pluginRemove:project:twice', 'Remove');
+        $controller->changePlugin('twice', key: 'pluginRemove:project:twice', value: 'Remove');
         $armed = \array_find($controller->pluginRows('twice'), static fn (SettingsRow $row): bool => 'pluginRemove:project:twice' === $row->key);
         $this->assertTrue($armed?->danger, 'the armed half of the confirm reads as danger');
     }
@@ -293,10 +293,10 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->assertSame('Open', $docs->value, 'an Action shows its value as the button caption');
         $this->assertNotContains('pluginDocs', \array_column($controller->pluginRows('bare'), 'key'), 'no guide, no row');
 
-        $controller->changePlugin('documented', 'pluginDocs', 'Open');
+        $controller->changePlugin('documented', key: 'pluginDocs', value: 'Open');
         $this->assertSame([$embedded->dir.'/documented/docs/README.md'], $this->helpPages);
 
-        $controller->changePlugin('bare', 'pluginDocs', 'Open'); // a stale row: the guide went away
+        $controller->changePlugin('bare', key: 'pluginDocs', value: 'Open'); // a stale row: the guide went away
         $this->assertCount(1, $this->helpPages, 'nothing to open asks for nothing');
         $this->embeddedDir = null;
     }
@@ -304,23 +304,23 @@ final class SettingsPluginsControllerTest extends TestCase
     public function testRemovalDeactivatesLive(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'demo');
+        $this->seedPlugin($this->project, name: 'demo');
 
-        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
-        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
+        $controller->changePlugin('demo', key: 'pluginRemove:project:demo', value: 'Remove');
+        $controller->changePlugin('demo', key: 'pluginRemove:project:demo', value: 'Remove');
         $this->assertSame(['demo'], $this->lifecycle->deactivated, 'a successful removal deactivates the plugin live');
     }
 
     public function testARemoveKeyNamingNoInstallScopeIsInert(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'demo');
+        $this->seedPlugin($this->project, name: 'demo');
 
         // rows() never builds such a key; a stray one must neither arm a
         // confirm nor fall through to a removal under some default scope.
-        $controller->changePlugin('demo', 'pluginRemove:nowhere:demo', 'Remove');
-        $controller->changePlugin('demo', 'pluginRemove:nowhere:demo', 'Remove');
-        $this->assertStringNotContainsString('Press Enter again', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginRemove:nowhere:demo', value: 'Remove');
+        $controller->changePlugin('demo', key: 'pluginRemove:nowhere:demo', value: 'Remove');
+        $this->assertStringNotContainsString('Press Enter again', $this->statusRow($this->status, columns: 120));
         $this->assertSame([], $this->lifecycle->deactivated);
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
     }
@@ -343,15 +343,15 @@ final class SettingsPluginsControllerTest extends TestCase
         $rows = $controller->pluginRows('demo');
         $this->assertSame(['pluginEnabled', 'pluginSetting:binary'], \array_column($rows, 'key'));
 
-        $controller->changePlugin('demo', 'pluginSetting:binary', '/opt/x');
-        $controller->changePlugin('demo', 'someOtherKey', 'ignored');
-        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'));
+        $controller->changePlugin('demo', key: 'pluginSetting:binary', value: '/opt/x');
+        $controller->changePlugin('demo', key: 'someOtherKey', value: 'ignored');
+        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', key: 'binary'));
         // And the plugin is TOLD, with the bare key it registered — not the
         // `pluginSetting:` row id, which is this page's spelling. A plugin that
         // is never told has to read every setting at activate(), which makes
         // all of them restart-required by construction.
         $this->assertSame([['demo', 'binary', '/opt/x']], $this->lifecycle->pluginSettingChanged);
-        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', 'binary'), 'and told AFTER the write, so setting() reads the new value');
+        $this->assertSame('/opt/x', $this->pluginSettings->value('demo', key: 'binary'), 'and told AFTER the write, so setting() reads the new value');
     }
 
     /**
@@ -420,8 +420,8 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->lifecycle->disabledNames = ['demo'];
         $this->assertFalse($controller->pluginRows('demo')[0]->value, 'a disabled plugin shows unchecked');
 
-        $controller->changePlugin('demo', 'pluginEnabled', true);
-        $controller->changePlugin('demo', 'pluginEnabled', false);
+        $controller->changePlugin('demo', key: 'pluginEnabled', value: true);
+        $controller->changePlugin('demo', key: 'pluginEnabled', value: false);
         $this->assertSame([['demo', true], ['demo', false]], $this->lifecycle->toggled);
     }
 
@@ -429,16 +429,16 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $this->composerBinary = $this->fakeComposer();
         $controller = $this->controller();
-        $controller->change('pluginInstall', '   ');
+        $controller->change('pluginInstall', value: '   ');
         $this->assertSame(0, $this->lifecycle->refreshed, 'an empty source does nothing');
 
-        $controller->change('configScope', 'global');
+        $controller->change('configScope', value: 'global');
         $this->assertSame('global', $controller->rows()[0]->value);
 
         $controller->change('pluginInstall', $this->sourceDir('demo'));
         $this->await(fn (): bool => 0 < $this->lifecycle->refreshed, what: 'the install to land');
         $this->assertSame([$this->global->dir.'/.porta/plugins/demo/porta.php'], $this->lifecycle->activated, 'installed into the chosen scope and activated');
-        $this->assertStringContainsString('Plugin installed', $this->statusRow($this->status, 120));
+        $this->assertStringContainsString('Plugin installed', $this->statusRow($this->status, columns: 120));
         $this->assertSame(1, $this->lifecycle->refreshed);
     }
 
@@ -449,7 +449,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller->change('pluginInstall', $this->project->dir.'/missing');
         $this->assertStringContainsString(
             'is not a git URL, a local directory, or a vendor/name package',
-            $this->statusRow($this->status, 240),
+            $this->statusRow($this->status, columns: 240),
             'a nonexistent path matches none of the three source kinds',
         );
         $this->assertSame([], $this->lifecycle->activated);
@@ -458,41 +458,41 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->lifecycle->activateResult = 'Plugin "demo" failed to load: nope';
         $controller->change('pluginInstall', $this->sourceDir('demo'));
         $this->await(fn (): bool => 2 === $this->lifecycle->refreshed, what: 'the second install to land');
-        $this->assertStringContainsString('Plugin "demo" failed to load: nope', $this->statusRow($this->status, 120));
+        $this->assertStringContainsString('Plugin "demo" failed to load: nope', $this->statusRow($this->status, columns: 120));
     }
 
     public function testRemovalNeedsTwoPressesAndDisarmsOnAnythingElse(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'demo');
+        $this->seedPlugin($this->project, name: 'demo');
 
-        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
-        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginRemove:project:demo', value: 'Remove');
+        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, columns: 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
-        $controller->change('configScope', 'global'); // anything else disarms
-        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove');
-        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, 120));
+        $controller->change('configScope', value: 'global'); // anything else disarms
+        $controller->changePlugin('demo', key: 'pluginRemove:project:demo', value: 'Remove');
+        $this->assertStringContainsString('Press Enter again to remove "demo"', $this->statusRow($this->status, columns: 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/demo');
 
-        $controller->changePlugin('demo', 'pluginRemove:project:demo', 'Remove'); // the confirming press
-        $this->assertStringContainsString('Plugin "demo" removed', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginRemove:project:demo', value: 'Remove'); // the confirming press
+        $this->assertStringContainsString('Plugin "demo" removed', $this->statusRow($this->status, columns: 120));
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/demo');
     }
 
     public function testArmingADifferentRowResetsTheConfirm(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'one');
-        $this->seedPlugin($this->project, 'two');
+        $this->seedPlugin($this->project, name: 'one');
+        $this->seedPlugin($this->project, name: 'two');
 
-        $controller->changePlugin('one', 'pluginRemove:project:one', 'Remove');
-        $controller->changePlugin('two', 'pluginRemove:project:two', 'Remove'); // re-arms onto "two"
-        $this->assertStringContainsString('Press Enter again to remove "two"', $this->statusRow($this->status, 120));
+        $controller->changePlugin('one', key: 'pluginRemove:project:one', value: 'Remove');
+        $controller->changePlugin('two', key: 'pluginRemove:project:two', value: 'Remove'); // re-arms onto "two"
+        $this->assertStringContainsString('Press Enter again to remove "two"', $this->statusRow($this->status, columns: 120));
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/one');
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/two');
 
-        $controller->changePlugin('two', 'pluginRemove:project:two', 'Remove');
+        $controller->changePlugin('two', key: 'pluginRemove:project:two', value: 'Remove');
         $this->assertDirectoryDoesNotExist($this->project->dir.'/.porta/plugins/two');
         $this->assertDirectoryExists($this->project->dir.'/.porta/plugins/one', 'the first armed row was never confirmed');
     }
@@ -502,7 +502,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareInstaller('demo', 'phpstan', available: false);
+        $this->declareInstaller('demo', tool: 'phpstan', available: false);
         $row = \array_last($controller->pluginRows('demo'));
         $this->assertSame('pluginTool:phpstan', $row->key);
         $this->assertSame(SettingsRowKind::Action, $row->kind);
@@ -519,7 +519,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareInstaller('demo', 'phpstan', available: false);
+        $this->declareInstaller('demo', tool: 'phpstan', available: false);
         $row = \array_last($controller->pluginRows('demo'));
         $this->assertFalse($row->disabled);
         $this->assertSame('missing', $row->hint);
@@ -535,7 +535,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareInstaller('demo', 'phpstan', available: true);
+        $this->declareInstaller('demo', tool: 'phpstan', available: true);
         $row = \array_last($controller->pluginRows('demo'));
         $this->assertSame('Update', $row->value);
         $this->assertTrue($row->disabled);
@@ -548,7 +548,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareInstaller('demo', 'symfony-lsp', available: true, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
+        $this->declareInstaller('demo', tool: 'symfony-lsp', available: true, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
 
         $row = \array_last($controller->pluginRows('demo'));
         $this->assertSame('pluginTool:symfony-lsp', $row->key);
@@ -563,7 +563,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $this->declareInstaller('demo', 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
+        $this->declareInstaller('demo', tool: 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']], describe: '0.21.0');
 
         $row = \array_last($controller->pluginRows('demo'));
         $this->assertSame('Install', $row->value);
@@ -575,19 +575,19 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareInstaller('demo', 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']]);
+        $this->declareInstaller('demo', tool: 'symfony-lsp', available: false, via: [[PluginApi::INSTALL_SELF, 'install']]);
 
-        $controller->changePlugin('demo', 'pluginTool:symfony-lsp', 'Install');
+        $controller->changePlugin('demo', key: 'pluginTool:symfony-lsp', value: 'Install');
 
         $this->assertSame(['demo:install'], $this->commandsRun);
-        $this->assertSame('', \trim($this->statusRow($this->status, 120)), 'no flash from here — the plugin does its own reporting');
+        $this->assertSame('', \trim($this->statusRow($this->status, columns: 120)), 'no flash from here — the plugin does its own reporting');
     }
 
     /** What a manifest declares is on the page while the plugin is still off: that is when it is worth knowing. */
     public function testADisabledPluginsManifestToolsAreListed(): void
     {
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'viewer');
+        $this->seedPlugin($this->project, name: 'viewer');
         \file_put_contents(
             $this->project->dir.'/.porta/plugins/viewer/composer.json',
             data: (string) \json_encode(
@@ -617,7 +617,7 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $this->toolPath = ['dot' => '/opt/bin/dot'];
         $controller = $this->controller();
-        $this->seedPlugin($this->project, 'viewer');
+        $this->seedPlugin($this->project, name: 'viewer');
         \file_put_contents(
             $this->project->dir.'/.porta/plugins/viewer/composer.json',
             data: (string) \json_encode(['extra' => ['porta' => ['tools' => [['name' => 'dot', 'sources' => [['brew', 'graphviz']]]]]]], \JSON_THROW_ON_ERROR),
@@ -644,14 +644,14 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareInstaller('demo', 'phpstan', available: false);
+        $this->declareInstaller('demo', tool: 'phpstan', available: false);
 
-        $controller->changePlugin('demo', 'pluginTool:phpstan', false);
-        $this->assertStringContainsString('Installing phpstan', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginTool:phpstan', value: false);
+        $this->assertStringContainsString('Installing phpstan', $this->statusRow($this->status, columns: 120));
         $this->assertSame('Working…', \array_last($controller->pluginRows('demo'))->value, 'the button says the job is running');
 
         $this->await(fn (): bool => [] !== $this->lifecycle->serverBinaryReplaced, what: 'the install to finish');
-        $this->assertStringContainsString('Installed phpstan', $this->statusRow($this->status, 120));
+        $this->assertStringContainsString('Installed phpstan', $this->statusRow($this->status, columns: 120));
         $this->assertSame(['demo'], $this->lifecycle->serverBinaryReplaced, 'a successful install relaunches the provider');
     }
 
@@ -660,11 +660,11 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 1)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareInstaller('demo', 'phpstan', available: false);
+        $this->declareInstaller('demo', tool: 'phpstan', available: false);
 
-        $controller->changePlugin('demo', 'pluginTool:phpstan', false);
-        $this->await(fn (): bool => \str_contains($this->statusRow($this->status, 120), 'Could not install'), what: 'the failure');
-        $this->assertStringContainsString('Could not install phpstan: composer exited with code 1', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginTool:phpstan', value: false);
+        $this->await(fn (): bool => \str_contains($this->statusRow($this->status, columns: 120), 'Could not install'), what: 'the failure');
+        $this->assertStringContainsString('Could not install phpstan: composer exited with code 1', $this->statusRow($this->status, columns: 120));
         $this->assertSame([], $this->lifecycle->serverBinaryReplaced, 'a failed install relaunches nothing');
     }
 
@@ -672,13 +672,13 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareInstaller('demo', 'phpantom', available: false, via: [
+        $this->declareInstaller('demo', tool: 'phpantom', available: false, via: [
             ['brew',  'phpantom-lsp'],
             ['cargo', 'phpantom_lsp'],
         ]);
 
-        $controller->changePlugin('demo', 'pluginTool:phpantom', false);
-        $this->assertStringContainsString('No way to install phpantom here (needs brew, cargo)', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginTool:phpantom', value: false);
+        $this->assertStringContainsString('No way to install phpantom here (needs brew, cargo)', $this->statusRow($this->status, columns: 120));
         $this->assertSame([], $this->lifecycle->serverBinaryReplaced, 'nothing ran');
     }
 
@@ -687,11 +687,11 @@ final class SettingsPluginsControllerTest extends TestCase
         $this->managerBinaries = ['composer' => $this->fakeManager(exitCode: 0, sleepSeconds: 1)];
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
-        $this->declareInstaller('demo', 'phpstan', available: false);
+        $this->declareInstaller('demo', tool: 'phpstan', available: false);
 
-        $controller->changePlugin('demo', 'pluginTool:phpstan', false); // starts, stays running
-        $controller->changePlugin('demo', 'pluginTool:phpstan', false); // already queued
-        $this->assertStringContainsString('phpstan is already queued', $this->statusRow($this->status, 120));
+        $controller->changePlugin('demo', key: 'pluginTool:phpstan', value: false); // starts, stays running
+        $controller->changePlugin('demo', key: 'pluginTool:phpstan', value: false); // already queued
+        $this->assertStringContainsString('phpstan is already queued', $this->statusRow($this->status, columns: 120));
 
         // Leaving mid-flight would leave a watcher on a stream the reaped
         // child is about to close.
@@ -703,7 +703,7 @@ final class SettingsPluginsControllerTest extends TestCase
         $controller = $this->controller();
         $this->lifecycle->names = ['demo'];
 
-        $controller->changePlugin('demo', 'pluginTool:phpstan', false);
+        $controller->changePlugin('demo', key: 'pluginTool:phpstan', value: false);
         $this->assertSame(0, $this->lifecycle->refreshed, 'no declaration → nothing to install');
     }
 
@@ -723,14 +723,14 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $controller = $this->controller();
         $api = $this->plugins->api('demo', $this->project->dir, $this->pluginSettings);
-        $api->registerSetting('binary', 'Binary path', 'text', '/stock');
+        $api->registerSetting('binary', label: 'Binary path', kind: 'text', default: '/stock');
         $this->plugins->commit($api);
-        $this->pluginSettings->change('demo', 'binary', '/custom');
-        $this->assertSame('/custom', $this->pluginSettings->value('demo', 'binary'));
+        $this->pluginSettings->change('demo', key: 'binary', value: '/custom');
+        $this->assertSame('/custom', $this->pluginSettings->value('demo', key: 'binary'));
 
-        $controller->resetPlugin('demo', 'pluginSetting:binary');
+        $controller->resetPlugin('demo', key: 'pluginSetting:binary');
 
-        $this->assertSame('/stock', $this->pluginSettings->value('demo', 'binary'), 'back to the descriptor default');
+        $this->assertSame('/stock', $this->pluginSettings->value('demo', key: 'binary'), 'back to the descriptor default');
         $this->assertContains(
             ['demo', 'binary', '/stock'],
             $this->lifecycle->pluginSettingChanged,
@@ -743,14 +743,14 @@ final class SettingsPluginsControllerTest extends TestCase
     {
         $controller = $this->controller();
         $api = $this->plugins->api('demo', $this->project->dir, $this->pluginSettings);
-        $api->registerSetting('binary', 'Binary path', 'text', '/stock');
+        $api->registerSetting('binary', label: 'Binary path', kind: 'text', default: '/stock');
         $this->plugins->commit($api);
-        $this->pluginSettings->change('demo', 'binary', '/custom');
+        $this->pluginSettings->change('demo', key: 'binary', value: '/custom');
 
-        $controller->resetPlugin('demo', 'pluginEnabled');
-        $controller->resetPlugin('demo', 'pluginInstallBinary');
+        $controller->resetPlugin('demo', key: 'pluginEnabled');
+        $controller->resetPlugin('demo', key: 'pluginInstallBinary');
 
-        $this->assertSame('/custom', $this->pluginSettings->value('demo', 'binary'), 'nothing else was disturbed');
+        $this->assertSame('/custom', $this->pluginSettings->value('demo', key: 'binary'), 'nothing else was disturbed');
         $this->assertSame([], $this->lifecycle->pluginSettingChanged);
     }
 }

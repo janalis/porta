@@ -16,8 +16,8 @@ final class BookmarkPathListenerTest extends TestCase
     public function testADeletedFilesBookmarksAreRetired(): void
     {
         $bookmarks = new Bookmarks();
-        $bookmarks->toggle('/p/gone.php', 3);
-        $bookmarks->toggle('/p/kept.php', 1);
+        $bookmarks->toggle('/p/gone.php', line: 3);
+        $bookmarks->toggle('/p/kept.php', line: 1);
         $editor = new CodeEditorWidget();
 
         new BookmarkPathListener($bookmarks, new BookmarkDecorations($bookmarks, $editor->decorations))

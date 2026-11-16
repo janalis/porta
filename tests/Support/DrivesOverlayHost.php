@@ -27,7 +27,7 @@ trait DrivesOverlayHost
         // A real Tui, because the host asks IT for a frame now rather than
         // calling back into a widget: these boxes float over the workspace and
         // there is no widget below them to invalidate.
-        $this->tui = TestTui::create(100, 24);
+        $this->tui = TestTui::create(100, rows: 24);
         $this->clearRepaint();
 
         return new OverlayHost($this->tui);
@@ -35,12 +35,12 @@ trait DrivesOverlayHost
 
     private function clearRepaint(): void
     {
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
     }
 
     private function repainted(): bool
     {
-        return true === Probe::get($this->tui, 'renderRequested');
+        return true === Probe::get($this->tui, property: 'renderRequested');
     }
 
     private function keybindings(): Keybindings
@@ -88,14 +88,14 @@ trait DrivesOverlayHost
     {
         return [
             SearchRow::header('Files'),
-            SearchRow::hit($this->hit(SearchCategory::Files, 'a', static function () use ($onActivate): void {
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'a', activate: static function () use ($onActivate): void {
                 $onActivate('a');
             })),
-            SearchRow::hit($this->hit(SearchCategory::Files, 'b', static function () use ($onActivate): void {
+            SearchRow::hit($this->hit(SearchCategory::Files, label: 'b', activate: static function () use ($onActivate): void {
                 $onActivate('b');
             })),
             SearchRow::header('Actions'),
-            SearchRow::hit($this->hit(SearchCategory::Actions, 'c', static function () use ($onActivate): void {
+            SearchRow::hit($this->hit(SearchCategory::Actions, label: 'c', activate: static function () use ($onActivate): void {
                 $onActivate('c');
             })),
         ];

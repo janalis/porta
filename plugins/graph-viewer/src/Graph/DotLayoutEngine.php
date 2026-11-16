@@ -77,15 +77,15 @@ final readonly class DotLayoutEngine implements LayoutEngine
             DotCommand::layout($binary),
             $this->rootDir,
             $dot,
-            'dot',
-            static function (string $stdout) use ($onDone, $onError): void {
+            label: 'dot',
+            onSuccess: static function (string $stdout) use ($onDone, $onError): void {
                 try {
                     $onDone(DotJsonParser::parse($stdout));
                 } catch (GraphParseException $e) {
                     $onError($e->getMessage());
                 }
             },
-            $onError,
+            onFailure: $onError,
         );
     }
 
@@ -97,7 +97,7 @@ final readonly class DotLayoutEngine implements LayoutEngine
 
             return;
         }
-        $this->renderSlot->run(DotCommand::render($binary, Format::Png, $dpi), $this->rootDir, $source, 'dot', $onPng, $onError);
+        $this->renderSlot->run(DotCommand::render($binary, Format::Png, $dpi), $this->rootDir, $source, label: 'dot', onSuccess: $onPng, onFailure: $onError);
     }
 
     public function export(string $dot, Format $format, string $outPath, \Closure $onDone): void
@@ -112,11 +112,11 @@ final readonly class DotLayoutEngine implements LayoutEngine
             [...DotCommand::render($binary, $format), '-o', $outPath],
             $this->rootDir,
             $dot,
-            'dot',
-            static function () use ($onDone): void {
+            label: 'dot',
+            onSuccess: static function () use ($onDone): void {
                 $onDone(null);
             },
-            $onDone,
+            onFailure: $onDone,
         );
     }
 

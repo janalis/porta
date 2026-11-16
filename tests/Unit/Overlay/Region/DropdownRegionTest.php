@@ -19,10 +19,10 @@ final class DropdownRegionTest extends TestCase
         $region = new DropdownRegion(top: 5, col: 10, width: 8, count: 3);
 
         $this->assertFalse($region->ltr, 'mirrored prose by default, not code-carrying LTR content');
-        $this->assertSame(0, $region->itemAt(5, 10), 'the first row is item 0');
-        $this->assertSame(2, $region->itemAt(7, 17), 'the last row and column still hit');
-        $this->assertNull($region->itemAt(8, 10), 'below the box');
-        $this->assertNull($region->itemAt(5, 18), 'right of the box');
+        $this->assertSame(0, $region->itemAt(5, col: 10), 'the first row is item 0');
+        $this->assertSame(2, $region->itemAt(7, col: 17), 'the last row and column still hit');
+        $this->assertNull($region->itemAt(8, col: 10), 'below the box');
+        $this->assertNull($region->itemAt(5, col: 18), 'right of the box');
     }
 
     public function testAFramedRegionYieldsNullOnItsBorderRing(): void
@@ -31,13 +31,13 @@ final class DropdownRegionTest extends TestCase
         // cols 10..17 (rails at 10 and 17).
         $region = new DropdownRegion(top: 5, col: 10, width: 8, count: 5, framed: true);
 
-        $this->assertNull($region->itemAt(5, 12), 'top border row');
-        $this->assertNull($region->itemAt(9, 12), 'bottom border row');
-        $this->assertNull($region->itemAt(6, 10), 'left rail');
-        $this->assertNull($region->itemAt(6, 17), 'right rail');
-        $this->assertSame(0, $region->itemAt(6, 11), 'first item, one row below the top border');
-        $this->assertSame(2, $region->itemAt(8, 16), 'last item, one column inside the rail');
-        $this->assertNull($region->itemAt(4, 12), 'outside stays outside');
+        $this->assertNull($region->itemAt(5, col: 12), 'top border row');
+        $this->assertNull($region->itemAt(9, col: 12), 'bottom border row');
+        $this->assertNull($region->itemAt(6, col: 10), 'left rail');
+        $this->assertNull($region->itemAt(6, col: 17), 'right rail');
+        $this->assertSame(0, $region->itemAt(6, col: 11), 'first item, one row below the top border');
+        $this->assertSame(2, $region->itemAt(8, col: 16), 'last item, one column inside the rail');
+        $this->assertNull($region->itemAt(4, col: 12), 'outside stays outside');
     }
 
     /** contains() keeps meaning the whole box — the border ring included. */
@@ -45,9 +45,9 @@ final class DropdownRegionTest extends TestCase
     {
         $region = new DropdownRegion(top: 5, col: 10, width: 8, count: 5, framed: true);
 
-        $this->assertTrue($region->contains(5, 10), 'the top-left corner is inside the box');
-        $this->assertTrue($region->contains(9, 17), 'the bottom-right corner too');
-        $this->assertFalse($region->contains(10, 10), 'one row below is not');
+        $this->assertTrue($region->contains(5, col: 10), 'the top-left corner is inside the box');
+        $this->assertTrue($region->contains(9, col: 17), 'the bottom-right corner too');
+        $this->assertFalse($region->contains(10, col: 10), 'one row below is not');
         $this->assertTrue($region->coversRow(9));
         $this->assertFalse($region->coversRow(10));
     }
@@ -58,9 +58,9 @@ final class DropdownRegionTest extends TestCase
         $framed = new DropdownRegion(top: 5, col: 10, width: 8, count: 5, framed: true, first: 7);
         $bare = new DropdownRegion(top: 5, col: 10, width: 8, count: 3, first: 7);
 
-        $this->assertSame(7, $framed->itemAt(6, 11), 'the first item row shows item 7');
-        $this->assertSame(9, $framed->itemAt(8, 11));
-        $this->assertNull($framed->itemAt(5, 11), 'the border is still no item');
-        $this->assertSame(7, $bare->itemAt(5, 11));
+        $this->assertSame(7, $framed->itemAt(6, col: 11), 'the first item row shows item 7');
+        $this->assertSame(9, $framed->itemAt(8, col: 11));
+        $this->assertNull($framed->itemAt(5, col: 11), 'the border is still no item');
+        $this->assertSame(7, $bare->itemAt(5, col: 11));
     }
 }

@@ -57,12 +57,12 @@ trait ScrollsRows
     {
         $kb = $this->getKeybindings();
         match (true) {
-            $kb->matches($data, 'cursor_up') => $this->scrollBy(-1),
-            $kb->matches($data, 'cursor_down') => $this->scrollBy(1),
-            $kb->matches($data, 'page_up') => $this->scrollBy(-$this->bodyRows),
-            $kb->matches($data, 'page_down') => $this->scrollBy($this->bodyRows),
-            $kb->matches($data, 'document_start') => $this->scrollTo(0),
-            $kb->matches($data, 'document_end') => $this->scrollTo(\PHP_INT_MAX),
+            $kb->matches($data, action: 'cursor_up') => $this->scrollBy(-1),
+            $kb->matches($data, action: 'cursor_down') => $this->scrollBy(1),
+            $kb->matches($data, action: 'page_up') => $this->scrollBy(-$this->bodyRows),
+            $kb->matches($data, action: 'page_down') => $this->scrollBy($this->bodyRows),
+            $kb->matches($data, action: 'document_start') => $this->scrollTo(0),
+            $kb->matches($data, action: 'document_end') => $this->scrollTo(\PHP_INT_MAX),
             default => $this->tabKey($data),
         };
     }
@@ -97,6 +97,6 @@ trait ScrollsRows
     /** The furthest the view may scroll: the last body-full of rows. */
     private function clampScroll(int $top): int
     {
-        return IntMath::clamp($top, 0, \max(0, $this->rowCount() - $this->bodyRows));
+        return IntMath::clamp($top, lo: 0, hi: \max(0, $this->rowCount() - $this->bodyRows));
     }
 }

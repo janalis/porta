@@ -450,7 +450,7 @@ final class RuleHalvesTest extends TestCase
         foreach ($cells as $col => $cell) {
             // A probe glyph after each, so a column with none still reads its state.
             $this->assertSame(
-                RuleHalves::cells(AnsiText::columnsFrom($line, $col, 1).'X')[0],
+                RuleHalves::cells(AnsiText::columnsFrom($line, $col, length: 1).'X')[0],
                 RuleHalves::cells($cell.'X')[0],
                 "column {$col}",
             );

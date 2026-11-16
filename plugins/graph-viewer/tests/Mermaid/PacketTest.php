@@ -63,7 +63,7 @@ final class PacketTest extends TestCase
     {
         $source = \file_get_contents($path);
         $this->assertIsString($source);
-        $result = NativeFixtureRows::render($source, 28);
+        $result = NativeFixtureRows::render($source, width: 28);
         $this->assertNotEmpty($result->rows);
         $this->assertCount(\count($result->rows), $result->origins);
         foreach ($result->rows as $row) {

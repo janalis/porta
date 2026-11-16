@@ -204,12 +204,12 @@ final class SettingsStoreController
             $this->armed = $entry->package;
             $this->notifier->warn($this->translator->trans('"%package%" is not verified by Porta, and a plugin runs as PHP with your permissions. Press again to install it', [
                 '%package%' => $entry->package,
-            ]), 8.0);
+            ]), seconds: 8.0);
 
             return;
         }
         $this->installing[$entry->package] = true;
-        $this->notifier->flash($this->translator->trans('Installing %plugin%…', ['%plugin%' => $entry->title]), 60.0, 'plugin-store');
+        $this->notifier->flash($this->translator->trans('Installing %plugin%…', ['%plugin%' => $entry->title]), seconds: 60.0, slot: 'plugin-store');
         $this->lifecycle->refreshView();
         // Exactly the release the store checked runs here: composer left to
         // itself would take the newest, which may target another plugin API.
@@ -220,8 +220,8 @@ final class SettingsStoreController
                 unset($this->installing[$entry->package]);
                 $error ??= $this->lifecycle->activateInstalled((string) $file);
                 null === $error
-                    ? $this->notifier->success($this->translator->trans('%plugin% installed', ['%plugin%' => $entry->title]), 5.0, 'plugin-store')
-                    : $this->notifier->error($error, 8.0, 'plugin-store');
+                    ? $this->notifier->success($this->translator->trans('%plugin% installed', ['%plugin%' => $entry->title]), seconds: 5.0, slot: 'plugin-store')
+                    : $this->notifier->error($error, seconds: 8.0, slot: 'plugin-store');
                 $this->lifecycle->refreshView();
             },
             $entry->version,

@@ -131,7 +131,7 @@ final class OpenCommandTest extends TestCase
 
     public function testAPasswordThatCannotBeKeptSaysSo(): void
     {
-        $this->home->write('.porta', 'a file, not a directory');
+        $this->home->write('.porta', content: 'a file, not a directory');
         $tester = $this->command();
         $tester->setInputs(['secret']);
 

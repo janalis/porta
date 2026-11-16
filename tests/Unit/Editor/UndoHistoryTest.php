@@ -38,12 +38,12 @@ final class UndoHistoryTest extends TestCase
         // 200-step cap — a saturated stack held ~360MB of array slots.
         $h = new UndoHistory(new MockClock('@1000.000000'), maxRetainedLines: 25);
 
-        $h->push($this->bigSnap(1, 10)); // 10 lines retained
-        $h->push($this->bigSnap(2, 10)); // 20
-        $h->push($this->bigSnap(3, 10)); // 30 → the oldest drops (20 again)
+        $h->push($this->bigSnap(1, lines: 10)); // 10 lines retained
+        $h->push($this->bigSnap(2, lines: 10)); // 20
+        $h->push($this->bigSnap(3, lines: 10)); // 30 → the oldest drops (20 again)
 
-        $this->assertSame($this->bigSnap(3, 10), $h->undo($this->snap(9)));
-        $this->assertSame($this->bigSnap(2, 10), $h->undo($this->snap(9)));
+        $this->assertSame($this->bigSnap(3, lines: 10), $h->undo($this->snap(9)));
+        $this->assertSame($this->bigSnap(2, lines: 10), $h->undo($this->snap(9)));
         $this->assertNull($h->undo($this->snap(9)), 'state 1 fell to the budget');
     }
 
@@ -53,9 +53,9 @@ final class UndoHistoryTest extends TestCase
         // undoable — the budget trims history, never the present step.
         $h = new UndoHistory(new MockClock('@1000.000000'), maxRetainedLines: 5);
 
-        $h->push($this->bigSnap(1, 50));
+        $h->push($this->bigSnap(1, lines: 50));
 
-        $this->assertSame($this->bigSnap(1, 50), $h->undo($this->snap(9)));
+        $this->assertSame($this->bigSnap(1, lines: 50), $h->undo($this->snap(9)));
     }
 
     public function testUndoAndRedoKeepTheBudgetTallyHonest(): void
@@ -64,14 +64,14 @@ final class UndoHistoryTest extends TestCase
         // walk, pushing within budget must not evict what still fits.
         $h = new UndoHistory(new MockClock('@1000.000000'), maxRetainedLines: 25);
 
-        $h->push($this->bigSnap(1, 10));
-        $h->push($this->bigSnap(2, 10));
-        $current = $this->bigSnap(9, 10);
+        $h->push($this->bigSnap(1, lines: 10));
+        $h->push($this->bigSnap(2, lines: 10));
+        $current = $this->bigSnap(9, lines: 10);
         $h->redo($h->undo($current) ?? []); // down and back up: tally unchanged
-        $h->push($this->bigSnap(3, 10)); // 30 retained → exactly one eviction
+        $h->push($this->bigSnap(3, lines: 10)); // 30 retained → exactly one eviction
 
-        $this->assertSame($this->bigSnap(3, 10), $h->undo($this->snap(8)));
-        $this->assertSame($this->bigSnap(2, 10), $h->undo($this->snap(8)));
+        $this->assertSame($this->bigSnap(3, lines: 10), $h->undo($this->snap(8)));
+        $this->assertSame($this->bigSnap(2, lines: 10), $h->undo($this->snap(8)));
         $this->assertNull($h->undo($this->snap(8)), 'a drifting tally would have evicted a second step (or none)');
     }
 
@@ -87,11 +87,11 @@ final class UndoHistoryTest extends TestCase
         $clock = new MockClock('@1000.000000');
         $h = new UndoHistory($clock);
 
-        $h->push($this->snap(1), 'insert'); // stored
+        $h->push($this->snap(1), coalesceKey: 'insert'); // stored
         $clock->sleep(0.5);
-        $h->push($this->snap(2), 'insert'); // coalesced — not stored
+        $h->push($this->snap(2), coalesceKey: 'insert'); // coalesced — not stored
         $clock->sleep(1.5);
-        $h->push($this->snap(3), 'insert'); // >1s later — stored
+        $h->push($this->snap(3), coalesceKey: 'insert'); // >1s later — stored
 
         $this->assertSame($this->snap(3), $h->undo($this->snap(9)));
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)));
@@ -102,8 +102,8 @@ final class UndoHistoryTest extends TestCase
     {
         $h = new UndoHistory(new MockClock('@1000.000000'));
 
-        $h->push($this->snap(1), 'a');
-        $h->push($this->snap(2), 'b'); // different key → stored even within 1s
+        $h->push($this->snap(1), coalesceKey: 'a');
+        $h->push($this->snap(2), coalesceKey: 'b'); // different key → stored even within 1s
 
         $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)));
@@ -123,9 +123,9 @@ final class UndoHistoryTest extends TestCase
     {
         $h = new UndoHistory();
         $h->beginCompound();
-        $h->push($this->snap(1), 'k'); // first — stored
-        $h->push($this->snap(2), 'k'); // suppressed
-        $h->push($this->snap(3), 'k'); // suppressed
+        $h->push($this->snap(1), coalesceKey: 'k'); // first — stored
+        $h->push($this->snap(2), coalesceKey: 'k'); // suppressed
+        $h->push($this->snap(3), coalesceKey: 'k'); // suppressed
         $h->endCompound();
 
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)));
@@ -149,9 +149,9 @@ final class UndoHistoryTest extends TestCase
     public function testCheckpointBreaksCoalescing(): void
     {
         $h = new UndoHistory(new MockClock('@5.000000'));
-        $h->push($this->snap(1), 'type'); // stored
+        $h->push($this->snap(1), coalesceKey: 'type'); // stored
         $h->checkpoint(); // e.g. a save — the next same-key edit must not coalesce
-        $h->push($this->snap(2), 'type'); // stored (not merged)
+        $h->push($this->snap(2), coalesceKey: 'type'); // stored (not merged)
 
         $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)), 'checkpoint kept both edits separate');
@@ -174,13 +174,13 @@ final class UndoHistoryTest extends TestCase
         $h->undo($this->snap(2)); // redo holds snap(2)
 
         $h->beginCompound();
-        $h->push($this->snap(3), 'k'); // first of compound — stored, clears redo
+        $h->push($this->snap(3), coalesceKey: 'k'); // first of compound — stored, clears redo
         $h->undo($this->snap(4)); // undo it → redo holds snap(4)
         // Re-open a compound and push twice; the suppressed second push must
         // still clear the redo stack.
         $h->beginCompound();
-        $h->push($this->snap(5), 'k'); // first — stored
-        $h->push($this->snap(6), 'k'); // suppressed → clears redo
+        $h->push($this->snap(5), coalesceKey: 'k'); // first — stored
+        $h->push($this->snap(6), coalesceKey: 'k'); // suppressed → clears redo
         $h->endCompound();
         $h->endCompound();
 
@@ -194,10 +194,10 @@ final class UndoHistoryTest extends TestCase
         // own undo step.
         $h = new UndoHistory();
         $h->beginCompound();
-        $h->push($this->snap(1), 'k');
+        $h->push($this->snap(1), coalesceKey: 'k');
         $h->endCompound();
         $h->beginCompound();
-        $h->push($this->snap(2), 'k');
+        $h->push($this->snap(2), coalesceKey: 'k');
         $h->endCompound();
 
         $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
@@ -220,9 +220,9 @@ final class UndoHistoryTest extends TestCase
         $clock = new MockClock('@1000.000000');
         $h = new UndoHistory($clock);
 
-        $h->push($this->snap(1), 'insert');
+        $h->push($this->snap(1), coalesceKey: 'insert');
         $clock->sleep(1.0); // exactly the coalescing boundary — must NOT merge
-        $h->push($this->snap(2), 'insert');
+        $h->push($this->snap(2), coalesceKey: 'insert');
 
         $this->assertSame($this->snap(2), $h->undo($this->snap(9)));
         $this->assertSame($this->snap(1), $h->undo($this->snap(9)), 'both edits landed as separate steps');
@@ -243,7 +243,7 @@ final class UndoHistoryTest extends TestCase
 
         for ($i = 0; $i < 250; ++$i) {
             $clock->sleep(2.0); // spaced out so nothing coalesces
-            $h->push($this->snap($i), 'k');
+            $h->push($this->snap($i), coalesceKey: 'k');
         }
 
         // At most 200 entries survive.

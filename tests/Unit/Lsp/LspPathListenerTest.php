@@ -53,8 +53,8 @@ final class LspPathListenerTest extends TestCase
     public function testARenameClosesTheOldPathAndNotTheNewOne(): void
     {
         [$listener, $pool] = $this->listener();
-        $pool->notifyDidOpen('/tmp/proj/old.php', '<?php', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/src/old.php', '<?php', 'php', 1); // where the mover put it
+        $pool->notifyDidOpen('/tmp/proj/old.php', text: '<?php', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/src/old.php', text: '<?php', languageId: 'php', version: 1); // where the mover put it
 
         $listener->onFileRenamed(new FileRenamed('/tmp/proj/old.php', '/tmp/proj/src/old.php'));
 
@@ -65,9 +65,9 @@ final class LspPathListenerTest extends TestCase
     public function testARenamedFolderClosesTheFilesThatWereInsideIt(): void
     {
         [$listener, $pool] = $this->listener();
-        $pool->notifyDidOpen('/tmp/proj/Old/a.php', '<?php', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/Old/deep/b.php', '<?php', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/Kept/c.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/Old/a.php', text: '<?php', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/Old/deep/b.php', text: '<?php', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/Kept/c.php', text: '<?php', languageId: 'php', version: 1);
 
         $listener->onFileRenamed(new FileRenamed('/tmp/proj/Old', '/tmp/proj/New'));
 
@@ -77,8 +77,8 @@ final class LspPathListenerTest extends TestCase
     public function testADeleteClosesThePathToo(): void
     {
         [$listener, $pool] = $this->listener();
-        $pool->notifyDidOpen('/tmp/proj/gone.php', '<?php', 'php', 1);
-        $pool->notifyDidOpen('/tmp/proj/stays.php', '<?php', 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/gone.php', text: '<?php', languageId: 'php', version: 1);
+        $pool->notifyDidOpen('/tmp/proj/stays.php', text: '<?php', languageId: 'php', version: 1);
 
         $listener->onFileDeleted(new FileDeleted('/tmp/proj/gone.php'));
 

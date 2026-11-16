@@ -196,22 +196,22 @@ final class TerminalGraphicsTest extends TestCase
 
     public function testAnUnchangedPlacementIsNotResent(): void
     {
-        $this->graphics->place(1000, 10, 5);
-        $this->graphics->place(1000, 10, 5);
+        $this->graphics->place(1000, columns: 10, rows: 5);
+        $this->graphics->place(1000, columns: 10, rows: 5);
 
         $this->assertSame("\x1b_Ga=p,U=1,i=1000,p=1,c=10,r=5,q=2\x1b\\", $this->terminal->getOutput());
 
-        $this->graphics->place(1000, 10, 6);
+        $this->graphics->place(1000, columns: 10, rows: 6);
         $this->assertStringEndsWith("\x1b_Ga=p,U=1,i=1000,p=1,c=10,r=6,q=2\x1b\\", $this->terminal->getOutput());
     }
 
     public function testANewTransmitNeedsItsPlacementAgain(): void
     {
         // Replacing an id's pixels drops the placement with them.
-        $this->graphics->place(1000, 1, 1);
-        $this->graphics->transmit(1000, 'png');
+        $this->graphics->place(1000, columns: 1, rows: 1);
+        $this->graphics->transmit(1000, png: 'png');
         $this->terminal->clearOutput();
-        $this->graphics->place(1000, 1, 1);
+        $this->graphics->place(1000, columns: 1, rows: 1);
 
         $this->assertSame("\x1b_Ga=p,U=1,i=1000,p=1,c=1,r=1,q=2\x1b\\", $this->terminal->getOutput());
     }
@@ -221,7 +221,7 @@ final class TerminalGraphicsTest extends TestCase
         $this->graphics->delete(1000);
         $this->assertSame('', $this->terminal->getOutput(), 'the terminal holds nothing under that id');
 
-        $this->graphics->transmit(1000, 'png');
+        $this->graphics->transmit(1000, png: 'png');
         $this->terminal->clearOutput();
         $this->graphics->delete(1000);
         $this->graphics->delete(1000);
@@ -232,8 +232,8 @@ final class TerminalGraphicsTest extends TestCase
     public function testReleaseFreesEveryImageAndStopsWaiting(): void
     {
         $this->graphics->probe([]);
-        $this->graphics->transmit($this->graphics->allocateId(), 'a');
-        $this->graphics->transmit($this->graphics->allocateId(), 'b');
+        $this->graphics->transmit($this->graphics->allocateId(), png: 'a');
+        $this->graphics->transmit($this->graphics->allocateId(), png: 'b');
         $this->terminal->clearOutput();
 
         $this->graphics->release();

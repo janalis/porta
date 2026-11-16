@@ -63,7 +63,7 @@ final class FenceInteractionTest extends TestCase
         $action = new FenceAction('one', 'SVG', static function (): void {});
         $result = FenceResult::rows(['row'], [3], error: 'warning')->interactive([$element], [$action]);
         $this->assertSame([['row'], [3], 'warning', [$element], [$action]], [$result->rows, $result->origins, $result->error, $result->elements, $result->actions]);
-        $png = PngFixture::bytes(8, 8);
+        $png = PngFixture::bytes(8, height: 8);
         $this->assertSame($png, FenceResult::png($png)->interactive([$element])->png);
         foreach ([
             [[$element, $element], []],
@@ -105,7 +105,7 @@ final class FenceInteractionTest extends TestCase
         });
         $document = new MarkdownParser()->parse("```mermaid\nfirst\nsecond\n```\n");
         $code = $document->blocks[0];
-        $session->prepare($document, '/doc.md', width: 40);
+        $session->prepare($document, path: '/doc.md', width: 40);
         $provider->drain();
         $contexts = [];
         $action = new FenceAction('find-node', 'Find', static function (FenceContext $context) use (&$contexts): void {
@@ -115,27 +115,27 @@ final class FenceInteractionTest extends TestCase
         $pick = static function (int $line, string $id) use (&$selected): void {
             $selected[] = [$line, $id];
         };
-        $session->invoke($code->body->start, 'find-node', $pick);
+        $session->invoke($code->body->start, id: 'find-node', selected: $pick);
         $this->assertSame([], $contexts);
         $provider->requests[0]['success'](FenceResult::rows(['row'], [0])->interactive([self::element(origin: 99)], [$action]));
-        $session->invoke($code->body->start, 'unknown', $pick);
-        $session->invoke(999, 'find-node', $pick);
-        $session->select($code->body->start, 'unknown', $pick);
-        $session->select(999, 'one', $pick);
-        $session->invoke($code->body->start, 'find-node', $pick);
+        $session->invoke($code->body->start, id: 'unknown', selected: $pick);
+        $session->invoke(999, id: 'find-node', selected: $pick);
+        $session->select($code->body->start, id: 'unknown', selected: $pick);
+        $session->select(999, id: 'one', selected: $pick);
+        $session->invoke($code->body->start, id: 'find-node', selected: $pick);
         $this->assertCount(1, $contexts);
         $this->assertSame(1, $contexts[0]->number);
         $contexts[0]->select('one');
         $this->assertSame([[1, 'one']], $selected);
         $edited = new MarkdownParser()->parse("```mermaid\nchanged\n```\n");
-        $session->prepare($edited, '/doc.md', width: 40);
+        $session->prepare($edited, path: '/doc.md', width: 40);
         $contexts[0]->select('one');
-        $session->invoke($edited->blocks[0]->body->start, 'find-node', $pick);
+        $session->invoke($edited->blocks[0]->body->start, id: 'find-node', selected: $pick);
         $this->assertCount(1, $contexts);
         $this->assertCount(1, $selected);
         $provider->drain();
         $provider->requests[1]['error']('invalid');
-        $session->invoke($edited->blocks[0]->body->start, 'find-node', $pick);
+        $session->invoke($edited->blocks[0]->body->start, id: 'find-node', selected: $pick);
         $this->assertCount(1, $contexts);
         $this->assertGreaterThan(0, $changed);
         $session->clear();
@@ -146,7 +146,7 @@ final class FenceInteractionTest extends TestCase
         $provider = new FenceProvider();
         $session = new FenceSession($provider->registry, $provider->queue, static function (): void {});
         $document = new MarkdownParser()->parse("```mermaid\nfirst\n```\n\n```mermaid\nsecond\n```\n");
-        $session->prepare($document, '/doc.md', width: 40);
+        $session->prepare($document, path: '/doc.md', width: 40);
         $provider->drain();
         $numbers = [];
         $action = new FenceAction('export', 'SVG', static function (FenceContext $context) use (&$numbers): void {
@@ -156,7 +156,7 @@ final class FenceInteractionTest extends TestCase
             $request['success'](FenceResult::rows(['row'], [0])->interactive([], [$action]));
         }
         foreach ($document->blocks as $code) {
-            $session->invoke($code->body->start, 'export', static function (): void {});
+            $session->invoke($code->body->start, id: 'export', selected: static function (): void {});
         }
         $this->assertSame([1, 2], $numbers);
         $session->clear();
@@ -177,19 +177,19 @@ final class FenceInteractionTest extends TestCase
         $pick = static function (int $line, string $id) use (&$selected): void {
             $selected[] = $id;
         };
-        $session->prepare($document, '/doc.md', width: 40);
+        $session->prepare($document, path: '/doc.md', width: 40);
         $provider->drain();
         $provider->requests[0]['success']($result);
-        $session->invoke($offset, 'find', $pick);
+        $session->invoke($offset, id: 'find', selected: $pick);
         $this->assertCount(1, $contexts);
-        $session->prepare($document, '/doc.md', width: 20);
-        $session->invoke($offset, 'find', $pick);
+        $session->prepare($document, path: '/doc.md', width: 20);
+        $session->invoke($offset, id: 'find', selected: $pick);
         $this->assertCount(1, $contexts, 'a retained result does not activate while its resized replacement is pending');
         $provider->drain();
         $provider->requests[1]['success']($result);
         $contexts[0]->select('one');
         $this->assertSame([], $selected, 'a picker is tied to the result that opened it');
-        $session->invoke($offset, 'find', $pick);
+        $session->invoke($offset, id: 'find', selected: $pick);
         $contexts[1]->select('one');
         $this->assertSame(['one'], $selected);
         $session->clear();
@@ -201,13 +201,13 @@ final class FenceInteractionTest extends TestCase
         $session = new FenceSession($provider->registry, $provider->queue, static function (): void {});
         $document = new MarkdownParser()->parse("```mermaid\nsource\n```\n");
         $code = $document->blocks[0];
-        $session->prepare($document, '/doc.md', width: 40);
+        $session->prepare($document, path: '/doc.md', width: 40);
         $provider->drain();
         $action = new FenceAction('bad', 'Broken', static function (): never {
             throw new \RuntimeException('action failed');
         });
         $provider->requests[0]['success'](FenceResult::rows(['row'], [0])->interactive([], [$action]));
-        $session->invoke($code->body->start, 'bad', static function (): void {});
+        $session->invoke($code->body->start, id: 'bad', selected: static function (): void {});
         $this->assertSame('action failed', $session->block($code)->error);
         $this->assertSame(['row'], $session->block($code)->result->rows);
         $session->clear();

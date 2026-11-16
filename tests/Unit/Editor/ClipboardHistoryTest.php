@@ -177,7 +177,7 @@ final class ClipboardHistoryTest extends TestCase
     private function copyLine(CodeEditorWidget $editor, int $line): void
     {
         $doc = $editor->getDocument();
-        $doc->setCursor($line, 0);
+        $doc->setCursor($line, col: 0);
         $doc->beginSelect();
         $doc->setCursor($line, \strlen($doc->getLine($line)), SelectionMode::Keep);
         $editor->handleInput("\x03"); // ctrl+c
@@ -186,10 +186,10 @@ final class ClipboardHistoryTest extends TestCase
     public function testCtrlShiftVOffersEveryCopyAndPastingOneInsertsIt(): void
     {
         $editor = $this->editor();
-        $this->copyLine($editor, 0); // alpha
-        $this->copyLine($editor, 1); // beta
+        $this->copyLine($editor, line: 0); // alpha
+        $this->copyLine($editor, line: 1); // beta
 
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->handleInput("\x1b[118;6u"); // ctrl+shift+v
         $this->assertTrue(EditorState::pickerOpen($editor), 'the history opened');
 
@@ -208,10 +208,10 @@ final class ClipboardHistoryTest extends TestCase
     public function testPastingFromHistoryMakesThatEntryTheClipboard(): void
     {
         $editor = $this->editor();
-        $this->copyLine($editor, 0); // alpha
-        $this->copyLine($editor, 1); // beta
+        $this->copyLine($editor, line: 0); // alpha
+        $this->copyLine($editor, line: 1); // beta
 
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->handleInput("\x1b[118;6u");
         $editor->handleInput("\x1b[B"); // alpha
         $editor->handleInput("\r");
@@ -239,10 +239,10 @@ final class ClipboardHistoryTest extends TestCase
         $expected = null;
         foreach (['plain' => ["\x16"], 'history' => ["\x1b[118;6u", "\r"]] as $how => $keys) {
             $editor = $this->editor("one\ntwo\nthree\n");
-            $this->copyLine($editor, 0); // `one`
+            $this->copyLine($editor, line: 0); // `one`
 
             $doc = $editor->getDocument();
-            $doc->setCursor(1, 3);
+            $doc->setCursor(1, col: 3);
             $editor->handleInput("\x1b[1;7B"); // ctrl+alt+down: a second caret
 
             foreach ($keys as $key) {
@@ -266,12 +266,12 @@ final class ClipboardHistoryTest extends TestCase
     public function testTheHistorySurvivesABufferSwitch(): void
     {
         $editor = $this->editor();
-        $this->copyLine($editor, 0); // alpha
+        $this->copyLine($editor, line: 0); // alpha
 
-        $editor->openFile('other.php', "one\ntwo\n");
-        $this->copyLine($editor, 0); // one
+        $editor->openFile('other.php', content: "one\ntwo\n");
+        $this->copyLine($editor, line: 0); // one
 
-        $editor->getDocument()->setCursor(1, 3);
+        $editor->getDocument()->setCursor(1, col: 3);
         $editor->handleInput("\x1b[118;6u");
         $editor->handleInput("\x1b[B"); // past `one`, to `alpha`
         $editor->handleInput("\r");
@@ -304,7 +304,7 @@ final class ClipboardHistoryTest extends TestCase
             }
         };
         $editor = new CodeEditorWidget(flash: $flash);
-        $editor->openFile('demo.php', "alpha\n");
+        $editor->openFile('demo.php', content: "alpha\n");
         $editor->setFocused(true);
 
         $editor->handleInput("\x1b[118;6u"); // ctrl+shift+v with nothing copied

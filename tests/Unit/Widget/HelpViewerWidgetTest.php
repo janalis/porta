@@ -58,11 +58,11 @@ final class HelpViewerWidgetTest extends TestCase
         // which is what it did when this was a branch in the provider.
         $this->assertSame('', $viewer->statusRight());
 
-        $viewer->refreshPage('/p/docs/README.md', "# Hi\n");
+        $viewer->refreshPage('/p/docs/README.md', markdown: "# Hi\n");
         $this->assertNotNull($viewer->path());
 
         // A switch back to the tab keeps the navigated page; closing it does not.
-        $viewer->show('/p/docs/other.md', "# Other\n");
+        $viewer->show('/p/docs/other.md', payload: "# Other\n");
         $this->assertStringEndsWith('README.md', (string) $viewer->path(), 'show() adopts a page only when the pane is empty');
         $viewer->forget('/p/docs/README.md');
         $this->assertNull($viewer->path(), 'the page and its history die with the tab');
@@ -149,7 +149,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $tree = new TempProject([
             'docs/README.md' => "# Home\n",
-            'docs/public/screenshots/demo.png' => PngFixture::bytes(160, 80),
+            'docs/public/screenshots/demo.png' => PngFixture::bytes(160, height: 80),
             'plugins/demo/docs/README.md' => "# Demo\n\n![Shot](/screenshots/demo.png)\n",
         ]);
         [$graphics] = PixelGraphics::answered(cellWidth: 8, cellHeight: 16);
@@ -193,7 +193,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\t");
         $viewer->handleInput("\r");
         $this->assertStringContainsString('README › demo › usage', $this->screen($viewer)[0]);
-        $this->assertTrue($viewer->clickAt(0, 15), "the plugin's crumb leads to its index");
+        $this->assertTrue($viewer->clickAt(0, relCol: 15), "the plugin's crumb leads to its index");
         $this->assertSame(\realpath($tree->path('plugins/demo/docs/README.md')), $viewer->path());
     }
 
@@ -377,8 +377,8 @@ final class HelpViewerWidgetTest extends TestCase
         $this->screen($viewer);
 
         // The › arrow re-enters editor.md.
-        $this->assertTrue($viewer->clickAt(0, 3), 'the forward arrow zone is active after a back');
-        $this->assertTrue($viewer->clickAt(0, 3), 'a stale › zone still swallows the click');
+        $this->assertTrue($viewer->clickAt(0, relCol: 3), 'the forward arrow zone is active after a back');
+        $this->assertTrue($viewer->clickAt(0, relCol: 3), 'a stale › zone still swallows the click');
         $this->assertSame(['help:editor.md', 'help:README.md', 'help:editor.md'], $this->handler->events, 'an emptied forward stack navigates nowhere');
         $this->screen($viewer);
 
@@ -388,7 +388,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\x1b[Z"); // shift+tab from the restored focus → "Bottom" (a page link)
         $viewer->handleInput("\r");
         $this->screen($viewer);
-        $this->assertFalse($viewer->clickAt(0, 3), 'a page follow cleared the forward trail');
+        $this->assertFalse($viewer->clickAt(0, relCol: 3), 'a page follow cleared the forward trail');
     }
 
     public function testBreadcrumbMirrorsTheFileHierarchyAndTheRootCrumbNavigates(): void
@@ -400,7 +400,7 @@ final class HelpViewerWidgetTest extends TestCase
         $this->assertStringNotContainsString('›  README ›', $this->screen($viewer)[0]);
         $viewer->scrollBy(6);
         $this->assertStringNotContainsString('Guides', \implode("\n", $this->screen($viewer)));
-        $this->assertTrue($viewer->clickAt(0, 6), 'the current-page crumb is a scroll-to-top target');
+        $this->assertTrue($viewer->clickAt(0, relCol: 6), 'the current-page crumb is a scroll-to-top target');
         $this->assertSame([], $this->handler->events, 'without navigating anywhere');
         $this->assertStringContainsString('Guides', \implode("\n", $this->screen($viewer)), 'the page scrolled back to the top');
 
@@ -408,14 +408,14 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\t");
         $viewer->handleInput("\r"); // → editor
         $this->assertStringContainsString('README › editor', $this->screen($viewer)[0]);
-        $this->assertTrue($viewer->clickAt(0, 6), 'the root crumb starts right after the arrows');
+        $this->assertTrue($viewer->clickAt(0, relCol: 6), 'the root crumb starts right after the arrows');
         $this->assertSame(['help:editor.md', 'help:README.md'], $this->handler->events, 'the crumb click navigated home');
         $this->assertSame(\realpath($this->docs->path('README.md')), $viewer->path());
 
         // A crumb click is a fresh navigation: back re-enters the page, forward is cleared.
         $this->screen($viewer);
-        $this->assertFalse($viewer->clickAt(0, 3), 'no forward trail after a crumb navigation');
-        $this->assertTrue($viewer->clickAt(0, 1), 'the ‹ arrow is armed by the crumb navigation');
+        $this->assertFalse($viewer->clickAt(0, relCol: 3), 'no forward trail after a crumb navigation');
+        $this->assertTrue($viewer->clickAt(0, relCol: 1), 'the ‹ arrow is armed by the crumb navigation');
         $this->assertStringEndsWith('editor.md', (string) $viewer->path());
     }
 
@@ -427,34 +427,34 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->handleInput("\r"); // → editor (history armed)
         $this->screen($viewer);
 
-        $this->assertTrue($viewer->clickAt(0, 0), 'a near-miss left of ‹ still goes back');
+        $this->assertTrue($viewer->clickAt(0, relCol: 0), 'a near-miss left of ‹ still goes back');
         $this->screen($viewer);
-        $this->assertTrue($viewer->clickAt(0, 4), 'a near-miss right of › still goes forward');
+        $this->assertTrue($viewer->clickAt(0, relCol: 4), 'a near-miss right of › still goes forward');
         $this->assertSame(['help:editor.md', 'help:README.md', 'help:editor.md'], $this->handler->events);
     }
 
     public function testFolderCrumbsClickableIndexesInertOtherwiseAndTruncationKeepsTheTail(): void
     {
         $viewer = $this->viewer();
-        $this->docs->write('guide/README.md', "# Guide index\n");
-        $this->docs->write('guide/sub/deep.md', "# Deep page\n");
-        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
+        $this->docs->write('guide/README.md', content: "# Guide index\n");
+        $this->docs->write('guide/sub/deep.md', content: "# Deep page\n");
+        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), markdown: "# Deep page\n");
 
-        $this->assertFalse($viewer->clickAt(0, 1), 'the ‹ arrow is inert with no history');
-        $this->assertFalse($viewer->clickAt(0, 3), 'the › arrow is inert with no forward');
+        $this->assertFalse($viewer->clickAt(0, relCol: 1), 'the ‹ arrow is inert with no history');
+        $this->assertFalse($viewer->clickAt(0, relCol: 3), 'the › arrow is inert with no forward');
 
         // ' ‹ ›  README › guide › sub › deep' — folders mirror the file tree.
         $header = $this->screen($viewer)[0];
         $this->assertStringContainsString('README › guide › sub › deep', $header);
-        $this->assertFalse($viewer->clickAt(0, 23), 'a folder without a README.md index is not a link');
-        $this->assertTrue($viewer->clickAt(0, 15), 'a folder with a README.md index is');
+        $this->assertFalse($viewer->clickAt(0, relCol: 23), 'a folder without a README.md index is not a link');
+        $this->assertTrue($viewer->clickAt(0, relCol: 15), 'a folder with a README.md index is');
         $this->assertStringEndsWith('guide/README.md', (string) $viewer->path());
         $this->assertStringContainsString('README › guide', $this->screen($viewer)[0]);
         $this->assertStringNotContainsString('guide › README', $this->screen($viewer)[0], "a folder's index page wears the folder's name");
 
         // Narrow pane: the left-most crumbs collapse, the current page stays.
-        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
-        $narrow = $this->screen($viewer, 24, 10)[0];
+        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), markdown: "# Deep page\n");
+        $narrow = $this->screen($viewer, cols: 24, rows: 10)[0];
         $this->assertStringContainsString('…', $narrow, 'left-most crumbs collapse behind an ellipsis');
         $this->assertStringContainsString('deep', $narrow, 'the current page stays visible');
     }
@@ -462,8 +462,8 @@ final class HelpViewerWidgetTest extends TestCase
     public function testClickBeforeAnyRenderAndZeroSizedRenders(): void
     {
         $viewer = $this->viewer();
-        $this->assertFalse($viewer->clickAt(0, 0), 'nothing rendered yet — no spans to hit');
-        $this->assertFalse($viewer->clickAt(2, 0), 'no rendered page — a body click misses');
+        $this->assertFalse($viewer->clickAt(0, relCol: 0), 'nothing rendered yet — no spans to hit');
+        $this->assertFalse($viewer->clickAt(2, relCol: 0), 'no rendered page — a body click misses');
         $this->assertSame([], $viewer->render(new RenderContext(0, 0)), 'a zero-sized pane renders nothing');
     }
 
@@ -590,23 +590,23 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer = $this->viewer();
         $this->screen($viewer);
 
-        $this->assertFalse($viewer->clickAt(2, 2), 'plain text is not a link');
-        $this->assertFalse($viewer->clickAt(0, 30), 'header space between zones is inert');
+        $this->assertFalse($viewer->clickAt(2, relCol: 2), 'plain text is not a link');
+        $this->assertFalse($viewer->clickAt(0, relCol: 30), 'header space between zones is inert');
 
         // Doc line 3 holds the links → body row 4 with the header offset.
-        $this->assertTrue($viewer->clickAt(5, 4), 'a click inside a link span follows it');
+        $this->assertTrue($viewer->clickAt(5, relCol: 4), 'a click inside a link span follows it');
         $this->assertSame(['help:editor.md'], $this->handler->events);
     }
 
     public function testResizeReRendersAndClampsState(): void
     {
         $viewer = $this->viewer();
-        $this->screen($viewer, 100, 10);
+        $this->screen($viewer, cols: 100, rows: 10);
         $viewer->scrollBy(\PHP_INT_MAX);
 
-        $narrow = $this->screen($viewer, 40, 10);
+        $narrow = $this->screen($viewer, cols: 40, rows: 10);
         $this->assertLessThanOrEqual(40, \max(\array_map(mb_strwidth(...), $narrow)), 'narrower width re-wraps');
-        $this->assertStringContainsString('Paragraph 30.', \implode("\n", $narrow).\implode("\n", $this->screen($viewer, 40, 10)), 'scroll stays clamped in range');
+        $this->assertStringContainsString('Paragraph 30.', \implode("\n", $narrow).\implode("\n", $this->screen($viewer, cols: 40, rows: 10)), 'scroll stays clamped in range');
     }
 
     public function testTabManagementKeysFireCallbacksAndClearResets(): void
@@ -719,7 +719,7 @@ final class HelpViewerWidgetTest extends TestCase
     public function testASearchMatchAfterWideGlyphsHighlightsExactlyTheMatch(): void
     {
         $viewer = $this->viewer();
-        $viewer->refreshPage($this->docs->path('README.md'), "中中中 needle here\n");
+        $viewer->refreshPage($this->docs->path('README.md'), markdown: "中中中 needle here\n");
         $viewer->render(new RenderContext(60, 10));
         $lineNo = null;
         foreach ($viewer->findLines as $i => $line) {
@@ -802,7 +802,7 @@ final class HelpViewerWidgetTest extends TestCase
         // Doc line 3 holds the links; body row 4 with the header offset.
         // clickAt(5, 4) hits inside "Editor" (established by the existing
         // "click follows a link" test) — one column further must not.
-        $this->assertTrue($viewer->clickAt(5, 4), 'sanity: inside the span');
+        $this->assertTrue($viewer->clickAt(5, relCol: 4), 'sanity: inside the span');
         $lastCol = 4;
         while ($viewer->clickAt(5, $lastCol)) {
             ++$lastCol;
@@ -820,7 +820,7 @@ final class HelpViewerWidgetTest extends TestCase
         // LAST link ('gone', col 34) must still work even though scanning
         // it walks past Editor's (col 4) non-matching span first — proving
         // a miss on an earlier span doesn't abort the whole scan.
-        $this->assertTrue($viewer->clickAt(5, 35));
+        $this->assertTrue($viewer->clickAt(5, relCol: 35));
         $this->assertSame(['missing:missing.md'], $this->handler->events);
     }
 
@@ -872,15 +872,15 @@ final class HelpViewerWidgetTest extends TestCase
     public function testCrumbsCollapseExactlyWhenTheHeaderWouldOverflowNotOneCharSooner(): void
     {
         $viewer = $this->viewer();
-        $this->docs->write('guide/README.md', "# Guide index\n");
-        $this->docs->write('guide/sub/deep.md', "# Deep page\n");
-        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
+        $this->docs->write('guide/README.md', content: "# Guide index\n");
+        $this->docs->write('guide/sub/deep.md', content: "# Deep page\n");
+        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), markdown: "# Deep page\n");
 
         // ' ‹ ›  README › guide › sub › deep' fits at exactly 37 columns.
-        $exact = $this->screen($viewer, 37, 10)[0];
+        $exact = $this->screen($viewer, cols: 37, rows: 10)[0];
         $this->assertStringNotContainsString('…', $exact, 'the full trail must still fit exactly at its natural width');
 
-        $oneNarrower = $this->screen($viewer, 36, 10)[0];
+        $oneNarrower = $this->screen($viewer, cols: 36, rows: 10)[0];
         $this->assertStringContainsString('…', $oneNarrower, 'one column narrower must already collapse');
     }
 
@@ -911,13 +911,13 @@ final class HelpViewerWidgetTest extends TestCase
     public function testDroppedCrumbsStillKeepTheLeadingArrowsAndSpacing(): void
     {
         $viewer = $this->viewer();
-        $this->docs->write('guide/README.md', "# Guide index\n");
-        $this->docs->write('guide/sub/deep.md', "# Deep page\n");
-        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), "# Deep page\n");
+        $this->docs->write('guide/README.md', content: "# Guide index\n");
+        $this->docs->write('guide/sub/deep.md', content: "# Deep page\n");
+        $viewer->refreshPage($this->docs->path('guide/sub/deep.md'), markdown: "# Deep page\n");
 
         // Narrow enough that the collapse branch runs (`$text .=`, not `$text =`,
         // for the ellipsis — an overwrite would silently erase the arrows).
-        $narrow = $this->screen($viewer, 24, 10)[0];
+        $narrow = $this->screen($viewer, cols: 24, rows: 10)[0];
         $this->assertStringContainsString('‹', $narrow, 'the back arrow survives the ellipsis append');
         $this->assertStringContainsString('…', $narrow);
         $this->assertStringContainsString('deep', $narrow);
@@ -952,7 +952,7 @@ final class HelpViewerWidgetTest extends TestCase
         // No setHandler() call: docs() is null, so crumbLabel() must fall
         // back to basename() rather than crash on a nullsafe-less call.
         $viewer->setDocsRoot('/does-not-matter');
-        $viewer->refreshPage('/does-not-matter/page.md', "# Page\n");
+        $viewer->refreshPage('/does-not-matter/page.md', markdown: "# Page\n");
 
         $header = $this->plain($viewer->render(new RenderContext(60, 10))[0]);
         $this->assertStringContainsString('page', $header);
@@ -988,7 +988,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->setDocsRoot($docs->path('docs'));
         // 'docs-other/page.md' starts with the raw string 'docs' (root minus
         // its trailing slash) but is a SIBLING, not a page under the root.
-        $viewer->refreshPage($docs->path('docs-other/page.md'), "# Other\n");
+        $viewer->refreshPage($docs->path('docs-other/page.md'), markdown: "# Other\n");
 
         $header = $this->plain($viewer->render(new RenderContext(60, 10))[0]);
         // Only the current-page crumb — no root/folder crumbs — since this
@@ -1001,7 +1001,7 @@ final class HelpViewerWidgetTest extends TestCase
     {
         $viewer = new HelpViewerWidget();
         $viewer->setFocused(true);
-        $this->assertTrue($viewer->getKeybindings()->matches("\x1b\x13", 'save_all'), 'the premise: ctrl+alt+s is Save All here');
+        $this->assertTrue($viewer->getKeybindings()->matches("\x1b\x13", action: 'save_all'), 'the premise: ctrl+alt+s is Save All here');
 
         $viewer->handleInput("\x1b\x13"); // no handler is called on null
     }
@@ -1009,7 +1009,7 @@ final class HelpViewerWidgetTest extends TestCase
     public function testEveryScrollKeyBindingMovesTheViewport(): void
     {
         $viewer = $this->viewer();
-        $this->screen($viewer, 60, 6); // small viewport so scroll differences are visible
+        $this->screen($viewer, cols: 60, rows: 6); // small viewport so scroll differences are visible
 
         $viewer->handleInput("\x1b[B"); // Down
         $afterDown = $viewer->findCaretLine;
@@ -1097,7 +1097,7 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->setDocsRoot('/docs');
         // A combining-mark grapheme ("é" as e + combining acute) exercises the
         // grapheme-splitting loop's exact boundary arithmetic.
-        $viewer->refreshPage('/docs/x.md', "café society and more filler text to search\n");
+        $viewer->refreshPage('/docs/x.md', markdown: "café society and more filler text to search\n");
         $viewer->render(new RenderContext(60, 10));
 
         $lineNo = \array_search('café society and more filler text to search', $viewer->findLines, strict: true);
@@ -1116,10 +1116,10 @@ final class HelpViewerWidgetTest extends TestCase
         $viewer->setFocused(true);
         $viewer->setHandler(new RecordingHelpViewerHandler());
         $viewer->setDocsRoot('/docs');
-        $viewer->refreshPage('/docs/x.md', "# Just one short page\n");
+        $viewer->refreshPage('/docs/x.md', markdown: "# Just one short page\n");
 
         $viewer->scrollBy(\PHP_INT_MAX); // a page shorter than the viewport: max scroll must clamp to 0
-        $screen = $this->screen($viewer, 60, 20);
+        $screen = $this->screen($viewer, cols: 60, rows: 20);
         $this->assertStringContainsString('Just one short page', \implode("\n", $screen));
     }
 

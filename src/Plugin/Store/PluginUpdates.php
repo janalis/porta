@@ -136,7 +136,11 @@ final class PluginUpdates
                 return;
             }
             $names = \array_map(static fn (PluginUpdate $update): string => $update->name.' '.$update->to, $outdated);
-            $this->notifier->flash($this->translator->trans('Plugin updates available: %plugins% — open Settings › Plugins › Store', ['%plugins%' => \implode(', ', $names)]), 8.0, self::SLOT);
+            $this->notifier->flash(
+                $this->translator->trans('Plugin updates available: %plugins% — open Settings › Plugins › Store', ['%plugins%' => \implode(', ', $names)]),
+                seconds: 8.0,
+                slot: self::SLOT,
+            );
             $this->lifecycle->refreshView();
         });
     }
@@ -230,7 +234,7 @@ final class PluginUpdates
             return;
         }
         $this->updating[$key] = true;
-        $this->notifier->flash($this->translator->trans('Updating %plugin%…', ['%plugin%' => $next->name]), 60.0, self::SLOT);
+        $this->notifier->flash($this->translator->trans('Updating %plugin%…', ['%plugin%' => $next->name]), seconds: 60.0, slot: self::SLOT);
         // A copy that runs stops for the update: composer removes and
         // rewrites its files, and one it autoloaded mid-swap would be half
         // the old release and half the new — or nothing at all.
@@ -325,7 +329,7 @@ final class PluginUpdates
             $this->restart?->plugins();
         }
         if ([] !== $failed) {
-            $this->notifier->error(\implode(' · ', $failed), 8.0, self::SLOT);
+            $this->notifier->error(\implode(' · ', $failed), seconds: 8.0, slot: self::SLOT);
 
             return;
         }
@@ -337,8 +341,8 @@ final class PluginUpdates
                         '%plugins%' => \implode(', ', $done),
                         '%names%' => \implode(', ', $restartFor),
                     ]),
-                8.0,
-                self::SLOT,
+                seconds: 8.0,
+                slot: self::SLOT,
             );
         }
     }

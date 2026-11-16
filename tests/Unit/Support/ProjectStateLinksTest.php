@@ -38,12 +38,15 @@ final class ProjectStateLinksTest extends TestCase
         yield 'bookmarks emptied' => ['bookmarks.json', static fn (string $root): bool => new BookmarkStore($root)->save([])];
         yield 'recent files' => ['recent-files.json', static fn (string $root) => new RecentFilesStore($root)->record($root.'/a.php')];
         yield 'search scopes' => ['search-scopes.json', static fn (string $root) => new SearchScopeStore($root)->addRecent('src', ['src'])];
-        yield 'session' => ['session.json', static fn (string $root): bool => new SessionStore($root)->save([['path' => $root.'/a.php', 'line' => 0, 'col' => 0, 'pinned' => false]], null)];
-        yield 'session emptied' => ['session.json', static fn (string $root): bool => new SessionStore($root)->save([], null)];
+        yield 'session' => [
+            'session.json',
+            static fn (string $root): bool => new SessionStore($root)->save([['path' => $root.'/a.php', 'line' => 0, 'col' => 0, 'pinned' => false]], activePath: null),
+        ];
+        yield 'session emptied' => ['session.json', static fn (string $root): bool => new SessionStore($root)->save([], activePath: null)];
         yield 'search history' => ['search-history.json', static fn (string $root) => new SearchHistoryStore($root)->add('needle')];
         yield 'search prefs' => ['search-prefs.json', static fn (string $root) => new SearchPrefsStore($root)->setMask('*.php')];
-        yield 'debug' => ['debug.json', static fn (string $root): bool => new DebugStateStore($root)->save([], ['$a'], null)];
-        yield 'debug emptied' => ['debug.json', static fn (string $root): bool => new DebugStateStore($root)->save([], [], null)];
+        yield 'debug' => ['debug.json', static fn (string $root): bool => new DebugStateStore($root)->save([], ['$a'], exceptionFilters: null)];
+        yield 'debug emptied' => ['debug.json', static fn (string $root): bool => new DebugStateStore($root)->save([], [], exceptionFilters: null)];
         yield 'onboarding' => ['onboarding.json', static fn (string $root): bool => new OnboardingState($root)->markWelcomeSeen()];
     }
 

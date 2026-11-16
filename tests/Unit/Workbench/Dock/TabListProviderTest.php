@@ -19,10 +19,10 @@ final class TabListProviderTest extends TestCase
     public function testTitlesPerBufferKind(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/src/Demo.php', '<?php');
-        $graph = $buffers->openPane('/p/.porta/architecture.dot', 'graph', 'digraph {}');
+        $buffers->open('/p/src/Demo.php', content: '<?php');
+        $graph = $buffers->openPane('/p/.porta/architecture.dot', paneId: 'graph', payload: 'digraph {}');
         $graph->title = 'Project Architecture';
-        $buffers->openPane('/p/other.dot', 'graph', 'digraph {}'); // untitled graph tab keeps its basename
+        $buffers->openPane('/p/other.dot', paneId: 'graph', payload: 'digraph {}'); // untitled graph tab keeps its basename
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
@@ -34,8 +34,8 @@ final class TabListProviderTest extends TestCase
         // The marker rides the NAME, so the strip's width arithmetic measures
         // it without a fourth field and a second set of sums.
         $buffers = new BufferManager();
-        $buffers->open('/p/kept.php', '<?php');
-        $buffers->open('/p/other.php', '<?php');
+        $buffers->open('/p/kept.php', content: '<?php');
+        $buffers->open('/p/other.php', content: '<?php');
         $buffers->get('/p/kept.php')->pinned = true;
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
@@ -47,8 +47,8 @@ final class TabListProviderTest extends TestCase
     public function testAPinnedTabIsNotClosableFromItsStrip(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/kept.php', '<?php');
-        $buffers->open('/p/other.php', '<?php');
+        $buffers->open('/p/kept.php', content: '<?php');
+        $buffers->open('/p/other.php', content: '<?php');
         $buffers->get('/p/kept.php')->pinned = true;
 
         $this->assertSame([false, true], \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'closable'));
@@ -69,9 +69,9 @@ final class TabListProviderTest extends TestCase
         // the first title with nothing to resolve — rather than skipping it —
         // left every collision behind it ambiguous. With the pair opened first
         // the two behave identically, which is how that went unnoticed.
-        $buffers->open('/p/src/Ide.php', '<?php');
-        $buffers->open('/p/plugins/git/porta.php', '<?php');
-        $buffers->open('/p/plugins/symfony-lsp/porta.php', '<?php');
+        $buffers->open('/p/src/Ide.php', content: '<?php');
+        $buffers->open('/p/plugins/git/porta.php', content: '<?php');
+        $buffers->open('/p/plugins/symfony-lsp/porta.php', content: '<?php');
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
@@ -87,8 +87,8 @@ final class TabListProviderTest extends TestCase
     public function testTheQualifierGrowsUntilItActuallyDistinguishes(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/plugins/git/src/View/GitSidebar.php', '<?php');
-        $buffers->open('/p/plugins/other/src/View/GitSidebar.php', '<?php');
+        $buffers->open('/p/plugins/git/src/View/GitSidebar.php', content: '<?php');
+        $buffers->open('/p/plugins/other/src/View/GitSidebar.php', content: '<?php');
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
@@ -105,8 +105,8 @@ final class TabListProviderTest extends TestCase
     public function testDeliberatelySharedTitlesAreNotTakenForACollision(): void
     {
         $buffers = new BufferManager();
-        $one = $buffers->openPane('/p/a/architecture.dot', 'graph', 'digraph {}');
-        $two = $buffers->openPane('/p/b/architecture.dot', 'graph', 'digraph {}');
+        $one = $buffers->openPane('/p/a/architecture.dot', paneId: 'graph', payload: 'digraph {}');
+        $two = $buffers->openPane('/p/b/architecture.dot', paneId: 'graph', payload: 'digraph {}');
         $one->title = 'Project Architecture';
         $two->title = 'Project Architecture';
 
@@ -119,8 +119,8 @@ final class TabListProviderTest extends TestCase
     public function testAPinnedTabKeepsItsGlyphInFrontOfTheQualifiedName(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/plugins/git/porta.php', '<?php');
-        $buffers->open('/p/plugins/todo/porta.php', '<?php');
+        $buffers->open('/p/plugins/git/porta.php', content: '<?php');
+        $buffers->open('/p/plugins/todo/porta.php', content: '<?php');
         $buffers->get('/p/plugins/git/porta.php')->pinned = true;
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
@@ -137,16 +137,16 @@ final class TabListProviderTest extends TestCase
     public function testAFileWithNoParentDirectoryKeepsItsBareName(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/notes.md', 'a');
-        $buffers->open('/p/notes.md', 'b');
+        $buffers->open('/notes.md', content: 'a');
+        $buffers->open('/p/notes.md', content: 'b');
 
         $names = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');
 
         $this->assertSame(['notes.md', 'notes.md (p)'], $names);
 
         $rootOnly = new BufferManager();
-        $rootOnly->open('/notes.md', 'a');
-        $rootOnly->open('notes.md', 'b');
+        $rootOnly->open('/notes.md', content: 'a');
+        $rootOnly->open('notes.md', content: 'b');
 
         $this->assertSame(
             ['notes.md', 'notes.md'],
@@ -158,8 +158,8 @@ final class TabListProviderTest extends TestCase
     public function testDirtyAndActiveFlagsPerBuffer(): void
     {
         $buffers = new BufferManager();
-        $a = $buffers->open('/p/a.php', '<?php');
-        $buffers->open('/p/b.php', '<?php'); // opening a second buffer makes it the active one
+        $a = $buffers->open('/p/a.php', content: '<?php');
+        $buffers->open('/p/b.php', content: '<?php'); // opening a second buffer makes it the active one
         $a->document->insert('x'); // dirty the first, now-inactive buffer
 
         $tabs = new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), TestAgentPresence::create())->tabs();
@@ -177,7 +177,7 @@ final class TabListProviderTest extends TestCase
     public function testTheTooltipIsTheProjectPathAndTheMarksInWords(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/src/deep/Name.php', '<?php')->pinned = true;
+        $buffers->open('/p/src/deep/Name.php', content: '<?php')->pinned = true;
 
         $tips = \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/p'), TestAgentPresence::create())->tabs(), 'tooltip');
 
@@ -187,8 +187,8 @@ final class TabListProviderTest extends TestCase
     public function testATabShowsTheAgentsAtWorkOnItsFileInTheirColours(): void
     {
         $buffers = new BufferManager();
-        $buffers->open('/p/a.php', '<?php');
-        $buffers->open('/p/b.php', '<?php');
+        $buffers->open('/p/a.php', content: '<?php');
+        $buffers->open('/p/b.php', content: '<?php');
         $agents = TestAgentPresence::create();
         $agents->onAgentActivity(new AgentActivity('mcp-1', 'Claude', '/p/a.php', AgentActivityKind::Editing, 0, 0, 10.0));
         $agents->onAgentActivity(new AgentActivity('mcp-2', 'Codex', '/p/a.php', AgentActivityKind::Reading, 0, 0, 10.0));

@@ -251,9 +251,9 @@ final readonly class RuleHalves
         if (null === $at || null === $shade || [] !== self::surfaces($floating, $row, $at)) {
             return [];
         }
-        $line = AnsiText::columnsFrom($text, $at, 1);
+        $line = AnsiText::columnsFrom($text, $at, length: 1);
         $tint = self::state(self::lead($line))['fg'];
-        $bg = self::state(self::lead(AnsiText::columnsFrom($text, $shade, 1)))['bg'];
+        $bg = self::state(self::lead(AnsiText::columnsFrom($text, $shade, length: 1)))['bg'];
 
         return (
             Glyphs::PANE_DIVIDER !== AnsiUtils::stripAnsiCodes($line) || null === $tint || $tint !== self::state(self::lead($rule->apply(Glyphs::PANE_DIVIDER)))['fg'] || null === $bg
@@ -283,7 +283,7 @@ final readonly class RuleHalves
         $menuTint = self::barTint($bar);
         // A rule, its joins, or the divider itself running on past the strip.
         $joins = [Glyphs::FRAME_HORIZONTAL, Glyphs::PANE_DIVIDER, Glyphs::RULE_DOWN, Glyphs::RULE_UP, Glyphs::MODAL_TEE_LEFT, Glyphs::MODAL_TEE_RIGHT, Glyphs::RULE_CROSS];
-        $glyph = static fn (int $row, int $col): string => \array_key_exists($row, $lines) ? AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($lines[$row], $col, 1)) : '';
+        $glyph = static fn (int $row, int $col): string => \array_key_exists($row, $lines) ? AnsiUtils::stripAnsiCodes(AnsiText::columnsFrom($lines[$row], $col, length: 1)) : '';
         $halves = [Glyphs::HALF_UPPER, Glyphs::HALF_LOWER, Glyphs::HALF_BOTH];
         $spans = [];
         /** @var array<string, array{row: int, col: int, above?: string, below?: string, bar?: string}> $beside the cells over and under an opened one, the tab cells whose halves they take, and the bar's colour where it holds a bar's half */
@@ -298,7 +298,7 @@ final readonly class RuleHalves
             }
             foreach ([[\min($drawn) - 1, \min($drawn)], [\max($drawn) + 1, \max($drawn)]] as [$side, $end]) {
                 // A tab's own row: a gap between two shaded tabs is shaded too, but is no tab.
-                $cell = AnsiText::columnsFrom($lines[$row], $end, 1);
+                $cell = AnsiText::columnsFrom($lines[$row], $end, length: 1);
                 $state = self::state(self::lead($cell));
                 if (
                     Glyphs::PANE_DIVIDER !== $glyph($row, $side)
@@ -310,7 +310,7 @@ final readonly class RuleHalves
                 }
                 $spans[] = ['row' => $row, 'col' => $side, 'width' => 1, 'segment' => self::lead($cell)." \x1b[0m"];
                 foreach ([[$row - 1, 'below'], [$row + 1, 'above']] as [$at, $whose]) {
-                    $join = AnsiText::columnsFrom($lines[$at] ?? '', $side, 1);
+                    $join = AnsiText::columnsFrom($lines[$at] ?? '', $side, length: 1);
                     $barTint = null === $menuTint ? null : self::barHalf($join, $menuTint);
                     $onBar = null !== $barTint;
                     if (!$onBar && (!\in_array($glyph($at, $side), $joins, strict: true) || $tint !== self::state(self::lead($join))['fg'])) {

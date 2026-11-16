@@ -22,7 +22,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter->setFile('test.php');
         $this->assertSame('php', $highlighter->getLanguage());
 
-        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), version: 1);
 
         $this->assertCount(4, $lines);
         $this->assertStringContainsString("\x1b[", \implode('', $lines));
@@ -36,7 +36,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter(syntaxTheme: new PlainTerminalTheme());
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(\explode("\n", string: "<?php\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\nreturn 'str';"), version: 1);
 
         $joined = \implode('', $lines);
         $this->assertStringNotContainsString("\x1b[38;5;", $joined, 'no syntax color in monochrome');
@@ -47,7 +47,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 'str';"), version: 1);
 
         $commentGray = "\x1b[38;5;243m";
         $this->assertTrue(
@@ -66,7 +66,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 1;"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/* multi\nline comment */\nreturn 1;"), version: 1);
 
         $commentGray = "\x1b[38;5;243m";
         // Line 1 opens the comment (nothing carried in) but leaves it open at
@@ -81,7 +81,7 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('test.php');
-        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/**\n * @param string \$name the user name\n */\nfunction f(\$name) {}"), 1);
+        $lines = $highlighter->highlight(\explode("\n", string: "<?php\n/**\n * @param string \$name the user name\n */\nfunction f(\$name) {}"), version: 1);
 
         $commentGray = "\x1b[38;5;243m";
         $typeYellow = "\x1b[38;5;222m"; // the sub-tokenizer's TYPE color
@@ -100,8 +100,8 @@ final class CodeHighlighterTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.php');
 
-        $first = $highlighter->highlight(['<?php $a = 1;'], 7);
-        $second = $highlighter->highlight(['<?php CHANGED — but same version, cache hit'], 7);
+        $first = $highlighter->highlight(['<?php $a = 1;'], version: 7);
+        $second = $highlighter->highlight(['<?php CHANGED — but same version, cache hit'], version: 7);
 
         $this->assertSame($first, $second);
     }
@@ -111,9 +111,9 @@ final class CodeHighlighterTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.php');
 
-        $first = $highlighter->highlight(['<?php $a = 1;'], 7);
+        $first = $highlighter->highlight(['<?php $a = 1;'], version: 7);
         $highlighter->invalidate();
-        $reparsed = $highlighter->highlight(['<?php $b = 2;'], 7);
+        $reparsed = $highlighter->highlight(['<?php $b = 2;'], version: 7);
 
         $this->assertNotSame($first, $reparsed, 'invalidate forces a fresh parse at the same version');
     }
@@ -124,12 +124,12 @@ final class CodeHighlighterTest extends TestCase
         $highlighter = new CodeHighlighter(syntaxTheme: $theme);
         $highlighter->setFile('a.php');
 
-        $dark = $highlighter->highlight(['<?php return 1;'], 1);
+        $dark = $highlighter->highlight(['<?php return 1;'], version: 1);
         $this->assertStringContainsString("\x1b[38;5;176m", $dark[0], 'dark keyword');
 
         $theme->switchTo(new LightTerminalTheme());
         $highlighter->refreshTheme();
-        $light = $highlighter->highlight(['<?php return 1;'], 1);
+        $light = $highlighter->highlight(['<?php return 1;'], version: 1);
 
         $this->assertStringContainsString("\x1b[38;5;91m", $light[0], 'light keyword after refreshTheme');
         $this->assertStringNotContainsString("\x1b[38;5;176m", $light[0], 'no dark keyword remains');
@@ -141,7 +141,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter->setFile('binary.dat');
 
         $this->assertNull($highlighter->getLanguage());
-        $this->assertSame(['plain text'], $highlighter->highlight(['plain text'], 1));
+        $this->assertSame(['plain text'], $highlighter->highlight(['plain text'], version: 1));
     }
 
     public function testSpecialFilenames(): void
@@ -161,7 +161,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter->setFile('big.php');
 
         $lines = [\str_repeat('x', 600 * 1024)];
-        $this->assertSame($lines, $highlighter->highlight($lines, 1));
+        $this->assertSame($lines, $highlighter->highlight($lines, version: 1));
     }
 
     /** The byte cap is exclusive: content at exactly the limit still gets highlighted. */
@@ -176,7 +176,7 @@ final class CodeHighlighterTest extends TestCase
         $highlighter->setFile('a.php');
 
         $content = \str_repeat('x', 512 * 1024); // exactly the cap
-        $result = $highlighter->highlight([$content], 1);
+        $result = $highlighter->highlight([$content], version: 1);
 
         $this->assertStringContainsString($marker, $result[0], 'content at exactly the cap is still highlighted, not falls back to plain');
     }
@@ -187,9 +187,9 @@ final class CodeHighlighterTest extends TestCase
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('binary.dat');
 
-        $highlighter->highlight(['plain text'], 1);
+        $highlighter->highlight(['plain text'], version: 1);
 
-        $this->assertSame(0, Probe::get($highlighter, 'strikes'), 'a null language short-circuits before ever reaching the provider dispatch');
+        $this->assertSame(0, Probe::get($highlighter, property: 'strikes'), 'a null language short-circuits before ever reaching the provider dispatch');
     }
 
     /** invalidate() resets every version/counter field to its exact idle sentinel, not just "falsy". */
@@ -197,15 +197,15 @@ final class CodeHighlighterTest extends TestCase
     {
         $highlighter = new CodeHighlighter();
         $highlighter->setFile('a.php');
-        $highlighter->highlight(['<?php'], 1);
+        $highlighter->highlight(['<?php'], version: 1);
 
         $highlighter->invalidate();
 
-        $this->assertSame(-1, Probe::get($highlighter, 'cacheVersion'));
-        $this->assertSame(-1, Probe::get($highlighter, 'resolvedVersion'));
-        $this->assertSame(-1, Probe::get($highlighter, 'inFlightVersion'));
-        $this->assertSame(0, Probe::get($highlighter, 'staleEdits'));
-        $this->assertSame([], Probe::get($highlighter, 'cache'));
-        $this->assertNull(Probe::get($highlighter, 'lastRawLines'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'cacheVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'resolvedVersion'));
+        $this->assertSame(-1, Probe::get($highlighter, property: 'inFlightVersion'));
+        $this->assertSame(0, Probe::get($highlighter, property: 'staleEdits'));
+        $this->assertSame([], Probe::get($highlighter, property: 'cache'));
+        $this->assertNull(Probe::get($highlighter, property: 'lastRawLines'));
     }
 }

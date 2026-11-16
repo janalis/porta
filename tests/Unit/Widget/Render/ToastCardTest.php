@@ -49,7 +49,7 @@ final class ToastCardTest extends TestCase
     public function testAMarkupMessageIsStyledAndTheBodyIsBrightAroundIt(): void
     {
         $styles = Styles::dark();
-        $rows = ToastCard::render(new Toast(1, Markup::of('Saved <info>a.php</> now'), ToastSeverity::Info), 20, $styles);
+        $rows = ToastCard::render(new Toast(1, Markup::of('Saved <info>a.php</> now'), ToastSeverity::Info), innerWidth: 20, styles: $styles);
 
         $bright = $styles->of(Role::Bright);
         $this->assertStringContainsString($bright->apply('Saved ').$styles->of(Role::Added)->apply('a.php').$bright->apply(' now'), $rows[1]);
@@ -64,7 +64,7 @@ final class ToastCardTest extends TestCase
     public function testAStyledSpanWrappedAcrossABreakIsStyledOnBothLines(): void
     {
         $styles = Styles::dark();
-        $rows = ToastCard::render(new Toast(1, Markup::of('<error>alpha beta</>'), ToastSeverity::Error), 8, $styles);
+        $rows = ToastCard::render(new Toast(1, Markup::of('<error>alpha beta</>'), ToastSeverity::Error), innerWidth: 8, styles: $styles);
 
         $error = $styles->of(Role::StatusError);
         $this->assertStringContainsString($error->apply('alpha'), $rows[1]);
@@ -79,7 +79,7 @@ final class ToastCardTest extends TestCase
     public function testAStyledWordBrokenAtItsHyphenStaysInStep(): void
     {
         $styles = Styles::dark();
-        $rows = ToastCard::render(new Toast(1, Markup::of('<error>comma-separated</> list'), ToastSeverity::Error), 12, $styles);
+        $rows = ToastCard::render(new Toast(1, Markup::of('<error>comma-separated</> list'), ToastSeverity::Error), innerWidth: 12, styles: $styles);
 
         $error = $styles->of(Role::StatusError);
         $this->assertStringContainsString($error->apply('comma-'), $rows[1]);
@@ -98,13 +98,13 @@ final class ToastCardTest extends TestCase
     /** A hint is set into the bottom border when it fits, and left out when it does not; the ✖ under the pointer underlines. */
     public function testTheBottomBorderCarriesAHintAndTheCloseUnderlines(): void
     {
-        $rows = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), 20, Styles::dark(), closeHovered: true, hint: 'Alt+9 log');
+        $rows = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), innerWidth: 20, styles: Styles::dark(), closeHovered: true, hint: 'Alt+9 log');
 
         $this->assertMatchesRegularExpression('/^╚═+ Alt\+9 log ═╝$/u', AnsiUtils::stripAnsiCodes(\array_last($rows)));
         $this->assertSame(22, AnsiUtils::visibleWidth(\array_last($rows)));
         $this->assertMatchesRegularExpression('/\e\[4m(\e\[[0-9;]*m)*✖/', $rows[0], 'the hovered ✖ underlined');
 
-        $narrow = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), 8, Styles::dark(), hint: 'Alt+9 log');
+        $narrow = ToastCard::render(new Toast(1, Markup::literal('m'), ToastSeverity::Error), innerWidth: 8, styles: Styles::dark(), hint: 'Alt+9 log');
         $this->assertSame('╚════════╝', AnsiUtils::stripAnsiCodes(\array_last($narrow)), 'no room: no hint');
     }
 

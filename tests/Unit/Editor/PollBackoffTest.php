@@ -59,7 +59,7 @@ final class PollBackoffTest extends TestCase
         $backoff = new PollBackoff($this->clock);
 
         for ($tick = 0; $tick < 5; ++$tick) {
-            $this->assertTrue($this->slice($backoff, 0.001), 'tick '.$tick.' polled');
+            $this->assertTrue($this->slice($backoff, seconds: 0.001), 'tick '.$tick.' polled');
         }
     }
 
@@ -69,17 +69,17 @@ final class PollBackoffTest extends TestCase
 
         $this->slice($backoff, PollBackoff::BUDGET_MICROS / 1_000_000);
 
-        $this->assertTrue($this->slice($backoff, 0.001), 'the budget is what is allowed, not what is too much');
+        $this->assertTrue($this->slice($backoff, seconds: 0.001), 'the budget is what is allowed, not what is too much');
     }
 
     public function testAnOverrunStandsThePollDownForOneTick(): void
     {
         $backoff = new PollBackoff($this->clock);
 
-        $this->slice($backoff, 0.2);
+        $this->slice($backoff, seconds: 0.2);
 
-        $this->assertFalse($this->slice($backoff, 0.001), 'the tick after an overrun is skipped');
-        $this->assertTrue($this->slice($backoff, 0.001), 'and the one after that polls again');
+        $this->assertFalse($this->slice($backoff, seconds: 0.001), 'the tick after an overrun is skipped');
+        $this->assertTrue($this->slice($backoff, seconds: 0.001), 'and the one after that polls again');
     }
 
     public function testEachFurtherOverrunDoublesTheGap(): void
@@ -87,11 +87,11 @@ final class PollBackoffTest extends TestCase
         $backoff = new PollBackoff($this->clock);
         $gaps = [];
 
-        $this->slice($backoff, 0.2); // the first overrun arms the first gap
+        $this->slice($backoff, seconds: 0.2); // the first overrun arms the first gap
         for ($round = 0; $round < 5; ++$round) {
             // Every slice here overruns, so the call that ends one count arms
             // the gap the next one measures.
-            $gaps[] = $this->ticksSkippedBefore($backoff, 0.2);
+            $gaps[] = $this->ticksSkippedBefore($backoff, seconds: 0.2);
         }
 
         $this->assertSame([1, 2, 4, 8, 16], $gaps);
@@ -102,12 +102,12 @@ final class PollBackoffTest extends TestCase
         $backoff = new PollBackoff($this->clock);
 
         // Far more overruns than the cap needs: 2^20 ticks would be three hours.
-        $this->slice($backoff, 0.2);
+        $this->slice($backoff, seconds: 0.2);
         for ($round = 0; $round < 20; ++$round) {
-            $this->ticksSkippedBefore($backoff, 0.2);
+            $this->ticksSkippedBefore($backoff, seconds: 0.2);
         }
 
-        $skipped = $this->ticksSkippedBefore($backoff, 0.001);
+        $skipped = $this->ticksSkippedBefore($backoff, seconds: 0.001);
 
         $this->assertSame(PollBackoff::MAX_SKIPS, $skipped, 'a sick disk is still checked every 30s');
     }
@@ -117,14 +117,14 @@ final class PollBackoffTest extends TestCase
         $backoff = new PollBackoff($this->clock);
         // Two overruns in a row: the gap is at two ticks and the next would be
         // four if nothing reset it.
-        $this->slice($backoff, 0.2);
-        $this->assertSame(1, $this->ticksSkippedBefore($backoff, 0.2), 'the second overrun');
-        $this->assertSame(2, $this->ticksSkippedBefore($backoff, 0.001), 'then a QUICK slice');
+        $this->slice($backoff, seconds: 0.2);
+        $this->assertSame(1, $this->ticksSkippedBefore($backoff, seconds: 0.2), 'the second overrun');
+        $this->assertSame(2, $this->ticksSkippedBefore($backoff, seconds: 0.001), 'then a QUICK slice');
 
-        $this->slice($backoff, 0.2); // slow again, from a clean slate
+        $this->slice($backoff, seconds: 0.2); // slow again, from a clean slate
 
-        $this->assertFalse($this->slice($backoff, 0.001));
-        $this->assertTrue($this->slice($backoff, 0.001), 'the ladder started over from one tick');
+        $this->assertFalse($this->slice($backoff, seconds: 0.001));
+        $this->assertTrue($this->slice($backoff, seconds: 0.001), 'the ladder started over from one tick');
     }
 
     public function testAFinishWithNoSliceBehindItReadsNothing(): void
@@ -135,7 +135,7 @@ final class PollBackoffTest extends TestCase
         // between two ticks would measure as one enormous slice and stand the
         // poll down for half a minute over a quick one.
         $backoff = new PollBackoff($this->clock);
-        $this->slice($backoff, 0.001); // quick: nothing armed, stopwatch cleared
+        $this->slice($backoff, seconds: 0.001); // quick: nothing armed, stopwatch cleared
         $this->clock->sleep(60.0); // a long gap between TICKS, not inside one
 
         $backoff->finished();
@@ -146,7 +146,7 @@ final class PollBackoffTest extends TestCase
     public function testAStrayFinishDoesNotCancelAnArmedGap(): void
     {
         $backoff = new PollBackoff($this->clock);
-        $this->slice($backoff, 0.2); // arms one skip
+        $this->slice($backoff, seconds: 0.2); // arms one skip
 
         $backoff->finished(); // nothing was running
 

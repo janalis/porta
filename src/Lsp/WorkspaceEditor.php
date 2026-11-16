@@ -403,7 +403,7 @@ final readonly class WorkspaceEditor
             // kept, the edits that follow a create landed on the old text.
             $overwrite = \is_array($change['options'] ?? null) && true === ($change['options']['overwrite'] ?? null);
             if ($overwrite || !\file_exists($path)) {
-                $this->fs->dumpFile($path, '');
+                $this->fs->dumpFile($path, content: '');
             }
 
             return;

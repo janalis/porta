@@ -44,7 +44,7 @@ final class IdeToastsTest extends TestCase
                     $tui->handleInput("\x13"); // ctrl+s → "Saved a.php"
                     // The toast is set synchronously; the CARD painting is the
                     // later moment, and it is what the screen assertion needs.
-                    $this->awaitPainted($tui, $terminal, 'Saved a.php');
+                    $this->awaitPainted($tui, $terminal, needle: 'Saved a.php');
 
                     $this->assertStringContainsString('Saved a.php', Toasts::last($ide));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
@@ -55,8 +55,8 @@ final class IdeToastsTest extends TestCase
                     // The presenter's regions place the card; its ✖ sits at the
                     // top border's width − 2 (ModalBox::closeHit).
                     $notifier = Services::resolve($ide, Notifier::class);
-                    $center = Probe::get($notifier, 'toasts');
-                    $boxes = Probe::get($center, 'boxes');
+                    $center = Probe::get($notifier, property: 'toasts');
+                    $boxes = Probe::get($center, property: 'boxes');
                     $this->assertNotSame([], $boxes, 'the presenter recorded the card box');
                     $box = $boxes[0]['box'];
 
@@ -72,9 +72,9 @@ final class IdeToastsTest extends TestCase
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // A short-lived toast expires on its own timer.
                     $notifier = Services::resolve($ide, Notifier::class);
-                    $notifier->error('boom', 0.15);
+                    $notifier->error('boom', seconds: 0.15);
                     $this->assertSame(['boom'], Toasts::all($ide));
-                    $this->awaitPainted($tui, $terminal, '✗');
+                    $this->awaitPainted($tui, $terminal, needle: '✗');
                     $this->assertStringContainsString('✗', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the error glyph renders');
                     $this->await(static fn (): bool => [] === Toasts::all($ide));
 
@@ -107,7 +107,7 @@ final class IdeToastsTest extends TestCase
                         });
                     },
                     300 => function (Tui $tui, VirtualTerminal $terminal, $ide) use ($project): void {
-                        $this->awaitPainted($tui, $terminal, 'Internal error');
+                        $this->awaitPainted($tui, $terminal, needle: 'Internal error');
                         $this->assertStringContainsString('boom-in-callback', (string) \file_get_contents($project->dir.'/.porta/error.log'), 'the throwable landed in error.log');
                         $this->assertTrue($tui->isRunning(), 'the loop survived the throw');
                     },

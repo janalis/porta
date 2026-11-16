@@ -575,17 +575,17 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     {
         $kb = $this->getKeybindings();
         match (true) {
-            $kb->matches($data, 'help_next_link') => $this->cycleLink(1),
-            $kb->matches($data, 'help_prev_link') => $this->cycleLink(-1),
-            $kb->matches($data, 'help_follow_link') => $this->followCurrent(),
-            $kb->matches($data, 'help_back') => $this->back(),
-            $kb->matches($data, 'help_scroll_up') => $this->scrollBy(-1),
-            $kb->matches($data, 'help_scroll_down') => $this->scrollBy(1),
-            $kb->matches($data, 'help_page_up') => $this->scrollBy(-$this->bodyRows()),
-            $kb->matches($data, 'help_page_down') => $this->scrollBy($this->bodyRows()),
-            $kb->matches($data, 'help_home') => $this->scrollBy(-\PHP_INT_MAX),
-            $kb->matches($data, 'help_end') => $this->scrollBy(\PHP_INT_MAX),
-            $kb->matches($data, 'help_find') => $this->docs()?->openFind(),
+            $kb->matches($data, action: 'help_next_link') => $this->cycleLink(1),
+            $kb->matches($data, action: 'help_prev_link') => $this->cycleLink(-1),
+            $kb->matches($data, action: 'help_follow_link') => $this->followCurrent(),
+            $kb->matches($data, action: 'help_back') => $this->back(),
+            $kb->matches($data, action: 'help_scroll_up') => $this->scrollBy(-1),
+            $kb->matches($data, action: 'help_scroll_down') => $this->scrollBy(1),
+            $kb->matches($data, action: 'help_page_up') => $this->scrollBy(-$this->bodyRows()),
+            $kb->matches($data, action: 'help_page_down') => $this->scrollBy($this->bodyRows()),
+            $kb->matches($data, action: 'help_home') => $this->scrollBy(-\PHP_INT_MAX),
+            $kb->matches($data, action: 'help_end') => $this->scrollBy(\PHP_INT_MAX),
+            $kb->matches($data, action: 'help_find') => $this->docs()?->openFind(),
             default => $this->tabKey($data),
         };
     }
@@ -669,7 +669,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
                 $this->currentLink = $span->group;
             }
             $origin = Text::lineAndColumn($this->markdown, $offset)[0] + $line;
-            $this->pointAtSource($origin, 0);
+            $this->pointAtSource($origin, byteCol: 0);
             $this->followLine = $origin;
             $this->invalidate();
         };
@@ -900,7 +900,7 @@ abstract class MarkdownPageWidget extends EditorPaneWidget implements FindTarget
     {
         $max = \max(0, \count($this->doc->lines ?? []) - $this->bodyRows());
 
-        return IntMath::clamp($scrollTop, 0, $max);
+        return IntMath::clamp($scrollTop, lo: 0, hi: $max);
     }
 
     /**

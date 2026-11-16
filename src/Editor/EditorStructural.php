@@ -174,7 +174,7 @@ final class EditorStructural
         $target = $this->conflictTarget($regions, $cursor, $dir);
 
         $this->document->clearSelection();
-        $this->document->setCursor($target['start'], 0);
+        $this->document->setCursor($target['start'], col: 0);
         ($this->invalidate)();
     }
 
@@ -226,7 +226,7 @@ final class EditorStructural
         $lines = $doc->lines;
         $replacement = \implode("\n", ConflictMarkers::resolution($lines, $region, $which));
 
-        $doc->setCursor($region['start'], 0);
+        $doc->setCursor($region['start'], col: 0);
         $doc->beginSelect();
         $doc->setCursor($region['end'], \strlen($lines[$region['end']]), selection: SelectionMode::Keep);
         if ('' === $replacement) {

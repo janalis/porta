@@ -90,8 +90,8 @@ final class RemotePresenceBoardTest extends TestCase
 
         $this->assertNull(self::publish($board, self::beacon('aaaaaaaaaaaaaaaa')));
         $this->assertSame(['mkdir .porta/presence', 'put .porta/presence/aaaaaaaaaaaaaaaa.json'], $this->transport->calls, 'paths relative to the project, as every verb takes them');
-        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', 'Bo')->toJson());
-        $this->server->write(PresenceBoard::DIR.'/README', 'not a beacon');
+        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', name: 'Bo')->toJson());
+        $this->server->write(PresenceBoard::DIR.'/README', content: 'not a beacon');
         \mkdir($this->server->path(PresenceBoard::DIR.'/cccccccccccccccc.json'));
         $this->transport->calls = [];
 
@@ -106,7 +106,7 @@ final class RemotePresenceBoardTest extends TestCase
         $this->assertSame(['Ada', 'Bo'], self::names(self::read($board)));
         $this->assertSame(['list .porta/presence'], $this->transport->calls, 'nothing moved: nothing fetched');
 
-        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', 'Bo, moved')->toJson());
+        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', name: 'Bo, moved')->toJson());
         $this->transport->calls = [];
         $this->assertSame(['Ada', 'Bo, moved'], self::names(self::read($board)));
         $this->assertSame(['list .porta/presence', 'fetch .porta/presence/bbbbbbbbbbbbbbbb.json'], $this->transport->calls);
@@ -155,7 +155,7 @@ final class RemotePresenceBoardTest extends TestCase
     {
         $board = $this->board();
         $this->server->write(PresenceBoard::DIR.'/aaaaaaaaaaaaaaaa.json', self::beacon('aaaaaaaaaaaaaaaa')->toJson());
-        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', 'Bo')->toJson());
+        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', name: 'Bo')->toJson());
         $this->transport->hold = true;
         $read = 'never answered';
         $board->read(static function (array|string $beacons) use (&$read): void {
@@ -164,7 +164,7 @@ final class RemotePresenceBoardTest extends TestCase
         $this->transport->release();
         $this->assertSame(['Ada', 'Bo'], self::names($read), 'answered once, when the last fetch came back');
 
-        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', 'Bo again')->toJson());
+        $this->server->write(PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json', self::beacon('bbbbbbbbbbbbbbbb', name: 'Bo again')->toJson());
         $this->transport->fail[PresenceBoard::DIR.'/bbbbbbbbbbbbbbbb.json'] = 'withdrawn since';
         $this->assertSame(['Ada', 'Bo'], self::names(self::read($board)), 'a fetch that fails keeps what was known');
         $this->assertSame(['Ada', 'Bo again'], self::names(self::read($board)), 'and is asked again');

@@ -156,14 +156,14 @@ final class MergePaneWidget extends EditorPaneWidget
         $kb = $this->getKeybindings();
         $current = MergeSides::current($this->result(), $this->caretLine());
         match (true) {
-            $kb->matches($data, 'merge_keep') => null === $current ? null : $this->accept($current, $this->side),
-            $kb->matches($data, 'merge_keep_both') => null === $current ? null : $this->accept($current, ConflictSide::Both),
-            $kb->matches($data, 'merge_next') => $this->step(1),
-            $kb->matches($data, 'merge_prev') => $this->step(-1),
+            $kb->matches($data, action: 'merge_keep') => null === $current ? null : $this->accept($current, $this->side),
+            $kb->matches($data, action: 'merge_keep_both') => null === $current ? null : $this->accept($current, ConflictSide::Both),
+            $kb->matches($data, action: 'merge_next') => $this->step(1),
+            $kb->matches($data, action: 'merge_prev') => $this->step(-1),
             // Re-bound to the editor's defaults so saving and tab management
             // keep working while this pane has the keys (see EditorKeymap):
             // the next thing after the last accept is the save.
-            $kb->matches($data, 'save') => ($this->save)(),
+            $kb->matches($data, action: 'save') => ($this->save)(),
             default => $this->tabKey($data),
         };
     }

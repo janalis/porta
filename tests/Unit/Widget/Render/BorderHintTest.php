@@ -21,7 +21,7 @@ final class BorderHintTest extends TestCase
     public function testTheHintSitsBetweenStrokesAndTheRowKeepsItsWidth(): void
     {
         $styles = Styles::dark();
-        $row = BorderHint::bottom(Glyphs::MODAL_BOTTOM_LEFT, Glyphs::MODAL_BOTTOM_RIGHT, Glyphs::FRAME_HORIZONTAL, 12, $styles->of(Role::TabAccent), '3/40', $styles);
+        $row = BorderHint::bottom(Glyphs::MODAL_BOTTOM_LEFT, Glyphs::MODAL_BOTTOM_RIGHT, Glyphs::FRAME_HORIZONTAL, run: 12, border: $styles->of(Role::TabAccent), hint: '3/40', styles: $styles);
 
         $this->assertSame('╰───── 3/40 ─╯', AnsiUtils::stripAnsiCodes($row));
         $this->assertSame(14, AnsiUtils::visibleWidth($row));
@@ -44,7 +44,7 @@ final class BorderHintTest extends TestCase
     public function testAHintThatCannotKeepAStrokeBeforeItIsLeftOut(int $run, string $expected): void
     {
         $styles = Styles::dark();
-        $row = BorderHint::bottom('╰', '╯', '─', $run, $styles->of(Role::TabAccent), 'Alt+9', $styles);
+        $row = BorderHint::bottom('╰', corner: '╯', rule: '─', run: $run, border: $styles->of(Role::TabAccent), hint: 'Alt+9', styles: $styles);
 
         $this->assertSame($expected, AnsiUtils::stripAnsiCodes($row));
         $this->assertSame($run + 2, AnsiUtils::visibleWidth($row));
@@ -55,7 +55,7 @@ final class BorderHintTest extends TestCase
         $styles = Styles::dark();
         $border = $styles->of(Role::TabAccent);
 
-        $this->assertSame($border->apply('╰───').'╯', BorderHint::bottom('╰', '╯', '─', 3, $border, '', $styles));
-        $this->assertSame('╰╯', AnsiUtils::stripAnsiCodes(BorderHint::bottom('╰', '╯', '─', -2, $border, 'x', $styles)));
+        $this->assertSame($border->apply('╰───').'╯', BorderHint::bottom('╰', corner: '╯', rule: '─', run: 3, border: $border, hint: '', styles: $styles));
+        $this->assertSame('╰╯', AnsiUtils::stripAnsiCodes(BorderHint::bottom('╰', corner: '╯', rule: '─', run: -2, border: $border, hint: 'x', styles: $styles)));
     }
 }

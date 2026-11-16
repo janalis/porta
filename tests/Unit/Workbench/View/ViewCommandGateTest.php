@@ -47,7 +47,7 @@ final class ViewCommandGateTest extends TestCase
     {
         $this->views->open('settings');
 
-        $this->gate()->before('i', 'ide_save');
+        $this->gate()->before('i', id: 'ide_save');
 
         $this->assertFalse($this->views->isOpen('settings'));
     }
@@ -56,7 +56,7 @@ final class ViewCommandGateTest extends TestCase
     {
         $this->views->open('settings');
 
-        $this->gate()->before('e', 'ide_settings');
+        $this->gate()->before('e', id: 'ide_settings');
 
         $this->assertFalse($this->views->isOpen('settings'), 'only IDE commands can be a view\'s own');
     }
@@ -64,33 +64,33 @@ final class ViewCommandGateTest extends TestCase
     public function testAViewsOwnCommandRunsOverIt(): void
     {
         $this->views->open('settings');
-        $this->gate()->before('i', 'ide_command_palette');
+        $this->gate()->before('i', id: 'ide_command_palette');
         $this->assertTrue($this->views->isOpen('settings'), "core's list for settings");
 
         $this->views->open('git');
-        $this->gate()->before('i', 'git_commit');
+        $this->gate()->before('i', id: 'git_commit');
         $this->assertTrue($this->views->isOpen('git'), 'the git menu contributed its own');
     }
 
     public function testNothingHappensWithNoViewOpen(): void
     {
-        $this->gate()->before('i', 'ide_save');
+        $this->gate()->before('i', id: 'ide_save');
 
         $this->assertNull($this->views->activeId());
     }
 
     public function testAnotherViewsCommandIsNotThisOnes(): void
     {
-        $this->assertTrue($this->gate()->keepsOpen('git', 'git_commit'));
-        $this->assertFalse($this->gate()->keepsOpen('settings', 'git_commit'));
-        $this->assertFalse($this->gate()->keepsOpen('review', 'git_commit'), 'a view with no list of its own keeps only the workbench\'s');
+        $this->assertTrue($this->gate()->keepsOpen('git', id: 'git_commit'));
+        $this->assertFalse($this->gate()->keepsOpen('settings', id: 'git_commit'));
+        $this->assertFalse($this->gate()->keepsOpen('review', id: 'git_commit'), 'a view with no list of its own keeps only the workbench\'s');
     }
 
     /** Every core list lets the palette and Welcome open over its view: the ways to reach past it without losing it. */
     public function testEveryCoreListKeepsThePaletteAndWelcome(): void
     {
         /** @var array<string, list<string>> $lists */
-        $lists = Probe::getStatic(ViewCommandGate::class, 'KEEPS_OPEN');
+        $lists = Probe::getStatic(ViewCommandGate::class, member: 'KEEPS_OPEN');
 
         $this->assertSame(['settings', 'welcome', 'help'], \array_keys($lists));
         foreach ($lists as $id => $own) {

@@ -55,7 +55,7 @@ final class FlowchartClusterStylesTest extends TestCase
         $this->assertInstanceOf(Mark::class, $label);
         $this->assertSame('#008000', $label->stroke);
         $view = new ZoomPanModel((int) \ceil($scene->graph->width), (int) \ceil($scene->graph->height), [1.0]);
-        $rows = \implode("\n", GraphRenderer::render($scene->graph, $view, null, 80, 24, Styles::dark()));
+        $rows = \implode("\n", GraphRenderer::render($scene->graph, $view, selected: null, cols: 80, rows: 24, styles: Styles::dark()));
         $this->assertStringContainsString('38;2;0;128;0', $rows);
         $this->assertStringContainsString('┄', $rows);
         $this->assertStringContainsString('┆', $rows);

@@ -231,7 +231,7 @@ final class SearchScopeStoreTest extends TestCase
 
         // Malformed / partial entries are dropped.
         $bad = new TempProject([]);
-        $bad->write('.porta/search-scopes.json', 'not json');
+        $bad->write('.porta/search-scopes.json', content: 'not json');
         $this->assertSame([], new SearchScopeStore($bad->dir)->scopes);
 
         $mixed = new TempProject([]);
@@ -289,7 +289,7 @@ final class SearchScopeStoreTest extends TestCase
         $store->addPinned('src', ['src']);
         $store->addPinned('tests', ['tests']);
 
-        $store->rename('src', 'lib');
+        $store->rename('src', to: 'lib');
 
         $expected = [
             ['label' => 'tests', 'paths' => ['tests'], 'pinned' => true],
@@ -305,7 +305,7 @@ final class SearchScopeStoreTest extends TestCase
         $store = new SearchScopeStore($tempProject->dir);
         $store->addPinned('the widgets', ['src/Widget', 'srcery/x']);
 
-        $store->rename('src', 'lib');
+        $store->rename('src', to: 'lib');
 
         $this->assertSame(
             [
@@ -325,7 +325,7 @@ final class SearchScopeStoreTest extends TestCase
         \touch($file, mtime: 1_000_000_000); // backdated: mtime resolves to the second
         \clearstatcache();
 
-        $store->rename('tests', 'spec');
+        $store->rename('tests', to: 'spec');
 
         $this->assertSame(['src'], \array_column($store->scopes, 'label'));
         $this->assertSame(1_000_000_000, \filemtime($file), 'no write for a rename that changed nothing');

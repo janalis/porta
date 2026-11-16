@@ -139,7 +139,7 @@ final class PlatformKeymapTest extends TestCase
             $this->assertInstanceOf(Keybindings::class, new Keybindings(PlatformKeymap::overrides($platform), $parser));
         }
 
-        $this->assertFalse($parser->matches('c', 'super+c'));
-        $this->assertTrue($parser->matches("\x1b[99;9u", 'super+c'));
+        $this->assertFalse($parser->matches('c', keyId: 'super+c'));
+        $this->assertTrue($parser->matches("\x1b[99;9u", keyId: 'super+c'));
     }
 }

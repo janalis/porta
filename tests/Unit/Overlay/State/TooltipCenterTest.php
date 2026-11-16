@@ -139,19 +139,19 @@ final class TooltipCenterTest extends TestCase
         $center->point(self::tip('a'));
         $this->scheduler->fire();
 
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $center->point(self::tip('a'));
-        $this->assertFalse(Probe::get($this->tui, 'renderRequested'));
+        $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'));
         $this->assertSame([], $this->scheduler->scheduled, 'nor a dwell');
     }
 
     public function testTheShownCardFollowsNewWordsOrANewSpan(): void
     {
         $center = $this->center();
-        $center->point(self::tip('a', 'one'));
+        $center->point(self::tip('a', text: 'one'));
         $this->scheduler->fire();
 
-        $center->point(self::tip('a', 'two'));
+        $center->point(self::tip('a', text: 'two'));
         $this->assertSame('two', $center->shown()?->text);
         $center->point(new Tooltip('a', 'two', 5, 3, 5));
         $this->assertSame(5, $center->shown()?->row);
@@ -163,31 +163,31 @@ final class TooltipCenterTest extends TestCase
     public function testARefreshUpdatesOnlyItsOwnCard(): void
     {
         $center = $this->center();
-        $center->point(self::tip('a', 'one'));
-        $center->refresh(self::tip('a', 'pending, now two'));
+        $center->point(self::tip('a', text: 'one'));
+        $center->refresh(self::tip('a', text: 'pending, now two'));
         $this->scheduler->fire();
         $this->assertSame('pending, now two', $center->shown()?->text, 'the dwelling card shows the newer words');
 
-        Probe::set($this->tui, 'renderRequested', false);
-        $center->refresh(self::tip('a', 'pending, now two'));
-        $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'the same words ask for no frame');
+        Probe::set($this->tui, property: 'renderRequested', value: false);
+        $center->refresh(self::tip('a', text: 'pending, now two'));
+        $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'), 'the same words ask for no frame');
 
-        $center->refresh(self::tip('a', 'three'));
+        $center->refresh(self::tip('a', text: 'three'));
         $this->assertSame('three', $center->shown()?->text);
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'new words are painted');
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'new words are painted');
 
-        $center->refresh(self::tip('b', 'other'));
+        $center->refresh(self::tip('b', text: 'other'));
         $this->assertSame('a', $center->shown()?->key, "another element's answer is not this card's");
     }
 
     public function testALateAnswerNeverBringsADismissedCardBack(): void
     {
         $center = $this->center();
-        $center->point(self::tip('a', 'one'));
+        $center->point(self::tip('a', text: 'one'));
         $this->scheduler->fire();
         $center->dismiss();
 
-        $center->refresh(self::tip('a', 'two'));
+        $center->refresh(self::tip('a', text: 'two'));
 
         $this->assertNull($center->shown());
     }

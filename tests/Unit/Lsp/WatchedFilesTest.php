@@ -65,7 +65,7 @@ final class WatchedFilesTest extends TestCase
     /** Start both servers, the way a file's first didOpen does. */
     private function startServers(): void
     {
-        $this->pool->notifyDidOpen($this->project->path('src/A.php'), '<?php // a', 'php', 1);
+        $this->pool->notifyDidOpen($this->project->path('src/A.php'), text: '<?php // a', languageId: 'php', version: 1);
     }
 
     /** @return list<list<array{uri: string, type: int}>> every didChangeWatchedFiles $server was sent */
@@ -97,8 +97,8 @@ final class WatchedFilesTest extends TestCase
         $this->watched->tick();
         $this->assertSame([], $this->sent('php-ls'), 'the server indexed what was there: nothing has changed yet');
 
-        $this->project->write('src/A.php', '<?php // a, edited');
-        $this->project->write('src/New.php', '<?php // new');
+        $this->project->write('src/A.php', content: '<?php // a, edited');
+        $this->project->write('src/New.php', content: '<?php // new');
         \unlink($this->project->path('src/B.php'));
         $this->watched->tick();
 
@@ -125,7 +125,7 @@ final class WatchedFilesTest extends TestCase
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
 
-        $this->project->write('src/New.php', '<?php // new');
+        $this->project->write('src/New.php', content: '<?php // new');
         $this->watched->tick();
 
         $this->assertSame([[['uri' => $this->uri('src/New.php'), 'type' => 1]]], $this->sent('php-ls'));
@@ -139,9 +139,9 @@ final class WatchedFilesTest extends TestCase
         $this->clients['other-ls']->fileWatchers = [['glob' => '**/composer.json', 'kind' => 2]];
         $this->watched->tick();
 
-        $this->project->write('composer.json', '{"name": "x"}');
-        $this->project->write('src/New.php', '<?php // new');
-        $this->project->write('README.md', '# changed, and watched by nobody');
+        $this->project->write('composer.json', content: '{"name": "x"}');
+        $this->project->write('src/New.php', content: '<?php // new');
+        $this->project->write('README.md', content: '# changed, and watched by nobody');
         $this->watched->tick();
 
         $this->assertSame([[['uri' => $this->uri('src/New.php'), 'type' => 1]]], $this->sent('php-ls'));
@@ -158,8 +158,8 @@ final class WatchedFilesTest extends TestCase
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
 
-        $this->project->write('vendor/acme/lib/C.php', '<?php // c, updated by composer');
-        $this->project->write('.git/hooks/D.php', '<?php // d, changed');
+        $this->project->write('vendor/acme/lib/C.php', content: '<?php // c, updated by composer');
+        $this->project->write('.git/hooks/D.php', content: '<?php // d, changed');
         $this->watched->tick();
 
         $this->assertSame([], $this->sent('php-ls'));
@@ -169,7 +169,7 @@ final class WatchedFilesTest extends TestCase
     {
         $this->startServers();
         $this->watched->tick();
-        $this->project->write('src/A.php', '<?php // a, edited before anyone watched');
+        $this->project->write('src/A.php', content: '<?php // a, edited before anyone watched');
 
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
@@ -179,7 +179,7 @@ final class WatchedFilesTest extends TestCase
         // registers again later is not told about what changed in between.
         $this->clients['php-ls']->fileWatchers = [];
         $this->watched->tick();
-        $this->project->write('src/B.php', '<?php // b, edited while nobody watched');
+        $this->project->write('src/B.php', content: '<?php // b, edited while nobody watched');
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
         $this->assertSame([], $this->sent('php-ls'));
@@ -188,14 +188,14 @@ final class WatchedFilesTest extends TestCase
     public function testASweepTooBigForOneTickIsSlicedAndReportsOnlyWhenItCompletes(): void
     {
         for ($i = 0; $i < 600; ++$i) {
-            $this->project->write(\sprintf('src/Many/F%03d.php', $i), '<?php');
+            $this->project->write(\sprintf('src/Many/F%03d.php', $i), content: '<?php');
         }
         $this->startServers();
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
         $this->watched->tick(); // 600 files and their directories: two slices make the baseline
 
-        $this->project->write('src/A.php', '<?php // a, edited');
+        $this->project->write('src/A.php', content: '<?php // a, edited');
         $this->watched->tick();
         $this->assertSame([], $this->sent('php-ls'), 'half a sweep has not seen everything: it reports nothing yet');
         $this->watched->tick();
@@ -208,7 +208,7 @@ final class WatchedFilesTest extends TestCase
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
 
-        $this->project->write('src/A.php', '<?php // a, edited');
+        $this->project->write('src/A.php', content: '<?php // a, edited');
         // A clock on which every reading is 60ms after the last: each slice
         // overruns the 50ms budget, so the tick after it is stood down.
         $slow = new WatchedFiles($this->pool, $this->project->dir, new class implements ClockInterface {
@@ -222,7 +222,7 @@ final class WatchedFilesTest extends TestCase
             }
         });
         $slow->tick(); // its baseline, slowly
-        $this->project->write('src/A.php', '<?php // a, edited again');
+        $this->project->write('src/A.php', content: '<?php // a, edited again');
         $slow->tick();
         $this->assertSame([], $this->sent('php-ls'), 'the tick after an overrun is skipped');
         $slow->tick();
@@ -237,7 +237,7 @@ final class WatchedFilesTest extends TestCase
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*', 'kind' => 7]];
         $this->watched->tick();
 
-        $this->project->write('2024', 'a year');
+        $this->project->write('2024', content: 'a year');
         $this->watched->tick();
 
         $this->assertSame([[['uri' => $this->uri('2024'), 'type' => 1]]], $this->sent('php-ls'));
@@ -256,20 +256,20 @@ final class WatchedFilesTest extends TestCase
         $this->assertSame([], $this->sent('other-ls'));
         $this->assertSame([], $this->sent('php-ls'));
 
-        $this->project->write('composer.json', '{"name": "x"}');
+        $this->project->write('composer.json', content: '{"name": "x"}');
         $this->watched->tick();
         $this->assertSame([[['uri' => $this->uri('composer.json'), 'type' => 2]]], $this->sent('other-ls'));
     }
 
     public function testWhatGitIgnoresIsNotWalked(): void
     {
-        $this->project->write('.gitignore', "/var/\n");
+        $this->project->write('.gitignore', content: "/var/\n");
         $this->startServers();
         $this->clients['php-ls']->fileWatchers = [['glob' => '**/*.php', 'kind' => 7]];
         $this->watched->tick();
 
-        $this->project->write('var/cache/Container.php', '<?php // a cache warmup');
-        $this->project->write('src/A.php', '<?php // a, edited');
+        $this->project->write('var/cache/Container.php', content: '<?php // a cache warmup');
+        $this->project->write('src/A.php', content: '<?php // a, edited');
         $this->watched->tick();
 
         $this->assertSame([[['uri' => $this->uri('src/A.php'), 'type' => 2]]], $this->sent('php-ls'));
@@ -281,8 +281,8 @@ final class WatchedFilesTest extends TestCase
         $this->clients['php-ls']->fileWatchers = [['glob' => $this->project->dir.'/src/*.php', 'kind' => 7]];
         $this->watched->tick();
 
-        $this->project->write('src/A.php', '<?php // a, edited');
-        $this->project->write('README.md', '# not under the glob');
+        $this->project->write('src/A.php', content: '<?php // a, edited');
+        $this->project->write('README.md', content: '# not under the glob');
         $this->watched->tick();
 
         $this->assertSame([[['uri' => $this->uri('src/A.php'), 'type' => 2]]], $this->sent('php-ls'));

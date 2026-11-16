@@ -41,12 +41,12 @@ final class SourceEditsTest extends TestCase
 
     public function testATickReplacesItsBoxAsOneUndoableEditAndLeavesTheCaret(): void
     {
-        $buffer = $this->buffers->open('/p/todo.md', "# List\n- [ ] one\n- [ ] two\n");
-        $buffer->document->setCursor(2, 8); // after the box, on "two"
-        Probe::set($this->tui, 'renderRequested', false);
+        $buffer = $this->buffers->open('/p/todo.md', content: "# List\n- [ ] one\n- [ ] two\n");
+        $buffer->document->setCursor(2, col: 8); // after the box, on "two"
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $this->edits->onSourceEditRequested(new SourceEditRequested('/p/todo.md', 19, 22, '[ ]', '[x]'));
         $this->assertSame("# List\n- [ ] one\n- [x] two\n", $buffer->document->getText());
-        $this->assertTrue((bool) Probe::get($this->tui, 'renderRequested'), 'the edit is drawn without waiting for a key');
+        $this->assertTrue((bool) Probe::get($this->tui, property: 'renderRequested'), 'the edit is drawn without waiting for a key');
         $this->assertSame([2, 8], [$buffer->document->cursorLine, $buffer->document->cursorCol]);
         $buffer->document->undo();
         $this->assertSame("# List\n- [ ] one\n- [ ] two\n", $buffer->document->getText());
@@ -54,7 +54,7 @@ final class SourceEditsTest extends TestCase
 
     public function testAnEditOfTheFirstLineMapsItsOffsetsThere(): void
     {
-        $buffer = $this->buffers->open('/p/one.md', '- [ ] only');
+        $buffer = $this->buffers->open('/p/one.md', content: '- [ ] only');
         $this->edits->onSourceEditRequested(new SourceEditRequested('/p/one.md', 2, 5, '[ ]', '[x]'));
         $this->edits->onSourceEditRequested(new SourceEditRequested('/p/one.md', 0, 1, '-', '*'));
         $this->edits->onSourceEditRequested(new SourceEditRequested('/p/one.md', 10, 10, '', '!'));
@@ -63,7 +63,7 @@ final class SourceEditsTest extends TestCase
 
     public function testAnEditTheTextHasMovedOnFromChangesNothing(): void
     {
-        $buffer = $this->buffers->open('/p/todo.md', "- [x] one\n");
+        $buffer = $this->buffers->open('/p/todo.md', content: "- [x] one\n");
         foreach ([
             // Each fails one check alone, and would show had it been applied.
             new SourceEditRequested('/p/todo.md', 2, 5, '[ ]', '[-]'),

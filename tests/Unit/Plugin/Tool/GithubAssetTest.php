@@ -22,8 +22,8 @@ final class GithubAssetTest extends TestCase
         $asset = GithubAsset::fromManifest(self::SYMFONY);
 
         $this->assertInstanceOf(GithubAsset::class, $asset);
-        $this->assertSame('symfony-lsp-v0.24.1-macos-arm64.tar.gz', $asset->assetFor('v0.24.1', 'Darwin', 'arm64'));
-        $this->assertSame('symfony-lsp-v0.24.1-linux-arm64/symfony-lsp', $asset->memberFor('v0.24.1', 'Linux', 'aarch64'));
+        $this->assertSame('symfony-lsp-v0.24.1-macos-arm64.tar.gz', $asset->assetFor('v0.24.1', osFamily: 'Darwin', machine: 'arm64'));
+        $this->assertSame('symfony-lsp-v0.24.1-linux-arm64/symfony-lsp', $asset->memberFor('v0.24.1', osFamily: 'Linux', machine: 'aarch64'));
         $this->assertSame('SHA256SUMS', $asset->sums);
     }
 
@@ -32,8 +32,8 @@ final class GithubAssetTest extends TestCase
         $asset = GithubAsset::fromManifest(['asset' => 'custos_{version}_{os}_{arch}', 'os' => ['Linux' => 'linux'], 'arch' => ['x86_64' => 'amd64'], 'sums' => 'checksums.txt']);
 
         $this->assertInstanceOf(GithubAsset::class, $asset);
-        $this->assertSame('custos_0.1.7_linux_amd64', $asset->assetFor('v0.1.7', 'Linux', 'x86_64'), '{version} drops the v');
-        $this->assertNull($asset->memberFor('v0.1.7', 'Linux', 'x86_64'));
+        $this->assertSame('custos_0.1.7_linux_amd64', $asset->assetFor('v0.1.7', osFamily: 'Linux', machine: 'x86_64'), '{version} drops the v');
+        $this->assertNull($asset->memberFor('v0.1.7', osFamily: 'Linux', machine: 'x86_64'));
         $this->assertSame('checksums.txt', $asset->sums);
     }
 
@@ -42,9 +42,9 @@ final class GithubAssetTest extends TestCase
         $asset = GithubAsset::fromManifest(self::SYMFONY);
 
         $this->assertInstanceOf(GithubAsset::class, $asset);
-        $this->assertNull($asset->assetFor('v1', 'Windows', 'x86_64'));
-        $this->assertNull($asset->assetFor('v1', 'Darwin', 'riscv64'));
-        $this->assertNull($asset->memberFor('v1', 'Windows', 'x86_64'));
+        $this->assertNull($asset->assetFor('v1', osFamily: 'Windows', machine: 'x86_64'));
+        $this->assertNull($asset->assetFor('v1', osFamily: 'Darwin', machine: 'riscv64'));
+        $this->assertNull($asset->memberFor('v1', osFamily: 'Windows', machine: 'x86_64'));
     }
 
     public function testUnusableRulesAreRefused(): void

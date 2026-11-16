@@ -23,13 +23,13 @@ final class SettingsRowDetailTest extends TestCase
      */
     public function testAnOrdinaryProjectValueIsNotTagged(): void
     {
-        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Bool, true, origin: ConfigScope::Project)));
+        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Bool, value: true, origin: ConfigScope::Project)));
     }
 
     /** A value coming from the file the user is not looking at says so. */
     public function testAGlobalValueSaysWhereItCameFrom(): void
     {
-        $this->assertSame('from global', $this->detail($this->row(SettingsRowKind::Bool, true, origin: ConfigScope::Global)));
+        $this->assertSame('from global', $this->detail($this->row(SettingsRowKind::Bool, value: true, origin: ConfigScope::Global)));
     }
 
     /**
@@ -38,7 +38,7 @@ final class SettingsRowDetailTest extends TestCase
      */
     public function testAProjectValueHidingAGlobalOneSaysThat(): void
     {
-        $row = $this->row(SettingsRowKind::Bool, true, origin: ConfigScope::Project, shadowed: true);
+        $row = $this->row(SettingsRowKind::Bool, value: true, origin: ConfigScope::Project, shadowed: true);
 
         $this->assertSame('overrides global', $this->detail($row));
     }
@@ -46,34 +46,34 @@ final class SettingsRowDetailTest extends TestCase
     /** Last of the clauses: a narrow row should lose this before the hint. */
     public function testTheOriginTrailsTheHint(): void
     {
-        $row = $this->row(SettingsRowKind::Text, 'x', hint: 'why this exists', origin: ConfigScope::Global);
+        $row = $this->row(SettingsRowKind::Text, value: 'x', hint: 'why this exists', origin: ConfigScope::Global);
 
         $this->assertSame('why this exists · from global', $this->detail($row));
     }
 
     public function testARowWithNothingToAddSaysNothing(): void
     {
-        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Bool, true)));
+        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Bool, value: true)));
     }
 
     public function testTheRestartNoteLeadsAndTheHintFollows(): void
     {
         // Order is truncation order: the row cuts from the right, so the
         // consequential note must outlive the explanation.
-        $row = $this->row(SettingsRowKind::Text, 'x', restart: true, hint: 'why this exists');
+        $row = $this->row(SettingsRowKind::Text, value: 'x', restart: true, hint: 'why this exists');
 
         $this->assertSame('applies on restart · why this exists', $this->detail($row));
     }
 
     public function testABoundedIntShowsItsRange(): void
     {
-        $this->assertSame('1-8', $this->detail($this->row(SettingsRowKind::Int, 4, min: 1, max: 8)));
+        $this->assertSame('1-8', $this->detail($this->row(SettingsRowKind::Int, value: 4, min: 1, max: 8)));
     }
 
     public function testASingleSidedBoundShowsOnlyTheBoundThatExists(): void
     {
-        $this->assertSame('≥ 0', $this->detail($this->row(SettingsRowKind::Int, 4, min: 0)));
-        $this->assertSame('≤ 99', $this->detail($this->row(SettingsRowKind::Int, 4, max: 99)));
+        $this->assertSame('≥ 0', $this->detail($this->row(SettingsRowKind::Int, value: 4, min: 0)));
+        $this->assertSame('≤ 99', $this->detail($this->row(SettingsRowKind::Int, value: 4, max: 99)));
     }
 
     /**
@@ -90,7 +90,7 @@ final class SettingsRowDetailTest extends TestCase
 
     public function testAnUnboundedIntShowsNoRange(): void
     {
-        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Int, 4)));
+        $this->assertSame('', $this->detail($this->row(SettingsRowKind::Int, value: 4)));
     }
 
     private function detail(SettingsRow $row): string

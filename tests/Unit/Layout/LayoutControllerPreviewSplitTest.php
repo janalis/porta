@@ -65,7 +65,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         $layout = $this->onScreen();
 
         $this->assertFalse($layout->armPreviewResize(self::mouse("\x1b[<0;50;3M")), 'column 49 is the editor');
-        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;30;3M"), null), 'nothing armed, nothing dragged');
+        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;30;3M"), treeRect: null), 'nothing armed, nothing dragged');
         $this->assertTrue($layout->armPreviewResize(self::mouse("\x1b[<0;51;3M")), 'column 50 is the divider');
     }
 
@@ -74,14 +74,14 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         $layout = $this->onScreen();
         $layout->armPreviewResize(self::mouse("\x1b[<0;51;3M"));
 
-        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null));
+        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), treeRect: null));
         $this->frame($this->tui);
         $this->assertSame(30, $this->editorColumns());
         $this->assertSame([], $this->layoutFile(), 'nothing written mid-drag');
 
-        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<0;31;3m"), null));
+        $this->assertTrue($layout->continueResizeDrag(self::mouse("\x1b[<0;31;3m"), treeRect: null));
         $this->assertSame(['previewSplitPercent' => 30], $this->layoutFile());
-        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;60;3M"), null), 'the release disarmed it');
+        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;60;3M"), treeRect: null), 'the release disarmed it');
     }
 
     public function testAnArmedDragTakesOnlyItsOwnMotionAndRelease(): void
@@ -89,7 +89,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
         $layout = $this->onScreen();
         $layout->armPreviewResize(self::mouse("\x1b[<0;51;3M"));
 
-        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<0;20;3M"), null), 'a fresh press is not the drag\'s');
+        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<0;20;3M"), treeRect: null), 'a fresh press is not the drag\'s');
         $this->assertSame(50, $this->previewSplit->percent());
     }
 
@@ -97,7 +97,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
     {
         $layout = $this->onScreen();
         $layout->armPreviewResize(self::mouse("\x1b[<0;51;3M"));
-        $layout->continueResizeDrag(self::mouse("\x1b[<0;51;3m"), null);
+        $layout->continueResizeDrag(self::mouse("\x1b[<0;51;3m"), treeRect: null);
 
         $this->assertSame([], $this->layoutFile());
     }
@@ -109,7 +109,7 @@ final class LayoutControllerPreviewSplitTest extends TestCase
 
         $layout->cancelDrags();
 
-        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), null));
+        $this->assertFalse($layout->continueResizeDrag(self::mouse("\x1b[<32;31;3M"), treeRect: null));
     }
 
     public function testTheKeyboardNudgeMovesAndPersistsTooButNotWithTheSplitOffScreen(): void

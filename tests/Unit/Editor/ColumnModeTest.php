@@ -100,7 +100,7 @@ final class ColumnModeTest extends TestCase
     public function testDownAndRightBuildARectangleOneCaretPerRow(): void
     {
         $actions = $this->actions("abcd\nefgh\nijkl\n");
-        $this->doc->setCursor(0, 1); // on 'b'
+        $this->doc->setCursor(0, col: 1); // on 'b'
 
         $this->press($actions, 'c', 'd', 'd', 'r');
 
@@ -114,7 +114,7 @@ final class ColumnModeTest extends TestCase
         // display columns, which is why setColumnSelection works in display
         // space and the anchor is kept there too.
         $actions = $this->actions("abcdefgh\n\tXY\n");
-        $this->doc->setCursor(0, 4); // display column 4
+        $this->doc->setCursor(0, col: 4); // display column 4
 
         $this->press($actions, 'c', 'd', 'r');
 
@@ -129,7 +129,7 @@ final class ColumnModeTest extends TestCase
         // can select, but the remembered column has to survive so the rows
         // below it are full width again.
         $actions = $this->actions("abcdef\nxy\nabcdef\n");
-        $this->doc->setCursor(0, 4);
+        $this->doc->setCursor(0, col: 4);
 
         $this->press($actions, 'c', 'r', 'd', 'd');
 
@@ -143,7 +143,7 @@ final class ColumnModeTest extends TestCase
         // The mode intercepts the selection verbs; with it off they must reach
         // the ordinary linear path exactly as before.
         $actions = $this->actions("abcd\nefgh\n");
-        $this->doc->setCursor(0, 0);
+        $this->doc->setCursor(0, col: 0);
 
         $this->press($actions, 'd');
 
@@ -155,7 +155,7 @@ final class ColumnModeTest extends TestCase
         // Column mode claims the selection verbs and nothing else; every other
         // key must still reach the handlers below it.
         $actions = $this->actions("abcd\nefgh\n");
-        $this->doc->setCursor(0, 0);
+        $this->doc->setCursor(0, col: 0);
         $this->press($actions, 'c');
 
         $actions->handleKey('z', new Keybindings(['toggle_column_mode' => ['c'], 'undo' => ['z']]));
@@ -178,7 +178,7 @@ final class ColumnModeTest extends TestCase
     public function testEachRectangleMoveAsksForARepaint(): void
     {
         $actions = $this->actions("abcd\nefgh\n");
-        $this->doc->setCursor(0, 1);
+        $this->doc->setCursor(0, col: 1);
         $this->press($actions, 'c');
         $this->hostCalls = [];
 
@@ -190,7 +190,7 @@ final class ColumnModeTest extends TestCase
     public function testEscapeLeavesTheModeAsWellAsTheSelection(): void
     {
         $actions = $this->actions("abcd\nefgh\n");
-        $this->doc->setCursor(0, 1);
+        $this->doc->setCursor(0, col: 1);
         $this->press($actions, 'c', 'd');
         $this->assertTrue($actions->columnMode());
 
@@ -207,7 +207,7 @@ final class ColumnModeTest extends TestCase
         // Leaving the mode ends the RECTANGLE, not the multi-caret edit you
         // built with it — that is the whole point of building one.
         $actions = $this->actions("abcd\nefgh\n");
-        $this->doc->setCursor(0, 1);
+        $this->doc->setCursor(0, col: 1);
         $this->press($actions, 'c', 'd', 'r');
         $this->assertTrue($this->multiCaret->hasMultiple());
 

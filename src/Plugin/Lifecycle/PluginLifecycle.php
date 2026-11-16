@@ -453,7 +453,7 @@ final class PluginLifecycle implements PluginLifecycleOps
                     '%name%' => $name,
                     '%tools%' => \implode(', ', $missing),
                 ]),
-                6.0,
+                seconds: 6.0,
             ),
             null !== $message => $this->notifier->flash($this->translator->trans($message, ['%name%' => $name])),
             default => null,

@@ -61,7 +61,7 @@ final class ReferenceCopierTest extends TestCase
         $this->editor = new CodeEditorWidget(documentScopes: $scopes);
         $this->editor->openFile($path, (string) \file_get_contents($path));
         $this->status = new StatusBarWidget();
-        $this->tui = TestTui::create(80, 24);
+        $this->tui = TestTui::create(80, rows: 24);
 
         return new ReferenceCopier(
             $this->editor,
@@ -78,7 +78,7 @@ final class ReferenceCopierTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->openFile($this->project->path($file), $source);
         $this->status = new StatusBarWidget();
-        $this->tui = TestTui::create(80, 24);
+        $this->tui = TestTui::create(80, rows: 24);
 
         return new ReferenceCopier(
             $this->editor,
@@ -113,7 +113,7 @@ final class ReferenceCopierTest extends TestCase
         // This one reads the OSC 52 the terminal actually received, so a
         // reported copy that never happened cannot pass the rest of them.
         $copier = $this->copier();
-        $this->editor->getDocument()->setCursor(8, 8);
+        $this->editor->getDocument()->setCursor(8, col: 8);
 
         $copier->copyReference();
 
@@ -129,7 +129,7 @@ final class ReferenceCopierTest extends TestCase
     public function testAReferenceInsideAMethodIsTheQUALIFIEDSymbol(): void
     {
         $copier = $this->copier();
-        $this->editor->getDocument()->setCursor(8, 8); // inside run()'s body
+        $this->editor->getDocument()->setCursor(8, col: 8); // inside run()'s body
 
         $copier->copyReference();
 
@@ -159,7 +159,7 @@ final class ReferenceCopierTest extends TestCase
             }
             SRC;
         $copier = $this->copier($source);
-        $this->editor->getDocument()->setCursor(12, 8); // inside second()
+        $this->editor->getDocument()->setCursor(12, col: 8); // inside second()
 
         $copier->copyReference();
 
@@ -180,7 +180,7 @@ final class ReferenceCopierTest extends TestCase
         ];
 
         foreach ($cases as $line => $expected) {
-            $this->editor->getDocument()->setCursor($line, 0);
+            $this->editor->getDocument()->setCursor($line, col: 0);
             $copier->copyReference();
             $this->assertSame($expected, $this->copied(), "line {$line}");
         }
@@ -189,7 +189,7 @@ final class ReferenceCopierTest extends TestCase
     public function testOnTheCLASSItselfItIsTheFqcn(): void
     {
         $copier = $this->copier();
-        $this->editor->getDocument()->setCursor(5, 4); // the `{` line of the class
+        $this->editor->getDocument()->setCursor(5, col: 4); // the `{` line of the class
 
         $copier->copyReference();
 
@@ -203,13 +203,13 @@ final class ReferenceCopierTest extends TestCase
         // with a file that spells qualification differently. `Service::handle`
         // is not what a TypeScript project would search for.
         $scopes = new DocumentScopes();
-        $path = $this->project(['src/a.ts' => "class Service {\n  handle() {\n    let x = 1;\n  }\n}\n"], 'src/a.ts');
+        $path = $this->project(['src/a.ts' => "class Service {\n  handle() {\n    let x = 1;\n  }\n}\n"], open: 'src/a.ts');
         $scopes->set($path, [
             ['label' => 'Service', 'startLine' => 1, 'endLine' => 5, 'kind' => CodeScopeKind::Type],
             ['label' => 'handle', 'startLine' => 2, 'endLine' => 4, 'kind' => CodeScopeKind::Function],
         ]);
         $copier = $this->copierFor($path, $scopes);
-        $this->editor->getDocument()->setCursor(2, 4);
+        $this->editor->getDocument()->setCursor(2, col: 4);
 
         $copier->copyReference();
 
@@ -221,7 +221,7 @@ final class ReferenceCopierTest extends TestCase
         // `App\Http` names the file's neighbourhood, not a place in it. The
         // line is 1-based, like every compiler and stack trace prints it.
         $copier = $this->copier();
-        $this->editor->getDocument()->setCursor(3, 0); // the blank line after `namespace`
+        $this->editor->getDocument()->setCursor(3, col: 0); // the blank line after `namespace`
 
         $copier->copyReference();
 
@@ -231,8 +231,8 @@ final class ReferenceCopierTest extends TestCase
     public function testAPlainFUNCTIONNeedsNoClassToBeNamed(): void
     {
         $source = "<?php\n\nnamespace App;\n\nfunction helper(): void\n{\n    return;\n}\n";
-        $copier = $this->copier($source, 'src/helpers.php');
-        $this->editor->getDocument()->setCursor(6, 4);
+        $copier = $this->copier($source, file: 'src/helpers.php');
+        $this->editor->getDocument()->setCursor(6, col: 4);
 
         $copier->copyReference();
 
@@ -243,8 +243,8 @@ final class ReferenceCopierTest extends TestCase
     {
         // A script rather than a library file. There is no qualifier to put in
         // front, and `\helper` would be a lie about where it lives.
-        $copier = $this->copier("<?php\n\nfunction helper(): void\n{\n    return;\n}\n", 'bin/tool.php');
-        $this->editor->getDocument()->setCursor(4, 4);
+        $copier = $this->copier("<?php\n\nfunction helper(): void\n{\n    return;\n}\n", file: 'bin/tool.php');
+        $this->editor->getDocument()->setCursor(4, col: 4);
 
         $copier->copyReference();
 
@@ -253,8 +253,8 @@ final class ReferenceCopierTest extends TestCase
 
     public function testAFileWithNoStructureAtAllIsAlwaysPathAndLine(): void
     {
-        $copier = $this->copier("<?php\n\necho 1;\necho 2;\n", 'bin/run.php');
-        $this->editor->getDocument()->setCursor(3, 0);
+        $copier = $this->copier("<?php\n\necho 1;\necho 2;\n", file: 'bin/run.php');
+        $this->editor->getDocument()->setCursor(3, col: 0);
 
         $copier->copyReference();
 
@@ -266,7 +266,7 @@ final class ReferenceCopierTest extends TestCase
         // Reachable from the palette with an empty editor area, where a
         // reference to nothing is worse than silence.
         $this->status = new StatusBarWidget();
-        $tui = TestTui::create(80, 24);
+        $tui = TestTui::create(80, rows: 24);
         $project = new TempProject([]);
         $copier = new ReferenceCopier(
             new CodeEditorWidget(),

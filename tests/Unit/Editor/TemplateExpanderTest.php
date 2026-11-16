@@ -84,7 +84,7 @@ final class TemplateExpanderTest extends TestCase
      */
     public function testAnExpressionIsSubstitutedLiterallyAndNeverReadAsSnippetSyntax(): void
     {
-        $found = TemplateExpander::at('$1.if', 5, self::TEMPLATES);
+        $found = TemplateExpander::at('$1.if', col: 5, templates: self::TEMPLATES);
 
         $this->assertSame('if ($1) {}', $found['snippet'] ?? null);
     }
@@ -98,12 +98,12 @@ final class TemplateExpanderTest extends TestCase
     /** The caret is not always at the end of the line: only the text before it counts. */
     public function testOnlyTheTextBeforeTheCaretIsConsidered(): void
     {
-        $this->assertSame(['consume' => 4, 'snippet' => 'FOREACH'], TemplateExpander::at('fore rest of line', 4, self::TEMPLATES));
-        $this->assertNull(TemplateExpander::at('fore rest of line', 6, self::TEMPLATES), 'the caret is past the abbreviation');
+        $this->assertSame(['consume' => 4, 'snippet' => 'FOREACH'], TemplateExpander::at('fore rest of line', col: 4, templates: self::TEMPLATES));
+        $this->assertNull(TemplateExpander::at('fore rest of line', col: 6, templates: self::TEMPLATES), 'the caret is past the abbreviation');
     }
 
     public function testALanguageWithNoTemplatesExpandsNothing(): void
     {
-        $this->assertNull(TemplateExpander::at('fore', 4, []));
+        $this->assertNull(TemplateExpander::at('fore', col: 4, templates: []));
     }
 }

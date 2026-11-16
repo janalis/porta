@@ -30,9 +30,9 @@ final class FenceLinksTest extends TestCase
 
     public function testPictureRegionsPreserveTopmostOrderAndSearchableWrappedLegends(): void
     {
-        $result = FenceResult::png(PngFixture::bytes(8, 8))->interactive([
-            self::element('first', "漢字\nlabel\x1b[31m\x07"),
-            self::element('second', '', origin: 1),
+        $result = FenceResult::png(PngFixture::bytes(8, height: 8))->interactive([
+            self::element('first', label: "漢字\nlabel\x1b[31m\x07"),
+            self::element('second', label: '', origin: 1),
         ]);
         $state = new LayoutState(new SourceText("first\nsecond\n"));
         $links = new FenceLinks($result, 10, 3, 1, 6, new StylePen(Styles::dark()), $state);
@@ -52,7 +52,7 @@ final class FenceLinksTest extends TestCase
 
     public function testTerminalLabelsReuseSourceRowsAndMissingLabelsReceiveFallbackLinks(): void
     {
-        $result = FenceResult::rows([], [])->interactive([self::element('one', "漢字\nmore", origin: 1), self::element('two', 'Missing')]);
+        $result = FenceResult::rows([], [])->interactive([self::element('one', label: "漢字\nmore", origin: 1), self::element('two', label: 'Missing')]);
         $state = new LayoutState(new SourceText(''));
         $links = new FenceLinks($result, 20, 3, 1, 10, new StylePen(Styles::dark()), $state);
         $rows = $links->terminal([new PageLine('  漢字 ', 7, 4), new PageLine('漢字', 4, 99)]);
@@ -92,7 +92,7 @@ final class FenceLinksTest extends TestCase
 
     public function testSemanticLegendOriginsAreClampedIntoTheirOwnFence(): void
     {
-        $result = FenceResult::rows([], [])->interactive([self::element('outside', 'Outside', origin: 99)]);
+        $result = FenceResult::rows([], [])->interactive([self::element('outside', label: 'Outside', origin: 99)]);
         $links = new FenceLinks($result, 20, 3, 1, 10, new StylePen(Styles::dark()), new LayoutState(new SourceText('')));
         $this->assertSame(4, $links->legend()[0]->origin);
         $rows = $links->terminal([new PageLine('Outside', 7, 4)]);
@@ -105,10 +105,10 @@ final class FenceLinksTest extends TestCase
         $session = new FenceSession($provider->registry, $provider->queue, static function (): void {});
         $renderer = new MarkdownRenderer(Styles::dark(), fences: $session);
         $markdown = "Before\n\n> ```mermaid\n> header\n> left\n> right\n> ```\n";
-        $renderer->prepareFences($markdown, '/doc.md', width: 30);
+        $renderer->prepareFences($markdown, path: '/doc.md', width: 30);
         $provider->drain();
         $action = new FenceAction('export-svg', 'SVG', static function (): void {});
-        $provider->requests[0]['success'](FenceResult::png(PngFixture::bytes(120, 80))->interactive([self::element('left', 'Left semantic', origin: 1)], [$action]));
+        $provider->requests[0]['success'](FenceResult::png(PngFixture::bytes(120, height: 80))->interactive([self::element('left', label: 'Left semantic', origin: 1)], [$action]));
         $drawn = $renderer->render($markdown, width: 40);
         $target = \array_find($drawn->links, static fn ($span): bool => \str_ends_with($span->target, ':left'));
         $this->assertInstanceOf(LinkSpan::class, $target);
@@ -117,7 +117,7 @@ final class FenceLinksTest extends TestCase
         $svg = \array_find($drawn->links, static fn ($span): bool => \str_ends_with($span->target, ':export-svg'));
         $this->assertInstanceOf(LinkSpan::class, $svg);
         $edited = \str_replace('right', replace: 'changed', subject: $markdown);
-        $renderer->prepareFences($edited, '/doc.md', width: 30);
+        $renderer->prepareFences($edited, path: '/doc.md', width: 30);
         $retained = $renderer->render($edited, width: 40);
         $this->assertSame([], $retained->links, 'stale pictures retain pixels but cannot invoke old actions');
         $provider->drain();

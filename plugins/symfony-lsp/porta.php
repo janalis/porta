@@ -42,11 +42,11 @@ return new class('symfony-lsp') extends AbstractPlugin {
     {
         $config = new ServerConfig();
 
-        $api->registerSetting('binary', 'symfony-lsp binary', 'text', '', hint: 'empty = PATH, then ~/.porta/bin (install it under Tools below)');
-        $api->registerSetting('languages', 'Languages', 'text', ServerConfig::DEFAULT_LANGUAGES, hint: 'comma-separated; * = every language');
-        $api->registerSetting('runtime-indexing', 'Runtime indexing (trusts the workspace: the server executes its PHP)', 'bool', false);
-        $api->registerSetting('php-command', 'PHP command', 'text', 'php', hint: 'inspects the application, e.g. "symfony php"');
-        $api->registerSetting('environment', 'Symfony environment', 'text', 'dev');
+        $api->registerSetting('binary', label: 'symfony-lsp binary', kind: 'text', default: '', hint: 'empty = PATH, then ~/.porta/bin (install it under Tools below)');
+        $api->registerSetting('languages', label: 'Languages', kind: 'text', default: ServerConfig::DEFAULT_LANGUAGES, hint: 'comma-separated; * = every language');
+        $api->registerSetting('runtime-indexing', label: 'Runtime indexing (trusts the workspace: the server executes its PHP)', kind: 'bool', default: false);
+        $api->registerSetting('php-command', label: 'PHP command', kind: 'text', default: 'php', hint: 'inspects the application, e.g. "symfony php"');
+        $api->registerSetting('environment', label: 'Symfony environment', kind: 'text', default: 'dev');
 
         $options = static fn (): array => $config->initializationOptions(
             (string) $api->setting('php-command'),
@@ -60,15 +60,15 @@ return new class('symfony-lsp') extends AbstractPlugin {
         foreach (ServerConfig::LANGUAGES as $language) {
             $api->registerLanguageServer(
                 $language,
-                'symfony-lsp',
-                fn (): array|ServerNotFound|null => $config->command($api->toolBinary('symfony-lsp'), $this->claimedLanguages($api), $language),
-                $options,
+                name: 'symfony-lsp',
+                resolveCommand: fn (): array|ServerNotFound|null => $config->command($api->toolBinary('symfony-lsp'), $this->claimedLanguages($api), $language),
+                initializationOptions: $options,
                 // php is SUPPLEMENTARY: this server is built to run beside a
                 // general PHP one, and what it adds there — route names,
                 // service ids, translation ids, Twig paths — is not a second
                 // opinion on where a method is defined. It is still promoted
                 // to the php server when no other plugin claims the language.
-                'php' === $language ? ServerRole::Supplementary : ServerRole::Primary,
+                role: 'php' === $language ? ServerRole::Supplementary : ServerRole::Primary,
             );
         }
     }

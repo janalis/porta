@@ -98,7 +98,7 @@ final class AgentPresence
             unset($this->files[$path]);
             $this->files[$moved] = $agents;
             foreach (\array_keys($agents) as $agent) {
-                $this->decorations->setRemoteCaret($path, $agent, null);
+                $this->decorations->setRemoteCaret($path, $agent, caret: null);
                 $this->paint($moved, $agent);
             }
         }
@@ -179,7 +179,7 @@ final class AgentPresence
             return;
         }
         unset($this->files[$path][$agent]);
-        $this->decorations->setRemoteCaret($path, $agent, null);
+        $this->decorations->setRemoteCaret($path, $agent, caret: null);
         if ([] === $this->files[$path]) {
             unset($this->files[$path]);
         }

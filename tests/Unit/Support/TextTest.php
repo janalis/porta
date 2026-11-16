@@ -31,10 +31,10 @@ final class TextTest extends TestCase
     {
         $text = "one\ntwo é\nthree";
 
-        $this->assertSame([0, 0], Text::lineAndColumn($text, 0));
-        $this->assertSame([0, 2], Text::lineAndColumn($text, 2));
-        $this->assertSame([1, 0], Text::lineAndColumn($text, 4), 'just past a newline');
+        $this->assertSame([0, 0], Text::lineAndColumn($text, offset: 0));
+        $this->assertSame([0, 2], Text::lineAndColumn($text, offset: 2));
+        $this->assertSame([1, 0], Text::lineAndColumn($text, offset: 4), 'just past a newline');
         $this->assertSame([2, 1], Text::lineAndColumn($text, (int) \strpos($text, needle: 'hree')), 'counted in bytes: é is two');
-        $this->assertSame([2, 5], Text::lineAndColumn($text, 99), 'clamped to the end');
+        $this->assertSame([2, 5], Text::lineAndColumn($text, offset: 99), 'clamped to the end');
     }
 }

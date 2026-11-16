@@ -48,7 +48,7 @@ final class CommandLineSectionTest extends TestCase
         $this->env('HOME', $this->home->dir);
         $this->env('PATH', $this->home->path('.local/bin').\PATH_SEPARATOR.\dirname((string) $this->whichGit()));
         $this->env('GIT_CONFIG_GLOBAL', $this->home->path('.gitconfig'));
-        $this->env('GIT_CONFIG_NOSYSTEM', '1');
+        $this->env('GIT_CONFIG_NOSYSTEM', value: '1');
     }
 
     #[\Override]
@@ -75,7 +75,7 @@ final class CommandLineSectionTest extends TestCase
     /** A section whose Porta is $installation (a checkout of its own by default), run as $binary. */
     private function section(?Installation $installation = null, ?string $binary = null): CommandLineSection
     {
-        $tui = TestTui::create(80, 24);
+        $tui = TestTui::create(80, rows: 24);
         $this->toasts = new ToastCenter(new FakeScheduler(), $tui);
 
         return new CommandLineSection(
@@ -124,7 +124,7 @@ final class CommandLineSectionTest extends TestCase
         $this->assertSame('Install', self::rows($section)['cli:link']->value);
         $this->assertSame('Links ~/.local/bin/porta to this Porta', self::rows($section)['cli:link']->hint, 'a path under the home reads from ~');
 
-        $section->change(CommandLineSection::ID, 'cli:link', 'Install');
+        $section->change(CommandLineSection::ID, key: 'cli:link', value: 'Install');
 
         $this->assertSame($this->home->path('checkout/bin/porta'), \readlink($this->home->path('.local/bin/porta')));
         $this->assertSame('porta is now a command: ~/.local/bin/porta', $this->lastToast());
@@ -142,7 +142,7 @@ final class CommandLineSectionTest extends TestCase
 
         $this->assertSame('Update', self::rows($section)['cli:link']->value);
         $this->assertStringContainsString('runs another Porta: /old/checkout/bin/porta', (string) self::rows($section)['cli:link']->hint);
-        $section->change(CommandLineSection::ID, 'cli:link', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:link', value: 'Update');
 
         $this->assertSame($this->home->path('checkout/bin/porta'), \readlink($this->home->path('.local/bin/porta')));
     }
@@ -150,14 +150,14 @@ final class CommandLineSectionTest extends TestCase
     public function testRemovalTakesTwoPresses(): void
     {
         $section = $this->section();
-        $section->change(CommandLineSection::ID, 'cli:link', 'Install');
+        $section->change(CommandLineSection::ID, key: 'cli:link', value: 'Install');
 
-        $section->change(CommandLineSection::ID, 'cli:unlink', 'Remove');
+        $section->change(CommandLineSection::ID, key: 'cli:unlink', value: 'Remove');
         $this->assertTrue(\is_link($this->home->path('.local/bin/porta')), 'the first press only arms it');
         $this->assertTrue(self::rows($section)['cli:unlink']->danger);
         $this->assertSame('Press Enter again to remove it', $this->lastToast());
 
-        $section->change(CommandLineSection::ID, 'cli:unlink', 'Remove');
+        $section->change(CommandLineSection::ID, key: 'cli:unlink', value: 'Remove');
         $this->assertFalse(\is_link($this->home->path('.local/bin/porta')));
         $this->assertSame('The porta command is removed', $this->lastToast());
         $this->assertArrayNotHasKey('cli:unlink', self::rows($section));
@@ -166,18 +166,18 @@ final class CommandLineSectionTest extends TestCase
     public function testAnyOtherPressDisarmsARemoval(): void
     {
         $section = $this->section();
-        $section->change(CommandLineSection::ID, 'cli:link', 'Install');
-        $section->change(CommandLineSection::ID, 'cli:unlink', 'Remove');
+        $section->change(CommandLineSection::ID, key: 'cli:link', value: 'Install');
+        $section->change(CommandLineSection::ID, key: 'cli:unlink', value: 'Remove');
 
-        $section->change(CommandLineSection::ID, 'cli:git', 'Set up');
-        $section->change(CommandLineSection::ID, 'cli:unlink', 'Remove');
+        $section->change(CommandLineSection::ID, key: 'cli:git', value: 'Set up');
+        $section->change(CommandLineSection::ID, key: 'cli:unlink', value: 'Remove');
 
         $this->assertTrue(\is_link($this->home->path('.local/bin/porta')), 'armed again, not removed');
     }
 
     public function testAPortaInstalledAnotherWayIsShownAndLeftAlone(): void
     {
-        $this->home->write('.local/bin/porta', 'a copied phar');
+        $this->home->write('.local/bin/porta', content: 'a copied phar');
 
         $row = self::rows($this->section())['cli:link'];
 
@@ -195,10 +195,10 @@ final class CommandLineSectionTest extends TestCase
 
     public function testAFailureIsReported(): void
     {
-        $this->home->write('.local/keep', '');
+        $this->home->write('.local/keep', content: '');
         \chmod($this->home->path('.local'), permissions: 0o555);
         try {
-            $this->section()->change(CommandLineSection::ID, 'cli:link', 'Install');
+            $this->section()->change(CommandLineSection::ID, key: 'cli:link', value: 'Install');
         } finally {
             \chmod($this->home->path('.local'), permissions: 0o755);
         }
@@ -211,7 +211,7 @@ final class CommandLineSectionTest extends TestCase
         $section = $this->section();
         $this->assertSame('Set up', self::rows($section)['cli:git']->value);
 
-        $section->change(CommandLineSection::ID, 'cli:git', 'Set up');
+        $section->change(CommandLineSection::ID, key: 'cli:git', value: 'Set up');
         $this->assertSame("porta is now git's difftool and mergetool", $this->lastToast());
         $this->assertSame('Up to date', self::rows($section)['cli:git']->value);
         $this->assertStringContainsString($this->home->path('checkout/bin/porta'), (string) \file_get_contents($this->home->path('.gitconfig')));
@@ -220,15 +220,15 @@ final class CommandLineSectionTest extends TestCase
         $this->assertSame('Update', self::rows($section)['cli:git']->value);
         $this->assertStringContainsString('another Porta', (string) self::rows($section)['cli:git']->hint);
 
-        $section->change(CommandLineSection::ID, 'cli:ungit', 'Remove');
-        $section->change(CommandLineSection::ID, 'cli:ungit', 'Remove');
+        $section->change(CommandLineSection::ID, key: 'cli:ungit', value: 'Remove');
+        $section->change(CommandLineSection::ID, key: 'cli:ungit', value: 'Remove');
         $this->assertSame("porta is no longer git's difftool and mergetool", $this->lastToast());
         $this->assertStringNotContainsString('porta', (string) \file_get_contents($this->home->path('.gitconfig')));
     }
 
     public function testWithoutGitTheRowSaysSo(): void
     {
-        $this->env('PATH', '/nonexistent');
+        $this->env('PATH', value: '/nonexistent');
 
         $row = self::rows($this->section())['cli:git'];
 
@@ -247,7 +247,7 @@ final class CommandLineSectionTest extends TestCase
         $dependency = self::rows($this->section(new Installation(InstallMethod::ComposerProject, '/work/app')))['cli:update'];
         $this->assertTrue($dependency->disabled);
         $this->assertSame('Update it from a shell: composer update janalis/porta', $dependency->hint);
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
         $this->assertSame([], $this->toasts->toasts());
     }
 
@@ -270,9 +270,9 @@ final class CommandLineSectionTest extends TestCase
         $section = $this->section(new Installation(InstallMethod::Phar, $phar), $phar);
         $this->assertSame('Replaces ~/porta.phar with the latest release', self::rows($section)['cli:update']->hint, 'under the home, from ~');
 
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
         $this->assertSame('Looking for a newer Porta…', $this->lastToast());
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
         $this->assertSame('An update is already running', $this->lastToast());
 
         // The outcome answers the "Looking…" card in its slot, under the warning.
@@ -285,7 +285,7 @@ final class CommandLineSectionTest extends TestCase
         $phar = $this->phar('porta v0.2.0 is up to date (latest release: v0.2.0).');
         $section = $this->section(new Installation(InstallMethod::Phar, $phar), $phar);
 
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
 
         $this->await(fn (): bool => \str_contains($this->lastToast(), 'up to date'), what: 'the update to finish');
         $this->assertSame('porta v0.2.0 is up to date (latest release: v0.2.0).', $this->lastToast());
@@ -296,7 +296,7 @@ final class CommandLineSectionTest extends TestCase
         $phar = $this->phar("  [ERROR] porta: self-update: gh could not read\n          the latest release", code: 1);
         $section = $this->section(new Installation(InstallMethod::Phar, $phar), $phar);
 
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
 
         $this->await(fn (): bool => \str_contains($this->lastToast(), 'self-update'), what: 'the update to fail');
         $this->assertSame('porta: self-update: gh could not read the latest release', $this->lastToast());
@@ -314,7 +314,7 @@ final class CommandLineSectionTest extends TestCase
     {
         // The stand-in porta does what `composer global update` would: rewrite Composer's record.
         $home = $this->home->path('composer-home');
-        $this->home->write('composer-home/vendor/composer/installed.php', '<?php return [1];');
+        $this->home->write('composer-home/vendor/composer/installed.php', content: '<?php return [1];');
         $binary = $this->home->write('composer-home/vendor/bin/porta', \sprintf(
             "<?php\nfile_put_contents(%s, '<?php return [2];');\necho \"porta updated: v0.1.0 → v0.2.0.\\n\";\n",
             \var_export($home.'/vendor/composer/installed.php', return: true),
@@ -322,7 +322,7 @@ final class CommandLineSectionTest extends TestCase
         $section = $this->section(new Installation(InstallMethod::ComposerGlobal, $home), $binary);
         $this->assertSame('Runs composer global update janalis/porta --no-interaction', self::rows($section)['cli:update']->hint);
 
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
 
         $this->await(fn (): bool => \in_array('porta updated: v0.1.0 → v0.2.0. Restart Porta to use it.', $this->allToasts(), strict: true), what: 'the update to finish');
     }
@@ -330,8 +330,8 @@ final class CommandLineSectionTest extends TestCase
     public function testNothingHereResets(): void
     {
         $section = $this->section();
-        $section->reset(CommandLineSection::ID, 'cli:link');
-        $section->change(CommandLineSection::ID, 'cli:nothing', '');
+        $section->reset(CommandLineSection::ID, key: 'cli:link');
+        $section->change(CommandLineSection::ID, key: 'cli:nothing', value: '');
 
         $this->assertSame([], $this->toasts->toasts());
     }
@@ -341,7 +341,7 @@ final class CommandLineSectionTest extends TestCase
         $store = new StoreFixture();
         $restart = $store->restart();
         $section = new CommandLineSection($store->translator, $store->notifier, installation: new Installation(InstallMethod::Phar, '/porta.phar'), restart: $restart);
-        $section->change(CommandLineSection::ID, 'cli:update', 'Update');
+        $section->change(CommandLineSection::ID, key: 'cli:update', value: 'Update');
         $this->assertTrue($restart->updatesCore());
     }
 }

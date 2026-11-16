@@ -34,25 +34,25 @@ return new class('custos', 'custos', BinarySearch::PathOnly) extends AbstractToo
     {
         $config = new ServerConfig();
         $this->registerBinarySetting($api);
-        $api->registerSetting('php', 'Target PHP version', 'text', '', hint: 'e.g. 8.3; empty = the project config (custos.json, composer.json)');
+        $api->registerSetting('php', label: 'Target PHP version', kind: 'text', default: '', hint: 'e.g. 8.3; empty = the project config (custos.json, composer.json)');
         $api->registerSetting(
             'comparisonStyle',
-            'Comparison style',
-            'choice',
-            ServerConfig::PROJECT,
-            ServerConfig::COMPARISON_STYLES,
+            label: 'Comparison style',
+            kind: 'choice',
+            default: ServerConfig::PROJECT,
+            options: ServerConfig::COMPARISON_STYLES,
             hint: 'project: whatever the project config says · regular: $x === null · yoda: null === $x',
         );
 
         $api->registerLanguageServer(
             'php',
-            'custos',
-            fn (): array|ServerNotFound => $config->command($this->binary($api)),
-            static fn (): array => $config->initializationOptions((string) $api->setting('php'), (string) $api->setting('comparisonStyle')),
-            ServerRole::Supplementary,
+            name: 'custos',
+            resolveCommand: fn (): array|ServerNotFound => $config->command($this->binary($api)),
+            initializationOptions: static fn (): array => $config->initializationOptions((string) $api->setting('php'), (string) $api->setting('comparisonStyle')),
+            role: ServerRole::Supplementary,
         );
 
-        $api->registerCommand('fix', 'Custos: Fix File', function () use ($api, $config): void {
+        $api->registerCommand('fix', label: 'Custos: Fix File', handler: function () use ($api, $config): void {
             $file = $this->activeFileOrFlash($api);
             if (null === $file) {
                 return;
@@ -63,7 +63,7 @@ return new class('custos', 'custos', BinarySearch::PathOnly) extends AbstractToo
             // Saving on the user's behalf is no better: it fires every other
             // on-save tool against the file custos is about to rewrite.
             if (array_any($api->openBuffers()->files(), static fn (array $tab): bool => $tab['path'] === $file && $tab['dirty'])) {
-                $api->flash($api->trans('%tool%: save %file% first — the fix runs on the file on disk', ['%tool%' => $this->name(), '%file%' => basename($file)]), 4.0);
+                $api->flash($api->trans('%tool%: save %file% first — the fix runs on the file on disk', ['%tool%' => $this->name(), '%file%' => basename($file)]), seconds: 4.0);
 
                 return;
             }

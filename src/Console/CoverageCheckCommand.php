@@ -246,10 +246,10 @@ final class CoverageCheckCommand extends Command
         // ones, which the rows skip. That difference is why `composer coverage`
         // excludes vendor at the PCOV level rather than leaving it to this:
         // third-party lines in an unscoped total dilute the gate.
-        $totals = null === $sole ? null : self::element($sole, '/coverage/project/metrics');
+        $totals = null === $sole ? null : self::element($sole, path: '/coverage/project/metrics');
         $ownTotals = null === $only && null !== $sole;
-        $totalStatements = $ownTotals ? self::number($totals, 'statements') : \array_sum(\array_column($rows, 'statements'));
-        $totalCovered = $ownTotals ? self::number($totals, 'coveredstatements') : \array_sum(\array_column($rows, 'covered'));
+        $totalStatements = $ownTotals ? self::number($totals, attribute: 'statements') : \array_sum(\array_column($rows, 'statements'));
+        $totalCovered = $ownTotals ? self::number($totals, attribute: 'coveredstatements') : \array_sum(\array_column($rows, 'covered'));
         $percentage = $totalStatements > 0 ? (100 * $totalCovered) / $totalStatements : 0.0;
 
         $output->writeln('');
@@ -399,7 +399,7 @@ final class CoverageCheckCommand extends Command
                 continue;
             }
             $declares = $declares || (0 === $depth && $part->is([\T_CLASS, \T_INTERFACE, \T_TRAIT, \T_ENUM]));
-            $verdict = true === $previous?->is(\T_DECLARE) ? self::deeper($skip, 1) : self::runs($part, $depth, $skip);
+            $verdict = true === $previous?->is(\T_DECLARE) ? self::deeper($skip, by: 1) : self::runs($part, $depth, $skip);
             $previous = $part;
             if (null !== $verdict) {
                 return false;
@@ -422,7 +422,7 @@ final class CoverageCheckCommand extends Command
 
         return match (true) {
             $part->is([\T_ATTRIBUTE, \T_DECLARE]) => null,
-            '{' === $part->text && 0 === $depth => self::deeper($depth, 1),
+            '{' === $part->text && 0 === $depth => self::deeper($depth, by: 1),
             '}' === $part->text => self::deeper($depth, -1),
             // A body inside a type (a method, a hook), or a statement outside
             // one — a call, a return; an arrow fn is always one of these.
@@ -492,14 +492,14 @@ final class CoverageCheckCommand extends Command
         foreach (\is_array($files = $xml->xpath('//file')) ? $files : [] as $file) {
             $path = (string) $file['name'];
             $mentioned[$path] = true;
-            $metrics = self::element($file, 'metrics');
-            $statements = self::number($metrics, 'statements');
+            $metrics = self::element($file, path: 'metrics');
+            $statements = self::number($metrics, attribute: 'statements');
             if (0 === $statements || \str_contains($path, needle: '/vendor/') || (null !== $only && !\str_contains($path, needle: $only))) {
                 continue;
             }
             $contributions[$path][] = [
                 'statements' => $statements,
-                'covered' => self::number($metrics, 'coveredstatements'),
+                'covered' => self::number($metrics, attribute: 'coveredstatements'),
                 'lines' => self::statementLines($file),
             ];
         }
@@ -669,6 +669,12 @@ final class CoverageCheckCommand extends Command
     private static function number(?\SimpleXMLElement $metrics, string $attribute): int
     {
         $value = $metrics?->attributes();
+
+        // @mago-expect analysis:impossible-null-type-comparison -- mago 1.60's stub says an attribute offset is never null; PHP gives null for a missing one (checked 2026-11-16)
+
+        // @mago-expect analysis:redundant-comparison -- the same stub
+
+        // @mago-expect analysis:redundant-logical-operation -- the same stub
 
         return null === $value || null === $value[$attribute] ? 0 : (int) (string) $value[$attribute];
     }

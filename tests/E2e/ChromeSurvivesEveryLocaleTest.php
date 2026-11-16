@@ -139,10 +139,10 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
      */
     private function assertMenuBarDropsNoTitle(mixed $tui, string $locale): void
     {
-        $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+        $bar = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
         $this->assertInstanceOf(MenuBarWidget::class, $bar, 'the menu bar is the menu widget');
         /** @var list<object> $menus */
-        $menus = Probe::get($bar, 'menus');
+        $menus = Probe::get($bar, property: 'menus');
         $this->assertNotEmpty($menus, 'the menu bar has menus to lose');
         foreach (self::WIDTHS as $width) {
             $row = AnsiUtils::stripAnsiCodes(Paint::lines($bar, new RenderContext($width, 1))[0]);
@@ -174,7 +174,7 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
      */
     private function assertSettingsNavFitsItsOwnRows(mixed $tui, string $locale): void
     {
-        $nav = Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class);
+        $nav = Widgets::byId($tui, id: 'settings-nav', class: SettingsNavWidget::class);
         $this->assertInstanceOf(SettingsNavWidget::class, $nav, 'the settings view owns the nav');
         // setWidth, not just a narrow RenderContext: the widget renders at
         // min(its own width, the context) — handing it a context alone measures
@@ -199,9 +199,9 @@ final class ChromeSurvivesEveryLocaleTest extends TestCase
      */
     private function assertKeybindingsHeaderKeepsItsFilterHint(mixed $tui, string $locale): void
     {
-        $this->selectSettingsSection($this->settingsNav($tui), 'keybindings');
+        $this->selectSettingsSection($this->settingsNav($tui), id: 'keybindings');
         $this->frame($tui);
-        $list = Widgets::byId($tui, 'settings-keys', KeybindingsListWidget::class);
+        $list = Widgets::byId($tui, id: 'settings-keys', class: KeybindingsListWidget::class);
         $this->assertInstanceOf(KeybindingsListWidget::class, $list, 'the keybindings page owns the list');
         foreach (self::WIDTHS as $width) {
             $header = AnsiUtils::stripAnsiCodes(Paint::lines($list, new RenderContext($width, 8))[0]);

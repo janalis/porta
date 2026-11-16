@@ -213,7 +213,7 @@ final class AnsiText
         $slice = AnsiUtils::sliceByColumn($line, $startCol, $length, strict: true);
         // Nothing asked from inside the line reads as a prefix that already
         // reaches $startCol: the slice stands as it is.
-        $before = $startCol > 0 && $length > 0 ? AnsiUtils::visibleWidth(AnsiUtils::sliceByColumn($line, 0, $startCol)) : $startCol;
+        $before = $startCol > 0 && $length > 0 ? AnsiUtils::visibleWidth(AnsiUtils::sliceByColumn($line, startCol: 0, length: $startCol)) : $startCol;
         if ($before >= $startCol || AnsiUtils::visibleWidth($line) <= $startCol) {
             return $slice; // nothing straddles the start, or the line ends before it
         }

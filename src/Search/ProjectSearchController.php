@@ -517,7 +517,7 @@ final class ProjectSearchController
                 $this->translator->trans('Fetching %count% file from the server — the replace runs once it is here|Fetching %count% files from the server — the replace runs once they are here', [
                     '%count%' => $missing,
                 ]),
-                4.0,
+                seconds: 4.0,
             );
         }
 

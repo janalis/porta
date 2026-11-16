@@ -30,7 +30,7 @@ final class StickyScrollLanguagesTest extends TestCase
     {
         $editor = new CodeEditorWidget(documentScopes: $scopes);
         $editor->showDocument($path, new Document(self::TS.\str_repeat("    let x = 1;\n", times: 20)."  }\n}\n"));
-        $editor->getDocument()->setCursor(18, 4); // deep inside handle(), headers scrolled off
+        $editor->getDocument()->setCursor(18, col: 4); // deep inside handle(), headers scrolled off
 
         return $editor;
     }
@@ -48,7 +48,7 @@ final class StickyScrollLanguagesTest extends TestCase
     {
         $scopes = new DocumentScopes();
         self::serverScopes('/p/a.ts', $scopes);
-        $editor = $this->editor($scopes, '/p/a.ts');
+        $editor = $this->editor($scopes, path: '/p/a.ts');
 
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 
@@ -62,9 +62,9 @@ final class StickyScrollLanguagesTest extends TestCase
         // symbols — and every other test of the feature uses PHP.
         $scopes = new DocumentScopes();
         self::serverScopes('/p/a.ts', $scopes);
-        $editor = $this->editor($scopes, '/p/a.ts');
+        $editor = $this->editor($scopes, path: '/p/a.ts');
         $editor->display->setMethodSeparators(true);
-        $editor->getDocument()->setCursor(0, 0); // back to the top, nothing scrolled off
+        $editor->getDocument()->setCursor(0, col: 0); // back to the top, nothing scrolled off
 
         $rows = $editor->render(new RenderContext(60, 26));
         $ruled = \array_keys(\array_filter($rows, static fn (string $row): bool => \str_contains($row, Sgr::UNDERLINE)));
@@ -81,7 +81,7 @@ final class StickyScrollLanguagesTest extends TestCase
     {
         // The no-server and unsupported-language paths, which must render
         // exactly as they did before.
-        $editor = $this->editor(new DocumentScopes(), '/p/a.ts');
+        $editor = $this->editor(new DocumentScopes(), path: '/p/a.ts');
 
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 
@@ -93,7 +93,7 @@ final class StickyScrollLanguagesTest extends TestCase
         // A band naming another file's classes is worse than no band.
         $scopes = new DocumentScopes();
         self::serverScopes('/p/other.ts', $scopes);
-        $editor = $this->editor($scopes, '/p/a.ts');
+        $editor = $this->editor($scopes, path: '/p/a.ts');
 
         $top = AnsiUtils::stripAnsiCodes($editor->render(new RenderContext(60, 12))[0]);
 

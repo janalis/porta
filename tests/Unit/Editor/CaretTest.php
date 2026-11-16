@@ -11,7 +11,7 @@ final class CaretTest extends TestCase
 {
     public function testAPointCaretHasNoSelection(): void
     {
-        $caret = Caret::point(3, 5);
+        $caret = Caret::point(3, col: 5);
 
         $this->assertFalse($caret->hasSelection());
     }
@@ -32,7 +32,7 @@ final class CaretTest extends TestCase
 
     public function testOrderedRangeOfAPointCaretIsZeroWidthAtItsOwnPosition(): void
     {
-        $caret = Caret::point(3, 5);
+        $caret = Caret::point(3, col: 5);
 
         $this->assertSame([3, 5, 3, 5], $caret->orderedRange());
     }

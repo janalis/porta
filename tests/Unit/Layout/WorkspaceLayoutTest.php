@@ -42,7 +42,7 @@ final class WorkspaceLayoutTest extends TestCase
         $layout = $this->layout();
 
         $this->assertSame('main', $layout->main->getId());
-        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'top position at boot');
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, property: 'editorPane')), 'top position at boot');
         $this->assertSame(['breadcrumbs', 'find-bar', 'editor'], $this->ids($layout->editorBody), 'the find bar sits below the breadcrumbs, above the content slot');
         // A full-screen view's own sidebar/separator/content is ViewRegions'
         // now, minted at runtime — see ViewRegionsTest.
@@ -66,13 +66,13 @@ final class WorkspaceLayoutTest extends TestCase
         $layout = $this->layout();
 
         $layout->setTabBarPosition(TabBarPosition::Bottom);
-        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'bottom: strip after the body');
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, property: 'editorPane')), 'bottom: strip after the body');
 
         $layout->setTabBarPosition(TabBarPosition::Left);
-        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'left: strip first in the horizontal pane');
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, property: 'editorPane')), 'left: strip first in the horizontal pane');
 
         $layout->setTabBarPosition(TabBarPosition::Top);
-        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')));
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, property: 'editorPane')));
     }
 
     public function testAMirroredWorkspaceSeatsASideStripOnTheOtherEdge(): void
@@ -85,13 +85,13 @@ final class WorkspaceLayoutTest extends TestCase
         // columns 175..198 with the tree at 200.
         $layout = $this->layout();
         $layout->setTabBarPosition(TabBarPosition::Right);
-        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'left-to-right: strip after the body');
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, property: 'editorPane')), 'left-to-right: strip after the body');
 
         $layout->setMirrored(true);
-        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, 'editorPane')), 'mirrored: the right-hand strip seats first');
+        $this->assertSame(['tabs', 'editor-body'], $this->ids(Probe::get($layout, property: 'editorPane')), 'mirrored: the right-hand strip seats first');
 
         $layout->setMirrored(false);
-        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')), 'and back again');
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, property: 'editorPane')), 'and back again');
     }
 
     /**
@@ -102,14 +102,14 @@ final class WorkspaceLayoutTest extends TestCase
     public function testAMirroredWorkspaceTellsTheStripItReadsRightToLeft(): void
     {
         $layout = $this->layout();
-        $tabBar = Probe::get($layout, 'tabBar');
-        $this->assertSame(BaseDirection::Ltr, Probe::get($tabBar, 'direction'));
+        $tabBar = Probe::get($layout, property: 'tabBar');
+        $this->assertSame(BaseDirection::Ltr, Probe::get($tabBar, property: 'direction'));
 
         $layout->setMirrored(true);
-        $this->assertSame(BaseDirection::Rtl, Probe::get($tabBar, 'direction'));
+        $this->assertSame(BaseDirection::Rtl, Probe::get($tabBar, property: 'direction'));
 
         $layout->setMirrored(false);
-        $this->assertSame(BaseDirection::Ltr, Probe::get($tabBar, 'direction'), 'and back again');
+        $this->assertSame(BaseDirection::Ltr, Probe::get($tabBar, property: 'direction'), 'and back again');
     }
 
     public function testMirroringLeavesATopStripAlone(): void
@@ -120,7 +120,7 @@ final class WorkspaceLayoutTest extends TestCase
 
         $layout->setMirrored(true);
 
-        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, 'editorPane')));
+        $this->assertSame(['editor-body', 'tabs'], $this->ids(Probe::get($layout, property: 'editorPane')));
     }
 
     public function testTheConstructedContainersCarryTheirExactFlexAndGap(): void
@@ -131,13 +131,13 @@ final class WorkspaceLayoutTest extends TestCase
         // render time — cheaper to pin here directly.
         $layout = $this->layout();
 
-        $editorBody = Probe::get($layout, 'editorBody');
+        $editorBody = Probe::get($layout, property: 'editorBody');
         $this->assertSame(1, $editorBody->getStyle()?->getFlex());
 
-        $editorPane = Probe::get($layout, 'editorPane');
+        $editorPane = Probe::get($layout, property: 'editorPane');
         $this->assertSame(1, $editorPane->getStyle()?->getFlex());
 
-        $main = Probe::get($layout, 'main');
+        $main = Probe::get($layout, property: 'main');
         $this->assertSame(Direction::Horizontal, $main->getStyle()?->getDirection());
         $this->assertSame(0, $main->getStyle()?->getGap());
     }
@@ -148,7 +148,7 @@ final class WorkspaceLayoutTest extends TestCase
 
         $layout->setTabBarPosition(TabBarPosition::Left);
 
-        $editorPane = Probe::get($layout, 'editorPane');
+        $editorPane = Probe::get($layout, property: 'editorPane');
         $this->assertSame(1, $editorPane->getStyle()?->getFlex());
         $this->assertSame(Direction::Horizontal, $editorPane->getStyle()?->getDirection(), 'a side position stacks the tab list beside the body, not above it');
     }
@@ -163,7 +163,7 @@ final class WorkspaceLayoutTest extends TestCase
 
         $layout->setTabBarPosition(TabBarPosition::Top);
 
-        $editorPane = Probe::get($layout, 'editorPane');
+        $editorPane = Probe::get($layout, property: 'editorPane');
         $this->assertSame(1, $editorPane->getStyle()?->getFlex());
         $this->assertNull($editorPane->getStyle()?->getDirection(), 'top/bottom stacks vertically — the container default, no direction override');
     }

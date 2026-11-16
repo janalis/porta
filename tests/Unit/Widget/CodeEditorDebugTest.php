@@ -47,7 +47,7 @@ final class CodeEditorDebugTest extends TestCase
     {
         $editor = $this->editor();
         $editor->setFocused(true);
-        $editor->getDocument()->setCursor(2, 0);
+        $editor->getDocument()->setCursor(2, col: 0);
 
         $editor->decorations->setDebugLine(2);
         $lines = $this->render($editor);
@@ -71,17 +71,17 @@ final class CodeEditorDebugTest extends TestCase
 
         $editor->decorations->setDebugLine(1);
         $lines = $this->render($editor);
-        $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], 0, $editor->gutterWidth()));
+        $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], startCol: 0, length: $editor->gutterWidth()));
         $this->assertStringContainsString("\x1b[38;5;203m▶", $lines[1], 'the stopped-line arrow wins the marker column');
         $this->assertStringNotContainsString('●', $gutter, 'breakpoint dot yields to the arrow');
 
         $editor->decorations->setDebugLine(null);
         $lines = $this->render($editor);
-        $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], 0, $editor->gutterWidth()));
+        $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($lines[1], startCol: 0, length: $editor->gutterWidth()));
         $this->assertStringContainsString('●', $gutter, 'breakpoint dot returns once the debugger moves on');
 
         $editor->decorations->setBreakpointLines([]);
-        $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($this->render($editor)[1], 0, $editor->gutterWidth()));
+        $gutter = AnsiUtils::stripAnsiCodes(AnsiUtils::sliceByColumn($this->render($editor)[1], startCol: 0, length: $editor->gutterWidth()));
         $this->assertStringNotContainsString('●', $gutter, 'and leaves once it is removed');
         $this->assertStringNotContainsString('✗', $gutter, 'the problem on the line marks no gutter cell');
     }
@@ -91,7 +91,7 @@ final class CodeEditorDebugTest extends TestCase
         $editor = new CodeEditorWidget();
         $code = "<?php\n\nnamespace App;\n\nclass Service\n{\n    public function handle(): void\n    {\n".\str_repeat("        \$x = 1;\n", times: 20)."    }\n}\n";
         $editor->showDocument('/p/Service.php', new Document($code));
-        $editor->getDocument()->setCursor(24, 8); // deep inside handle(): class + method pin
+        $editor->getDocument()->setCursor(24, col: 8); // deep inside handle(): class + method pin
         $editor->render(new RenderContext(60, 12));
 
         $this->assertSame(4, $editor->documentLineAt(0), 'row 0 is the pinned class header');

@@ -137,6 +137,6 @@ final class FilesTest extends TestCase
         $this->assertFalse(Files::throughLink($linkedRoot, $linkedRoot.'/.porta/plain.json'), 'the root is the user\'s to have linked');
         $this->assertTrue(Files::throughLink($project->dir.'/', $project->path('.porta/file.json')), 'a root spelled with its slash');
         $this->assertTrue(Files::throughLink('/', $project->path('.porta/file.json')), 'and the root of everything, which ends');
-        $this->assertFalse(Files::throughLink('/', '/'), 'nothing below it to walk');
+        $this->assertFalse(Files::throughLink('/', path: '/'), 'nothing below it to walk');
     }
 }

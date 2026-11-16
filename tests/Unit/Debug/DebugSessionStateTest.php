@@ -14,7 +14,7 @@ final class DebugSessionStateTest extends TestCase
         $state = new DebugSessionState();
         $this->assertNull($state->stoppedLineFor('/p/a.php'), 'never stopped');
 
-        $state->stopAt('/p/a.php', 4);
+        $state->stopAt('/p/a.php', line: 4);
         $this->assertSame(4, $state->stoppedLineFor('/p/a.php'));
         $this->assertNull($state->stoppedLineFor('/p/other.php'), 'a different path is not the stopped one');
 

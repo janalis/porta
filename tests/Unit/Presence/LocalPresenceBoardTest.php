@@ -39,17 +39,17 @@ final class LocalPresenceBoardTest extends TestCase
         $board->publish(self::beacon('aaaaaaaaaaaaaaaa'), static function (?string $error) use (&$answers): void {
             $answers[] = $error;
         });
-        $board->publish(self::beacon('bbbbbbbbbbbbbbbb', 'Bo'), static function (?string $error) use (&$answers): void {
+        $board->publish(self::beacon('bbbbbbbbbbbbbbbb', name: 'Bo'), static function (?string $error) use (&$answers): void {
             $answers[] = $error;
         });
-        $board->publish(self::beacon('aaaaaaaaaaaaaaaa', 'Ada again'), static function (?string $error) use (&$answers): void {
+        $board->publish(self::beacon('aaaaaaaaaaaaaaaa', name: 'Ada again'), static function (?string $error) use (&$answers): void {
             $answers[] = $error;
         });
 
         $this->assertSame([null, null, null], $answers);
         $this->assertFileDoesNotExist($project->path(PresenceBoard::DIR.'/aaaaaaaaaaaaaaaa.json.tmp'), 'written beside, then renamed over');
-        $project->write(PresenceBoard::DIR.'/notes.txt', 'not a beacon');
-        $project->write(PresenceBoard::DIR.'/cccccccccccccccc.json', 'not json either');
+        $project->write(PresenceBoard::DIR.'/notes.txt', content: 'not a beacon');
+        $project->write(PresenceBoard::DIR.'/cccccccccccccccc.json', content: 'not json either');
         $read = self::read($board);
         $this->assertIsArray($read);
         $this->assertSame(['Ada again', 'Bo'], \array_map(static fn (Beacon $b): string => $b->name, $read), 'one each, the last said; what is not a beacon is skipped');

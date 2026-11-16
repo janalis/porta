@@ -100,7 +100,7 @@ final class PluginSettings
                 step: $descriptor['step'],
                 // Through the same coercion as the value above, so a bool
                 // default declared as 1 does not read as modified.
-                default: $this->coerce($descriptor, null),
+                default: $this->coerce($descriptor, value: null),
                 origin: $this->provenance->originOf(['plugins', $plugin, $descriptor['key']]),
                 shadowed: $this->provenance->shadowsGlobal(['plugins', $plugin, $descriptor['key']]),
             );

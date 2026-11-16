@@ -234,10 +234,10 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
 
-        $this->assertSame(0, $bar->tabIndexAt(0, 1), 'first tab region');
-        $this->assertNotSame(0, $bar->tabIndexAt(0, 12), 'second tab region');
-        $this->assertNull($bar->tabIndexAt(0, 500), 'click past every tab misses');
-        $this->assertSame(0, $bar->tabIndexAt(3, 1), 'the horizontal strip ignores the row (drags wander off it)');
+        $this->assertSame(0, $bar->tabIndexAt(0, col: 1), 'first tab region');
+        $this->assertNotSame(0, $bar->tabIndexAt(0, col: 12), 'second tab region');
+        $this->assertNull($bar->tabIndexAt(0, col: 500), 'click past every tab misses');
+        $this->assertSame(0, $bar->tabIndexAt(3, col: 1), 'the horizontal strip ignores the row (drags wander off it)');
     }
 
     public function testTabAnchorMirrorsTheRenderedLayout(): void
@@ -312,13 +312,13 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertSame(0, $bar->closeIndexAt(0, 7), "first tab's ✖ closes tab 0");
-        $this->assertSame(1, $bar->closeIndexAt(0, 18), "second tab's ✖ closes tab 1");
-        $this->assertNull($bar->closeIndexAt(0, 2), 'the tab body is not a close zone');
-        $this->assertNull($bar->closeIndexAt(0, 17), 'the dirty dot is not the close zone');
-        $this->assertNull($bar->closeIndexAt(0, 500), 'past every tab');
+        $this->assertSame(0, $bar->closeIndexAt(0, col: 7), "first tab's ✖ closes tab 0");
+        $this->assertSame(1, $bar->closeIndexAt(0, col: 18), "second tab's ✖ closes tab 1");
+        $this->assertNull($bar->closeIndexAt(0, col: 2), 'the tab body is not a close zone');
+        $this->assertNull($bar->closeIndexAt(0, col: 17), 'the dirty dot is not the close zone');
+        $this->assertNull($bar->closeIndexAt(0, col: 500), 'past every tab');
         // The body hit-test still resolves those columns to their tab.
-        $this->assertSame(1, $bar->tabIndexAt(0, 17), 'the dirty dot is still tab-1 body');
+        $this->assertSame(1, $bar->tabIndexAt(0, col: 17), 'the dirty dot is still tab-1 body');
     }
 
     /** A tab says its file in full and its marks in words; its ✖ says what it does; nothing past the tabs. */
@@ -333,13 +333,13 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
 
-        $a = $bar->tooltipAt(0, 2);
+        $a = $bar->tooltipAt(0, col: 2);
         $this->assertSame(['tab:0', 'src/a.php', 0, 0, 1], [$a?->key, $a?->text, $a?->row, $a?->colStart, $a?->rows]);
-        $this->assertSame("lib/b.php\nUnsaved changes", $bar->tooltipAt(0, 17)?->text, 'over the dirty dot too');
-        $close = $bar->tooltipAt(0, 7);
+        $this->assertSame("lib/b.php\nUnsaved changes", $bar->tooltipAt(0, col: 17)?->text, 'over the dirty dot too');
+        $close = $bar->tooltipAt(0, col: 7);
         $this->assertSame(['tab:close:0', 'Close Tab', 7, 9], [$close?->key, $close?->text, $close?->colStart, $close?->colEnd]);
-        $this->assertNull($bar->tooltipAt(0, 22), 'a tab with no words');
-        $this->assertNull($bar->tooltipAt(0, 55), 'past every tab');
+        $this->assertNull($bar->tooltipAt(0, col: 22), 'a tab with no words');
+        $this->assertNull($bar->tooltipAt(0, col: 55), 'past every tab');
     }
 
     /**
@@ -366,7 +366,7 @@ final class TabBarWidgetTest extends TestCase
             $label = $bar->tabAnchor(0)['row'] ?? 0;
             $labelRow = TabBarPosition::Bottom === $position ? 1 : $label;
 
-            $tip = $bar->tooltipAt($labelRow, 3);
+            $tip = $bar->tooltipAt($labelRow, col: 3);
             $this->assertSame([$labelRow - 1, 3, $side], [$tip?->row, $tip?->rows, $tip?->side], "{$position->value}: the pill's three rows, toward the editor");
             $close = $bar->tooltipAt($labelRow, $position->isSide() ? 21 + (TabBarPosition::Right === $position ? 1 : 0) : 7);
             $this->assertSame(['tab:close:0', $labelRow - 1, 3, $side], [$close?->key, $close?->row, $close?->rows, $close?->side], "{$position->value}: and the ✖ the same");
@@ -378,7 +378,7 @@ final class TabBarWidgetTest extends TestCase
         $compact->render(new RenderContext(60, 1));
         $this->assertSame(
             [0, 1, null],
-            [$compact->tooltipAt(0, 2)?->row, $compact->tooltipAt(0, 2)?->rows, $compact->tooltipAt(0, 2)?->side],
+            [$compact->tooltipAt(0, col: 2)?->row, $compact->tooltipAt(0, col: 2)?->rows, $compact->tooltipAt(0, col: 2)?->side],
             'a compact strip keeps its one row, and no side of its own',
         );
     }
@@ -540,7 +540,7 @@ final class TabBarWidgetTest extends TestCase
         $first = $bar->render(new RenderContext(80, 6));
         $second = $bar->render(new RenderContext(80, 6));
         $this->assertSame($first, $second, 'the second same-revision render serves the memo');
-        $this->assertSame(1, $bar->tabIndexAt(1, 2), 'the hit-test layout survives a memo hit');
+        $this->assertSame(1, $bar->tabIndexAt(1, col: 2), 'the hit-test layout survives a memo hit');
 
         // A content change invalidates through the beforeRender fingerprint,
         // so the memo must miss and show it — a stale dirty dot would be the
@@ -564,7 +564,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->render(new RenderContext(80, 6)); // overflows: ▲/▼ rows exist
         $bar->render(new RenderContext(80, 6)); // memo hit
 
-        $this->assertNotSame([], Probe::get($bar, 'indicatorZones'), 'the ▲/▼ click zones survive a memo hit');
+        $this->assertNotSame([], Probe::get($bar, property: 'indicatorZones'), 'the ▲/▼ click zones survive a memo hit');
     }
 
     public function testVerticalRendersOneTabPerRowWithMarkersAndPadding(): void
@@ -624,7 +624,7 @@ final class TabBarWidgetTest extends TestCase
 
         $this->assertStringContainsString('file-11.php', $plain, 'active (last) tab visible after dropping leading rows');
         $this->assertStringNotContainsString('file-06.php', $plain);
-        $this->assertSame(11, $bar->tabIndexAt(3, 1), 'the visible window maps rows back to full-list indexes');
+        $this->assertSame(11, $bar->tabIndexAt(3, col: 1), 'the visible window maps rows back to full-list indexes');
     }
 
     public function testVerticalHitTestingMatchesRowsAndTheCloseZone(): void
@@ -636,13 +636,13 @@ final class TabBarWidgetTest extends TestCase
         $bar->render(new RenderContext(80, 5));
 
         $closeCol = TabBarWidget::VERTICAL_WIDTH - 2;
-        $this->assertSame(0, $bar->tabIndexAt(0, 1), 'row 0 body is tab 0');
+        $this->assertSame(0, $bar->tabIndexAt(0, col: 1), 'row 0 body is tab 0');
         $this->assertSame(1, $bar->tabIndexAt(1, $closeCol - 1), 'the dirty dot is still tab-1 body');
-        $this->assertNull($bar->tabIndexAt(3, 1), 'a filler row misses');
+        $this->assertNull($bar->tabIndexAt(3, col: 1), 'a filler row misses');
         $this->assertSame(1, $bar->closeIndexAt(1, $closeCol), "row 1's ✖ closes tab 1");
         $this->assertSame(1, $bar->closeIndexAt(1, $closeCol + 1), 'and the column after it, the last');
         $this->assertNull($bar->closeIndexAt(1, $closeCol - 1), 'but not the dirty dot before it');
-        $this->assertNull($bar->closeIndexAt(1, 2), 'the row body is not a close zone');
+        $this->assertNull($bar->closeIndexAt(1, col: 2), 'the row body is not a close zone');
         $this->assertNull($bar->closeIndexAt(3, $closeCol), 'a filler row has no close zone');
         $this->assertSame(['row' => 1, 'col' => 0, 'rows' => 1], $bar->tabAnchor(1), 'vertical anchors sit at the row start');
     }
@@ -716,8 +716,8 @@ final class TabBarWidgetTest extends TestCase
             \array_map(AnsiUtils::stripAnsiCodes(...), $right->render(new RenderContext(12, 4))),
             'the shown tab opens into the editor: no rule beside it',
         );
-        $this->assertSame(0, $right->closeIndexAt(0, 10), 'its ✖ where every tab\'s is with the rule first');
-        $this->assertNull($right->closeIndexAt(0, 8));
+        $this->assertSame(0, $right->closeIndexAt(0, col: 10), 'its ✖ where every tab\'s is with the rule first');
+        $this->assertNull($right->closeIndexAt(0, col: 8));
 
         $rest = $this->verticalBar([['name' => 'a.php', 'dirty' => false, 'active' => false], ['name' => 'b.php', 'dirty' => false, 'active' => true]]);
         $rest->setPosition(TabBarPosition::Right);
@@ -755,7 +755,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->render(new RenderContext(24, 10));
 
         $close = TabBarWidget::VERTICAL_WIDTH - 3;
-        $this->assertSame([0, null, 1, null, null, null], \array_map(static fn (int $row): ?int => $bar->tabIndexAt($row, 5), \range(start: 0, end: 5)), 'a gap is no tab, as in the tree');
+        $this->assertSame([0, null, 1, null, null, null], \array_map(static fn (int $row): ?int => $bar->tabIndexAt($row, col: 5), \range(start: 0, end: 5)), 'a gap is no tab, as in the tree');
         $this->assertSame(0, $bar->closeIndexAt(0, $close), "the shown tab's ✖ where every tab's is: the open rule's column is a blank of its pill");
         $this->assertNull($bar->closeIndexAt(0, $close - 1));
         $this->assertSame(1, $bar->closeIndexAt(2, $close), "the second tab's ✖ is on its row");
@@ -765,12 +765,12 @@ final class TabBarWidgetTest extends TestCase
         $this->assertNull($bar->closeIndexAt(3, $close), 'nor the one below it');
         $this->assertSame(['row' => 2, 'col' => 0, 'rows' => 1], $bar->tabAnchor(1));
 
-        $bar->hoverTab(2, 5);
+        $bar->hoverTab(2, col: 5);
         $lines = $bar->render(new RenderContext(24, 10));
         $this->assertStringContainsString("\x1b[48;5;236m b.php", $lines[2], 'the pointer on the tab shades it in the rows\' hover tint');
         $this->assertStringContainsString("\x1b[38;5;237m\x1b[48;5;236m▀", $lines[1], 'between the shown tab and the hovered one, a half of each');
         $this->assertStringContainsString("\x1b[38;5;236m▀", $lines[3], 'and the hovered one\'s lower half');
-        $bar->hoverTab(3, 5);
+        $bar->hoverTab(3, col: 5);
         $lines = $bar->render(new RenderContext(24, 10));
         $this->assertStringNotContainsString("\x1b[48;5;236m b.php", $lines[2], 'not from the gap under it');
 
@@ -781,7 +781,7 @@ final class TabBarWidgetTest extends TestCase
         ]);
         $three->setStripRows(2);
         $three->render(new RenderContext(24, 10));
-        $three->hoverTab(4, 5);
+        $three->hoverTab(4, col: 5);
         $rows = $three->render(new RenderContext(24, 10));
         $this->assertSame(\str_repeat('▄', times: 24), AnsiUtils::stripAnsiCodes($rows[3]), 'a hovered tab opens as the shown one does: its halves cross the rule\'s column');
         $this->assertSame(\str_repeat('▀', times: 24), AnsiUtils::stripAnsiCodes($rows[5]));
@@ -825,12 +825,12 @@ final class TabBarWidgetTest extends TestCase
         $uneven = \array_map(AnsiUtils::stripAnsiCodes(...), $first->render(new RenderContext(24, 11)));
         $this->assertStringContainsString(Glyphs::SCROLL_DOWN, $uneven[10]);
         $this->assertStringContainsString('t-04.php', $uneven[9], 'the fifth tab right above it');
-        $this->assertSame(3, $first->scrollIndicatorAt(10, 3), 'its zone is the row it is drawn on');
+        $this->assertSame(3, $first->scrollIndicatorAt(10, col: 3), 'its zone is the row it is drawn on');
         $this->assertStringContainsString('file-03.php', $lines[1], 'four tabs in the eight rows between');
         $this->assertStringContainsString('file-06.php', $lines[7], 'ending on the shown one');
-        $this->assertSame(5, $bar->tabIndexAt(7, 5));
-        $this->assertNull($bar->tabIndexAt(8, 5), 'the gap under it');
-        $this->assertNull($bar->tabIndexAt(9, 5));
+        $this->assertSame(5, $bar->tabIndexAt(7, col: 5));
+        $this->assertNull($bar->tabIndexAt(8, col: 5), 'the gap under it');
+        $this->assertNull($bar->tabIndexAt(9, col: 5));
         foreach ($bar->render(new RenderContext(24, 10)) as $line) {
             $this->assertSame(24, AnsiUtils::visibleWidth($line));
         }
@@ -850,12 +850,12 @@ final class TabBarWidgetTest extends TestCase
         $wheel->render(new RenderContext(24, 10));
         $wheel->scrollByRows(4);
         $wheel->render(new RenderContext(24, 10));
-        $this->assertSame(2, $wheel->tabIndexAt(1, 5), 'four rows, two tabs down');
+        $this->assertSame(2, $wheel->tabIndexAt(1, col: 5), 'four rows, two tabs down');
         $fit = $this->verticalBar($tabs);
         $fit->setStripRows(2);
         $fit->scrollByRows(20);
         $fit->render(new RenderContext(24, 11));
-        $this->assertSame(0, $fit->tabIndexAt(0, 5), 'a list that fits does not scroll');
+        $this->assertSame(0, $fit->tabIndexAt(0, col: 5), 'a list that fits does not scroll');
     }
 
     /**
@@ -877,8 +877,8 @@ final class TabBarWidgetTest extends TestCase
         foreach (\range(start: 0, end: 10) as $col) {
             $this->assertNull($bar->closeIndexAt(0, $col), "column {$col} of the pinned tab closes nothing");
         }
-        $this->assertSame(0, $bar->tabIndexAt(0, 9));
-        $this->assertSame(1, $bar->closeIndexAt(0, 18), 'the closable tab keeps its ✖');
+        $this->assertSame(0, $bar->tabIndexAt(0, col: 9));
+        $this->assertSame(1, $bar->closeIndexAt(0, col: 18), 'the closable tab keeps its ✖');
 
         $vertical = $this->verticalBar($tabs);
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $vertical->render(new RenderContext(80, 3)));
@@ -899,9 +899,9 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(80, 1));
 
-        $bar->hoverTab(0, 18); // b.php's ✖: ` a.php ✖ │` is ten columns, ` b.php ` seven more
+        $bar->hoverTab(0, col: 18); // b.php's ✖: ` a.php ✖ │` is ten columns, ` b.php ` seven more
         $onClose = $bar->render(new RenderContext(80, 1))[0];
-        $bar->hoverTab(0, 12); // b.php's name
+        $bar->hoverTab(0, col: 12); // b.php's name
         $onName = $bar->render(new RenderContext(80, 1))[0];
 
         $this->assertMatchesRegularExpression('/\x1b\[4m(?:\x1b\[[0-9;]*m)*✖/', $onClose);
@@ -927,10 +927,10 @@ final class TabBarWidgetTest extends TestCase
             'the labels, then the baseline holding the lower half: the upper is the frame\'s, in the rule above',
         );
         $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 2], $bar->tabAnchor(0), 'anchored on the whole tab');
-        $this->assertSame(0, $bar->closeIndexAt(0, 8));
-        $this->assertNull($bar->closeIndexAt(1, 8), 'the half below the ✖ is the tab');
-        $this->assertSame(0, $bar->tabIndexAt(0, 8));
-        $this->assertSame(0, $bar->tabIndexAt(1, 8));
+        $this->assertSame(0, $bar->closeIndexAt(0, col: 8));
+        $this->assertNull($bar->closeIndexAt(1, col: 8), 'the half below the ✖ is the tab');
+        $this->assertSame(0, $bar->tabIndexAt(0, col: 8));
+        $this->assertSame(0, $bar->tabIndexAt(1, col: 8));
     }
 
     public function testABottomRoomyStripAnchorsOnItsFirstRow(): void
@@ -946,8 +946,8 @@ final class TabBarWidgetTest extends TestCase
         $this->assertSame('▄▄▄▄▄▄▄▄▄───────────', $rows[0], 'the baseline on top, holding the upper half; the lower is the frame\'s, in the rule below');
         $this->assertStringStartsWith(' a.php ✖', $rows[1]);
         $this->assertSame(['row' => 0, 'col' => 0, 'rows' => 2], $bar->tabAnchor(0));
-        $this->assertSame(0, $bar->closeIndexAt(1, 8));
-        $this->assertNull($bar->closeIndexAt(0, 8));
+        $this->assertSame(0, $bar->closeIndexAt(1, col: 8));
+        $this->assertNull($bar->closeIndexAt(0, col: 8));
     }
 
     public function testTheShownTabsShadeFollowsThePanesFocus(): void
@@ -1108,7 +1108,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->scrollBy(3);
         $bar->render(new RenderContext(60, 1));
 
-        $this->assertSame(3, $bar->tabIndexAt(0, 1), 'the first rendered tab maps to full-list index 3');
+        $this->assertSame(3, $bar->tabIndexAt(0, col: 1), 'the first rendered tab maps to full-list index 3');
         $this->assertNull($bar->tabAnchor(0), 'a scrolled-out tab has no anchor');
     }
 
@@ -1118,18 +1118,18 @@ final class TabBarWidgetTest extends TestCase
         $bar->render(new RenderContext(80, 5)); // active (first) → tab rows 1-3 between the indicator rows
 
         $bar->scrollBy(3);
-        $plain = $this->plainRender($bar, 80, 5);
+        $plain = $this->plainRender($bar, columns: 80, rows: 5);
         $this->assertStringNotContainsString('t-00', $plain);
         $this->assertStringContainsString('t-03', $plain);
-        $this->assertSame(3, $bar->tabIndexAt(1, 1), 'the first tab row maps to full-list index 3');
+        $this->assertSame(3, $bar->tabIndexAt(1, col: 1), 'the first tab row maps to full-list index 3');
 
         $bar->scrollBy(99);
-        $plain = $this->plainRender($bar, 80, 5);
+        $plain = $this->plainRender($bar, columns: 80, rows: 5);
         $this->assertStringContainsString('t-09', $plain, 'clamped: the last window starts at count minus the three tab rows');
         $this->assertStringContainsString('t-11', $plain);
 
         $bar->scrollBy(-99);
-        $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5));
+        $this->assertStringContainsString('t-00', $this->plainRender($bar, columns: 80, rows: 5));
     }
 
     /** A wheel notch moves the side list the same three rows at either density: three one-row tabs, or one folder tab. */
@@ -1139,17 +1139,17 @@ final class TabBarWidgetTest extends TestCase
         $bar->render(new RenderContext(80, 5));
         $bar->scrollByRows(3);
         $bar->render(new RenderContext(80, 5));
-        $this->assertSame(3, $bar->tabIndexAt(1, 1), 'three rows: three one-row tabs');
+        $this->assertSame(3, $bar->tabIndexAt(1, col: 1), 'three rows: three one-row tabs');
 
         $tall = $this->verticalBar(self::manyShortTabs(12));
         $tall->setStripRows(2);
         $tall->render(new RenderContext(80, 11));
         $tall->scrollByRows(3);
         $tall->render(new RenderContext(80, 11));
-        $this->assertSame(1, $tall->tabIndexAt(1, 1), 'three rows: one folder tab');
+        $this->assertSame(1, $tall->tabIndexAt(1, col: 1), 'three rows: one folder tab');
         $tall->scrollByRows(-3);
         $tall->render(new RenderContext(80, 11));
-        $this->assertSame(0, $tall->tabIndexAt(1, 1), 'and back');
+        $this->assertSame(0, $tall->tabIndexAt(1, col: 1), 'and back');
     }
 
     public function testHorizontalIndicatorsMarkOnlyTheClippedSides(): void
@@ -1162,17 +1162,17 @@ final class TabBarWidgetTest extends TestCase
         $plain = $this->plainRender($bar);
         $this->assertStringStartsWith(' ', $plain, 'the leading indicator cell is reserved but blank');
         $this->assertStringEndsWith('›', $plain);
-        $this->assertNull($bar->scrollIndicatorAt(0, 0), 'a blank indicator cell is not clickable');
-        $this->assertSame(1, $bar->scrollIndicatorAt(0, 59), 'the › cell scrolls forward one tab');
-        $this->assertNull($bar->tabIndexAt(0, 0), 'the indicator cell is not a tab body');
+        $this->assertNull($bar->scrollIndicatorAt(0, col: 0), 'a blank indicator cell is not clickable');
+        $this->assertSame(1, $bar->scrollIndicatorAt(0, col: 59), 'the › cell scrolls forward one tab');
+        $this->assertNull($bar->tabIndexAt(0, col: 0), 'the indicator cell is not a tab body');
 
         // Window at the last tab: only the leading side is clipped.
         $bar->scrollBy(99);
         $plain = $this->plainRender($bar);
         $this->assertStringStartsWith('‹', $plain);
         $this->assertStringEndsWith(' ', $plain);
-        $this->assertSame(-1, $bar->scrollIndicatorAt(0, 0), 'the ‹ cell scrolls back one tab');
-        $this->assertNull($bar->scrollIndicatorAt(0, 59), 'a blank indicator cell is not clickable');
+        $this->assertSame(-1, $bar->scrollIndicatorAt(0, col: 0), 'the ‹ cell scrolls back one tab');
+        $this->assertNull($bar->scrollIndicatorAt(0, col: 59), 'a blank indicator cell is not clickable');
     }
 
     public function testHorizontalFittingTabsRenderNoIndicators(): void
@@ -1184,8 +1184,8 @@ final class TabBarWidgetTest extends TestCase
         $plain = $this->plainRender($bar);
         $this->assertStringNotContainsString('‹', $plain);
         $this->assertStringNotContainsString('›', $plain);
-        $this->assertNull($bar->scrollIndicatorAt(0, 0));
-        $this->assertSame(0, $bar->tabIndexAt(0, 0), 'without overflow the first tab starts at the strip edge');
+        $this->assertNull($bar->scrollIndicatorAt(0, col: 0));
+        $this->assertSame(0, $bar->tabIndexAt(0, col: 0), 'without overflow the first tab starts at the strip edge');
     }
 
     public function testVerticalIndicatorRowsMarkOnlyTheClippedSides(): void
@@ -1193,33 +1193,33 @@ final class TabBarWidgetTest extends TestCase
         $bar = $this->verticalBar(self::manyShortTabs(12));
 
         // Window at the first tab: only the bottom is clipped.
-        $plain = $this->plainRender($bar, 80, 5);
+        $plain = $this->plainRender($bar, columns: 80, rows: 5);
         $lines = \explode("\n", $plain);
         $this->assertStringNotContainsString('▲', $lines[0], 'the top indicator row is reserved but blank');
         $this->assertStringContainsString('▼', $lines[4]);
-        $this->assertNull($bar->scrollIndicatorAt(0, 1), 'a blank indicator row is not clickable');
-        $this->assertSame(3, $bar->scrollIndicatorAt(4, 1), 'the ▼ row scrolls forward three rows');
+        $this->assertNull($bar->scrollIndicatorAt(0, col: 1), 'a blank indicator row is not clickable');
+        $this->assertSame(3, $bar->scrollIndicatorAt(4, col: 1), 'the ▼ row scrolls forward three rows');
         $this->assertSame(3, $bar->scrollIndicatorAt(4, TabBarWidget::VERTICAL_WIDTH - 1), 'the whole row is the click zone');
 
         // Window at the last tab: only the top is clipped.
         $bar->scrollBy(99);
-        $plain = $this->plainRender($bar, 80, 5);
+        $plain = $this->plainRender($bar, columns: 80, rows: 5);
         $lines = \explode("\n", $plain);
         $this->assertStringContainsString('▲', $lines[0]);
         $this->assertStringNotContainsString('▼', $lines[4]);
-        $this->assertSame(-3, $bar->scrollIndicatorAt(0, 1), 'the ▲ row scrolls back three rows');
-        $this->assertNull($bar->scrollIndicatorAt(4, 1), 'a blank indicator row is not clickable');
+        $this->assertSame(-3, $bar->scrollIndicatorAt(0, col: 1), 'the ▲ row scrolls back three rows');
+        $this->assertNull($bar->scrollIndicatorAt(4, col: 1), 'a blank indicator row is not clickable');
     }
 
     public function testVerticalFittingTabsRenderNoIndicatorRows(): void
     {
         $bar = $this->verticalBar(self::manyShortTabs(3));
 
-        $plain = $this->plainRender($bar, 80, 5);
+        $plain = $this->plainRender($bar, columns: 80, rows: 5);
         $this->assertStringNotContainsString('▲', $plain);
         $this->assertStringNotContainsString('▼', $plain);
-        $this->assertSame(0, $bar->tabIndexAt(0, 1), 'without overflow the first tab sits on row 0');
-        $this->assertNull($bar->scrollIndicatorAt(4, 1));
+        $this->assertSame(0, $bar->tabIndexAt(0, col: 1), 'without overflow the first tab sits on row 0');
+        $this->assertNull($bar->scrollIndicatorAt(4, col: 1));
     }
 
     public function testSetPositionResetsTheScroll(): void
@@ -1231,7 +1231,7 @@ final class TabBarWidgetTest extends TestCase
         $bar->scrollBy(5);
 
         $bar->setPosition(TabBarPosition::Left);
-        $this->assertStringContainsString('t-00', $this->plainRender($bar, 80, 5), 'a position change starts the window at the active tab again');
+        $this->assertStringContainsString('t-00', $this->plainRender($bar, columns: 80, rows: 5), 'a position change starts the window at the active tab again');
     }
 
     public function testHoverTintsTheInactiveTabAndClears(): void
@@ -1244,15 +1244,15 @@ final class TabBarWidgetTest extends TestCase
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
 
-        $this->assertTrue($bar->hoverTab(0, 12), 'hovering the inactive tab changes the tint');
-        $this->assertFalse($bar->hoverTab(0, 12), 'same tab: no change');
+        $this->assertTrue($bar->hoverTab(0, col: 12), 'hovering the inactive tab changes the tint');
+        $this->assertFalse($bar->hoverTab(0, col: 12), 'same tab: no change');
         $line = $bar->render(new RenderContext(60, 1))[0];
         $this->assertStringContainsString("\x1b[48;5;240m", $line, 'the hovered tab sits on the bar-chrome hover shade');
 
         $this->assertTrue($bar->clearHover(), 'leaving the strip clears the tint');
         $this->assertFalse($bar->clearHover(), 'already clear: no change');
         $this->assertStringNotContainsString("\x1b[48;5;240m", $bar->render(new RenderContext(60, 1))[0]);
-        $this->assertFalse($bar->hoverTab(0, 500), 'a column past every tab hovers nothing');
+        $this->assertFalse($bar->hoverTab(0, col: 500), 'a column past every tab hovers nothing');
     }
 
     public function testAProviderChangeKeepsAStillCorrectHoverTint(): void
@@ -1267,7 +1267,7 @@ final class TabBarWidgetTest extends TestCase
         });
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
-        $bar->hoverTab(0, 12); // over the second tab
+        $bar->hoverTab(0, col: 12); // over the second tab
 
         // Saving flips a dirty dot (a fingerprint change) but the second tab is
         // still there — the tint must stay put without a fresh motion event.
@@ -1288,7 +1288,7 @@ final class TabBarWidgetTest extends TestCase
         });
         $bar->beforeRender();
         $bar->render(new RenderContext(60, 1));
-        $bar->hoverTab(0, 12); // over the second tab
+        $bar->hoverTab(0, col: 12); // over the second tab
 
         // Closing the second tab leaves the pointer's column past the only tab
         // left — the cell resolves to nothing, so no stale tint lingers.

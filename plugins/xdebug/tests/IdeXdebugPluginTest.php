@@ -52,8 +52,8 @@ final class IdeXdebugPluginTest extends TestCase
     public function testARestrictedProjectCannotChooseWhatTheDebuggerRuns(): void
     {
         $this->untrustProjects();
-        $this->untrustingHome->write('.porta/config.json', '{"enabledPlugins":["xdebug"]}');
-        $this->untrustingHome->write('.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js', '');
+        $this->untrustingHome->write('.porta/config.json', content: '{"enabledPlugins":["xdebug"]}');
+        $this->untrustingHome->write('.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js', content: '');
         $project = new TempProject([
             'evil.js' => '// the project\'s own',
             'a.php' => "<?php\n",
@@ -103,7 +103,7 @@ final class IdeXdebugPluginTest extends TestCase
                     // Listening starts that adapter with no file to run: here its node is not there, and it says so.
                     $terminal->consumeOutput();
                     Services::resolve($ide, CommandRegistry::class)->run('xdebug:listen');
-                    $this->awaitPainted($tui, $terminal, 'Could not start the debug adapter');
+                    $this->awaitPainted($tui, $terminal, needle: 'Could not start the debug adapter');
                     $this->assertStringContainsString('Listening (php)', \implode("\n", $this->screenGrid($tui, $terminal)), 'the debug panel says what it is doing');
 
                     \unlink($home->path('.cursor/extensions/xdebug.php-debug-1.38.0/out/phpDebug.js'));
@@ -113,7 +113,7 @@ final class IdeXdebugPluginTest extends TestCase
                     // The button runs the plugin's command: with no curl here,
                     // it fails, and says so.
                     Services::resolve($ide, CommandRegistry::class)->run('xdebug:install');
-                    $this->awaitPainted($tui, $terminal, 'curl is not available');
+                    $this->awaitPainted($tui, $terminal, needle: 'curl is not available');
                 },
             ],
         );

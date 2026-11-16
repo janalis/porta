@@ -42,7 +42,7 @@ final class FtpPluginTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->status = new StatusBarWidget();
         $manager->wireRuntime(TestPluginRuntime::create($this->editor, $this->status));
-        $api = $manager->api('ftp', '/p', $settings);
+        $api = $manager->api('ftp', rootDir: '/p', settings: $settings);
         $plugin = require \dirname(__DIR__).'/porta.php';
         $this->assertInstanceOf(RemoteProjectPlugin::class, $plugin, 'the ftp plugin opens remote projects');
         $this->assertInstanceOf(AbstractPlugin::class, $plugin, 'and is a plugin like any other');
@@ -58,7 +58,8 @@ final class FtpPluginTest extends TestCase
         $home = new TempProject();
         \putenv('PORTA_HOME='.$home->dir);
         $spec = new RemoteSpec('ftp', 'example.org', '/site', 'me');
-        $netrc = (string) Credentials::store($home->dir, $spec, 'secret');
+        // @mago-expect lint:no-literal-password -- a test fixture value, named since mago 1.60
+        $netrc = (string) Credentials::store($home->dir, $spec, password: 'secret');
         $plugin = $this->plugin();
 
         $transport = $plugin->remoteTransport($spec);
@@ -66,11 +67,11 @@ final class FtpPluginTest extends TestCase
         $this->assertInstanceOf(FtpTransport::class, $transport);
         $this->assertSame(
             ['/opt/bin/curl', '--silent', '--show-error', '--connect-timeout', '10', '--speed-limit', '1', '--speed-time', '30', '--netrc-file', $netrc, '--', 'u'],
-            $transport->command([], 'u'),
+            $transport->command([], url: 'u'),
         );
         $anonymous = $plugin->remoteTransport(new RemoteSpec('ftps', 'example.org', '/'));
         $this->assertInstanceOf(FtpTransport::class, $anonymous);
-        $this->assertNotContains('--netrc-file', $anonymous->command([], 'u'));
+        $this->assertNotContains('--netrc-file', $anonymous->command([], url: 'u'));
         $this->assertNull($plugin->remoteTransport(new RemoteSpec('ssh', 'example.org', '/')), 'not its scheme');
     }
 
@@ -94,7 +95,7 @@ final class FtpPluginTest extends TestCase
         $elsewhere->onRetry(static function () use (&$retriedElsewhere): void {
             ++$retriedElsewhere;
         });
-        $refused = Probe::get($transport, 'refused');
+        $refused = Probe::get($transport, property: 'refused');
         $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
         $retried = 0;
         $transport->onRetry(static function () use (&$retried): void {
@@ -104,7 +105,7 @@ final class FtpPluginTest extends TestCase
         $refused();
         $this->assertTrue(EditorState::promptOpen($this->editor), 'asked');
         /** @var array{label: string, value: TextField} $prompt */
-        $prompt = Probe::get(Probe::object($this->editor, 'overlayHost'), 'prompt');
+        $prompt = Probe::get(Probe::object($this->editor, 'overlayHost'), property: 'prompt');
         $this->assertSame('Password for me@example.org', $prompt['label']);
         foreach (\str_split('s3cret') as $key) {
             $this->editor->handleInput($key);
@@ -124,7 +125,7 @@ final class FtpPluginTest extends TestCase
         $refused();
         $this->assertFalse(EditorState::promptOpen($this->editor), 'not at every refusal');
 
-        Probe::set($this->pluginInstance, 'asked', (\hrtime(true) / 1e9) - 61.0);
+        Probe::set($this->pluginInstance, property: 'asked', value: (\hrtime(true) / 1e9) - 61.0);
         $refused();
         $this->assertTrue(EditorState::promptOpen($this->editor), 'but a minute on, a refusal is someone trying again');
     }
@@ -134,7 +135,7 @@ final class FtpPluginTest extends TestCase
         $home = new TempProject();
         \putenv('PORTA_HOME='.$home->dir);
         $transport = $this->plugin()->remoteTransport(new RemoteSpec('ftp', 'example.org', '/'));
-        $refused = Probe::get((object) $transport, 'refused');
+        $refused = Probe::get((object) $transport, property: 'refused');
         $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
 
         $refused();
@@ -147,7 +148,7 @@ final class FtpPluginTest extends TestCase
         $home = new TempProject(['.porta' => 'a file, not a directory']);
         \putenv('PORTA_HOME='.$home->dir);
         $transport = $this->plugin()->remoteTransport(new RemoteSpec('ftp', 'example.org', '/', 'me'));
-        $refused = Probe::get((object) $transport, 'refused');
+        $refused = Probe::get((object) $transport, property: 'refused');
         $this->assertInstanceOf(\Closure::class, $refused, 'the plugin listens for a refused login');
 
         $refused();

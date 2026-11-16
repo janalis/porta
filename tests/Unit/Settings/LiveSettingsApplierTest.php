@@ -60,9 +60,9 @@ final class LiveSettingsApplierTest extends TestCase
         $this->formatOnSave = self::buildFormatOnSave();
 
         return new LiveSettingsApplier(
-            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new StyleSheetThemer(new Renderer(new StyleSheet())),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             $cursorStyle ?? new CursorStyle(),
             $translator ?? new Translator('en'),
             new ViewRegions(Styles::dark()),
@@ -87,10 +87,10 @@ final class LiveSettingsApplierTest extends TestCase
         return new FormatOnSave(
             $pool,
             $editor,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new Translator('en'),
             new FakeScheduler(),
-            TestTui::create(80, 24),
+            TestTui::create(80, rows: 24),
         );
     }
 
@@ -210,9 +210,9 @@ final class LiveSettingsApplierTest extends TestCase
         $tabBar = new TabBarWidget();
         $workspaceLayout = TestWorkspaceLayout::create(rootDir: \sys_get_temp_dir(), tabBar: $tabBar);
         $applier = new LiveSettingsApplier(
-            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new StyleSheetThemer(new Renderer(new StyleSheet())),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new CursorStyle(),
             new Translator('en'),
             new ViewRegions(Styles::dark()),
@@ -227,8 +227,8 @@ final class LiveSettingsApplierTest extends TestCase
             new EditorDisplayOptions(static function (): void {}),
             true,
         );
-        $editorPane = Probe::get($workspaceLayout, 'editorPane');
-        $editorBody = Probe::get($workspaceLayout, 'editorBody');
+        $editorPane = Probe::get($workspaceLayout, property: 'editorPane');
+        $editorBody = Probe::get($workspaceLayout, property: 'editorBody');
         // Top (the default) is tabs-first; confirm the fixture starts there
         // so "moved to bottom" is an observable, not a coincidental no-op.
         $this->assertSame($tabBar, $editorPane->all()[0], 'starts tabs-first (top)');

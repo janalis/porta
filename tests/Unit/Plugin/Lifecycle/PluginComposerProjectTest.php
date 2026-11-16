@@ -44,14 +44,14 @@ final class PluginComposerProjectTest extends TestCase
 
     public function testPackageDirIsComposersDefaultVendorLayout(): void
     {
-        $this->assertSame($this->scope->dir.'/.porta/vendor/acme/mine', $this->project->packageDir($this->scope->dir, 'acme/mine'));
+        $this->assertSame($this->scope->dir.'/.porta/vendor/acme/mine', $this->project->packageDir($this->scope->dir, packageName: 'acme/mine'));
     }
 
     public function testAddPathRepositoryMergesIntoExistingRepositoriesWithoutClobbering(): void
     {
         $this->project->ensureScaffold($this->scope->dir);
-        $this->project->addVcsRepository($this->scope->dir, 'acme/other', 'https://example.com/other.git');
-        $this->project->addPathRepository($this->scope->dir, 'acme/mine', '/src/acme-mine');
+        $this->project->addVcsRepository($this->scope->dir, packageName: 'acme/other', url: 'https://example.com/other.git');
+        $this->project->addPathRepository($this->scope->dir, packageName: 'acme/mine', absolutePath: '/src/acme-mine');
 
         $repositories = JsonFile::read($this->scope->dir.'/.porta/composer.json')['repositories'] ?? null;
         $this->assertSame(
@@ -66,8 +66,8 @@ final class PluginComposerProjectTest extends TestCase
     public function testAddingTheSamePackageAgainOverwritesRatherThanAccumulating(): void
     {
         $this->project->ensureScaffold($this->scope->dir);
-        $this->project->addPathRepository($this->scope->dir, 'acme/mine', '/first/path');
-        $this->project->addPathRepository($this->scope->dir, 'acme/mine', '/second/path');
+        $this->project->addPathRepository($this->scope->dir, packageName: 'acme/mine', absolutePath: '/first/path');
+        $this->project->addPathRepository($this->scope->dir, packageName: 'acme/mine', absolutePath: '/second/path');
 
         $repositories = JsonFile::read($this->scope->dir.'/.porta/composer.json')['repositories'] ?? null;
         $this->assertSame(['acme/mine' => ['type' => 'path', 'url' => '/second/path', 'options' => ['symlink' => true]]], $repositories);
@@ -79,7 +79,7 @@ final class PluginComposerProjectTest extends TestCase
         // PluginInstaller), but addPathRepository()/addVcsRepository() do not
         // depend on that ordering — they read-or-default, so calling one alone
         // still lands a readable repositories entry.
-        $this->project->addPathRepository($this->scope->dir, 'acme/mine', '/src/acme-mine');
+        $this->project->addPathRepository($this->scope->dir, packageName: 'acme/mine', absolutePath: '/src/acme-mine');
 
         $path = $this->scope->dir.'/.porta/composer.json';
         $this->assertFileExists($path);
@@ -106,8 +106,8 @@ final class PluginComposerProjectTest extends TestCase
     {
         \chmod($this->scope->dir, permissions: 0o555);
         try {
-            $this->assertFalse($this->project->addPathRepository($this->scope->dir, 'acme/mine', '/src/acme-mine'));
-            $this->assertFalse($this->project->addVcsRepository($this->scope->dir, 'acme/mine', 'https://example.com/mine.git'));
+            $this->assertFalse($this->project->addPathRepository($this->scope->dir, packageName: 'acme/mine', absolutePath: '/src/acme-mine'));
+            $this->assertFalse($this->project->addVcsRepository($this->scope->dir, packageName: 'acme/mine', url: 'https://example.com/mine.git'));
         } finally {
             \chmod($this->scope->dir, permissions: 0o755);
         }

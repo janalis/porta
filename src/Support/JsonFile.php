@@ -60,7 +60,7 @@ final class JsonFile
      */
     public static function write(Filesystem $fs, string $path, array $data): bool
     {
-        return self::dump($fs, $path, $data, '');
+        return self::dump($fs, $path, $data, tail: '');
     }
 
     /**

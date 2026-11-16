@@ -63,7 +63,7 @@ final class GithubReleaseTest extends TestCase
         $this->assertSame('https://github.com/symfony/language-tools/releases/latest', $release->latestUrl());
         $this->assertSame('https://github.com/symfony/language-tools/releases/download/v0.16.0/symfony-lsp-v0.16.0-macos-arm64.tar.gz', $release->assetUrl(
             'v0.16.0',
-            'symfony-lsp-v0.16.0-macos-arm64.tar.gz',
+            asset: 'symfony-lsp-v0.16.0-macos-arm64.tar.gz',
         ));
         $this->assertSame('https://github.com/symfony/language-tools/releases/download/v0.16.0/SHA256SUMS', $release->sumsUrl('v0.16.0'));
         $custom = new GithubRelease('o/r', new GithubAsset('x', ['Linux' => 'linux'], ['x86_64' => 'amd64'], sums: 'checksums.txt'));
@@ -76,11 +76,11 @@ final class GithubReleaseTest extends TestCase
         $sha = \str_repeat('ab', times: 32);
         $sums = "{$sha}  one.tar.gz\n".\str_repeat('cd', times: 32)."  *two.tar.gz\nnot a sums line\nshort0  three.tar.gz\n";
 
-        $this->assertSame($sha, $release->expectedSha($sums, 'one.tar.gz'));
-        $this->assertSame(\str_repeat('cd', times: 32), $release->expectedSha($sums, 'two.tar.gz'), 'the binary-mode * marker is stripped');
-        $this->assertNull($release->expectedSha($sums, 'three.tar.gz'), 'a malformed hash is not trusted');
-        $this->assertNull($release->expectedSha($sums, 'absent.tar.gz'));
-        $this->assertNull($release->expectedSha('', 'one.tar.gz'));
+        $this->assertSame($sha, $release->expectedSha($sums, asset: 'one.tar.gz'));
+        $this->assertSame(\str_repeat('cd', times: 32), $release->expectedSha($sums, asset: 'two.tar.gz'), 'the binary-mode * marker is stripped');
+        $this->assertNull($release->expectedSha($sums, asset: 'three.tar.gz'), 'a malformed hash is not trusted');
+        $this->assertNull($release->expectedSha($sums, asset: 'absent.tar.gz'));
+        $this->assertNull($release->expectedSha('', asset: 'one.tar.gz'));
     }
 
     /**

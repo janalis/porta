@@ -69,7 +69,7 @@ final class CodeLayout
         if (null !== $error) {
             $lines[] = new PageLine($this->pen->role(AnsiText::truncate($error, $width), Role::StatusError), $width, $first);
         }
-        $lines[] = $this->edge($width, '', $first + \max(0, \count($raw) - 1));
+        $lines[] = $this->edge($width, label: '', origin: $first + \max(0, \count($raw) - 1));
 
         return $lines;
     }

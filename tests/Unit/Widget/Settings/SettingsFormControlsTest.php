@@ -130,13 +130,13 @@ final class SettingsFormControlsTest extends TestCase
         self::draw($form);
         $form->handleInput("\x1b[B"); // Sticky scroll
 
-        $form->handleClick(6, 5); // Theme's label
+        $form->handleClick(6, relCol: 5); // Theme's label
         $this->assertSame(0, Probe::object($form, 'list')->selected(), 'the label selects');
         $this->assertSame([], $this->opened, 'and opens nothing on a first click');
 
         $form->handleInput("\x1b[B");
         self::draw($form);
-        $form->handleClick(5, 25); // Theme's box, top border: opening writes nothing, so it needs no selecting first
+        $form->handleClick(5, relCol: 25); // Theme's box, top border: opening writes nothing, so it needs no selecting first
         $this->assertSame(0, Probe::object($form, 'list')->selected());
         $this->assertCount(1, $this->opened);
     }
@@ -146,13 +146,13 @@ final class SettingsFormControlsTest extends TestCase
         $form = $this->form();
         self::draw($form);
 
-        $form->handleClick(15, 20); // Tab width's left half — unselected, so it only selects
+        $form->handleClick(15, relCol: 20); // Tab width's left half — unselected, so it only selects
         $this->assertSame([], $this->changes);
 
         self::draw($form);
-        $form->handleClick(15, 20); // ◂ half
-        $form->handleClick(15, 40); // ▸ half
-        $form->handleClick(15, 3); // its label: the forward action
+        $form->handleClick(15, relCol: 20); // ◂ half
+        $form->handleClick(15, relCol: 40); // ▸ half
+        $form->handleClick(15, relCol: 3); // its label: the forward action
         $this->assertSame([['tab', 3], ['tab', 5], ['tab', 5]], $this->changes);
     }
 
@@ -161,8 +161,8 @@ final class SettingsFormControlsTest extends TestCase
         $form = $this->form();
         self::draw($form);
 
-        $form->handleClick(21, 3);
-        $form->handleClick(21, 3);
+        $form->handleClick(21, relCol: 3);
+        $form->handleClick(21, relCol: 3);
         $form->handleInput("\r");
         $form->handleInput("\x1b[C");
 
@@ -185,13 +185,13 @@ final class SettingsFormControlsTest extends TestCase
     {
         $form = $this->form();
         $form->handleInput("\x1b[B"); // Sticky scroll
-        self::draw($form, 29);
+        self::draw($form, rows: 29);
 
-        $form->handleClick(9, 3); // the Editor legend
-        $form->handleClick(9, 3);
-        $form->handleClick(10, 3); // the blank row under it
-        $form->handleClick(10, 3);
-        $form->handleClick(25, 3); // padding below the last item
+        $form->handleClick(9, relCol: 3); // the Editor legend
+        $form->handleClick(9, relCol: 3);
+        $form->handleClick(10, relCol: 3); // the blank row under it
+        $form->handleClick(10, relCol: 3);
+        $form->handleClick(25, relCol: 3); // padding below the last item
 
         $this->assertSame(1, Probe::object($form, 'list')->selected(), 'no click on a legend or padding moved the selection');
         $this->assertSame([], $this->changes);
@@ -206,7 +206,7 @@ final class SettingsFormControlsTest extends TestCase
             $rows[] = new SettingsRow(key: "k{$i}", label: "Setting {$i}", kind: SettingsRowKind::Choice, value: 'a', restart: false, options: ['a', 'b']);
         }
         $form = $this->form($rows);
-        self::draw($form, 12); // nine rows for items: three boxes
+        self::draw($form, rows: 12); // nine rows for items: three boxes
 
         $form->handleInput("\x1b[6~"); // page down
 
@@ -215,7 +215,7 @@ final class SettingsFormControlsTest extends TestCase
 
     public function testANarrowPaneDrawsEveryControlOnOneRow(): void
     {
-        $screen = self::draw($this->form(), 11);
+        $screen = self::draw($this->form(), rows: 11);
 
         // 60 columns less the 4 of chrome and a 30-column label cap leaves
         // room for a box; 20 columns does not.

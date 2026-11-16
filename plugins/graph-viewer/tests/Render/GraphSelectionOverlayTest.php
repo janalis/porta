@@ -33,7 +33,7 @@ final class GraphSelectionOverlayTest extends TestCase
         [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame([7, 4, 13, 6], [$x0, $y0, $x1, $y1], 'the premise: both rails on the right half of a 中');
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat('中', times: 10)), $layout, $view, 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat('中', times: 10)), $layout, $view, selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         foreach ($lines as $i => $line) {
             $this->assertSame(20, AnsiUtils::visibleWidth($line), 'row '.$i);
@@ -58,7 +58,7 @@ final class GraphSelectionOverlayTest extends TestCase
         [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame($y0, $y1, 'the premise: a one-row box');
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         $this->assertSame(\str_repeat(Glyphs::FRAME_HORIZONTAL, $x1 - $x0 + 1), \trim(AnsiUtils::stripAnsiCodes($lines[$y0])));
     }
@@ -72,7 +72,7 @@ final class GraphSelectionOverlayTest extends TestCase
         [$x0, $y0, $x1, $y1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame([$x0, true], [$x1, $y1 > $y0], 'the premise: a one-column box more than a row tall');
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         $this->assertSame(Glyphs::FRAME_HORIZONTAL, \trim(AnsiUtils::stripAnsiCodes($lines[$y0])));
         $this->assertSame(Glyphs::FRAME_HORIZONTAL, \trim(AnsiUtils::stripAnsiCodes($lines[$y1])));
@@ -89,7 +89,7 @@ final class GraphSelectionOverlayTest extends TestCase
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $row = ' '.\str_repeat('中', times: 9).' '; // 中 at columns 1-2, 3-4, … 17-18
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: $row), $layout, new ZoomPanModel(200, 200), 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: $row), $layout, new ZoomPanModel(200, 200), selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         $this->assertSame(' 中中中'.Glyphs::FRAME_VERTICAL.' 中中'.Glyphs::FRAME_VERTICAL.' 中中 ', AnsiUtils::stripAnsiCodes($lines[5]));
         $this->assertSame(20, AnsiUtils::visibleWidth($lines[5]));
@@ -102,7 +102,7 @@ final class GraphSelectionOverlayTest extends TestCase
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
         $row = "\e[44m ".\str_repeat('中', times: 9)." \e[0m";
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: $row), $layout, new ZoomPanModel(200, 200), 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: $row), $layout, new ZoomPanModel(200, 200), selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         $after = \substr($lines[5], (int) \strrpos($lines[5], Glyphs::FRAME_VERTICAL) + \strlen(Glyphs::FRAME_VERTICAL));
         $this->assertMatchesRegularExpression('/^(?:\e\[[0-9;:]*m)*?\e\[44m /', $after);
@@ -114,7 +114,7 @@ final class GraphSelectionOverlayTest extends TestCase
         $node = new GraphNode(0, 'A', 'A', 103.0, 101.0, 60.0, 40.0, null, null, false); // columns 7 to 13, rows 4 to 6
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: 'abcdefghijklmnopqrst'), $layout, new ZoomPanModel(200, 200), 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: 'abcdefghijklmnopqrst'), $layout, new ZoomPanModel(200, 200), selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         $this->assertSame('abcdefg'.Glyphs::FRAME_VERTICAL.'ijklm'.Glyphs::FRAME_VERTICAL.'opqrst', AnsiUtils::stripAnsiCodes($lines[5]));
     }
@@ -125,7 +125,10 @@ final class GraphSelectionOverlayTest extends TestCase
         $node = new GraphNode(0, 'A', 'A', 100.0, 100.0, 300.0, 300.0, null, null, false);
         $layout = new GraphLayout(200.0, 200.0, [0 => $node], [], []);
 
-        $lines = \array_map(AnsiUtils::stripAnsiCodes(...), GraphSelectionOverlay::apply(\array_fill(0, count: 4, value: '......'), $layout, new ZoomPanModel(200, 200), 0, 6, 4, Styles::dark()));
+        $lines = \array_map(
+            AnsiUtils::stripAnsiCodes(...),
+            GraphSelectionOverlay::apply(\array_fill(0, count: 4, value: '......'), $layout, new ZoomPanModel(200, 200), selected: 0, cols: 6, rows: 4, styles: Styles::dark()),
+        );
 
         $this->assertSame(
             [
@@ -147,7 +150,7 @@ final class GraphSelectionOverlayTest extends TestCase
         [$x0, $y0, $x1] = new GraphCellGrid(20, 10, $view, null)->shownBox($node);
         $this->assertSame(1, $x1 - $x0, 'the premise: two columns');
 
-        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, 0, 20, 10, Styles::dark());
+        $lines = GraphSelectionOverlay::apply(\array_fill(0, count: 10, value: \str_repeat(' ', times: 20)), $layout, $view, selected: 0, cols: 20, rows: 10, styles: Styles::dark());
 
         $this->assertSame(Glyphs::MODAL_TOP_LEFT.Glyphs::MODAL_TOP_RIGHT, \trim(AnsiUtils::stripAnsiCodes($lines[$y0])));
     }

@@ -154,7 +154,6 @@ final class SearchEverywhereController
             if ($generation !== $this->generation) {
                 return; // a newer query (or close) superseded this response
             }
-            /** @var list<SearchHit> $hits */
             $this->hitsByCategory[$category->order()] = $hits;
             unset($this->pending[$category->order()]);
             if (null !== $note) {

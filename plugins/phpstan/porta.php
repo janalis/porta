@@ -27,7 +27,7 @@ return new class('phpstan', 'phpstan') extends AbstractAnalyzerPlugin {
     public function activate(PluginApi $api): void
     {
         $this->registerBinarySetting($api);
-        $this->registerAnalysis($api, 'PHPStan', ['ctrl+alt+a']);
+        $this->registerAnalysis($api, display: 'PHPStan', keys: ['ctrl+alt+a']);
     }
 
     protected function command(string $binary, string $file): array
@@ -43,8 +43,8 @@ return new class('phpstan', 'phpstan') extends AbstractAnalyzerPlugin {
     protected function diagnostics(array $report): array
     {
         $diagnostics = [];
-        foreach (self::rowsAt($report, 'files') as $entry) {
-            foreach (self::rowsAt($entry, 'messages') as $message) {
+        foreach (self::rowsAt($report, key: 'files') as $entry) {
+            foreach (self::rowsAt($entry, key: 'messages') as $message) {
                 $diagnostics[] = [
                     'line' => max(0, (int) ($message['line'] ?? 1) - 1), // phpstan lines are 1-based
                     'message' => (string) ($message['message'] ?? ''),

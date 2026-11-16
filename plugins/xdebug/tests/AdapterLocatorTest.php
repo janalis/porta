@@ -31,11 +31,11 @@ final class AdapterLocatorTest extends TestCase
         $this->assertSame('1.34.0 (.cursor)', $locator->describe());
         $this->assertNull($locator->installed());
 
-        $home->write('.porta/tools/php-debug/'.AdapterLocator::VERSION.'/extension/'.self::SCRIPT, '');
+        $home->write('.porta/tools/php-debug/'.AdapterLocator::VERSION.'/extension/'.self::SCRIPT, content: '');
         $this->assertSame($home->path('.porta/tools/php-debug/'.AdapterLocator::VERSION.'/extension/'.self::SCRIPT), $locator->script(), 'the installed copy comes first');
         $this->assertSame(AdapterLocator::VERSION, $locator->describe());
 
-        $own = $home->write('mine/phpDebug.js', '');
+        $own = $home->write('mine/phpDebug.js', content: '');
         $set = new AdapterLocator($home->dir, $own);
         $this->assertSame($own, $set->script(), 'and the user\'s own before both');
         $this->assertSame($own, $set->describe());

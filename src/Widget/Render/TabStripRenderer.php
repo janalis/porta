@@ -308,7 +308,7 @@ final class TabStripRenderer
         $text = $cell['text'];
         $width = AnsiUtils::visibleWidth($text);
         $labelEnd = 1 + $cell['labelWidth'];
-        $label = AnsiUtils::sliceByColumn($text, 1, $cell['labelWidth']);
+        $label = AnsiUtils::sliceByColumn($text, startCol: 1, length: $cell['labelWidth']);
         if (TabState::Hovered === $state && !$onClose) {
             $label = new Style(underline: true)->apply($label);
         }

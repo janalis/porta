@@ -74,7 +74,7 @@ final class NavigationControllerNativeDocsTest extends TestCase
     {
         $this->assertSame(
             'https://www.php.net/manual/en/function.count.php',
-            $this->urlAt('x.php', "<?php\ncount(\$x);\n", 1, 2),
+            $this->urlAt('x.php', content: "<?php\ncount(\$x);\n", line: 1, col: 2),
             'the feature stands: a bare native call has no project declaration to jump to',
         );
     }
@@ -83,7 +83,7 @@ final class NavigationControllerNativeDocsTest extends TestCase
     {
         $this->assertSame(
             'https://www.php.net/manual/en/function.count.php',
-            $this->urlAt('x.php', "<?php\n\\count(\$x);\n", 1, 3),
+            $this->urlAt('x.php', content: "<?php\n\\count(\$x);\n", line: 1, col: 3),
             'a bare leading backslash IS the explicit global',
         );
     }
@@ -91,11 +91,11 @@ final class NavigationControllerNativeDocsTest extends TestCase
     public function testAMethodCallOnAReceiverGoesToTheLsp(): void
     {
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\n\$collection->count();\n", 1, 14),
+            $this->urlAt('x.php', content: "<?php\n\$collection->count();\n", line: 1, col: 14),
             '->count() is the project method, whatever its name matches',
         );
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\nFoo::date();\n", 1, 6),
+            $this->urlAt('x.php', content: "<?php\nFoo::date();\n", line: 1, col: 6),
             '::date() is a static member of Foo',
         );
     }
@@ -103,11 +103,11 @@ final class NavigationControllerNativeDocsTest extends TestCase
     public function testANamespacedNameGoesToTheLsp(): void
     {
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\nnew App\\Exception();\n", 1, 12),
+            $this->urlAt('x.php', content: "<?php\nnew App\\Exception();\n", line: 1, col: 12),
             'App\\Exception is a project class, not the native one',
         );
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\nException\\Helper::x();\n", 1, 3),
+            $this->urlAt('x.php', content: "<?php\nException\\Helper::x();\n", line: 1, col: 3),
             'a namespace SEGMENT is not the class it is named after',
         );
     }
@@ -115,7 +115,7 @@ final class NavigationControllerNativeDocsTest extends TestCase
     public function testADeclarationSiteGoesToTheLsp(): void
     {
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\nnamespace App;\nfunction count(): int\n{\n}\n", 2, 11),
+            $this->urlAt('x.php', content: "<?php\nnamespace App;\nfunction count(): int\n{\n}\n", line: 2, col: 11),
             'F12 on a declaration must not leave the file',
         );
     }
@@ -123,11 +123,11 @@ final class NavigationControllerNativeDocsTest extends TestCase
     public function testAUseImportedNameGoesToTheLsp(): void
     {
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\nuse App\\Exception;\n\nthrow new Exception('x');\n", 3, 12),
+            $this->urlAt('x.php', content: "<?php\nuse App\\Exception;\n\nthrow new Exception('x');\n", line: 3, col: 12),
             'the import rebinds the bare name for the whole file',
         );
         $this->assertNull(
-            $this->urlAt('x.php', "<?php\nuse App\\Err as Exception;\n\nthrow new Exception('x');\n", 3, 12),
+            $this->urlAt('x.php', content: "<?php\nuse App\\Err as Exception;\n\nthrow new Exception('x');\n", line: 3, col: 12),
             'and an alias rebinds it just the same',
         );
     }
@@ -135,13 +135,13 @@ final class NavigationControllerNativeDocsTest extends TestCase
     public function testADotReceiverGoesToTheLspOutsidePhp(): void
     {
         $this->assertNull(
-            $this->urlAt('app.py', "df.all()\n", 0, 4),
+            $this->urlAt('app.py', content: "df.all()\n", line: 0, col: 4),
             'python: .all() is a member of df, not the builtin',
         );
         // In PHP the dot is CONCATENATION, where the global really answers.
         $this->assertSame(
             'https://www.php.net/manual/en/function.count.php',
-            $this->urlAt('x.php', "<?php\n\$s = 'n='.count(\$x);\n", 1, 12),
+            $this->urlAt('x.php', content: "<?php\n\$s = 'n='.count(\$x);\n", line: 1, col: 12),
             "php: 'n='.count() is the native function after a concat dot",
         );
     }

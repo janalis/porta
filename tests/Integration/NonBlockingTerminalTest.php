@@ -47,7 +47,7 @@ final class NonBlockingTerminalTest extends TestCase
         });
         $this->await(static function () use (&$ticked): bool {
             return $ticked;
-        }, 2.0);
+        }, timeout: 2.0);
         $this->assertTrue($ticked, 'the event loop kept running while the terminal sat on a full buffer');
 
         // Once the terminal drains, everything arrives byte-identical and in order.

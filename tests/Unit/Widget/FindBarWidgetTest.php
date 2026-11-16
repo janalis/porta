@@ -155,7 +155,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'), history: $history);
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget(new Document("alpha\nbeta\nbeta\n")), mode: FindMode::Find);
-        $this->type($bar, 'alpha');
+        $this->type($bar, text: 'alpha');
         $this->assertCount(1, $bar->getMatchesByLine(), 'one line holds `alpha`');
 
         $bar->handleInput("\x1b[1;3A");
@@ -179,7 +179,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find);
 
-        $this->type($bar, 'foo');
+        $this->type($bar, text: 'foo');
         $this->assertSame([], $history->queries, 'typing records nothing');
 
         $bar->handleInput("\r");
@@ -194,7 +194,7 @@ final class FindBarWidgetTest extends TestCase
     {
         $bar = $this->walkedBackToTheOldest();
 
-        $this->type($bar, 'z');
+        $this->type($bar, text: 'z');
         $bar->handleInput("\x1b[1;3A");
         $this->assertSame('newer', $this->shownQuery($bar), 'and the walk starts over');
     }
@@ -231,7 +231,7 @@ final class FindBarWidgetTest extends TestCase
         });
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
 
-        $this->type($bar, 'foo');
+        $this->type($bar, text: 'foo');
         $matches = $bar->getMatchesByLine();
         $this->assertCount(2, $matches, 'lowercase query is case-insensitive');
         $this->assertGreaterThan(0, $updates);
@@ -247,7 +247,7 @@ final class FindBarWidgetTest extends TestCase
     public function testJumpToNearestFromCursorAndCycling(): void
     {
         $doc = new Document("a match\nb match\nc match\n");
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
@@ -266,7 +266,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("alpha\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
-        $this->type($bar, 'al');
+        $this->type($bar, text: 'al');
         $this->assertNotSame([], $bar->getMatchesByLine());
 
         $bar->handleInput("\x7f");
@@ -283,7 +283,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'aaa');
         $bar->handleInput("\t"); // switch to replace field
-        $this->type($bar, 'XX');
+        $this->type($bar, text: 'XX');
 
         $bar->handleInput("\x1br"); // alt+r replace current
         $this->assertSame('XX bbb aaa', $doc->getLine(0));
@@ -301,7 +301,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc, readOnly: true), mode: FindMode::Replace, initialQuery: 'aaa');
         $bar->handleInput("\t");
-        $this->type($bar, 'XX');
+        $this->type($bar, text: 'XX');
 
         $bar->handleInput("\x1br"); // replace current: bails, no document
         $this->assertSame('aaa', $doc->getLine(0), 'a read-only target is never edited');
@@ -315,7 +315,7 @@ final class FindBarWidgetTest extends TestCase
         $target = new FakeFindTarget($doc);
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open($target, mode: FindMode::Find);
-        $this->type($bar, 'foo');
+        $this->type($bar, text: 'foo');
 
         $this->assertCount(2, $target->lastMatches[0] ?? [], 'both matches mirror to the target for highlighting');
         $bar->close();
@@ -329,7 +329,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'x');
 
         $bar->handleInput("\t");
-        $this->type($bar, 'y'); // still edits the find field
+        $this->type($bar, text: 'y'); // still edits the find field
         $this->assertSame([], $bar->getMatchesByLine(), '"xy" matches nothing');
     }
 
@@ -444,7 +444,7 @@ final class FindBarWidgetTest extends TestCase
     public function testJumpWrapsToFirstMatchWhenCursorIsPastAll(): void
     {
         $doc = new Document("match early\nnothing here\n");
-        $doc->setCursor(1, 5); // after every match
+        $doc->setCursor(1, col: 5); // after every match
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
@@ -481,7 +481,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
-        $this->type($bar, 'a+');
+        $this->type($bar, text: 'a+');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'literal mode: no "a+" in the text');
 
@@ -515,7 +515,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, '^(a|a?)+$');
+        $this->type($bar, text: '^(a|a?)+$');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'nothing matched, which is true as far as it goes');
         $screen = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
@@ -526,7 +526,7 @@ final class FindBarWidgetTest extends TestCase
         foreach (\range(1, end: 9) as $_) {
             $bar->handleInput("\x7f"); // backspace out the whole pattern
         }
-        $this->type($bar, 'a+');
+        $this->type($bar, text: 'a+');
 
         $recovered = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringNotContainsString('too complex', $recovered, 'a workable pattern clears it');
@@ -539,7 +539,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
-        $this->type($bar, 'foo');
+        $this->type($bar, text: 'foo');
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'substring mode hits foobar too');
 
         $bar->handleInput("\x1bw"); // alt+w → whole word
@@ -564,13 +564,13 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, 'a(');
+        $this->type($bar, text: 'a(');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'a half-typed regex matches nothing');
         $screen = AnsiUtils::stripAnsiCodes(\implode('', $bar->render(new RenderContext(120, 1))));
         $this->assertStringContainsString('bad regex', $screen);
 
-        $this->type($bar, ')'); // completing it recovers
+        $this->type($bar, text: ')'); // completing it recovers
         $this->assertCount(1, \array_merge(...\array_values($bar->getMatchesByLine())));
     }
 
@@ -581,7 +581,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, 'z*');
+        $this->type($bar, text: 'z*');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'zero-width hits highlight nothing (and never loop)');
     }
@@ -596,7 +596,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, '(a+)+$');
+        $this->type($bar, text: '(a+)+$');
 
         $this->assertSame([], $bar->getMatchesByLine(), 'the un-matchable long line is skipped, not matched');
     }
@@ -608,7 +608,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, 'fo+');
+        $this->type($bar, text: 'fo+');
         $this->assertCount(2, $bar->getMatchesByLine(), 'lowercase regex is case-insensitive');
 
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'Fo+');
@@ -627,7 +627,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, 'a');
+        $this->type($bar, text: 'a');
 
         $this->assertCount(5000, \array_merge(...\array_values($bar->getMatchesByLine())), 'the scan stops at the cap');
     }
@@ -640,9 +640,9 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, 'été');
+        $this->type($bar, text: 'été');
         $bar->handleInput("\t"); // → replace field
-        $this->type($bar, '[$0]');
+        $this->type($bar, text: '[$0]');
 
         $bar->handleInput("\x1br");
 
@@ -656,9 +656,9 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, 'name: (\w+)');
+        $this->type($bar, text: 'name: (\w+)');
         $bar->handleInput("\t"); // → replace field
-        $this->type($bar, '$1!');
+        $this->type($bar, text: '$1!');
 
         $bar->handleInput("\x1br"); // replace current
         $this->assertSame("alpha!\nname: beta\n", $doc->getText(), '$1 expanded to the captured group');
@@ -675,10 +675,10 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, '(?<=\s|^)foo(?=\()');
+        $this->type($bar, text: '(?<=\s|^)foo(?=\()');
         $bar->handleInput("\x1bOR"); // F3: the second match, so the line has a match before it
         $bar->handleInput("\t");
-        $this->type($bar, '[$0]');
+        $this->type($bar, text: '[$0]');
 
         $bar->handleInput("\x1br");
 
@@ -693,9 +693,9 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, '(?<= )(foo)Id');
+        $this->type($bar, text: '(?<= )(foo)Id');
         $bar->handleInput("\t");
-        $this->type($bar, '$1Key');
+        $this->type($bar, text: '$1Key');
 
         $bar->handleInput("\x1br");
 
@@ -709,7 +709,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'foo');
         $bar->handleInput("\t");
-        $this->type($bar, 'foobar');
+        $this->type($bar, text: 'foobar');
 
         $bar->handleInput("\x1br");
         $bar->handleInput("\x1br");
@@ -723,9 +723,9 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
-        $this->type($bar, 'value');
+        $this->type($bar, text: 'value');
         $bar->handleInput("\t");
-        $this->type($bar, '$1');
+        $this->type($bar, text: '$1');
 
         $bar->handleInput("\x1br");
         $this->assertSame("\$1\n", $doc->getText(), 'literal mode inserts $1 verbatim');
@@ -737,26 +737,26 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
-        $this->type($bar, 'foo');
+        $this->type($bar, text: 'foo');
         $bar->render(new RenderContext(80, 1)); // the zones come from the last render
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())));
 
         // The toggles follow the 32-column box and its gutter, six columns
         // each boxed: .* spans 33-38, \b 39-44; the last button, ✖, ends at 70.
-        $bar->handleClick(1, 41);
+        $bar->handleClick(1, col: 41);
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the click re-ran the search, exactly as Alt+W does');
 
-        $bar->handleClick(1, 75); // past the buttons: no zone at all
+        $bar->handleClick(1, col: 75); // past the buttons: no zone at all
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the empty tail is inert');
-        $bar->handleClick(1, 10); // the query box is not a tag
+        $bar->handleClick(1, col: 10); // the query box is not a tag
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'a click off the tags is inert');
 
-        $bar->handleClick(2, 41);
+        $bar->handleClick(2, col: 41);
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'and toggles back off from its bottom border: a box answers on every row');
 
         // The other tag, on its own zone: regex mode makes the query a pattern.
-        $bar->handleClick(1, 34);
-        $this->type($bar, '+');
+        $bar->handleClick(1, col: 34);
+        $this->type($bar, text: '+');
         $this->assertCount(3, \array_merge(...\array_values($bar->getMatchesByLine())), 'foo+ is a regex now, not a literal');
     }
 
@@ -772,18 +772,18 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Replace, initialQuery: 'x');
         $bar->render(new RenderContext(80, 3)); // Find 0-31, gutter, Replace 33-64
 
-        $bar->handleClick(0, 40); // the Replace box's top border
-        $this->type($bar, 'z');
+        $bar->handleClick(0, col: 40); // the Replace box's top border
+        $this->type($bar, text: 'z');
         $rows = \array_map(AnsiUtils::stripAnsiCodes(...), $bar->render(new RenderContext(80, 3)));
         $this->assertStringContainsString('┃ z ', $rows[1], 'the typing landed in Replace');
         $this->assertStringStartsWith('╭ Find', $rows[0], 'and Find gave up the heavy border');
 
-        $bar->handleClick(2, 5); // the Find box's bottom border
-        $this->type($bar, 'y');
+        $bar->handleClick(2, col: 5); // the Find box's bottom border
+        $this->type($bar, text: 'y');
         $this->assertSame('xy', $this->shownQuery($bar), 'back in Find');
 
-        $bar->handleClick(0, 79); // beside the boxes, above the tags and buttons
-        $this->type($bar, 'w');
+        $bar->handleClick(0, col: 79); // beside the boxes, above the tags and buttons
+        $this->type($bar, text: 'w');
         $this->assertSame('xyw', $this->shownQuery($bar), 'a click on no zone leaves the field as it was');
     }
 
@@ -811,16 +811,16 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("foo\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 1));
 
-        $this->assertTrue($bar->hoverAt(1, 34), 'the pointer landed on the regex tag');
-        $this->assertFalse($bar->hoverAt(1, 35), 'still the same tag → no change');
-        $this->assertTrue($bar->hoverAt(1, 40), 'moved onto the whole-word tag');
-        $this->assertTrue($bar->hoverAt(1, 10), 'the query field is not a tag: the tint clears');
-        $this->assertFalse($bar->hoverAt(1, 10), 'still no tag → no change');
-        $this->assertTrue($bar->hoverAt(1, 34), 'back onto a tag');
+        $this->assertTrue($bar->hoverAt(1, col: 34), 'the pointer landed on the regex tag');
+        $this->assertFalse($bar->hoverAt(1, col: 35), 'still the same tag → no change');
+        $this->assertTrue($bar->hoverAt(1, col: 40), 'moved onto the whole-word tag');
+        $this->assertTrue($bar->hoverAt(1, col: 10), 'the query field is not a tag: the tint clears');
+        $this->assertFalse($bar->hoverAt(1, col: 10), 'still no tag → no change');
+        $this->assertTrue($bar->hoverAt(1, col: 34), 'back onto a tag');
         $this->assertTrue($bar->clearHover(), 'the pointer left the bar');
         $this->assertFalse($bar->clearHover(), 'nothing left to clear');
 
-        $bar->hoverAt(1, 34);
+        $bar->hoverAt(1, col: 34);
         $line = $bar->render(new RenderContext(80, 3))[1];
         $this->assertStringContainsString("\x1b[4m", $line, 'the hovered toggle underlines its caption, as a button does');
         $this->assertSame(80, AnsiUtils::visibleWidth($line), 'the tint does not change the bar width');
@@ -883,7 +883,7 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("bar\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
-        $this->type($bar, 'ba');
+        $this->type($bar, text: 'ba');
 
         $bar->handleInput("\x7f"); // backspace: query becomes "b" — must not also insert the \x7f byte
 
@@ -899,16 +899,16 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 3));
 
-        $regex = $bar->tooltipAt(1, 35);
+        $regex = $bar->tooltipAt(1, col: 35);
         $this->assertSame(['find:regex', "Regular expression\tAlt+X", 0, 33, 39, 3], [$regex?->key, $regex?->text, $regex?->row, $regex?->colStart, $regex?->colEnd, $regex?->rows]);
-        $this->assertSame("Whole word\tAlt+W", $bar->tooltipAt(0, 39)?->text, 'any row of a boxed control');
-        $this->assertSame("Match case\tAlt+C", $bar->tooltipAt(2, 45)?->text, "the find bar's own words, not the editor's Toggle Case");
-        $this->assertSame("Previous match\tShift+F3", $bar->tooltipAt(1, 51)?->text);
-        $this->assertSame("Next match\t⏎", $bar->tooltipAt(1, 56)?->text, 'the first of its keys');
-        $this->assertSame("Select all matches\tAlt+⏎", $bar->tooltipAt(1, 61)?->text);
-        $this->assertSame("Close\tEsc", $bar->tooltipAt(1, 66)?->text);
-        $this->assertNull($bar->tooltipAt(1, 10), 'the query box explains itself');
-        $this->assertNull($bar->tooltipAt(3, 35), 'below the controls');
+        $this->assertSame("Whole word\tAlt+W", $bar->tooltipAt(0, col: 39)?->text, 'any row of a boxed control');
+        $this->assertSame("Match case\tAlt+C", $bar->tooltipAt(2, col: 45)?->text, "the find bar's own words, not the editor's Toggle Case");
+        $this->assertSame("Previous match\tShift+F3", $bar->tooltipAt(1, col: 51)?->text);
+        $this->assertSame("Next match\t⏎", $bar->tooltipAt(1, col: 56)?->text, 'the first of its keys');
+        $this->assertSame("Select all matches\tAlt+⏎", $bar->tooltipAt(1, col: 61)?->text);
+        $this->assertSame("Close\tEsc", $bar->tooltipAt(1, col: 66)?->text);
+        $this->assertNull($bar->tooltipAt(1, col: 10), 'the query box explains itself');
+        $this->assertNull($bar->tooltipAt(3, col: 35), 'below the controls');
     }
 
     public function testAClosedBarHasNoTooltips(): void
@@ -919,7 +919,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->close();
         $bar->render(new RenderContext(80, 3));
 
-        $this->assertNull($bar->tooltipAt(1, 35), 'the zones went with the last render');
+        $this->assertNull($bar->tooltipAt(1, col: 35), 'the zones went with the last render');
     }
 
     public function testTheToggleZonesAreTheBoxesAndAnswerOnEveryRow(): void
@@ -932,20 +932,20 @@ final class FindBarWidgetTest extends TestCase
         // columns for .*, \b and Aa; a boxed button five. They follow the
         // 32-column box and its gutter: regex 33-38, word 39-44, case 45-50,
         // then ↑ 51-55, ↓ 56-60, ∀ 61-65 and ✖ 66-70.
-        $this->assertFalse($bar->hoverAt(1, 32), 'the gutter before the regex zone: no tag');
-        $this->assertTrue($bar->hoverAt(1, 33), 'the regex zone starts at 33');
-        $this->assertFalse($bar->hoverAt(1, 38), 'still the regex zone (33-38): no change');
-        $this->assertTrue($bar->hoverAt(1, 39), 'the word zone starts right after, at 39');
-        $this->assertFalse($bar->hoverAt(1, 44), 'still the word zone (39-44): no change');
-        $this->assertTrue($bar->hoverAt(1, 45), 'the case zone, 45-50');
-        $this->assertTrue($bar->hoverAt(1, 51), 'the ↑ button, 51-55');
-        $this->assertTrue($bar->hoverAt(1, 61), 'the ∀ button, 61-65');
-        $this->assertTrue($bar->hoverAt(1, 66), 'the ✖ button, 66-70');
+        $this->assertFalse($bar->hoverAt(1, col: 32), 'the gutter before the regex zone: no tag');
+        $this->assertTrue($bar->hoverAt(1, col: 33), 'the regex zone starts at 33');
+        $this->assertFalse($bar->hoverAt(1, col: 38), 'still the regex zone (33-38): no change');
+        $this->assertTrue($bar->hoverAt(1, col: 39), 'the word zone starts right after, at 39');
+        $this->assertFalse($bar->hoverAt(1, col: 44), 'still the word zone (39-44): no change');
+        $this->assertTrue($bar->hoverAt(1, col: 45), 'the case zone, 45-50');
+        $this->assertTrue($bar->hoverAt(1, col: 51), 'the ↑ button, 51-55');
+        $this->assertTrue($bar->hoverAt(1, col: 61), 'the ∀ button, 61-65');
+        $this->assertTrue($bar->hoverAt(1, col: 66), 'the ✖ button, 66-70');
         $bar->clearHover();
-        $this->assertFalse($bar->hoverAt(1, 71), 'past the last button: nothing, no change from already-cleared');
-        $this->assertTrue($bar->hoverAt(0, 34), 'the top border is the toggle too');
-        $this->assertFalse($bar->hoverAt(2, 36), 'as is the bottom one: the same toggle, no change');
-        $this->assertTrue($bar->hoverAt(3, 34), 'below the bar is off it: the hover clears');
+        $this->assertFalse($bar->hoverAt(1, col: 71), 'past the last button: nothing, no change from already-cleared');
+        $this->assertTrue($bar->hoverAt(0, col: 34), 'the top border is the toggle too');
+        $this->assertFalse($bar->hoverAt(2, col: 36), 'as is the bottom one: the same toggle, no change');
+        $this->assertTrue($bar->hoverAt(3, col: 34), 'below the bar is off it: the hover clears');
     }
 
     public function testOnACompactScreenTheTagsAreOneRow(): void
@@ -957,9 +957,9 @@ final class FindBarWidgetTest extends TestCase
         $this->assertCount(1, $rows, 'Find and Replace side by side on the one row');
         $this->assertStringContainsString('Replace ', $rows[0]);
         $this->assertStringContainsString(' .*  \b  Aa  ↑  ↓  ∀  ✖ ', $rows[0]);
-        $this->assertTrue($bar->hoverAt(0, 67), 'the regex tag, after two 32-column fields and their gutters: 66-69');
-        $this->assertTrue($bar->hoverAt(1, 67), 'below the one row is off it: the hover clears');
-        $this->assertFalse($bar->hoverAt(1, 67), 'and stays clear');
+        $this->assertTrue($bar->hoverAt(0, col: 67), 'the regex tag, after two 32-column fields and their gutters: 66-69');
+        $this->assertTrue($bar->hoverAt(1, col: 67), 'below the one row is off it: the hover clears');
+        $this->assertFalse($bar->hoverAt(1, col: 67), 'and stays clear');
     }
 
     public function testFindNextAfterAStaleRefreshJumpsToTheFirstMatchNotTheSecond(): void
@@ -978,7 +978,7 @@ final class FindBarWidgetTest extends TestCase
     public function testJumpToNearestLandsExactlyOnAMatchStartingAtTheCursor(): void
     {
         $doc = new Document("xxx match\n");
-        $doc->setCursor(0, 4); // exactly at the match's start column
+        $doc->setCursor(0, col: 4); // exactly at the match's start column
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
@@ -991,7 +991,7 @@ final class FindBarWidgetTest extends TestCase
         // after the cursor" must only accept the second one, on column, not
         // "same line as the cursor" alone (which would wrongly grab the first).
         $doc = new Document("match aaaa match\n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find, initialQuery: 'match');
 
@@ -1003,10 +1003,10 @@ final class FindBarWidgetTest extends TestCase
         $doc = new Document("aaa bbb\n");
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'bbb');
-        $doc->setCursor(0, 0); // move away from the match after the jump
+        $doc->setCursor(0, col: 0); // move away from the match after the jump
 
         $bar->handleInput("\t");
-        $this->type($bar, 'X');
+        $this->type($bar, text: 'X');
         $bar->handleInput("\x1br"); // replace current must still target the match, not the stray cursor
 
         $this->assertSame('aaa X', $doc->getLine(0));
@@ -1018,7 +1018,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'a');
         $bar->handleInput("\t");
-        $this->type($bar, 'XX');
+        $this->type($bar, text: 'XX');
 
         $bar->handleInput("\x1ba"); // replace all
 
@@ -1067,9 +1067,9 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(40, 1));
 
-        $this->assertFalse($bar->hoverAt(1, 15), 'the gutter after the 15-column box');
-        $this->assertTrue($bar->hoverAt(1, 16), 'the tags and buttons fill the last 24 columns of forty');
-        $this->assertTrue($bar->hoverAt(1, 39), 'through to the final column');
+        $this->assertFalse($bar->hoverAt(1, col: 15), 'the gutter after the 15-column box');
+        $this->assertTrue($bar->hoverAt(1, col: 16), 'the tags and buttons fill the last 24 columns of forty');
+        $this->assertTrue($bar->hoverAt(1, col: 39), 'through to the final column');
     }
 
     public function testHoveringOneTagDoesNotTintTheOtherTag(): void
@@ -1078,7 +1078,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("x\n")), mode: FindMode::Find);
         $bar->render(new RenderContext(80, 1));
 
-        $bar->hoverAt(1, 34); // the regex tag's column
+        $bar->hoverAt(1, col: 34); // the regex tag's column
         $line = $bar->render(new RenderContext(80, 3))[1];
         // The value row carries the captions; the hints (which mention ".*"
         // and "\b" too) sit on the rows above and below it.
@@ -1096,7 +1096,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex
-        $this->type($bar, 'a');
+        $this->type($bar, text: 'a');
 
         $this->assertCount(2, \array_merge(...\array_values($bar->getMatchesByLine())), 'the blank line is skipped, not treated as end-of-document');
     }
@@ -1109,7 +1109,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, '(a+)+$');
+        $this->type($bar, text: '(a+)+$');
 
         $this->assertCount(1, \array_merge(...\array_values($bar->getMatchesByLine())), 'line 2 still matches after line 1 fails to scan');
     }
@@ -1120,7 +1120,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, 'z*');
+        $this->type($bar, text: 'z*');
 
         $this->assertCount(1, \array_merge(...\array_values($bar->getMatchesByLine())), 'the real "z" hit after the zero-width ones is still found');
     }
@@ -1131,7 +1131,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, 'match');
+        $this->type($bar, text: 'match');
 
         $flat = \array_merge(...\array_values($bar->getMatchesByLine()));
         $this->assertSame(3, $flat[0]['start'], 'the offset is 3, not (int) of the matched text');
@@ -1145,7 +1145,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Find);
         $bar->handleInput("\x1bx");
-        $this->type($bar, 'a');
+        $this->type($bar, text: 'a');
 
         $this->assertCount(5000, \array_merge(...\array_values($bar->getMatchesByLine())), 'stops exactly at the cap, not 3 over from line 2');
     }
@@ -1156,9 +1156,9 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace);
         $bar->handleInput("\x1bx"); // regex mode
-        $this->type($bar, 'name: (\w+)');
+        $this->type($bar, text: 'name: (\w+)');
         $bar->handleInput("\t");
-        $this->type($bar, '[$1]');
+        $this->type($bar, text: '[$1]');
 
         $bar->handleInput("\x1br");
         $this->assertSame('prefix [alpha] suffix', $doc->getLine(0), 'only the matched span is replaced, the rest of the line is untouched');
@@ -1213,7 +1213,7 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'aaa');
         $bar->handleInput("\t");
-        $this->type($bar, 'XX');
+        $this->type($bar, text: 'XX');
 
         $bar->handleInput("\x1ba"); // replace all three
         $this->assertSame("XX bbb XX\nccc XX\n", $doc->getText());
@@ -1237,11 +1237,11 @@ final class FindBarWidgetTest extends TestCase
         $bar = new FindBarWidget(new Translator('en'));
         $bar->open(new FakeFindTarget($doc), mode: FindMode::Replace, initialQuery: 'aaa');
         $bar->handleInput("\t");
-        $this->type($bar, 'XX');
+        $this->type($bar, text: 'XX');
         $bar->handleInput("\x1ba");
         $replaced = $doc->getText();
 
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->insert('Z');
         $this->assertSame('Z'.$replaced, $doc->getText());
 
@@ -1282,7 +1282,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->handleInput("\x1bc");
         $this->assertCount(1, $this->allMatches($bar), 'Aa on: only the exact case');
         $bar->render(new RenderContext(80, 3));
-        $bar->handleClick(1, 47); // the Aa toggle
+        $bar->handleClick(1, col: 47); // the Aa toggle
         $this->assertCount(2, $this->allMatches($bar), 'clicked off again');
     }
 
@@ -1296,14 +1296,14 @@ final class FindBarWidgetTest extends TestCase
         $position = static fn (): string => AnsiUtils::stripAnsiCodes($bar->render(new RenderContext(80, 3))[2]);
         $this->assertStringContainsString('[1/3]', $position());
 
-        $bar->handleClick(1, 58); // ↓
+        $bar->handleClick(1, col: 58); // ↓
         $this->assertStringContainsString('[2/3]', $position());
-        $bar->handleClick(1, 53); // ↑
-        $bar->handleClick(0, 53); // its top border: a button is its whole box
+        $bar->handleClick(1, col: 53); // ↑
+        $bar->handleClick(0, col: 53); // its top border: a button is its whole box
         $this->assertStringContainsString('[3/3]', $position(), 'wrapping');
-        $this->assertTrue($bar->hoverAt(1, 68));
+        $this->assertTrue($bar->hoverAt(1, col: 68));
         $this->assertStringContainsString("\e[4m", $bar->render(new RenderContext(80, 3))[1], 'the ✖ under the pointer underlines');
-        $bar->handleClick(1, 68); // ✖, past ∀
+        $bar->handleClick(1, col: 68); // ✖, past ∀
         $this->assertFalse($bar->isOpen());
         $this->assertNull($target->selected, 'closed by ✖, not by Select All closing it');
     }
@@ -1333,7 +1333,7 @@ final class FindBarWidgetTest extends TestCase
     public function testAltEnterSelectsEveryMatchAndCloses(): void
     {
         $doc = new Document("foo x foo\nfoo\n");
-        $doc->setCursor(0, 4); // the nearest match is the second
+        $doc->setCursor(0, col: 4); // the nearest match is the second
         $target = new FakeFindTarget($doc);
         $bar = new FindBarWidget(new Translator('en'));
         $closed = false;
@@ -1406,7 +1406,7 @@ final class FindBarWidgetTest extends TestCase
         $bar->open($target, mode: FindMode::Find, initialQuery: 'foo');
         $bar->render(new RenderContext(80, 3)); // ∀ spans 61-65
 
-        $bar->handleClick(1, 63);
+        $bar->handleClick(1, col: 63);
 
         $this->assertCount(2, $target->selected['matches'] ?? []);
         $this->assertFalse($bar->isOpen());
@@ -1460,14 +1460,14 @@ final class FindBarWidgetTest extends TestCase
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget(new Document("Été\nété\n")), mode: FindMode::Find);
 
-        $this->type($bar, 'été');
-        $this->assertSame([[0, 0, 5], [1, 0, 5]], \array_map(static fn (array $m): array => [$m['line'], $m['start'], $m['end']], Probe::get($bar, 'matches')), 'é finds É, at its bytes');
+        $this->type($bar, text: 'été');
+        $this->assertSame([[0, 0, 5], [1, 0, 5]], \array_map(static fn (array $m): array => [$m['line'], $m['start'], $m['end']], Probe::get($bar, property: 'matches')), 'é finds É, at its bytes');
 
         $bar = new FindBarWidget(new Translator('en'));
         $bar->setFocused(true);
         $bar->open(new FakeFindTarget(new Document("Été\nété\n")), mode: FindMode::Find);
-        $this->type($bar, 'Été');
-        $this->assertSame([0], \array_column(Probe::get($bar, 'matches'), 'line'), 'an É in the query asks for case');
+        $this->type($bar, text: 'Été');
+        $this->assertSame([0], \array_column(Probe::get($bar, property: 'matches'), 'line'), 'an É in the query asks for case');
     }
 
     /** A regex of whole words folds every letter too: é.é finds ÉTÉ. */
@@ -1478,8 +1478,8 @@ final class FindBarWidgetTest extends TestCase
         $bar->open(new FakeFindTarget(new Document("un ÉTÉ chaud\n")), mode: FindMode::Find);
         $bar->handleInput("\x1bx"); // regex
         $bar->handleInput("\x1bw"); // whole word
-        $this->type($bar, 'é.é');
+        $this->type($bar, text: 'é.é');
 
-        $this->assertSame([[0, 3, 8]], \array_map(static fn (array $m): array => [$m['line'], $m['start'], $m['end']], Probe::get($bar, 'matches')));
+        $this->assertSame([[0, 3, 8]], \array_map(static fn (array $m): array => [$m['line'], $m['start'], $m['end']], Probe::get($bar, property: 'matches')));
     }
 }

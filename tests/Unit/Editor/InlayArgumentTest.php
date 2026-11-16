@@ -13,7 +13,7 @@ final class InlayArgumentTest extends TestCase
     #[DataProvider('arguments')]
     public function testALiteralIsWhatSaysNothingAboutItsPurpose(string $argument, bool $literal): void
     {
-        $this->assertSame($literal, InlayArgument::isLiteral("f({$argument});", 2), $argument);
+        $this->assertSame($literal, InlayArgument::isLiteral("f({$argument});", byteCol: 2), $argument);
     }
 
     /** @return iterable<string, array{string, bool}> */
@@ -29,6 +29,6 @@ final class InlayArgumentTest extends TestCase
 
     public function testAColumnPastTheLineIsNoLiteral(): void
     {
-        $this->assertFalse(InlayArgument::isLiteral('f(1)', 40));
+        $this->assertFalse(InlayArgument::isLiteral('f(1)', byteCol: 40));
     }
 }

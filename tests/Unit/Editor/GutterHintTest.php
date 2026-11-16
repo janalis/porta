@@ -43,10 +43,10 @@ final class GutterHintTest extends TestCase
         $store->setVcsMarks([0 => ChangeMarkKind::Added, 1 => ChangeMarkKind::Modified, 2 => ChangeMarkKind::Deleted]);
         $translator = new Translator('en');
 
-        $this->assertSame('Added · click to see the change', GutterHint::for($store, 0, GutterPart::Change, clickShowsChange: true, translator: $translator));
-        $this->assertSame('Modified', GutterHint::for($store, 1, GutterPart::Change, clickShowsChange: false, translator: $translator));
-        $this->assertSame('Deleted', GutterHint::for($store, 2, GutterPart::Change, clickShowsChange: false, translator: $translator));
-        $this->assertNull(GutterHint::for($store, 3, GutterPart::Change, clickShowsChange: true, translator: $translator));
+        $this->assertSame('Added · click to see the change', GutterHint::for($store, line: 0, part: GutterPart::Change, clickShowsChange: true, translator: $translator));
+        $this->assertSame('Modified', GutterHint::for($store, line: 1, part: GutterPart::Change, clickShowsChange: false, translator: $translator));
+        $this->assertSame('Deleted', GutterHint::for($store, line: 2, part: GutterPart::Change, clickShowsChange: false, translator: $translator));
+        $this->assertNull(GutterHint::for($store, line: 3, part: GutterPart::Change, clickShowsChange: true, translator: $translator));
     }
 
     /** A conversation's mark reads its summary — under the bookmark, over a diagnostic, as the column draws it. */

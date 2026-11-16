@@ -158,7 +158,7 @@ final class IdeEditingTest extends TestCase
                     $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'past the trail, nothing moves');
                     // Click 'src' → the folder is revealed and selected in the tree.
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + $column($tui, label: 'src') + 1, $rect->row + 1));
-                    $this->assertSame($project->path('src'), Widgets::byId($tui, 'tree', FileTreeWidget::class)->selectedNode()?->path, 'a folder crumb reveals its folder');
+                    $this->assertSame($project->path('src'), Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class)->selectedNode()?->path, 'a folder crumb reveals its folder');
                     $this->assertSame(4, Widgets::editor($tui)->getDocument()->cursorLine, 'and moves no caret');
                 },
             ],
@@ -182,11 +182,11 @@ final class IdeEditingTest extends TestCase
                     $this->frame($tui); // settle: the hook re-delivers identical spans
                     $this->assertSame('quiesce check', Toasts::last($ide), 'the toast is up');
 
-                    Probe::set($tui, 'renderRequested', false);
+                    Probe::set($tui, property: 'renderRequested', value: false);
                     $tui->tick(); // hooks run — identical spans must not re-invalidate
                     $tui->tick(); // a revision bump would surface as a request here
                     $this->assertFalse(
-                        (bool) Probe::get($tui, 'renderRequested'),
+                        (bool) Probe::get($tui, property: 'renderRequested'),
                         'a visible toast must not keep requesting frames (the perf.log in=0 passes=9 loop)',
                     );
                 },
@@ -212,8 +212,8 @@ final class IdeEditingTest extends TestCase
                     // The debounce only exists when the container actually
                     // injected the scheduler — a silently-null optional would
                     // put production back on the per-keystroke tokenizer path.
-                    $this->assertInstanceOf(RevoltScheduler::class, Probe::get($editor, 'scheduler'), 'the container wired the rescan scheduler');
-                    $editor->getDocument()->setCursor(6, 26);
+                    $this->assertInstanceOf(RevoltScheduler::class, Probe::get($editor, property: 'scheduler'), 'the container wired the rescan scheduler');
+                    $editor->getDocument()->setCursor(6, col: 26);
                     $tui->handleInput('X');
                     $this->await(
                         static function () use ($tui): bool {
@@ -294,7 +294,7 @@ final class IdeEditingTest extends TestCase
                     // One single-line copy and one spanning two lines, so the
                     // ⏎ has something to mark and the rows differ in shape.
                     foreach ([[1, 1], [2, 3]] as [$from, $to]) {
-                        $document->setCursor($from, 0);
+                        $document->setCursor($from, col: 0);
                         $document->beginSelect();
                         $document->setCursor($to, \strlen($document->getLine($to)), SelectionMode::Keep);
                         $tui->handleInput("\x03"); // ctrl+c
@@ -302,13 +302,13 @@ final class IdeEditingTest extends TestCase
 
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[118;6u"); // ctrl+shift+v
-                    $this->awaitPainted($tui, $terminal, 'Paste from History');
+                    $this->awaitPainted($tui, $terminal, needle: 'Paste from History');
 
                     // The CARD, not the screen: every string in this picker is
                     // also in the buffer behind it, so a screen-wide assertion
                     // passes on a picker that offers nothing at all — measured,
                     // by cutting the older entry and watching it still pass.
-                    $card = $this->card($this->screenGrid($tui, $terminal), 'Paste from History');
+                    $card = $this->card($this->screenGrid($tui, $terminal), title: 'Paste from History');
                     $this->assertStringContainsString('$beta = 2;⏎$gamma = 3;', $card, 'the two-line copy keeps its shape on one row');
                     $this->assertStringContainsString('$alpha = 1;', $card, 'and the older copy is still offered');
                 },
@@ -331,7 +331,7 @@ final class IdeEditingTest extends TestCase
             $project->path('src/Svc.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(8, 8); // inside run()
+                    Widgets::editor($tui)->getDocument()->setCursor(8, col: 8); // inside run()
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[99;8u"); // ctrl+alt+shift+c
 
@@ -363,7 +363,7 @@ final class IdeEditingTest extends TestCase
             $project->path('A.php'),
             [
                 300 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(30, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(30, col: 0);
                     $tui->handleInput('X'); // an edit, deep in A.php
                 },
                 400 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
@@ -387,7 +387,7 @@ final class IdeEditingTest extends TestCase
                     // screen — that line number belongs to another file.
                     $tui->handleInput("\x1b[1;5D");
                     // ctrl+left: away from the edit, no jump recorded
-                    $editor->getDocument()->setCursor(2, 0);
+                    $editor->getDocument()->setCursor(2, col: 0);
                     $tui->handleInput('Z');
 
                     // an edit in A.php at line 2
@@ -397,7 +397,7 @@ final class IdeEditingTest extends TestCase
                         ->openFile($project->path('B.php'), OpenFocus::Editor);
                     $tui->requestRender(force: true);
                     $tui->processRender();
-                    Widgets::editor($tui)->getDocument()->setCursor(1, 0);
+                    Widgets::editor($tui)->getDocument()->setCursor(1, col: 0);
                     $tui->handleInput('Q'); // an edit in B.php, the newest one
                 },
                 750 => function (Tui $tui, $terminal, Ide $ide) use ($project): void {
@@ -408,7 +408,7 @@ final class IdeEditingTest extends TestCase
 
                     $editor = Widgets::editor($tui);
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath());
-                    $editor->getDocument()->setCursor(20, 0);
+                    $editor->getDocument()->setCursor(20, col: 0);
 
                     $tui->handleInput("\x1b[127;6u"); // walk back into the deleted file
                     $this->assertStringEndsWith('A.php', (string) $editor->getFilePath(), 'still here');
@@ -429,7 +429,7 @@ final class IdeEditingTest extends TestCase
             [
                 300 => function (Tui $tui): void {
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[1;7B"); // ctrl+alt+down
                     $tui->handleInput("\x1b[1;7B");
                     $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
@@ -453,7 +453,7 @@ final class IdeEditingTest extends TestCase
             [
                 300 => function (Tui $tui): void {
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
                     $tui->handleInput("\x1b[1;7B");
                     $tui->handleInput("\x1b[1;7B"); // carets on lines 0,1,2
                     // A stray focus report between keystrokes must not collapse them.
@@ -481,7 +481,7 @@ final class IdeEditingTest extends TestCase
             $project->path('src/A.php'),
             [
                 300 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(1, 10); // inside "bar"
+                    Widgets::editor($tui)->getDocument()->setCursor(1, col: 10); // inside "bar"
                     $tui->handleInput("\x17"); // ctrl+w: expand to the word "bar"
                     $tui->handleInput("\x1b\x14"); // ctrl+alt+t: open the surround menu
                     $tui->handleInput("\x1b[B"); // down to "[ ] Brackets"
@@ -491,7 +491,7 @@ final class IdeEditingTest extends TestCase
                 // last step has to leave the effect painted — the loop stops
                 // 80 ms later and a tick is not a frame.
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, 'foo([bar])');
+                    $this->awaitPainted($tui, $terminal, needle: 'foo([bar])');
                 },
             ],
         );
@@ -512,19 +512,19 @@ final class IdeEditingTest extends TestCase
                 200 => static function ($tui, $terminal, Ide $ide): void {
                     // The 0.1 s flash will expire; the log is the only way back to it.
                     Services::resolve($ide, Notifier::class)
-                        ->flash('the answer is 42', 0.1);
+                        ->flash('the answer is 42', seconds: 0.1);
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_notifications');
                     // The log ROW is the last of the two things asserted: the
                     // tab title can be on screen before the entries render.
-                    $this->awaitPainted($tui, $terminal, 'the answer is 42');
+                    $this->awaitPainted($tui, $terminal, needle: 'the answer is 42');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Notifications', $screen, 'the dock tab opened');
 
                     // A flash landing while the tab is open appears live, newest first.
                     Services::resolve($ide, Notifier::class)
-                        ->flash('a later event', 0.1);
+                        ->flash('a later event', seconds: 0.1);
                     $tui->tick();
                     $panelText = AnsiUtils::stripAnsiCodes(\implode("\n", Paint::lines($tui->getById('results'), new RenderContext(160, 12))));
                     $this->assertLessThan(
@@ -535,10 +535,10 @@ final class IdeEditingTest extends TestCase
                     $tui->setFocus($tui->getById('results'));
                     $tui->handleInput("\r"); // Enter on a log row is inert
                     $tui->tick();
-                    $this->assertTrue(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isVisible(), 'the tab stays put on Enter');
+                    $this->assertTrue(Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->isVisible(), 'the tab stays put on Enter');
                     $tui->handleInput("\x1b"); // Esc hides the dock
                     $tui->tick();
-                    $this->assertFalse(Widgets::byId($tui, 'results', ResultsPanelWidget::class)->isVisible());
+                    $this->assertFalse(Widgets::byId($tui, id: 'results', class: ResultsPanelWidget::class)->isVisible());
                 },
             ],
         );
@@ -568,15 +568,15 @@ final class IdeEditingTest extends TestCase
                     $document = Widgets::editor($tui)->getDocument();
                     // Two lines first, then one — so the NEWEST entry is the
                     // single-line copy and the multi-line one is below it.
-                    $document->setCursor(1, 0);
+                    $document->setCursor(1, col: 0);
                     $document->beginSelect();
                     $document->setCursor(2, \strlen($document->getLine(2)), SelectionMode::Keep);
                     $tui->handleInput("\x03"); // ctrl+c
-                    $document->setCursor(2, 0);
+                    $document->setCursor(2, col: 0);
                     $document->beginSelect();
                     $document->setCursor(2, \strlen($document->getLine(2)), SelectionMode::Keep);
                     $tui->handleInput("\x03");
-                    $document->setCursor(0, 5); // caret after `<?php`, where the paste lands
+                    $document->setCursor(0, col: 5); // caret after `<?php`, where the paste lands
                 },
                 400 => static function ($tui, $terminal): void {
                     $terminal->clearOutput();
@@ -584,7 +584,7 @@ final class IdeEditingTest extends TestCase
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $this->assertTrue(EditorState::pickerOpen($tui->getById('editor')), 'the history opened');
-                    $rows = \explode("\n", $this->card($this->screenGrid($tui, $terminal), 'Paste from History'));
+                    $rows = \explode("\n", $this->card($this->screenGrid($tui, $terminal), title: 'Paste from History'));
                     $offering = \array_values(\array_filter($rows, static fn (string $row): bool => \str_contains($row, '$beta = 2;')));
 
                     // Both copies END in the same text, so a card-wide

@@ -32,7 +32,7 @@ final class PluginsSectionTest extends TestCase
         return new PluginsSection(new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new Translator('en'),
             $lifecycle,
             $tools->catalog,
@@ -58,7 +58,7 @@ final class PluginsSectionTest extends TestCase
         $plugins = new SettingsPluginsController(
             new PluginInstaller($project->dir, $project->dir, new Translator('en'), null),
             $pluginSettings,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new Translator('en'),
             $lifecycle,
             $tools->catalog,
@@ -73,7 +73,7 @@ final class PluginsSectionTest extends TestCase
         // 'pluginEnabled' is a changePlugin() key, not a change() key — if the
         // top-level 'plugins' section's change() ever fell through into
         // changePlugin(), this would toggle a bogus '' plugin.
-        $section->change('plugins', 'pluginEnabled', true);
+        $section->change('plugins', key: 'pluginEnabled', value: true);
 
         $this->assertSame([], $lifecycle->toggled, 'the top-level section never reaches changePlugin()');
     }
@@ -98,11 +98,11 @@ final class PluginsSectionTest extends TestCase
         ]);
         $section = self::section($project, $pluginSettings, $lifecycle, $scope, $files);
 
-        $section->reset('plugins', 'pluginSetting:binary');
-        $this->assertSame('/custom', $pluginSettings->value('demo', 'binary'), 'the index page resets nothing');
+        $section->reset('plugins', key: 'pluginSetting:binary');
+        $this->assertSame('/custom', $pluginSettings->value('demo', key: 'binary'), 'the index page resets nothing');
 
-        $section->reset('plugin:demo', 'pluginSetting:binary');
-        $this->assertSame('/stock', $pluginSettings->value('demo', 'binary'), 'a plugin page does');
+        $section->reset('plugin:demo', key: 'pluginSetting:binary');
+        $this->assertSame('/stock', $pluginSettings->value('demo', key: 'binary'), 'a plugin page does');
     }
 
     /**

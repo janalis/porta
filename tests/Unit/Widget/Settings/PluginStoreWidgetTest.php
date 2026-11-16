@@ -159,8 +159,8 @@ final class PluginStoreWidgetTest extends TestCase
                 ),
                 new StoreRow(self::entry('todo', StoreCategory::Productivity), StoreAction::Working),
             ],
-            false,
-            1,
+            refreshing: false,
+            updateCount: 1,
         );
     }
 
@@ -171,7 +171,7 @@ final class PluginStoreWidgetTest extends TestCase
         foreach (['alpha', 'bravo', 'charlie', 'delta', 'echo'] as $name) {
             $rows[] = new StoreRow(self::entry($name), StoreAction::Get);
         }
-        $this->widget->setStore($rows, false, 0);
+        $this->widget->setStore($rows, refreshing: false, updateCount: 0);
     }
 
     private function installed(): void
@@ -298,7 +298,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertStringContainsString('Bravo', $this->screen(60));
 
         $this->density->observe(24);
-        $screen = $this->screen(100, 24);
+        $screen = $this->screen(100, rows: 24);
         $this->assertMatchesRegularExpression('/\[Al\] Alpha\s+│  Get  │/u', $screen);
         $this->assertStringContainsString('Does alpha · Ada · Linters & formatters', $screen);
         $this->assertStringContainsString('Discover │ Categories │', $screen, 'the compact strip');
@@ -306,7 +306,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertStringNotContainsString('┌────┐', $screen);
 
         $this->shelf();
-        $screen = $this->screen(100, 24);
+        $screen = $this->screen(100, rows: 24);
         $this->assertMatchesRegularExpression('/^ Featured\s*$/mu', $screen, 'compact, the banner is a plain shelf');
         $this->assertStringNotContainsString('╭ Featured', $screen);
     }
@@ -314,7 +314,7 @@ final class PluginStoreWidgetTest extends TestCase
     public function testAStoreWiredToNothingStillDrawsAndAnswersTheKeys(): void
     {
         $bare = new PluginStoreWidget(new Translator('en'));
-        $bare->setStore([new StoreRow(self::entry('rector', screenshots: [self::SHOT]), StoreAction::Get)], false, 0);
+        $bare->setStore([new StoreRow(self::entry('rector', screenshots: [self::SHOT]), StoreAction::Get)], refreshing: false, updateCount: 0);
         $bare->setInstalled([], new SettingsRow(key: 'configScope', label: 'Save changes to', kind: SettingsRowKind::Choice, value: 'project', restart: false, options: ['project']));
         $bare->render(new RenderContext(100, 40));
         foreach (["\r", ' ', "\x1b", ']', ']', ']', 'U'] as $key) {
@@ -326,7 +326,7 @@ final class PluginStoreWidgetTest extends TestCase
         $bare->handleInput("\r");
         $bare->handleInput('x');
         $bare->handleInput("\r"); // nothing to hand the source to
-        $bare->setInstalled([new InstalledPlugin('git', '', 'on')], null);
+        $bare->setInstalled([new InstalledPlugin('git', '', 'on')], scope: null);
         $bare->render(new RenderContext(100, 40));
         $bare->handleInput("\x1b[B");
         $bare->render(new RenderContext(100, 40));
@@ -369,25 +369,25 @@ final class PluginStoreWidgetTest extends TestCase
     public function testTheSelectionScrollsIntoViewAndTheWheelScrollsWithoutMovingIt(): void
     {
         $this->shelf();
-        $this->assertStringContainsString('╭ Featured', $this->screen(100, 14));
+        $this->assertStringContainsString('╭ Featured', $this->screen(100, rows: 14));
         $this->key("\x1b[B", "\x1b[B", "\x1b[B");
-        $screen = $this->screen(100, 14);
+        $screen = $this->screen(100, rows: 14);
         $this->assertStringContainsString('Productivity', $screen, 'the last shelf, its heading with it');
         $this->assertStringNotContainsString('╭ Featured', $screen);
 
         $this->widget->scrollBy(-20);
-        $this->assertStringContainsString('╭ Featured', $this->screen(100, 14));
+        $this->assertStringContainsString('╭ Featured', $this->screen(100, rows: 14));
         $this->widget->handleInput(' ');
         $this->assertSame([], $this->pressed, 'todo, still selected, is Working');
         $this->widget->scrollBy(3);
-        $this->assertStringNotContainsString('╭ Featured', $this->screen(100, 14));
+        $this->assertStringNotContainsString('╭ Featured', $this->screen(100, rows: 14));
 
         // Scrolled, a click and the pointer still find what is drawn under them.
-        [$row] = $this->at('Does rector', 100, 14);
-        $get = (int) \mb_strpos(\explode("\n", $this->screen(100, 14))[$row], needle: 'Get');
+        [$row] = $this->at('Does rector', columns: 100, rows: 14);
+        $get = (int) \mb_strpos(\explode("\n", $this->screen(100, rows: 14))[$row], needle: 'Get');
         $this->assertTrue($this->widget->hoverAt($row, $get));
-        $this->assertStringContainsString("\e[4m", $this->raw(100, 14), 'the button drawn under the pointer underlines');
-        [$row, $col] = $this->at('Does rector', 100, 14);
+        $this->assertStringContainsString("\e[4m", $this->raw(100, rows: 14), 'the button drawn under the pointer underlines');
+        [$row, $col] = $this->at('Does rector', columns: 100, rows: 14);
         $this->widget->handleClick($row, $col);
         $this->widget->handleClick($row, $col);
         $this->assertSame('acme/porta-rector', $this->widget->detail(), 'the tile drawn there, not the one that row held unscrolled');
@@ -395,7 +395,7 @@ final class PluginStoreWidgetTest extends TestCase
 
         $this->widget->scrollBy(10);
         $this->key(']', '[');
-        $this->assertStringContainsString('╭ Featured', $this->screen(100, 14), 'a tab is shown from its top');
+        $this->assertStringContainsString('╭ Featured', $this->screen(100, rows: 14), 'a tab is shown from its top');
     }
 
     public function testCategoriesListsEveryCategoryAndOpensOne(): void
@@ -418,10 +418,10 @@ final class PluginStoreWidgetTest extends TestCase
 
         // A page down is a screen of the list, not its end.
         $this->widget->showTab(StoreTab::Categories);
-        $this->screen(100, 14);
+        $this->screen(100, rows: 14);
         $this->widget->handleInput("\x1b[6~");
         $this->widget->handleInput("\r");
-        $trail = \explode("\n", $this->screen(100, 14))[0];
+        $trail = \explode("\n", $this->screen(100, rows: 14))[0];
         $this->assertDoesNotMatchRegularExpression('/Languages|Other/u', $trail, 'neither the first category nor the last: '.$trail);
         $this->assertStringContainsString('Settings › Plugins › ', $trail);
 
@@ -444,7 +444,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->key("\x1b[B", ' ');
         $this->assertSame(['acme/porta-phpunit'], $this->pressed);
 
-        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], false, 0);
+        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], refreshing: false, updateCount: 0);
         $this->assertStringContainsString('Every plugin is up to date', $this->screen());
     }
 
@@ -528,7 +528,7 @@ final class PluginStoreWidgetTest extends TestCase
     public function testASearchHitOpensTheInstalledTabOnItsControl(): void
     {
         $this->installed();
-        $this->widget->showTab(StoreTab::Installed, 'install');
+        $this->widget->showTab(StoreTab::Installed, select: 'install');
         $this->screen();
         $this->key("\r", 'x', "\r");
         $this->assertSame([['pluginInstall', 'x']], $this->changes);
@@ -537,15 +537,15 @@ final class PluginStoreWidgetTest extends TestCase
     public function testAnInstalledPluginTheStoreDoesNotListAsItsCopyIsNotLookedUp(): void
     {
         // A takeover offered beside the bundled plugin is Get: not the copy installed.
-        $this->widget->setStore([new StoreRow(self::entry('git'), StoreAction::Get)], false, 0);
-        $this->widget->setInstalled([new InstalledPlugin('git', '', 'on · built-in')], null);
+        $this->widget->setStore([new StoreRow(self::entry('git'), StoreAction::Get)], refreshing: false, updateCount: 0);
+        $this->widget->setInstalled([new InstalledPlugin('git', '', 'on · built-in')], scope: null);
         $this->widget->showTab(StoreTab::Installed);
         $screen = $this->screen();
         $this->assertStringNotContainsString('Save changes to', $screen, 'no scope to choose');
         $this->assertStringNotContainsString('No plugin is installed', $screen);
-        $this->widget->setInstalled([], null);
+        $this->widget->setInstalled([], scope: null);
         $this->assertStringContainsString('No plugin is installed', $this->screen());
-        $this->widget->setInstalled([new InstalledPlugin('git', '', 'on · built-in')], null);
+        $this->widget->setInstalled([new InstalledPlugin('git', '', 'on · built-in')], scope: null);
         $this->assertStringNotContainsString('Does git', $screen);
         $this->screen();
         $this->key("\x1b[B", ' ');
@@ -581,9 +581,9 @@ final class PluginStoreWidgetTest extends TestCase
 
     public function testWhatAnEmptyStoreSays(): void
     {
-        $this->widget->setStore([], true, 0);
+        $this->widget->setStore([], refreshing: true, updateCount: 0);
         $this->assertStringContainsString('Asking Packagist…', $this->screen());
-        $this->widget->setStore([], false, 0);
+        $this->widget->setStore([], refreshing: false, updateCount: 0);
         $this->assertStringContainsString('The store is empty: Packagist could not be reached', $this->screen());
         $this->key(' ', "\r", "\x1b[B");
         $this->assertNull($this->widget->detail(), 'nothing to select');
@@ -617,7 +617,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertTrue($this->widget->clearHover());
         $this->assertFalse($this->widget->clearHover());
 
-        $this->widget->handleClick(39, 5); // past everything
+        $this->widget->handleClick(39, relCol: 5); // past everything
         [$stripRow, $updatesCol] = $this->at('Updates (1)');
         $this->widget->handleClick($stripRow - 1, $updatesCol); // over the tab, on the strip's upper rule
         $this->assertSame(StoreTab::Discover, $this->widget->tab());
@@ -626,10 +626,10 @@ final class PluginStoreWidgetTest extends TestCase
         $this->widget->showTab(StoreTab::Discover);
         $this->click('Updates (1)');
         $this->assertSame(StoreTab::Updates, $this->widget->tab());
-        $this->widget->handleClick(2, 99); // past every tab
+        $this->widget->handleClick(2, relCol: 99); // past every tab
         $this->assertSame(StoreTab::Updates, $this->widget->tab());
 
-        $this->widget->handleClick(0, 2); // Settings
+        $this->widget->handleClick(0, relCol: 2); // Settings
         $this->assertSame(['general'], $this->crumbs);
         $this->assertTrue($this->widget->hoverCrumb(2));
         $this->assertFalse($this->widget->hoverCrumb(2));
@@ -641,12 +641,12 @@ final class PluginStoreWidgetTest extends TestCase
         $this->shelf();
         $this->screen();
         $this->key("\x1b[B", "\r"); // rector's page
-        $this->screen(120, 60);
-        $this->widget->setAsset(self::CHANGELOG, null);
-        $this->widget->setAsset(self::README, "# Rector\n");
+        $this->screen(120, rows: 60);
+        $this->widget->setAsset(self::CHANGELOG, body: null);
+        $this->widget->setAsset(self::README, body: "# Rector\n");
         $this->widget->setAsset(self::SHOT, self::png());
-        $this->widget->setAsset(self::SHOT_2, null);
-        $this->screen(120, 60);
+        $this->widget->setAsset(self::SHOT_2, body: null);
+        $this->screen(120, rows: 60);
         $this->assertCount(5, $this->asked);
 
         $this->widget->closeDetail();
@@ -654,7 +654,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->screen();
         $this->key("\r");
         $this->assertSame('acme/porta-rector', $this->widget->detail());
-        $this->screen(120, 60);
+        $this->screen(120, rows: 60);
         $this->assertSame([self::CHANGELOG, '!'.self::SHOT_2], $this->asked, 'only what answered nothing, and what never answered stays asked');
     }
 
@@ -666,7 +666,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertSame('acme/porta-rector', $this->widget->detail());
         $this->assertSame([self::CHANGELOG, self::README, '!'.self::SHOT, '!'.self::SHOT_2, '!'.self::SHOT_3], $this->asked, 'every screenshot it has');
 
-        $screen = $this->screen(120, 60);
+        $screen = $this->screen(120, rows: 60);
         $this->assertStringContainsString('Settings › Plugins › Rector', $screen);
         $this->assertStringContainsString('Esc back · ⏎ get · ←/→ screenshots', $screen);
         $this->assertMatchesRegularExpression('/│ Re │ Does rector\s+│  Get  │/u', $screen);
@@ -678,12 +678,12 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertMatchesRegularExpression("/What's New\\s+v1\\.0\\.0 · 2027-01-15/u", $screen);
         $this->assertMatchesRegularExpression('/Downloads\s+1,234/', $screen);
 
-        $this->widget->setAsset(self::CHANGELOG, "# Changelog\n\n## [Unreleased]\n- soon\n\n## [1.0.0] - 2027-01-15\n- **Fixed** the thing\n\n## [0.9.0]\n- older\n");
-        $this->widget->setAsset(self::README, "# Rector\n\nRefactor *everything*.\n");
+        $this->widget->setAsset(self::CHANGELOG, body: "# Changelog\n\n## [Unreleased]\n- soon\n\n## [1.0.0] - 2027-01-15\n- **Fixed** the thing\n\n## [0.9.0]\n- older\n");
+        $this->widget->setAsset(self::README, body: "# Rector\n\nRefactor *everything*.\n");
         $this->widget->setAsset(self::SHOT, self::png());
         $this->widget->setAsset(self::SHOT_2, self::png());
         $this->widget->setAsset(self::SHOT_3, self::png());
-        $screen = $this->screen(100, 80);
+        $screen = $this->screen(100, rows: 80);
         $this->assertStringContainsString('Fixed the thing', $screen);
         $this->assertStringNotContainsString('older', $screen);
         $this->assertStringNotContainsString('soon', $screen);
@@ -695,25 +695,25 @@ final class PluginStoreWidgetTest extends TestCase
             \array_filter(\explode("\n", $screen), static fn (string $line): bool => 1 === \preg_match('/^ ▀{20}  ▀{20}  ▀{20} +$/u', $line)),
             'three screenshots side by side, each as tall as the strip, two columns apart',
         );
-        $narrow = \array_filter(\explode("\n", $this->screen(40, 80)), static fn (string $line): bool => 1 === \preg_match('/▀{4}/u', $line));
+        $narrow = \array_filter(\explode("\n", $this->screen(40, rows: 80)), static fn (string $line): bool => 1 === \preg_match('/▀{4}/u', $line));
         $this->assertSame(
             [2],
             \array_values(\array_unique(\array_map(static fn (string $line): int => (int) \preg_match_all('/▀+/u', $line), $narrow))),
             'a narrow page shows what fits, the rest cut off',
         );
-        $this->widget->setAsset(self::SHOT_2, null);
-        $this->assertStringContainsString('The screenshot could not be shown', $this->screen(100, 80), 'the second stands beside the first');
-        $this->assertMatchesRegularExpression('/^ ▀{20} +The screenshot could not be shown/mu', $this->screen(100, 80));
+        $this->widget->setAsset(self::SHOT_2, body: null);
+        $this->assertStringContainsString('The screenshot could not be shown', $this->screen(100, rows: 80), 'the second stands beside the first');
+        $this->assertMatchesRegularExpression('/^ ▀{20} +The screenshot could not be shown/mu', $this->screen(100, rows: 80));
         $this->key("\x1b[C"); // the strip moves on one
-        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, 80));
-        $this->assertMatchesRegularExpression('/^ +The screenshot could not be shown +▀{20} +$/mu', $this->screen(100, 80), 'it starts at the second');
+        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, rows: 80));
+        $this->assertMatchesRegularExpression('/^ +The screenshot could not be shown +▀{20} +$/mu', $this->screen(100, rows: 80), 'it starts at the second');
         $this->assertCount(5, $this->asked, 'nothing it shows was not asked for already');
         $this->key("\x1b[C", "\x1b[C");
-        $this->assertStringContainsString('Preview  ‹ 3/3 ›', $this->screen(100, 80), 'it stops at the last');
+        $this->assertStringContainsString('Preview  ‹ 3/3 ›', $this->screen(100, rows: 80), 'it stops at the last');
         $this->key("\x1b[D");
-        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, 80), 'back one');
+        $this->assertStringContainsString('Preview  ‹ 2/3 ›', $this->screen(100, rows: 80), 'back one');
         $this->key("\x1b[D", "\x1b[D");
-        $this->assertStringContainsString('Preview  ‹ 1/3 ›', $this->screen(100, 80), 'and it stops at the first');
+        $this->assertStringContainsString('Preview  ‹ 1/3 ›', $this->screen(100, rows: 80), 'and it stops at the first');
 
         $this->key(' ', "\r");
         $this->assertSame(['acme/porta-rector', 'acme/porta-rector'], $this->pressed);
@@ -727,8 +727,8 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertCount(3, $this->pressed);
         $this->widget->handleClick($row + 1, $col); // and its bottom one
         $this->assertCount(4, $this->pressed);
-        $this->assertTrue($this->widget->hoverAt($row + 4, 5));
-        $this->widget->handleClick($row + 4, 5); // elsewhere on the page
+        $this->assertTrue($this->widget->hoverAt($row + 4, relCol: 5));
+        $this->widget->handleClick($row + 4, relCol: 5); // elsewhere on the page
         $this->assertCount(4, $this->pressed);
         // Tab goes through the page's links — its package and its source here — and round to the button.
         $this->key("\t", "\r");
@@ -752,12 +752,12 @@ final class PluginStoreWidgetTest extends TestCase
         $this->shelf();
         $this->screen();
         $this->key("\r"); // phpunit, first in the banner: one screenshot-less page
-        $this->assertStringContainsString('Esc back · ⏎ update', $this->screen(100, 12));
+        $this->assertStringContainsString('Esc back · ⏎ update', $this->screen(100, rows: 12));
         $this->assertSame([self::CHANGELOG, self::README], $this->asked);
 
         $this->widget->handleInput("\x1b[B");
         $this->widget->handleInput("\x1b[B");
-        $this->assertStringNotContainsString('┌────┐', $this->screen(100, 12), 'scrolled past the header');
+        $this->assertStringNotContainsString('┌────┐', $this->screen(100, rows: 12), 'scrolled past the header');
         foreach (["\x1b[A", "\x1b[A", "\x1b[6~", "\x1b[5~"] as $key) {
             $this->widget->handleInput($key);
         }
@@ -765,7 +765,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->widget->scrollBy(-1);
         $this->widget->handleInput("\x1b[C"); // no screenshots: nothing to page
         $this->widget->handleInput("\x1b[D");
-        $this->assertStringContainsString('┌────┐', $this->screen(100, 12));
+        $this->assertStringContainsString('┌────┐', $this->screen(100, rows: 12));
 
         $this->key("\x1b");
         $this->assertNull($this->widget->detail());
@@ -794,10 +794,10 @@ final class PluginStoreWidgetTest extends TestCase
             replaces: 'mago',
             compatible: false,
         );
-        $this->widget->setStore([new StoreRow($entry, StoreAction::Incompatible)], false, 0);
+        $this->widget->setStore([new StoreRow($entry, StoreAction::Incompatible)], refreshing: false, updateCount: 0);
         $this->assertStringContainsString('Ada · Other · v1.0.0', $this->screen(), 'no description: its category says what it is');
         $this->key("\r");
-        $screen = $this->screen(100, 40);
+        $screen = $this->screen(100, rows: 40);
 
         $this->assertStringContainsString('Replaces the built-in mago plugin', $screen);
         $this->assertStringContainsString('No release of it runs on this Porta', $screen);
@@ -807,7 +807,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->key(' ');
         $this->assertSame([], $this->pressed, 'Incompatible does nothing');
 
-        $this->widget->setStore([], false, 0);
+        $this->widget->setStore([], refreshing: false, updateCount: 0);
         $this->assertNull($this->widget->detail());
     }
 
@@ -830,17 +830,17 @@ final class PluginStoreWidgetTest extends TestCase
                 new StoreRow(self::entry('chroma', StoreCategory::Languages), StoreAction::Enable),
                 new StoreRow(self::entry('phpactor', StoreCategory::Languages), StoreAction::Get),
             ],
-            false,
-            0,
+            refreshing: false,
+            updateCount: 0,
         );
         $rows = static fn (): array => \array_map(
             static fn (string $line): string => AnsiUtils::stripAnsiCodes(Bidi::reorder($line, BaseDirection::Rtl)),
             $widget->render(new RenderContext(86, 14)),
         );
         $shelf = $rows();
-        $top = self::rowWith($shelf, '┌────┐');
-        $middle = self::rowWith($shelf, '│ Ch │');
-        $bottom = self::rowWith($shelf, '└────┘');
+        $top = self::rowWith($shelf, needle: '┌────┐');
+        $middle = self::rowWith($shelf, needle: '│ Ch │');
+        $bottom = self::rowWith($shelf, needle: '└────┘');
         $this->assertSame(\mb_strrpos($top, needle: '┌────┐'), \mb_strpos($middle, needle: '│ Ch │'), 'chroma\'s icon: one box, at the right as a mirrored row starts');
         $this->assertSame(\mb_strrpos($top, needle: '┌────┐'), \mb_strrpos($bottom, needle: '└────┘'));
         $this->assertGreaterThan(\mb_strpos($middle, needle: 'Does chroma'), \mb_strpos($middle, needle: '│ Ch │'), 'the icon right of its text');
@@ -848,8 +848,8 @@ final class PluginStoreWidgetTest extends TestCase
 
         $widget->handleInput("\r");
         $page = $rows();
-        $captions = self::rowWith($page, 'ןוישיר');
-        $values = self::rowWith($page, 'MIT');
+        $captions = self::rowWith($page, needle: 'ןוישיר');
+        $values = self::rowWith($page, needle: 'MIT');
         $this->assertSame(\mb_strpos($captions, needle: '│'), \mb_strpos($values, needle: '│'), 'the cells line up');
         $this->assertLessThan(\mb_strpos($values, needle: '│'), \mb_strpos($values, needle: 'MIT'), 'the licence under its caption, the leftmost');
         $this->assertLessThan(\mb_strpos($captions, needle: '│'), \mb_strpos($captions, needle: 'ןוישיר'));
@@ -877,7 +877,7 @@ final class PluginStoreWidgetTest extends TestCase
         $this->shelf();
         $this->assertMatchesRegularExpression('/│ Re │ Does rector/u', $this->screen());
 
-        $this->widget->setArt('acme/porta-rector', new Art(icon: PngFixture::bytes(32, 32)));
+        $this->widget->setArt('acme/porta-rector', new Art(icon: PngFixture::bytes(32, height: 32)));
         $screen = $this->screen();
         $this->assertDoesNotMatchRegularExpression('/│ Re │/u', $screen, 'the picture takes the box');
         $this->assertMatchesRegularExpression('/^ ▀{6} Rector/mu', $screen, 'six columns wide');
@@ -885,19 +885,19 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertStringContainsString('│ To │', $screen, 'a plugin with no picture keeps its initials');
 
         $this->density->observe(24);
-        $screen = $this->screen(100, 24);
+        $screen = $this->screen(100, rows: 24);
         $this->assertMatchesRegularExpression('/^ ▀{4} Rector/mu', $screen, 'compact, four columns');
         $this->assertMatchesRegularExpression('/^ ▀{4} Does rector · Ada/mu', $screen, 'and two rows: what it is beside the second');
         $this->assertStringContainsString('[To]', $screen);
 
         $this->widget->setArt('acme/porta-rector', new Art(icon: 'not a png'));
-        $this->assertStringContainsString('[Re]', $this->screen(100, 24), 'a picture that cannot be drawn leaves the initials');
+        $this->assertStringContainsString('[Re]', $this->screen(100, rows: 24), 'a picture that cannot be drawn leaves the initials');
     }
 
     public function testAnInstalledPluginWearsItsStoreIcon(): void
     {
         $this->installed();
-        $this->widget->setArt('acme/porta-phpunit', new Art(icon: PngFixture::bytes(32, 32)));
+        $this->widget->setArt('acme/porta-phpunit', new Art(icon: PngFixture::bytes(32, height: 32)));
         $screen = $this->screen();
         $this->assertMatchesRegularExpression('/▀{6} Phpunit/u', $screen);
         $this->assertMatchesRegularExpression('/│ Gi │ Git history/u', $screen, 'one the store does not know keeps its initials');
@@ -907,7 +907,7 @@ final class PluginStoreWidgetTest extends TestCase
     {
         $this->shelf();
         $plain = \explode("\n", $this->screen());
-        $this->widget->setArt('acme/porta-phpunit', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->widget->setArt('acme/porta-phpunit', new Art(hero: PngFixture::bytes(320, height: 90)));
         $lines = \explode("\n", $this->screen());
         $title = \array_key_first(\array_filter($lines, static fn (string $line): bool => \str_contains($line, 'Phpunit')));
         $this->assertMatchesRegularExpression('/^ │ +▀{20,}/u', $lines[$title - 2], 'inside the banner, over the tile');
@@ -922,7 +922,7 @@ final class PluginStoreWidgetTest extends TestCase
             'the shelf grows by the picture alone',
         );
 
-        $this->widget->setArt('acme/porta-rector', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->widget->setArt('acme/porta-rector', new Art(hero: PngFixture::bytes(320, height: 90)));
         $this->assertCount(
             $pictureRows,
             \array_filter(\explode("\n", $this->screen()), static fn (string $line): bool => 1 === \preg_match('/^ │ +▀{20,}/u', $line)),
@@ -932,19 +932,19 @@ final class PluginStoreWidgetTest extends TestCase
         // Down the shelf, the banner scrolled away, and back up: the featured tile brings its picture into view.
         foreach (["\x1b[B", "\x1b[B", "\x1b[B"] as $key) {
             $this->widget->handleInput($key);
-            $this->screen(100, 24);
+            $this->screen(100, rows: 24);
         }
-        $this->assertDoesNotMatchRegularExpression('/╭ Featured/u', $this->screen(100, 24), 'its top scrolled away');
+        $this->assertDoesNotMatchRegularExpression('/╭ Featured/u', $this->screen(100, rows: 24), 'its top scrolled away');
         foreach (["\x1b[A", "\x1b[A", "\x1b[A"] as $key) {
             $this->widget->handleInput($key);
-            $this->screen(100, 24);
+            $this->screen(100, rows: 24);
         }
-        $short = \explode("\n", $this->screen(100, 24));
+        $short = \explode("\n", $this->screen(100, rows: 24));
         $this->assertMatchesRegularExpression('/^ ╭ Featured/u', $short[5], 'the banner\'s top, with the picture under it');
         $this->assertMatchesRegularExpression('/^ │ +▀{20,}/u', $short[6]);
 
         $this->density->observe(24);
-        $this->assertDoesNotMatchRegularExpression('/▀{20,}/u', $this->screen(100, 24), 'compact, no picture: the banner is a plain shelf');
+        $this->assertDoesNotMatchRegularExpression('/▀{20,}/u', $this->screen(100, rows: 24), 'compact, no picture: the banner is a plain shelf');
     }
 
     public function testThePageShowsItsIconAndTheScreenshotsItsReadmeShows(): void
@@ -956,9 +956,9 @@ final class PluginStoreWidgetTest extends TestCase
         $this->assertSame([self::CHANGELOG, self::README], $this->asked, 'it lists no screenshot');
         $this->assertStringNotContainsString('Preview', $this->screen());
 
-        $this->widget->setArt('acme/porta-todo', new Art(icon: PngFixture::bytes(64, 64), shots: [self::SHOT_2]));
+        $this->widget->setArt('acme/porta-todo', new Art(icon: PngFixture::bytes(64, height: 64), shots: [self::SHOT_2]));
         $this->assertSame([self::CHANGELOG, self::README, '!'.self::SHOT_2], $this->asked, 'its README\'s screenshot is asked for as it is found');
-        $screen = $this->screen(100, 40);
+        $screen = $this->screen(100, rows: 40);
         $this->assertMatchesRegularExpression('/^ ▀{10} Todo/mu', $screen, 'a large icon by its name');
         $this->assertCount(5, \array_filter(\explode("\n", $screen), static fn (string $line): bool => 1 === \preg_match('/^ ▀{10} /u', $line)), 'five rows tall');
         $this->assertStringContainsString('Preview', $screen);
@@ -973,18 +973,18 @@ final class PluginStoreWidgetTest extends TestCase
     public function testASecondRowOfFeaturedPluginsBringsItsPicturesIntoViewWithIt(): void
     {
         $names = ['alpha', 'bravo', 'charlie', 'delta'];
-        $this->widget->setStore(\array_map(static fn (string $name): StoreRow => new StoreRow(self::entry($name, featured: true), StoreAction::Get), $names), false, 0);
+        $this->widget->setStore(\array_map(static fn (string $name): StoreRow => new StoreRow(self::entry($name, featured: true), StoreAction::Get), $names), refreshing: false, updateCount: 0);
         foreach ($names as $name) {
-            $this->widget->setArt('acme/porta-'.$name, new Art(hero: PngFixture::bytes(320, 90)));
+            $this->widget->setArt('acme/porta-'.$name, new Art(hero: PngFixture::bytes(320, height: 90)));
         }
         /** @param list<string> $keys */
         $walk = function (array $keys): array {
             foreach ($keys as $key) {
                 $this->widget->handleInput($key);
-                $this->screen(100, 16);
+                $this->screen(100, rows: 16);
             }
 
-            return \explode("\n", $this->screen(100, 16));
+            return \explode("\n", $this->screen(100, rows: 16));
         };
 
         // To the foot of the shelf, then up to Charlie, the banner's second row.
@@ -999,7 +999,7 @@ final class PluginStoreWidgetTest extends TestCase
 
         // Pictures whose header says a size but that cannot be drawn: the second row brings only itself, the first the banner's top.
         foreach ($names as $name) {
-            $this->widget->setArt('acme/porta-'.$name, new Art(hero: \substr(PngFixture::bytes(320, 90), offset: 0, length: 33)));
+            $this->widget->setArt('acme/porta-'.$name, new Art(hero: \substr(PngFixture::bytes(320, height: 90), offset: 0, length: 33)));
         }
         $walk(\array_fill(start_index: 0, count: 8, value: "\x1b[B"));
         $lines = $walk(["\x1b[A", "\x1b[A"]);
@@ -1016,24 +1016,28 @@ final class PluginStoreWidgetTest extends TestCase
         $this->screen();
         $this->key("\x1b[B", "\r"); // rector's page
         foreach ([self::SHOT, self::SHOT_2, self::SHOT_3] as $i => $url) {
-            $this->widget->setAsset($url, PngFixture::bytes(32, 32, [40 * $i, 0, 0]));
+            $this->widget->setAsset($url, PngFixture::bytes(32, height: 32, rgb: [40 * $i, 0, 0]));
         }
-        $this->screen(100, 80);
+        $this->screen(100, rows: 80);
         $terminal->clearOutput();
 
         $this->key("\x1b[C");
-        $this->screen(100, 80);
+        $this->screen(100, rows: 80);
         $this->assertStringContainsString('a=d,d=I,', $terminal->getOutput(), 'the first, out of the strip, is deleted');
     }
 
     /** A row of featured plugins stands pictures over every tile or none: one alone left a hole beside it. */
     public function testARowOfFeaturedPluginsHasPicturesOverAllItsTilesOrNone(): void
     {
-        $this->widget->setStore([new StoreRow(self::entry('alpha', featured: true), StoreAction::Get), new StoreRow(self::entry('bravo', featured: true), StoreAction::Get)], false, 0);
-        $this->widget->setArt('acme/porta-bravo', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->widget->setStore(
+            [new StoreRow(self::entry('alpha', featured: true), StoreAction::Get), new StoreRow(self::entry('bravo', featured: true), StoreAction::Get)],
+            refreshing: false,
+            updateCount: 0,
+        );
+        $this->widget->setArt('acme/porta-bravo', new Art(hero: PngFixture::bytes(320, height: 90)));
         $this->assertDoesNotMatchRegularExpression('/▀{45}/u', $this->screen(), 'only the second has one: none');
 
-        $this->widget->setArt('acme/porta-alpha', new Art(hero: PngFixture::bytes(320, 90)));
+        $this->widget->setArt('acme/porta-alpha', new Art(hero: PngFixture::bytes(320, height: 90)));
         $this->assertMatchesRegularExpression('/^ │  ▀{45}   ▀{45}  │$/mu', $this->screen(), 'both: over each');
     }
 
@@ -1047,7 +1051,7 @@ final class PluginStoreWidgetTest extends TestCase
         foreach (['alpha', 'bravo', 'charlie', 'delta', 'echo'] as $name) {
             $rows[] = new StoreRow(self::entry($name), StoreAction::Get);
         }
-        $this->widget->setStore($rows, false, 0);
+        $this->widget->setStore($rows, refreshing: false, updateCount: 0);
         $this->screen();
         $this->key("\x1b[B", "\r");
         $this->assertSame('acme/porta-alpha', $this->widget->detail());
@@ -1056,29 +1060,29 @@ final class PluginStoreWidgetTest extends TestCase
     /** A page's Markdown links are its own: a README's relative one leads to its page on GitHub, an anchor nowhere. */
     public function testAPagesReadmeLinksAreFollowed(): void
     {
-        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], false, 0);
+        $this->widget->setStore([new StoreRow(self::entry('rector'), StoreAction::Get)], refreshing: false, updateCount: 0);
         $this->screen();
         $this->key("\r");
         $this->widget->setAsset(
             self::README,
             "# Rector\n\n- [ ] a task\n\nSee [usage](docs/usage.md), [top](#top) and [site](https://rector.test).\n\n".\str_repeat("Line.\n\n", times: 40)."[last](https://last.test)\n",
         );
-        $this->widget->setAsset(self::CHANGELOG, null);
-        $this->screen(100, 20);
+        $this->widget->setAsset(self::CHANGELOG, body: null);
+        $this->screen(100, rows: 20);
         $this->key("\t", "\r", "\t", "\r");
         $this->assertSame(['https://raw.test/docs/usage.md', 'https://rector.test'], $this->links, 'the anchor is no link to follow, nor the task\'s box');
-        [$row, $col] = $this->at('site', 100, 20);
+        [$row, $col] = $this->at('site', columns: 100, rows: 20);
         $this->widget->handleClick($row, $col);
         $this->widget->handleClick($row, $col - 1);
         $this->assertSame('https://rector.test', \array_last($this->links), 'a click on it follows it');
         $this->assertCount(3, $this->links, 'beside it, nothing');
         $this->widget->handleInput("\t");
-        $this->assertStringContainsString('last', $this->screen(100, 20), 'the page scrolls to the link Tab is on');
-        [$row, $col] = $this->at('last', 100, 20);
+        $this->assertStringContainsString('last', $this->screen(100, rows: 20), 'the page scrolls to the link Tab is on');
+        [$row, $col] = $this->at('last', columns: 100, rows: 20);
         $this->widget->handleClick($row, $col);
         $this->assertSame('https://last.test', \array_last($this->links), 'a click on a page scrolled down');
-        $this->assertSame('https://github.com/acme/porta-x/blob/abc/docs/a.md', StorePage::address('docs/a.md', 'https://raw.githubusercontent.com/acme/porta-x/abc/README.md'));
-        $this->assertNull(StorePage::address('mailto:ada@x.test', 'https://raw.test/README.md'));
-        $this->assertNull(StorePage::address('docs/a.md', ''));
+        $this->assertSame('https://github.com/acme/porta-x/blob/abc/docs/a.md', StorePage::address('docs/a.md', base: 'https://raw.githubusercontent.com/acme/porta-x/abc/README.md'));
+        $this->assertNull(StorePage::address('mailto:ada@x.test', base: 'https://raw.test/README.md'));
+        $this->assertNull(StorePage::address('docs/a.md', base: ''));
     }
 }

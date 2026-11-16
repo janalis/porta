@@ -27,7 +27,7 @@ final class JsonRpcTransportTest extends TestCase
         });
         $this->assertTrue($transport->start(static function (): void {}));
 
-        $process = Probe::get($transport, 'process');
+        $process = Probe::get($transport, property: 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
         $pid = \proc_get_status($process)['pid'];
 
@@ -62,11 +62,11 @@ final class JsonRpcTransportTest extends TestCase
         $guard = new OrphanGuard();
         $transport = new JsonRpcTransport([\PHP_BINARY, '-r', 'sleep(30);'], $project->dir, 'peer', guard: $guard);
         $this->assertTrue($transport->start(static function (): void {}));
-        $process = Probe::get($transport, 'process');
+        $process = Probe::get($transport, property: 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
 
         // The IDE gone, however it went: the kernel closes the guard's pipe.
-        $pipe = Probe::get($guard, 'pipe');
+        $pipe = Probe::get($guard, property: 'pipe');
         \assert(\is_resource($pipe), description: 'the guard watches the peer');
         \fclose($pipe);
 
@@ -144,7 +144,7 @@ final class JsonRpcTransportTest extends TestCase
         $this->assertTrue($transport->start(static function (): void {}, static function () use (&$gone): void {
             $gone = true;
         }));
-        $process = Probe::get($transport, 'process');
+        $process = Probe::get($transport, property: 'process');
         \assert(\is_resource($process), description: 'the transport holds the spawned process');
         // Not a turn of the loop until it has exited: both pipes are ready together.
         $deadline = \microtime(true) + 5.0;

@@ -85,7 +85,7 @@ final class LspQuery
     /** @param \Closure(?string, ?string): void $onDone the documentation as plain text, null when there is none */
     public function hover(string $path, int $line, int $column, \Closure $onDone): void
     {
-        $this->ask($path, 'textDocument/hover', ['position' => ['line' => $line, 'character' => $column]], static function (mixed $result, ?string $error) use ($onDone): void {
+        $this->ask($path, method: 'textDocument/hover', params: ['position' => ['line' => $line, 'character' => $column]], onDone: static function (mixed $result, ?string $error) use ($onDone): void {
             $onDone(null === $error ? LspMapper::hoverToText($result) : null, $error);
         });
     }
@@ -98,7 +98,7 @@ final class LspQuery
      */
     public function documentSymbols(string $path, \Closure $onDone): void
     {
-        $this->ask($path, 'textDocument/documentSymbol', [], static function (mixed $result, ?string $error) use ($onDone): void {
+        $this->ask($path, method: 'textDocument/documentSymbol', params: [], onDone: static function (mixed $result, ?string $error) use ($onDone): void {
             /** @var list<array<array-key, mixed>|scalar|null> $symbols */
             $symbols = \is_array($result) ? \array_values($result) : [];
             $onDone(LspMapper::outline($symbols), $error);
@@ -114,7 +114,10 @@ final class LspQuery
      */
     public function rename(string $path, int $line, int $column, string $newName, \Closure $onDone): void
     {
-        $this->ask($path, 'textDocument/rename', ['position' => ['line' => $line, 'character' => $column], 'newName' => $newName], static function (mixed $result, ?string $error) use ($onDone): void {
+        $this->ask($path, method: 'textDocument/rename', params: ['position' => ['line' => $line, 'character' => $column], 'newName' => $newName], onDone: static function (
+            mixed $result,
+            ?string $error,
+        ) use ($onDone): void {
             if (null === $error && !\is_array($result)) {
                 $error = 'The language server cannot rename anything at this position';
             }
@@ -134,7 +137,7 @@ final class LspQuery
      */
     public function formatting(string $path, array $options, \Closure $onDone): void
     {
-        $this->ask($path, 'textDocument/formatting', ['options' => $options], static function (mixed $result, ?string $error) use ($onDone): void {
+        $this->ask($path, method: 'textDocument/formatting', params: ['options' => $options], onDone: static function (mixed $result, ?string $error) use ($onDone): void {
             /** @var list<array{range: array{start: array{line?: int, character?: int}, end: array{line?: int, character?: int}}, newText: string}> $edits */
             $edits = \is_array($result) ? \array_values($result) : [];
             $onDone($edits, $error);
@@ -242,7 +245,7 @@ final class LspQuery
     private function lend(string $path): void
     {
         if (0 === ($this->lent[$path] ?? 0)) {
-            $this->lsp->notifyDidOpen($path, (string) \file_get_contents($path), ProjectPaths::languageId($path), 0);
+            $this->lsp->notifyDidOpen($path, (string) \file_get_contents($path), ProjectPaths::languageId($path), version: 0);
         }
         $this->lent[$path] = ($this->lent[$path] ?? 0) + 1;
     }

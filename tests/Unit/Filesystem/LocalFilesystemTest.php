@@ -43,7 +43,7 @@ final class LocalFilesystemTest extends TestCase
         $project = new TempProject(['a.txt' => 'a', 'dir/b.txt' => 'b']);
         $files = new LocalFilesystem();
 
-        $files->dumpFile($project->path('new/c.txt'), 'c');
+        $files->dumpFile($project->path('new/c.txt'), content: 'c');
         $files->mkdir($project->path('empty'));
         $files->copy($project->path('a.txt'), $project->path('a2.txt'));
         $files->copy($project->path('dir'), $project->path('dir2'));
@@ -66,7 +66,7 @@ final class LocalFilesystemTest extends TestCase
         $files->copy($project->path('old.txt'), $project->path('new.txt'));
         $this->assertSame('old', \file_get_contents($project->path('new.txt')), 'the caller decided the target may go');
 
-        $project->write('x.txt', 'x');
+        $project->write('x.txt', content: 'x');
         try {
             $files->rename($project->path('x.txt'), $project->path('new.txt'));
             $this->fail('a taken name is an error');
@@ -108,7 +108,7 @@ final class LocalFilesystemTest extends TestCase
         $this->assertFalse($files->available($cache->path('a.txt'), static fn (): null => null), 'a placeholder: fetched first');
         $this->assertSame('served', \file_get_contents($cache->path('a.txt')));
         $transport->hold = true;
-        $files->dumpFile($cache->path('b.txt'), 'b');
+        $files->dumpFile($cache->path('b.txt'), content: 'b');
         $files->mkdir($cache->path('d'));
         $files->copy($cache->path('b.txt'), $cache->path('c.txt'));
         $files->rename($cache->path('c.txt'), $cache->path('e.txt'));

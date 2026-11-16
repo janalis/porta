@@ -186,7 +186,7 @@ final class CaretPopupRenderer
         $height = $shown + PopupFrame::CHROME_ROWS;
         $top = $below ? $cursorScreenRow + 1 : $cursorScreenRow - $height;
         $framedWidth = $width + PopupFrame::CHROME_COLS;
-        $col = IntMath::clamp($anchorCol - 1, 0, $columns - $framedWidth);
+        $col = IntMath::clamp($anchorCol - 1, lo: 0, hi: $columns - $framedWidth);
 
         $framed = [PopupFrame::top($width, $styles, mark: $offset > 0 ? Glyphs::SCROLL_UP : '')];
         foreach (\array_slice($body, $offset, $shown) as $row) {
@@ -241,7 +241,7 @@ final class CaretPopupRenderer
         if ($width < 3 || $top < 0) {
             return null;
         }
-        $col = IntMath::clamp($anchorCol - 1, 0, $columns - $width - PopupFrame::CHROME_COLS);
+        $col = IntMath::clamp($anchorCol - 1, lo: 0, hi: $columns - $width - PopupFrame::CHROME_COLS);
         $framed = [
             PopupFrame::top($width, $styles),
             PopupFrame::rail($styles->merge(Role::PopupRow, Role::CompletionHint)->apply(AnsiText::truncate(' '.$text, $width, pad: true)), $width, $styles),

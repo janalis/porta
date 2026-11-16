@@ -52,7 +52,7 @@ final class CatalogCompletenessTest extends TestCase
     public function testEveryCatalogSurvivesTheLoaderThatShipsIt(string $dir): void
     {
         $loader = new LenientXliffLoader();
-        $english = \count($loader->load($dir.'/messages.en.xlf', 'en')->all('messages'));
+        $english = \count($loader->load($dir.'/messages.en.xlf', locale: 'en')->all('messages'));
         $this->assertSame(\count(Catalogs::sources($dir.'/messages.en.xlf')), $english, 'the English catalog loaded every unit it carries');
         $this->assertGreaterThan(0, $english, 'a catalog set carries at least one unit');
 
@@ -81,11 +81,11 @@ final class CatalogCompletenessTest extends TestCase
         foreach (Translator::LOCALES as $locale) {
             $xml = \simplexml_load_file($dir.'/messages.'.$locale.'.xlf');
             $this->assertNotFalse($xml);
-            $xml->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
+            $xml->registerXPathNamespace('x', namespace: 'urn:oasis:names:tc:xliff:document:1.2');
 
             $units = $xml->xpath('//x:trans-unit');
             foreach ($units ? $units : [] as $unit) {
-                $unit->registerXPathNamespace('x', 'urn:oasis:names:tc:xliff:document:1.2');
+                $unit->registerXPathNamespace('x', namespace: 'urn:oasis:names:tc:xliff:document:1.2');
                 $target = $unit->xpath('x:target');
                 $target = $target ? $target : [];
                 $this->assertNotSame([], $target, "a trans-unit in messages.{$locale}.xlf has no <target>");

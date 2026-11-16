@@ -48,7 +48,7 @@ final class ToolLocatorTest extends TestCase
 
     private function executable(string $relative): string
     {
-        $path = $this->project->write($relative, "#!/bin/sh\n");
+        $path = $this->project->write($relative, content: "#!/bin/sh\n");
         \chmod($path, permissions: 0o755);
 
         return $path;
@@ -88,7 +88,7 @@ final class ToolLocatorTest extends TestCase
         $this->configured = '/home/teammate/bin/phpstan';
         $this->assertSame('/usr/bin/phpstan', $locator->locate($tool), 'a path that is not here falls through');
 
-        $this->configured = $this->project->write('plantuml.jar', 'x');
+        $this->configured = $this->project->write('plantuml.jar', content: 'x');
         $this->assertSame($this->configured, $locator->locate($tool), 'a file that is there counts, run or not: a .jar is the plugin\'s to run');
 
         $this->configured = '  phpstan-wrapper ';
@@ -144,11 +144,11 @@ final class ToolLocatorTest extends TestCase
         $manager = static fn (?ToolSource $source): ?ToolManager => $source?->manager;
 
         $this->assertSame(ToolManager::Composer, $manager($locator->sourceOf($tool, $this->project->dir.'/vendor/bin/x')));
-        $this->assertSame(ToolManager::Brew, $manager($locator->sourceOf($tool, '/opt/homebrew/Cellar/x/1.0/bin/x')));
-        $this->assertSame(ToolManager::BrewCask, $manager($locator->sourceOf($tool, '/opt/homebrew/Caskroom/x/1.0/x')));
-        $this->assertSame(ToolManager::Cargo, $manager($locator->sourceOf($tool, '/home/me/.cargo/bin/x')));
-        $this->assertSame(ToolManager::Npm, $manager($locator->sourceOf($tool, '/usr/lib/node_modules/x/bin/x')));
-        $this->assertNull($locator->sourceOf($tool, '/usr/bin/x'), 'a system binary is managed outside Porta');
+        $this->assertSame(ToolManager::Brew, $manager($locator->sourceOf($tool, path: '/opt/homebrew/Cellar/x/1.0/bin/x')));
+        $this->assertSame(ToolManager::BrewCask, $manager($locator->sourceOf($tool, path: '/opt/homebrew/Caskroom/x/1.0/x')));
+        $this->assertSame(ToolManager::Cargo, $manager($locator->sourceOf($tool, path: '/home/me/.cargo/bin/x')));
+        $this->assertSame(ToolManager::Npm, $manager($locator->sourceOf($tool, path: '/usr/lib/node_modules/x/bin/x')));
+        $this->assertNull($locator->sourceOf($tool, path: '/usr/bin/x'), 'a system binary is managed outside Porta');
         $this->assertNull($locator->sourceOf($tool, $this->project->path('home/.porta/bin/x')), 'a download, but no github source declared');
     }
 
@@ -169,7 +169,7 @@ final class ToolLocatorTest extends TestCase
         $locator = $this->locator();
 
         $this->assertSame(ToolManager::Github, $locator->sourceOf($github, $this->project->path('home/.porta/bin/x'))?->manager);
-        $this->assertSame(ToolManager::Plugin, $locator->sourceOf($self, '/anywhere/y')?->manager, 'a plugin that installs its tool also updates it');
+        $this->assertSame(ToolManager::Plugin, $locator->sourceOf($self, path: '/anywhere/y')?->manager, 'a plugin that installs its tool also updates it');
     }
 
     public function testForProjectReadsThePluginSettings(): void

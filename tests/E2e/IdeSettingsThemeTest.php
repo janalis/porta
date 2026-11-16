@@ -103,7 +103,7 @@ final class IdeSettingsThemeTest extends TestCase
                     // A bare tick() is not a frame, and every assertion below
                     // reads the ACCUMULATED output — so without a real paint
                     // they were reading whatever the boot happened to leave.
-                    $this->awaitPainted($tui, $terminal, 'Auto-pairs');
+                    $this->awaitPainted($tui, $terminal, needle: 'Auto-pairs');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('settings-form', $tui->getFocus()?->getId(), 'settings opened focused on the General form');
                     $this->assertStringContainsString('General', $screen, 'the nav sidebar lists sections');
@@ -118,12 +118,12 @@ final class IdeSettingsThemeTest extends TestCase
                     // Once: a checkbox toggles on the click that selects it,
                     // as a label does — every other kind of row waits for a
                     // second.
-                    $tui->handleInput(self::windowSgr($ide, 0, 8, 39));
-                    $tui->handleInput(self::windowSgr($ide, 0, 8, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 8, col: 39));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 8, col: 39, release: true));
                     // Hover the nav sidebar (a tint): Interface. With a rule
                     // under every row the nav overflows, but nothing is above
                     // yet, so no ▲ row: General is row 0, its rule row 1.
-                    $tui->handleInput(self::windowSgr($ide, 35, 2, 4));
+                    $tui->handleInput(self::windowSgr($ide, button: 35, row: 2, col: 4));
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // frame(), not tick(): the click below is hit-tested against
@@ -132,17 +132,17 @@ final class IdeSettingsThemeTest extends TestCase
                     // Click the 'Keybindings' entry in the nav: region row 6,
                     // after General, Interface and Highlighting, each with the
                     // rule under it.
-                    $tui->handleInput(self::windowSgr($ide, 0, 6, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 6, 4, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 6, col: 4));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 6, col: 4, release: true));
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'Ctrl+F to filter');
+                    $this->awaitPainted($tui, $terminal, needle: 'Ctrl+F to filter');
                     $this->assertSame('settings-nav', $tui->getFocus()?->getId(), 'clicking the nav focuses it');
                     // Hover + wheel + click the keybindings list (content pane), a nav miss too.
-                    $tui->handleInput(self::windowSgr($ide, 35, 3, 39)); // hover a list row (nav clears)
-                    $tui->handleInput(self::windowSgr($ide, 65, 3, 39)); // wheel down over the list
-                    $tui->handleInput(self::windowSgr($ide, 0, 3, 39)); // click a list row
-                    $tui->handleInput(self::windowSgr($ide, 0, 3, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 35, row: 3, col: 39)); // hover a list row (nav clears)
+                    $tui->handleInput(self::windowSgr($ide, button: 65, row: 3, col: 39)); // wheel down over the list
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 3, col: 39)); // click a list row
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 3, col: 39, release: true));
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
@@ -150,11 +150,11 @@ final class IdeSettingsThemeTest extends TestCase
                     // Interface, Highlighting, Keybindings, Command line, the
                     // Plugins folder and the Languages folder, each with its
                     // rule → the content shows its indent rows.
-                    $tui->handleInput(self::windowSgr($ide, 0, 14, 4));
-                    $tui->handleInput(self::windowSgr($ide, 0, 14, 4, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 14, col: 4));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 14, col: 4, release: true));
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'Indent style');
+                    $this->awaitPainted($tui, $terminal, needle: 'Indent style');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('LSP server', $screen, 'and its LSP server row');
                     // Park the selection on a row we are not about to actuate.
@@ -164,28 +164,28 @@ final class IdeSettingsThemeTest extends TestCase
                     // one step or two. Region row 12 is Indent size's label: a
                     // select, and a single click on its LABEL only selects (a
                     // click on its box would drop its list).
-                    $tui->handleInput(self::windowSgr($ide, 0, 12, 39));
-                    $tui->handleInput(self::windowSgr($ide, 0, 12, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 12, col: 39));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 12, col: 39, release: true));
                     // Now step indent style (auto → spaces). Region row 9: the
                     // page title and its rule (0-1), the boxed "Save
                     // changes to" chooser that leads every page writing a file
                     // (2-4), the Indentation heading between its blank rows
                     // (5-7), then this box (8-10), its label on its middle row.
                     // Two clicks on the label: select, then the forward step.
-                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39));
-                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39, release: true));
-                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39));
-                    $tui->handleInput(self::windowSgr($ide, 0, 9, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 9, col: 39));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 9, col: 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 9, col: 39));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 9, col: 39, release: true));
                     // Edit the LSP server row: after indent size (11-13) and the
                     // Language server heading between its blank rows (14-16),
                     // the label row of its box (17-19), region row 18. TWO
                     // clicks: the first selects, and only a
                     // click on the already-selected row opens the editor — a
                     // single click no longer mutates whatever it lands on.
-                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39));
-                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39, release: true));
-                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39));
-                    $tui->handleInput(self::windowSgr($ide, 0, 18, 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 18, col: 39));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 18, col: 39, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 18, col: 39));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 18, col: 39, release: true));
                     foreach (\str_split('my-ls --stdio') as $char) {
                         $tui->handleInput($char);
                     }
@@ -194,7 +194,7 @@ final class IdeSettingsThemeTest extends TestCase
                     $tui->handleInput("\x1b[B"); // ↓ drops File
                 },
                 700 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
-                    $this->awaitPainted($tui, $terminal, 'Settings…');
+                    $this->awaitPainted($tui, $terminal, needle: 'Settings…');
                     $tui->handleInput("\x1b[<35;5;3M"); // hover a dropdown row: the menu rides along
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertSame('menu', $tui->getFocus()?->getId(), 'F10 focused the menu bar');
@@ -223,20 +223,20 @@ final class IdeSettingsThemeTest extends TestCase
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
                     // Dark theme baseline: the `return` keyword is the dark KEYWORD color.
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;176m");
+                    $this->awaitPaintedRaw($tui, $terminal, needle: "\x1b[38;5;176m");
                     $terminal->clearOutput(); // capture only the frames rendered after the switch
                 },
                 500 => static function ($tui, $terminal, Ide $ide): void {
                     // Change the theme setting live, as the settings form would.
                     Services::resolve($ide, SettingsController::class)
-                        ->changeSetting('theme', 'light');
+                        ->changeSetting('theme', value: 'light');
                     $tui->tick();
                 },
                 700 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // The buffer re-highlighted: light KEYWORD color in, dark gone.
                     // The POSITIVE is the barrier — without a frame the cleared
                     // buffer is empty and "dark gone" passes for the wrong reason.
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;91m");
+                    $this->awaitPaintedRaw($tui, $terminal, needle: "\x1b[38;5;91m");
                     // A frame painted before the async re-highlight landed still
                     // carries the old keyword colour; judge the settled frame.
                     $terminal->clearOutput();
@@ -250,11 +250,11 @@ final class IdeSettingsThemeTest extends TestCase
                     // Second live switch: the accessibility theme.
                     $terminal->clearOutput();
                     Services::resolve($ide, SettingsController::class)
-                        ->changeSetting('theme', 'high-contrast');
+                        ->changeSetting('theme', value: 'high-contrast');
                     $tui->tick();
                 },
                 900 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[38;5;213m");
+                    $this->awaitPaintedRaw($tui, $terminal, needle: "\x1b[38;5;213m");
                     $out = $terminal->getOutput(); // only post-high-contrast frames
                     $this->assertStringNotContainsString("\x1b[38;5;91m", $out, 'no light syntax remains');
                     $this->assertStringContainsString("\x1b[48;5;236m", $out, 'high-contrast header bar present');
@@ -317,14 +317,14 @@ final class IdeSettingsThemeTest extends TestCase
                 },
                 600 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     $this->frame($tui);
-                    $this->assertSame(31, Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class)->width(), 'the seeded percent applied to the window');
+                    $this->assertSame(31, Widgets::byId($tui, id: 'settings-nav', class: SettingsNavWidget::class)->width(), 'the seeded percent applied to the window');
                     // Drag the separator (region column 31, after the 31-wide nav) in to column 21.
-                    $tui->handleInput(self::windowSgr($ide, 0, 3, 31)); // arm on the separator
-                    $tui->handleInput(self::windowSgr($ide, 32, 3, 21)); // drag left
-                    $tui->handleInput(self::windowSgr($ide, 0, 3, 21, release: true));
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 3, col: 31)); // arm on the separator
+                    $tui->handleInput(self::windowSgr($ide, button: 32, row: 3, col: 21)); // drag left
+                    $tui->handleInput(self::windowSgr($ide, button: 0, row: 3, col: 21, release: true));
                 },
                 900 => function (Tui $tui) use ($project): void {
-                    $this->assertSame(21, Widgets::byId($tui, 'settings-nav', SettingsNavWidget::class)->width(), 'the drag resized the sidebar');
+                    $this->assertSame(21, Widgets::byId($tui, id: 'settings-nav', class: SettingsNavWidget::class)->width(), 'the drag resized the sidebar');
                     $layout = \json_decode((string) \file_get_contents($project->path('.porta/layout.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(17, $layout['viewSidebarWidthPercent']['settings'], 'saved as a share of the window (round(21/124))');
                 },
@@ -344,15 +344,15 @@ final class IdeSettingsThemeTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide): void {
                     // ScreenWriter converts the zero-width marker into a hardware
                     // cursor position plus a DECSCUSR shape: 5 = bar (default).
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[5 q");
+                    $this->awaitPaintedRaw($tui, $terminal, needle: "\x1b[5 q");
 
                     Services::resolve($ide, SettingsController::class)
-                        ->changeSetting('cursorShape', 'block');
+                        ->changeSetting('cursorShape', value: 'block');
                     $terminal->clearOutput();
                     $tui->tick();
                 },
                 400 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPaintedRaw($tui, $terminal, "\x1b[1 q");
+                    $this->awaitPaintedRaw($tui, $terminal, needle: "\x1b[1 q");
                     $out = $terminal->getOutput();
                     $this->assertStringNotContainsString("\x1b[5 q", $out, 'no stale bar shape survives the cache flush');
                 },

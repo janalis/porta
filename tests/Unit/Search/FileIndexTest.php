@@ -100,7 +100,7 @@ final class FileIndexTest extends TestCase
     {
         $project = new TempProject(['a.php' => '', 'b.php' => '', 'c.php' => '']);
 
-        $this->assertSame(['a.php', 'b.php'], new FileIndex($project->dir)->search('', 2));
+        $this->assertSame(['a.php', 'b.php'], new FileIndex($project->dir)->search('', limit: 2));
     }
 
     public function testSearchFuzzyRanksPrefersTheShortestBasenameMatchAndCaps(): void
@@ -113,12 +113,12 @@ final class FileIndexTest extends TestCase
         ]);
         $index = new FileIndex($project->dir);
 
-        $results = $index->search('user', 8);
+        $results = $index->search('user', limit: 8);
 
         $this->assertSame('src/Entity/User.php', $results[0], 'shortest basename match wins');
         $this->assertNotContains('other.php', $results, 'non-matches are excluded');
 
-        $this->assertCount(1, $index->search('user', 1), 'capped at the limit');
+        $this->assertCount(1, $index->search('user', limit: 1), 'capped at the limit');
     }
 
     public function testSearchTiesOnScoreBreakByShorterPath(): void
@@ -133,7 +133,7 @@ final class FileIndexTest extends TestCase
         $project = new TempProject(['aaa/User.php' => '', 'z/User.php' => '']);
         $index = new FileIndex($project->dir);
 
-        $this->assertSame(['z/User.php', 'aaa/User.php'], $index->search('user', 2), 'tied scores fall back to the shorter path first');
+        $this->assertSame(['z/User.php', 'aaa/User.php'], $index->search('user', limit: 2), 'tied scores fall back to the shorter path first');
     }
 
     public function testRefreshRewalks(): void

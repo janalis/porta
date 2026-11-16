@@ -34,10 +34,10 @@ final class GraphViewerFallbackTest extends TestCase
     public function testWithNoMmdcABrokenSourceSaysBothWhatIsMissingAndWhatIsWrong(): void
     {
         $widget = $this->mermaidWithoutCli();
-        $widget->show('/p/a.mmd', 'graph TD; A[');
+        $widget->show('/p/a.mmd', payload: 'graph TD; A[');
         $this->drain();
 
-        $error = (string) Probe::get($widget, 'error');
+        $error = (string) Probe::get($widget, property: 'error');
         $this->assertStringStartsWith(self::NO_MMDC.' · ', $error);
         $this->assertGreaterThan(\strlen(self::NO_MMDC.' · '), \strlen($error), 'and the reason follows it');
     }
@@ -45,10 +45,10 @@ final class GraphViewerFallbackTest extends TestCase
     public function testWithNoMmdcAFailedRasterSaysBothAndRepaints(): void
     {
         $widget = $this->mermaidWithoutCli(new NativeMermaidRenderer(new MermaidTask($this->scheduler), new MermaidPipeline(encoder: new Encoder(new PngBackend(gdAvailable: false)))));
-        $widget->show('/p/a.mmd', 'graph TD; A[Native]');
+        $widget->show('/p/a.mmd', payload: 'graph TD; A[Native]');
 
         $this->assertGreaterThan(0, $this->revisionsSpentOnLastTimer($widget));
-        $error = (string) Probe::get($widget, 'error');
+        $error = (string) Probe::get($widget, property: 'error');
         $this->assertStringStartsWith(self::NO_MMDC.' · ', $error);
         $this->assertStringContainsString('GD extension', $error);
     }
@@ -56,10 +56,10 @@ final class GraphViewerFallbackTest extends TestCase
     public function testWithNoMmdcTheOwnRasterRepaintsWhenItLands(): void
     {
         $widget = $this->mermaidWithoutCli();
-        $widget->show('/p/a.mmd', 'graph TD; A[Native]');
+        $widget->show('/p/a.mmd', payload: 'graph TD; A[Native]');
 
         $this->assertGreaterThan(0, $this->revisionsSpentOnLastTimer($widget));
-        $this->assertTrue(Probe::get($widget, 'nativeBitmap'));
+        $this->assertTrue(Probe::get($widget, property: 'nativeBitmap'));
     }
 
     /** An edit drawn the same size keeps the zoom; taller or wider alone, the view starts again. */
@@ -67,21 +67,21 @@ final class GraphViewerFallbackTest extends TestCase
     {
         $mermaid = new FakeLayoutEngine();
         $mermaid->baseDpi = 96;
-        $mermaid->nextPng = PngFixture::bytes(120, 80);
+        $mermaid->nextPng = PngFixture::bytes(120, height: 80);
         $widget = new GraphViewerWidget($this->engine, new Translator('en'), scheduler: $this->scheduler, renderMode: 'bitmap', mermaid: $mermaid);
-        $widget->show('/p/a.mmd', 'flowchart LR');
+        $widget->show('/p/a.mmd', payload: 'flowchart LR');
         $this->settle();
         $widget->render(new RenderContext(80, 24));
         $widget->handleInput('1'); // 1:1, so every picture below is asked for at mermaid's own 96 dpi
         $this->settle();
 
         foreach (['same' => [120, 80, true], 'taller' => [120, 81, false], 'wider' => [121, 81, false]] as $what => [$width, $height, $kept]) {
-            $before = Probe::get($widget, 'view');
+            $before = Probe::get($widget, property: 'view');
             $mermaid->nextPng = PngFixture::bytes($width, $height);
             $widget->show('/p/a.mmd', "flowchart LR\n%% {$what}");
             $this->settle();
 
-            $after = Probe::get($widget, 'view');
+            $after = Probe::get($widget, property: 'view');
             $this->assertInstanceOf(ZoomPanModel::class, $after);
             $this->assertSame($kept, $before === $after, "{$what}: the view is ".($kept ? 'kept' : 'new'));
             $this->assertSame([$width, $height], $after->dimensions());
@@ -92,12 +92,12 @@ final class GraphViewerFallbackTest extends TestCase
     /** dot's picture landing, failing to decode, or failing outright: each repaints, and one that lands tells the tab. */
     public function testEveryAnswerOfThePictureRepaints(): void
     {
-        foreach (['lands' => PngFixture::bytes(260, 36), 'is no picture' => 'garbage', 'fails' => null] as $what => $answer) {
+        foreach (['lands' => PngFixture::bytes(260, height: 36), 'is no picture' => 'garbage', 'fails' => null] as $what => $answer) {
             $this->engine->nextResult = self::layout();
             $this->engine->deferred = false;
             $widget = $this->widget();
             $handler = new RecordingViewerTabHandler();
-            $widget->show('/p/g.dot', 'dot');
+            $widget->show('/p/g.dot', payload: 'dot');
             $widget->setHandler($handler);
             $this->engine->deferred = true;
             $this->settle();
@@ -123,21 +123,21 @@ final class GraphViewerFallbackTest extends TestCase
         );
         $handler = new RecordingViewerTabHandler();
         $widget->setHandler($handler);
-        $widget->show('/p/a.mmd', 'graph TD; A[One]');
+        $widget->show('/p/a.mmd', payload: 'graph TD; A[One]');
         $this->drain();
-        $view = Probe::get($widget, 'view');
+        $view = Probe::get($widget, property: 'view');
 
         $handler->events = [];
-        $widget->show('/p/a.mmd', 'graph TD; A[Two]');
+        $widget->show('/p/a.mmd', payload: 'graph TD; A[Two]');
         $revision = $widget->getRenderRevision();
         $this->drain();
-        $this->assertSame($view, Probe::get($widget, 'view'), 'same size: the zoom and pan stay');
+        $this->assertSame($view, Probe::get($widget, property: 'view'), 'same size: the zoom and pan stay');
         $this->assertGreaterThan($revision, $widget->getRenderRevision());
         $this->assertSame(['view'], $handler->events);
 
-        $widget->show('/p/a.mmd', 'graph TD; A[Two] --> B[Two]');
+        $widget->show('/p/a.mmd', payload: 'graph TD; A[Two] --> B[Two]');
         $this->drain();
-        $taller = Probe::get($widget, 'view');
+        $taller = Probe::get($widget, property: 'view');
         $this->assertInstanceOf(ZoomPanModel::class, $taller);
         $this->assertNotSame($view, $taller, 'taller: a fresh view');
         $this->assertSame($view->dimensions()[0], $taller->dimensions()[0], 'the premise: only taller');

@@ -386,14 +386,14 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         $kb = $this->getKeybindings();
 
         match (true) {
-            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
-            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'find_setting') => $this->events?->dispatch(new SettingsSearchRequested()),
-            $kb->matches($data, 'move_up') => $this->moveTo(\max(0, $this->list->selected() - 1)),
-            $kb->matches($data, 'move_down') => $this->moveTo(\min(\count($this->visible) - 1, $this->list->selected() + 1)),
-            $kb->matches($data, 'collapse') => $this->collapse(),
-            $kb->matches($data, 'expand') => $this->setFolderOpen(true),
-            $kb->matches($data, 'toggle') => $this->setFolderOpen(!$this->isOpenFolder($this->selectedEntry())),
+            $kb->matches($data, action: 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, action: 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, action: 'find_setting') => $this->events?->dispatch(new SettingsSearchRequested()),
+            $kb->matches($data, action: 'move_up') => $this->moveTo(\max(0, $this->list->selected() - 1)),
+            $kb->matches($data, action: 'move_down') => $this->moveTo(\min(\count($this->visible) - 1, $this->list->selected() + 1)),
+            $kb->matches($data, action: 'collapse') => $this->collapse(),
+            $kb->matches($data, action: 'expand') => $this->setFolderOpen(true),
+            $kb->matches($data, action: 'toggle') => $this->setFolderOpen(!$this->isOpenFolder($this->selectedEntry())),
             default => null,
         };
     }
@@ -561,7 +561,7 @@ final class SettingsNavWidget extends AbstractWidget implements FocusableInterfa
         // Nothing moves when it scrolls: one entry down, the ▲ takes row 0 and
         // the next entry stays on row 1.
         if ($overflow && $scroll > 0) {
-            $lines[] = $this->indicatorRow(Glyphs::SCROLL_UP, 0, $scroll - 1, $width);
+            $lines[] = $this->indicatorRow(Glyphs::SCROLL_UP, row: 0, target: $scroll - 1, width: $width);
         }
         if ($overflow && 0 === $scroll) {
             ++$budget;

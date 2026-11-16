@@ -20,7 +20,7 @@ final class TextEditOrderTest extends TestCase
     {
         $document = new Document("<?php\nclass A {}\n");
 
-        $this->assertTrue(WorkspaceEditor::applyTextEdits($document, [self::edit(1, 0, 0, "use A;\n"), self::edit(1, 0, 0, "use B;\n")]));
+        $this->assertTrue(WorkspaceEditor::applyTextEdits($document, [self::edit(1, from: 0, to: 0, text: "use A;\n"), self::edit(1, from: 0, to: 0, text: "use B;\n")]));
 
         $this->assertSame("<?php\nuse A;\nuse B;\nclass A {}\n", $document->getText(), 'two imports on one line, in the order sent');
     }
@@ -29,7 +29,7 @@ final class TextEditOrderTest extends TestCase
     {
         $document = new Document('foo(x)');
 
-        $this->assertTrue(WorkspaceEditor::applyTextEdits($document, [self::edit(0, 4, 4, '$a, '), self::edit(0, 4, 5, 'y')]));
+        $this->assertTrue(WorkspaceEditor::applyTextEdits($document, [self::edit(0, from: 4, to: 4, text: '$a, '), self::edit(0, from: 4, to: 5, text: 'y')]));
 
         $this->assertSame('foo($a, y)', $document->getText());
     }
@@ -38,7 +38,7 @@ final class TextEditOrderTest extends TestCase
     {
         $document = new Document("<?php\nclass A {}\n");
 
-        $document->applyEditsKeepingCursor([self::edit(1, 0, 0, "use A;\n"), self::edit(1, 0, 0, "use B;\n")]);
+        $document->applyEditsKeepingCursor([self::edit(1, from: 0, to: 0, text: "use A;\n"), self::edit(1, from: 0, to: 0, text: "use B;\n")]);
 
         $this->assertSame("<?php\nuse A;\nuse B;\nclass A {}\n", $document->getText());
     }

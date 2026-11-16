@@ -74,7 +74,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         $placed = EditorState::layoutPickers($editor, [0, 0, 20, 80]);
         $this->assertStringContainsString('Recent Files', \implode("\n", $placed[0]['rows']), 'the floating box carries the title');
-        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
+        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), width: 80);
 
         $editor->handleInput("\x1b[B"); // down
         $editor->handleInput("\r"); // pick
@@ -119,7 +119,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $placed = EditorState::layoutPickers($editor, [0, 0, 20, 80]);
         $this->assertStringContainsString('Search Everywhere', \implode("\n", $placed[0]['rows']), 'the floating box carries the title');
         $this->assertStringContainsString('Files', \implode("\n", $placed[0]['rows']), 'the category header row renders its label');
-        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
+        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), width: 80);
 
         $editor->handleSearchOverlayInput("\x1b[B"); // down → beta.php
         $editor->handleSearchOverlayInput("\r"); // pick
@@ -148,14 +148,14 @@ final class CodeEditorOverlaysTest extends TestCase
         // clicking it picks that hit (the search branch of handlePickerClick).
         $hitRow = -1;
         for ($row = 0; $row < 20 && $hitRow < 0; ++$row) {
-            if (!$editor->handlePickerHover($row, 40)) {
+            if (!$editor->handlePickerHover($row, col: 40)) {
                 continue;
             }
 
             $hitRow = $row;
         }
         $this->assertGreaterThanOrEqual(0, $hitRow);
-        $this->assertTrue($editor->handlePickerClick($hitRow, 40));
+        $this->assertTrue($editor->handlePickerClick($hitRow, col: 40));
         $this->assertNotNull($picked);
     }
 
@@ -193,7 +193,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         // The drag delegates still relay (armed by a corner press).
         $this->assertTrue($editor->findModal->clickAt($box->startRow + $box->rows - 1, $box->col + $box->width - 1));
-        $this->assertTrue($editor->continueWindowDrag($box->startRow + $box->rows, $box->col + $box->width + 2, true));
+        $this->assertTrue($editor->continueWindowDrag($box->startRow + $box->rows, $box->col + $box->width + 2, release: true));
         $editor->cancelWindowDrags();
     }
 
@@ -203,11 +203,11 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = new CodeEditorWidget();
         $editor->openListOverlay('Pick', [['label' => 'a', 'hint' => '', 'value' => 'a']], static function (): void {});
         $box = EditorState::layoutPickers($editor, [0, 0, 24, 100])[0];
-        $this->assertFalse($editor->continueWindowDrag(5, 5, release: false), 'nothing armed yet');
+        $this->assertFalse($editor->continueWindowDrag(5, col: 5, release: false), 'nothing armed yet');
 
         $editor->handlePickerClick($box['top'], $box['col'] + 4); // the title bar
         $editor->cancelWindowDrags();
-        $this->assertFalse($editor->continueWindowDrag(5, 5, release: false), 'the sweep reached the picker');
+        $this->assertFalse($editor->continueWindowDrag(5, col: 5, release: false), 'the sweep reached the picker');
 
         $editor->handlePickerClick($box['top'], $box['col'] + 4);
         $this->assertTrue($editor->continueWindowDrag($box['top'] + 2, $box['col'] + 4, release: true), 'the move relayed');
@@ -229,7 +229,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertFalse($editor->isFindModalOpen(), 'the search modal displaced it too');
 
         $editor->findModal->open('Find in Files');
-        $editor->openPrompt('Go to line', '', static fn (): null => null);
+        $editor->openPrompt('Go to line', initial: '', onSubmit: static fn (): null => null);
         $this->assertFalse($editor->isFindModalOpen(), 'and so did the prompt');
     }
 
@@ -259,7 +259,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // 9 and 10.
         EditorState::layoutPickers($editor, [0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePickerClick(10, 35), 'a click on an item is consumed');
+        $this->assertTrue($editor->handlePickerClick(10, col: 35), 'a click on an item is consumed');
         $this->assertSame('B', $sink['picked']);
         $this->assertFalse(EditorState::pickerOpen($editor));
     }
@@ -270,7 +270,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->overlayEditor($sink);
         EditorState::layoutPickers($editor, [0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePickerClick(0, 0), 'the modal overlay consumes any click');
+        $this->assertTrue($editor->handlePickerClick(0, col: 0), 'the modal overlay consumes any click');
         $this->assertNull($sink['picked']);
         $this->assertFalse(EditorState::pickerOpen($editor));
     }
@@ -280,7 +280,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $sink = new \ArrayObject(['picked' => null]);
         $editor = $this->overlayEditor($sink);
         // No layout yet → no captured box → the click cannot hit an item, so it dismisses.
-        $this->assertTrue($editor->handlePickerClick(7, 35));
+        $this->assertTrue($editor->handlePickerClick(7, col: 35));
         $this->assertNull($sink['picked']);
         $this->assertFalse(EditorState::pickerOpen($editor));
     }
@@ -288,13 +288,13 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testPromptClickOnItsBoxIsSwallowedAndElsewhereDismisses(): void
     {
         $editor = $this->editor();
-        $editor->openPrompt('Go to line', '', static fn (): null => null);
+        $editor->openPrompt('Go to line', initial: '', onSubmit: static fn (): null => null);
         EditorState::layoutPickers($editor, [0, 0, 20, 80]); // records the centered prompt box (row 6, cols 25..55)
 
         $this->assertTrue(EditorState::promptOpen($editor));
-        $this->assertTrue($editor->handlePickerClick(6, 40), 'a click on the centered prompt box is consumed');
+        $this->assertTrue($editor->handlePickerClick(6, col: 40), 'a click on the centered prompt box is consumed');
         $this->assertTrue(EditorState::promptOpen($editor), 'and does not dismiss it — the caret stays');
-        $this->assertTrue($editor->handlePickerClick(0, 3), 'a click off the prompt is consumed');
+        $this->assertTrue($editor->handlePickerClick(0, col: 3), 'a click off the prompt is consumed');
         $this->assertFalse(EditorState::promptOpen($editor), 'and dismisses it, like every sibling overlay');
     }
 
@@ -303,13 +303,13 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->overlayEditor(new \ArrayObject(['picked' => null]));
         EditorState::layoutPickers($editor, [0, 0, 20, 80]);
 
-        $this->assertTrue($editor->handlePickerHover(9, 35), 'hover item 1 tints it');
-        $this->assertFalse($editor->handlePickerHover(9, 35), 'same row → no change');
-        $this->assertTrue($editor->handlePickerHover(3, 35), 'the title row is no item: the tint clears');
-        $this->assertFalse($editor->handlePickerHover(3, 35), 'still no item → no change');
+        $this->assertTrue($editor->handlePickerHover(9, col: 35), 'hover item 1 tints it');
+        $this->assertFalse($editor->handlePickerHover(9, col: 35), 'same row → no change');
+        $this->assertTrue($editor->handlePickerHover(3, col: 35), 'the title row is no item: the tint clears');
+        $this->assertFalse($editor->handlePickerHover(3, col: 35), 'still no item → no change');
 
         // Hover item 1; item 0 stays selected.
-        $editor->handlePickerHover(9, 35);
+        $editor->handlePickerHover(9, col: 35);
         $body = \implode("\n", EditorState::layoutPickers($editor, [0, 0, 20, 80])[0]['rows']);
         $this->assertStringContainsString("\x1b[48;5;31m", $body, 'the selected item keeps its background');
         $this->assertStringContainsString("\x1b[48;5;236m", $body, 'the hovered item takes the hover tint');
@@ -318,7 +318,7 @@ final class CodeEditorOverlaysTest extends TestCase
     private function completionEditor(): CodeEditorWidget
     {
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5); // after "echo " → empty word-before-cursor
+        $editor->getDocument()->setCursor(2, col: 5); // after "echo " → empty word-before-cursor
         $editor->showCompletions([
             new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'fn', detail: ''),
             new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'fn', detail: ''),
@@ -333,7 +333,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // onto every item since completions existed and drawn by nobody. It is
         // PhpStorm's type column, and it was already on the wire.
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([
             new CompletionItem(label: 'name', insertText: 'name', kind: 'prop', detail: 'string'),
             new CompletionItem(label: 'handle', insertText: 'handle', kind: 'fn', detail: '(Request $r): Response'),
@@ -345,7 +345,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertStringContainsString('string', $body, "the property's type is shown");
         $this->assertStringContainsString('(Request $r): Response', $body, "and the method's signature");
         $this->assertStringContainsString("\x1b[38;5;244m", $body, 'in the muted pen, so the name still reads first');
-        $this->assertExactWidth($rows, 120);
+        $this->assertExactWidth($rows, width: 120);
     }
 
     public function testATypeTooLongForTheBoxYIELDSToTheNAME(): void
@@ -355,7 +355,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // it is the half that gets truncated — and at some width it disappears
         // rather than squeezing the label below what a name needs.
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([
             new CompletionItem(
                 label: 'withAVeryLongDescriptiveName',
@@ -373,7 +373,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // an off-by-one there still renders something perfectly plausible.
         $this->assertStringContainsString('(ContainerI…', $body, 'the type takes exactly what the name left');
         $this->assertStringNotContainsString('(ContainerIn', $body, 'and not one column more');
-        $this->assertExactWidth($rows, 60);
+        $this->assertExactWidth($rows, width: 60);
     }
 
     public function testANameThatFillsTheBoxLeavesTheTypeNOTHINGAndIsNotSqueezed(): void
@@ -383,7 +383,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // standing in for it. A single leftover column would cost the name a
         // character to say nothing.
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([
             new CompletionItem(
                 label: 'aNameLongEnoughToFillTheWholeCompletionRowByItself',
@@ -405,14 +405,14 @@ final class CodeEditorOverlaysTest extends TestCase
             AnsiUtils::stripAnsiCodes($body),
             'every column that is left goes to the name, and the type is simply absent',
         );
-        $this->assertExactWidth($rows, 60);
+        $this->assertExactWidth($rows, width: 60);
     }
 
     /** @param non-empty-string $doc */
     private function documentedEditor(string $doc): CodeEditorWidget
     {
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([
             new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: 'string', documentation: $doc),
             new CompletionItem(label: 'name', insertText: 'name', kind: 'prop', detail: 'string'),
@@ -433,7 +433,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         $this->assertStringContainsString('Greets somebody by name.', $screen);
         $this->assertStringContainsString('public function greet(string $who): string', $screen);
-        $this->assertExactWidth($rows, 120);
+        $this->assertExactWidth($rows, width: 120);
     }
 
     public function testTheDOCBLOCKPanelIsTALLERThanTheListWhenItNeedsToBe(): void
@@ -474,7 +474,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // fixture with the caret at column 5 proves nothing here — it has room
         // on the right and never takes the other branch.
         $editor = $this->editor("<?php\n\$a = 1;\n".\str_repeat('x', times: 55)." echo\n");
-        $editor->getDocument()->setCursor(2, 60);
+        $editor->getDocument()->setCursor(2, col: 60);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
 
         $rows = $editor->render(new RenderContext(100, 10));
@@ -485,7 +485,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // The panel's own drop shadow falls to its right: flush against the
         // popup it paints over the popup's left border.
         $this->assertStringContainsString('│ ┃▌greet', $row, 'both boxes keep all four walls');
-        $this->assertExactWidth($rows, 100);
+        $this->assertExactWidth($rows, width: 100);
     }
 
     public function testNoROOMOnEitherSideMeansNoPanelRatherThanAKeyhole(): void
@@ -493,13 +493,13 @@ final class CodeEditorOverlaysTest extends TestCase
         // Twenty columns of a docblock is not a docblock. The popup keeps the
         // pane it was given, and every row still measures exactly.
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
 
         $rows = $editor->render(new RenderContext(40, 14));
 
         $this->assertStringNotContainsString('Greets somebody.', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $rows)));
-        $this->assertExactWidth($rows, 40);
+        $this->assertExactWidth($rows, width: 40);
     }
 
     public function testAPopupThatOpenedUPWARDGrowsItsPanelUpwardToo(): void
@@ -507,7 +507,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // The caret is directly under an upward popup. A panel aligned to the
         // popup's TOP would grow down across the line being typed.
         $editor = $this->editor("<?php\n\n\n\necho 'hi';\n");
-        $editor->getDocument()->setCursor(4, 5);
+        $editor->getDocument()->setCursor(4, col: 5);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "one\ntwo\nthree\nfour\nfive")]);
 
         // A pane with the caret on its last row but one: the popup opens above.
@@ -520,7 +520,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertStringContainsString('one', $plain[1], 'the panel is there, beside the popup');
         $this->assertStringContainsString('▼', $plain[3], 'saying there is more of it');
         $this->assertStringNotContainsString('│', $plain[4], 'and it stops at the popup\'s bottom edge, above the caret row');
-        $this->assertExactWidth($rows, 120);
+        $this->assertExactWidth($rows, width: 120);
     }
 
     public function testThePanelTakesTheRightHandSideWhenItJUSTFits(): void
@@ -529,18 +529,18 @@ final class CodeEditorOverlaysTest extends TestCase
         // still draws a panel — on the wrong side, or not at all — and every
         // row still measures exactly either way.
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'Greets somebody.')]);
 
         // The popup's frame ends at column 25 here and the panel needs 46 + 2,
         // so 71 is the exact width at which the right-hand side works.
         $fits = $editor->render(new RenderContext(71, 10));
         $this->assertStringContainsString('┓╭', AnsiUtils::stripAnsiCodes($fits[3]), 'flush against the popup, on the right');
-        $this->assertExactWidth($fits, 71);
+        $this->assertExactWidth($fits, width: 71);
 
         $oneShort = $editor->render(new RenderContext(70, 10));
         $this->assertStringNotContainsString('Greets somebody.', \implode("\n", \array_map(AnsiUtils::stripAnsiCodes(...), $oneShort)), 'one column short and there is no room on either side');
-        $this->assertExactWidth($oneShort, 70);
+        $this->assertExactWidth($oneShort, width: 70);
     }
 
     public function testTheDOCBLOCKIsCUTToTheRoomAboveTheCaret(): void
@@ -549,7 +549,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // assertion: a panel one row taller would sit over the caret line, and
         // one row shorter would throw away a line it had room for.
         $editor = $this->editor("<?php\n\n\n\necho 'hi';\n");
-        $editor->getDocument()->setCursor(4, 5);
+        $editor->getDocument()->setCursor(4, col: 5);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "one\ntwo\nthree\nfour\nfive")]);
 
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(120, 6)));
@@ -602,7 +602,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->getDocument()->setCursor(2, $caret);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: 'DOC')]);
         $rows = $editor->render(new RenderContext(100, 10));
-        $this->assertExactWidth($rows, 100);
+        $this->assertExactWidth($rows, width: 100);
 
         return AnsiUtils::stripAnsiCodes($rows[4]);
     }
@@ -613,7 +613,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // less the two border rows, and an off-by-one there either throws away
         // a line it had room for or writes one past the pane.
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '', documentation: "L1\nL2\nL3\nL4\nL5\nL6")]);
 
         $rows = $editor->render(new RenderContext(120, 9));
@@ -621,7 +621,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         $this->assertStringContainsString('L4', $screen);
         $this->assertStringNotContainsString('L5', $screen);
-        $this->assertExactWidth($rows, 120);
+        $this->assertExactWidth($rows, width: 120);
     }
 
     public function testCompletionClickAcceptsSuggestion(): void
@@ -631,7 +631,7 @@ final class CodeEditorOverlaysTest extends TestCase
         // frame's top border at row 3; items at rows 4 and 5, inner box cols [9, 26).
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertTrue($editor->handlePopupClick(5, 12), 'a click on a suggestion is consumed');
+        $this->assertTrue($editor->handlePopupClick(5, relCol: 12), 'a click on a suggestion is consumed');
         $this->assertStringContainsString('echoSecond', $editor->getDocument()->getLine(2));
         $this->assertFalse($editor->isCompletionOpen());
     }
@@ -641,7 +641,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->completionEditor();
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertFalse($editor->handlePopupClick(0, 0), 'a click off the popup falls through to caret placement');
+        $this->assertFalse($editor->handlePopupClick(0, relCol: 0), 'a click off the popup falls through to caret placement');
         $this->assertTrue($editor->isCompletionOpen());
     }
 
@@ -649,7 +649,7 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         $editor = $this->completionEditor();
         // No render → no captured box → not consumed.
-        $this->assertFalse($editor->handlePopupClick(4, 12));
+        $this->assertFalse($editor->handlePopupClick(4, relCol: 12));
         $this->assertTrue($editor->isCompletionOpen());
     }
 
@@ -657,7 +657,7 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testACompletionKindTagSpellsItselfOut(): void
     {
         $editor = $this->editor();
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([
             new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'iface', detail: ''),
             new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'class', detail: ''),
@@ -707,38 +707,38 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->completionEditor();
         $editor->render(new RenderContext(80, 20));
 
-        $this->assertTrue($editor->handlePopupHover(5, 12), 'hover the second suggestion tints it');
-        $this->assertFalse($editor->handlePopupHover(5, 12), 'same row → no change');
-        $this->assertTrue($editor->handlePopupHover(2, 12), 'a row above the popup clears the tint');
-        $this->assertFalse($editor->handlePopupHover(2, 12), 'still off the popup → no change');
+        $this->assertTrue($editor->handlePopupHover(5, relCol: 12), 'hover the second suggestion tints it');
+        $this->assertFalse($editor->handlePopupHover(5, relCol: 12), 'same row → no change');
+        $this->assertTrue($editor->handlePopupHover(2, relCol: 12), 'a row above the popup clears the tint');
+        $this->assertFalse($editor->handlePopupHover(2, relCol: 12), 'still off the popup → no change');
 
         // Hover the second item; the first stays selected.
-        $editor->handlePopupHover(5, 12);
+        $editor->handlePopupHover(5, relCol: 12);
         $rows = $editor->render(new RenderContext(80, 20));
         $this->assertStringContainsString("\x1b[48;5;31m", $rows[4], 'the first suggestion keeps the selection background');
         $this->assertStringContainsString("\x1b[48;5;236m", $rows[5], 'the hovered second suggestion takes the hover tint, not the selection');
 
         // A click still accepts the row it lands on, regardless of hover.
-        $editor->handlePopupClick(5, 12);
+        $editor->handlePopupClick(5, relCol: 12);
         $this->assertStringContainsString('echoSecond', $editor->getDocument()->getLine(2));
     }
 
     public function testPopupClickAndHoverNoopWhenNothingOpen(): void
     {
         $editor = $this->editor();
-        $this->assertFalse($editor->handlePopupClick(3, 3));
-        $this->assertFalse($editor->handlePopupHover(3, 3));
+        $this->assertFalse($editor->handlePopupClick(3, relCol: 3));
+        $this->assertFalse($editor->handlePopupHover(3, relCol: 3));
     }
 
     /** Hover routes to the open prompt (its ✖ brightens under the pointer). */
     public function testPromptHoverRoutesToTheOverlayHost(): void
     {
         $editor = $this->editor();
-        $editor->openPrompt('Go to line', '', static fn (): null => null);
+        $editor->openPrompt('Go to line', initial: '', onSubmit: static fn (): null => null);
         EditorState::layoutPickers($editor, [0, 0, 20, 80]); // records the prompt box
 
-        $host = Probe::get($editor, 'overlayHost');
-        $box = Probe::get($host, 'promptBox');
+        $host = Probe::get($editor, property: 'overlayHost');
+        $box = Probe::get($host, property: 'promptBox');
         $this->assertInstanceOf(ModalBox::class, $box, 'the overlay laid out a modal box');
 
         $this->assertTrue($editor->handlePickerHover($box->startRow, $box->col + $box->width - 2), 'onto the ✖');
@@ -750,12 +750,12 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor = $this->editor();
 
         $submitted = null;
-        $editor->openPrompt('Go to line', '', static function (string $v) use (&$submitted): void {
+        $editor->openPrompt('Go to line', initial: '', onSubmit: static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
         $placed = EditorState::layoutPickers($editor, [0, 0, 20, 80]);
         $this->assertStringContainsString('Go to line', AnsiUtils::stripAnsiCodes(\implode("\n", $placed[0]['rows'])), 'the floating prompt renders');
-        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), 80);
+        $this->assertExactWidth($editor->render(new RenderContext(80, 20)), width: 80);
 
         $editor->handleInput('4');
         $editor->handleInput('2');
@@ -763,7 +763,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $editor->handleInput("\r");
         $this->assertSame('4', $submitted);
 
-        $editor->openPrompt('Rename to', 'old', static function (string $v) use (&$submitted): void {
+        $editor->openPrompt('Rename to', initial: 'old', onSubmit: static function (string $v) use (&$submitted): void {
             $submitted = $v;
         });
         $editor->handleInput("\x1b"); // cancel
@@ -777,7 +777,7 @@ final class CodeEditorOverlaysTest extends TestCase
         $this->assertFalse($editor->movePopupSelection(3), 'no popup: falls through to the buffer scroll');
 
         // Completion popup: the wheel wraps its selection like the arrows.
-        $editor->getDocument()->setCursor(2, 5);
+        $editor->getDocument()->setCursor(2, col: 5);
         $editor->showCompletions([
             new CompletionItem(label: 'echoFirst', insertText: 'echoFirst', kind: 'fn', detail: ''),
             new CompletionItem(label: 'echoSecond', insertText: 'echoSecond', kind: 'fn', detail: ''),
@@ -812,8 +812,8 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testShowDocumentClosesTheCompletionPopup(): void
     {
         $editor = $this->editor("<?php\n\$abc\n");
-        $editor->getDocument()->setCursor(1, 4); // right after "abc"
-        Probe::get($editor, 'completion')->show([new CompletionItem('abcdef', 'abcdef', 'var', '')]);
+        $editor->getDocument()->setCursor(1, col: 4); // right after "abc"
+        Probe::get($editor, property: 'completion')->show([new CompletionItem('abcdef', 'abcdef', 'var', '')]);
         $this->assertTrue($editor->isCompletionOpen(), 'sanity: the popup is actually open before the swap');
 
         $editor->showDocument('other.php', new Document("<?php\n"));
@@ -830,11 +830,11 @@ final class CodeEditorOverlaysTest extends TestCase
     {
         $editor = $this->editor();
         $editor->openListOverlay('Recent', [['label' => 'a', 'hint' => '', 'value' => 'a']], static function (string $v): void {});
-        $this->assertTrue(Probe::get($editor, 'overlayHost')->anyOpen(), 'sanity: the list overlay is actually open before the swap');
+        $this->assertTrue(Probe::get($editor, property: 'overlayHost')->anyOpen(), 'sanity: the list overlay is actually open before the swap');
 
         $editor->showDocument('other.php', new Document("<?php\n"));
 
-        $this->assertFalse(Probe::get($editor, 'overlayHost')->anyOpen(), 'showDocument must close a list overlay left open from the old buffer');
+        $this->assertFalse(Probe::get($editor, property: 'overlayHost')->anyOpen(), 'showDocument must close a list overlay left open from the old buffer');
     }
 
     public function testMoveSelectionWithoutCandidatesIsInert(): void
@@ -862,7 +862,7 @@ final class CodeEditorOverlaysTest extends TestCase
     public function testTheSignatureHintYieldsItsSideToTheCompletionList(): void
     {
         $editor = $this->editor("<?php\n\n\n\n\n\n\necho 'hi';\n\n");
-        $editor->getDocument()->setCursor(7, 5);
+        $editor->getDocument()->setCursor(7, col: 5);
         $editor->setSignatureHint('greet(string $who)');
         $editor->showCompletions([new CompletionItem(label: 'greet', insertText: 'greet', kind: 'fn', detail: '')]);
 
@@ -882,7 +882,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         // The caret on row 1: the hint wants below (no framed room above), the doc popup took it.
         $editor = $this->editor("<?php\necho 'hi';\n\n\n\n\n");
-        $editor->getDocument()->setCursor(1, 5);
+        $editor->getDocument()->setCursor(1, col: 5);
         $editor->setSignatureHint('greet(string $who)');
         $editor->showDocPopup('Greets.');
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 12)));
@@ -891,7 +891,7 @@ final class CodeEditorOverlaysTest extends TestCase
 
         // The caret on row 6 of nine: the note fits only above, the hint goes below.
         $editor = $this->editor("<?php\n\n\n\n\n\necho 'hi';\n\n\n");
-        $editor->getDocument()->setCursor(6, 5);
+        $editor->getDocument()->setCursor(6, col: 5);
         $editor->setSignatureHint('greet(string $who)');
         $editor->handleInput("\x00"); // ctrl+space, nobody to ask
         $plain = \array_map(AnsiUtils::stripAnsiCodes(...), $editor->render(new RenderContext(80, 9)));

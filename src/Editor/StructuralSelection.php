@@ -31,7 +31,7 @@ final class StructuralSelection
     public static function expand(string $text, int $start, int $end): ?array
     {
         $n = \strlen($text);
-        $start = IntMath::clamp($start, 0, $n);
+        $start = IntMath::clamp($start, lo: 0, hi: $n);
         $end = IntMath::clamp($end, $start, $n);
 
         /** @var list<array{0: int, 1: int}> $candidates */

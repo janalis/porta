@@ -59,7 +59,7 @@ final class TempProject
      */
     public function lock(string $relativePath): bool
     {
-        $dir = \dirname($this->write($relativePath.'/inside.php', "<?php\n// needle\n"));
+        $dir = \dirname($this->write($relativePath.'/inside.php', content: "<?php\n// needle\n"));
         \chmod($dir, permissions: 0);
         $this->locked[] = $dir;
 
@@ -97,7 +97,7 @@ final class TempProject
      */
     public function git(string ...$args): string
     {
-        $process = new Process([self::gitBinary(), '--no-optional-locks', '-C', $this->dir, ...$args], $this->dir, ['PATH' => (string) \PORTA_TEST_PRISTINE_PATH]);
+        $process = new Process([self::gitBinary(), '--no-optional-locks', '-C', $this->dir, ...$args], $this->dir, ['PATH' => \PORTA_TEST_PRISTINE_PATH]);
         $process->mustRun();
 
         return \trim($process->getOutput());
@@ -121,7 +121,7 @@ final class TempProject
         // .gitignore: that file is repo-local, so it adds neither an untracked
         // entry to the changes list nor a row to the file tree — both of which
         // fixtures assert on. A real project would gitignore `.porta/` instead.
-        $this->write('.git/info/exclude', ".porta/\n");
+        $this->write('.git/info/exclude', content: ".porta/\n");
     }
 
     /** Stage everything and commit with $message; returns the new commit's short hash. */
@@ -138,7 +138,7 @@ final class TempProject
 
     private static function gitBinary(): string
     {
-        return self::$git ??= new ExecutableFinder()->find('git', null, \explode(\PATH_SEPARATOR, (string) \PORTA_TEST_PRISTINE_PATH)) ?? throw new \RuntimeException(
+        return self::$git ??= new ExecutableFinder()->find('git', extraDirs: \explode(\PATH_SEPARATOR, \PORTA_TEST_PRISTINE_PATH)) ?? throw new \RuntimeException(
             'git not found on the pristine PATH',
         );
     }

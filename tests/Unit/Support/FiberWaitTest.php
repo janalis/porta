@@ -59,7 +59,7 @@ final class FiberWaitTest extends TestCase
             static function (\Closure $done): void {
                 EventLoop::delay(0.01, static fn () => $done('answered'));
             },
-            'timed out',
+            timedOut: 'timed out',
         ));
         $fiber->start();
 
@@ -70,7 +70,7 @@ final class FiberWaitTest extends TestCase
 
     public function testWithinAnswersTheTimeoutValueWhenTheOperationNeverDoes(): void
     {
-        $fiber = new \Fiber(static fn (): mixed => FiberWait::within(0.02, static function (\Closure $done): void {}, 'timed out'));
+        $fiber = new \Fiber(static fn (): mixed => FiberWait::within(0.02, static function (\Closure $done): void {}, timedOut: 'timed out'));
         $fiber->start();
         $this->assertFalse($fiber->isTerminated(), 'it waits for the deadline');
 
@@ -83,7 +83,7 @@ final class FiberWaitTest extends TestCase
     {
         $before = \count(EventLoop::getIdentifiers());
 
-        $this->assertSame('now', FiberWait::within(30.0, static fn (\Closure $done) => $done('now'), 'timed out'));
+        $this->assertSame('now', FiberWait::within(30.0, static fn (\Closure $done) => $done('now'), timedOut: 'timed out'));
 
         $this->assertCount($before, EventLoop::getIdentifiers(), 'no 30s timer left armed behind an answered wait');
     }

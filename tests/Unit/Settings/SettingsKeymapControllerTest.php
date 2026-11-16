@@ -118,9 +118,9 @@ final class SettingsKeymapControllerTest extends TestCase
         // sees the key. That is what makes this rebind live.
         $this->commands->add('save', static function (): void {}, KeyDispatch::Bound);
 
-        $this->assertSame([], Probe::get($this->menuBar, 'menus'), 'the menu bar is unbuilt until something rebakes it');
+        $this->assertSame([], Probe::get($this->menuBar, property: 'menus'), 'the menu bar is unbuilt until something rebakes it');
 
-        $controller->rebind('save', "\x1b[24~"); // F12
+        $controller->rebind('save', rawKey: "\x1b[24~"); // F12
 
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['save']);
         $flash = $this->flashText($status);
@@ -128,7 +128,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->assertStringNotContainsString('applies on restart', $flash, 'save is IDE-scope: the rebuilt map dispatches it immediately');
         $this->assertSame(['f12'], $this->live->getBindings('save'), 'the live map re-merged the persisted rebind');
         $this->assertSame($parser, $this->live->current()->getParser(), 'the shared parser rode through');
-        $this->assertNotSame([], Probe::get($this->menuBar, 'menus'), 'a rebind rebakes the menu bar');
+        $this->assertNotSame([], Probe::get($this->menuBar, property: 'menus'), 'a rebind rebakes the menu bar');
     }
 
     /**
@@ -146,7 +146,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
         // Left is cursor_left's shipped editor default, and nothing overrides it.
-        $controller->rebind('cursor_left', "\x1b[D");
+        $controller->rebind('cursor_left', rawKey: "\x1b[D");
 
         $this->assertSame([], IdeConfig::load($project->dir)->keymap, 'no override was created');
         $this->assertStringContainsString(
@@ -164,7 +164,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings(['copy_path' => ['f12']]));
 
-        $controller->rebind('copy_path', "\x1b[24~"); // F12, which it already fires on
+        $controller->rebind('copy_path', rawKey: "\x1b[24~"); // F12, which it already fires on
 
         $this->assertSame([], IdeConfig::load($project->dir)->keymap, 'nothing was written');
         $this->assertStringContainsString('already uses F12', $this->flashText($status));
@@ -177,9 +177,9 @@ final class SettingsKeymapControllerTest extends TestCase
         // take it back — {@see testResetDropsTheOverrideAndRebuildsTheLiveMap}.
         $project = new TempProject();
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
-        $controller->rebind('copy_path', "\x1b[24~"); // F12
+        $controller->rebind('copy_path', rawKey: "\x1b[24~"); // F12
 
-        $controller->rebind('copy_path', "\x1b[23~"); // F11
+        $controller->rebind('copy_path', rawKey: "\x1b[23~"); // F11
 
         $this->assertSame(['f11'], IdeConfig::load($project->dir)->keymap['copy_path']);
     }
@@ -196,7 +196,7 @@ final class SettingsKeymapControllerTest extends TestCase
         // An action the CATALOG gives a default key, so "back to the default"
         // is a key this test can name rather than an absence it has to trust.
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
-        $controller->rebind('copy_path', "\x1b[24~"); // F12
+        $controller->rebind('copy_path', rawKey: "\x1b[24~"); // F12
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['copy_path'], 'overridden first');
         $this->assertSame(['f12'], $this->live->getBindings('copy_path'), 'and live');
 
@@ -217,8 +217,8 @@ final class SettingsKeymapControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
-        $controller->rebind('copy_path', "\x1b[24~");
-        $controller->rebind('fold_all', "\x1b[23~"); // F11
+        $controller->rebind('copy_path', rawKey: "\x1b[24~");
+        $controller->rebind('fold_all', rawKey: "\x1b[23~"); // F11
 
         $controller->resetBinding('copy_path');
         $this->assertArrayHasKey('keymap', $this->configFile($project->dir), 'fold_all still holds it open');
@@ -243,7 +243,7 @@ final class SettingsKeymapControllerTest extends TestCase
         \putenv('PORTA_HOME='.$this->home->dir);
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
-        $controller->rebind('copy_path', "\x1b[24~"); // F12, in the project file
+        $controller->rebind('copy_path', rawKey: "\x1b[24~"); // F12, in the project file
 
         $controller->resetBinding('copy_path');
 
@@ -273,7 +273,7 @@ final class SettingsKeymapControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
-        $controller->rebind('copy_path', "\x1b[24~");
+        $controller->rebind('copy_path', rawKey: "\x1b[24~");
 
         $byAction = \array_column($controller->rows(), null, 'action');
 
@@ -295,7 +295,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new StatusBarWidget(), new Keybindings());
 
-        $controller->rebind('save', "\x04"); // ctrl+d
+        $controller->rebind('save', rawKey: "\x04"); // ctrl+d
         $this->assertSame(['ctrl+d'], IdeConfig::load($project->dir)->keymap['save']);
     }
 
@@ -304,7 +304,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
-        $controller->rebind('save', "\x1b[57428u"); // kitty media play, which the parser does not name
+        $controller->rebind('save', rawKey: "\x1b[57428u"); // kitty media play, which the parser does not name
 
         $this->assertStringContainsString('Unsupported key', $this->flashText($status));
         $this->assertFalse(\is_file($project->path('.porta.json')));
@@ -316,7 +316,7 @@ final class SettingsKeymapControllerTest extends TestCase
         \mkdir($project->path('.porta.json')); // block the write
 
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
-        $controller->rebind('save', 'a');
+        $controller->rebind('save', rawKey: 'a');
 
         $this->assertStringContainsString('Rebound Save File to A (not saved)', $this->flashText($status), 'the "(not saved)" suffix trails the message, not the other way around');
     }
@@ -346,7 +346,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $this->assertSame('Hex: Next Field', $byAction['hex_next_field']->label);
         $this->assertSame('', $byAction['hex_next_field']->binding, 'no default at IDE scope — the pane binds it');
 
-        $controller->rebind('hex_next_field', "\x1b[24~"); // F12
+        $controller->rebind('hex_next_field', rawKey: "\x1b[24~"); // F12
 
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['hex_next_field'], 'persisted under the bare id');
         $this->assertStringContainsString('Rebound Hex: Next Field to F12', $this->flashText($status));
@@ -412,7 +412,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
-        $controller->rebind('duplicate_line', "\x1b[24~"); // F12
+        $controller->rebind('duplicate_line', rawKey: "\x1b[24~"); // F12
 
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['duplicate_line']);
         $this->assertStringContainsString('Rebound Duplicate Line or Selection to F12', $this->flashText($status));
@@ -426,7 +426,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
-        $controller->rebind('copy_path', "\x1b[24~");
+        $controller->rebind('copy_path', rawKey: "\x1b[24~");
 
         $this->assertStringContainsString('Rebound Copy Path to F12', $this->flashText($status));
         $this->assertStringNotContainsString('applies on restart', $this->flashText($status));
@@ -448,7 +448,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings(), $panes);
         $this->host->ensureLoaded();
 
-        $controller->rebind('test_pane_step', "\x1b[24~");
+        $controller->rebind('test_pane_step', rawKey: "\x1b[24~");
 
         $this->assertStringContainsString('Rebound Demo: Step to F12', $this->flashText($status));
         $this->assertStringNotContainsString('applies on restart', $this->flashText($status));
@@ -462,7 +462,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
 
-        $controller->rebind('terminal_next_session', "\x1b[24~");
+        $controller->rebind('terminal_next_session', rawKey: "\x1b[24~");
 
         $this->assertSame(['f12'], IdeConfig::load($project->dir)->keymap['terminal_next_session'], 'persisted either way');
         $this->assertStringContainsString('applies on restart', $this->flashText($status));
@@ -484,7 +484,7 @@ final class SettingsKeymapControllerTest extends TestCase
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
         $this->host->ensureLoaded();
 
-        $controller->rebind('hex_next_field', "\x1b[24~");
+        $controller->rebind('hex_next_field', rawKey: "\x1b[24~");
 
         $this->assertStringContainsString('Rebound Hex: Next Field to F12 · applies on restart', $this->flashText($status));
     }
@@ -495,7 +495,7 @@ final class SettingsKeymapControllerTest extends TestCase
         // "Reset … to " with nothing after it.
         $project = new TempProject();
         $controller = $this->controller($project->dir, $status = new StatusBarWidget(), new Keybindings());
-        $controller->rebind('duplicate_line', "\x1b[24~");
+        $controller->rebind('duplicate_line', rawKey: "\x1b[24~");
 
         $controller->resetBinding('duplicate_line');
 

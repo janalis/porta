@@ -50,12 +50,12 @@ final class IdePluginDocsTest extends TestCase
                     $viewer = Services::resolve($ide, HelpViewerWidget::class);
                     $window->showPage(\dirname(__DIR__, levels: 2).'/docs/README.md');
                     $window->open();
-                    $this->awaitPainted($tui, $terminal, 'Porta documentation');
+                    $this->awaitPainted($tui, $terminal, needle: 'Porta documentation');
 
                     // Tab to the Git row: the link's place among the page's
                     // links, read from the page as rendered.
                     /** @var RenderedDoc $doc */
-                    $doc = Probe::get($viewer, 'doc');
+                    $doc = Probe::get($viewer, property: 'doc');
                     $group = \array_find(\range(0, $doc->groupCount() - 1), static fn (int $g): bool => '../plugins/git/docs/README.md' === $doc->target($g));
                     $this->assertIsInt($group, 'the front page links the git guide');
                     foreach (\range(0, $group) as $_) {
@@ -63,7 +63,7 @@ final class IdePluginDocsTest extends TestCase
                     }
                     $tui->handleInput("\r");
 
-                    $this->awaitPainted($tui, $terminal, 'Documentation › git');
+                    $this->awaitPainted($tui, $terminal, needle: 'Documentation › git');
                     $this->assertSame(\realpath(\dirname(__DIR__, levels: 2).'/plugins/git/docs/README.md'), $viewer->path(), "the plugin's own page, not a refusal");
                 },
             ],

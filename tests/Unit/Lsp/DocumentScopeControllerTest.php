@@ -59,7 +59,7 @@ final class DocumentScopeControllerTest extends TestCase
     {
         $this->editor->showDocument($path, new Document("const a = 1;\n"));
         $this->activeFile->set($path);
-        Probe::get($controller, 'lsp')->notifyDidOpen($path, "const a = 1;\n", $language, 1);
+        Probe::get($controller, property: 'lsp')->notifyDidOpen($path, text: "const a = 1;\n", languageId: $language, version: 1);
     }
 
     private static function symbol(string $name, int $kind, int $from, int $to): array
@@ -72,7 +72,7 @@ final class DocumentScopeControllerTest extends TestCase
         // The offline scanner is instant and right with no server running;
         // spending a round trip to reach the same trail is worse in every way.
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.php', 'php');
+        $this->readyOn($controller, path: '/p/a.php', language: 'php');
         $before = \count($this->client->requests);
 
         $controller->requestScopes();
@@ -83,7 +83,7 @@ final class DocumentScopeControllerTest extends TestCase
     public function testAServerWithoutTheCapabilityIsNeverAsked(): void
     {
         $controller = $this->controller(capabilities: []);
-        $this->readyOn($controller, '/p/a.ts');
+        $this->readyOn($controller, path: '/p/a.ts');
         $before = \count($this->client->requests);
 
         $controller->requestScopes();
@@ -94,10 +94,10 @@ final class DocumentScopeControllerTest extends TestCase
     public function testAnAnswerBecomesTheFilesScopes(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.ts');
+        $this->readyOn($controller, path: '/p/a.ts');
 
         $controller->requestScopes();
-        \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
+        \end($this->client->requests)['respond']([self::symbol('Svc', kind: 5, from: 0, to: 9)]);
 
         $this->assertSame(
             [['label' => 'Svc', 'startLine' => 1, 'endLine' => 10, 'kind' => CodeScopeKind::Type]],
@@ -109,9 +109,9 @@ final class DocumentScopeControllerTest extends TestCase
     {
         // A trail naming another file's classes is worse than no trail.
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.ts');
+        $this->readyOn($controller, path: '/p/a.ts');
         $controller->requestScopes();
-        \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
+        \end($this->client->requests)['respond']([self::symbol('Svc', kind: 5, from: 0, to: 9)]);
 
         $this->assertSame([], $this->scopes->forPath('/p/other.ts'));
         $this->assertSame([], $this->scopes->forPath(null));
@@ -120,11 +120,11 @@ final class DocumentScopeControllerTest extends TestCase
     public function testAnAnswerArrivingAfterABufferSwitchIsDropped(): void
     {
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.ts');
+        $this->readyOn($controller, path: '/p/a.ts');
         $controller->requestScopes();
 
         $this->editor->showDocument('/p/other.ts', new Document("x\n"));
-        \end($this->client->requests)['respond']([self::symbol('Svc', 5, 0, 9)]);
+        \end($this->client->requests)['respond']([self::symbol('Svc', kind: 5, from: 0, to: 9)]);
 
         $this->assertSame([], $this->scopes->forPath('/p/a.ts'));
     }
@@ -134,7 +134,7 @@ final class DocumentScopeControllerTest extends TestCase
         // The third is a server becoming ready: the file you launch with is
         // opened before any session exists and would otherwise never get one.
         $controller = $this->controller();
-        $this->readyOn($controller, '/p/a.ts');
+        $this->readyOn($controller, path: '/p/a.ts');
         $refresher = new DocumentScopeRefresher($controller);
         $before = \count($this->client->requests);
 

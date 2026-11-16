@@ -19,7 +19,7 @@ final class SearchPrefsStoreTest extends TestCase
 
         $this->assertSame(ScopeKind::Project, $store->lastScope());
         $this->assertSame('', $store->lastMask());
-        $this->assertSame([], Probe::get($store, 'recentMasks'));
+        $this->assertSame([], Probe::get($store, property: 'recentMasks'));
     }
 
     public function testPersistsScopeAndMaskAcrossInstances(): void
@@ -42,7 +42,7 @@ final class SearchPrefsStoreTest extends TestCase
         $store->addRecentMask('*.js');
         $store->addRecentMask('*.php'); // moves *.php back to the front
 
-        $this->assertSame(['*.php', '*.js'], Probe::get($store, 'recentMasks'));
+        $this->assertSame(['*.php', '*.js'], Probe::get($store, property: 'recentMasks'));
     }
 
     public function testBlankRecentMasksAreIgnored(): void
@@ -52,7 +52,7 @@ final class SearchPrefsStoreTest extends TestCase
         $store->addRecentMask('   ');
         $store->addRecentMask('');
 
-        $this->assertSame([], Probe::get($store, 'recentMasks'));
+        $this->assertSame([], Probe::get($store, property: 'recentMasks'));
     }
 
     public function testRecentMasksCapAtTwenty(): void
@@ -63,8 +63,8 @@ final class SearchPrefsStoreTest extends TestCase
             $store->addRecentMask("*.x{$i}");
         }
 
-        $this->assertCount(20, Probe::get($store, 'recentMasks'));
-        $this->assertSame('*.x24', Probe::get($store, 'recentMasks')[0], 'newest first');
+        $this->assertCount(20, Probe::get($store, property: 'recentMasks'));
+        $this->assertSame('*.x24', Probe::get($store, property: 'recentMasks')[0], 'newest first');
     }
 
     public function testToleratesAnUnwritableLocation(): void
@@ -76,7 +76,7 @@ final class SearchPrefsStoreTest extends TestCase
             $store->setMask('*.php'); // dumpFile throws → caught, in-memory value still set
             $store->addRecentMask('*.php');
             $this->assertSame('*.php', $store->lastMask());
-            $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
+            $this->assertSame(['*.php'], Probe::get($store, property: 'recentMasks'));
         } finally {
             if (\is_file($file)) {
                 \unlink($file);
@@ -101,7 +101,7 @@ final class SearchPrefsStoreTest extends TestCase
         $raw = \array_map(static fn (int $i): string => "*.x{$i}", \range(start: 0, end: 24));
         $project->write('.porta/search-prefs.json', (string) \json_encode(['recentMasks' => $raw], \JSON_THROW_ON_ERROR));
 
-        $loaded = Probe::get(new SearchPrefsStore($project->dir), 'recentMasks');
+        $loaded = Probe::get(new SearchPrefsStore($project->dir), property: 'recentMasks');
         $this->assertCount(20, $loaded);
         $this->assertSame('*.x0', $loaded[0]);
         $this->assertSame('*.x19', $loaded[19]);
@@ -115,7 +115,7 @@ final class SearchPrefsStoreTest extends TestCase
 
         // Malformed JSON → defaults.
         $bad = new TempProject([]);
-        $bad->write('.porta/search-prefs.json', 'not json');
+        $bad->write('.porta/search-prefs.json', content: 'not json');
         $this->assertSame('', new SearchPrefsStore($bad->dir)->lastMask());
 
         // An unknown scope string falls back to the whole project; non-string masks are dropped.
@@ -134,7 +134,7 @@ final class SearchPrefsStoreTest extends TestCase
         $store = new SearchPrefsStore($mixed->dir);
         $this->assertSame(ScopeKind::Project, $store->lastScope());
         $this->assertSame('', $store->lastMask(), 'a non-string mask is ignored');
-        $this->assertSame(['*.php'], Probe::get($store, 'recentMasks'));
+        $this->assertSame(['*.php'], Probe::get($store, property: 'recentMasks'));
     }
 
     public function testAnUnencodableMaskStaysLiveAndPersistenceDegradesSilently(): void

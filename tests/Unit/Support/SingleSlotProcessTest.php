@@ -29,11 +29,11 @@ final class SingleSlotProcessTest extends TestCase
             $argv,
             __DIR__,
             $stdin,
-            'dot',
-            static function (string $out) use (&$ok): void {
+            label: 'dot',
+            onSuccess: static function (string $out) use (&$ok): void {
                 $ok[] = $out;
             },
-            static function (string $why) use (&$failed): void {
+            onFailure: static function (string $why) use (&$failed): void {
                 $failed[] = $why;
             },
         );
@@ -46,7 +46,7 @@ final class SingleSlotProcessTest extends TestCase
 
     public function testExitZeroReportsStdoutEvenWithStderrChatter(): void
     {
-        [$ok, $failed] = $this->runToEnd(new SingleSlotProcess(), [\PHP_BINARY, '-r', 'fwrite(STDERR, "warning\n"); echo strtoupper(stream_get_contents(STDIN));'], 'graph');
+        [$ok, $failed] = $this->runToEnd(new SingleSlotProcess(), [\PHP_BINARY, '-r', 'fwrite(STDERR, "warning\n"); echo strtoupper(stream_get_contents(STDIN));'], stdin: 'graph');
 
         $this->assertSame(['GRAPH'], $ok, 'stdin was fed, and stderr alone is not a failure');
         $this->assertSame([], $failed);
@@ -74,12 +74,12 @@ final class SingleSlotProcessTest extends TestCase
         $slot->run(
             [\PHP_BINARY, '-r', 'usleep(300000); echo "stale";'],
             __DIR__,
-            null,
-            'dot',
-            static function (string $out) use (&$first): void {
+            stdin: null,
+            label: 'dot',
+            onSuccess: static function (string $out) use (&$first): void {
                 $first[] = $out;
             },
-            static function (string $why) use (&$first): void {
+            onFailure: static function (string $why) use (&$first): void {
                 $first[] = 'failed: '.$why;
             },
         );
@@ -98,12 +98,12 @@ final class SingleSlotProcessTest extends TestCase
         $slot->run(
             [\PHP_BINARY, '-r', 'usleep(300000); echo "late";'],
             __DIR__,
-            null,
-            'dot',
-            static function (string $out) use (&$reported): void {
+            stdin: null,
+            label: 'dot',
+            onSuccess: static function (string $out) use (&$reported): void {
                 $reported[] = $out;
             },
-            static function (string $why) use (&$reported): void {
+            onFailure: static function (string $why) use (&$reported): void {
                 $reported[] = 'failed: '.$why;
             },
         );

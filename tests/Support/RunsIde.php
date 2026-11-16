@@ -262,7 +262,7 @@ trait RunsIde
         // swallowed — would otherwise skip every later step, and their
         // assertions with them, and pass. The terminator alone may be skipped:
         // a scenario whose last step quits on purpose never reaches it.
-        self::assertSame($given, \array_values(\array_intersect($ran, $given)), 'every step ran: the IDE stopped before a step it was given');
+        self::assertSame($given, \array_values(\array_intersect($ran, $given)), message: 'every step ran: the IDE stopped before a step it was given');
 
         return $terminal;
     }

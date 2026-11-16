@@ -296,7 +296,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
                 unset($this->standIns[$path]);
                 $this->openFile($path, $focus, $as);
                 if (null !== $standIn && $standIn->cursorLine > 0 && $this->buffers->active()?->path === $path) {
-                    $this->editor->jumpTo($standIn->cursorLine, 0);
+                    $this->editor->jumpTo($standIn->cursorLine, utf16Col: 0);
                 }
             },
             function () use ($path, &$opened): void {
@@ -411,7 +411,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
 
             return;
         } catch (\Throwable $bug) {
-            DiagnosticLog::forRoot($this->paths->root(), 'error')->append(\sprintf("%s: %s\n%s", $bug::class, $bug->getMessage(), $bug->getTraceAsString()));
+            DiagnosticLog::forRoot($this->paths->root(), channel: 'error')->append(\sprintf("%s: %s\n%s", $bug::class, $bug->getMessage(), $bug->getTraceAsString()));
             $this->notifier->error($this->translator->trans('Internal error — details in .porta/error.log'));
 
             return;
@@ -474,7 +474,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
         $buffer->document->applyEditorConfig($config);
         $buffer->editorConfig = $config;
         if (null !== $config->charset && !\in_array($config->charset, ['utf-8', 'utf-8-bom'], strict: true)) {
-            $this->notifier->warn($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), 5.0);
+            $this->notifier->warn($this->translator->trans('.editorconfig charset "%charset%" ignored (UTF-8 only)', ['%charset%' => $config->charset]), seconds: 5.0);
         }
     }
 
@@ -818,7 +818,7 @@ final class BufferService implements ChangeMarkSink, DiagnosticsSink, FileOpener
                     '%file% changed on disk — Ctrl+S again to overwrite',
                     ['%file%' => $this->paths->relative($buffer->path)],
                 ),
-                3.0,
+                seconds: 3.0,
             );
         }
 

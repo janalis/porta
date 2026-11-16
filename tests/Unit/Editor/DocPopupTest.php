@@ -41,14 +41,14 @@ final class DocPopupTest extends TestCase
     public function testCoversIsTheDrawnRectangle(): void
     {
         $popup = new DocPopup('text');
-        $this->assertFalse($popup->covers(3, 5), 'not drawn yet');
+        $this->assertFalse($popup->covers(3, relCol: 5), 'not drawn yet');
         $popup->drawn = ['rect' => [2, 4, 20, 7], 'maxScroll' => 0];
 
-        $this->assertTrue($popup->covers(2, 4));
-        $this->assertTrue($popup->covers(8, 23));
-        $this->assertFalse($popup->covers(9, 10));
-        $this->assertFalse($popup->covers(5, 24));
-        $this->assertFalse($popup->covers(1, 10));
-        $this->assertFalse($popup->covers(5, 3));
+        $this->assertTrue($popup->covers(2, relCol: 4));
+        $this->assertTrue($popup->covers(8, relCol: 23));
+        $this->assertFalse($popup->covers(9, relCol: 10));
+        $this->assertFalse($popup->covers(5, relCol: 24));
+        $this->assertFalse($popup->covers(1, relCol: 10));
+        $this->assertFalse($popup->covers(5, relCol: 3));
     }
 }

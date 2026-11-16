@@ -126,7 +126,7 @@ final readonly class SearchActions
         }
 
         $this->bufferService->openFile($this->paths->absolute($target['path']), focus: OpenFocus::Editor);
-        $this->jump->jumpTo($target['line'], 0);
+        $this->jump->jumpTo($target['line'], utf16Col: 0);
         $this->notifier->flash($this->translator->trans('Super method: %label%', ['%label%' => $target['label']]));
     }
 }

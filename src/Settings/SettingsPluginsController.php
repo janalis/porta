@@ -580,7 +580,7 @@ final class SettingsPluginsController
             InstallScope::of($this->scope->current()),
             function (?string $error, ?string $file): void {
                 $message = $error ?? $this->lifecycle->activateInstalled((string) $file) ?? $this->translator->trans('Plugin installed');
-                $this->notifier->flash($message, 5.0);
+                $this->notifier->flash($message, seconds: 5.0);
                 $this->lifecycle->refreshView();
             },
             $version,
@@ -623,7 +623,7 @@ final class SettingsPluginsController
             // Flash before deactivating: a failing shadow-fallback reload
             // flashes its own error, which must win over the removal
             // confirmation.
-            null !== $error ? $this->notifier->error($error) : $this->notifier->success($this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), 5.0);
+            null !== $error ? $this->notifier->error($error) : $this->notifier->success($this->translator->trans('Plugin "%name%" removed', ['%name%' => $name]), seconds: 5.0);
             if (null === $error) {
                 $this->lifecycle->deactivate($name);
             }

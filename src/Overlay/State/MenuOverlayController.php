@@ -209,7 +209,7 @@ final class MenuOverlayController implements FloatingRegions
         // one frame, so the current panes always have rects.
         [$screenTop, , $screenBottom, $screenRight] = PaneBounds::union($this->panes->current(), $this->renderer) ?? [0, 0, 0, 0];
         $width = \min($this->contextMenu->panelWidth() + PopupFrame::CHROME_COLS, $screenRight);
-        $col = IntMath::clamp($this->contextAnchorCol, 0, $screenRight - $width);
+        $col = IntMath::clamp($this->contextAnchorCol, lo: 0, hi: $screenRight - $width);
         $inner = $width - PopupFrame::CHROME_COLS;
         $items = $this->contextMenu->segments($inner);
         // Under the anchor when it fits, else above it when it fits there;

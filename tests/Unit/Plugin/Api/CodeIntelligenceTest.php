@@ -68,7 +68,7 @@ final class CodeIntelligenceTest extends TestCase
     {
         $text = (string) \file_get_contents($path);
         $buffer = $this->buffers->open($path, $text);
-        $this->pool->notifyDidOpen($path, $text, 'php', 1);
+        $this->pool->notifyDidOpen($path, $text, languageId: 'php', version: 1);
 
         return $buffer;
     }
@@ -120,8 +120,8 @@ final class CodeIntelligenceTest extends TestCase
         $b = $this->path('src/B.php');
         $buffer = $this->open($a);
 
-        $code->rename($a, 1, 6, 'Z', $this->keep());
-        $this->answer(0, ['changes' => [Uri::fromPath($a) => [self::edit(1, 6, 7, 'Z')], Uri::fromPath($b) => [self::edit(1, 4, 5, 'Z')]]]);
+        $code->rename($a, line: 1, column: 6, newName: 'Z', onDone: $this->keep());
+        $this->answer(0, ['changes' => [Uri::fromPath($a) => [self::edit(1, from: 6, to: 7, text: 'Z')], Uri::fromPath($b) => [self::edit(1, from: 4, to: 5, text: 'Z')]]]);
 
         $this->assertSame([[['files' => 2, 'skipped' => []], null]], $this->said);
         $this->assertSame("<?php\nclass Z {}\n", $buffer->document->getText());
@@ -134,10 +134,12 @@ final class CodeIntelligenceTest extends TestCase
         $code = $this->code();
         $a = $this->path('src/A.php');
 
-        $code->rename($a, 1, 6, 'Z', $this->keep());
-        $code->rename($a, 1, 6, 'Z', $this->keep());
-        $this->answer(0, null, ['message' => 'No symbol here']);
-        $this->answer(1, ['documentChanges' => [['kind' => 'create', 'uri' => Uri::fromPath($a)], ['textDocument' => ['uri' => Uri::fromPath($a)], 'edits' => [self::edit(1, 6, 7, 'Z')]]]]);
+        $code->rename($a, line: 1, column: 6, newName: 'Z', onDone: $this->keep());
+        $code->rename($a, line: 1, column: 6, newName: 'Z', onDone: $this->keep());
+        $this->answer(0, result: null, error: ['message' => 'No symbol here']);
+        $this->answer(1, [
+            'documentChanges' => [['kind' => 'create', 'uri' => Uri::fromPath($a)], ['textDocument' => ['uri' => Uri::fromPath($a)], 'edits' => [self::edit(1, from: 6, to: 7, text: 'Z')]]],
+        ]);
 
         $this->assertSame(
             [
@@ -157,7 +159,7 @@ final class CodeIntelligenceTest extends TestCase
 
         $code->format($a, $this->keep());
         $this->assertSame(['tabSize' => 4, 'insertSpaces' => true], $this->client?->requests[0]['params']['options'] ?? null, 'the file\'s own indentation');
-        $this->answer(0, [self::edit(1, 0, 0, '// '), self::edit(1, 10, 10, ' // end')]);
+        $this->answer(0, [self::edit(1, from: 0, to: 0, text: '// '), self::edit(1, from: 10, to: 10, text: ' // end')]);
 
         $this->assertSame([[2, null]], $this->said);
         $this->assertSame("<?php\n// class A {} // end\n", $buffer->document->getText());
@@ -173,7 +175,7 @@ final class CodeIntelligenceTest extends TestCase
         \symlink($this->project->dir, $other->path('repo'));
 
         $code->format($other->path('repo/src/A.php'), $this->keep());
-        $this->answer(0, [self::edit(1, 0, 0, '// ')]);
+        $this->answer(0, [self::edit(1, from: 0, to: 0, text: '// ')]);
 
         $this->assertSame([[1, null]], $this->said);
         $this->assertSame("<?php\n// class A {}\n", $buffer->document->getText());
@@ -190,11 +192,11 @@ final class CodeIntelligenceTest extends TestCase
         $code->format($a, $this->keep()); // 1: already formatted
         $code->format($a, $this->keep()); // 2: overlapping
         $code->format($a, $this->keep()); // 3: the text moved under it
-        $this->answer(0, null, ['message' => 'Formatter crashed']);
+        $this->answer(0, result: null, error: ['message' => 'Formatter crashed']);
         $this->answer(1, []);
-        $this->answer(2, [self::edit(1, 0, 5, 'x'), self::edit(1, 2, 7, 'y')]);
+        $this->answer(2, [self::edit(1, from: 0, to: 5, text: 'x'), self::edit(1, from: 2, to: 7, text: 'y')]);
         $buffer->document->insert('!');
-        $this->answer(3, [self::edit(1, 0, 0, '// ')]);
+        $this->answer(3, [self::edit(1, from: 0, to: 0, text: '// ')]);
 
         $this->assertSame(
             [

@@ -27,7 +27,7 @@ final class RestartLauncherTest extends TestCase
         $project->write('Release.php', $before);
         require $project->path('Release.php');
         $this->assertSame('before', \constant($class.'::VERSION'));
-        $project->write('update.php', '<?php file_put_contents($argv[1], $argv[2]);');
+        $project->write('update.php', content: '<?php file_put_contents($argv[1], $argv[2]);');
         $project->write('launch.php', <<<'PHP'
             <?php
             require $argv[1];
@@ -43,7 +43,7 @@ final class RestartLauncherTest extends TestCase
             ], JSON_THROW_ON_ERROR));
             PHP);
         $buffers = new BufferManager();
-        $buffers->open($project->path('document.php'), 'disk')->document->replaceAll('unsaved');
+        $buffers->open($project->path('document.php'), content: 'disk')->document->replaceAll('unsaved');
         $directory = $project->path('handoff');
         $this->assertTrue(new RestartSnapshot()->save($directory, $project->dir, $buffers));
         $helper = new RestartLauncher()->prepare(
@@ -78,7 +78,7 @@ final class RestartLauncherTest extends TestCase
     public function testUnencodableLaunchContextDoesNotStartAnUpdate(): void
     {
         $project = new TempProject();
-        $this->assertNull(new RestartLauncher()->prepare($project->dir, "\xFF", [], [], $project->path('lock')));
+        $this->assertNull(new RestartLauncher()->prepare($project->dir, root: "\xFF", launch: [], update: [], lock: $project->path('lock')));
     }
 
     public function testUpdateFailureReopensAndLeavesANotificationForTheRestoredIde(): void

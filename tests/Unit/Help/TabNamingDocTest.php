@@ -29,7 +29,7 @@ final class TabNamingDocTest extends TestCase
     {
         $buffers = new BufferManager();
         foreach ($paths as $path) {
-            $buffers->open($path, '<?php');
+            $buffers->open($path, content: '<?php');
         }
 
         return \array_column(new TabListProvider($buffers, new Translator('en'), new ProjectPaths('/'), TestAgentPresence::create())->tabs(), 'name');

@@ -40,28 +40,28 @@ final class RuleTest extends TestCase
 
     public function testTheLegendSitsAfterTheFirstStroke(): void
     {
-        $this->assertSame('─ Editor ─────', AnsiUtils::stripAnsiCodes(Rule::horizontal(14, Styles::dark(), 'Editor')));
+        $this->assertSame('─ Editor ─────', AnsiUtils::stripAnsiCodes(Rule::horizontal(14, Styles::dark(), legend: 'Editor')));
     }
 
     public function testTheTeesJoinTheFrameOnEitherSide(): void
     {
         $this->assertSame('├──────┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(8, Styles::dark(), tees: Role::TabAccent)));
-        $this->assertSame('├─ Files ──┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(12, Styles::dark(), 'Files', Role::TabAccent)));
+        $this->assertSame('├─ Files ──┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(12, Styles::dark(), legend: 'Files', tees: Role::TabAccent)));
     }
 
     public function testTheLegendYieldsBeforeTheTeesDo(): void
     {
         // Room for the tees and a run, not for `─ F… ─`: the frame stays shut.
-        $this->assertSame('├───┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(5, Styles::dark(), 'Files', Role::TabAccent)));
-        $this->assertSame('├─ F… ─┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(8, Styles::dark(), 'Files', Role::TabAccent)));
+        $this->assertSame('├───┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(5, Styles::dark(), legend: 'Files', tees: Role::TabAccent)));
+        $this->assertSame('├─ F… ─┤', AnsiUtils::stripAnsiCodes(Rule::horizontal(8, Styles::dark(), legend: 'Files', tees: Role::TabAccent)));
     }
 
     public function testALegendNeverEndsTheRule(): void
     {
         // Four columns hold `─ X ` with nothing after: a legend needs a stroke
         // on both sides to read as set INTO a line.
-        $this->assertSame('────', AnsiUtils::stripAnsiCodes(Rule::horizontal(4, Styles::dark(), 'X')));
-        $this->assertSame('─ X ─', AnsiUtils::stripAnsiCodes(Rule::horizontal(5, Styles::dark(), 'X')));
+        $this->assertSame('────', AnsiUtils::stripAnsiCodes(Rule::horizontal(4, Styles::dark(), legend: 'X')));
+        $this->assertSame('─ X ─', AnsiUtils::stripAnsiCodes(Rule::horizontal(5, Styles::dark(), legend: 'X')));
     }
 
     public function testEveryWidthIsExactEvenForAWideLegend(): void
@@ -73,13 +73,13 @@ final class RuleTest extends TestCase
                 }
             }
         }
-        self::assertExactWidth([Rule::horizontal(-3, Styles::dark(), 'Editor')], 0, 'a negative width is none');
+        self::assertExactWidth([Rule::horizontal(-3, Styles::dark(), legend: 'Editor')], width: 0, context: 'a negative width is none');
     }
 
     public function testTheRunTakesTheRuleTintAndTheLegendReadsBright(): void
     {
         $styles = Styles::dark();
-        $row = Rule::horizontal(10, $styles, 'Ab', Role::TabAccent);
+        $row = Rule::horizontal(10, $styles, legend: 'Ab', tees: Role::TabAccent);
 
         $this->assertStringStartsWith($styles->of(Role::TabAccent)->apply('├'), $row, 'the tee is the frame\'s');
         $this->assertStringContainsString($styles->of(Role::Rule)->apply('─ '), $row);

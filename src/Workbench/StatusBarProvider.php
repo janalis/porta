@@ -162,6 +162,7 @@ final readonly class StatusBarProvider
         $hints = KeyHints::legend(
             ['save' => '%key% save', 'ide_toggle_focus' => '%key% panel', 'trigger_completion' => '%key% complete', 'ide_quit' => '%key% quit'],
             fn (string $message, string $key): string => $this->translator->trans($message, ['%key%' => $key]),
+            // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
             '  ',
             $this->editor->getKeybindings(),
             $this->ideKeys,

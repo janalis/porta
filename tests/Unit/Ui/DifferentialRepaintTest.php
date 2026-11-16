@@ -218,14 +218,14 @@ final class DifferentialRepaintTest extends TestCase
         // makes it one is the clear plus the absolute home.
         $terminal = new VirtualTerminal(columns: self::COLUMNS, rows: self::ROWS);
         $tui = $this->tui($terminal, rtl: false);
-        self::$lines = [self::row('name', 'value')];
+        self::$lines = [self::row('name', right: 'value')];
         $tui->requestRender();
         $tui->processRender();
 
         // An ordinary second frame: relative only.
         $terminal->clearOutput();
         $this->widget->invalidate();
-        self::$lines = [self::row('name', 'other')];
+        self::$lines = [self::row('name', right: 'other')];
         $tui->requestRender();
         $tui->processRender();
         $ordinary = $terminal->getOutput();

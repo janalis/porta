@@ -131,9 +131,9 @@ final class SettingsControllerTest extends TestCase
         });
         new Translator('en');
         $applier = new LiveSettingsApplier(
-            Themes::createSwitchable(ColorMode::Ansi, 'dark'),
+            Themes::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new StyleSheetThemer(new Renderer(new StyleSheet())),
-            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, 'dark'),
+            TerminalThemeFactory::createSwitchable(ColorMode::Ansi, theme: 'dark'),
             new CursorStyle(),
             $translator,
             new ViewRegions(Styles::dark()),
@@ -191,15 +191,15 @@ final class SettingsControllerTest extends TestCase
     private function controllerForAHandBuiltDescriptorTable(StatusBarWidget $status): SettingsController
     {
         $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
-        Probe::set($controller, 'notifier', new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
-        Probe::set($controller, 'translator', new Translator('en'));
+        Probe::set($controller, property: 'notifier', value: new Notifier($status, new Tui(terminal: new VirtualTerminal(columns: 80, rows: 24))));
+        Probe::set($controller, property: 'translator', value: new Translator('en'));
         $this->descriptorTableProject = new TempProject();
-        Probe::set($controller, 'writer', new PortaJsonWriter(ConfigFiles::for($this->descriptorTableProject->dir)));
+        Probe::set($controller, property: 'writer', value: new PortaJsonWriter(ConfigFiles::for($this->descriptorTableProject->dir)));
         // Pinned to Project so the write lands in the temp project rather than
         // the suite's shared fixture home, which the Global default names.
         $scope = new SettingsScope(ConfigFiles::for($this->descriptorTableProject->dir));
         $scope->set(ConfigScope::Project);
-        Probe::set($controller, 'scope', $scope);
+        Probe::set($controller, property: 'scope', value: $scope);
 
         return $controller;
     }
@@ -293,7 +293,7 @@ final class SettingsControllerTest extends TestCase
         $this->assertSame(['auto', 'macos', 'windows', 'linux'], $row->options);
         $this->assertFalse($row->restart, 'a keymap switch applies live');
 
-        $controller->changeSetting('keymapPlatform', 'macos');
+        $controller->changeSetting('keymapPlatform', value: 'macos');
 
         $this->assertSame(KeymapPlatform::MacOs, $this->keys->platform());
         $this->assertSame('macos', $this->written($project)['settings']['keymapPlatform'] ?? null);
@@ -312,8 +312,8 @@ final class SettingsControllerTest extends TestCase
         $controller->applyAll();
         $this->assertSame(InlayParameterHints::Literals, $editor->display->inlayParameterHints, 'a value outside the options falls back to the default');
 
-        $controller->changeSetting('inlayParameterHints', 'all');
-        $controller->changeSetting('inlayTypeHints', false);
+        $controller->changeSetting('inlayParameterHints', value: 'all');
+        $controller->changeSetting('inlayTypeHints', value: false);
 
         $this->assertSame(InlayParameterHints::All, $editor->display->inlayParameterHints);
         $this->assertFalse($editor->display->inlayTypeHints);
@@ -341,11 +341,11 @@ final class SettingsControllerTest extends TestCase
         $this->tooltips->point(new Tooltip('k', 't', 0, 0, 1));
         $this->assertNull($this->tooltips->shown(), 'on, with a dwell');
 
-        $controller->changeSetting('tooltipDelay', 0);
+        $controller->changeSetting('tooltipDelay', value: 0);
         $this->tooltips->point(new Tooltip('j', 't', 0, 0, 1));
         $this->assertSame('j', $this->tooltips->shown()?->key, 'no dwell at 0');
 
-        $controller->changeSetting('tooltips', false);
+        $controller->changeSetting('tooltips', value: false);
         $this->assertNull($this->tooltips->shown(), 'off takes the card');
         $this->assertSame(0, IdeConfig::load($project->dir)->settings['tooltipDelay'], 'persisted as an int');
     }
@@ -411,7 +411,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeSetting('tabBarPosition', 'left');
+        $controller->changeSetting('tabBarPosition', value: 'left');
 
         $this->assertSame(['left'], $this->tabBarPositionChanges, 'the apply closure fired with the new position');
         $this->assertSame('left', IdeConfig::load($project->dir)->settings['tabBarPosition'], 'persisted');
@@ -423,7 +423,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
 
-        $controller->changeSetting('cursorShape', 'block');
+        $controller->changeSetting('cursorShape', value: 'block');
 
         $this->assertSame([CursorShape::Block], $this->cursorShapeChanges, 'the apply closure fired with the new shape');
         $this->assertSame('block', IdeConfig::load($project->dir)->settings['cursorShape'], 'persisted');
@@ -436,7 +436,7 @@ final class SettingsControllerTest extends TestCase
         $status = new StatusBarWidget();
         $controller = $this->controller($project->dir, $editor, $status);
 
-        $controller->changeSetting('lineNumbers', 'relative');
+        $controller->changeSetting('lineNumbers', value: 'relative');
 
         $this->assertSame(LineNumberMode::Relative, $editor->display->lineNumbers, 'applied to the editor');
         $this->assertSame('relative', IdeConfig::load($project->dir)->settings['lineNumbers'], 'persisted');
@@ -450,7 +450,7 @@ final class SettingsControllerTest extends TestCase
         $editor = new CodeEditorWidget();
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
-        $controller->changeSetting('lineNumbers', 'off');
+        $controller->changeSetting('lineNumbers', value: 'off');
         $this->assertSame(LineNumberMode::Off, $editor->display->lineNumbers);
         $this->assertSame('off', IdeConfig::load($project->dir)->settings['lineNumbers']);
     }
@@ -527,32 +527,32 @@ final class SettingsControllerTest extends TestCase
         $breadcrumbs = new BreadcrumbsWidget();
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), breadcrumbs: $breadcrumbs);
 
-        $controller->changeSetting('stickyScroll', false);
+        $controller->changeSetting('stickyScroll', value: false);
         $this->assertFalse($editor->display->stickyScroll);
-        $controller->changeSetting('indentGuides', false);
+        $controller->changeSetting('indentGuides', value: false);
         $this->assertFalse($editor->display->indentGuides);
-        $controller->changeSetting('breadcrumbs', false);
+        $controller->changeSetting('breadcrumbs', value: false);
         $this->assertFalse($breadcrumbs->isVisible());
 
         // The two newest rows, for the same reason the others are here: a row
         // whose `apply` names the wrong setter is a wire nothing else checks,
         // and both of these render nothing until the option is on.
-        $controller->changeSetting('methodSeparators', true);
+        $controller->changeSetting('methodSeparators', value: true);
         $this->assertTrue($editor->display->methodSeparators);
-        $controller->changeSetting('showWhitespace', true);
+        $controller->changeSetting('showWhitespace', value: true);
         $this->assertTrue($editor->display->showWhitespace);
-        $controller->changeSetting('softWrap', true);
+        $controller->changeSetting('softWrap', value: true);
         $this->assertTrue($editor->display->softWrap);
 
-        $controller->changeSetting('stickyScroll', true);
+        $controller->changeSetting('stickyScroll', value: true);
         $this->assertTrue($editor->display->stickyScroll);
-        $controller->changeSetting('breadcrumbs', true);
+        $controller->changeSetting('breadcrumbs', value: true);
         $this->assertTrue($breadcrumbs->isVisible());
-        $controller->changeSetting('methodSeparators', false);
+        $controller->changeSetting('methodSeparators', value: false);
         $this->assertFalse($editor->display->methodSeparators);
-        $controller->changeSetting('showWhitespace', false);
+        $controller->changeSetting('showWhitespace', value: false);
         $this->assertFalse($editor->display->showWhitespace);
-        $controller->changeSetting('softWrap', false);
+        $controller->changeSetting('softWrap', value: false);
         $this->assertFalse($editor->display->softWrap);
     }
 
@@ -568,14 +568,14 @@ final class SettingsControllerTest extends TestCase
         $editor = new CodeEditorWidget();
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget());
 
-        $controller->changeSetting('autoPairs', false);
+        $controller->changeSetting('autoPairs', value: false);
         $this->assertFalse($editor->display->autoPairs);
-        $controller->changeSetting('formatOnSave', true);
+        $controller->changeSetting('formatOnSave', value: true);
         $this->assertTrue($this->formatOnSave->isEnabled());
 
-        $controller->changeSetting('autoPairs', true);
+        $controller->changeSetting('autoPairs', value: true);
         $this->assertTrue($editor->display->autoPairs);
-        $controller->changeSetting('formatOnSave', false);
+        $controller->changeSetting('formatOnSave', value: false);
         $this->assertFalse($this->formatOnSave->isEnabled());
     }
 
@@ -585,10 +585,10 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeSetting('autoPairs', true);
+        $controller->changeSetting('autoPairs', value: true);
         $this->assertStringContainsString(' on', $this->flashText($status));
 
-        $controller->changeSetting('autoPairs', false);
+        $controller->changeSetting('autoPairs', value: false);
         $this->assertStringContainsString(' off', $this->flashText($status));
     }
 
@@ -602,12 +602,12 @@ final class SettingsControllerTest extends TestCase
     {
         $status = new StatusBarWidget();
         $controller = $this->controllerForAHandBuiltDescriptorTable($status);
-        Probe::set($controller, 'settings', ['restartOnly' => false]);
-        Probe::set($controller, 'descriptors', [
+        Probe::set($controller, property: 'settings', value: ['restartOnly' => false]);
+        Probe::set($controller, property: 'descriptors', value: [
             'restartOnly' => ['label' => 'Restart only', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => true, 'apply' => null],
         ]);
 
-        $controller->changeSetting('restartOnly', true);
+        $controller->changeSetting('restartOnly', value: true);
 
         $this->assertStringContainsString('Restart only on · applies on restart', $this->flashText($status));
     }
@@ -617,7 +617,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeSetting('language', 'fr');
+        $controller->changeSetting('language', value: 'fr');
 
         $this->assertSame(['fr'], $this->languageChanges, 'the UI-locale hook fired live');
         $this->assertSame('fr', IdeConfig::load($project->dir)->settings['language'], 'persisted');
@@ -629,7 +629,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeSetting('theme', 'light');
+        $controller->changeSetting('theme', value: 'light');
 
         $this->assertSame(['light'], $this->themeChanges, 'the theme hook fired live');
         $this->assertSame('light', IdeConfig::load($project->dir)->settings['theme'], 'persisted');
@@ -641,7 +641,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
 
-        $controller->changeSetting('bogus', true);
+        $controller->changeSetting('bogus', value: true);
 
         $this->assertStringContainsString('Unknown setting "bogus"', $this->flashText($status));
         $this->assertFalse(\is_file($project->path('.porta.json')));
@@ -653,7 +653,7 @@ final class SettingsControllerTest extends TestCase
         \mkdir($project->path('.porta.json')); // a directory blocks the file write
 
         $controller = $this->controller($project->dir, new CodeEditorWidget(), $status = new StatusBarWidget());
-        $controller->changeSetting('autoPairs', false);
+        $controller->changeSetting('autoPairs', value: false);
 
         $this->assertStringContainsString('(not saved)', $this->flashText($status));
     }
@@ -676,10 +676,10 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject(['a.php' => '', 'vendor/pkg/Lib.php' => '']);
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
 
-        $controller->changeSetting('searchIncludeVendor', true);
+        $controller->changeSetting('searchIncludeVendor', value: true);
         $this->assertContains('vendor/pkg/Lib.php', \array_column($this->files->entries(), 'path'), 'the toggle re-scopes go-to-file live');
 
-        $controller->changeSetting('searchIncludeVendor', false);
+        $controller->changeSetting('searchIncludeVendor', value: false);
         $paths = \array_column($this->files->entries(), 'path');
         $this->assertContains('a.php', $paths);
         $this->assertNotContains('vendor/pkg/Lib.php', $paths, 'disabling narrows the live index back');
@@ -690,11 +690,11 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject(['a.php' => '']);
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget());
 
-        $controller->changeSetting('displayName', "  Ada\x07\u{202E}  ");
+        $controller->changeSetting('displayName', value: "  Ada\x07\u{202E}  ");
         $this->assertSame('Ada', $this->identity->name(), 'the name is cleaned before anyone sees it');
-        $controller->changeSetting('sharePresence', false);
+        $controller->changeSetting('sharePresence', value: false);
         $this->assertFalse($this->identity->sharing());
-        $controller->changeSetting('sharePresence', true);
+        $controller->changeSetting('sharePresence', value: true);
         $this->assertTrue($this->identity->sharing());
     }
 
@@ -709,7 +709,7 @@ final class SettingsControllerTest extends TestCase
         // a trailing null row can't distinguish "skip this one" from "stop here".
         $controller = new \ReflectionClass(SettingsController::class)->newInstanceWithoutConstructor();
         $applied = [];
-        Probe::set($controller, 'descriptors', [
+        Probe::set($controller, property: 'descriptors', value: [
             'live' => [
                 'label' => 'Live',
                 'kind' => 'bool',
@@ -728,7 +728,7 @@ final class SettingsControllerTest extends TestCase
                 },
             ],
         ]);
-        Probe::set($controller, 'settings', ['live' => true, 'restartOnly' => false, 'liveAfter' => true]);
+        Probe::set($controller, property: 'settings', value: ['live' => true, 'restartOnly' => false, 'liveAfter' => true]);
 
         $controller->applyAll();
 
@@ -748,10 +748,10 @@ final class SettingsControllerTest extends TestCase
     {
         $status = new StatusBarWidget();
         $controller = $this->controllerForAHandBuiltDescriptorTable($status);
-        Probe::set($controller, 'descriptors', [
+        Probe::set($controller, property: 'descriptors', value: [
             'missing' => ['label' => 'Missing', 'kind' => SettingsRowKind::Bool, 'group' => 'general', 'restart' => false, 'apply' => null],
         ]);
-        Probe::set($controller, 'settings', []); // 'missing' is absent, not merely falsy
+        Probe::set($controller, property: 'settings', value: []); // 'missing' is absent, not merely falsy
 
         $controller->toggle('missing');
 
@@ -786,10 +786,10 @@ final class SettingsControllerTest extends TestCase
         return new FormatOnSave(
             $pool,
             $editor,
-            new Notifier(new StatusBarWidget(), TestTui::create(80, 24)),
+            new Notifier(new StatusBarWidget(), TestTui::create(80, rows: 24)),
             new Translator('en'),
             new FakeScheduler(),
-            TestTui::create(80, 24),
+            TestTui::create(80, rows: 24),
         );
     }
 
@@ -805,7 +805,7 @@ final class SettingsControllerTest extends TestCase
         // `1`, not `true` — what a hand-edited .porta.json may well hold.
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), ['autoPairs' => 1] + IdeConfig::DEFAULT_SETTINGS);
 
-        $row = $this->rowFor($controller->formRows(), 'autoPairs');
+        $row = $this->rowFor($controller->formRows(), key: 'autoPairs');
 
         $this->assertTrue($row->value, 'the value coerced to the row kind');
         $this->assertFalse($row->isModified(), 'and so did the default, so they compare equal');
@@ -816,13 +816,13 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
 
-        $this->assertFalse($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'a fresh project is at its defaults');
+        $this->assertFalse($this->rowFor($controller->formRows(), key: 'autoPairs')->isModified(), 'a fresh project is at its defaults');
 
-        $controller->changeSetting('autoPairs', false);
-        $this->assertTrue($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'the marker follows the change');
+        $controller->changeSetting('autoPairs', value: false);
+        $this->assertTrue($this->rowFor($controller->formRows(), key: 'autoPairs')->isModified(), 'the marker follows the change');
 
-        $controller->changeSetting('autoPairs', true);
-        $this->assertFalse($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'and clears when it is put back');
+        $controller->changeSetting('autoPairs', value: true);
+        $this->assertFalse($this->rowFor($controller->formRows(), key: 'autoPairs')->isModified(), 'and clears when it is put back');
     }
 
     /** @param list<\Porta\Settings\SettingsRow> $rows */
@@ -849,14 +849,14 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
-        $controller->changeSetting('autoPairs', false);
+        $controller->changeSetting('autoPairs', value: false);
         $this->assertFalse($this->written($project)['settings']['autoPairs'], 'set first, so the reset has something to undo');
 
         $controller->resetSetting('autoPairs');
 
         $this->assertArrayNotHasKey('autoPairs', $this->written($project)['settings'] ?? [], 'the key is gone, not set to its default');
-        $this->assertFalse($this->rowFor($controller->formRows(), 'autoPairs')->isModified(), 'and the row is back at stock');
-        $this->assertTrue($this->rowFor($controller->formRows(), 'autoPairs')->value, 'showing the default value in memory');
+        $this->assertFalse($this->rowFor($controller->formRows(), key: 'autoPairs')->isModified(), 'and the row is back at stock');
+        $this->assertTrue($this->rowFor($controller->formRows(), key: 'autoPairs')->value, 'showing the default value in memory');
     }
 
     /** Removing the last setting takes the block with it rather than leaving `{}`. */
@@ -864,7 +864,7 @@ final class SettingsControllerTest extends TestCase
     {
         $project = new TempProject();
         $controller = $this->controller($project->dir, new CodeEditorWidget(), new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
-        $controller->changeSetting('autoPairs', false);
+        $controller->changeSetting('autoPairs', value: false);
 
         $controller->resetSetting('autoPairs');
 
@@ -877,7 +877,7 @@ final class SettingsControllerTest extends TestCase
         $project = new TempProject();
         $editor = new CodeEditorWidget();
         $controller = $this->controller($project->dir, $editor, new StatusBarWidget(), IdeConfig::DEFAULT_SETTINGS);
-        $controller->changeSetting('theme', 'light');
+        $controller->changeSetting('theme', value: 'light');
         $this->assertSame(['light'], $this->themeChanges, 'the change applied');
 
         $controller->resetSetting('theme');

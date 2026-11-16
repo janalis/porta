@@ -365,7 +365,7 @@ final class ResponsiveLayoutTest extends TestCase
         $ltr->applyDirection();
         $this->assertFalse($this->bidi->isMirrored(), 'an LTR locale must not install the reorder seam');
 
-        $rtl = $this->paneLayout($regions, 'he');
+        $rtl = $this->paneLayout($regions, locale: 'he');
         $rtl->applyDirection();
         $this->assertTrue($this->bidi->isMirrored(), 'an RTL locale must install it');
     }

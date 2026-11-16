@@ -44,8 +44,8 @@ final class RowBleedTest extends TestCase
     {
         $hover = new Style(background: 236);
 
-        $this->assertSame(new Style(color: 236)->apply('▀▀'), RowBleed::gap(2, $hover, null));
-        $this->assertSame(new Style(color: 236)->apply('▄▄'), RowBleed::gap(2, null, $hover));
+        $this->assertSame(new Style(color: 236)->apply('▀▀'), RowBleed::gap(2, $hover, below: null));
+        $this->assertSame(new Style(color: 236)->apply('▄▄'), RowBleed::gap(2, above: null, below: $hover));
     }
 
     /** Between two shades the upper row's colour is the glyph, the lower row's its background. */
@@ -76,8 +76,8 @@ final class RowBleedTest extends TestCase
     {
         $dim = new Style(dim: true, reverse: true);
 
-        $this->assertSame(new Style(dim: true)->apply('▀▀'), RowBleed::gap(2, $dim, null));
-        $this->assertSame(new Style(dim: true)->apply('▄▄'), RowBleed::gap(2, null, $dim));
+        $this->assertSame(new Style(dim: true)->apply('▀▀'), RowBleed::gap(2, $dim, below: null));
+        $this->assertSame(new Style(dim: true)->apply('▄▄'), RowBleed::gap(2, above: null, below: $dim));
         $this->assertSame(new Style(dim: true)->apply('██'), RowBleed::gap(2, $dim, new Style(reverse: true)), "the upper row's paint");
     }
 
@@ -87,17 +87,17 @@ final class RowBleedTest extends TestCase
         $hover = new Style(background: 236);
         $lines = ['─────', 'a    ', '     ', 'b    ', '     ', '     '];
 
-        $bled = RowBleed::around($lines, [1 => null, 3 => $hover], 5);
+        $bled = RowBleed::around($lines, [1 => null, 3 => $hover], width: 5);
 
         $this->assertSame(['─────', 'a    ', '▄▄▄▄▄', 'b    ', '▀▀▀▀▀', '     '], \array_map(AnsiUtils::stripAnsiCodes(...), $bled));
-        $this->assertSame([], RowBleed::around([], [], 5));
+        $this->assertSame([], RowBleed::around([], [], width: 5));
     }
 
     /** A pane too narrow for a column has no gap to draw: nothing, never a stray half. */
     public function testNoWidthDrawsNothing(): void
     {
         foreach ([0, -2] as $width) {
-            $this->assertSame('', AnsiUtils::stripAnsiCodes(RowBleed::gap($width, new Style(background: 236), null)), "width {$width}");
+            $this->assertSame('', AnsiUtils::stripAnsiCodes(RowBleed::gap($width, new Style(background: 236), below: null)), "width {$width}");
         }
     }
 }

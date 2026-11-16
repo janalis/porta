@@ -143,9 +143,9 @@ final class StatusBarProviderTest extends TestCase
         // A DIFFERENT path on the editor itself proves this came from the
         // viewer-buffer arm, not the default arm reading getFilePath().
         $provider = $this->provider();
-        $viewerAbs = $this->project->write('shown.png', 'x');
-        $this->buffers->openPane($viewerAbs, 'image', 'payload');
-        $this->editor->openFile($this->project->path('editor-side.php'), "<?php\n");
+        $viewerAbs = $this->project->write('shown.png', content: 'x');
+        $this->buffers->openPane($viewerAbs, paneId: 'image', payload: 'payload');
+        $this->editor->openFile($this->project->path('editor-side.php'), content: "<?php\n");
 
         $left = $provider->segments()['left'];
 
@@ -159,10 +159,10 @@ final class StatusBarProviderTest extends TestCase
         // must NOT match the first arm even though it is non-null — the
         // default arm's own $path (the editor's, a different buffer) wins.
         $provider = $this->provider();
-        $activeAbs = $this->project->write('active.php', "<?php\n");
-        $this->buffers->open($activeAbs, "<?php\n");
-        $editedAbs = $this->project->write('edited.php', "<?php\n");
-        $this->editor->openFile($editedAbs, "<?php\n");
+        $activeAbs = $this->project->write('active.php', content: "<?php\n");
+        $this->buffers->open($activeAbs, content: "<?php\n");
+        $editedAbs = $this->project->write('edited.php', content: "<?php\n");
+        $this->editor->openFile($editedAbs, content: "<?php\n");
         $this->editor->getDocument()->insert('x'); // dirty
 
         $left = $provider->segments()['left'];
@@ -176,8 +176,8 @@ final class StatusBarProviderTest extends TestCase
     public function testTheTooltipsTravelWithTheirCells(): void
     {
         $provider = $this->provider([[new StatusCell('⎇ main', StatusTone::Accent, tooltip: 'the branch')]]);
-        $file = $this->project->write('src/edited.php', "<?php\n");
-        $this->editor->openFile($file, "<?php\n");
+        $file = $this->project->write('src/edited.php', content: "<?php\n");
+        $this->editor->openFile($file, content: "<?php\n");
         $this->editor->getDocument()->insert('x');
 
         $segments = $provider->segments();
@@ -193,7 +193,7 @@ final class StatusBarProviderTest extends TestCase
     public function testTheCaretDiagnosticAndTheProblemCountsSayThemselvesInFull(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->write('t.php', "<?php\n"), "<?php\n");
+        $this->editor->openFile($this->project->write('t.php', content: "<?php\n"), content: "<?php\n");
         $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'a long message the row may cut', 'col' => 0]]]);
 
         $segments = $provider->segments();
@@ -207,7 +207,7 @@ final class StatusBarProviderTest extends TestCase
         $provider = $this->provider();
         $this->assertNull($provider->segments()['leftTooltip'], 'the open-a-file prompt says itself');
 
-        $this->buffers->openPane($this->project->write('shown.png', 'x'), 'image', 'payload');
+        $this->buffers->openPane($this->project->write('shown.png', content: 'x'), paneId: 'image', payload: 'payload');
         $this->assertSame('shown.png', $provider->segments()['leftTooltip']);
     }
 
@@ -221,8 +221,8 @@ final class StatusBarProviderTest extends TestCase
         $this->assertNull($provider->segments()['leftPath'], 'the open-a-file prompt names no file');
         $this->assertSame(0, $provider->segments()['leftPathWidth']);
 
-        $file = $this->project->write('src/edited.php', "<?php\n");
-        $this->editor->openFile($file, "<?php\n");
+        $file = $this->project->write('src/edited.php', content: "<?php\n");
+        $this->editor->openFile($file, content: "<?php\n");
         $this->editor->getDocument()->insert('x');
         $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
         $segments = $provider->segments();
@@ -234,10 +234,10 @@ final class StatusBarProviderTest extends TestCase
     public function testAViewerNamesItsOwnFileEvenWhenItsPaneOwnsTheRight(): void
     {
         $provider = $this->provider();
-        $abs = $this->project->write('v.bin', 'x');
-        $this->buffers->openPane($abs, 'viewer', 'payload');
-        $this->editor->openFile($this->project->path('editor-side.php'), "<?php\n");
-        $this->panes->register($this->fakePane('viewer', 'PANE-RIGHT'), static fn (string $p): string => '');
+        $abs = $this->project->write('v.bin', content: 'x');
+        $this->buffers->openPane($abs, paneId: 'viewer', payload: 'payload');
+        $this->editor->openFile($this->project->path('editor-side.php'), content: "<?php\n");
+        $this->panes->register($this->fakePane('viewer', statusRight: 'PANE-RIGHT'), static fn (string $p): string => '');
 
         $segments = $provider->segments();
 
@@ -295,9 +295,9 @@ final class StatusBarProviderTest extends TestCase
     public function testANonEmptyPaneStatusSegmentShortCircuitsTheRightSide(): void
     {
         $provider = $this->provider();
-        $abs = $this->project->write('v.bin', 'x');
-        $this->buffers->openPane($abs, 'viewer', 'payload');
-        $this->panes->register($this->fakePane('viewer', 'PANE-RIGHT'), static fn (string $p): string => '');
+        $abs = $this->project->write('v.bin', content: 'x');
+        $this->buffers->openPane($abs, paneId: 'viewer', payload: 'payload');
+        $this->panes->register($this->fakePane('viewer', statusRight: 'PANE-RIGHT'), static fn (string $p): string => '');
 
         $segments = $provider->segments();
 
@@ -308,9 +308,9 @@ final class StatusBarProviderTest extends TestCase
     public function testAnEmptyPaneStatusSegmentFallsThroughToTheDiagnosticsLegend(): void
     {
         $provider = $this->provider();
-        $abs = $this->project->write('v.bin', 'x');
-        $this->buffers->openPane($abs, 'viewer', 'payload');
-        $this->panes->register($this->fakePane('viewer', ''), static fn (string $p): string => '');
+        $abs = $this->project->write('v.bin', content: 'x');
+        $this->buffers->openPane($abs, paneId: 'viewer', payload: 'payload');
+        $this->panes->register($this->fakePane('viewer', statusRight: ''), static fn (string $p): string => '');
 
         $right = $provider->segments()['right'];
 
@@ -323,8 +323,8 @@ final class StatusBarProviderTest extends TestCase
         // a plain text buffer's null paneId casts to) — a different operand
         // than the empty-string case above, but the same required fallthrough.
         $provider = $this->provider();
-        $abs = $this->project->write('t.php', "<?php\n");
-        $this->buffers->open($abs, "<?php\n");
+        $abs = $this->project->write('t.php', content: "<?php\n");
+        $this->buffers->open($abs, content: "<?php\n");
 
         $right = $provider->segments()['right'];
 
@@ -334,7 +334,7 @@ final class StatusBarProviderTest extends TestCase
     public function testProblemsSegmentIsAbsentWithZeroErrorsAndWarnings(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n");
 
         $right = $provider->segments()['right'];
 
@@ -349,7 +349,7 @@ final class StatusBarProviderTest extends TestCase
     public function testTheCaretDiagnosticLeadsWithItsSeverity(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n\n\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n\n\n\n");
         $this->editor->decorations->setDiagnostics([
             0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]],
             1 => [['severity' => DiagnosticSeverity::Warning, 'message' => 'meh', 'col' => 0]],
@@ -359,11 +359,11 @@ final class StatusBarProviderTest extends TestCase
         $styles = Styles::dark();
 
         $this->assertStringContainsString($styles->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' boom'), $provider->segments()['leftNote'] ?? '');
-        $this->editor->getDocument()->setCursor(1, 0);
+        $this->editor->getDocument()->setCursor(1, col: 0);
         $this->assertStringContainsString($styles->of(Role::StatusWarning)->apply(Glyphs::SEVERITY_WARNING.' meh'), $provider->segments()['leftNote'] ?? '');
-        $this->editor->getDocument()->setCursor(2, 0);
+        $this->editor->getDocument()->setCursor(2, col: 0);
         $this->assertSame(Glyphs::SEVERITY_HINT.' tip', $provider->segments()['leftNote'] ?? '', 'plain: no role at all');
-        $this->editor->getDocument()->setCursor(3, 0);
+        $this->editor->getDocument()->setCursor(3, col: 0);
         $this->assertSame(DiagnosticSeverity::Information->glyph().' fyi', $provider->segments()['leftNote'] ?? '', 'information is as plain');
     }
 
@@ -375,7 +375,7 @@ final class StatusBarProviderTest extends TestCase
     public function testTheCaretProblemIsAClickOverItsWords(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n\n");
         $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0]]]);
 
         $segments = $provider->segments();
@@ -387,14 +387,14 @@ final class StatusBarProviderTest extends TestCase
         $this->assertSame(Glyphs::SEVERITY_ERROR.' boom', \mb_substr($plain, $span->from, $span->to - $span->from));
         $this->assertStringContainsString('Problems panel', $span->tooltip);
 
-        $this->editor->getDocument()->setCursor(1, 0);
+        $this->editor->getDocument()->setCursor(1, col: 0);
         $this->assertSame([], $provider->segments()['leftClicks'] ?? [], 'no problem, nothing to click');
     }
 
     public function testProblemsSegmentShowsExactlyOneErrorAndOneWarning(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n\n");
         $this->editor->decorations
             ->setDiagnostics([
                 0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]],
@@ -415,7 +415,7 @@ final class StatusBarProviderTest extends TestCase
     public function testEachRightHandSpanCoversTheCellItActsOn(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n\n");
         $this->editor->decorations
             ->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
 
@@ -441,7 +441,7 @@ final class StatusBarProviderTest extends TestCase
     public function testWithNoProblemsThereIsNoProblemsCellToClick(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n\n");
 
         $segments = $provider->segments();
         $actions = \array_map(static fn (StatusClickSpan $span): string => $span->action, $segments['rightClicks']);
@@ -452,10 +452,10 @@ final class StatusBarProviderTest extends TestCase
     public function testAPaneOwningTheRightSideOffersItsOwnCellsAndNoneOfCores(): void
     {
         $provider = $this->provider();
-        $abs = $this->project->write('v.bin', 'x');
-        $this->buffers->openPane($abs, 'viewer', 'payload');
+        $abs = $this->project->write('v.bin', content: 'x');
+        $this->buffers->openPane($abs, paneId: 'viewer', payload: 'payload');
         $zoom = new StatusClickSpan(0, 1, 'zoom_in');
-        $this->panes->register($this->fakePane('viewer', '+ PANE-RIGHT', [$zoom]), static fn (string $p): string => '');
+        $this->panes->register($this->fakePane('viewer', statusRight: '+ PANE-RIGHT', clicks: [$zoom]), static fn (string $p): string => '');
 
         $this->assertSame([$zoom], $provider->segments()['rightClicks'], 'the caret and LSP cells are not in its text');
     }
@@ -463,8 +463,8 @@ final class StatusBarProviderTest extends TestCase
     public function testLocationIsOneBasedFromTheZeroBasedCursor(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "aa\nbb\ncc\ndd\n");
-        $this->editor->getDocument()->setCursor(2, 1);
+        $this->editor->openFile($this->project->path('t.php'), content: "aa\nbb\ncc\ndd\n");
+        $this->editor->getDocument()->setCursor(2, col: 1);
 
         $right = $provider->segments()['right'];
 
@@ -474,7 +474,7 @@ final class StatusBarProviderTest extends TestCase
     public function testTheLspStatusPlaceholderIsSubstitutedNotLeftLiteral(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "<?php\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "<?php\n");
 
         $right = $provider->segments()['right'];
 
@@ -502,9 +502,9 @@ final class StatusBarProviderTest extends TestCase
     public function testRightIsProblemsThenLocationThenATwoColumnGapThenTheLegend(): void
     {
         $provider = $this->provider();
-        $this->editor->openFile($this->project->path('t.php'), "aa\nbb\n");
+        $this->editor->openFile($this->project->path('t.php'), content: "aa\nbb\n");
         $this->editor->decorations->setDiagnostics([0 => [['severity' => DiagnosticSeverity::Error, 'message' => 'e', 'col' => 0]]]);
-        $this->editor->getDocument()->setCursor(1, 0);
+        $this->editor->getDocument()->setCursor(1, col: 0);
 
         $expectedProblems = Styles::dark()->of(Role::StatusError)->apply(Glyphs::SEVERITY_ERROR.' 1').' ';
         $expectedLocation = '2:1';

@@ -21,7 +21,7 @@ final class EditorPanesTest extends TestCase
         $loader = $panes->loaderFor('demo');
         $this->assertNotNull($loader);
         $this->assertSame('payload of a.demo', $loader('/p/a.demo'));
-        $this->assertSame('payload of a.demo', $panes->load('demo', '/p/a.demo'), 'the same read, through the id');
+        $this->assertSame('payload of a.demo', $panes->load('demo', path: '/p/a.demo'), 'the same read, through the id');
         $this->assertSame([$pane], $panes->all());
     }
 
@@ -46,7 +46,7 @@ final class EditorPanesTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/No pane answers to "help"/');
-        $panes->load('help', '/p/docs/README.md');
+        $panes->load('help', path: '/p/docs/README.md');
     }
 
     public function testRegisteringTheSameIdTwiceKeepsTheLastPane(): void
@@ -69,8 +69,8 @@ final class EditorPanesTest extends TestCase
         $mine = new TestPane('mine');
         $theirs = new TestPane('theirs');
         $core = new TestPane('help');
-        $panes->register($mine, static fn (): string => '', 'my-plugin');
-        $panes->register($theirs, static fn (): string => '', 'their-plugin');
+        $panes->register($mine, static fn (): string => '', owner: 'my-plugin');
+        $panes->register($theirs, static fn (): string => '', owner: 'their-plugin');
         $panes->register($core, static fn (): string => '');
 
         $panes->forget('my-plugin');
@@ -88,7 +88,7 @@ final class EditorPanesTest extends TestCase
         // is built fresh. Collapsing null and '' would make a first-time enable
         // of a core-id-claiming plugin a silent no-op.
         $panes = new EditorPanes();
-        $panes->register(new TestPane('mine'), static fn (): string => '', 'my-plugin');
+        $panes->register(new TestPane('mine'), static fn (): string => '', owner: 'my-plugin');
         $panes->register(new TestPane('help'), static fn (): string => '');
 
         $this->assertSame('my-plugin', $panes->ownerOf('mine'));
@@ -109,8 +109,8 @@ final class EditorPanesTest extends TestCase
         $panes = new EditorPanes();
         $theirs = new TestPane('theirs');
         $mine = new TestPane('mine');
-        $panes->register($theirs, static fn (): string => '', 'their-plugin');
-        $panes->register($mine, static fn (): string => '', 'my-plugin');
+        $panes->register($theirs, static fn (): string => '', owner: 'their-plugin');
+        $panes->register($mine, static fn (): string => '', owner: 'my-plugin');
 
         $panes->forget('my-plugin');
 

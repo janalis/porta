@@ -20,7 +20,7 @@ final class SessionStoreTest extends TestCase
             ['path' => '/p/a.php', 'line' => 3, 'col' => 5, 'pinned' => true],
             ['path' => '/p/b.md', 'line' => 0, 'col' => 0, 'pinned' => false, 'preview' => 'preview'],
         ];
-        $this->assertTrue($store->save($buffers, '/p/b.php'));
+        $this->assertTrue($store->save($buffers, activePath: '/p/b.php'));
 
         $loaded = $store->load();
         $this->assertSame(
@@ -66,10 +66,10 @@ final class SessionStoreTest extends TestCase
     {
         $project = new TempProject();
         $store = new SessionStore($project->dir);
-        $store->save([['path' => '/p/a.php', 'line' => 0, 'col' => 0]], '/p/a.php');
+        $store->save([['path' => '/p/a.php', 'line' => 0, 'col' => 0]], activePath: '/p/a.php');
         $this->assertNotNull($store->load());
 
-        $this->assertTrue($store->save([], null));
+        $this->assertTrue($store->save([], activePath: null));
         $this->assertNull($store->load());
     }
 
@@ -80,7 +80,7 @@ final class SessionStoreTest extends TestCase
         \file_put_contents($project->path('.porta'), data: 'not a dir');
 
         $store = new SessionStore($project->dir);
-        $this->assertFalse($store->save([['path' => '/p/a.php', 'line' => 0, 'col' => 0]], '/p/a.php'));
+        $this->assertFalse($store->save([['path' => '/p/a.php', 'line' => 0, 'col' => 0]], activePath: '/p/a.php'));
     }
 
     public function testLoadIgnoresCorruptSession(): void
@@ -181,7 +181,7 @@ final class SessionStoreTest extends TestCase
         // false an IO error produces.
         $project = new TempProject();
 
-        $saved = new SessionStore($project->dir)->save([['path' => "/p/\xB1.php", 'line' => 1, 'col' => 0]], null);
+        $saved = new SessionStore($project->dir)->save([['path' => "/p/\xB1.php", 'line' => 1, 'col' => 0]], activePath: null);
 
         $this->assertFalse($saved);
         $this->assertFalse(\is_file($project->path('.porta/session.json')), 'nothing half-written');

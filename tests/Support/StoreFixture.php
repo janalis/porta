@@ -67,7 +67,7 @@ final class StoreFixture
         $this->http = new FakeHttp();
         $this->lifecycle = new FakePluginLifecycle();
         $this->status = new StatusBarWidget();
-        $this->notifier = new Notifier($this->status, TestTui::create(200, 24));
+        $this->notifier = new Notifier($this->status, TestTui::create(200, rows: 24));
         $this->translator = new Translator('en');
         $this->catalog = new StoreCatalog($this->http->fetch(), $this->home->path('cache'), $this->home->path('none.json'));
         $composer = FakeComposer::write($this->home->path('bin'), $composerExit, $this->recipes);
@@ -133,7 +133,7 @@ final class StoreFixture
     {
         $base = InstallScope::Global === $scope ? $this->home : $this->project;
         $name = (string) PackagistMetadata::nameOf($package);
-        $base->write('.porta/vendor/'.$package.'/porta.php', "<?php\n");
+        $base->write('.porta/vendor/'.$package.'/porta.php', content: "<?php\n");
         $base->write('.porta/vendor/'.$package.'/composer.json', \json_encode(['name' => $package, 'type' => 'porta-plugin'], \JSON_THROW_ON_ERROR));
         if (!\is_dir($base->path('.porta/plugins'))) {
             \mkdir($base->path('.porta/plugins'), recursive: true);
@@ -157,7 +157,7 @@ final class StoreFixture
     /** $name is bundled with Porta. */
     public function bundled(string $name): void
     {
-        $this->home->write('embedded/'.$name.'/porta.php', "<?php\n");
+        $this->home->write('embedded/'.$name.'/porta.php', content: "<?php\n");
         $this->lifecycle->names[] = $name;
     }
 
@@ -189,7 +189,7 @@ final class StoreFixture
     public function toast(): string
     {
         /** @var array{text: string}|null $flash */
-        $flash = Probe::get($this->status, 'flash');
+        $flash = Probe::get($this->status, property: 'flash');
 
         return \is_array($flash) ? $flash['text'] : '';
     }

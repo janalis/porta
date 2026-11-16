@@ -29,7 +29,7 @@ final class PluginParticipantsTest extends TestCase
         $this->manager = new PluginManager(new EventDispatcher(), new PluginSettings('/p', []));
         $this->runtime = TestPluginRuntime::create(new CodeEditorWidget(), new StatusBarWidget());
         $this->manager->wireRuntime($this->runtime);
-        $api = $this->manager->api($name, '/p', new PluginSettings('/p', []));
+        $api = $this->manager->api($name, rootDir: '/p', settings: new PluginSettings('/p', []));
         $this->manager->commit($api);
 
         return $api;
@@ -47,7 +47,7 @@ final class PluginParticipantsTest extends TestCase
             'a name of nothing is no one; a numeric id is still a string',
         );
         $participants->outOfTouch();
-        $this->assertArrayHasKey('plugin:assist', Probe::array($this->runtime->participants, 'lost'));
+        $this->assertArrayHasKey('plugin:assist', Probe::array($this->runtime->participants, property: 'lost'));
         $participants->set([]);
         $this->assertSame([], $this->runtime->participants->all());
     }

@@ -111,7 +111,7 @@ final class InlineParser
             $last->end -= \strlen($last->literal) - \strlen($trimmed);
             $last->literal = $trimmed;
         }
-        $this->add($hard ? ItemKind::HardBreak : ItemKind::SoftBreak, '', $start, $this->pos);
+        $this->add($hard ? ItemKind::HardBreak : ItemKind::SoftBreak, literal: '', start: $start, end: $this->pos);
         $this->pos += \strspn($this->subject, characters: ' ', offset: $this->pos);
 
         return true;
@@ -123,7 +123,7 @@ final class InlineParser
         $next = $this->subject[$this->pos] ?? '';
         if ("\n" === $next) {
             ++$this->pos;
-            $this->add(ItemKind::HardBreak, '', $start, $this->pos);
+            $this->add(ItemKind::HardBreak, literal: '', start: $start, end: $this->pos);
             $this->pos += \strspn($this->subject, characters: ' ', offset: $this->pos);
 
             return true;
@@ -198,8 +198,8 @@ final class InlineParser
 
             return true;
         }
-        $item = $this->add(ItemKind::Text, '[', $this->pos, $this->pos + 1);
-        $this->pushBracket($item, false, $this->pos);
+        $item = $this->add(ItemKind::Text, literal: '[', start: $this->pos, end: $this->pos + 1);
+        $this->pushBracket($item, image: false, index: $this->pos);
         ++$this->pos;
 
         return true;
@@ -210,8 +210,8 @@ final class InlineParser
         if ('[' !== ($this->subject[$this->pos + 1] ?? '')) {
             return false;
         }
-        $item = $this->add(ItemKind::Text, '![', $this->pos, $this->pos + 2);
-        $this->pushBracket($item, true, $this->pos + 1);
+        $item = $this->add(ItemKind::Text, literal: '![', start: $this->pos, end: $this->pos + 2);
+        $this->pushBracket($item, image: true, index: $this->pos + 1);
         $this->pos += 2;
 
         return true;
@@ -232,7 +232,7 @@ final class InlineParser
         $link = null === $opener || !$opener->active ? null : $this->links->close($this->subject, $this->pos, $opener, $this->context);
         $this->brackets = $opener?->previous;
         if (null === $opener || null === $link) {
-            $this->add(ItemKind::Text, ']', $start, $this->pos);
+            $this->add(ItemKind::Text, literal: ']', start: $start, end: $this->pos);
 
             return true;
         }
@@ -240,7 +240,7 @@ final class InlineParser
         $item = new InlineItem($opener->image ? ItemKind::Image : ItemKind::Link, '', $opener->item->start, $end);
         $item->destination = $destination;
         $item->title = $title;
-        $opener->item->moveFollowingInto($item, null);
+        $opener->item->moveFollowingInto($item, stop: null);
         $this->root->appendChild($item);
         $this->emphasis->process($opener->previousDelimiter);
         $opener->item->unlink();
@@ -288,7 +288,7 @@ final class InlineParser
     {
         $start = $this->pos;
         $this->pos += $length;
-        $link = $this->add(ItemKind::Autolink, '', $start, $this->pos);
+        $link = $this->add(ItemKind::Autolink, literal: '', start: $start, end: $this->pos);
         $link->destination = $destination;
         $link->appendChild(new InlineItem(ItemKind::Text, $text, $start + 1, $this->pos - 1));
 

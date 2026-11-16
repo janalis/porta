@@ -14,7 +14,7 @@ final class EditorFindTargetTest extends TestCase
     public function testBridgesTheFindBarToTheEditorDocument(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('demo.php', "alpha\nbeta\n");
+        $editor->openFile('demo.php', content: "alpha\nbeta\n");
         $doc = $editor->getDocument();
         $target = new EditorFindTarget($doc, $editor->decorations, $editor->multiCaret);
 
@@ -49,7 +49,7 @@ final class EditorFindTargetTest extends TestCase
     public function testSelectMatchesPutsASelectingCaretOnEveryMatch(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('demo.php', "foo x foo\nfoo\n");
+        $editor->openFile('demo.php', content: "foo x foo\nfoo\n");
         $editor->setFocused(true);
         $doc = $editor->getDocument();
         $target = new EditorFindTarget($doc, $editor->decorations, $editor->multiCaret);
@@ -72,10 +72,10 @@ final class EditorFindTargetTest extends TestCase
     public function testSelectMatchesAfterABufferSwitchLeavesTheShownBufferAlone(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('a.php', "foo foo\n");
+        $editor->openFile('a.php', content: "foo foo\n");
         $editor->setFocused(true);
         $target = new EditorFindTarget($editor->getDocument(), $editor->decorations, $editor->multiCaret);
-        $editor->openFile('b.php', "bar bar\n");
+        $editor->openFile('b.php', content: "bar bar\n");
 
         $target->selectMatches([['line' => 0, 'start' => 0, 'end' => 3], ['line' => 0, 'start' => 4, 'end' => 7]], current: 0);
 

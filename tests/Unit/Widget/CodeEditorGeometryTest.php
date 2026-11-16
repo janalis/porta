@@ -55,13 +55,13 @@ final class CodeEditorGeometryTest extends TestCase
             $lines .= "line {$i}\n";
         }
         $editor = $this->editor($lines);
-        $editor->getDocument()->setCursor(30, 0);
+        $editor->getDocument()->setCursor(30, col: 0);
         $editor->render(new RenderContext(80, 5)); // settles vScroll near line 30
 
         // Move the cursor ABOVE the settled vScroll without re-rendering:
         // screenRowFor() returns -1 (caret above the viewport). max(0,-1)=0;
         // a max(-1,...) mutant would leave the row at -1 instead.
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $this->assertSame(0, $editor->caretScreenCell()['row'], 'a caret scrolled above the viewport must clamp its screen row to 0');
     }
@@ -76,15 +76,15 @@ final class CodeEditorGeometryTest extends TestCase
         }
         $lines .= "    public function tail(): void {}\n}\n";
         $editor = $this->editor($lines);
-        $editor->getDocument()->setCursor(38, 0);
+        $editor->getDocument()->setCursor(38, col: 0);
         $editor->render(new RenderContext(80, 10)); // narrow viewport forces scroll, pinning the class header sticky
 
-        $stickyCount = \count(Probe::get($editor, 'stickyLines'));
+        $stickyCount = \count(Probe::get($editor, property: 'stickyLines'));
         $this->assertGreaterThan(0, $stickyCount, 'sanity: at least one sticky header pinned');
 
-        $scroll = Probe::get($editor, 'scroll');
-        $foldModel = Probe::get($editor, 'foldModel');
-        $expectedBase = \max(0, $foldModel->screenRowFor($scroll->vScroll, 38));
+        $scroll = Probe::get($editor, property: 'scroll');
+        $foldModel = Probe::get($editor, property: 'foldModel');
+        $expectedBase = \max(0, $foldModel->screenRowFor($scroll->vScroll, docLine: 38));
 
         $cell = $editor->caretScreenCell();
         // Exact formula: max(0, screenRowFor(...)) + stickyCount. A
@@ -111,15 +111,15 @@ final class CodeEditorGeometryTest extends TestCase
         }
         $lines .= "    public function tail(): void {}\n}\n";
         $editor = $this->editor($lines);
-        $editor->getDocument()->setCursor(38, 0);
+        $editor->getDocument()->setCursor(38, col: 0);
         $editor->render(new RenderContext(80, 10));
 
-        $stickyCount = \count(Probe::get($editor, 'stickyLines'));
+        $stickyCount = \count(Probe::get($editor, property: 'stickyLines'));
         $this->assertGreaterThan(0, $stickyCount);
 
-        $scroll = Probe::get($editor, 'scroll');
-        $foldModel = Probe::get($editor, 'foldModel');
-        $expected = $foldModel->docLineAtRow($scroll->vScroll, 0);
+        $scroll = Probe::get($editor, property: 'scroll');
+        $foldModel = Probe::get($editor, property: 'foldModel');
+        $expected = $foldModel->docLineAtRow($scroll->vScroll, row: 0);
 
         // relRow == stickyCount: not caught by the early sticky-line branch
         // (relRow &lt; stickyCount is false), so relRow-stickyCount == 0 exactly.
@@ -138,11 +138,11 @@ final class CodeEditorGeometryTest extends TestCase
         }
         $editor = $this->editor($lines);
         $editor->render(new RenderContext(40, 10));
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::get($editor, property: 'scroll');
         $before = $scroll->vScroll;
 
         // The stripe is the rightmost rendered column.
-        $editor->clickAt(5, 39);
+        $editor->clickAt(5, relCol: 39);
 
         $this->assertNotSame($before, $scroll->vScroll, 'a stripe click must actually move the viewport (centerOnLine wired through)');
     }
@@ -159,7 +159,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor->render(new RenderContext(80, 3));
 
         $editor->scrollHBy(1000); // scroll far right; clamp caps at (widest VISIBLE line - 10)
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::get($editor, property: 'scroll');
         $this->assertSame(40, $scroll->hScroll, 'the clamp must be driven by exactly the 3 visible lines (widest 50), not a truncated or over-extended scan');
     }
 
@@ -174,7 +174,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor->render(new RenderContext(80, 10));
 
         $editor->scrollHBy(1000);
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::get($editor, property: 'scroll');
         $this->assertSame(90, $scroll->hScroll, 'the scan must reach the last real document line (widest 100), not stop one short of it');
     }
 
@@ -200,11 +200,11 @@ final class CodeEditorGeometryTest extends TestCase
         $editor->render(new RenderContext(40, 10));
         $editor->showCompletions([new CompletionItem(label: 'foo', insertText: 'foo', kind: 'fn', detail: '')]);
         $this->assertTrue($editor->isCompletionOpen(), 'sanity: completion open');
-        $scroll = Probe::get($editor, 'scroll');
+        $scroll = Probe::get($editor, property: 'scroll');
         $before = $scroll->vScroll;
         $beforeRev = $editor->getRenderRevision();
 
-        $editor->jumpTo(80, 0);
+        $editor->jumpTo(80, utf16Col: 0);
 
         $this->assertNotSame($before, $scroll->vScroll, 'jumpTo must center the target line');
         $this->assertFalse($editor->isCompletionOpen(), 'jumpTo must close any open completion popup');
@@ -217,8 +217,8 @@ final class CodeEditorGeometryTest extends TestCase
     public function testClearExtraCaretsActuallyClearsThem(): void
     {
         $editor = $this->editor("<?php\nline1\nline2\n");
-        $mc = Probe::get($editor, 'multiCaret');
-        $mc->toggleCaretAt(2, 0);
+        $mc = Probe::get($editor, property: 'multiCaret');
+        $mc->toggleCaretAt(2, col: 0);
         $this->assertTrue($mc->hasMultiple());
 
         $editor->clearExtraCarets();
@@ -270,17 +270,17 @@ final class CodeEditorGeometryTest extends TestCase
             break;
         }
         $this->assertNotNull($innerLine);
-        $doc->setCursor($innerLine, 0);
+        $doc->setCursor($innerLine, col: 0);
 
         foreach ([7, 6] as $rows) {
             $editor->render(new RenderContext(80, $rows));
-            $scroll = Probe::get($editor, 'scroll');
-            $foldModel = Probe::get($editor, 'foldModel');
-            $top = $foldModel->docLineAtRow($scroll->vScroll, 0) ?? 0;
-            $budget = IntMath::clamp($rows - 4, 0, EditorScroll::MAX_STICKY_ROWS);
+            $scroll = Probe::get($editor, property: 'scroll');
+            $foldModel = Probe::get($editor, property: 'foldModel');
+            $top = $foldModel->docLineAtRow($scroll->vScroll, row: 0) ?? 0;
+            $budget = IntMath::clamp($rows - 4, lo: 0, hi: EditorScroll::MAX_STICKY_ROWS);
             $expected = BreadcrumbScanner::stickyHeaders($editor->scopes(), $top, $budget);
 
-            $actual = Probe::get($editor, 'stickyLines');
+            $actual = Probe::get($editor, property: 'stickyLines');
             $this->assertSame(\array_map(static fn (array $h): int => $h['line'], $expected), $actual, "rows={$rows}");
         }
     }
@@ -291,13 +291,13 @@ final class CodeEditorGeometryTest extends TestCase
     {
         $editor = $this->editor("<?php\nfunction a() {}\nfunction b() {}\n");
         $editor->setFocused(true);
-        $editor->getDocument()->setCursor(1, 13); // inside a()'s braces
+        $editor->getDocument()->setCursor(1, col: 13); // inside a()'s braces
         $editor->render(new RenderContext(80, 10));
-        $first = Probe::get($editor, 'bracketsMemo');
+        $first = Probe::get($editor, property: 'bracketsMemo');
 
-        $editor->getDocument()->setCursor(2, 13); // same column, different line, inside b()'s braces
+        $editor->getDocument()->setCursor(2, col: 13); // same column, different line, inside b()'s braces
         $editor->render(new RenderContext(80, 10));
-        $second = Probe::get($editor, 'bracketsMemo');
+        $second = Probe::get($editor, property: 'bracketsMemo');
 
         $this->assertNotSame($first, $second, 'the memo key must include the cursor LINE, not just column and version');
     }
@@ -306,14 +306,14 @@ final class CodeEditorGeometryTest extends TestCase
     {
         $editor = $this->editor("<?php\nfunction a() {}\n");
         $editor->setFocused(true);
-        $editor->getDocument()->setCursor(1, 13);
+        $editor->getDocument()->setCursor(1, col: 13);
         $editor->render(new RenderContext(80, 10));
-        $first = Probe::get($editor, 'bracketsMemo');
+        $first = Probe::get($editor, property: 'bracketsMemo');
 
         $editor->getDocument()->insert(' '); // bumps version; cursor moves to col 14 though — restore it
-        $editor->getDocument()->setCursor(1, 13);
+        $editor->getDocument()->setCursor(1, col: 13);
         $editor->render(new RenderContext(80, 10));
-        $second = Probe::get($editor, 'bracketsMemo');
+        $second = Probe::get($editor, property: 'bracketsMemo');
 
         $this->assertNotSame($first, $second, 'an edit must invalidate the memo even at the same (line, col)');
     }
@@ -350,7 +350,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor = $this->editor("<?php\nline1\nline2\n");
         $editor->render(new RenderContext(80, 10));
 
-        $this->assertSame($editor->contentRows(), Probe::get($editor, 'scroll')->contentRows);
+        $this->assertSame($editor->contentRows(), Probe::get($editor, property: 'scroll')->contentRows);
         $this->assertGreaterThan(0, $editor->contentRows(), 'setContentRows must actually have run, not left the default');
     }
 
@@ -414,9 +414,9 @@ final class CodeEditorGeometryTest extends TestCase
         $rendered = $editor->render(new RenderContext(1, 5));
 
         $this->assertSame(0, $editor->gutterWidth(), 'no room for a gutter');
-        $contentWidth = Probe::get($editor, 'lastStripeCol') - $editor->gutterWidth();
+        $contentWidth = Probe::get($editor, property: 'lastStripeCol') - $editor->gutterWidth();
         $this->assertSame(0, $contentWidth, 'nor for text; the stripe is the whole row');
-        self::assertExactWidth($rendered, 1);
+        self::assertExactWidth($rendered, width: 1);
     }
 
     public function testTheFirstWidthThatSEATSAGutterAlsoSeatsText(): void
@@ -442,7 +442,7 @@ final class CodeEditorGeometryTest extends TestCase
         }
 
         $this->assertNotNull($seatsAGutter, 'the gutter comes back at some width');
-        $contentWidth = Probe::get($editor, 'lastStripeCol') - $editor->gutterWidth();
+        $contentWidth = Probe::get($editor, property: 'lastStripeCol') - $editor->gutterWidth();
         $this->assertGreaterThanOrEqual(1, $contentWidth, 'and never before there is room for text too');
 
         // One column narrower: no gutter, and the row is all file.
@@ -467,7 +467,7 @@ final class CodeEditorGeometryTest extends TestCase
         $rendered = $editor->render(new RenderContext(80, 5));
 
         $this->assertGreaterThan(0, $editor->gutterWidth(), 'the gutter returns with the room');
-        self::assertExactWidth($rendered, 80);
+        self::assertExactWidth($rendered, width: 80);
     }
 
     // --- followCaret inlay shift direction --------------------------------------
@@ -475,7 +475,7 @@ final class CodeEditorGeometryTest extends TestCase
     public function testFollowCaretAddsTheInlayShiftNotSubtractsIt(): void
     {
         $editor = $this->editor("<?php\n\$x = foo();\n");
-        $editor->getDocument()->setCursor(1, 11); // just after "foo()"
+        $editor->getDocument()->setCursor(1, col: 11); // just after "foo()"
         $editor->decorations->setInlayHints([1 => [new InlayHint(11, ': int')]]);
 
         $editor->render(new RenderContext(80, 10));
@@ -486,10 +486,10 @@ final class CodeEditorGeometryTest extends TestCase
         // horizontal scroll needed to keep a caret placed right at the
         // narrow edge in view.
         $narrow = $this->editor("<?php\n\$x = foo();\n");
-        $narrow->getDocument()->setCursor(1, 11);
+        $narrow->getDocument()->setCursor(1, col: 11);
         $narrow->decorations->setInlayHints([1 => [new InlayHint(11, ': int')]]);
         $narrow->render(new RenderContext(15, 10));
-        $scroll = Probe::get($narrow, 'scroll');
+        $scroll = Probe::get($narrow, property: 'scroll');
 
         $this->assertGreaterThan(0, $scroll->hScroll, 'the inlay hint widens the followed column, forcing a scroll in a narrow pane');
     }
@@ -502,7 +502,7 @@ final class CodeEditorGeometryTest extends TestCase
         $editor->setKeybindings(new Keybindings(['goto_file' => ['ctrl+shift+n', 'ctrl+p']])); // Go to File is Ide-scope: the live keymap hands it over
         $translator = new Translator('en');
         $hint = $translator->trans('No file open · press %key% to open a file', ['%key%' => 'Ctrl+Shift+N']);
-        $text = AnsiText::truncate($hint, 200);
+        $text = AnsiText::truncate($hint, width: 200);
         $textWidth = AnsiUtils::visibleWidth($text);
         $expectedLeft = \max(0, \intdiv(200 - $textWidth, num2: 2));
 

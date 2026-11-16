@@ -23,7 +23,7 @@ final class CodeEditorReadOnlyTest extends TestCase
             }
         };
         $editor = new CodeEditorWidget(flash: $flash);
-        $editor->openFile('a.php', "abc\n");
+        $editor->openFile('a.php', content: "abc\n");
         $document = $editor->getDocument();
         $document->readOnly = true;
 

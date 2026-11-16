@@ -95,7 +95,7 @@ final class EditorMouseInlayTest extends TestCase
         $this->assertNull($mouse->characterAt(0, 2 + 3, self::viewport()), 'there is no document character on a hint');
         $this->assertSame(['line' => 0, 'col' => 3], $mouse->characterAt(0, 2 + 6, self::viewport()));
         $this->assertNull($mouse->inlayHintAt(0, 2 + 6, self::viewport()));
-        $this->assertNull($mouse->inlayHintAt(0, 0, self::viewport()), 'the gutter shows no hint');
+        $this->assertNull($mouse->inlayHintAt(0, relCol: 0, vp: self::viewport()), 'the gutter shows no hint');
     }
 
     public function testAHintOnlyShiftsWhatItIsDrawnInto(): void
@@ -125,7 +125,7 @@ final class EditorMouseInlayTest extends TestCase
         $mouse->clickAt(1, 2 + 1, self::viewport(wrapWidth: 4));
         $this->assertSame(5, $this->document->cursorCol, 'the second row is plain text');
 
-        $mouse->clickAt(2, 2, self::viewport(wrapWidth: 4));
+        $mouse->clickAt(2, relCol: 2, vp: self::viewport(wrapWidth: 4));
         $this->assertSame(8, $this->document->cursorCol, 'the third row starts at its own offset');
 
         $mouse->clickAt(2, 2 + 3, self::viewport(wrapWidth: 4));

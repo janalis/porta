@@ -59,7 +59,7 @@ final class NotifierTest extends TestCase
 
         $notifier->warn(Markup::of('<comment>careful</>'));
 
-        $this->assertSame('careful', Probe::get($status, 'flash')['text'] ?? null);
+        $this->assertSame('careful', Probe::get($status, property: 'flash')['text'] ?? null);
     }
 
     public function testFlashWithoutALogStillWorks(): void
@@ -72,8 +72,8 @@ final class NotifierTest extends TestCase
 
         // Without a ToastCenter, notify() falls back to the status-bar flash
         // and still requests a render — both real effects, not just "no crash".
-        $this->assertSame('no log wired', Probe::get($status, 'flash')['text'] ?? null);
-        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'));
+        $this->assertSame('no log wired', Probe::get($status, property: 'flash')['text'] ?? null);
+        $this->assertTrue((bool) Probe::get($tui, property: 'renderRequested'));
     }
 
     public function testNotifyIsCallableFromOutsideTheClass(): void
@@ -128,12 +128,12 @@ final class NotifierTest extends TestCase
         $toasts = new ToastCenter(new FakeScheduler(), $tui);
         $notifier = new Notifier($status, $tui, $log, $toasts);
 
-        Probe::set($tui, 'renderRequested', false);
+        Probe::set($tui, property: 'renderRequested', value: false);
         $notifier->hint('scrolled +3');
 
         $this->assertTrue($toasts->isEmpty(), 'no toast for a hint');
         $this->assertSame([], $log->entries(), 'no log entry either');
-        $this->assertSame('scrolled +3', Probe::get($status, 'flash')['text'] ?? null, 'the status bar carries it');
-        $this->assertTrue((bool) Probe::get($tui, 'renderRequested'), 'a hint still requests a render');
+        $this->assertSame('scrolled +3', Probe::get($status, property: 'flash')['text'] ?? null, 'the status bar carries it');
+        $this->assertTrue((bool) Probe::get($tui, property: 'renderRequested'), 'a hint still requests a render');
     }
 }

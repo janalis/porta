@@ -23,20 +23,20 @@ final class InlayLineTest extends TestCase
 
         $this->assertSame([], $line->placed());
         $this->assertSame(7, $line->screenCol(7));
-        $this->assertSame(9, $line->rowStart(1, 9));
+        $this->assertSame(9, $line->rowStart(1, width: 9));
         $this->assertSame(['displayCol' => 4, 'hint' => null], $line->hit(4));
         $this->assertSame(['displayCol' => 0, 'hint' => null], $line->hit(-3), 'a column left of the text is its start');
     }
 
     public function testPlacingNoHintsPlacesNothing(): void
     {
-        $this->assertSame([], InlayLine::place([], new Document("abc\n"), 0)->placed());
+        $this->assertSame([], InlayLine::place([], new Document("abc\n"), line: 0)->placed());
     }
 
     public function testTheCaretIsDrawnAfterAHintAtItsColumnAndBeforeOneAfterIt(): void
     {
         // `n: ` (with its margin) before the 4 of f(42, $y).
-        $line = InlayLine::place([new InlayHint(2, 'n:', padRight: true)], new Document("f(42, \$y);\n"), 0);
+        $line = InlayLine::place([new InlayHint(2, 'n:', padRight: true)], new Document("f(42, \$y);\n"), line: 0);
 
         $this->assertSame(1, $line->screenCol(1), 'before the hint: where it always was');
         $this->assertSame(5, $line->screenCol(2), 'AT the hint: after it');
@@ -46,7 +46,7 @@ final class InlayLineTest extends TestCase
     public function testEveryCellOfAHintAnswersItsAnchor(): void
     {
         $hint = new InlayHint(2, 'n:', padLeft: true, padRight: true); // four cells: 2..5
-        $line = InlayLine::place([$hint], new Document("f(42, \$y);\n"), 0);
+        $line = InlayLine::place([$hint], new Document("f(42, \$y);\n"), line: 0);
 
         $this->assertSame(['displayCol' => 1, 'hint' => null], $line->hit(1), 'the cell before it is the text');
         foreach ([2, 3, 4, 5] as $screen) {
@@ -60,7 +60,7 @@ final class InlayLineTest extends TestCase
     {
         $a = new InlayHint(2, 'A');
         $b = new InlayHint(2, 'BB');
-        $line = InlayLine::place([$a, $b], new Document("abcd\n"), 0);
+        $line = InlayLine::place([$a, $b], new Document("abcd\n"), line: 0);
 
         $this->assertSame([$b, $a], \array_column($line->placed(), 'hint'), 'the later-listed hint lands left');
         $this->assertSame(5, $line->screenCol(2));
@@ -70,7 +70,7 @@ final class InlayLineTest extends TestCase
 
     public function testAStaleColumnPastTheLineIsClampedToItsEnd(): void
     {
-        $line = InlayLine::place([new InlayHint(40, 'x')], new Document("abc\n"), 0);
+        $line = InlayLine::place([new InlayHint(40, 'x')], new Document("abc\n"), line: 0);
 
         $this->assertSame(3, $line->placed()[0]['displayCol']);
     }
@@ -80,7 +80,7 @@ final class InlayLineTest extends TestCase
     {
         // あ is three bytes and two cells; the hint sits before the second one.
         $hint = new InlayHint(3, 'h');
-        $line = InlayLine::place([$hint], new Document("ああ\n"), 0);
+        $line = InlayLine::place([$hint], new Document("ああ\n"), line: 0);
 
         $this->assertSame(2, $line->placed()[0]['displayCol']);
         $this->assertSame(['displayCol' => 2, 'hint' => $hint], $line->hit(2));
@@ -90,10 +90,10 @@ final class InlayLineTest extends TestCase
 
     public function testARowStartsPastTheHintsBeforeItsOffsetButNotThoseAtIt(): void
     {
-        $line = InlayLine::place([new InlayHint(1, 'ab'), new InlayHint(4, 'c')], new Document("xxxxxxxx\n"), 0);
+        $line = InlayLine::place([new InlayHint(1, 'ab'), new InlayHint(4, 'c')], new Document("xxxxxxxx\n"), line: 0);
 
-        $this->assertSame(6, $line->rowStart(1, 4), 'the hint at 1 is before the offset 4');
-        $this->assertSame(0, $line->rowStart(0, 4), 'segment 0 starts at 0');
+        $this->assertSame(6, $line->rowStart(1, width: 4), 'the hint at 1 is before the offset 4');
+        $this->assertSame(0, $line->rowStart(0, width: 4), 'segment 0 starts at 0');
     }
 
     /**
@@ -107,31 +107,31 @@ final class InlayLineTest extends TestCase
 
         $middle = new InlayHint(1, 'ab');
         $last = new InlayHint(9, 'cd');
-        $this->assertSame([$last], \array_column(InlayLine::place([$middle, $last], $doc, 0, 4)->placed(), 'hint'), 'a full segment takes none');
+        $this->assertSame([$last], \array_column(InlayLine::place([$middle, $last], $doc, line: 0, wrapWidth: 4)->placed(), 'hint'), 'a full segment takes none');
 
-        $this->assertSame([], InlayLine::place([new InlayHint(9, 'cde')], $doc, 0, 4)->placed(), 'one that does not fit is left out');
+        $this->assertSame([], InlayLine::place([new InlayHint(9, 'cde')], $doc, line: 0, wrapWidth: 4)->placed(), 'one that does not fit is left out');
 
         $one = new InlayHint(8, 'a');
         $two = new InlayHint(9, 'b');
         $three = new InlayHint(10, 'c');
-        $this->assertSame([$one, $two], \array_column(InlayLine::place([$one, $two, $three], $doc, 0, 4)->placed(), 'hint'), 'greedily, left to right, until the cells run out');
+        $this->assertSame([$one, $two], \array_column(InlayLine::place([$one, $two, $three], $doc, line: 0, wrapWidth: 4)->placed(), 'hint'), 'greedily, left to right, until the cells run out');
     }
 
     public function testAHintOnASegmentBoundaryOpensTheNextSegment(): void
     {
         $doc = new Document(\str_repeat('x', times: 10)."\n");
-        $line = InlayLine::place([new InlayHint(8, 'ab')], $doc, 0, 4);
+        $line = InlayLine::place([new InlayHint(8, 'ab')], $doc, line: 0, wrapWidth: 4);
 
         $this->assertCount(1, $line->placed(), 'column 8 is the last segment, which has room');
-        $this->assertSame(8, $line->rowStart(2, 4), 'and it is drawn on that row, not before it');
+        $this->assertSame(8, $line->rowStart(2, width: 4), 'and it is drawn on that row, not before it');
     }
 
     public function testAShortWrappedLineTakesHintsUpToTheRowWidth(): void
     {
         $doc = new Document("ab\n");
 
-        $this->assertCount(1, InlayLine::place([new InlayHint(1, 'cd')], $doc, 0, 4)->placed(), 'exactly the two free cells');
-        $this->assertSame([], InlayLine::place([new InlayHint(1, 'cde')], $doc, 0, 4)->placed(), 'one more would clip the text');
-        $this->assertCount(1, InlayLine::place([new InlayHint(1, 'cde')], $doc, 0)->placed(), 'unwrapped, every hint is placed');
+        $this->assertCount(1, InlayLine::place([new InlayHint(1, 'cd')], $doc, line: 0, wrapWidth: 4)->placed(), 'exactly the two free cells');
+        $this->assertSame([], InlayLine::place([new InlayHint(1, 'cde')], $doc, line: 0, wrapWidth: 4)->placed(), 'one more would clip the text');
+        $this->assertCount(1, InlayLine::place([new InlayHint(1, 'cde')], $doc, line: 0)->placed(), 'unwrapped, every hint is placed');
     }
 }

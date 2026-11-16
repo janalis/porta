@@ -44,7 +44,7 @@ final class UpdateRestart
     {
         if (!$this->pending && null === $this->directory) {
             $this->pending = true;
-            $this->notifier->flash($this->translator->trans('Porta will restart when active work stops.'), 8.0, 'update-restart');
+            $this->notifier->flash($this->translator->trans('Porta will restart when active work stops.'), seconds: 8.0, slot: 'update-restart');
         }
     }
 
@@ -80,7 +80,7 @@ final class UpdateRestart
             $this->directory = $directory;
             $this->tui->stop();
         } catch (\Throwable) {
-            $this->notifier->error($this->translator->trans('Could not preserve the session; restart postponed.'), 8.0, 'update-restart');
+            $this->notifier->error($this->translator->trans('Could not preserve the session; restart postponed.'), seconds: 8.0, slot: 'update-restart');
         }
     }
 

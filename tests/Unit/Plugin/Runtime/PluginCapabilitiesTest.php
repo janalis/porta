@@ -24,13 +24,13 @@ final class PluginCapabilitiesTest extends TestCase
         $first = static function (): void {};
         $second = static function (): void {};
 
-        $api = $manager->api('first', '/p', $settings);
+        $api = $manager->api('first', rootDir: '/p', settings: $settings);
         $api->provide(Capability::SvgRasterizer, $first);
         $this->assertNull($capabilities->first(Capability::SvgRasterizer), 'nothing counts before the plugin is committed');
         $manager->commit($api);
         $this->assertSame($first, $capabilities->first(Capability::SvgRasterizer));
 
-        $next = $manager->api('second', '/p', $settings);
+        $next = $manager->api('second', rootDir: '/p', settings: $settings);
         $next->provide(Capability::SvgRasterizer, $second);
         $manager->commit($next);
         $this->assertSame($first, $capabilities->first(Capability::SvgRasterizer), 'load order: the first keeps it');
@@ -46,11 +46,11 @@ final class PluginCapabilitiesTest extends TestCase
         $capabilities = new PluginCapabilities();
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings, capabilities: $capabilities);
-        $quiet = $manager->api('quiet', '/p', $settings);
+        $quiet = $manager->api('quiet', rootDir: '/p', settings: $settings);
         $manager->commit($quiet);
         $this->assertSame(0, $capabilities->changes(), 'a plugin that provides nothing changes nothing');
 
-        $api = $manager->api('lender', '/p', $settings);
+        $api = $manager->api('lender', rootDir: '/p', settings: $settings);
         $api->provide(Capability::SvgRasterizer, static function (): void {});
         $manager->commit($api);
         $this->assertSame(1, $capabilities->changes());
@@ -64,7 +64,7 @@ final class PluginCapabilitiesTest extends TestCase
     {
         $settings = new PluginSettings('/p', []);
         $manager = new PluginManager(new EventDispatcher(), $settings);
-        $api = $manager->api('late', '/p', $settings);
+        $api = $manager->api('late', rootDir: '/p', settings: $settings);
         $manager->commit($api);
 
         $this->expectException(PluginException::class);

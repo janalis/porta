@@ -26,7 +26,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testNextConflictNavigatesAndWraps(): void
     {
         $editor = $this->editor(self::TWO_REGIONS);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1b[18~"); // F7 -> next region (start 6)
         $this->assertSame(6, $editor->getDocument()->cursorLine);
@@ -38,7 +38,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testPrevConflictNavigatesAndWraps(): void
     {
         $editor = $this->editor(self::TWO_REGIONS);
-        $editor->getDocument()->setCursor(6, 0);
+        $editor->getDocument()->setCursor(6, col: 0);
 
         $editor->handleInput("\x1b[18;2~"); // Shift+F7 -> previous region (start 0)
         $this->assertSame(0, $editor->getDocument()->cursorLine);
@@ -50,7 +50,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testConflictNavigationNoopWithoutConflicts(): void
     {
         $editor = $this->editor("just\nplain\ntext");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
         $editor->handleInput("\x1b[18~");
         $this->assertSame(1, $editor->getDocument()->cursorLine, 'no conflicts: caret unmoved');
     }
@@ -58,7 +58,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testResolveKeepOurs(): void
     {
         $editor = $this->editor("top\n<<<<<<< a\no1\no2\n=======\nt1\n>>>>>>> b\nbot");
-        $editor->getDocument()->setCursor(2, 0); // inside "ours"
+        $editor->getDocument()->setCursor(2, col: 0); // inside "ours"
 
         $editor->handleInput("\x1bm"); // alt+m -> resolve menu
         $editor->handleInput("\r"); // accept first item (Keep Ours)
@@ -69,7 +69,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testResolveKeepTheirs(): void
     {
         $editor = $this->editor("top\n<<<<<<< a\no1\n=======\nt1\nt2\n>>>>>>> b\nbot");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         $editor->handleInput("\x1bm");
         $editor->handleInput("\x1b[B"); // down to "Keep Theirs"
@@ -81,7 +81,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testResolveKeepBoth(): void
     {
         $editor = $this->editor("<<<<<<< a\no1\n=======\nt1\n>>>>>>> b");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         $editor->handleInput("\x1bm");
         $editor->handleInput("\x1b[B");
@@ -94,7 +94,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testResolveEmptySideDeletesRegion(): void
     {
         $editor = $this->editor("top\n<<<<<<< a\n=======\nt1\n>>>>>>> b\nbot");
-        $editor->getDocument()->setCursor(1, 0);
+        $editor->getDocument()->setCursor(1, col: 0);
 
         $editor->handleInput("\x1bm");
         $editor->handleInput("\r"); // Keep Ours, but "ours" is empty
@@ -105,7 +105,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testResolveMenuNoopOutsideConflict(): void
     {
         $editor = $this->editor("top\n<<<<<<< a\no1\n=======\nt1\n>>>>>>> b\nbot");
-        $editor->getDocument()->setCursor(0, 0); // "top", outside any conflict
+        $editor->getDocument()->setCursor(0, col: 0); // "top", outside any conflict
 
         $editor->handleInput("\x1bm");
         $this->assertFalse(EditorState::pickerOpen($editor));
@@ -120,7 +120,7 @@ final class CodeEditorConflictTest extends TestCase
         // region must land on the second, not re-trigger the first (this is
         // the "dir > 0" boundary, not just its "wrap past the last" tail).
         $editor = $this->editor(self::THREE_REGIONS);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1b[18~");
         $this->assertSame(1, $editor->getDocument()->cursorLine);
@@ -135,7 +135,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testNextConflictLandsAtColumnZero(): void
     {
         $editor = $this->editor(self::TWO_REGIONS);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->handleInput("\x1b[18~");
 
@@ -148,7 +148,7 @@ final class CodeEditorConflictTest extends TestCase
         // land on 13 (the closest), which a non-reversed backward scan would
         // get wrong (it would find 1 first).
         $editor = $this->editor(self::THREE_REGIONS);
-        $editor->getDocument()->setCursor(18, 0); // "after", past every region
+        $editor->getDocument()->setCursor(18, col: 0); // "after", past every region
 
         $editor->handleInput("\x1b[18;2~");
         $this->assertSame(13, $editor->getDocument()->cursorLine);
@@ -163,9 +163,9 @@ final class CodeEditorConflictTest extends TestCase
     public function testGotoConflictClearsAnyExistingSelection(): void
     {
         $editor = $this->editor(self::TWO_REGIONS);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
         $editor->getDocument()->beginSelect();
-        $editor->getDocument()->setCursor(0, 3, selection: SelectionMode::Keep);
+        $editor->getDocument()->setCursor(0, col: 3, selection: SelectionMode::Keep);
 
         $editor->handleInput("\x1b[18~"); // F7
 
@@ -175,7 +175,7 @@ final class CodeEditorConflictTest extends TestCase
     public function testResolveMenuItemsCarryALabelKeyThePickerLayoutReadsDirectly(): void
     {
         $editor = $this->editor("top\n<<<<<<< a\no1\n=======\nt1\n>>>>>>> b\nbot");
-        $editor->getDocument()->setCursor(2, 0);
+        $editor->getDocument()->setCursor(2, col: 0);
 
         $editor->handleInput("\x1bm"); // open the resolve-conflict menu
 

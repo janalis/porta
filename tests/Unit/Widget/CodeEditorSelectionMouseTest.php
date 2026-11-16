@@ -25,7 +25,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
 
     private function gutter(CodeEditorWidget $editor): int
     {
-        return Probe::get($editor, 'lastGutterWidth');
+        return Probe::get($editor, property: 'lastGutterWidth');
     }
 
     public function testDragSelectsARange(): void
@@ -122,9 +122,9 @@ final class CodeEditorSelectionMouseTest extends TestCase
     {
         $editor = $this->editor('hello world');
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(0, 5, selection: SelectionMode::Keep); // caret at the selection END
+        $doc->setCursor(0, col: 5, selection: SelectionMode::Keep); // caret at the selection END
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
@@ -136,9 +136,9 @@ final class CodeEditorSelectionMouseTest extends TestCase
     {
         $editor = $this->editor('hello world');
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 5);
+        $doc->setCursor(0, col: 5);
         $doc->beginSelect();
-        $doc->setCursor(0, 0, selection: SelectionMode::Keep); // caret at the selection START
+        $doc->setCursor(0, col: 0, selection: SelectionMode::Keep); // caret at the selection START
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
@@ -149,9 +149,9 @@ final class CodeEditorSelectionMouseTest extends TestCase
     {
         $editor = $this->editor(\str_repeat('x', times: 100));
         $doc = $editor->getDocument();
-        $doc->setCursor(0, 90);
+        $doc->setCursor(0, col: 90);
         $doc->beginSelect();
-        $doc->setCursor(0, 95, selection: SelectionMode::Keep); // caret far right forces hScroll > 0
+        $doc->setCursor(0, col: 95, selection: SelectionMode::Keep); // caret far right forces hScroll > 0
 
         $line = $editor->render(new RenderContext(80, 3))[0];
 
@@ -163,7 +163,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
     {
         $editor = $this->editor("hello\nworld\n");
         $g = $this->gutter($editor);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->addOrRemoveCaretAt(1, $g + 2); // add a caret on line 1 (becomes primary)
         $this->assertTrue(EditorState::multiCaret($editor)->hasMultiple());
@@ -177,7 +177,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
     {
         $editor = $this->editor("hello\nworld\n");
         $g = $this->gutter($editor);
-        $editor->getDocument()->setCursor(0, 0);
+        $editor->getDocument()->setCursor(0, col: 0);
 
         $editor->addOrRemoveCaretAt(1, $g); // primary=(1,0), extra=(0,0)
         $editor->addOrRemoveCaretAt(0, $g); // click the extra at (0,0) -> remove it
@@ -188,7 +188,7 @@ final class CodeEditorSelectionMouseTest extends TestCase
     {
         $editor = $this->editor("hello\n");
         $g = $this->gutter($editor);
-        $editor->getDocument()->setCursor(0, 2);
+        $editor->getDocument()->setCursor(0, col: 2);
 
         $editor->addOrRemoveCaretAt(0, $g + 2); // clicks the sole caret -> no-op
         $this->assertFalse(EditorState::multiCaret($editor)->hasMultiple());

@@ -297,7 +297,7 @@ final class EditorRenderer
         // prefix, so the marker lands cleanly without disturbing any styling.
         $text = self::window($highlightedLine, $hScroll, $contentWidth);
         $cursorOffset = \max(0, $cursorDisplayCol - $hScroll);
-        $byte = \strlen(AnsiUtils::sliceByColumn($text, 0, $cursorOffset));
+        $byte = \strlen(AnsiUtils::sliceByColumn($text, startCol: 0, length: $cursorOffset));
         $withCursorText = \substr($text, offset: 0, length: $byte).$cursorMarker.\substr($text, $byte);
 
         return AnsiText::padRight($withCursorText.Sgr::RESET, $contentWidth);
@@ -368,7 +368,7 @@ final class EditorRenderer
         $extra = \count($diags) > 1 ? ' +'.(\count($diags) - 1) : '';
         // Severity glyph prefix, so error vs warning reads without color.
         $label = AnsiText::truncate('‹ '.$worst->glyph().' '.(string) \preg_replace('/\s+/', replacement: ' ', subject: $message).$extra.' ›', $available);
-        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, startCol: 0, length: $start), $start);
 
         return AnsiText::padRight($head.$styles->of($worst->dimRole())->apply($label), $contentWidth);
     }
@@ -389,7 +389,7 @@ final class EditorRenderer
         }
 
         $label = AnsiText::truncate((string) \preg_replace('/\s+/', replacement: ' ', subject: $text), $available);
-        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, 0, $start), $start);
+        $head = AnsiText::padRight(AnsiUtils::sliceByColumn($content, startCol: 0, length: $start), $start);
 
         return AnsiText::padRight($head.$styles->of($role)->apply($label), $contentWidth);
     }
@@ -457,7 +457,7 @@ final class EditorRenderer
         // The content column stays anchored at the typed prefix (the border
         // sits one cell left of it), clamped so the framed box fits the pane.
         $framedWidth = $width + PopupFrame::CHROME_COLS;
-        $borderCol = IntMath::clamp($anchorCol - 1, 0, $columns - $framedWidth);
+        $borderCol = IntMath::clamp($anchorCol - 1, lo: 0, hi: $columns - $framedWidth);
 
         $heavy = FieldState::Focused;
         $framed = [PopupFrame::top($width, $styles, $heavy, $windowOffset > 0 ? Glyphs::SCROLL_UP : '')];

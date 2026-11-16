@@ -51,9 +51,9 @@ final class SettingsSearchSourceTest extends TestCase
 
         return new SettingsSearchSource(
             new SettingsSearchIndex(new SettingsPages([
-                $this->section('interface', 'Interface', ['stickyScroll' => 'Sticky scroll']),
-                $this->section('lang:php', 'PHP', ['indentStyle' => 'Indent style']),
-                $this->section('lang:css', 'CSS', ['indentStyle' => 'Indent style']),
+                $this->section('interface', label: 'Interface', rows: ['stickyScroll' => 'Sticky scroll']),
+                $this->section('lang:php', label: 'PHP', rows: ['indentStyle' => 'Indent style']),
+                $this->section('lang:css', label: 'CSS', rows: ['indentStyle' => 'Indent style']),
             ]), new Translator()),
             $views,
             $events,
@@ -62,7 +62,7 @@ final class SettingsSearchSourceTest extends TestCase
 
     public function testHitsCarryTheSettingsCategory(): void
     {
-        $hits = $this->collect($this->source(), 'sticky');
+        $hits = $this->collect($this->source(), query: 'sticky');
 
         $this->assertCount(1, $hits);
         $this->assertSame(SearchCategory::Settings, $hits[0]->category);
@@ -75,7 +75,7 @@ final class SettingsSearchSourceTest extends TestCase
      */
     public function testTheDetailIsThePageSoIdenticalLabelsStayDistinguishable(): void
     {
-        $hits = $this->collect($this->source(), 'indent style');
+        $hits = $this->collect($this->source(), query: 'indent style');
 
         $this->assertSame(['Indent style', 'Indent style'], \array_map(static fn (SearchHit $h): string => $h->label, $hits));
         $this->assertSame(['PHP', 'CSS'], \array_map(static fn (SearchHit $h): string => $h->detail, $hits));
@@ -89,7 +89,7 @@ final class SettingsSearchSourceTest extends TestCase
     public function testActivatingAHitOpensTheViewThenNamesItsOwnSectionAndRow(): void
     {
         $source = $this->source($log);
-        $hits = $this->collect($source, 'css indent');
+        $hits = $this->collect($source, query: 'css indent');
 
         ($hits[0]->activate)();
 
@@ -100,11 +100,11 @@ final class SettingsSearchSourceTest extends TestCase
     public function testAnEmptyQueryListsSettingsRatherThanNothing(): void
     {
         $source = $this->source();
-        $this->assertNotEmpty($this->collect($source, ''));
+        $this->assertNotEmpty($this->collect($source, query: ''));
 
         $source->cancel(); // no-op for a synchronous source
 
-        $this->assertNotEmpty($this->collect($source, ''), 'and it still answers afterwards');
+        $this->assertNotEmpty($this->collect($source, query: ''), 'and it still answers afterwards');
     }
 
     /** A settings view that only records having been opened. */

@@ -19,9 +19,9 @@ final class CloverReport
     public static function parse(string $xml): array
     {
         $files = [];
-        foreach (Xml::all(Xml::load($xml, 'coverage', 'Clover report'), '//file') as $file) {
+        foreach (Xml::all(Xml::load($xml, root: 'coverage', what: 'Clover report'), path: '//file') as $file) {
             $lines = [];
-            foreach (Xml::all($file, 'line[@type="stmt"]') as $line) {
+            foreach (Xml::all($file, path: 'line[@type="stmt"]') as $line) {
                 $lines[(int) $line['num'] - 1] = (int) $line['count'] > 0;
             }
             $files[(string) $file['name']] = $lines;

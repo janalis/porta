@@ -27,6 +27,6 @@ final readonly class InlayHint
     /** Cells the hint takes in its row: the label and its margins. */
     public function width(): int
     {
-        return (int) $this->padLeft + TextMetrics::displayWidth($this->label, 1) + (int) $this->padRight;
+        return (int) $this->padLeft + TextMetrics::displayWidth($this->label, tabSize: 1) + (int) $this->padRight;
     }
 }

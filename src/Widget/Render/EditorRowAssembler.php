@@ -287,7 +287,7 @@ final readonly class EditorRowAssembler
             : $this->vcsCell($docLine).$this->styles->of(Role::Gutter)->apply(\str_pad($stickyLabel, $geo->numberWidth, pad_string: ' ', pad_type: \STR_PAD_LEFT).' ').$this->foldCell($docLine).' ';
         $raw = $highlighted[$docLine] ?? '';
         $hl = $this->indentGuides ? EditorRenderer::applyIndentGuides($this->document, $raw, $docLine, $this->styles) : $raw;
-        $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, 0, $this->cursorStyle->marker());
+        $content = EditorRenderer::renderContentLine($hScroll, $hl, $geo->contentWidth, CursorVisibility::Hidden, cursorDisplayCol: 0, cursorMarker: $this->cursorStyle->marker());
 
         return LineDecorator::applyFullWidth($gutter.$content, $geo->gutterWidth + $geo->contentWidth, $this->styles->of(Role::HeaderBar));
     }
@@ -342,7 +342,7 @@ final readonly class EditorRowAssembler
     {
         // sliceToWidth, not sliceWithWidth: a wide glyph across the edge of a
         // translated or CJK title would make the row a column too wide.
-        return $this->shaded('', $geo->gutterWidth).AnsiUtils::sliceToWidth($this->styles->of(Role::Dim)->apply($title), 0, $geo->contentWidth);
+        return $this->shaded('', $geo->gutterWidth).AnsiUtils::sliceToWidth($this->styles->of(Role::Dim)->apply($title), startCol: 0, length: $geo->contentWidth);
     }
 
     /** The rows a line occupies: its lenses above, its wrapped segments, its block rows under. */

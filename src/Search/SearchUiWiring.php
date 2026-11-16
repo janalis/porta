@@ -185,7 +185,7 @@ final class SearchUiWiring
             }
         }
         $this->bufferService->openFile($this->paths->absolute($relativePath), focus: OpenFocus::Editor);
-        $this->editor->jumpTo($line, 0);
+        $this->editor->jumpTo($line, utf16Col: 0);
         $this->tui->requestRender();
     }
 
@@ -240,7 +240,7 @@ final class SearchUiWiring
                 onJump: function (string $relativePath, int $line): void {
                     $this->editor->findModal->close();
                     $this->bufferService->openFile($this->paths->absolute($relativePath), focus: OpenFocus::Editor);
-                    $this->editor->jumpTo($line, 0);
+                    $this->editor->jumpTo($line, utf16Col: 0);
                     $this->tui->requestRender();
                 },
                 onOpenInFindWindow: function (): void {

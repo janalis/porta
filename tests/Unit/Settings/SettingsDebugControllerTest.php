@@ -95,7 +95,7 @@ final class SettingsDebugControllerTest extends TestCase
     public function testAdapterChangePersistsUpdatesLiveAndBlankClears(): void
     {
         $controller = $this->controller();
-        $controller->change('php', 'debugAdapter', ' node b.js ');
+        $controller->change('php', key: 'debugAdapter', value: ' node b.js ');
 
         $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame('node b.js', $written['languages']['php']['debug']['adapter']);
@@ -103,7 +103,7 @@ final class SettingsDebugControllerTest extends TestCase
         $this->assertSame(['env' => ['X' => '1']], $this->adapters->adapterFor('php')?->launch, 'launch overrides preserved');
         $this->assertStringContainsString('PHP: node b.js', $this->statusRow($this->statusBar));
 
-        $controller->change('php', 'debugAdapter', '');
+        $controller->change('php', key: 'debugAdapter', value: '');
         $this->assertNull($this->adapters->adapterFor('php'));
         $this->assertStringContainsString('not configured', $this->statusRow($this->statusBar));
     }
@@ -111,21 +111,21 @@ final class SettingsDebugControllerTest extends TestCase
     public function testLaunchChangeValidatesJson(): void
     {
         $controller = $this->controller();
-        $this->assertTrue($controller->change('php', 'debugLaunch', '{"stopOnEntry": true}'), 'accepted');
+        $this->assertTrue($controller->change('php', key: 'debugLaunch', value: '{"stopOnEntry": true}'), 'accepted');
 
         $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertSame(['stopOnEntry' => true], $written['languages']['php']['debug']['launch']);
         $this->assertSame(['stopOnEntry' => true], $this->adapters->launchOverrides('php'));
         $this->assertStringContainsString('PHP: Launch config (JSON)', $this->statusRow($this->statusBar), 'a successful launch change flashes, same as the adapter change does');
 
-        $controller->change('php', 'debugLaunch', '{not json');
+        $controller->change('php', key: 'debugLaunch', value: '{not json');
         $this->assertStringContainsString('Invalid JSON — not saved', $this->statusRow($this->statusBar));
         $this->assertSame(['stopOnEntry' => true], $this->adapters->launchOverrides('php'), 'invalid JSON changed nothing');
 
-        $controller->change('php', 'debugLaunch', '["a","list"]');
+        $controller->change('php', key: 'debugLaunch', value: '["a","list"]');
         $this->assertStringContainsString('Invalid JSON — not saved', $this->statusRow($this->statusBar), 'a JSON list is not a launch object');
 
-        $controller->change('php', 'debugLaunch', '');
+        $controller->change('php', key: 'debugLaunch', value: '');
         $this->assertSame([], $this->adapters->launchOverrides('php'), 'blank clears the overrides');
         $written = \json_decode((string) \file_get_contents($this->project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
         $this->assertArrayNotHasKey('launch', $written['languages']['php']['debug'] ?? []);
@@ -142,7 +142,7 @@ final class SettingsDebugControllerTest extends TestCase
     {
         $controller = $this->controller();
 
-        $controller->change('php', 'debugLaunch', "   \n\t  ");
+        $controller->change('php', key: 'debugLaunch', value: "   \n\t  ");
 
         $this->assertSame([], $this->adapters->launchOverrides('php'), 'whitespace-only trims to blank, which clears the overrides');
         $this->assertStringNotContainsString('Invalid JSON', $this->statusRow($this->statusBar));
@@ -157,8 +157,8 @@ final class SettingsDebugControllerTest extends TestCase
     {
         $controller = $this->controller();
 
-        $this->assertFalse($controller->change('php', 'debugLaunch', '{not json'), 'the caller is told, not just the status bar');
+        $this->assertFalse($controller->change('php', key: 'debugLaunch', value: '{not json'), 'the caller is told, not just the status bar');
         $this->assertStringContainsString('Invalid JSON', $this->statusRow($this->statusBar));
-        $this->assertTrue($controller->change('php', 'debugAdapter', 'node dbg.js'), 'an adapter change has nothing to refuse');
+        $this->assertTrue($controller->change('php', key: 'debugAdapter', value: 'node dbg.js'), 'an adapter change has nothing to refuse');
     }
 }

@@ -224,9 +224,9 @@ final class MergePaneWidgetTest extends TestCase
         $pane = $this->shown(ConflictSide::Theirs);
         $this->assertSame([' a', ' ⇤ topic', '', ' theirs'], self::plain($pane, rows: 4));
 
-        $pane->press(2, 3);
+        $pane->press(2, relCol: 3);
         $this->assertSame(self::RESULT, $this->editorText, 'the row under the label is not the label');
-        $pane->press(1, 3);
+        $pane->press(1, relCol: 3);
         $this->assertStringStartsWith("a\ntheirs\nb", (string) $this->editorText);
     }
 
@@ -246,9 +246,9 @@ final class MergePaneWidgetTest extends TestCase
         // the second conflict's label is already where the click lands.
         $pane = $this->shown(ConflictSide::Theirs);
 
-        $pane->press(1, 3);
+        $pane->press(1, relCol: 3);
         $this->assertSame(' ⇤ topic', self::plain($pane, rows: 4)[3], 'the second label moved up');
-        $pane->press(3, 3);
+        $pane->press(3, relCol: 3);
 
         $this->assertSame("a\ntheirs\nb\nt2", $this->editorText);
     }
@@ -289,7 +289,7 @@ final class MergePaneWidgetTest extends TestCase
     public function testABareMarkerIsLabelledByItsSide(): void
     {
         $pane = $this->pane(ConflictSide::Theirs);
-        $pane->show('/p/m.php', "<<<<<<<\no\n=======\nt\n>>>>>>>");
+        $pane->show('/p/m.php', payload: "<<<<<<<\no\n=======\nt\n>>>>>>>");
 
         $this->assertSame(' ⇤ theirs', self::plain($pane, rows: 1)[0]);
     }
@@ -304,7 +304,7 @@ final class MergePaneWidgetTest extends TestCase
     {
         $pane = $this->shown(ConflictSide::Theirs);
 
-        $this->assertFalse($pane->press(7, 3), 'never a drag');
+        $this->assertFalse($pane->press(7, relCol: 3), 'never a drag');
 
         $this->assertSame("a\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\nb\nt2", $this->editorText);
         $this->assertSame(['replace', 'jump:7'], $this->calls);
@@ -315,7 +315,7 @@ final class MergePaneWidgetTest extends TestCase
         $this->top = 6;
         $pane = $this->shown(ConflictSide::Ours);
 
-        $pane->press(1, 3); // the second conflict's label, drawn second from the top
+        $pane->press(1, relCol: 3); // the second conflict's label, drawn second from the top
 
         $this->assertSame("a\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\nb\no2", $this->editorText);
     }
@@ -323,8 +323,8 @@ final class MergePaneWidgetTest extends TestCase
     public function testAClickAnywhereElseDoesNothing(): void
     {
         $pane = $this->shown(ConflictSide::Theirs);
-        $pane->press(2, 3);
-        $pane->press(40, 3);
+        $pane->press(2, relCol: 3);
+        $pane->press(40, relCol: 3);
 
         $this->assertSame([], $this->calls);
     }
@@ -372,7 +372,7 @@ final class MergePaneWidgetTest extends TestCase
         $pane = $this->shown(ConflictSide::Theirs);
         $this->editorText = null;
 
-        $pane->press(1, 3);
+        $pane->press(1, relCol: 3);
 
         $this->assertSame("a\ntheirs\nb\n<<<<<<< HEAD\no2\n=======\nt2\n>>>>>>> topic", $this->editorText);
     }
@@ -383,7 +383,7 @@ final class MergePaneWidgetTest extends TestCase
         // The second conflict resolved by hand since the feed, the file as long as it was.
         $this->editorText = "a\n<<<<<<< HEAD\nours\n=======\ntheirs\n>>>>>>> topic\nb\no2\n\n\n\n";
 
-        $pane->press(7, 3); // its label, as the side still draws it
+        $pane->press(7, relCol: 3); // its label, as the side still draws it
 
         $this->assertSame([], $this->calls);
     }
@@ -403,7 +403,7 @@ final class MergePaneWidgetTest extends TestCase
     {
         $this->editorText = 'clean';
         $pane = $this->pane(ConflictSide::Ours);
-        $pane->show('/p/m.php', 'clean');
+        $pane->show('/p/m.php', payload: 'clean');
 
         foreach (['a', 'b', 'n', 'p', 'x'] as $key) {
             $pane->handleInput($key);
@@ -485,7 +485,7 @@ final class MergePaneWidgetTest extends TestCase
         $this->caretLine = 9;
         $this->assertSame('Conflict 2 of 2  a keep theirs  b both  n/p next/prev', $pane->statusRight());
 
-        $pane->show('/p/m.php', 'done');
+        $pane->show('/p/m.php', payload: 'done');
         $this->assertSame('No conflicts left — save the result', $pane->statusRight());
 
         $pane->clear();
@@ -512,7 +512,7 @@ final class MergePaneWidgetTest extends TestCase
         $theirs->show('/p/m.php', self::RESULT);
         $this->assertSame(' ⇥ HEAD', self::plain($ours, rows: 2)[1], 'fed the same text');
 
-        $theirs->followSource(7, 0);
+        $theirs->followSource(7, byteCol: 0);
         $this->assertGreaterThan($revision + 1, $ours->getRenderRevision(), 'repainted for the caret too');
 
         $theirs->clear();
@@ -522,7 +522,7 @@ final class MergePaneWidgetTest extends TestCase
     public function testAPayloadThatIsNoTextShowsNothing(): void
     {
         $pane = $this->pane(ConflictSide::Ours);
-        $pane->show('/p/m.php', null);
+        $pane->show('/p/m.php', payload: null);
 
         $this->assertSame([''], self::plain($pane, rows: 1));
     }

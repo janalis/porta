@@ -86,7 +86,7 @@ final class HighlightController extends AbstractLspController
     {
         $path = $this->editor->getFilePath();
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or a DocumentHighlightOptions object */
-        $capability = $this->lsp->serverCapability($path, 'documentHighlightProvider');
+        $capability = $this->lsp->serverCapability($path, name: 'documentHighlightProvider');
         if (null === $path || null === $capability || false === $capability) {
             return;
         }

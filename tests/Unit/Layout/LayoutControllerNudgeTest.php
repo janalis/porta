@@ -65,7 +65,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $layout->nudgeViewSidebar('git', -200);
         $this->assertSame(30, $this->gitSidebar->width(), 'git sidebar floor is 30');
 
-        $layout->nudgeViewSidebar('settings', 2);
+        $layout->nudgeViewSidebar('settings', delta: 2);
         $file = $this->layoutFile();
         $this->assertSame(30, $file['viewSidebarWidthPercent']['git']);
         $this->assertArrayHasKey('settings', $file['viewSidebarWidthPercent']);
@@ -78,7 +78,7 @@ final class LayoutControllerNudgeTest extends TestCase
         // wrapping the DEAD region's sidebar — nudges and drags would resize
         // widgets no longer on screen while the visible ones never move.
         $layout = $this->controller();
-        $layout->nudgeViewSidebar('git', 2);
+        $layout->nudgeViewSidebar('git', delta: 2);
         $oldSidebar = $this->gitSidebar;
         $oldWidth = $oldSidebar->width();
 
@@ -92,7 +92,7 @@ final class LayoutControllerNudgeTest extends TestCase
         );
         $this->regions->mint('git')->setSidebarPanes($fresh);
 
-        $layout->nudgeViewSidebar('git', 4);
+        $layout->nudgeViewSidebar('git', delta: 4);
 
         $this->assertSame($oldWidth, $oldSidebar->width(), 'the dead sidebar is not touched again');
         $this->assertNotSame($oldWidth, $fresh->width(), 'the nudge landed on the freshly minted sidebar');
@@ -141,7 +141,7 @@ final class LayoutControllerNudgeTest extends TestCase
             new Translator('en'),
             new PreviewSplit(Styles::dark()),
         );
-        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+        $dock->showList(ResultsPanelMode::RecentLocations, title: 'Recent Locations', rows: []);
 
         return [$layout, $results, $dock];
     }
@@ -152,11 +152,11 @@ final class LayoutControllerNudgeTest extends TestCase
         // moved away from, which reads as the panel jumping on its own.
         [$layout, $results] = $this->withOpenPanel();
         $layout->toggleBottomPanelMaximised();
-        $this->assertNotNull(Probe::get($layout, 'panelRestoreRows'));
+        $this->assertNotNull(Probe::get($layout, property: 'panelRestoreRows'));
 
         $layout->nudgeBottomPanel(-1);
 
-        $this->assertNull(Probe::get($layout, 'panelRestoreRows'), 'the nudge ended it');
+        $this->assertNull(Probe::get($layout, property: 'panelRestoreRows'), 'the nudge ended it');
         $chosen = $results->visibleRows();
 
         $layout->toggleBottomPanelMaximised();
@@ -177,12 +177,12 @@ final class LayoutControllerNudgeTest extends TestCase
 
         foreach ([true, false] as $expectedMaximised) {
             $this->tui->tick(); // clears any pending request
-            $this->assertFalse(Probe::get($this->tui, 'renderRequested'), 'nothing pending');
+            $this->assertFalse(Probe::get($this->tui, property: 'renderRequested'), 'nothing pending');
 
             $layout->toggleBottomPanelMaximised();
 
-            $this->assertSame($expectedMaximised, null !== Probe::get($layout, 'panelRestoreRows'));
-            $this->assertTrue(Probe::get($this->tui, 'renderRequested'), 'the toggle asked for a frame');
+            $this->assertSame($expectedMaximised, null !== Probe::get($layout, property: 'panelRestoreRows'));
+            $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'), 'the toggle asked for a frame');
         }
     }
 
@@ -207,7 +207,7 @@ final class LayoutControllerNudgeTest extends TestCase
 
         $layout->toggleBottomPanelMaximised();
 
-        $this->assertNull(Probe::get($layout, 'panelRestoreRows'));
+        $this->assertNull(Probe::get($layout, property: 'panelRestoreRows'));
         $this->assertSame([], $this->layoutFile(), 'and nothing persisted');
     }
 
@@ -228,7 +228,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $layout->applyLayout();
 
         $this->assertSame(40 - 6 - 7, $results->visibleRows(), 'it took the bigger screen');
-        $this->assertNotNull(Probe::get($layout, 'panelRestoreRows'), 'and is still maximised');
+        $this->assertNotNull(Probe::get($layout, property: 'panelRestoreRows'), 'and is still maximised');
     }
 
     /** An editor strip at the side takes columns, not rows: a maximised panel gets its two rows back. */
@@ -250,7 +250,7 @@ final class LayoutControllerNudgeTest extends TestCase
             new Translator('en'),
             new PreviewSplit(Styles::dark()),
         );
-        $dock->showList(ResultsPanelMode::RecentLocations, 'Recent Locations', []);
+        $dock->showList(ResultsPanelMode::RecentLocations, title: 'Recent Locations', rows: []);
         $layout->toggleBottomPanelMaximised();
 
         $this->assertSame(30 - 6 - 6, $results->visibleRows(), 'the frame, the dock strip\'s two rows more, the two edge rules, the navigation bar and the rule under it');
@@ -285,7 +285,7 @@ final class LayoutControllerNudgeTest extends TestCase
         $layout = $this->controller(columns: 200);
 
         for ($i = 0; $i < 100; ++$i) {
-            $layout->nudgeViewSidebar('settings', 2);
+            $layout->nudgeViewSidebar('settings', delta: 2);
         }
 
         $this->assertSame(60, $this->settingsSidebar->width(), '60 columns, not 50% of 200');
@@ -304,11 +304,11 @@ final class LayoutControllerNudgeTest extends TestCase
     public function testNudgeSidebarRequestsARender(): void
     {
         $layout = $this->controller();
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
 
         $layout->nudgeSidebar(2);
 
-        $this->assertTrue(Probe::get($this->tui, 'renderRequested'));
+        $this->assertTrue(Probe::get($this->tui, property: 'renderRequested'));
     }
 
     public function testClampSidebarWidthsColsMinus20FloorBindsBeforeTheRatio(): void

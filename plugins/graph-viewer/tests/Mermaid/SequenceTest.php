@@ -63,7 +63,7 @@ final class SequenceTest extends TestCase
     {
         $scene = self::scene('sequenceDiagram; participant A; participant B; activate B; A->>B: one; A->>B: two')->themed(MermaidPalette::defaults('sequenceDiagram'));
         $view = new ZoomPanModel((int) $scene->graph->width, (int) $scene->graph->height, [1.0]);
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), GraphRenderer::render($scene->graph, $view, null, 100, 60, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), GraphRenderer::render($scene->graph, $view, selected: null, cols: 100, rows: 60, styles: Styles::dark()));
         $grid = new GraphCellGrid(100, 60, $view, null);
         foreach (\array_slice($scene->graph->edges, offset: 0, length: 2) as $edge) {
             $row = $grid->rowOf($edge->arrowTip[1]);
@@ -100,7 +100,7 @@ final class SequenceTest extends TestCase
         $this->assertFalse($lifeline->dashed, 'lifelines are solid, as pinned');
         $this->assertLessThan($scene->graph->height, $dead->y + ($dead->h / 2));
         $view = new ZoomPanModel((int) $scene->graph->width, (int) $scene->graph->height, [1.0]);
-        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), GraphRenderer::render($scene->graph, $view, null, 100, 60, Styles::dark()));
+        $rows = \array_map(AnsiUtils::stripAnsiCodes(...), GraphRenderer::render($scene->graph, $view, selected: null, cols: 100, rows: 60, styles: Styles::dark()));
         $grid = new GraphCellGrid(100, 60, $view, null);
         $this->assertStringContainsString('▸', \mb_substr($rows[$grid->rowOf($born->y)], $grid->colOf($born->x - ($born->w / 2)) - 1, length: 2));
         $simultaneous = self::scene('sequenceDiagram; create participant 0; destroy 0; 1->>0: fleeting');
@@ -128,11 +128,11 @@ final class SequenceTest extends TestCase
         $source = "# comment\nSEQUENCEDIAGRAM\nparticipant A as 漢字\nA->>B: message";
         $cancel = $renderer->rows(
             $source,
-            3,
-            static function (FenceResult $value) use (&$result): void {
+            width: 3,
+            success: static function (FenceResult $value) use (&$result): void {
                 $result = $value;
             },
-            static function (string $value) use (&$error): void {
+            error: static function (string $value) use (&$error): void {
                 $error = $value;
             },
         );

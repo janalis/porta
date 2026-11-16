@@ -62,7 +62,7 @@ final class PtyProcessTest extends TestCase
         });
 
         $this->assertTrue($p->start());
-        $this->assertTrue(Probe::get($p, 'pty'), 'a real PTY was allocated');
+        $this->assertTrue(Probe::get($p, property: 'pty'), 'a real PTY was allocated');
 
         $this->await(static function () use (&$exit): bool {
             return null !== $exit;
@@ -203,7 +203,7 @@ final class PtyProcessTest extends TestCase
         });
 
         $this->assertTrue($p->start());
-        $this->await(static fn (): bool => null !== Probe::get($p, 'reaping'), what: 'the terminal to close while the child lives on');
+        $this->await(static fn (): bool => null !== Probe::get($p, property: 'reaping'), what: 'the terminal to close while the child lives on');
         $this->assertTrue($p->isRunning(), 'running until it is reaped: a waiter on the end must hear the code with it');
         $this->await(static function () use (&$exit): bool {
             return null !== $exit;
@@ -224,9 +224,9 @@ final class PtyProcessTest extends TestCase
             $exit = $c;
         });
         $this->assertTrue($p->start());
-        $this->await(static fn (): bool => null !== Probe::get($p, 'reaping'), what: 'the terminal to close while the child lives on');
+        $this->await(static fn (): bool => null !== Probe::get($p, property: 'reaping'), what: 'the terminal to close while the child lives on');
 
-        $reaping = Probe::get($p, 'reaping');
+        $reaping = Probe::get($p, property: 'reaping');
         $this->assertIsResource($reaping, 'the child outlived its terminal, so it is still being collected');
         $pid = \proc_get_status($reaping)['pid'];
         $p->stop();
@@ -297,7 +297,7 @@ final class PtyProcessTest extends TestCase
     /** The id of the watcher draining $p's queued input — there is one, or the test proves nothing. */
     private function inputWatcher(PtyProcess $p): string
     {
-        $watcher = Probe::get(Probe::object($p, 'input'), 'watcher');
+        $watcher = Probe::get(Probe::object($p, 'input'), property: 'watcher');
         $this->assertIsString($watcher, 'more input than the terminal takes at once is queued, with a watcher');
 
         return $watcher;
@@ -409,7 +409,7 @@ final class PtyProcessTest extends TestCase
         $this->await(static function () use (&$buffer): bool {
             return $buffer->lineCount() > 1;
         });
-        $watcher = Probe::get($p, 'watcher');
+        $watcher = Probe::get($p, property: 'watcher');
         $this->assertIsString($watcher);
         $p->stop();
         // Its id, not a count: the reaper's timer may join the loop as the watcher leaves it.
@@ -430,9 +430,9 @@ final class PtyProcessTest extends TestCase
         $p = new PtyProcess(['/bin/sh', '-c', 'sleep 30'], __DIR__);
         $this->procs[] = $p;
         $this->assertTrue($p->start());
-        $status = \proc_get_status(Probe::get($p, 'process'));
+        $status = \proc_get_status(Probe::get($p, property: 'process'));
         $pid = $status['pid'];
-        $master = Probe::get($p, 'master');
+        $master = Probe::get($p, property: 'master');
 
         $p->stop();
 

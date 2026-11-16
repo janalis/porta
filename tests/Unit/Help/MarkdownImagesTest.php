@@ -32,20 +32,20 @@ final class MarkdownImagesTest extends TestCase
     protected function setUp(): void
     {
         $this->project = new TempProject([
-            'docs/wide.png' => self::png(160, 80),
-            'outside.png' => self::png(160, 80),
-            'docs2/twin.png' => self::png(160, 80),
-            'docs/tall.png' => self::png(40, 2000),
+            'docs/wide.png' => self::png(160, height: 80),
+            'outside.png' => self::png(160, height: 80),
+            'docs2/twin.png' => self::png(160, height: 80),
+            'docs/tall.png' => self::png(40, height: 2000),
             'docs/fake.png' => 'GIF89a not a png',
             'docs/cut.png' => "\x89PNG\r\n\x1a\n",
-            'docs/empty.png' => self::png(0, 10),
-            'docs/copy.png' => self::png(160, 80),
-            'docs/needle.png' => self::png(8, 2000),
-            'docs/column.png' => self::png(100, 2000),
-            'docs/dot.png' => self::png(1, 1),
+            'docs/empty.png' => self::png(0, height: 10),
+            'docs/copy.png' => self::png(160, height: 80),
+            'docs/needle.png' => self::png(8, height: 2000),
+            'docs/column.png' => self::png(100, height: 2000),
+            'docs/dot.png' => self::png(1, height: 1),
             'docs/odd.png' => "\x89PNG\r\n\x1a\n".\pack('N', 13).'tEXt'.\pack('NN', 16, 16),
             'docs/drawing.svg' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"/>',
-            'docs/public/screenshots/shot.png' => self::png(160, 80),
+            'docs/public/screenshots/shot.png' => self::png(160, height: 80),
             'docs/public/screenshots/shot.svg' => '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="5"/>',
             'plugin/docs/README.md' => '# Plugin',
             'docs/notes.txt' => 'not a picture',
@@ -80,7 +80,7 @@ final class MarkdownImagesTest extends TestCase
             ++$relaid;
         }, $raster);
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), graphics: $this->graphics, svgs: $svgs);
-        $render = fn (): RenderedDoc => $renderer->render('![Drawing](drawing.svg)', 40, [], $this->project->path('docs'));
+        $render = fn (): RenderedDoc => $renderer->render('![Drawing](drawing.svg)', width: 40, openDetails: [], baseDir: $this->project->path('docs'));
 
         $this->assertSame('[Drawing]', \trim(AnsiUtils::stripAnsiCodes($render()->lines[0])), 'its text, while it is drawn');
         $this->assertSame([[(string) \file_get_contents($this->project->path('docs/drawing.svg')), SvgPictures::WIDTH]], $asked);
@@ -88,7 +88,7 @@ final class MarkdownImagesTest extends TestCase
         $this->assertCount(1, $asked, 'drawn once, not at every layout');
         $this->assertSame(0, $relaid);
 
-        $answer(self::png(160, 80));
+        $answer(self::png(160, height: 80));
         $this->assertSame(1, $relaid, 'the page is laid out again');
         $this->assertCount(5, $render()->lines, 'the picture, in cells that keep its shape');
         $this->assertCount(1, $asked);
@@ -107,7 +107,7 @@ final class MarkdownImagesTest extends TestCase
         );
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), graphics: $this->graphics, svgs: $svgs);
         foreach (['![Drawing](drawing.svg)', '![Notes](notes.txt)'] as $markdown) {
-            $this->assertStringStartsWith('[', \trim(AnsiUtils::stripAnsiCodes($renderer->render($markdown, 40, [], $this->project->path('docs'))->lines[0])), $markdown);
+            $this->assertStringStartsWith('[', \trim(AnsiUtils::stripAnsiCodes($renderer->render($markdown, width: 40, openDetails: [], baseDir: $this->project->path('docs'))->lines[0])), $markdown);
         }
         $this->assertSame(0, $relaid, 'answered as it was asked: no news to tell');
         $this->assertStringStartsWith('[', \trim(AnsiUtils::stripAnsiCodes($this->render('![Drawing](drawing.svg)')->lines[0])), 'no SVG drawing at all without one');
@@ -119,9 +119,21 @@ final class MarkdownImagesTest extends TestCase
         $plugin = $this->project->path('plugin/docs');
         $public = $this->project->path('docs/public');
 
-        $this->assertCount(5, $renderer->render('![Shot](/screenshots/shot.png)', 40, [], $plugin, $plugin, $public)->lines, 'as the docs site serves it');
-        $this->assertSame('[Shot]', \trim(AnsiUtils::stripAnsiCodes($renderer->render('![Shot](/screenshots/shot.png)', 40, [], $plugin, $plugin)->lines[0])), 'no public folder named: not found');
-        $this->assertSame('[Out]', \trim(AnsiUtils::stripAnsiCodes($renderer->render('![Out](/../wide.png)', 40, [], $plugin, $plugin, $public)->lines[0])), 'nothing outside it');
+        $this->assertCount(
+            5,
+            $renderer->render('![Shot](/screenshots/shot.png)', width: 40, openDetails: [], baseDir: $plugin, root: $plugin, publicDir: $public)->lines,
+            'as the docs site serves it',
+        );
+        $this->assertSame(
+            '[Shot]',
+            \trim(AnsiUtils::stripAnsiCodes($renderer->render('![Shot](/screenshots/shot.png)', width: 40, openDetails: [], baseDir: $plugin, root: $plugin)->lines[0])),
+            'no public folder named: not found',
+        );
+        $this->assertSame(
+            '[Out]',
+            \trim(AnsiUtils::stripAnsiCodes($renderer->render('![Out](/../wide.png)', width: 40, openDetails: [], baseDir: $plugin, root: $plugin, publicDir: $public)->lines[0])),
+            'nothing outside it',
+        );
     }
 
     public function testAnImageAloneIsDrawnInCellsThatKeepItsShape(): void
@@ -136,14 +148,18 @@ final class MarkdownImagesTest extends TestCase
         $this->assertStringStartsWith("\u{100000}", AnsiUtils::stripAnsiCodes($doc->lines[0]));
         $sent = $this->terminal->getOutput();
         $this->assertStringContainsString('a=t,f=100', $sent, 'the PNG sent as it is');
-        $this->assertStringContainsString(\base64_encode(self::png(160, 80)), $sent, 'the whole file, not only the header read to size it');
+        $this->assertStringContainsString(\base64_encode(self::png(160, height: 80)), $sent, 'the whole file, not only the header read to size it');
         $this->assertStringContainsString(',c=20,r=5,', $sent);
     }
 
     public function testAWidthTheImgAsksForIsHonouredAndAPercentageIsOfThePage(): void
     {
         $this->assertSame(10, AnsiUtils::visibleWidth($this->render('<img src="wide.png" width="80">')->lines[0]));
-        $this->assertSame(20, AnsiUtils::visibleWidth($this->render('<p align="center"><img src="wide.png" width="50%"></p>', null, 40)->lines[0]) - 10, 'centred: half the page, ten columns in');
+        $this->assertSame(
+            20,
+            AnsiUtils::visibleWidth($this->render('<p align="center"><img src="wide.png" width="50%"></p>', width: 40)->lines[0]) - 10,
+            'centred: half the page, ten columns in',
+        );
     }
 
     public function testATallImageIsCappedSoThePageStaysAPage(): void
@@ -173,7 +189,7 @@ final class MarkdownImagesTest extends TestCase
         $this->assertSame('[Wide]', \trim(AnsiUtils::stripAnsiCodes($this->render('![Wide](wide.png)', $silent)->lines[0])), 'a terminal without the protocol');
         $this->assertSame(
             '[Wide]',
-            \trim(AnsiUtils::stripAnsiCodes(new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics)->render('![Wide](wide.png)', 40)->lines[0])),
+            \trim(AnsiUtils::stripAnsiCodes(new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics)->render('![Wide](wide.png)', width: 40)->lines[0])),
             'a page with no file of its own',
         );
     }
@@ -181,10 +197,10 @@ final class MarkdownImagesTest extends TestCase
     public function testTheSameImageIsSentOnceAndFreedWhenThePageStopsShowingIt(): void
     {
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics);
-        $renderer->render("![a](wide.png)\n\n![b](wide.png)", 40, [], $this->project->path('docs'));
+        $renderer->render("![a](wide.png)\n\n![b](wide.png)", width: 40, openDetails: [], baseDir: $this->project->path('docs'));
         $this->assertSame(1, \substr_count($this->terminal->getOutput(), needle: 'a=t,'));
         $this->terminal->clearOutput();
-        $renderer->render('no image', 40, [], $this->project->path('docs'));
+        $renderer->render('no image', width: 40, openDetails: [], baseDir: $this->project->path('docs'));
         $this->assertStringContainsString('a=d,d=I,', $this->terminal->getOutput());
     }
 
@@ -218,22 +234,25 @@ final class MarkdownImagesTest extends TestCase
     {
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics);
         $docs = $this->project->path('docs');
-        $renderer->render("![a](wide.png)\n\n![b](copy.png)", 40, [], $docs);
+        $renderer->render("![a](wide.png)\n\n![b](copy.png)", width: 40, openDetails: [], baseDir: $docs);
         $this->assertSame(2, \substr_count($this->terminal->getOutput(), needle: 'a=t,'));
         $this->terminal->clearOutput();
         \touch($this->project->path('docs/wide.png'), \time() + 60);
         \clearstatcache();
-        $renderer->render("![a](wide.png)\n\n![b](copy.png)", 40, [], $docs);
+        $renderer->render("![a](wide.png)\n\n![b](copy.png)", width: 40, openDetails: [], baseDir: $docs);
         $this->assertSame(1, \substr_count($this->terminal->getOutput(), needle: 'a=t,'), 'only the file that changed');
         $this->terminal->clearOutput();
-        $renderer->render('![a](wide.png)', 40, [], $docs);
+        $renderer->render('![a](wide.png)', width: 40, openDetails: [], baseDir: $docs);
         $this->assertStringContainsString('a=d,d=I,', $this->terminal->getOutput(), 'copy.png freed though wide.png, before it, is kept');
     }
 
     public function testASlashStartsAtThePagesTreeAndNoImageIsReadOutsideIt(): void
     {
         $renderer = new MarkdownRenderer(new Styles(DarkTheme::definition()), null, null, $this->graphics);
-        $drawn = fn (string $markdown, ?string $root): bool => \str_contains($renderer->render($markdown, 40, [], $this->project->path('docs'), $root)->lines[0], "\u{100000}");
+        $drawn = fn (string $markdown, ?string $root): bool => \str_contains(
+            $renderer->render($markdown, width: 40, openDetails: [], baseDir: $this->project->path('docs'), root: $root)->lines[0],
+            "\u{100000}",
+        );
         $this->assertTrue($drawn('![](/docs/wide.png)', $this->project->dir), '/ is the tree\'s root, as GitHub reads the repository\'s');
         $this->assertFalse($drawn('![](/wide.png)', $this->project->dir), 'not the page\'s folder');
         $this->assertTrue($drawn('![](../outside.png)', $this->project->dir), 'up and still inside the tree');

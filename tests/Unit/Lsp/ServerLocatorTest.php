@@ -58,7 +58,7 @@ final class ServerLocatorTest extends TestCase
         $root = new TempProject(['.porta.json' => \json_encode($project, \JSON_THROW_ON_ERROR)]);
         \putenv('PORTA_HOME='.$home->dir);
 
-        return ServerLocator::locateAll($root->dir, null, self::PHPANTOM);
+        return ServerLocator::locateAll($root->dir, pluginServers: self::PHPANTOM);
     }
 
     public function testAGlobalServerRunsAsTheSettingsViewShowsIt(): void
@@ -88,7 +88,7 @@ final class ServerLocatorTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
 
-        $servers = ServerLocator::locateAll($project->dir, 'my-ls --stdio', self::PHPANTOM);
+        $servers = ServerLocator::locateAll($project->dir, override: 'my-ls --stdio', pluginServers: self::PHPANTOM);
 
         $this->assertSame(['*'], \array_keys($servers), 'the --lsp override beats a map config and plugin servers');
         $this->assertSame(['my-ls', '--stdio'], $servers['*'][0]['command']);
@@ -98,7 +98,7 @@ final class ServerLocatorTest extends TestCase
     {
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => 'phpactor language-server'], \JSON_THROW_ON_ERROR)]);
 
-        $servers = ServerLocator::locateAll($project->dir, '');
+        $servers = ServerLocator::locateAll($project->dir, override: '');
 
         $this->assertSame(['phpactor', 'language-server'], $servers['*'][0]['command'], 'empty override falls through to config');
     }
@@ -180,7 +180,7 @@ final class ServerLocatorTest extends TestCase
         \putenv('PATH=/nonexistent'); // no core auto-detect
         $project = new TempProject();
 
-        $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
+        $servers = ServerLocator::locateAll($project->dir, pluginServers: self::PHPANTOM);
 
         $this->assertSame(['php'], \array_keys($servers), 'PHP now comes from a plugin, not a hardcoded default');
         $this->assertSame('phpantom', $servers['php'][0]['name']);
@@ -192,7 +192,7 @@ final class ServerLocatorTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['php' => 'phpactor language-server']], \JSON_THROW_ON_ERROR)]);
 
-        $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
+        $servers = ServerLocator::locateAll($project->dir, pluginServers: self::PHPANTOM);
 
         $this->assertSame(['phpactor', 'language-server'], $servers['php'][0]['command'], 'the user config beats the plugin server');
         $this->assertSame('phpactor', $servers['php'][0]['name']);
@@ -207,11 +207,11 @@ final class ServerLocatorTest extends TestCase
         ];
 
         $plain = new TempProject();
-        $servers = ServerLocator::locateAll($plain->dir, null, $plugins);
+        $servers = ServerLocator::locateAll($plain->dir, pluginServers: $plugins);
         $this->assertSame(['workspaceTrust' => false], $servers['twig'][0]['initializationOptions'] ?? null, 'the plugin entry passes through whole');
 
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['twig' => 'my-twig-ls']], \JSON_THROW_ON_ERROR)]);
-        $overridden = ServerLocator::locateAll($project->dir, null, $plugins);
+        $overridden = ServerLocator::locateAll($project->dir, pluginServers: $plugins);
         $this->assertArrayNotHasKey('initializationOptions', $overridden['twig'][0], 'a config override replaces the entry, options included');
         $this->assertSame(['workspaceTrust' => false], $overridden['yaml'][0]['initializationOptions'] ?? null, 'the untouched language keeps its options');
     }
@@ -222,7 +222,7 @@ final class ServerLocatorTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['.porta.json' => \json_encode(['lsp' => ['typescript' => 'my-tsls --stdio', 'python' => '', 'yaml' => ['ls', '--stdio']]], \JSON_THROW_ON_ERROR)]);
 
-        $servers = ServerLocator::locateAll($project->dir, null, self::PHPANTOM);
+        $servers = ServerLocator::locateAll($project->dir, pluginServers: self::PHPANTOM);
 
         $this->assertSame(['php', 'typescript', 'yaml'], \array_keys($servers));
         $this->assertSame('phpantom', $servers['php'][0]['name'], 'php keeps its plugin server');
@@ -235,9 +235,9 @@ final class ServerLocatorTest extends TestCase
     public function testPhpIsNoLongerAutoDetected(): void
     {
         $project = new TempProject();
-        \chmod($project->write('vendor/bin/phpactor', "#!/bin/sh\n"), permissions: 0o755);
+        \chmod($project->write('vendor/bin/phpactor', content: "#!/bin/sh\n"), permissions: 0o755);
         $tools = new TempProject([], 'porta-bin-');
-        \chmod($tools->write('phpactor', "#!/bin/sh\n"), permissions: 0o755);
+        \chmod($tools->write('phpactor', content: "#!/bin/sh\n"), permissions: 0o755);
         \putenv('PATH='.$tools->dir);
 
         $this->assertSame([], ServerLocator::locateAll($project->dir), 'no plugin server, no config → PHP is unserved');
@@ -249,7 +249,7 @@ final class ServerLocatorTest extends TestCase
         $project = new TempProject();
         $tools = new TempProject([], 'porta-bin-');
         foreach (['typescript-language-server', 'pyright-langserver'] as $bin) {
-            \chmod($tools->write($bin, "#!/bin/sh\n"), permissions: 0o755);
+            \chmod($tools->write($bin, content: "#!/bin/sh\n"), permissions: 0o755);
         }
         \putenv('PATH='.$tools->dir);
 
@@ -267,7 +267,7 @@ final class ServerLocatorTest extends TestCase
     {
         $project = new TempProject();
         $tools = new TempProject([], 'porta-bin-');
-        \chmod($tools->write('pylsp', "#!/bin/sh\n"), permissions: 0o755);
+        \chmod($tools->write('pylsp', content: "#!/bin/sh\n"), permissions: 0o755);
         \putenv('PATH='.$tools->dir);
 
         $servers = ServerLocator::locateAll($project->dir);

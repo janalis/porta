@@ -97,8 +97,8 @@ final readonly class HtmlBlockLayout
         foreach (\explode("\n", $html->literal) as $index => $line) {
             $text = AnsiText::truncate(\str_replace("\t", replace: '    ', subject: $line), $width);
             // Each row is its own source line: drawn as written, byte for byte; else its start.
-            $exact = $text === $line ? $state->lineEndCells($origin + $index, $line, 0) : [];
-            $start = $state->source->offsetOf($origin + $index, 0);
+            $exact = $text === $line ? $state->lineEndCells($origin + $index, $line, col: 0) : [];
+            $start = $state->source->offsetOf($origin + $index, byteCol: 0);
             $lines[] = new PageLine(
                 $this->pen->role($text, Role::Muted),
                 AnsiUtils::visibleWidth($text),

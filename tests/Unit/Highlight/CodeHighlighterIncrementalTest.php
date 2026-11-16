@@ -44,11 +44,11 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $highlighter->setFile('big.php');
         $doc = $this->bigDocument();
 
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
         $this->assertSame([false], $parses, 'the first parse is a full one');
 
         $doc[1500] = '$edited = "new text";';
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
         $this->assertSame([false, true], $parses, 'the local edit reports a splice');
     }
 
@@ -56,13 +56,13 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $first = $highlighter->highlight($doc, 1);
-        $this->assertSame(1, Probe::get($highlighter, 'fullParses'));
+        $first = $highlighter->highlight($doc, version: 1);
+        $this->assertSame(1, Probe::get($highlighter, property: 'fullParses'));
 
         $doc[1500] = '$edited = "new text";';
-        $second = $highlighter->highlight($doc, 2);
+        $second = $highlighter->highlight($doc, version: 2);
 
-        $stats = ['fullParses' => Probe::get($highlighter, 'fullParses'), 'incrementalUpdates' => Probe::get($highlighter, 'incrementalUpdates')];
+        $stats = ['fullParses' => Probe::get($highlighter, property: 'fullParses'), 'incrementalUpdates' => Probe::get($highlighter, property: 'incrementalUpdates')];
         $this->assertSame(1, $stats['fullParses'], 'no second full parse');
         $this->assertSame(1, $stats['incrementalUpdates']);
         $this->assertCount(\count($doc), $second);
@@ -76,40 +76,40 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         \array_splice($doc, offset: 100, length: 0, replacement: ['$inserted = true;']);
-        $afterInsert = $highlighter->highlight($doc, 2);
+        $afterInsert = $highlighter->highlight($doc, version: 2);
         $this->assertSame('$inserted = true;', AnsiUtils::stripAnsiCodes($afterInsert[100]));
         $this->assertCount(\count($doc), $afterInsert);
 
         \array_splice($doc, offset: 100, length: 1);
-        $afterDelete = $highlighter->highlight($doc, 3);
+        $afterDelete = $highlighter->highlight($doc, version: 3);
         $this->assertCount(\count($doc), $afterDelete);
-        $this->assertSame(1, Probe::get($highlighter, 'fullParses'));
-        $this->assertSame(2, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(1, Probe::get($highlighter, property: 'fullParses'));
+        $this->assertSame(2, Probe::get($highlighter, property: 'incrementalUpdates'));
     }
 
     public function testNonLocalChangeForcesFullParse(): void
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         for ($i = 200; $i < 220; ++$i) { // 20 scattered lines changed
             $doc[$i] = "\$rewritten{$i} = true;";
         }
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(2, Probe::get($highlighter, 'fullParses'));
-        $this->assertSame(0, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(2, Probe::get($highlighter, property: 'fullParses'));
+        $this->assertSame(0, Probe::get($highlighter, property: 'incrementalUpdates'));
     }
 
     public function testRepairParseAfterManyIncrementalEdits(): void
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $version = 2;
         for ($i = 0; $i < 30; ++$i) {
@@ -117,7 +117,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
             $highlighter->highlight($doc, $version++);
         }
 
-        $stats = ['fullParses' => Probe::get($highlighter, 'fullParses'), 'incrementalUpdates' => Probe::get($highlighter, 'incrementalUpdates')];
+        $stats = ['fullParses' => Probe::get($highlighter, property: 'fullParses'), 'incrementalUpdates' => Probe::get($highlighter, property: 'incrementalUpdates')];
         // Edits 1-25 incremental, edit 26 triggers a repair parse (counter
         // resets), edits 27-30 incremental again.
         $this->assertSame(29, $stats['incrementalUpdates']);
@@ -128,13 +128,13 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = ['<?php', '$a = 1;', '$b = 2;'];
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $doc[1] = '$a = 99;';
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(2, Probe::get($highlighter, 'fullParses'));
-        $this->assertSame(0, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(2, Probe::get($highlighter, property: 'fullParses'));
+        $this->assertSame(0, Probe::get($highlighter, property: 'incrementalUpdates'));
     }
 
     public function testEmptyEditedLineAndParserFailureFallbacks(): void
@@ -148,14 +148,14 @@ final class CodeHighlighterIncrementalTest extends TestCase
         }));
         $failing->setFile('big.php');
         $doc = $this->bigDocument();
-        $failing->highlight($doc, 1);
+        $failing->highlight($doc, version: 1);
 
         $doc[500] = '';
-        $result = $failing->highlight($doc, 2);
+        $result = $failing->highlight($doc, version: 2);
         $this->assertSame('', $result[500], 'empty line short-circuits');
 
         $doc[500] = '$x = 1;';
-        $result = $failing->highlight($doc, 3);
+        $result = $failing->highlight($doc, version: 3);
         $this->assertSame('$x = 1;', $result[500], 'per-line parser failure falls back to raw text');
     }
 
@@ -164,10 +164,10 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $mangler = new CodeHighlighter(new ClosureHighlightProvider(static fn (string $content): string => \str_contains($content, "\n") ? $content : $content."\nEXTRA"));
         $mangler->setFile('big.php');
         $doc = $this->bigDocument();
-        $mangler->highlight($doc, 1);
+        $mangler->highlight($doc, version: 1);
 
         $doc[500] = '$y = 2;';
-        $result = $mangler->highlight($doc, 2);
+        $result = $mangler->highlight($doc, version: 2);
 
         $this->assertSame('$y = 2;', $result[500]);
         $this->assertCount(\count($doc), $result);
@@ -181,14 +181,14 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $highlighter->setFile('big.php');
         $doc = $this->bigDocument();
 
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
         $provider->deliverPending();
-        $highlighter->highlight($doc, 1); // pick up the resolved cache as lastRawLines
+        $highlighter->highlight($doc, version: 1); // pick up the resolved cache as lastRawLines
 
         $doc[100] = '$edited = true;';
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(0, Probe::get($highlighter, 'incrementalUpdates'), 'an async backend re-dispatches instead of splicing');
+        $this->assertSame(0, Probe::get($highlighter, property: 'incrementalUpdates'), 'an async backend re-dispatches instead of splicing');
     }
 
     /** The line-count floor is inclusive: exactly INCREMENTAL_MIN_LINES still qualifies. */
@@ -196,12 +196,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument(CodeHighlighter::INCREMENTAL_MIN_LINES);
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $doc[100] = '$edited = true;';
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'), 'exactly INCREMENTAL_MIN_LINES lines still takes the incremental path');
+        $this->assertSame(1, Probe::get($highlighter, property: 'incrementalUpdates'), 'exactly INCREMENTAL_MIN_LINES lines still takes the incremental path');
     }
 
     /** A line-count delta of exactly MAX_LOCAL_CHANGE (3) is still local, not a forced full parse. */
@@ -209,12 +209,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         \array_splice($doc, offset: 100, length: 0, replacement: ['$one = 1;', '$two = 2;', '$three = 3;']);
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'), 'a 3-line delta is still within MAX_LOCAL_CHANGE');
+        $this->assertSame(1, Probe::get($highlighter, property: 'incrementalUpdates'), 'a 3-line delta is still within MAX_LOCAL_CHANGE');
     }
 
     /**
@@ -226,18 +226,18 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         for ($i = 0; $i < 25; ++$i) {
             $doc[1000] = "\$edit{$i} = {$i};";
             $highlighter->highlight($doc, $i + 2);
         }
-        $this->assertSame(1, Probe::get($highlighter, 'fullParses'), 'still incremental through the 25th edit');
+        $this->assertSame(1, Probe::get($highlighter, property: 'fullParses'), 'still incremental through the 25th edit');
 
         $doc[1000] = '$edit25 = 25;';
-        $highlighter->highlight($doc, 27);
+        $highlighter->highlight($doc, version: 27);
 
-        $this->assertSame(2, Probe::get($highlighter, 'fullParses'), 'the 26th edit, where staleEdits has reached REPAIR_EVERY, is the one that trips the repair');
+        $this->assertSame(2, Probe::get($highlighter, property: 'fullParses'), 'the 26th edit, where staleEdits has reached REPAIR_EVERY, is the one that trips the repair');
     }
 
     /** A pure append (every old line matches as a prefix) must not read one past the old array. */
@@ -245,12 +245,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $doc[] = '$appended = true;'; // every old line is an exact prefix of the new document
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(1, Probe::get($highlighter, property: 'incrementalUpdates'));
     }
 
     /** A pure prepend (every old line matches as a suffix) must not read one before the old array. */
@@ -258,12 +258,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         \array_unshift($doc, '$prepended = true;'); // every old line is an exact suffix of the new document
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(1, Probe::get($highlighter, property: 'incrementalUpdates'));
     }
 
     /** The changed "middle" region is exactly MAX_LOCAL_CHANGE lines wide at the boundary — still local. */
@@ -271,15 +271,15 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         for ($i = 100; $i < 103; ++$i) { // exactly 3 changed lines, no count change
             $doc[$i] = "\$rewritten{$i} = true;";
         }
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'), 'a 3-line middle change is still within MAX_LOCAL_CHANGE');
-        $this->assertSame(1, Probe::get($highlighter, 'fullParses'), 'no forced full reparse for a boundary-sized change');
+        $this->assertSame(1, Probe::get($highlighter, property: 'incrementalUpdates'), 'a 3-line middle change is still within MAX_LOCAL_CHANGE');
+        $this->assertSame(1, Probe::get($highlighter, property: 'fullParses'), 'no forced full reparse for a boundary-sized change');
     }
 
     /** Deleting lines exercises the suffix-splice path (suffix > 0) distinctly from a pure edit. */
@@ -287,12 +287,12 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $first = $highlighter->highlight($doc, 1);
+        $first = $highlighter->highlight($doc, version: 1);
 
         \array_splice($doc, offset: 100, length: 1); // pure deletion: a real (nonzero) suffix shift
-        $second = $highlighter->highlight($doc, 2);
+        $second = $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(1, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(1, Probe::get($highlighter, property: 'incrementalUpdates'));
         $this->assertSame($first[2000], $second[1999], 'the trailing cached lines were reused via the suffix slice, shifted by the deletion');
     }
 
@@ -305,9 +305,9 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
-        $result = $highlighter->highlight($doc, 2);
+        $result = $highlighter->highlight($doc, version: 2);
 
         $this->assertCount(\count($doc), $result);
     }
@@ -321,16 +321,16 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         // Replace 2 old lines with 5 new ones: middleOld=2 (within budget),
         // middleNew=5 (over budget), overall delta=+3 (within budget too) —
         // only the AND-vulnerable middleNew side trips the guard.
         \array_splice($doc, offset: 100, length: 2, replacement: ['$a=1;', '$b=2;', '$c=3;', '$d=4;', '$e=5;']);
-        $highlighter->highlight($doc, 2);
+        $highlighter->highlight($doc, version: 2);
 
-        $this->assertSame(2, Probe::get($highlighter, 'fullParses'), 'middleNew alone exceeding the budget must still force a full parse');
-        $this->assertSame(0, Probe::get($highlighter, 'incrementalUpdates'));
+        $this->assertSame(2, Probe::get($highlighter, property: 'fullParses'), 'middleNew alone exceeding the budget must still force a full parse');
+        $this->assertSame(0, Probe::get($highlighter, property: 'incrementalUpdates'));
     }
 
     /** Editing the very last line leaves zero common suffix — the splice must not append the whole cache. */
@@ -338,10 +338,10 @@ final class CodeHighlighterIncrementalTest extends TestCase
     {
         $highlighter = $this->highlighter();
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $doc[\count($doc) - 1] = '$last = true;';
-        $result = $highlighter->highlight($doc, 2);
+        $result = $highlighter->highlight($doc, version: 2);
 
         $this->assertCount(\count($doc), $result, 'a zero-length suffix must not fall back to slicing the entire cache');
     }
@@ -353,10 +353,10 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $highlighter = new CodeHighlighter($provider);
         $highlighter->setFile('big.php');
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $doc[500] = '';
-        $result = $highlighter->highlight($doc, 2);
+        $result = $highlighter->highlight($doc, version: 2);
 
         $this->assertSame('', $result[500], 'an empty edited line short-circuits before the backend ever sees it');
     }
@@ -386,7 +386,7 @@ final class CodeHighlighterIncrementalTest extends TestCase
                 }
                 // Simulates a backend that half-answers, then errors: the
                 // per-line splice path must not trust this partial delivery.
-                $sink->deliver($request->documentId, $request->version, 'WRONG_MARKUP');
+                $sink->deliver($request->documentId, $request->version, markup: 'WRONG_MARKUP');
 
                 throw new \RuntimeException('boom after delivering');
             }
@@ -395,10 +395,10 @@ final class CodeHighlighterIncrementalTest extends TestCase
         $highlighter = new CodeHighlighter($provider);
         $highlighter->setFile('big.php');
         $doc = $this->bigDocument();
-        $highlighter->highlight($doc, 1);
+        $highlighter->highlight($doc, version: 1);
 
         $doc[500] = '$x = 1;';
-        $result = $highlighter->highlight($doc, 2);
+        $result = $highlighter->highlight($doc, version: 2);
 
         $this->assertSame('$x = 1;', $result[500], 'the raw line wins over a delivery that arrived just before the throw');
     }

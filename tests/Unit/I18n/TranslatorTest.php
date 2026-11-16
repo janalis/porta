@@ -30,7 +30,7 @@ final class TranslatorTest extends TestCase
 
     public function testMarkupTranslatesTheTagsAndEscapesEveryParam(): void
     {
-        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Saved &lt;info&gt;%file%&lt;/&gt;', '&lt;info&gt;%file%&lt;/&gt; enregistré'))]);
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Saved &lt;info&gt;%file%&lt;/&gt;', target: '&lt;info&gt;%file%&lt;/&gt; enregistré'))]);
         $translator = new Translator('fr', $project->dir);
 
         $markup = $translator->markup('Saved <info>%file%</>', ['%file%' => '<b>.php', '%n%' => 3]);
@@ -41,7 +41,7 @@ final class TranslatorTest extends TestCase
 
     public function testTranslatesTheActiveLocaleAndFallsBackToEnglish(): void
     {
-        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer le fichier'))]);
         $translator = new Translator('fr', $project->dir);
 
         $this->assertSame('Enregistrer le fichier', $translator->trans('Save File'));
@@ -51,7 +51,7 @@ final class TranslatorTest extends TestCase
 
     public function testAutoIsTheSystemLocale(): void
     {
-        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer le fichier'))]);
         $translator = new Translator('auto', $project->dir, systemLocale: 'fr');
 
         $this->assertSame('fr', $translator->locale());
@@ -83,14 +83,14 @@ final class TranslatorTest extends TestCase
         // same test. Real boots are separate processes — the dump's read-back
         // is symfony's contract; what is Porta's to pin is that the dir is
         // threaded through (the glob) and that debug=true re-parses an edit.
-        $catalogs = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
+        $catalogs = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer le fichier'))]);
         $cache = new TempProject();
 
         $first = new Translator('fr', $catalogs->dir, $cache->dir);
         $this->assertSame('Enregistrer le fichier', $first->trans('Save File'));
         $this->assertNotSame([], \glob($cache->dir.'/catalogue.fr.*.php'), 'the first trans() dumped the parsed catalog');
 
-        $catalogs->write('messages.fr.xlf', $this->xliff('fr', $this->unit('Save File', 'Sauvegarder')));
+        $catalogs->write('messages.fr.xlf', $this->xliff('fr', $this->unit('Save File', target: 'Sauvegarder')));
         \touch($catalogs->path('messages.fr.xlf'), \time() + 2); // a same-second edit needs a distinct mtime
         $second = new Translator('fr', $catalogs->dir, $cache->dir);
         $this->assertSame('Sauvegarder', $second->trans('Save File'), 'the edited catalog is re-parsed, not served stale');
@@ -98,8 +98,8 @@ final class TranslatorTest extends TestCase
 
     public function testACatalogDirectoryServesAPluginsOwnStrings(): void
     {
-        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer le fichier'))]);
-        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Show Blame', 'Afficher l’annotation'))]);
+        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer le fichier'))]);
+        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Show Blame', target: 'Afficher l’annotation'))]);
         $translator = new Translator('en', $core->dir);
         $translator->setLocale('fr');
 
@@ -114,8 +114,8 @@ final class TranslatorTest extends TestCase
     {
         // A plugin adds strings; it must not be able to retranslate core's —
         // `Cancel` or `Run` would change across the whole IDE.
-        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Cancel', 'Annuler'))]);
-        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Cancel', 'Abandonner'))]);
+        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Cancel', target: 'Annuler'))]);
+        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Cancel', target: 'Abandonner'))]);
         $translator = new Translator('fr', $core->dir);
 
         $translator->addCatalogDirectory($plugin->dir);
@@ -130,8 +130,8 @@ final class TranslatorTest extends TestCase
         // dir registered after the first trans() of a boot — or a project
         // with one more plugin than the last — must not be served a dump that
         // was made without it.
-        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer'))]);
-        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Show Blame', 'Annoter'))]);
+        $core = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer'))]);
+        $plugin = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Show Blame', target: 'Annoter'))]);
         $cache = new TempProject();
         $translator = new Translator('fr', $core->dir, $cache->dir);
         $this->assertSame('Show Blame', $translator->trans('Show Blame'), 'dumped without the plugin');
@@ -146,7 +146,7 @@ final class TranslatorTest extends TestCase
 
     public function testPlaceholdersAreInterpolated(): void
     {
-        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Committed: %summary%', 'Validé : %summary%'))]);
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Committed: %summary%', target: 'Validé : %summary%'))]);
         $translator = new Translator('fr', $project->dir);
 
         $this->assertSame('Validé : init', $translator->trans('Committed: %summary%', ['%summary%' => 'init']));
@@ -169,7 +169,7 @@ final class TranslatorTest extends TestCase
         // first trans() for the locale — a package upgrade can swap the
         // translations dir out in between, which throws NotFoundResourceException
         // (a SIBLING of InvalidResourceException) unless the loader covers it.
-        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer'))]);
+        $project = new TempProject(['messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer'))]);
         $translator = new Translator('fr', $project->dir);
         \unlink($project->path('messages.fr.xlf'));
 
@@ -182,7 +182,7 @@ final class TranslatorTest extends TestCase
         // Symfony's own Translator swallow the NotFoundResourceException),
         // English IS the fallback — nothing catches it upstream, so this is
         // the one scenario where LenientXliffLoader's own catch is load-bearing.
-        $project = new TempProject(['messages.en.xlf' => $this->xliff('en', $this->unit('Save File', 'Save File'))]);
+        $project = new TempProject(['messages.en.xlf' => $this->xliff('en', $this->unit('Save File', target: 'Save File'))]);
         $translator = new Translator('en', $project->dir);
         \unlink($project->path('messages.en.xlf'));
 
@@ -191,7 +191,7 @@ final class TranslatorTest extends TestCase
 
     public function testAnEmptyTargetFallsBackToTheSource(): void
     {
-        $project = new TempProject(['messages.de.xlf' => $this->xliff('de', $this->unit('Save File', ''))]);
+        $project = new TempProject(['messages.de.xlf' => $this->xliff('de', $this->unit('Save File', target: ''))]);
         $translator = new Translator('de', $project->dir);
 
         $this->assertSame('Save File', $translator->trans('Save File'), 'a stubbed (empty) target keeps English');
@@ -200,8 +200,8 @@ final class TranslatorTest extends TestCase
     public function testSetLocaleSwitchesTranslations(): void
     {
         $project = new TempProject([
-            'messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', 'Enregistrer')),
-            'messages.de.xlf' => $this->xliff('de', $this->unit('Save File', 'Speichern')),
+            'messages.fr.xlf' => $this->xliff('fr', $this->unit('Save File', target: 'Enregistrer')),
+            'messages.de.xlf' => $this->xliff('de', $this->unit('Save File', target: 'Speichern')),
         ]);
         $translator = new Translator('en', $project->dir);
 

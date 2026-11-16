@@ -43,7 +43,7 @@ final class ListOverlayFilterTest extends TestCase
 
     private function host(): OverlayHost
     {
-        return new OverlayHost(TestTui::create(100, 24));
+        return new OverlayHost(TestTui::create(100, rows: 24));
     }
 
     private function keys(): Keybindings
@@ -81,7 +81,7 @@ final class ListOverlayFilterTest extends TestCase
         $lines = \array_fill(start_index: 0, count: 24, value: \str_repeat(' ', times: 100));
         foreach ($host->layout([0, 0, 24, 100]) as $box) {
             foreach ($box['rows'] as $i => $rowText) {
-                $lines[$box['top'] + $i] = OverlayCompositor::into($lines[$box['top'] + $i], $box['col'], $box['width'], 100, $rowText);
+                $lines[$box['top'] + $i] = OverlayCompositor::into($lines[$box['top'] + $i], $box['col'], $box['width'], columns: 100, popup: $rowText);
             }
         }
 
@@ -102,7 +102,7 @@ final class ListOverlayFilterTest extends TestCase
             $picked = $v;
         });
 
-        $this->type($host, 'hyd');
+        $this->type($host, text: 'hyd');
         $host->handleInput("\r", $this->keys());
 
         $this->assertSame('Y', $picked, 'the only surviving row, not the first row of the FULL list');
@@ -118,7 +118,7 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('File Structure', self::symbols(), static fn (): null => null);
 
-        $this->type($host, 'method');
+        $this->type($host, text: 'method');
 
         $plain = \implode("\n", $this->canvas($host));
         $this->assertStringContainsString('handle', $plain);
@@ -142,7 +142,7 @@ final class ListOverlayFilterTest extends TestCase
 
         $host->handleInput("\x1b[B", $this->keys()); // down: 'handle'
         $host->handleInput("\x1b[B", $this->keys()); // down: 'hydrate'
-        $this->type($host, 'h'); // Service and $logger go
+        $this->type($host, text: 'h'); // Service and $logger go
         $host->handleInput("\r", $this->keys());
 
         $this->assertSame('H', $picked, 'the first row of the NARROWED list');
@@ -157,13 +157,13 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('L', self::symbols(), static fn (): null => null);
 
-        $this->type($host, 'zz');
+        $this->type($host, text: 'zz');
         $host->handleInput("\x1b", $this->keys());
-        $this->assertNotNull(Probe::get($host, 'overlay'), 'still open, filter cleared');
+        $this->assertNotNull(Probe::get($host, property: 'overlay'), 'still open, filter cleared');
         $this->assertStringContainsString('$logger', \implode("\n", $this->canvas($host)), 'the whole list is back');
 
         $host->handleInput("\x1b", $this->keys());
-        $this->assertNull(Probe::get($host, 'overlay'), 'the second Esc closes it');
+        $this->assertNull(Probe::get($host, property: 'overlay'), 'the second Esc closes it');
     }
 
     public function testBackspaceWidensTheFilterAgain(): void
@@ -171,7 +171,7 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('L', self::symbols(), static fn (): null => null);
 
-        $this->type($host, 'hyd');
+        $this->type($host, text: 'hyd');
         $this->assertStringNotContainsString('handle', \implode("\n", $this->canvas($host)));
 
         $host->handleInput("\x7f", $this->keys());
@@ -194,7 +194,7 @@ final class ListOverlayFilterTest extends TestCase
             $picked = $v;
         });
 
-        $this->type($host, 'zzz');
+        $this->type($host, text: 'zzz');
         $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host)));
 
         $host->handleInput("\x1b[B", $this->keys());
@@ -202,7 +202,7 @@ final class ListOverlayFilterTest extends TestCase
         $host->handleInput("\x05", $this->keys()); // ctrl+e
         $host->handleInput("\r", $this->keys());
 
-        $this->assertNotNull(Probe::get($host, 'overlay'), 'still open');
+        $this->assertNotNull(Probe::get($host, property: 'overlay'), 'still open');
         $this->assertNull($picked, 'and picked nothing');
     }
 
@@ -220,7 +220,7 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('File Structure', self::symbols(), static fn (): null => null);
 
-        $this->type($host, 'hyd');
+        $this->type($host, text: 'hyd');
 
         $rows = $this->canvas($host);
         $legend = null;
@@ -258,7 +258,7 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('File Structure', self::symbols(), static fn (): null => null);
 
-        $this->type($host, 'zz');
+        $this->type($host, text: 'zz');
 
         $rows = $this->canvas($host);
         $emptyRow = null;
@@ -295,13 +295,13 @@ final class ListOverlayFilterTest extends TestCase
 
         $host = $this->host();
         $host->openList('L', $items, static fn (): null => null);
-        $this->type($host, 'éla'); // lowercase needle, uppercase label
+        $this->type($host, text: 'éla'); // lowercase needle, uppercase label
         $this->assertStringContainsString('Élan', \implode('
 ', $this->canvas($host)), 'the label folded');
 
         $host = $this->host();
         $host->openList('L', $items, static fn (): null => null);
-        $this->type($host, 'ÉLA'); // uppercase needle
+        $this->type($host, text: 'ÉLA'); // uppercase needle
         $this->assertStringContainsString('Élan', \implode('
 ', $this->canvas($host)), 'the needle folded');
 
@@ -310,7 +310,7 @@ final class ListOverlayFilterTest extends TestCase
         // The HINT, and its uppercase letter has to be the NON-ASCII one:
         // `strtolower('Größe')` already lowercases the ASCII `G` and leaves the
         // rest, which is indistinguishable from the multibyte fold.
-        $this->type($host, 'öffent');
+        $this->type($host, text: 'öffent');
         $plain = \implode('
 ', $this->canvas($host));
         $this->assertStringContainsString('Élan', $plain, 'the hint folded');
@@ -334,7 +334,7 @@ final class ListOverlayFilterTest extends TestCase
                 $picked = $v;
             });
 
-            $this->type($host, 'e'); // every row carries an `e`, so nothing is hidden
+            $this->type($host, text: 'e'); // every row carries an `e`, so nothing is hidden
             $host->handleInput("\x1b[B", $this->keys());
             $host->handleInput("\x1b[B", $this->keys()); // selected: hydrate
 
@@ -357,7 +357,7 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('L', self::symbols(), static fn (): null => null);
 
-        $this->type($host, 'zx'); // `z` already matches nothing; `x` must still land
+        $this->type($host, text: 'zx'); // `z` already matches nothing; `x` must still land
 
         $host->handleInput("\x7f", $this->keys()); // one backspace leaves `z`
         $this->assertStringContainsString('no matches', \implode("\n", $this->canvas($host)), 'still filtered by `z`');
@@ -381,9 +381,9 @@ final class ListOverlayFilterTest extends TestCase
             $picked = $v;
         });
 
-        $this->type($host, 'method');
+        $this->type($host, text: 'method');
         $this->canvas($host); // a box to hit-test against
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
         Assert::assertInstanceOf(ModalBox::class, $box, 'the layout recorded a box to hit-test');
 
         // The SECOND row of what is drawn: `hydrate`, which is item index 2 of
@@ -414,12 +414,12 @@ final class ListOverlayFilterTest extends TestCase
         );
 
         $host->layout([0, 0, 24, 100]);
-        $before = Probe::get($host, 'overlayBox');
+        $before = Probe::get($host, property: 'overlayBox');
         $this->assertInstanceOf(ModalBox::class, $before, 'a box before typing');
 
-        $this->type($host, 'hy');
+        $this->type($host, text: 'hy');
         $host->layout([0, 0, 24, 100]);
-        $after = Probe::get($host, 'overlayBox');
+        $after = Probe::get($host, property: 'overlayBox');
         $this->assertInstanceOf(ModalBox::class, $after, 'and one after');
 
         $this->assertSame($before->width, $after->width, 'same width');
@@ -436,16 +436,16 @@ final class ListOverlayFilterTest extends TestCase
         $host = $this->host();
         $host->openList('L', self::symbols(), static fn (): null => null);
         $host->layout([0, 0, 24, 100]);
-        $before = Probe::get($host, 'overlayBox');
+        $before = Probe::get($host, property: 'overlayBox');
 
         $rows = \array_values(\array_filter($this->canvas($host), static fn (string $l): bool => '' !== \trim($l)));
         $this->assertStringContainsString('L', $rows[0], 'the title bar');
         $this->assertStringContainsString('≡', $rows[2], 'the filter field, from the start');
         $this->assertStringContainsString('Type to filter', $rows[3]);
 
-        $this->type($host, 'h');
+        $this->type($host, text: 'h');
         $host->layout([0, 0, 24, 100]);
         $this->assertInstanceOf(ModalBox::class, $before);
-        $this->assertSame($before->startRow, Probe::get($host, 'overlayBox')->startRow, 'the first keystroke moves nothing');
+        $this->assertSame($before->startRow, Probe::get($host, property: 'overlayBox')->startRow, 'the first keystroke moves nothing');
     }
 }

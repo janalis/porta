@@ -185,6 +185,7 @@ final class LspSession
     public function request(string $method, mixed $params, callable $onResult): void
     {
         if (null === $this->client) {
+            // @mago-expect lint:literal-named-argument -- a variadic, which cannot take a named argument: mago#2741
             EventLoop::queue($onResult(...), null, ['code' => -32_800, 'message' => 'The language server stopped']);
 
             return;
@@ -327,7 +328,7 @@ final class LspSession
             return;
         }
         if (null !== $this->pendingChange && $this->pendingChange[1] !== $doc) {
-            $this->flushPendingChange(null, null);
+            $this->flushPendingChange(null, document: null);
         }
         if (null !== $this->changeDebounce) {
             EventLoop::cancel($this->changeDebounce);
@@ -335,7 +336,7 @@ final class LspSession
 
         $this->afterSync = $afterSync;
         $this->pendingChange = [$path, $doc];
-        $this->changeDebounce = EventLoop::delay(0.3, fn () => $this->flushPendingChange(null, null));
+        $this->changeDebounce = EventLoop::delay(0.3, fn () => $this->flushPendingChange(null, document: null));
     }
 
     /**

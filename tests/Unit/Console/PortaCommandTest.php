@@ -241,9 +241,9 @@ final class PortaCommandTest extends TestCase
         // or a full negation, both of which would also return a bool, just
         // the wrong one.
         $command = new PortaCommand();
-        $isInteractive = Probe::get($command, 'isInteractive');
+        $isInteractive = Probe::get($command, property: 'isInteractive');
         $this->assertFalse($isInteractive(), 'neither stream is a TTY under phpunit');
-        $this->assertIsCallable(Probe::get($command, 'launch'));
+        $this->assertIsCallable(Probe::get($command, property: 'launch'));
     }
 
     public function testTheErrorMessageIsPrefixedWithPortaNotJustContainingTheReason(): void
@@ -441,7 +441,7 @@ final class PortaCommandTest extends TestCase
     public function testSelfUpdateReplacesTheRunningPharWithANewerRelease(): void
     {
         $dir = new TempProject(['porta.phar' => 'OLD']);
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('porta.phar')));
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $dir->path('porta.phar')));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
 
@@ -454,7 +454,7 @@ final class PortaCommandTest extends TestCase
         $dir = new TempProject(['Downloads/porta.phar' => 'OLD']);
         \mkdir($dir->path('bin'));
         \symlink($dir->path('Downloads/porta.phar'), $dir->path('bin/porta'));
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('bin/porta')));
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $dir->path('bin/porta')));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
 
@@ -465,7 +465,7 @@ final class PortaCommandTest extends TestCase
     public function testSelfUpdateDryRunOnlySaysWhatIsThere(): void
     {
         $dir = new TempProject(['porta.phar' => 'OLD']);
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('porta.phar')));
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $dir->path('porta.phar')));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true, '--dry-run' => true]));
 
@@ -476,7 +476,7 @@ final class PortaCommandTest extends TestCase
     public function testSelfUpdateOfTheLatestReleaseChangesNothing(): void
     {
         $dir = new TempProject(['porta.phar' => 'OLD']);
-        $tester = new CommandTester($this->updater('v1.3.0', 'v1.3.0', $dir->path('porta.phar')));
+        $tester = new CommandTester($this->updater('v1.3.0', latest: 'v1.3.0', phar: $dir->path('porta.phar')));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
 
@@ -487,7 +487,7 @@ final class PortaCommandTest extends TestCase
     public function testAFailedSelfUpdateSaysWhyAndFails(): void
     {
         $dir = new TempProject(['porta.phar' => 'OLD']);
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $dir->path('porta.phar'), newPharRuns: 1));
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $dir->path('porta.phar'), newPharRuns: 1));
 
         $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
 
@@ -509,7 +509,7 @@ final class PortaCommandTest extends TestCase
     {
         $brew = self::cellar();
         $ran = [];
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $brew->path('bin/porta'), manager: static function (array $command) use ($brew, &$ran): int {
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $brew->path('bin/porta'), manager: static function (array $command) use ($brew, &$ran): int {
             $ran[] = \implode(' ', $command);
             \unlink($brew->path('bin/porta'));
             \symlink($brew->path('Cellar/porta/1.3.0/bin/porta'), $brew->path('bin/porta'));
@@ -528,7 +528,7 @@ final class PortaCommandTest extends TestCase
     public function testABrewUpgradeThatChangedNothingIsNotReportedAsAnUpdate(): void
     {
         $brew = self::cellar();
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $brew->path('bin/porta'), manager: static fn (): int => 0));
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $brew->path('bin/porta'), manager: static fn (): int => 0));
 
         $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
 
@@ -540,7 +540,7 @@ final class PortaCommandTest extends TestCase
     public function testADryRunOfAHomebrewInstallRunsNothing(): void
     {
         $brew = self::cellar();
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', $brew->path('bin/porta'), manager: function (): int {
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: $brew->path('bin/porta'), manager: function (): int {
             $this->fail('brew ran on a dry run');
         }));
 
@@ -552,15 +552,18 @@ final class PortaCommandTest extends TestCase
     {
         $home = new TempProject(['vendor/composer/installed.php' => '<?php return [1];']);
         $ran = [];
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', null, installation: new Installation(InstallMethod::ComposerGlobal, $home->dir), manager: static function (array $command) use (
-            $home,
-            &$ran,
-        ): int {
-            $ran[] = \implode(' ', $command);
-            $home->write('vendor/composer/installed.php', '<?php return [2];');
+        $tester = new CommandTester($this->updater(
+            'v1.2.0',
+            latest: 'v1.3.0',
+            phar: null,
+            installation: new Installation(InstallMethod::ComposerGlobal, $home->dir),
+            manager: static function (array $command) use ($home, &$ran): int {
+                $ran[] = \implode(' ', $command);
+                $home->write('vendor/composer/installed.php', content: '<?php return [2];');
 
-            return 0;
-        }));
+                return 0;
+            },
+        ));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
 
@@ -570,7 +573,7 @@ final class PortaCommandTest extends TestCase
 
     public function testAFailedComposerUpdateSaysWhatFailed(): void
     {
-        $tester = new CommandTester($this->updater('v1.2.0', 'v1.3.0', null, installation: new Installation(InstallMethod::ComposerGlobal, '/nowhere'), manager: static fn (): int => 2));
+        $tester = new CommandTester($this->updater('v1.2.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::ComposerGlobal, '/nowhere'), manager: static fn (): int => 2));
 
         $this->assertSame(Command::FAILURE, $tester->execute(['--self-update' => true]));
 
@@ -583,7 +586,7 @@ final class PortaCommandTest extends TestCase
     public function testACheckoutIsToldHowAndNothingRuns(): void
     {
         // No phar and no installation handed in: this very checkout is read.
-        $tester = new CommandTester($this->updater('0.1.0', 'v1.3.0', null, manager: function (): int {
+        $tester = new CommandTester($this->updater('0.1.0', latest: 'v1.3.0', phar: null, manager: function (): int {
             $this->fail('a checkout is never updated for its user');
         }));
 
@@ -597,7 +600,7 @@ final class PortaCommandTest extends TestCase
 
     public function testAProjectsDependencyIsToldHowOnADryRunWithoutFailing(): void
     {
-        $tester = new CommandTester($this->updater('0.1.0', 'v1.3.0', null, installation: new Installation(InstallMethod::ComposerProject, '/work/app')));
+        $tester = new CommandTester($this->updater('0.1.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::ComposerProject, '/work/app')));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true, '--dry-run' => true]));
         $this->assertStringContainsString('This porta is a dependency of the project at /work/app: update it with `composer update janalis/porta --working-dir=/work/app`.', $tester->getDisplay());
@@ -605,7 +608,7 @@ final class PortaCommandTest extends TestCase
 
     public function testACurrentCheckoutHasNothingToBeToldAbout(): void
     {
-        $tester = new CommandTester($this->updater('v1.3.0', 'v1.3.0', null, installation: new Installation(InstallMethod::Checkout, '/work/porta')));
+        $tester = new CommandTester($this->updater('v1.3.0', latest: 'v1.3.0', phar: null, installation: new Installation(InstallMethod::Checkout, '/work/porta')));
 
         $this->assertSame(Command::SUCCESS, $tester->execute(['--self-update' => true]));
         $this->assertStringContainsString('porta v1.3.0 is up to date', $tester->getDisplay());

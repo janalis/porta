@@ -24,17 +24,17 @@ final class LineSpansTest extends TestCase
         $styles = new Styles(DarkTheme::definition());
         $result = LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(
+            lineIndex: 0,
+            decorations: new EditorDecorations(
                 multiActive: false,
                 selection: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 5],
                 carets: [new Caret(0, 3, 0, 3)],
                 occurrences: [[0, 0, 5, false]],
                 brackets: [[0, 4]],
             ),
-            [['start' => 6, 'end' => 11, 'current' => true]],
-            [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 5]],
-            $styles,
+            matches: [['start' => 6, 'end' => 11, 'current' => true]],
+            diags: [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 0, 'endCol' => 5]],
+            styles: $styles,
         );
 
         $opens = \array_column($result['spans'], 2);
@@ -92,11 +92,11 @@ final class LineSpansTest extends TestCase
         $doc = new Document("ab\n");
         $result = LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(multiActive: false, selection: null, carets: [new Caret(0, 2, 0, 2)], occurrences: [], brackets: null),
-            [],
-            [],
-            new Styles(DarkTheme::definition()),
+            lineIndex: 0,
+            decorations: new EditorDecorations(multiActive: false, selection: null, carets: [new Caret(0, 2, 0, 2)], occurrences: [], brackets: null),
+            matches: [],
+            diags: [],
+            styles: new Styles(DarkTheme::definition()),
         );
 
         $this->assertCount(1, $result['spans'], 'no selection span for a collapsed caret');
@@ -114,17 +114,17 @@ final class LineSpansTest extends TestCase
         $doc = new Document("f(a) (b)\n");
         $result = LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(
+            lineIndex: 0,
+            decorations: new EditorDecorations(
                 multiActive: false,
                 selection: ['startLine' => 0, 'startCol' => 1, 'endLine' => 0, 'endCol' => 4],
                 carets: [],
                 occurrences: [],
                 brackets: [[0, 1], [0, 3], [0, 4], [0, 5]],
             ),
-            [],
-            [],
-            new Styles(MonochromeTheme::definition()),
+            matches: [],
+            diags: [],
+            styles: new Styles(MonochromeTheme::definition()),
         );
         $bracketAt = static fn (int $col): string => \array_first(\array_filter($result['spans'], static fn (array $s): bool => $col === $s[0] && 1 === ($s[1] - $s[0])))[2];
 
@@ -139,11 +139,11 @@ final class LineSpansTest extends TestCase
         $doc = new Document("a(b)\n");
         $result = LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: [[0, 3]]),
-            [],
-            [],
-            new Styles(DarkTheme::definition()),
+            lineIndex: 0,
+            decorations: new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: [[0, 3]]),
+            matches: [],
+            diags: [],
+            styles: new Styles(DarkTheme::definition()),
         );
 
         $bracketSpan = \array_first(\array_filter($result['spans'], static fn (array $s): bool => LineDecorator::BRACKET_SGR === $s[2]));
@@ -156,11 +156,11 @@ final class LineSpansTest extends TestCase
         $doc = new Document("abcdef\n");
         $result = LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
-            [],
-            [['severity' => DiagnosticSeverity::Error, 'message' => 'x', 'col' => 2]], // no endCol
-            new Styles(DarkTheme::definition()),
+            lineIndex: 0,
+            decorations: new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
+            matches: [],
+            diags: [['severity' => DiagnosticSeverity::Error, 'message' => 'x', 'col' => 2]], // no endCol
+            styles: new Styles(DarkTheme::definition()),
         );
 
         $diagSpan = $result['spans'][0];
@@ -175,11 +175,11 @@ final class LineSpansTest extends TestCase
         $doc = new Document("abcdef\n");
         $result = LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
-            [],
-            [['severity' => DiagnosticSeverity::Error, 'message' => 'x', 'col' => 2, 'endCol' => 2]],
-            new Styles(DarkTheme::definition()),
+            lineIndex: 0,
+            decorations: new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: [], brackets: null),
+            matches: [],
+            diags: [['severity' => DiagnosticSeverity::Error, 'message' => 'x', 'col' => 2, 'endCol' => 2]],
+            styles: new Styles(DarkTheme::definition()),
         );
 
         $diagSpan = $result['spans'][0];
@@ -192,11 +192,11 @@ final class LineSpansTest extends TestCase
         $doc = new Document("alpha beta\ngamma delta\nepsilon\n");
         $result = LineSpans::forLine(
             $doc,
-            1, // the middle line: neither the selection's start nor end line
-            new EditorDecorations(multiActive: false, selection: ['startLine' => 0, 'startCol' => 2, 'endLine' => 2, 'endCol' => 4], carets: [], occurrences: [], brackets: null),
-            [],
-            [],
-            new Styles(DarkTheme::definition()),
+            lineIndex: 1, // the middle line: neither the selection's start nor end line
+            decorations: new EditorDecorations(multiActive: false, selection: ['startLine' => 0, 'startCol' => 2, 'endLine' => 2, 'endCol' => 4], carets: [], occurrences: [], brackets: null),
+            matches: [],
+            diags: [],
+            styles: new Styles(DarkTheme::definition()),
         );
 
         $this->assertSame(0, $result['spans'][0][0], 'a fully-selected middle line starts at column 0, not -1');
@@ -207,17 +207,17 @@ final class LineSpansTest extends TestCase
         $doc = new Document("one\ntwo\n");
         $result = LineSpans::forLine(
             $doc,
-            1,
-            new EditorDecorations(
+            lineIndex: 1,
+            decorations: new EditorDecorations(
                 multiActive: false,
                 selection: ['startLine' => 0, 'startCol' => 0, 'endLine' => 0, 'endCol' => 2],
                 carets: [new Caret(0, 1, 0, 1)],
                 occurrences: [[0, 0, 3, false]],
                 brackets: [[0, 1]],
             ),
-            [],
-            [],
-            new Styles(DarkTheme::definition()),
+            matches: [],
+            diags: [],
+            styles: new Styles(DarkTheme::definition()),
         );
 
         $this->assertSame([], $result['spans']);
@@ -237,8 +237,8 @@ final class LineSpansTest extends TestCase
                 $mk(s: 12, e: 18), // fully inside → untouched
                 $mk(0, \PHP_INT_MAX), // "to end of line" diagnostic → clamped to the window
             ],
-            10,
-            30,
+            winStart: 10,
+            winEnd: 30,
         );
 
         $this->assertSame(
@@ -265,11 +265,11 @@ final class LineSpansTest extends TestCase
         /** @param list<array{0: int, 1: int, 2: int, 3: bool}> $occurrences */
         $spansFor = static fn (array $occurrences): array => LineSpans::forLine(
             $doc,
-            0,
-            new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: $occurrences, brackets: null),
-            [],
-            [],
-            $styles,
+            lineIndex: 0,
+            decorations: new EditorDecorations(multiActive: false, selection: null, carets: [], occurrences: $occurrences, brackets: null),
+            matches: [],
+            diags: [],
+            styles: $styles,
         );
         $read = $spansFor([[0, 0, 3, false]]);
         $write = $spansFor([[0, 0, 3, true]]);

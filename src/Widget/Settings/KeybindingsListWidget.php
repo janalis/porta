@@ -187,12 +187,12 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
         match (true) {
             null !== $this->capturingIndex => $this->captureKey($this->capturingIndex, $data, $kb),
             $this->filtering && $this->editFilter($data, $kb) => null, // the filter field took the key
-            $kb->matches($data, 'filter') => $this->startFilter(),
-            $kb->matches($data, 'exit_view') => $this->fire($this->onExit),
-            $kb->matches($data, 'focus_next_pane') => $this->fire($this->onFocusNext),
-            $kb->matches($data, 'show_settings') => $this->events?->dispatch(new SettingsSectionRequested('general')),
-            $kb->matches($data, 'rebind') => $this->armCapture(),
-            $kb->matches($data, 'reset_binding') => $this->resetSelected(),
+            $kb->matches($data, action: 'filter') => $this->startFilter(),
+            $kb->matches($data, action: 'exit_view') => $this->fire($this->onExit),
+            $kb->matches($data, action: 'focus_next_pane') => $this->fire($this->onFocusNext),
+            $kb->matches($data, action: 'show_settings') => $this->events?->dispatch(new SettingsSectionRequested('general')),
+            $kb->matches($data, action: 'rebind') => $this->armCapture(),
+            $kb->matches($data, action: 'reset_binding') => $this->resetSelected(),
             // The title row — and the filter row while it is showing — are not
             // list rows, so a page is what render() hands follow(), not the pane
             // height. With the filter open the difference was two entries.
@@ -209,7 +209,7 @@ final class KeybindingsListWidget extends AbstractWidget implements FocusableInt
     {
         $row = $this->shown[$index] ?? null;
         $this->capturingIndex = null;
-        if (!$kb->matches($data, 'exit_view') && null !== $row && null !== $this->onRebind) {
+        if (!$kb->matches($data, action: 'exit_view') && null !== $row && null !== $this->onRebind) {
             ($this->onRebind)($row->action, $data);
         }
         $this->invalidate();

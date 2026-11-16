@@ -69,7 +69,7 @@ final class IdeRtlLocaleTest extends TestCase
                     // every later test in the run. Pin the write to this
                     // project, which is removed with its temp dir.
                     Services::resolve($ide, SettingsScope::class)->set(ConfigScope::Project);
-                    Services::resolve($ide, SettingsController::class)->changeSetting('language', 'he');
+                    Services::resolve($ide, SettingsController::class)->changeSetting('language', value: 'he');
                     $tui->tick();
                 },
                 600 => function ($tui): void {
@@ -117,7 +117,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('a.php'),
             [
                 200 => function (Tui $tui): void {
-                    $this->assertSame(30, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width());
+                    $this->assertSame(30, Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class)->width());
                     // Force a full frame so the mirrored separator has a live rect
                     // for the arm to hit — without it the drag routes against a null
                     // rect and no-ops, leaving the tree its original width.
@@ -130,7 +130,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $tui->handleInput("\x1b[<0;121;5m"); // release
                 },
                 320 => function (Tui $tui): void {
-                    $this->assertSame(40, Widgets::byId($tui, 'tree', FileTreeWidget::class)->width(), 'dragging the mirrored separator leftward widens the tree');
+                    $this->assertSame(40, Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class)->width(), 'dragging the mirrored separator leftward widens the tree');
                 },
             ],
         );
@@ -166,7 +166,7 @@ final class IdeRtlLocaleTest extends TestCase
             $project->path('demo.php'),
             [
                 300 => function (Tui $tui, VirtualTerminal $terminal): void {
-                    $this->awaitPainted($tui, $terminal, '<?php');
+                    $this->awaitPainted($tui, $terminal, needle: '<?php');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     // The code pane stays LTR: the open tag is intact, its
                     // punctuation is not bidi-mirrored, and the line is whole.
@@ -195,8 +195,8 @@ final class IdeRtlLocaleTest extends TestCase
 
         $assertFrozen = function (object $tui, Ide $ide): void {
             $tui->tick();
-            $renderer = Probe::get($tui, 'renderer');
-            $root = Probe::get($tui, 'root');
+            $renderer = Probe::get($tui, property: 'renderer');
+            $root = Probe::get($tui, property: 'root');
             $segmenter = Services::resolve($ide, PaneSegmenter::class);
             $reorder = Services::resolve($ide, PaneReorder::class);
             $terminal = $tui->getTerminal();
@@ -255,8 +255,8 @@ final class IdeRtlLocaleTest extends TestCase
 
         $assertWidths = function (object $tui, Ide $ide): void {
             $tui->tick();
-            $renderer = Probe::get($tui, 'renderer');
-            $root = Probe::get($tui, 'root');
+            $renderer = Probe::get($tui, property: 'renderer');
+            $root = Probe::get($tui, property: 'root');
             $segmenter = Services::resolve($ide, PaneSegmenter::class);
             $reorder = Services::resolve($ide, PaneReorder::class);
             $terminal = $tui->getTerminal();
@@ -314,7 +314,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function (object $tui, $terminal, Ide $ide): void {
                     $tui->tick();
-                    $root = Probe::get($tui, 'root');
+                    $root = Probe::get($tui, property: 'root');
                     $segmenter = Services::resolve($ide, PaneSegmenter::class);
                     $this->assertInstanceOf(PaneSegmenter::class, $segmenter, 'the IDE exposes the segmenter');
                     $runs = $segmenter->segment($root, $terminal->getColumns(), $terminal->getRows());
@@ -364,12 +364,12 @@ final class IdeRtlLocaleTest extends TestCase
                 300 => function ($tui, $terminal, Ide $ide): void {
                     $this->assertSame(
                         BaseDirection::Rtl,
-                        Probe::get(Services::resolve($ide, MenuBarWidget::class), 'direction'),
+                        Probe::get(Services::resolve($ide, MenuBarWidget::class), property: 'direction'),
                         'the menu bar was told the locale mirrors',
                     );
                     $this->assertSame(
                         BaseDirection::Rtl,
-                        Probe::get(Services::resolve($ide, ContextMenu::class), 'direction'),
+                        Probe::get(Services::resolve($ide, ContextMenu::class), property: 'direction'),
                         'and so was the context menu',
                     );
                 },
@@ -452,8 +452,8 @@ final class IdeRtlLocaleTest extends TestCase
                 },
                 700 => function (object $tui, VirtualTerminal $terminal): void {
                     $screen = $this->screenGrid($tui, $terminal); // the frame as painted, reorder and all
-                    $box = $this->rowWith($screen, 'dark ');
-                    $list = $this->rowWith($screen, 'high-contrast');
+                    $box = $this->rowWith($screen, needle: 'dark ');
+                    $list = $this->rowWith($screen, needle: 'high-contrast');
                     $this->assertNotSame($box, $list, 'the list is open below the select');
 
                     // The select's heavy left rail and the list's stand in one column.
@@ -538,7 +538,7 @@ final class IdeRtlLocaleTest extends TestCase
                 300 => function (Tui $tui, $terminal, Ide $ide): void {
                     Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
                     // The view opens on General; Theme lives on Interface.
-                    $this->selectSettingsSection($this->settingsNav($tui), 'interface');
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'interface');
                 },
             ] + $steps,
             rows: $rows,
@@ -551,8 +551,8 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 500 => function (object $tui, $terminal, Ide $ide): void {
                     $tui->tick();
-                    $renderer = Probe::get($tui, 'renderer');
-                    $root = Probe::get($tui, 'root');
+                    $renderer = Probe::get($tui, property: 'renderer');
+                    $root = Probe::get($tui, property: 'root');
                     $segmenter = Services::resolve($ide, PaneSegmenter::class);
                     $reorder = Services::resolve($ide, PaneReorder::class);
                     $this->assertInstanceOf(PaneSegmenter::class, $segmenter, 'the IDE exposes the segmenter');
@@ -600,7 +600,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
-                    $terminal->simulateResize(120, 24);
+                    $terminal->simulateResize(120, rows: 24);
                     $tui->requestRender();
                     $this->frame($tui);
                 },
@@ -616,13 +616,13 @@ final class IdeRtlLocaleTest extends TestCase
                     // check catches it), and the reordered rows must then be
                     // exactly the terminal width, which is what the RTL garble
                     // bug violated by bleeding one pane across another.
-                    $renderer = Probe::get($tui, 'renderer');
-                    $root = Probe::get($tui, 'root');
+                    $renderer = Probe::get($tui, property: 'renderer');
+                    $root = Probe::get($tui, property: 'root');
                     $segmenter = Services::resolve($ide, PaneSegmenter::class);
                     $reorder = Services::resolve($ide, PaneReorder::class);
                     $this->assertSame(120, $terminal->getColumns());
-                    $lines = $renderer->renderFrame($root, 120, $terminal->getRows())->toArray();
-                    $runs = $segmenter->segment($root, 120, $terminal->getRows());
+                    $lines = $renderer->renderFrame($root, columns: 120, rows: $terminal->getRows())->toArray();
+                    $runs = $segmenter->segment($root, columns: 120, rows: $terminal->getRows());
                     $last = \array_last($runs[0]);
                     $this->assertSame(120, $last['start'] + $last['width'], 'the pane segmentation spans the new width');
                     foreach ($lines as $row => $line) {
@@ -657,7 +657,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function (object $tui): void {
                     $this->frame($tui);
-                    $renderer = Probe::get($tui, 'renderer');
+                    $renderer = Probe::get($tui, property: 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect);
                     $this->assertGreaterThan(0, $rect->col, 'RTL puts the file tree on the right');
@@ -701,7 +701,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function (object $tui): void {
                     $this->frame($tui);
-                    $renderer = Probe::get($tui, 'renderer');
+                    $renderer = Probe::get($tui, property: 'renderer');
                     $rect = $renderer->getWidgetRect($tui->getById('tree'));
                     $this->assertNotNull($rect);
                     $this->assertGreaterThan(0, $rect->col, 'RTL puts the file tree on the right');
@@ -798,7 +798,7 @@ final class IdeRtlLocaleTest extends TestCase
             [
                 300 => function ($tui): void {
                     $tui->tick();
-                    $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $bar = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertFalse($bar->isOpen(), 'nothing is open yet');
 
                     // The first title starts at logical column titleStart(0);
@@ -820,7 +820,7 @@ final class IdeRtlLocaleTest extends TestCase
                     $tui->handleInput("\x1b[<0;".($visual + 1).';1M');
                 },
                 500 => function (Tui $tui): void {
-                    $bar = Widgets::byId($tui, 'menu', MenuBarWidget::class);
+                    $bar = Widgets::byId($tui, id: 'menu', class: MenuBarWidget::class);
                     $this->assertTrue($bar->isOpen(), 'the click landed on a title');
                     $this->assertSame(0, $bar->openIndex(), 'and on the FIRST one, where the pointer was');
                 },
@@ -861,14 +861,14 @@ final class IdeRtlLocaleTest extends TestCase
                 },
                 500 => function (Tui $tui, VirtualTerminal $terminal): void {
                     $screen = $this->screenGrid($tui, $terminal);
-                    $alpha = $screen[$this->rowWith($screen, 'alpha')];
-                    $beta = $screen[$this->rowWith($screen, 'beta')];
+                    $alpha = $screen[$this->rowWith($screen, needle: 'alpha')];
+                    $beta = $screen[$this->rowWith($screen, needle: 'beta')];
 
                     $this->assertLessThan(\mb_strpos($alpha, needle: 'alpha'), \mb_strpos($alpha, needle: 'first'), "the hint left of its label:\n{$alpha}");
                     $this->assertSame(\mb_strpos($alpha, needle: 'alpha') + 5, \mb_strpos($beta, needle: 'beta') + 4, "the labels end in one column, on the right:\n{$alpha}\n{$beta}");
                     $this->assertStringContainsString('▐', $alpha, 'the selection bar, mirrored to the leading edge');
 
-                    $row = $this->rowWith($screen, 'beta');
+                    $row = $this->rowWith($screen, needle: 'beta');
                     $col = \mb_strpos($beta, needle: 'beta');
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $col + 2, $row + 1));
                 },

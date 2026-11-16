@@ -123,7 +123,7 @@ final readonly class Wrapper
         while ($width > $room) {
             // The head drops a wide glyph straddling the cut, so the rest
             // starts where the head ENDS — a CJK run loses no glyph per line.
-            $cut = \max(\strlen(AnsiUtils::sliceByColumn($text, 0, $room)), TextMetrics::nextGrapheme($text, 0));
+            $cut = \max(\strlen(AnsiUtils::sliceByColumn($text, startCol: 0, length: $room)), TextMetrics::nextGrapheme($text, col: 0));
             $head = \substr($text, offset: 0, length: $cut);
             $words[] = new Word($head, AnsiUtils::visibleWidth($head), $fragment, $glued, self::sourceOf($fragment, $offset));
             $text = \substr($text, $cut);

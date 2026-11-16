@@ -77,7 +77,7 @@ final readonly class MemberNavigation
         $wrapped = null === $target;
         $target ??= $members[0];
 
-        $this->editor->jumpTo($target['line'], 0);
+        $this->editor->jumpTo($target['line'], utf16Col: 0);
         $this->notifier->flash(
             $wrapped
                 ? $this->translator->trans('Wrapped to %member%', ['%member%' => $target['label']])

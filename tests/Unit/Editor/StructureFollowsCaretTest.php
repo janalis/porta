@@ -38,7 +38,7 @@ final class StructureFollowsCaretTest extends TestCase
         $this->editor = new CodeEditorWidget();
         $this->editor->showDocument('/p/a.php', new Document(\str_repeat("// line\n", times: 14)));
         $this->results = new ResultsPanelWidget();
-        $this->dock = TestBottomDock::create(TestTui::create(100, 24), new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
+        $this->dock = TestBottomDock::create(TestTui::create(100, rows: 24), new TerminalPanelWidget(), $this->results, new DebugPanelWidget());
 
         return new StructureFollowsCaret($this->editor, $this->dock);
     }
@@ -52,14 +52,14 @@ final class StructureFollowsCaretTest extends TestCase
     public function testTheSelectionMovesToTheSymbolEnclosingTheCaret(): void
     {
         $follower = $this->follower();
-        $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
+        $this->dock->showList(ResultsPanelMode::Structure, title: 'Structure', rows: self::symbols());
 
-        $this->editor->getDocument()->setCursor(6, 0); // inside greet(), which starts at 4
+        $this->editor->getDocument()->setCursor(6, col: 0); // inside greet(), which starts at 4
         $follower->caretMoved();
 
         $this->assertSame(4, $this->selectedLine(), 'greet(), the innermost symbol at or above the caret');
 
-        $this->editor->getDocument()->setCursor(11, 0); // now inside farewell()
+        $this->editor->getDocument()->setCursor(11, col: 0); // now inside farewell()
         $follower->caretMoved();
 
         $this->assertSame(9, $this->selectedLine(), 'farewell() now');
@@ -70,12 +70,12 @@ final class StructureFollowsCaretTest extends TestCase
         // The file header encloses nothing; selecting the first symbol there
         // would claim the caret is inside it.
         $follower = $this->follower();
-        $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
-        $this->editor->getDocument()->setCursor(9, 0);
+        $this->dock->showList(ResultsPanelMode::Structure, title: 'Structure', rows: self::symbols());
+        $this->editor->getDocument()->setCursor(9, col: 0);
         $follower->caretMoved();
         $this->assertSame(9, $this->selectedLine(), 'farewell() now');
 
-        $this->editor->getDocument()->setCursor(0, 0);
+        $this->editor->getDocument()->setCursor(0, col: 0);
         $follower->caretMoved();
 
         $this->assertSame(9, $this->selectedLine(), 'unchanged, not reset to the top');
@@ -84,12 +84,12 @@ final class StructureFollowsCaretTest extends TestCase
     public function testNothingHappensWithNoStructureTabOnDisplay(): void
     {
         $follower = $this->follower();
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', [
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: [
             ['path' => 'a.php', 'line' => 0, 'text' => '✗ first'],
             ['path' => 'a.php', 'line' => 8, 'text' => '✗ second'],
         ]);
 
-        $this->editor->getDocument()->setCursor(11, 0);
+        $this->editor->getDocument()->setCursor(11, col: 0);
         $follower->caretMoved();
 
         $this->assertSame(0, $this->selectedLine(), 'another tool keeps its own selection');
@@ -103,18 +103,18 @@ final class StructureFollowsCaretTest extends TestCase
     public function testAParkedStructureTabIsNotFollowed(): void
     {
         $follower = $this->follower();
-        $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
-        $this->editor->getDocument()->setCursor(5, 0);
+        $this->dock->showList(ResultsPanelMode::Structure, title: 'Structure', rows: self::symbols());
+        $this->editor->getDocument()->setCursor(5, col: 0);
         $follower->caretMoved();
         // Park it behind another tool whose rows OVERLAP the structure's lines:
         // a leaked select would land on the Problems row at line 9, so this
         // distinguishes "guarded" from "asked the wrong widget and missed".
-        $this->dock->showList(ResultsPanelMode::Problems, 'Problems', [
+        $this->dock->showList(ResultsPanelMode::Problems, title: 'Problems', rows: [
             ['path' => 'a.php', 'line' => 0, 'text' => '✗ first'],
             ['path' => 'a.php', 'line' => 9, 'text' => '✗ same line as farewell()'],
         ]);
 
-        $this->editor->getDocument()->setCursor(11, 0);
+        $this->editor->getDocument()->setCursor(11, col: 0);
         $follower->caretMoved();
 
         $this->assertSame(0, $this->selectedLine(), 'the displayed tool kept its own selection');
@@ -128,10 +128,10 @@ final class StructureFollowsCaretTest extends TestCase
     public function testOpeningTheTabSelectsWhereTheCaretAlreadyIs(): void
     {
         $follower = $this->follower();
-        $this->editor->getDocument()->setCursor(11, 0);
+        $this->editor->getDocument()->setCursor(11, col: 0);
         $follower->caretMoved(); // the caret settles BEFORE the tab exists
 
-        $tab = $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
+        $tab = $this->dock->showList(ResultsPanelMode::Structure, title: 'Structure', rows: self::symbols());
         $follower->onDockToolBound(new DockToolBound($tab));
         $follower->caretMoved();
 
@@ -146,8 +146,8 @@ final class StructureFollowsCaretTest extends TestCase
     public function testAStationaryCaretLeavesAManuallyChosenRowAlone(): void
     {
         $follower = $this->follower();
-        $this->dock->showList(ResultsPanelMode::Structure, 'Structure', self::symbols());
-        $this->editor->getDocument()->setCursor(6, 0);
+        $this->dock->showList(ResultsPanelMode::Structure, title: 'Structure', rows: self::symbols());
+        $this->editor->getDocument()->setCursor(6, col: 0);
         $follower->caretMoved();
         $this->assertSame(4, $this->selectedLine(), 'greet(), to begin with');
 

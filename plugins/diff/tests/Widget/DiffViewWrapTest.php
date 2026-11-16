@@ -44,7 +44,7 @@ final class DiffViewWrapTest extends TestCase
     private function widget(?EventDispatcher $events = null): DiffViewWidget
     {
         $widget = new DiffViewWidget(new Translator('en'), events: $events);
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'a.txt');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'a.txt');
         $widget->useSoftWrap();
 
         return $widget;
@@ -101,7 +101,7 @@ final class DiffViewWrapTest extends TestCase
     public function testAWideGlyphAcrossABreakNeverShiftsTheRowBelow(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-x\n+".\str_repeat('a', times: 27)."中b\n"), 'a.txt');
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-x\n+".\str_repeat('a', times: 27)."中b\n"), path: 'a.txt');
         $widget->useSoftWrap();
 
         $body = self::body($widget, rows: 4);
@@ -112,13 +112,13 @@ final class DiffViewWrapTest extends TestCase
     public function testNothingScrollsSidewaysWhileWrapped(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'a.txt');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'a.txt');
         $widget->render(new RenderContext(40, 11));
         $widget->scrollHBy(8);
         $this->assertSame(8, $widget->hScroll());
 
         $widget->useSoftWrap();
-        $this->assertTrue(Probe::get($widget, 'wrap'));
+        $this->assertTrue(Probe::get($widget, property: 'wrap'));
         $this->assertSame(0, $widget->hScroll(), 'wrapping goes back to the start');
         $widget->handleInput("\x1b[C");
         $this->assertSame(0, $widget->hScroll(), '→ has nothing to show');
@@ -127,7 +127,7 @@ final class DiffViewWrapTest extends TestCase
         $widget->useSoftWrap();
         $widget->useHorizontalScroll();
         $widget->useHorizontalScroll();
-        $this->assertFalse(Probe::get($widget, 'wrap'));
+        $this->assertFalse(Probe::get($widget, property: 'wrap'));
         $this->assertCount(1, \array_filter(self::body($widget), static fn (string $row): bool => \str_contains($row, 'n')), 'one row per line again');
         $widget->scrollHBy(8);
         $this->assertSame(8, $widget->hScroll());
@@ -149,17 +149,17 @@ final class DiffViewWrapTest extends TestCase
         self::body($widget);
 
         // Body rows 5 and 6 are the n's second and third: text from col 12.
-        $widget->handleClick(self::HEADER + 5, 15);
-        $widget->dragSelectTo(self::HEADER + 6, 14);
+        $widget->handleClick(self::HEADER + 5, relCol: 15);
+        $widget->dragSelectTo(self::HEADER + 6, relCol: 14);
         $widget->handleInput("\x03");
         $this->assertSame([\str_repeat('n', times: 27)], $copies, 'from the 31st column to the 58th');
 
-        $widget->handleClick(self::HEADER + 5, 2);
-        $widget->dragSelectTo(self::HEADER + 6, 12);
+        $widget->handleClick(self::HEADER + 5, relCol: 2);
+        $widget->dragSelectTo(self::HEADER + 6, relCol: 12);
         $widget->handleInput("\x03");
         $this->assertSame(\str_repeat('n', times: 28), $copies[1], 'the gutter press is the second row\'s start');
 
-        $widget->handleClick(self::HEADER + 30, 12);
+        $widget->handleClick(self::HEADER + 30, relCol: 12);
         $widget->handleInput("\x03");
         $this->assertSame(\str_repeat('n', times: 70)."\n", $copies[2], 'below the last row: the last row');
     }
@@ -186,7 +186,7 @@ final class DiffViewWrapTest extends TestCase
     public function testAPageFromInsideATallRowCountsWhatIsShown(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,4 +1,4 @@\n ".\str_repeat('a', times: 70)."\n b\n c\n d\n"), 'a.txt');
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,4 +1,4 @@\n ".\str_repeat('a', times: 70)."\n b\n c\n d\n"), path: 'a.txt');
         $widget->useSoftWrap();
         $widget->setFocused(true);
         self::body($widget, rows: 3);
@@ -195,14 +195,14 @@ final class DiffViewWrapTest extends TestCase
 
         $widget->handleInput("\x1b[6~");
 
-        $this->assertSame(3, Probe::get($widget, 'cursor'), 'a page of two: b and c were on screen with the a\'s last row');
+        $this->assertSame(3, Probe::get($widget, property: 'cursor'), 'a page of two: b and c were on screen with the a\'s last row');
     }
 
     /** Scrolled into a tall row, then widened so it takes fewer: the rows below it stay, and the count says so at once. */
     public function testWideningInsideATallRowSkipsNothingBelowIt(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,4 +1,4 @@\n ".\str_repeat('a', times: 70)."\n b\n c\n d\n"), 'a.txt');
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1,4 +1,4 @@\n ".\str_repeat('a', times: 70)."\n b\n c\n d\n"), path: 'a.txt');
         $widget->useSoftWrap();
         self::body($widget, rows: 3);
         $widget->scrollBy(3); // two rows into the a's
@@ -241,7 +241,7 @@ final class DiffViewWrapTest extends TestCase
     public function testWrappingKeepsTheCursorInView(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'a.txt');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'a.txt');
         $widget->setFocused(true);
         $widget->render(new RenderContext(40, 4 + self::HEADER));
         $widget->handleInput("\x1b[B");
@@ -295,16 +295,16 @@ final class DiffViewWrapTest extends TestCase
         $widget = $this->widget();
         self::body($widget);
 
-        $this->assertInstanceOf(Tooltip::class, $widget->tooltipAt(self::HEADER, 1), 'the hunk row');
-        $this->assertNull($widget->tooltipAt(self::HEADER + 3, 1), 'a continuation row');
-        $this->assertNull($widget->tooltipAt(self::HEADER + 20, 1), 'below the last row');
+        $this->assertInstanceOf(Tooltip::class, $widget->tooltipAt(self::HEADER, col: 1), 'the hunk row');
+        $this->assertNull($widget->tooltipAt(self::HEADER + 3, col: 1), 'a continuation row');
+        $this->assertNull($widget->tooltipAt(self::HEADER + 20, col: 1), 'below the last row');
     }
 
     /** git's `\ No newline at end of file` wraps like a line, dim on every row. */
     public function testTheNoNewlineMarkerStaysDimOnItsContinuationRows(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-a\n+b\n\\ No newline at end of file"), 'a.txt');
+        $widget->setDocument(DiffDocument::parse("diff --git a/a.txt b/a.txt\n--- a/a.txt\n+++ b/a.txt\n@@ -1 +1 @@\n-a\n+b\n\\ No newline at end of file"), path: 'a.txt');
         $widget->useSoftWrap();
         // 30 columns: 18 of text, so the 26-column ` No newline at end of file` takes two rows.
         $raw = \array_slice($widget->render(new RenderContext(30, 6 + self::HEADER)), self::HEADER);

@@ -52,7 +52,7 @@ final readonly class PluginContributions
     public PluginBuffer $statusSegments;
     /** @var PluginBuffer<array{plugin: string, languageId: string, resolve: \Closure(): (list<string>|null)}> */
     public PluginBuffer $debugAdapters;
-    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller=): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
+    /** @var PluginBuffer<array{plugin: string, id: string, description: string, inputSchema: array<string, mixed>, handler: \Closure(array<string, mixed>, ToolCaller): (string|array<array-key, mixed>), effect: ?ToolEffect}> */
     public PluginBuffer $tools;
 
     public function __construct()

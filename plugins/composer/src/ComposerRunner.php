@@ -84,7 +84,7 @@ final class ComposerRunner
     /** Ask what to require — `vendor/name`, a constraint after a colon, `--dev` — then `composer require` it. */
     public function require(): void
     {
-        $this->api->prompt($this->api->trans('Require (vendor/name[:constraint], --dev for a dev dependency)'), '', function (string $input): void {
+        $this->api->prompt($this->api->trans('Require (vendor/name[:constraint], --dev for a dev dependency)'), initial: '', onSubmit: function (string $input): void {
             $arguments = \preg_split('~\s+~', \trim($input), flags: \PREG_SPLIT_NO_EMPTY);
             if (false !== $arguments && [] !== $arguments) {
                 $this->run(['require', ...$arguments]);
@@ -126,7 +126,7 @@ final class ComposerRunner
         if (!$started) {
             ($this->release)();
             $this->publish([]);
-            $this->api->notify($this->api->trans('composer could not be started'), ToastSeverity::Error, 5.0);
+            $this->api->notify($this->api->trans('composer could not be started'), ToastSeverity::Error, seconds: 5.0);
         }
     }
 
@@ -148,7 +148,7 @@ final class ComposerRunner
     private function checked(?array $packages, int $code): void
     {
         if (null === $packages) {
-            $this->api->notify($this->api->trans('composer outdated exited with code %code%', ['%code%' => $code]), ToastSeverity::Error, 5.0);
+            $this->api->notify($this->api->trans('composer outdated exited with code %code%', ['%code%' => $code]), ToastSeverity::Error, seconds: 5.0);
 
             return;
         }
@@ -158,7 +158,7 @@ final class ComposerRunner
                 ? $this->api->trans('Every direct dependency is on its latest release')
                 : $this->api->trans('%count% direct dependency has a newer release|%count% direct dependencies have newer releases', ['%count%' => $behind]),
             0 === $behind ? ToastSeverity::Success : ToastSeverity::Info,
-            5.0,
+            seconds: 5.0,
         );
     }
 
@@ -185,7 +185,7 @@ final class ComposerRunner
         $refusal = null === $this->api->openBuffers()->text($path) ? null : $this->api->openBuffers()->save($path);
         $binary = null === $refusal ? ($this->acquire)() : null;
         if (null !== $refusal) {
-            $this->api->flash($refusal, 4.0);
+            $this->api->flash($refusal, seconds: 4.0);
         }
         if (null === $binary) {
             return;
@@ -209,7 +209,7 @@ final class ComposerRunner
             -1 => [$this->api->trans('%command% was stopped before it finished', $params), ToastSeverity::Error],
             default => [$this->api->trans('%command% exited with code %code% — see its terminal tab', $params), ToastSeverity::Error],
         };
-        $this->api->notify($message, $severity, 5.0);
+        $this->api->notify($message, $severity, seconds: 5.0);
     }
 
     /** The package the caret's line requires, in the project's composer.json in front; null after saying why not. */
@@ -217,7 +217,7 @@ final class ComposerRunner
     {
         $package = $this->manifestInFront()?->packageAt($this->api->caretPosition()['line'] ?? -1);
         if (null === $package) {
-            $this->api->flash($this->api->trans('Put the caret on a package in composer.json\'s require or require-dev'), 4.0);
+            $this->api->flash($this->api->trans('Put the caret on a package in composer.json\'s require or require-dev'), seconds: 4.0);
         }
 
         return $package;

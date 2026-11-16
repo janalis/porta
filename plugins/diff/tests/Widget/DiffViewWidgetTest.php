@@ -39,7 +39,7 @@ final class DiffViewWidgetTest extends TestCase
     private function widget(?EventDispatcher $events = null): DiffViewWidget
     {
         $widget = new DiffViewWidget(new Translator('en'), events: $events);
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
 
         return $widget;
     }
@@ -111,9 +111,9 @@ final class DiffViewWidgetTest extends TestCase
     public function testPlaceholderWithoutADocument(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(null, null, 'Select a file');
+        $widget->setDocument(null, path: null, placeholder: 'Select a file');
 
-        $lines = $this->plainLines($widget, 40, 5);
+        $lines = $this->plainLines($widget, cols: 40, rows: 5);
         $this->assertStringContainsString('Select a file', $lines[1]);
         $this->assertCount(5, $lines, 'pads to the full height');
     }
@@ -122,24 +122,24 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $this->plainLines($widget, 80, 4); // a first frame teaches the widget its viewport height
+        $this->plainLines($widget, cols: 80, rows: 4); // a first frame teaches the widget its viewport height
 
         // Three rows visible; moving the cursor past the window scrolls it.
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");
-        $lines = $this->plainLines($widget, 80, 4);
+        $lines = $this->plainLines($widget, cols: 80, rows: 4);
         $this->assertStringContainsString('[scrolled +1]', $lines[0]);
 
         $widget->handleInput("\x1b[6~"); // page down clamps at the last row
         $widget->handleInput("\x1b[6~");
         $widget->handleInput("\x1b[6~");
-        $this->assertStringContainsString('tail!', \implode("\n", $this->plainLines($widget, 80, 4)));
+        $this->assertStringContainsString('tail!', \implode("\n", $this->plainLines($widget, cols: 80, rows: 4)));
 
         for ($i = 0; $i < 5; ++$i) {
             $widget->handleInput("\x1b[5~"); // page up back past the top clamps
         }
-        $lines = $this->plainLines($widget, 80, 4);
+        $lines = $this->plainLines($widget, cols: 80, rows: 4);
         $this->assertStringContainsString('@@ -3,3', $lines[1], 'clamped back to the top');
         $this->assertStringNotContainsString('[scrolled', $lines[0]);
     }
@@ -149,11 +149,11 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $before = $this->plainLines($widget, 80, 4);
+        $before = $this->plainLines($widget, cols: 80, rows: 4);
 
         $widget->handleInput('x');
 
-        $this->assertSame($before, $this->plainLines($widget, 80, 4));
+        $this->assertSame($before, $this->plainLines($widget, cols: 80, rows: 4));
         $this->assertSame(0, $widget->hScroll());
     }
 
@@ -225,7 +225,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertArrayHasKey(0, (array) $captured, 'cursor is back on hunk 0');
 
         $empty = new DiffViewWidget(new Translator('en'), events: $events);
-        $empty->setDocument(null, null);
+        $empty->setDocument(null, path: null);
         $empty->setFocused(true);
         $empty->handleInput("\x1b[B"); // no rows: consumed, no crash
         $empty->handleInput(' ');
@@ -236,7 +236,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $this->plainLines($widget, 80, 12);
+        $this->plainLines($widget, cols: 80, rows: 12);
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");
         $widget->handleInput('v'); // anchor at row 2
@@ -264,7 +264,7 @@ final class DiffViewWidgetTest extends TestCase
 
         $widget->makeEditable();
         $empty = new DiffViewWidget(new Translator('en'), events: $events);
-        $empty->setDocument(null, null);
+        $empty->setDocument(null, path: null);
         $empty->setFocused(true);
         $empty->handleInput('c');
         $this->assertSame(1, $fired, 'no document, no rows: nothing to cycle');
@@ -274,21 +274,21 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $this->plainLines($widget, 80, 4); // teaches the widget lastRows = 4
+        $this->plainLines($widget, cols: 80, rows: 4); // teaches the widget lastRows = 4
 
         $widget->scrollBy(1);
-        $lines = $this->plainLines($widget, 80, 4);
+        $lines = $this->plainLines($widget, cols: 80, rows: 4);
         $this->assertStringContainsString('[scrolled +1]', $lines[0]);
 
         $widget->scrollBy(-5); // clamps at the top
-        $lines = $this->plainLines($widget, 80, 4);
+        $lines = $this->plainLines($widget, cols: 80, rows: 4);
         $this->assertStringNotContainsString('[scrolled', $lines[0]);
 
         $widget->scrollBy(50); // clamps at the bottom
-        $this->assertStringContainsString('tail!', \implode("\n", $this->plainLines($widget, 80, 4)));
+        $this->assertStringContainsString('tail!', \implode("\n", $this->plainLines($widget, cols: 80, rows: 4)));
 
         $empty = new DiffViewWidget(new Translator('en'));
-        $empty->setDocument(null, null);
+        $empty->setDocument(null, path: null);
         $empty->scrollBy(1); // no rows: a safe no-op
         $this->assertFalse($empty->isSplit());
     }
@@ -313,13 +313,13 @@ final class DiffViewWidgetTest extends TestCase
         $events = new EventDispatcher();
         $widget = $this->widget($events);
         $widget->setFocused(true);
-        $this->plainLines($widget, 80, 12);
+        $this->plainLines($widget, cols: 80, rows: 12);
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B");
         $widget->handleInput("\x1b[B"); // cursor row 3
 
         // Reload the SAME path with a shorter diff: cursor clamps, not resets.
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'src/demo.php');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), path: 'src/demo.php');
         $captured = null;
         DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
@@ -328,7 +328,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertSame([0 => [1 => true]], $captured, 'cursor clamped to the last row (+b)');
 
         // A DIFFERENT path resets to the top.
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'other.php');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), path: 'other.php');
         $widget->handleInput(' ');
         $this->assertSame([0 => [0 => true, 1 => true]], $captured, 'cursor back on the hunk header');
     }
@@ -355,33 +355,33 @@ final class DiffViewWidgetTest extends TestCase
     {
         $widget = $this->widget();
         $widget->setFocused(true);
-        $this->plainLines($widget, 80, 4);
+        $this->plainLines($widget, cols: 80, rows: 4);
         $widget->onInput(static fn (string $data): bool => true);
 
         $widget->handleInput("\x1b[B"); // swallowed
-        $this->assertStringNotContainsString('[scrolled', $this->plainLines($widget, 80, 4)[0]);
+        $this->assertStringNotContainsString('[scrolled', $this->plainLines($widget, cols: 80, rows: 4)[0]);
     }
 
     public function testReadOnlyFlagRoundTrips(): void
     {
         $widget = $this->widget();
-        $this->assertFalse(Probe::get($widget, 'readOnly'));
+        $this->assertFalse(Probe::get($widget, property: 'readOnly'));
         $widget->makeReadOnly();
-        $this->assertTrue(Probe::get($widget, 'readOnly'));
+        $this->assertTrue(Probe::get($widget, property: 'readOnly'));
         $this->assertTrue($widget->expandVertically(false)->isVerticallyExpanded(), 'always fills its pane');
     }
 
     public function testNoNewlineMarkerRendersDim(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), path: 'x.txt');
 
-        $lines = $this->plainLines($widget, 60, 6);
+        $lines = $this->plainLines($widget, cols: 60, rows: 6);
         $this->assertStringContainsString('No newline at end of file', $lines[3]);
 
         // In split mode the marker rides the old side of its own row.
         $widget->useSplitView();
-        $lines = $this->plainLines($widget, 60, 6);
+        $lines = $this->plainLines($widget, cols: 60, rows: 6);
         $this->assertMatchesRegularExpression('/No newline.*│/', $lines[3], 'the marker rides the old side (truncated to the half width)');
     }
 
@@ -445,10 +445,10 @@ final class DiffViewWidgetTest extends TestCase
         $anchor = $widget->settingsAnchor();
         $this->assertSame([75, 2], $anchor, 'its first column, and the header\'s height to hang a menu under');
 
-        $widget->handleClick(0, 75);
+        $widget->handleClick(0, relCol: 75);
         $this->assertSame(1, $asked);
         $this->assertFalse($widget->isSplit(), 'the press opens a menu, it toggles nothing itself');
-        $widget->handleClick(0, 5); // the title: not a button
+        $widget->handleClick(0, relCol: 5); // the title: not a button
         $this->assertSame(1, $asked);
 
         $widget->setFocused(true);
@@ -467,7 +467,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $events = new EventDispatcher();
         $widget = new DiffViewWidget(new Translator('en'), events: $events);
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
         $widget->setFocused(true);
         $asked = 0;
         $events->addListener(DiffSettingsRequested::class, static function () use (&$asked): void {
@@ -494,7 +494,7 @@ final class DiffViewWidgetTest extends TestCase
         DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
-        $widget->handleClick(4, 10); // the deletion (hunk 0 line 1), two header rows down
+        $widget->handleClick(4, relCol: 10); // the deletion (hunk 0 line 1), two header rows down
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true]], $captured);
     }
@@ -503,11 +503,11 @@ final class DiffViewWidgetTest extends TestCase
     public function testANarrowHeaderGivesUpTheTitleThenTheGear(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'src/demo.php');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'src/demo.php');
 
-        $this->assertSame(' … ⚙ ▾ ', $this->plainLines($widget, 7, 8)[0]);
+        $this->assertSame(' … ⚙ ▾ ', $this->plainLines($widget, cols: 7, rows: 8)[0]);
 
-        $title = $this->plainLines($widget, 5, 8);
+        $title = $this->plainLines($widget, cols: 5, rows: 8);
         $this->assertSame(' src…', $title[0]);
         $this->assertNull($widget->settingsAnchor(), 'no gear drawn, none to hang a menu from');
     }
@@ -516,7 +516,7 @@ final class DiffViewWidgetTest extends TestCase
     public function testAPathWithNoFolderIsItsNameAlone(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'demo.php');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'demo.php');
 
         $this->assertStringContainsString(' '.Styles::dark()->of(Role::Emphasis)->withBold()->apply('demo.php'), $widget->render(new RenderContext(40, 4))[0]);
         $this->assertStringNotContainsString("\x1b[38;5;245m", $widget->render(new RenderContext(40, 4))[0], 'nothing dim');
@@ -532,17 +532,17 @@ final class DiffViewWidgetTest extends TestCase
         DiffWidgetEvents::wire($events, onStageSelection: static function (array $selected) use (&$captured): void {
             $captured = $selected;
         });
-        $widget->handleClick(4, 10); // row 3 = the deletion (hunk 0 line 1)
+        $widget->handleClick(4, relCol: 10); // row 3 = the deletion (hunk 0 line 1)
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true]], $captured);
 
-        $widget->handleClick(51, 10); // past the rows: clamps to the last row
+        $widget->handleClick(51, relCol: 10); // past the rows: clamps to the last row
         $widget->handleInput(' ');
         $this->assertSame([1 => [1 => true]], $captured, 'clamped to the final +tail! row');
 
         $empty = new DiffViewWidget(new Translator('en'), events: $events);
-        $empty->setDocument(null, null);
-        $empty->handleClick(3, 2); // no rows: a safe no-op
+        $empty->setDocument(null, path: null);
+        $empty->handleClick(3, relCol: 2); // no rows: a safe no-op
         $this->assertFalse($empty->isSplit());
     }
 
@@ -609,16 +609,16 @@ final class DiffViewWidgetTest extends TestCase
     {
         $long = \str_repeat('x', times: 30).'NEEDLE'.\str_repeat('y', times: 30);
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+{$long}\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n+{$long}\n"), path: 'x.txt');
         $widget->setFocused(true);
 
-        $lines = $this->plainLines($widget, 40, 6);
+        $lines = $this->plainLines($widget, cols: 40, rows: 6);
         $this->assertStringNotContainsString('NEEDLE', \implode('', $lines), 'the needle starts off-screen');
 
         for ($i = 0; $i < 3; ++$i) {
             $widget->handleInput("\x1b[C"); // right ×3 = 24 cols
         }
-        $lines = $this->plainLines($widget, 40, 6);
+        $lines = $this->plainLines($widget, cols: 40, rows: 6);
         $this->assertStringContainsString('[→24]', $lines[0], 'the title shows the horizontal offset');
         $this->assertStringContainsString('NEEDLE', $lines[3], 'the needle scrolled into view');
         $this->assertMatchesRegularExpression('/^\s+1 │\+…/', $lines[3], 'gutter and marker stay pinned; … marks the cut');
@@ -626,7 +626,7 @@ final class DiffViewWidgetTest extends TestCase
         for ($i = 0; $i < 20; ++$i) {
             $widget->handleInput("\x1b[D"); // left clamps at 0
         }
-        $lines = $this->plainLines($widget, 40, 6);
+        $lines = $this->plainLines($widget, cols: 40, rows: 6);
         $this->assertStringNotContainsString('[→', $lines[0]);
         $this->assertStringContainsString('+xxxx', $lines[3]);
 
@@ -641,7 +641,7 @@ final class DiffViewWidgetTest extends TestCase
         $long = \str_repeat('a', times: 25).'LEFT'.\str_repeat('b', times: 20);
         $longer = \str_repeat('c', times: 25).'RIGHT'.\str_repeat('d', times: 20);
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$long}\n+{$longer}\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$long}\n+{$longer}\n"), path: 'x.txt');
         $widget->useSplitView();
         $widget->setFocused(true);
 
@@ -649,14 +649,14 @@ final class DiffViewWidgetTest extends TestCase
         for ($i = 0; $i < 3; ++$i) {
             $widget->handleInput("\x1b[C");
         }
-        $line = $this->plainLines($widget, 80, 6)[2];
+        $line = $this->plainLines($widget, cols: 80, rows: 6)[2];
         $this->assertStringContainsString('LEFT', $line, 'the old half scrolled');
         $this->assertStringContainsString('RIGHT', $line, 'the new half scrolled in step');
 
         // A different path resets the horizontal offset; same path keeps it.
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), path: 'x.txt');
         $this->assertSame(24, $widget->hScroll(), 'same-path reload keeps the offset');
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), 'other.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-a\n+b\n"), path: 'other.txt');
         $this->assertSame(0, $widget->hScroll());
     }
 
@@ -665,7 +665,7 @@ final class DiffViewWidgetTest extends TestCase
         // Paired lines sharing prefix/suffix get an intraline range; scroll so
         // the emphasized middle is inside the window and check its bg code.
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-".\str_repeat('p', times: 30)."OLD tail\n+".\str_repeat('p', times: 30)."NEW tail\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-".\str_repeat('p', times: 30)."OLD tail\n+".\str_repeat('p', times: 30)."NEW tail\n"), path: 'x.txt');
         $widget->setFocused(true);
         for ($i = 0; $i < 3; ++$i) {
             $widget->handleInput("\x1b[C"); // 24 cols: the changed middle is in view
@@ -708,7 +708,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $events = new EventDispatcher();
         $widget = new DiffViewWidget(new Translator('en'), events: $events);
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-old\n\\ No newline at end of file\n+new\n"), path: 'x.txt');
         $widget->setFocused(true);
         $widget->makeReadOnly(); // history diffs can select + copy...
         $staged = false;
@@ -730,7 +730,7 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertSame(["old\nnew\n"], $copies, 'both sides, marker line skipped, still read-only');
 
         $empty = new DiffViewWidget(new Translator('en'), events: $events);
-        $empty->setDocument(null, null);
+        $empty->setDocument(null, path: null);
         DiffWidgetEvents::wire($events, onCopy: static function () use (&$copies): void {
             $copies[] = 'never';
         });
@@ -752,8 +752,8 @@ final class DiffViewWidgetTest extends TestCase
         });
         // Press mid '-$old = 2;' (text col 1 = 'old = 2;') and drag to the
         // next row's text col 4: tail of the old line + head of the new one.
-        $widget->handleClick(4, 13);
-        $widget->dragSelectTo(5, 16);
+        $widget->handleClick(4, relCol: 13);
+        $widget->dragSelectTo(5, relCol: 16);
         $raw = self::body($widget->render(new RenderContext(80, 12)));
         $this->assertStringContainsString("\x1b[48;5;24m", $raw[3], 'the selected span carries the selection bg');
         $this->assertStringContainsString("\x1b[48;5;24m", $raw[4]);
@@ -762,27 +762,27 @@ final class DiffViewWidgetTest extends TestCase
         $this->assertSame(["old = 2;\n\$new"], $copies, 'exact chars: tail of the deletion, head of the addition');
 
         // The selection was consumed; a plain click + copy is row-based again.
-        $widget->handleClick(5, 20);
+        $widget->handleClick(5, relCol: 20);
         $widget->handleInput("\x03");
         $this->assertSame("\$new = 2;\n", $copies[1], 'a degenerate press falls back to the cursor row');
 
         // A reversed drag (upward) normalizes.
-        $widget->handleClick(5, 16);
-        $widget->dragSelectTo(4, 13);
+        $widget->handleClick(5, relCol: 16);
+        $widget->dragSelectTo(4, relCol: 13);
         $widget->handleInput("\x03");
         $this->assertSame("old = 2;\n\$new", $copies[2]);
 
         // A span across the second hunk header: the header row contributes
         // nothing to the tint or the copied text.
-        $widget->handleClick(6, 13); // +$extra = 3;
-        $widget->dragSelectTo(8, 16); // through '@@ -10,1 +11,1 @@' to -tail
+        $widget->handleClick(6, relCol: 13); // +$extra = 3;
+        $widget->dragSelectTo(8, relCol: 16); // through '@@ -10,1 +11,1 @@' to -tail
         self::body($widget->render(new RenderContext(80, 12))); // tints skip the header row
         $widget->handleInput("\x03");
         $this->assertSame("extra = 3;\ntail", $copies[3], 'hunk header skipped mid-selection');
 
         $empty = new DiffViewWidget(new Translator('en'), events: $events);
-        $empty->setDocument(null, null);
-        $empty->dragSelectTo(4, 5); // no rows / no press: a safe no-op
+        $empty->setDocument(null, path: null);
+        $empty->dragSelectTo(4, relCol: 5); // no rows / no press: a safe no-op
         $this->assertFalse($empty->isSplit());
     }
 
@@ -801,7 +801,7 @@ final class DiffViewWidgetTest extends TestCase
         // while the vendor had counted three; and the emphasis was placed by
         // mb_strwidth(), so it landed columns off the changed word.
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$prefix}xx OLD tail\n+{$prefix}xx NEW tail\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-{$prefix}xx OLD tail\n+{$prefix}xx NEW tail\n"), path: 'x.txt');
 
         $rows = self::body($widget->render(new RenderContext(60, 6)));
 
@@ -817,7 +817,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $events = new EventDispatcher();
         $widget = new DiffViewWidget(new Translator('en'), events: $events);
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\tif (x) {\n+\tif (y) {\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\tif (x) {\n+\tif (y) {\n"), path: 'x.txt');
         $widget->setFocused(true);
         $this->plainLines($widget);
         $copies = [];
@@ -827,16 +827,16 @@ final class DiffViewWidgetTest extends TestCase
 
         // Text starts at widget col 12; the tab is painted four columns wide,
         // so text cols 0-5 are the tab and `if`.
-        $widget->handleClick(4, 12);
-        $widget->dragSelectTo(4, 18);
+        $widget->handleClick(4, relCol: 12);
+        $widget->dragSelectTo(4, relCol: 18);
         $widget->handleInput("\x03");
 
         $this->assertSame(["\tif"], $copies, 'the copy is the file\'s text, tab and all');
 
         // From the deletion's start into the addition: the deletion is tinted
         // to its painted end, which a tab counted as one column cut short.
-        $widget->handleClick(3, 12);
-        $widget->dragSelectTo(4, 14);
+        $widget->handleClick(3, relCol: 12);
+        $widget->dragSelectTo(4, relCol: 14);
         $row = self::body($widget->render(new RenderContext(80, 12)))[2];
         // The intraline emphasis on `x` splits the tint; its last run is the end.
         $runs = \explode("\x1b[48;5;24m", $row);
@@ -849,7 +849,7 @@ final class DiffViewWidgetTest extends TestCase
         // Twelve tabs paint 48 columns: counted as one each, the scroll limit
         // stopped short and `END` could never be brought into view.
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n ".\str_repeat("\t", times: 12)."END\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n ".\str_repeat("\t", times: 12)."END\n"), path: 'x.txt');
         $widget->setFocused(true);
         for ($i = 0; $i < 6; ++$i) {
             $widget->handleInput("\x1b[C");
@@ -862,7 +862,7 @@ final class DiffViewWidgetTest extends TestCase
     {
         $events = new EventDispatcher();
         $widget = new DiffViewWidget(new Translator('en'), events: $events);
-        $widget->setDocument(DiffDocument::parse("@@ -1,2 +1,2 @@\n-oldA\n-oldB\n+newA\n+newB\n"), 'x.txt');
+        $widget->setDocument(DiffDocument::parse("@@ -1,2 +1,2 @@\n-oldA\n-oldB\n+newA\n+newB\n"), path: 'x.txt');
         $widget->useSplitView();
         $widget->setFocused(true);
         self::body($widget->render(new RenderContext(80, 6))); // leftW = 39: right half text starts at col 46
@@ -873,16 +873,16 @@ final class DiffViewWidgetTest extends TestCase
         // Press in the RIGHT half (col 46 = new-side text col 0) and drag down
         // past the divider into the left half: the selection stays on the new
         // side, the out-of-half column clamps to its start.
-        $widget->handleClick(3, 46);
-        $widget->dragSelectTo(4, 50);
+        $widget->handleClick(3, relCol: 46);
+        $widget->dragSelectTo(4, relCol: 50);
         $raw = self::body($widget->render(new RenderContext(80, 6)));
         $this->assertStringContainsString("\x1b[48;5;24m", $raw[2], 'the right-half span is tinted');
         $widget->handleInput("\x03");
         $this->assertSame(["newA\nnewB"], $copies, 'only new-side texts, cols projected onto the right half');
 
         // Press in the LEFT half: old-side text only.
-        $widget->handleClick(3, 6);
-        $widget->dragSelectTo(4, 8);
+        $widget->handleClick(3, relCol: 6);
+        $widget->dragSelectTo(4, relCol: 8);
         $raw = self::body($widget->render(new RenderContext(80, 6)));
         $this->assertStringContainsString("\x1b[48;5;24m", $raw[2], 'the left-half span is tinted');
         $widget->handleInput("\x03");
@@ -893,8 +893,8 @@ final class DiffViewWidgetTest extends TestCase
         DiffWidgetEvents::wire($events, onStageSelection: static function (array $sel) use (&$staged): void {
             $staged = $sel;
         });
-        $widget->handleClick(3, 6);
-        $widget->dragSelectTo(4, 8);
+        $widget->handleClick(3, relCol: 6);
+        $widget->dragSelectTo(4, relCol: 8);
         $widget->makeEditable();
         $widget->handleInput(' ');
         $this->assertSame([0 => [1 => true, 3 => true]], $staged, 'Space stages the cursor pair row, not the char span');
@@ -906,15 +906,15 @@ final class DiffViewWidgetTest extends TestCase
         // (and truncateToWidth's pad-boundary \x1b[0m) reset the background
         // mid-span; the selection must re-apply its bg after every reset.
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\$a = 1;\n+\$a = 22;\n"), 'src/demo.php');
+        $widget->setDocument(DiffDocument::parse("@@ -1,1 +1,1 @@\n-\$a = 1;\n+\$a = 22;\n"), path: 'src/demo.php');
         $widget->useSplitView();
         $widget->setFocused(false);
         self::body($widget->render(new RenderContext(60, 6))); // leftW = 29: right text starts col 36
 
         // Select from the right-half text start well past the line's end
         // (into the padding, which sits behind a \x1b[0m reset).
-        $widget->handleClick(3, 36);
-        $widget->dragSelectTo(3, 55);
+        $widget->handleClick(3, relCol: 36);
+        $widget->dragSelectTo(3, relCol: 55);
         $row = self::body($widget->render(new RenderContext(60, 6)))[2];
 
         $this->assertGreaterThanOrEqual(
@@ -933,14 +933,14 @@ final class DiffViewWidgetTest extends TestCase
         self::body($widget->render(new RenderContext(80, 12)));
 
         // ' ⚙ ▾ ' spans cols 74-78 at 80 cols.
-        $this->assertTrue($widget->hoverHeader(0, 75), 'the pointer landed on the gear');
-        $this->assertFalse($widget->hoverHeader(0, 76), 'still the gear → no change');
-        $this->assertTrue($widget->hoverHeader(0, 5), 'the title is not a control: the tint clears');
-        $this->assertFalse($widget->hoverHeader(0, 5), 'still none → no change');
-        $this->assertTrue($widget->hoverHeader(0, 75), 'back onto the gear');
-        $this->assertTrue($widget->hoverHeader(4, 75), 'the toolbar is row 0 only: a body row clears the tint');
-        $this->assertFalse($widget->hoverHeader(4, 75), 'still off the toolbar → no change');
-        $this->assertTrue($widget->hoverHeader(0, 75), 'back onto the gear');
+        $this->assertTrue($widget->hoverHeader(0, relCol: 75), 'the pointer landed on the gear');
+        $this->assertFalse($widget->hoverHeader(0, relCol: 76), 'still the gear → no change');
+        $this->assertTrue($widget->hoverHeader(0, relCol: 5), 'the title is not a control: the tint clears');
+        $this->assertFalse($widget->hoverHeader(0, relCol: 5), 'still none → no change');
+        $this->assertTrue($widget->hoverHeader(0, relCol: 75), 'back onto the gear');
+        $this->assertTrue($widget->hoverHeader(4, relCol: 75), 'the toolbar is row 0 only: a body row clears the tint');
+        $this->assertFalse($widget->hoverHeader(4, relCol: 75), 'still off the toolbar → no change');
+        $this->assertTrue($widget->hoverHeader(0, relCol: 75), 'back onto the gear');
         $this->assertTrue($widget->clearHeaderHover(), 'the pointer left the pane');
         $this->assertFalse($widget->clearHeaderHover(), 'nothing left to clear');
     }
@@ -950,7 +950,7 @@ final class DiffViewWidgetTest extends TestCase
         $widget = $this->widget();
         self::body($widget->render(new RenderContext(80, 12)));
 
-        $widget->hoverHeader(0, 75);
+        $widget->hoverHeader(0, relCol: 75);
         $hovered = self::body($widget->render(new RenderContext(80, 12)))[0];
         $this->assertStringContainsString("\x1b[48;5;240m", $hovered, 'the gear takes the hover tint');
         $this->assertSame(80, AnsiUtils::visibleWidth($hovered), 'the tint does not change the toolbar width');
@@ -1011,8 +1011,8 @@ final class DiffViewWidgetTest extends TestCase
 
         $selected = $this->widget();
         self::body($selected->render(new RenderContext(60, 8)));
-        $selected->handleClick(5, 14);
-        $selected->dragSelectTo(5, 18);
+        $selected->handleClick(5, relCol: 14);
+        $selected->dragSelectTo(5, relCol: 18);
         $this->assertStringNotContainsString("\x1b[48;5;22m", self::body($selected->render(new RenderContext(60, 8)))[4], 'a row under the mouse selection');
     }
 
@@ -1025,19 +1025,19 @@ final class DiffViewWidgetTest extends TestCase
         DiffWidgetEvents::wire($events, onCycleContext: static function () use (&$cycles): void {
             ++$cycles;
         });
-        $rows = $this->plainLines($widget, 60, 8);
+        $rows = $this->plainLines($widget, cols: 60, rows: 8);
         $this->assertStringStartsWith(' ⇕ @@ -3,3 +3,4 @@', $rows[1]);
 
-        $widget->handleClick(2, 1);
+        $widget->handleClick(2, relCol: 1);
         $this->assertSame(1, $cycles);
-        $widget->handleClick(2, 10); // the header text: the cursor moves, nothing cycles
-        $widget->handleClick(3, 1); // a body row's first columns: nothing cycles
+        $widget->handleClick(2, relCol: 10); // the header text: the cursor moves, nothing cycles
+        $widget->handleClick(3, relCol: 1); // a body row's first columns: nothing cycles
         $this->assertSame(1, $cycles);
 
-        $tip = $widget->tooltipAt(2, 1);
+        $tip = $widget->tooltipAt(2, col: 1);
         $this->assertSame('Show more of the file around the changes (c)', $tip?->text);
-        $this->assertNull($widget->tooltipAt(2, 10));
-        $this->assertNull($widget->tooltipAt(3, 1));
+        $this->assertNull($widget->tooltipAt(2, col: 10));
+        $this->assertNull($widget->tooltipAt(3, col: 1));
     }
 
     /** A read-only diff — a commit's, a comparison's — has no context to cycle: no mark, no click, no tip. */
@@ -1051,19 +1051,19 @@ final class DiffViewWidgetTest extends TestCase
             ++$cycles;
         });
 
-        $rows = $this->plainLines($widget, 60, 8);
-        $widget->handleClick(2, 1);
+        $rows = $this->plainLines($widget, cols: 60, rows: 8);
+        $widget->handleClick(2, relCol: 1);
 
         $this->assertStringStartsWith(' @@ -3,3 +3,4 @@', $rows[1]);
         $this->assertSame(0, $cycles);
-        $this->assertNull($widget->tooltipAt(1, 1));
+        $this->assertNull($widget->tooltipAt(1, col: 1));
     }
 
     /** A path git names with runs of blanks or control bytes is cleaned before it is cut at its folder. */
     public function testAPathIsCleanedBeforeItIsCutAtItsFolder(): void
     {
         $widget = new DiffViewWidget(new Translator('en'));
-        $widget->setDocument(DiffDocument::parse(self::RAW), 'a  b/éé.php');
+        $widget->setDocument(DiffDocument::parse(self::RAW), path: 'a  b/éé.php');
 
         $row = $widget->render(new RenderContext(40, 4))[0];
 

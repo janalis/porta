@@ -73,18 +73,18 @@ final class IdeRemoteProjectTest extends TestCase
                 PHP, \var_export($server->dir, return: true)),
         ]);
 
-        $this->runIde($cache, null, [
+        $this->runIde($cache, file: null, steps: [
             100 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
-                $this->assertTrue(Probe::get(Services::resolve($ide, LspSessionPool::class), 'disabled'), 'no language server over a cache of what was opened');
+                $this->assertTrue(Probe::get(Services::resolve($ide, LspSessionPool::class), property: 'disabled'), 'no language server over a cache of what was opened');
                 // Not in the locator; Settings' search is the service that holds it.
                 $factory = Probe::object(Services::resolve($ide, SettingsSearchLauncher::class), 'pickers');
                 $this->assertInstanceOf(SearchEverywhereFactory::class, $factory, 'the launcher builds its pickers with the factory');
                 $text = \array_first(\array_filter(
-                    Probe::get($factory->create(), 'asyncSources'),
+                    Probe::get($factory->create(), property: 'asyncSources'),
                     static fn (object $source): bool => $source instanceof TextSource,
                 ));
-                $this->assertSame(Services::resolve($ide, RemoteFilesystem::class), Probe::get(Probe::object($text, 'search'), 'remote'), 'Search Everywhere greps the server too');
-                $this->awaitPainted($tui, $terminal, 'README.md');
+                $this->assertSame(Services::resolve($ide, RemoteFilesystem::class), Probe::get(Probe::object($text, 'search'), property: 'remote'), 'Search Everywhere greps the server too');
+                $this->awaitPainted($tui, $terminal, needle: 'README.md');
                 $this->assertStringContainsString('src', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the server\'s directory is in the tree');
                 $this->assertSame('', \file_get_contents($cache->path('README.md')), 'listed, not fetched');
             },
@@ -112,14 +112,14 @@ final class IdeRemoteProjectTest extends TestCase
             // While the file is still on its way, the jump must not move the
             // caret of the file in front — and must not be lost either.
             400 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
-                $transport = Probe::get(Services::resolve($ide, RemoteFilesystem::class), 'transport');
+                $transport = Probe::get(Services::resolve($ide, RemoteFilesystem::class), property: 'transport');
                 $this->assertInstanceOf(FakeRemoteTransport::class, $transport, 'the project plugin serves the fake');
                 $buffers = Services::resolve($ide, BufferManager::class);
                 $readme = $buffers->active();
                 Services::resolve($ide, RemoteFilesystem::class)->listed((string) \realpath($cache->path('src')));
                 $transport->hold = true;
                 Services::resolve($ide, BufferService::class)->openFile($cache->path('src/App.php'), focus: OpenFocus::Editor);
-                Widgets::editor($tui)->jumpTo(3, 0);
+                Widgets::editor($tui)->jumpTo(3, utf16Col: 0);
                 $this->assertSame(0, $readme?->document->cursorLine, 'the file in front kept its caret');
 
                 $transport->release();
@@ -129,7 +129,7 @@ final class IdeRemoteProjectTest extends TestCase
             // One the server will not send: the blank stand-in goes, and the
             // file in front is back — not a blank that never fills.
             500 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($cache): void {
-                $transport = Probe::get(Services::resolve($ide, RemoteFilesystem::class), 'transport');
+                $transport = Probe::get(Services::resolve($ide, RemoteFilesystem::class), property: 'transport');
                 $this->assertInstanceOf(FakeRemoteTransport::class, $transport);
                 $front = Services::resolve($ide, BufferManager::class)->active();
                 $this->assertInstanceOf(Buffer::class, $front);

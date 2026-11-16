@@ -35,7 +35,7 @@ final class KeyHintWiringTest extends TestCase
         $ide = new Ide($project->dir, null, new VirtualTerminal(columns: 120, rows: 24));
         try {
             // What the bar is fed, before any width decides what of it fits.
-            $right = Probe::get(Services::resolve($ide, StatusBarWidget::class), 'provider')()['right'];
+            $right = Probe::get(Services::resolve($ide, StatusBarWidget::class), property: 'provider')()['right'];
             $this->assertStringContainsString('Ctrl+W quit', $right);
             $this->assertStringNotContainsString('Ctrl+Q quit', $right);
 

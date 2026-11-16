@@ -54,7 +54,7 @@ final class CompleteStatementTest extends TestCase
     public function testItClosesBracketsAndTerminatesInOneKeystroke(): void
     {
         $doc = new Document("    \$x = foo(1, bar(2\n");
-        $doc->setCursor(0, 10); // mid-line
+        $doc->setCursor(0, col: 10); // mid-line
 
         $doc->completeStatement(self::php());
 
@@ -68,7 +68,7 @@ final class CompleteStatementTest extends TestCase
     public function testAStatementThatAlreadyEndsInOneDoesNotGetASecond(): void
     {
         $doc = new Document("    return 1;\n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
 
         $doc->completeStatement(self::php());
 
@@ -89,7 +89,7 @@ final class CompleteStatementTest extends TestCase
     {
         foreach (['    $a = 1 +', '    $a = $b &&', '    $x =', '    $a = $b .'] as $text) {
             $doc = new Document($text."\n");
-            $doc->setCursor(0, 5);
+            $doc->setCursor(0, col: 5);
             $doc->completeStatement(self::php());
             $this->assertStringEndsNotWith(';', \rtrim($doc->getLine(0)), $text);
         }
@@ -99,7 +99,7 @@ final class CompleteStatementTest extends TestCase
     public function testAnUnclosedCallIsAWholeStatementOnceItIsClosed(): void
     {
         $doc = new Document("    foo(\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
 
         $doc->completeStatement(self::php());
 
@@ -109,7 +109,7 @@ final class CompleteStatementTest extends TestCase
     public function testTheClosersLandBeforeTheTerminatorAndNotAfterIt(): void
     {
         $doc = new Document("    \$a = compact('x'\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
 
         $doc->completeStatement(self::php());
 
@@ -121,7 +121,7 @@ final class CompleteStatementTest extends TestCase
     public function testABlockKeywordOpensABlockInsteadOfTerminating(): void
     {
         $doc = new Document("    if (\$x > 1\n");
-        $doc->setCursor(0, 7);
+        $doc->setCursor(0, col: 7);
 
         $doc->completeStatement(self::php());
 
@@ -141,7 +141,7 @@ final class CompleteStatementTest extends TestCase
         $this->assertInstanceOf(StatementSyntax::class, $python, 'python is in the table');
 
         $doc = new Document("    if x > 1\n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
 
         $doc->completeStatement($python);
 
@@ -159,12 +159,12 @@ final class CompleteStatementTest extends TestCase
         $this->assertInstanceOf(StatementSyntax::class, $go, 'go is in the table');
 
         $doc = new Document("    y := f(1\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
         $doc->completeStatement($go);
         $this->assertSame('    y := f(1)', $doc->getLine(0), 'closed, not terminated');
 
         $doc = new Document("    if x > 1\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
         $doc->completeStatement($go);
         $this->assertSame('    if x > 1 {', $doc->getLine(0));
     }
@@ -174,16 +174,16 @@ final class CompleteStatementTest extends TestCase
     public function testTheChordReachesTheVerbAndDoesNothingInALanguageWithNoStatements(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('demo.php', "    return 1\n");
-        $editor->getDocument()->setCursor(0, 6);
+        $editor->openFile('demo.php', content: "    return 1\n");
+        $editor->getDocument()->setCursor(0, col: 6);
 
         $editor->handleInput("\x1b[13;6u"); // ctrl+shift+enter
         $this->assertSame('    return 1;', $editor->getDocument()->getLine(0));
 
         // The negative control, and it has to be a language the table says
         // `null` for rather than one merely absent from it.
-        $editor->openFile('data.json', "  {\"a\": 1\n");
-        $editor->getDocument()->setCursor(0, 4);
+        $editor->openFile('data.json', content: "  {\"a\": 1\n");
+        $editor->getDocument()->setCursor(0, col: 4);
         $editor->handleInput("\x1b[13;6u");
         $this->assertSame(['  {"a": 1', ''], $editor->getDocument()->lines, 'JSON has no statement to complete');
     }
@@ -191,9 +191,9 @@ final class CompleteStatementTest extends TestCase
     public function testASelectionIsCollapsedAndNotDeleted(): void
     {
         $doc = new Document("    return 1\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
         $doc->beginSelect();
-        $doc->setCursor(0, 10, SelectionMode::Keep);
+        $doc->setCursor(0, col: 10, selection: SelectionMode::Keep);
 
         $doc->completeStatement(self::php());
 
@@ -204,7 +204,7 @@ final class CompleteStatementTest extends TestCase
     public function testOneKeypressIsOneUndoStep(): void
     {
         $doc = new Document("    if (\$x\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
 
         $doc->completeStatement(self::php());
         $this->assertSame(['    if ($x) {', '        ', '    }', ''], $doc->lines);
@@ -224,7 +224,7 @@ final class CompleteStatementTest extends TestCase
     public function testTrailingWhitespaceIsTrimmedBeforeTheTerminator(): void
     {
         $doc = new Document("    return 1   \n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
 
         $doc->completeStatement(self::php());
 
@@ -239,10 +239,10 @@ final class CompleteStatementTest extends TestCase
      */
     public function testWantsTerminatorLooksPastTrailingWhitespace(): void
     {
-        $this->assertFalse(LineOperations::wantsTerminator('$a = 1 +   ', ';'), 'an operator, then spaces');
-        $this->assertFalse(LineOperations::wantsTerminator('return 1;  ', ';'), 'already terminated, then spaces');
-        $this->assertTrue(LineOperations::wantsTerminator('return 1  ', ';'));
-        $this->assertFalse(LineOperations::wantsTerminator('   ', ';'), 'a blank line is not a statement');
+        $this->assertFalse(LineOperations::wantsTerminator('$a = 1 +   ', terminator: ';'), 'an operator, then spaces');
+        $this->assertFalse(LineOperations::wantsTerminator('return 1;  ', terminator: ';'), 'already terminated, then spaces');
+        $this->assertTrue(LineOperations::wantsTerminator('return 1  ', terminator: ';'));
+        $this->assertFalse(LineOperations::wantsTerminator('   ', terminator: ';'), 'a blank line is not a statement');
     }
 
     /**
@@ -268,7 +268,7 @@ final class CompleteStatementTest extends TestCase
             ['    if x:', $python],
         ] as [$text, $syntax]) {
             $doc = new Document($text."\n");
-            $doc->setCursor(0, 5);
+            $doc->setCursor(0, col: 5);
 
             $doc->completeStatement($syntax);
 
@@ -289,11 +289,11 @@ final class CompleteStatementTest extends TestCase
      */
     public function testABraceCountsHoweverItIsSpaced(): void
     {
-        $this->assertFalse(LineOperations::wantsBlockOpener('if ($x) {   ', ' {', '}'), 'trailing whitespace');
-        $this->assertFalse(LineOperations::wantsBlockOpener('if($x){', ' {', '}'), 'no space before it');
-        $this->assertFalse(LineOperations::wantsBlockOpener('   ', ' {', '}'), 'a blank line opens nothing');
+        $this->assertFalse(LineOperations::wantsBlockOpener('if ($x) {   ', opener: ' {', closer: '}'), 'trailing whitespace');
+        $this->assertFalse(LineOperations::wantsBlockOpener('if($x){', opener: ' {', closer: '}'), 'no space before it');
+        $this->assertFalse(LineOperations::wantsBlockOpener('   ', opener: ' {', closer: '}'), 'a blank line opens nothing');
 
-        $this->assertTrue(LineOperations::wantsBlockOpener('if ($x)', ' {', '}'), 'and a line with no brace still wants one');
+        $this->assertTrue(LineOperations::wantsBlockOpener('if ($x)', opener: ' {', closer: '}'), 'and a line with no brace still wants one');
     }
 
     /**
@@ -304,7 +304,7 @@ final class CompleteStatementTest extends TestCase
     public function testAnElseThatAlreadyCarriesItsBraceGainsNothing(): void
     {
         $doc = new Document("    } else {\n");
-        $doc->setCursor(0, 6);
+        $doc->setCursor(0, col: 6);
 
         $doc->completeStatement(self::php());
 
@@ -347,7 +347,7 @@ final class CompleteStatementTest extends TestCase
     public function testAParenInsideAStringIsCountedAndThatIsKnown(): void
     {
         $doc = new Document("    echo \"a(b\"\n");
-        $doc->setCursor(0, 4);
+        $doc->setCursor(0, col: 4);
 
         $doc->completeStatement(self::php());
 

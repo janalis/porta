@@ -124,6 +124,6 @@ final class IdeUpdates
 
             return;
         }
-        $this->notifier->flash($this->translator->trans('Porta %version% is available. Update from Settings › Command line.', ['%version%' => $version]), 8.0, 'ide-updates');
+        $this->notifier->flash($this->translator->trans('Porta %version% is available. Update from Settings › Command line.', ['%version%' => $version]), seconds: 8.0, slot: 'ide-updates');
     }
 }

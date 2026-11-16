@@ -93,11 +93,11 @@ final class IdeDocsTest extends TestCase
                     $this->assertStringContainsString('plain prose here', $screen);
                     $tui->handleInput("\x7f");
                     // Backspace → back to the README
-                    $this->awaitPainted($tui, $terminal, 'Guides');
+                    $this->awaitPainted($tui, $terminal, needle: 'Guides');
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $tui->handleInput("\x7f");
                     // history exhausted
-                    $this->awaitPainted($tui, $terminal, 'Nowhere to go back to');
+                    $this->awaitPainted($tui, $terminal, needle: 'Nowhere to go back to');
                     $this->assertStringContainsString('Nowhere to go back to', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
                 900 => function (Tui $tui, $terminal, Ide $ide): void {
@@ -113,7 +113,7 @@ final class IdeDocsTest extends TestCase
                     $this->frame($tui);
                     $paths = \array_map(static fn (Buffer $b): string => $b->path, Services::resolve($ide, BufferManager::class)->all());
                     $this->assertCount(1, $paths, 'the docs open no tab: only a.php');
-                    $this->assertStringEndsWith('editor.md', (string) Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class)->path(), 'the page swapped in place');
+                    $this->assertStringEndsWith('editor.md', (string) Widgets::byId($tui, id: 'help-viewer', class: HelpViewerWidget::class)->path(), 'the page swapped in place');
 
                     // Closing the window (Esc) and reopening it (F1) must not wipe the trail.
                     $tui->handleInput("\x1b");
@@ -121,12 +121,16 @@ final class IdeDocsTest extends TestCase
                     $this->assertFalse(Services::resolve($ide, ViewRegistry::class)->isOpen('help'), 'Esc closed the window');
                     $tui->handleInput("\x1bOP");
                     $this->frame($tui);
-                    $this->assertStringEndsWith('editor.md', (string) Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class)->path(), 'the navigated page survived closing the window');
+                    $this->assertStringEndsWith('editor.md', (string) Widgets::byId($tui, id: 'help-viewer', class: HelpViewerWidget::class)->path(), 'the navigated page survived closing the window');
                     $rect = $renderer->getWidgetRect($tui->getById('help-viewer'));
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 2, $rect->row + 1)); // the ‹ arrow
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 2, $rect->row + 1));
                     $this->frame($tui);
-                    $this->assertStringEndsWith('README.md', (string) Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class)->path(), 'the ‹ arrow still navigates after the round trip');
+                    $this->assertStringEndsWith(
+                        'README.md',
+                        (string) Widgets::byId($tui, id: 'help-viewer', class: HelpViewerWidget::class)->path(),
+                        'the ‹ arrow still navigates after the round trip',
+                    );
                 },
                 1200 => function (Tui $tui, $terminal): void {
                     $this->frame($tui);
@@ -206,7 +210,7 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dM", $rect->col + 1 + 1, $rect->row + 1));
                     // 0-based rect → 1-based SGR
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + 1 + 1, $rect->row + 1));
-                    $this->awaitPainted($tui, $terminal, 'Guides');
+                    $this->awaitPainted($tui, $terminal, needle: 'Guides');
                     $this->assertStringContainsString('Guides', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the ‹ arrow navigated back');
                     $tui->handleInput("\x1b[Z");
                     // shift+tab → the last link (Site)
@@ -216,7 +220,7 @@ final class IdeDocsTest extends TestCase
                 // And 1200 more in front of a step that opens by awaiting its
                 // own effect, so the gap was never what made it safe.
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($captureFile): void {
-                    $this->awaitPainted($tui, $terminal, 'Opened https://example.com/x');
+                    $this->awaitPainted($tui, $terminal, needle: 'Opened https://example.com/x');
                     $this->assertStringContainsString('Opened https://example.com/x', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     // The shim runs as an independent OS process, so its write
                     // has to be awaited: the flash above fires when the shim is
@@ -278,7 +282,7 @@ final class IdeDocsTest extends TestCase
                     $tui->handleInput("\t");
                     $tui->handleInput("\r"); // follow [Editor]
                     $this->frame($tui);
-                    $viewer = Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class);
+                    $viewer = Widgets::byId($tui, id: 'help-viewer', class: HelpViewerWidget::class);
                     $this->assertStringEndsWith('editor.md', (string) $viewer->path());
 
                     // The ‹ arrow must navigate despite the stale breadcrumbs rect.
@@ -323,10 +327,10 @@ final class IdeDocsTest extends TestCase
                     $window = Services::resolve($ide, HelpViewController::class);
 
                     $window->showPage($docs.'/internals/README.md');
-                    $this->awaitPainted($tui, $terminal, 'How Porta is built');
+                    $this->awaitPainted($tui, $terminal, needle: 'How Porta is built');
 
                     $window->showPage($docs.'/internals/decisions.md');
-                    $this->awaitPainted($tui, $terminal, 'measured and rejected');
+                    $this->awaitPainted($tui, $terminal, needle: 'measured and rejected');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringNotContainsString('# Settled questions', $screen, 'rendered, not source');
                 },
@@ -391,7 +395,7 @@ final class IdeDocsTest extends TestCase
                     $views->open('help');
                     $views->open('help'); // already open: nothing changes
                     $this->frame($tui);
-                    $page = Widgets::byId($tui, 'help-viewer', HelpViewerWidget::class);
+                    $page = Widgets::byId($tui, id: 'help-viewer', class: HelpViewerWidget::class);
                     $rect = Services::resolve($ide, Renderer::class)->getWidgetRect($page);
                     $this->assertInstanceOf(WidgetRect::class, $rect);
 
@@ -414,7 +418,7 @@ final class IdeDocsTest extends TestCase
                     // buttons lights it, and moving off clears it.
                     $tui->handleInput("\x1b[17~");
                     $this->frame($tui);
-                    $bar = Widgets::byId($tui, 'help-find', FindBarWidget::class);
+                    $bar = Widgets::byId($tui, id: 'help-find', class: FindBarWidget::class);
                     $find = Services::resolve($ide, Renderer::class)->getWidgetRect($bar);
                     $this->assertInstanceOf(WidgetRect::class, $find);
                     $button = null;

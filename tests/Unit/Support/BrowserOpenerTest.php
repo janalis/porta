@@ -33,26 +33,26 @@ final class BrowserOpenerTest extends TestCase
     public function testDarwinUsesOpen(): void
     {
         $dir = $this->shimPath('open');
-        $this->assertSame([$dir.'/open', 'https://x.test'], BrowserOpener::command('https://x.test', 'Darwin'));
+        $this->assertSame([$dir.'/open', 'https://x.test'], BrowserOpener::command('https://x.test', osFamily: 'Darwin'));
     }
 
     public function testLinuxAndFriendsUseXdgOpen(): void
     {
         $dir = $this->shimPath('xdg-open');
-        $this->assertSame([$dir.'/xdg-open', 'https://x.test'], BrowserOpener::command('https://x.test', 'Linux'));
-        $this->assertSame([$dir.'/xdg-open', 'https://x.test'], BrowserOpener::command('https://x.test', 'BSD'));
+        $this->assertSame([$dir.'/xdg-open', 'https://x.test'], BrowserOpener::command('https://x.test', osFamily: 'Linux'));
+        $this->assertSame([$dir.'/xdg-open', 'https://x.test'], BrowserOpener::command('https://x.test', osFamily: 'BSD'));
     }
 
     public function testWindowsUsesTheStartBuiltin(): void
     {
-        $this->assertSame(['cmd', '/c', 'start', '', 'https://x.test'], BrowserOpener::command('https://x.test', 'Windows'));
+        $this->assertSame(['cmd', '/c', 'start', '', 'https://x.test'], BrowserOpener::command('https://x.test', osFamily: 'Windows'));
     }
 
     public function testMissingOpenerYieldsNull(): void
     {
         \putenv('PATH=/nonexistent');
-        $this->assertNull(BrowserOpener::command('https://x.test', 'Darwin'));
-        $this->assertNull(BrowserOpener::command('https://x.test', 'Linux'));
+        $this->assertNull(BrowserOpener::command('https://x.test', osFamily: 'Darwin'));
+        $this->assertNull(BrowserOpener::command('https://x.test', osFamily: 'Linux'));
     }
 
     public function testDefaultFamilyIsThisMachine(): void

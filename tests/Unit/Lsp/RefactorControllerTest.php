@@ -56,10 +56,10 @@ final class RefactorControllerTest extends TestCase
     /** Clears the flag first: a caller checks whether ITS action requested a render, not a stale one. */
     private function requestedRenderSince(callable $action): bool
     {
-        Probe::set($this->tui, 'renderRequested', false);
+        Probe::set($this->tui, property: 'renderRequested', value: false);
         $action();
 
-        return (bool) Probe::get($this->tui, 'renderRequested');
+        return (bool) Probe::get($this->tui, property: 'renderRequested');
     }
 
     /**
@@ -70,7 +70,7 @@ final class RefactorControllerTest extends TestCase
     {
         $pool = FakeLspPool::create('/tmp/proj', new FixedActiveFile('/tmp/proj/a.php'), fn (): FakeLspClient => $this->client = new FakeLspClient());
         $this->editor = new CodeEditorWidget();
-        $tui = TestTui::create(80, 24);
+        $tui = TestTui::create(80, rows: 24);
         $this->tui = $tui;
         $this->statusBar = new StatusBarWidget();
         $this->buffers = new BufferManager();
@@ -128,7 +128,7 @@ final class RefactorControllerTest extends TestCase
             static fn (array $edit): bool => false,
         );
         $this->editor = new CodeEditorWidget();
-        $tui = TestTui::create(80, 24);
+        $tui = TestTui::create(80, rows: 24);
         $this->tui = $tui;
         $this->statusBar = new StatusBarWidget();
         $this->buffers = new BufferManager();
@@ -144,9 +144,9 @@ final class RefactorControllerTest extends TestCase
             new ProjectPaths('/tmp/proj'),
             $this->events = new EventDispatcher(),
         );
-        $buffer = $this->buffers->open('/tmp/proj/a.php', "<?php\n\$x = 1;\n");
+        $buffer = $this->buffers->open('/tmp/proj/a.php', content: "<?php\n\$x = 1;\n");
         $this->editor->showDocument('/tmp/proj/a.php', $buffer->document);
-        $pool->notifyDidOpen('/tmp/proj/a.php', $buffer->document->getText(), 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/a.php', $buffer->document->getText(), languageId: 'php', version: 1);
 
         return [$controller, $pool];
     }
@@ -160,7 +160,7 @@ final class RefactorControllerTest extends TestCase
         // No notifyDidOpen: the session was never started, so ready() is null,
         // and no session/client is ever built — nothing to send a request to.
 
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
 
         // @mago-expect lint:no-isset -- $client is a non-nullable typed property; isset() is the only way to test whether it was ever initialized (the factory closure never ran)
         $this->assertFalse(isset($this->client), 'the guard stopped before a session was ever started');
@@ -170,7 +170,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
 
-        $controller->requestCodeActions(1, 2);
+        $controller->requestCodeActions(1, col: 2);
 
         $this->assertSame(['textDocument/codeAction'], \array_column($this->client->requests, 'method'));
     }
@@ -184,11 +184,11 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $doc = $this->editor->getDocument();
-        $doc->setCursor(1, 0);
+        $doc->setCursor(1, col: 0);
         $doc->beginSelect();
-        $doc->setCursor(1, 7, selection: SelectionMode::Keep);
+        $doc->setCursor(1, col: 7, selection: SelectionMode::Keep);
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
 
         $params = \end($this->client->requests)['params'];
         $this->assertSame(['line' => 1, 'character' => 0], $params['range']['start']);
@@ -201,7 +201,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $this->buffers->active()->diagnostics = [1 => [['severity' => DiagnosticSeverity::Error, 'message' => 'boom', 'col' => 2, 'endCol' => 5]]];
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
 
         $params = \end($this->client->requests)['params'];
         $this->assertSame(['line' => 1, 'character' => 2], $params['range']['start']);
@@ -213,7 +213,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
 
-        $controller->requestCodeActions(1, 3);
+        $controller->requestCodeActions(1, col: 3);
 
         $params = \end($this->client->requests)['params'];
         $this->assertSame(['line' => 1, 'character' => 3], $params['range']['start']);
@@ -230,7 +230,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
 
         $params = \end($this->client->requests)['params'];
         $this->assertSame(['uri' => 'file:///tmp/proj/a.php'], $params['textDocument']);
@@ -245,7 +245,7 @@ final class RefactorControllerTest extends TestCase
     public function testEveryShapeOfEmptyAnswerFlashesInsteadOfOpeningAPicker(mixed $result, ?array $error): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
 
         \end($this->client->requests)['respond']($result, error: $error);
 
@@ -292,7 +292,7 @@ final class RefactorControllerTest extends TestCase
             ],
         ];
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
 
         $diagnostic = \end($this->client->requests)['params']['context']['diagnostics'][0];
         $this->assertSame('PHP0420', $diagnostic['code']);
@@ -310,7 +310,7 @@ final class RefactorControllerTest extends TestCase
     private function pickAction(array $actions, int $index = 0): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $request = \end($this->client->requests);
         $request['respond']($actions, error: null);
 
@@ -354,7 +354,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $this->problemOnX();
 
-        $controller->requestApplyQuickFix(1, 1);
+        $controller->requestApplyQuickFix(1, col: 1);
         $request = \end($this->client->requests);
         /** @var array{context: array{diagnostics: list<array<string, mixed>>}} $params */
         $params = $request['params'];
@@ -369,7 +369,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready(servers: 2);
         $this->problemOnX();
-        $controller->requestApplyQuickFix(1, 1);
+        $controller->requestApplyQuickFix(1, col: 1);
         [$first, $second] = $this->clients;
 
         \end($first->requests)['respond']([self::renameTo('y')], error: null);
@@ -383,7 +383,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready(servers: 2);
         $this->problemOnX();
-        $controller->requestApplyQuickFix(1, 1);
+        $controller->requestApplyQuickFix(1, col: 1);
         [$first, $second] = $this->clients;
 
         \end($first->requests)['respond']([self::renameTo('y')], error: null);
@@ -397,7 +397,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready(servers: 2);
         $this->problemOnX();
-        $controller->requestApplyQuickFix(1, 1);
+        $controller->requestApplyQuickFix(1, col: 1);
         [$first, $second] = $this->clients;
 
         \end($first->requests)['respond']([self::renameTo('z', kind: 'refactor')], error: null);
@@ -413,7 +413,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $this->problemOnX();
 
-        $controller->requestApplyQuickFix(1, 4);
+        $controller->requestApplyQuickFix(1, col: 4);
 
         $this->assertStringContainsString('No problem at the caret', $this->statusRow($this->statusBar));
         $this->assertSame([], \array_filter($this->client->requests, static fn (array $r): bool => 'textDocument/codeAction' === $r['method']));
@@ -422,13 +422,13 @@ final class RefactorControllerTest extends TestCase
     public function testNoQuickFixesFlashesWhenTheResultIsEmptyOrErrored(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $request = \end($this->client->requests);
         $request['respond']([], error: null);
         $this->assertStringContainsString('No quick fixes here', $this->statusRow($this->statusBar));
 
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $request = \end($this->client->requests);
         $request['respond'](result: null, error: ['code' => -1, 'message' => 'nope']);
         $this->assertStringContainsString('No quick fixes here', $this->statusRow($this->statusBar));
@@ -437,7 +437,7 @@ final class RefactorControllerTest extends TestCase
     public function testActionsWithNoTitleAreFilteredOut(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $request = \end($this->client->requests);
         // A malformed entry (not an array) and a titleless action must both be
         // dropped, leaving only the real one — proving the filter runs, not
@@ -512,7 +512,7 @@ final class RefactorControllerTest extends TestCase
     public function testActionWithNeitherEditNorCommandFlashesNothingToApply(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $request = \end($this->client->requests);
         $request['respond']([['title' => 'Do nothing']], error: null);
 
@@ -632,7 +632,7 @@ final class RefactorControllerTest extends TestCase
         $doc = $this->buffers->get('/tmp/proj/a.php')->document;
         $controller->requestReformat();
 
-        $doc->setCursor(0, 0);
+        $doc->setCursor(0, col: 0);
         $doc->insert('// note');
         \end($this->client->requests)['respond']([['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]], 'newText' => '    ']], error: null);
 
@@ -665,7 +665,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
         $doc = $this->buffers->get('/tmp/proj/a.php')->document;
-        $doc->setSelectionRange(0, 1, 1, 2);
+        $doc->setSelectionRange(0, startCol: 1, endLine: 1, endCol: 2);
 
         $controller->requestReformat();
 
@@ -799,9 +799,9 @@ final class RefactorControllerTest extends TestCase
         // by the time the response lands.
         $controller->requestReformat();
         $request = \end($this->client->requests);
-        $second = $this->buffers->open('/tmp/proj/b.php', "<?php\n");
+        $second = $this->buffers->open('/tmp/proj/b.php', content: "<?php\n");
         $this->editor->showDocument('/tmp/proj/b.php', $second->document);
-        $pool->notifyDidOpen('/tmp/proj/b.php', $second->document->getText(), 'php', 1);
+        $pool->notifyDidOpen('/tmp/proj/b.php', $second->document->getText(), languageId: 'php', version: 1);
 
         $request['respond']([
             ['range' => ['start' => ['line' => 1, 'character' => 0], 'end' => ['line' => 1, 'character' => 2]], 'newText' => 'y'],
@@ -820,7 +820,7 @@ final class RefactorControllerTest extends TestCase
     public function testAnActionWithNoEditIsResolvedBeforeItIsApplied(): void
     {
         [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]]);
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         \end($this->client->requests)['respond']([
             ['title' => 'Extract variable', 'kind' => 'refactor.extract', 'data' => ['handle' => 'x']],
         ], error: null);
@@ -849,7 +849,7 @@ final class RefactorControllerTest extends TestCase
     public function testAFailedResolveStillReportsNothingToApply(): void
     {
         [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]]);
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         \end($this->client->requests)['respond']([['title' => 'Extract variable', 'data' => ['handle' => 'x']]], error: null);
         $this->editor->handleInput("\r");
         \end($this->client->requests)['respond'](null, error: ['message' => 'nope']);
@@ -864,7 +864,7 @@ final class RefactorControllerTest extends TestCase
     public function testThePreferredActionIsOfferedFirst(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $uri = Uri::fromPath('/tmp/proj/a.php');
         $edit = static fn (string $text): array => [
             'changes' => [
@@ -892,13 +892,13 @@ final class RefactorControllerTest extends TestCase
     public function testThePreferredFixIsStarredAndADisabledOneSaysWhy(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         \end($this->client->requests)['respond']([
             ['title' => 'Blocked', 'disabled' => ['reason' => 'Select an expression first'], 'edit' => $this->editOf('BLOCKED')],
             ['title' => 'Fix it', 'isPreferred' => true, 'kind' => 'quickfix', 'edit' => $this->editOf('FIXED')],
         ], error: null);
 
-        $items = Probe::get(Probe::object($this->editor, 'overlayHost'), 'overlay')['items'];
+        $items = Probe::get(Probe::object($this->editor, 'overlayHost'), property: 'overlay')['items'];
         $this->assertSame(['★ Fix it', 'Blocked'], \array_column($items, 'label'), 'the preferred one first, and starred');
         $this->assertSame(['quickfix', 'Select an expression first'], \array_column($items, 'hint'));
         $this->assertSame([false, true], \array_column($items, 'disabled'));
@@ -906,20 +906,20 @@ final class RefactorControllerTest extends TestCase
         // The selection never rests on it, as a menu's never rests on a greyed item.
         $host = Probe::object($this->editor, 'overlayHost');
         $this->editor->handleInput("\x1b[B");
-        $this->assertSame(0, Probe::get($host, 'overlay')['selected'], 'Down skips it, wrapping back to the one that can run');
+        $this->assertSame(0, Probe::get($host, property: 'overlay')['selected'], 'Down skips it, wrapping back to the one that can run');
         // A click on it runs nothing and leaves the list open.
         $host->layout([0, 0, 24, 100]);
-        $box = Probe::get($host, 'overlayBox');
+        $box = Probe::get($host, property: 'overlayBox');
         $host->clickAt($box->startRow + $box->headerRows + 1, $box->col + 4);
         $this->assertStringNotContainsString('BLOCKED', $this->text(), 'nothing ran');
-        $this->assertNotNull(Probe::get($host, 'overlay'), 'and the list is still there');
+        $this->assertNotNull(Probe::get($host, property: 'overlay'), 'and the list is still there');
     }
 
     /** Refactor This offers its answers through the picker like quick fixes do. */
     public function testRefactorThisOffersItsAnswersThroughThePicker(): void
     {
         [$controller] = $this->ready();
-        $controller->requestRefactorings(0, 0);
+        $controller->requestRefactorings(0, col: 0);
         \end($this->client->requests)['respond']([
             ['title' => 'Extract method', 'kind' => 'refactor.extract', 'edit' => $this->editOf('EXTRACTED')],
         ], error: null);
@@ -938,7 +938,7 @@ final class RefactorControllerTest extends TestCase
     public function testInlineAppliesASingleAnswerWithoutAsking(): void
     {
         [$controller] = $this->ready();
-        $controller->requestInline(0, 0);
+        $controller->requestInline(0, col: 0);
 
         \end($this->client->requests)['respond']([
             ['title' => 'Inline variable', 'kind' => 'refactor.inline', 'edit' => $this->editOf('INLINED')],
@@ -950,7 +950,7 @@ final class RefactorControllerTest extends TestCase
     public function testInlineWithSeveralAnswersAsksWhichOne(): void
     {
         [$controller] = $this->ready();
-        $controller->requestInline(0, 0);
+        $controller->requestInline(0, col: 0);
         \end($this->client->requests)['respond']([
             ['title' => 'Inline variable', 'kind' => 'refactor.inline', 'edit' => $this->editOf('FIRST')],
             ['title' => 'Inline method', 'kind' => 'refactor.inline', 'edit' => $this->editOf('SECOND')],
@@ -966,7 +966,7 @@ final class RefactorControllerTest extends TestCase
     public function testActionsThatAreAllUntitledFlashNoQuickFixes(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
 
         \end($this->client->requests)['respond']([['kind' => 'quickfix'], ['title' => '']], error: null);
 
@@ -978,7 +978,7 @@ final class RefactorControllerTest extends TestCase
     {
         $project = new TempProject(['taken.php' => "x\n"]);
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         \end($this->client->requests)['respond']([[
             'title' => 'Extract to class',
             'edit' => ['documentChanges' => [['kind' => 'create', 'uri' => Uri::fromPath($project->path('taken.php'))]]],
@@ -993,13 +993,13 @@ final class RefactorControllerTest extends TestCase
     public function testAnEditWithUnwritableFilesReportsHowManyWereSkipped(): void
     {
         [$controller] = $this->ready();
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         \end($this->client->requests)['respond']([[
             'title' => 'Rename everywhere',
             'edit' => [
                 'changes' => [
-                    Uri::fromPath('/tmp/proj/a.php') => [self::edit(1, 0, 1, 7, 'ok')],
-                    'file:///does/not/exist.php' => [self::edit(0, 0, 0, 0, 'x')],
+                    Uri::fromPath('/tmp/proj/a.php') => [self::edit(1, sc: 0, el: 1, ec: 7, text: 'ok')],
+                    'file:///does/not/exist.php' => [self::edit(0, sc: 0, el: 0, ec: 0, text: 'x')],
                 ],
             ],
         ]], error: null);
@@ -1024,7 +1024,7 @@ final class RefactorControllerTest extends TestCase
     /** @return array<string, mixed> a WorkspaceEdit replacing line 1 with $text */
     private function editOf(string $text): array
     {
-        return ['changes' => [Uri::fromPath('/tmp/proj/a.php') => [self::edit(1, 0, 1, 7, $text)]]];
+        return ['changes' => [Uri::fromPath('/tmp/proj/a.php') => [self::edit(1, sc: 0, el: 1, ec: 7, text: $text)]]];
     }
 
     /** The request asks for the one kind, so a server that filters sends back only that. */
@@ -1032,7 +1032,7 @@ final class RefactorControllerTest extends TestCase
     {
         [$controller] = $this->ready();
 
-        $controller->requestOrganizeImports(1, 0);
+        $controller->requestOrganizeImports(1, col: 0);
 
         $params = \end($this->client->requests)['params'];
         $this->assertSame(['source.organizeImports'], $params['context']['only']);
@@ -1046,7 +1046,7 @@ final class RefactorControllerTest extends TestCase
     public function testASingleOrganizeAnswerAppliesWithoutAsking(): void
     {
         [$controller] = $this->ready();
-        $controller->requestOrganizeImports(1, 0);
+        $controller->requestOrganizeImports(1, col: 0);
 
         \end($this->client->requests)['respond']([
             ['title' => 'Organize imports', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('ORGANIZED')],
@@ -1059,7 +1059,7 @@ final class RefactorControllerTest extends TestCase
     public function testSeveralOrganizeAnswersOfferAPicker(): void
     {
         [$controller] = $this->ready();
-        $controller->requestOrganizeImports(1, 0);
+        $controller->requestOrganizeImports(1, col: 0);
 
         \end($this->client->requests)['respond']([
             ['title' => 'Organize imports', 'kind' => 'source.organizeImports', 'edit' => $this->editOf('FIRST')],
@@ -1078,7 +1078,7 @@ final class RefactorControllerTest extends TestCase
     public function testAnEmptyOrganizeAnswerSaysThereWasNothingToOrganize(): void
     {
         [$controller] = $this->ready();
-        $controller->requestOrganizeImports(1, 0);
+        $controller->requestOrganizeImports(1, col: 0);
 
         \end($this->client->requests)['respond']([], error: null);
 
@@ -1099,7 +1099,7 @@ final class RefactorControllerTest extends TestCase
         foreach ([0 => 'FIRST', 1 => 'SECOND'] as $index => $expected) {
             $this->clients = [];
             [$controller] = $this->ready(servers: 2);
-            $controller->requestCodeActions(0, 0);
+            $controller->requestCodeActions(0, col: 0);
             $this->clients[0]->requests[0]['respond']([['title' => 'Import class', 'edit' => $this->editOf('FIRST')]], error: null);
             $this->clients[1]->requests[0]['respond']([['title' => 'Add route attribute', 'edit' => $this->editOf('SECOND')]], error: null);
 
@@ -1123,7 +1123,7 @@ final class RefactorControllerTest extends TestCase
         $this->clients = [];
         [$controller] = $this->ready(servers: 2);
 
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $this->clients[0]->requests[0]['respond']([['title' => 'Import class', 'edit' => $this->editOf('KEPT')]], error: null);
         $this->clients[1]->requests[0]['respond']([], error: null);
 
@@ -1167,10 +1167,10 @@ final class RefactorControllerTest extends TestCase
             $revealed[] = $event;
         });
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
         \end($this->client->requests)['respond']([], error: null);
         /** @var list<array{open?: \Closure(): void}> $items */
-        $items = Probe::get(Probe::get($this->editor, 'overlayHost'), 'overlay')['items'];
+        $items = Probe::get(Probe::get($this->editor, property: 'overlayHost'), property: 'overlay')['items'];
         $open = $items[0]['open'] ?? null;
         $this->assertInstanceOf(\Closure::class, $open, 'the first problem row opens somewhere');
         $open();
@@ -1188,7 +1188,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $this->twoProblemsOnLineOne();
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
         \end($this->client->requests)['respond']([['title' => 'First fix', 'edit' => $this->editOf('FIRST')], ['title' => 'Second fix', 'edit' => $this->editOf('SECOND')]], error: null);
 
         $screen = \implode("\n", $this->pickerRows());
@@ -1208,7 +1208,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready();
         $this->twoProblemsOnLineOne();
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
         \end($this->client->requests)['respond']([], error: null);
 
         $this->assertStringContainsString('boom', \implode("\n", $this->pickerRows()), 'the problems are what there is to show');
@@ -1219,11 +1219,11 @@ final class RefactorControllerTest extends TestCase
     public function testInMenuModeProblemsShowWithNoServerAtAll(): void
     {
         $controller = $this->controller();
-        $buffer = $this->buffers->open('/tmp/proj/a.php', "<?php\n\$x = 1;\n");
+        $buffer = $this->buffers->open('/tmp/proj/a.php', content: "<?php\n\$x = 1;\n");
         $this->editor->showDocument('/tmp/proj/a.php', $buffer->document);
         $this->twoProblemsOnLineOne();
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
 
         $this->assertStringContainsString('boom', \implode("\n", $this->pickerRows()));
         $this->assertStringNotContainsString('No language server', $this->statusRow($this->statusBar), 'nothing to explain: the list answered');
@@ -1237,7 +1237,7 @@ final class RefactorControllerTest extends TestCase
         $this->twoProblemsOnLineOne();
         $this->editor->display->setDiagnosticMessages(DiagnosticMessageMode::Inline);
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
         \end($this->client->requests)['respond']([['title' => 'First fix', 'edit' => $this->editOf('FIRST')]], error: null);
 
         $screen = \implode("\n", $this->pickerRows());
@@ -1252,7 +1252,7 @@ final class RefactorControllerTest extends TestCase
         [$controller] = $this->ready(servers: 2);
         $this->twoProblemsOnLineOne();
 
-        $controller->requestCodeActions(1, 0);
+        $controller->requestCodeActions(1, col: 0);
         $this->clients[0]->requests[0]['respond']([['title' => 'First fix', 'edit' => $this->editOf('FIRST')]], error: null);
         $this->clients[1]->requests[0]['respond']([['title' => 'Second fix', 'edit' => $this->editOf('SECOND')]], error: null);
 
@@ -1267,7 +1267,7 @@ final class RefactorControllerTest extends TestCase
         $this->clients = [];
         [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]], servers: 2);
 
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $this->clients[0]->requests[0]['respond']([['title' => 'Mine', 'data' => ['h' => 1]]], error: null);
         $this->clients[1]->requests[0]['respond']([['title' => 'Theirs', 'data' => ['h' => 2]]], error: null);
 
@@ -1291,9 +1291,9 @@ final class RefactorControllerTest extends TestCase
         $this->clients = [];
         [$controller] = $this->ready();
 
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $stale = $this->clients[0]->requests[0]['respond'];
-        $controller->requestCodeActions(1, 0); // the caret moved
+        $controller->requestCodeActions(1, col: 0); // the caret moved
 
         $stale([['title' => 'For where the caret WAS', 'edit' => $this->editOf('STALE')]], error: null);
         $this->editor->handleInput("\r");
@@ -1314,7 +1314,7 @@ final class RefactorControllerTest extends TestCase
         $this->clients = [];
         [$controller] = $this->ready(['codeActionProvider' => ['resolveProvider' => true]]);
 
-        $controller->requestCodeActions(0, 0);
+        $controller->requestCodeActions(0, col: 0);
         $this->clients[0]->requests[0]['respond']([
             ['title' => 'Run the fixer', 'command' => ['command' => 'porta.fix', 'arguments' => []]],
         ], error: null);

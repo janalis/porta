@@ -26,8 +26,8 @@ final class SearchScopeResolverTest extends TestCase
     {
         $project = new TempProject(['a.php' => '', 'sub/b.php' => '']);
         $buffers = new BufferManager();
-        $buffers->open($project->path('a.php'), '');
-        $buffers->open($project->path('sub/b.php'), '');
+        $buffers->open($project->path('a.php'), content: '');
+        $buffers->open($project->path('sub/b.php'), content: '');
         $resolver = new SearchScopeResolver($buffers, new FixedActiveFile(), new ProjectPaths($project->dir));
 
         $this->assertSame(['a.php', 'sub/b.php'], $resolver->resolve(ScopeKind::OpenFiles));
@@ -48,8 +48,8 @@ final class SearchScopeResolverTest extends TestCase
         $this->assertNotFalse($outside);
         try {
             $buffers = new BufferManager();
-            $buffers->open($project->path('a.php'), '');
-            $buffers->open($outside, '');
+            $buffers->open($project->path('a.php'), content: '');
+            $buffers->open($outside, content: '');
             $resolver = new SearchScopeResolver($buffers, new FixedActiveFile(), new ProjectPaths($project->dir));
 
             $this->assertSame(['a.php'], $resolver->resolve(ScopeKind::OpenFiles), 'a buffer outside the project tree is excluded');

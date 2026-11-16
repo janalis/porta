@@ -117,7 +117,10 @@ final readonly class WheelRouter
                 $this->bidi->isMirrored() ? -$mouse->wheelHDelta : $mouse->wheelHDelta,
             ),
             $this->hit->contains($editorRect, $mouse) => fn () => $this->panes->editor->scrollHBy(WheelStep::cols($mouse)),
-            null !== ($navigable = $this->panes->navigablePane()) && $this->hit->contains($this->hit->rect($navigable), $mouse) => static fn () => $navigable->scrollBy(WheelStep::cols($mouse), 0),
+            null !== ($navigable = $this->panes->navigablePane()) && $this->hit->contains($this->hit->rect($navigable), $mouse) => static fn () => $navigable->scrollBy(
+                WheelStep::cols($mouse),
+                dyHalfRows: 0,
+            ),
             default => null,
         };
         if (null !== $scroll) {

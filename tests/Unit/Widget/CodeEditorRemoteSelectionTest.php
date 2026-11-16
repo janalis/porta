@@ -23,9 +23,9 @@ final class CodeEditorRemoteSelectionTest extends TestCase
         $editor = new CodeEditorWidget();
         $store = $editor->decorations;
         // The ones without a selection first: they are passed over, not stopped at.
-        $store->setRemoteCaret('a.php', 'plain', ['line' => 1, 'col' => 0, 'label' => 'y', 'slot' => 2]);
-        $store->setRemoteCaret('a.php', 'back', ['line' => 0, 'col' => 2, 'label' => 'x', 'slot' => 1, 'anchor' => ['line' => 2, 'col' => 3]]);
-        $store->setRemoteCaret('a.php', 'none', ['line' => 1, 'col' => 0, 'label' => 'z', 'slot' => 3, 'anchor' => null]);
+        $store->setRemoteCaret('a.php', owner: 'plain', caret: ['line' => 1, 'col' => 0, 'label' => 'y', 'slot' => 2]);
+        $store->setRemoteCaret('a.php', owner: 'back', caret: ['line' => 0, 'col' => 2, 'label' => 'x', 'slot' => 1, 'anchor' => ['line' => 2, 'col' => 3]]);
+        $store->setRemoteCaret('a.php', owner: 'none', caret: ['line' => 1, 'col' => 0, 'label' => 'z', 'slot' => 3, 'anchor' => null]);
 
         $this->assertSame(
             [
@@ -42,11 +42,11 @@ final class CodeEditorRemoteSelectionTest extends TestCase
     public function testEachCoveredCellIsDrawnInTheCollaboratorsColour(): void
     {
         $editor = new CodeEditorWidget();
-        $editor->openFile('a.php', "abcdef\nghijkl\nmnop\n\n");
+        $editor->openFile('a.php', content: "abcdef\nghijkl\nmnop\n\n");
         $editor->setFocused(true);
         // Agent2's colour (dark: 130): from "c" on line 0 to "o" on line 2.
-        $editor->decorations->setRemoteCaret('a.php', 'peer', ['line' => 2, 'col' => 2, 'label' => 'peer', 'slot' => 1, 'anchor' => ['line' => 0, 'col' => 2]]);
-        $editor->decorations->setRemoteCaret('a.php', 'empty', ['line' => 3, 'col' => 0, 'label' => 'e', 'slot' => 2, 'anchor' => ['line' => 3, 'col' => 0]]);
+        $editor->decorations->setRemoteCaret('a.php', owner: 'peer', caret: ['line' => 2, 'col' => 2, 'label' => 'peer', 'slot' => 1, 'anchor' => ['line' => 0, 'col' => 2]]);
+        $editor->decorations->setRemoteCaret('a.php', owner: 'empty', caret: ['line' => 3, 'col' => 0, 'label' => 'e', 'slot' => 2, 'anchor' => ['line' => 3, 'col' => 0]]);
 
         $rows = $editor->render(new RenderContext(60, 6));
 
@@ -54,6 +54,6 @@ final class CodeEditorRemoteSelectionTest extends TestCase
         $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*ghijkl/', $rows[1], 'the whole line between');
         $this->assertMatchesRegularExpression('/\e\[48;5;130m(\e\[[0-9;:]*m)*mn/', $rows[2], 'up to the caret on its last line');
         $this->assertStringContainsString('peer', AnsiUtils::stripAnsiCodes($rows[2]));
-        self::assertExactWidth($rows, 60);
+        self::assertExactWidth($rows, width: 60);
     }
 }

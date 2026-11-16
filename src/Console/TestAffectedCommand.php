@@ -130,7 +130,7 @@ final class TestAffectedCommand extends Command
         }
         $whole = [] !== $unplaced || [] !== $unreached;
         $status ??= $coverage && $whole
-            ? self::finish($errors, 'A whole-suite coverage run is the gate itself: run composer coverage:check.', Command::INVALID)
+            ? self::finish($errors, message: 'A whole-suite coverage run is the gate itself: run composer coverage:check.', status: Command::INVALID)
             : null;
         $status ??= $list ? Command::SUCCESS : null;
 
@@ -386,7 +386,7 @@ final class TestAffectedCommand extends Command
             $output,
         );
 
-        $status = [] === $sources ? self::finish($output, 'No changed source file under src/ or a plugin\'s src/ to grade.', $exit) : null;
+        $status = [] === $sources ? self::finish($output, message: 'No changed source file under src/ or a plugin\'s src/ to grade.', status: $exit) : null;
         $misses = null === $status ? $this->misses($sources) : [];
         $status ??= null === $misses
             ? self::finish($errors, 'test:affected: the run wrote no readable Clover report at '.self::CLOVER.'.', Command::FAILURE)

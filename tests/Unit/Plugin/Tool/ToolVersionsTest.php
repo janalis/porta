@@ -120,7 +120,7 @@ final class ToolVersionsTest extends TestCase
     public function testRememberAndForget(): void
     {
         $versions = new ToolVersions($this->runner([[0, 'x 2.0.0']]));
-        $versions->remember('/bin/x', '1.0.0');
+        $versions->remember('/bin/x', version: '1.0.0');
         $versions->probe('/bin/x');
         $this->assertSame('1.0.0', $versions->known('/bin/x'), 'what an install reported needs no probe');
         $this->assertSame([], $this->ran);

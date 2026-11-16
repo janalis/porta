@@ -35,12 +35,12 @@ final readonly class EditorActionRouter
             static fn (string $action): bool => $kb->matches($keys, $action),
         );
         // The remaining actions carry extra logic beyond firing a single hook.
-        $cycle = null === $action && ($kb->matches($keys, 'next_buffer') || $kb->matches($keys, 'prev_buffer'));
-        $find = null === $action && !$cycle && ($kb->matches($keys, 'find') || $kb->matches($keys, 'replace'));
+        $cycle = null === $action && ($kb->matches($keys, action: 'next_buffer') || $kb->matches($keys, action: 'prev_buffer'));
+        $find = null === $action && !$cycle && ($kb->matches($keys, action: 'find') || $kb->matches($keys, action: 'replace'));
         match (true) {
             null !== $action => $this->run($action),
-            $cycle => ($this->callbacks)()->buffer?->cycleBuffer($kb->matches($keys, 'next_buffer') ? 1 : -1),
-            $find && $kb->matches($keys, 'replace') => ($this->callbacks)()->file?->openFindReplace(),
+            $cycle => ($this->callbacks)()->buffer?->cycleBuffer($kb->matches($keys, action: 'next_buffer') ? 1 : -1),
+            $find && $kb->matches($keys, action: 'replace') => ($this->callbacks)()->file?->openFindReplace(),
             $find => ($this->callbacks)()->file?->openFind(),
             default => null,
         };

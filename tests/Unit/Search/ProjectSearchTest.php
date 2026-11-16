@@ -55,7 +55,7 @@ final class ProjectSearchTest extends TestCase
                 return null !== $results;
             },
             $timeout,
-            'the search to complete',
+            what: 'the search to complete',
         );
         \assert(null !== $results, description: 'the search delivered results');
 
@@ -85,7 +85,7 @@ final class ProjectSearchTest extends TestCase
         $transport = new FakeRemoteTransport($server->dir);
         $remote = $transport->filesystem($cache->dir);
 
-        $results = $this->awaitSearch(new ProjectSearch($cache->dir, $remote), 'needle');
+        $results = $this->awaitSearch(new ProjectSearch($cache->dir, $remote), query: 'needle');
 
         $this->assertSame(
             [['path' => 'src/Deep.php', 'line' => 1]],
@@ -116,7 +116,7 @@ final class ProjectSearchTest extends TestCase
     public function testGrepSearchFindsMatchesAndExcludesVendor(): void
     {
         $project = $this->fixtures();
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle');
 
         $paths = \array_column($results, 'path');
         \sort($paths);
@@ -142,9 +142,9 @@ final class ProjectSearchTest extends TestCase
             \putenv('PATH=/nonexistent');
         }
         $search = new ProjectSearch($project->dir, null === $wiring ? null : $wiring($project->dir));
-        $paths = \array_column($this->awaitSearch($search, 'needle', scope: $scope), 'path');
+        $paths = \array_column($this->awaitSearch($search, query: 'needle', scope: $scope), 'path');
         \sort($paths);
-        $this->assertFalse(Probe::get($search, 'localOnly'), 'a local project has no server to have missed');
+        $this->assertFalse(Probe::get($search, property: 'localOnly'), 'a local project has no server to have missed');
 
         return $paths;
     }
@@ -177,7 +177,7 @@ final class ProjectSearchTest extends TestCase
         \symlink($outside->dir, $project->path('escape'));
         \symlink($outside->dir, $project->path('.porta/escape'));
 
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle'), 'path');
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle'), 'path');
         $this->assertSame(['src/A.php'], $paths);
 
         // ugrep and BSD grep follow no link under -r; GNU grep follows one on
@@ -187,7 +187,7 @@ final class ProjectSearchTest extends TestCase
         $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' \"\$*\" >> '{$log}'\nexit 1\n");
         \chmod($tools->path('grep'), permissions: 0o755);
         \putenv('PATH='.$tools->dir.':/bin');
-        $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle');
         $argv = (string) \file_get_contents($log);
         $this->assertStringContainsString(' src', $argv, 'the premise: the root is handed over by its entries');
         $this->assertStringNotContainsString('escape', $argv);
@@ -195,9 +195,13 @@ final class ProjectSearchTest extends TestCase
 
     public function testGrepLeavesOutLocalHistoryAndNotTheRestOfPorta(): void
     {
-        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, '.', wiring: self::localRemoteFilesystem(...)), 'wired as the container wires it');
-        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, '.'));
-        $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::Grep, '.porta'));
+        $this->assertSame(
+            ['.porta/plugins/acme/porta.php', 'src/A.php'],
+            $this->portaPaths(SearchBackend::Grep, scope: '.', wiring: self::localRemoteFilesystem(...)),
+            'wired as the container wires it',
+        );
+        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::Grep, scope: '.'));
+        $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::Grep, scope: '.porta'));
         $this->assertSame([], $this->portaPaths(SearchBackend::Grep, ['.porta/history']), 'named as the scope, it is still left out');
     }
 
@@ -205,11 +209,11 @@ final class ProjectSearchTest extends TestCase
     {
         $this->assertSame(
             ['.porta/plugins/acme/porta.php', 'src/A.php'],
-            $this->portaPaths(SearchBackend::PhpFallback, '.', wiring: self::localRemoteFilesystem(...)),
+            $this->portaPaths(SearchBackend::PhpFallback, scope: '.', wiring: self::localRemoteFilesystem(...)),
             'wired as the container wires it: no "server" warning',
         );
-        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::PhpFallback, '.'));
-        $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::PhpFallback, '.porta'));
+        $this->assertSame(['.porta/plugins/acme/porta.php', 'src/A.php'], $this->portaPaths(SearchBackend::PhpFallback, scope: '.'));
+        $this->assertSame(['.porta/plugins/acme/porta.php'], $this->portaPaths(SearchBackend::PhpFallback, scope: '.porta'));
     }
 
     /** @return list<string> the sorted result paths */
@@ -225,7 +229,7 @@ final class ProjectSearchTest extends TestCase
             \putenv('PATH=/nonexistent');
         }
 
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: 'src'), 'path');
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: 'src'), 'path');
         \sort($paths);
 
         return $paths;
@@ -249,13 +253,13 @@ final class ProjectSearchTest extends TestCase
         $tempProject = new TempProject();
         $search = new ProjectSearch($tempProject->dir);
 
-        $this->assertSame([0, 12], $search->matchOffsets('needle here needle', 'needle', new SearchOptions()));
-        $this->assertSame([], $search->matchOffsets('', 'needle', new SearchOptions()), 'an empty line has no offsets');
+        $this->assertSame([0, 12], $search->matchOffsets('needle here needle', query: 'needle', options: new SearchOptions()));
+        $this->assertSame([], $search->matchOffsets('', query: 'needle', options: new SearchOptions()), 'an empty line has no offsets');
         // An invalid user regex makes preg_match_all fail → no offsets (no crash).
-        $this->assertSame([], $search->matchOffsets('needle', '(', new SearchOptions(regex: true)), 'a malformed regex yields no offsets');
+        $this->assertSame([], $search->matchOffsets('needle', query: '(', options: new SearchOptions(regex: true)), 'a malformed regex yields no offsets');
         // A pattern that also matches empty (`a*`) skips its zero-width hits and
         // keeps only the real one (the leading 'a' at offset 0).
-        $this->assertSame([0], $search->matchOffsets('abc', 'a*', new SearchOptions(regex: true)), 'zero-width matches are skipped');
+        $this->assertSame([0], $search->matchOffsets('abc', query: 'a*', options: new SearchOptions(regex: true)), 'zero-width matches are skipped');
     }
 
     public function testMultilineScanSkipsFilesThatBlowThePcreBacktrackLimit(): void
@@ -265,7 +269,7 @@ final class ProjectSearchTest extends TestCase
         // false for that file, which the whole-file scan skips (no results).
         $project = new TempProject(['src/A.php' => \str_repeat('a', times: 30)."!\nz\n"]);
         $search = new ProjectSearch($project->dir);
-        $results = $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true));
+        $results = $this->awaitSearch($search, query: "(a+)+\nz", options: new SearchOptions(regex: true));
 
         $this->assertSame([], $results);
         // And it SAYS so. This used to assert the empty list alone, which is
@@ -275,8 +279,8 @@ final class ProjectSearchTest extends TestCase
         $this->assertTrue($search->gaveUp(), 'the engine gave up and the search admits it');
 
         // Skipped, that file — not the rest of the scan: a file after it still answers.
-        $project->write('src/B.php', "a\nz\n");
-        $after = $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true), scope: ['src/A.php', 'src/B.php']);
+        $project->write('src/B.php', content: "a\nz\n");
+        $after = $this->awaitSearch($search, query: "(a+)+\nz", options: new SearchOptions(regex: true), scope: ['src/A.php', 'src/B.php']);
         $this->assertSame(['src/B.php'], \array_column($after, 'path'));
     }
 
@@ -289,7 +293,7 @@ final class ProjectSearchTest extends TestCase
             $this->markTestSkipped('this user reads every directory');
         }
 
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle'), 'path');
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle'), 'path');
         \sort($paths);
 
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
@@ -305,7 +309,7 @@ final class ProjectSearchTest extends TestCase
         \putenv('LC_ALL=C');
         try {
             $project = new TempProject(['a.txt' => "café\n", 'b.txt' => "CAFE\n"]);
-            $results = $this->awaitSearch(new ProjectSearch($project->dir), 'cafÉ', new SearchOptions(caseSensitive: false));
+            $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'cafÉ', options: new SearchOptions(caseSensitive: false));
         } finally {
             \putenv(false === $locale ? 'LC_ALL' : 'LC_ALL='.$locale);
         }
@@ -319,8 +323,8 @@ final class ProjectSearchTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.txt' => "café\n", 'latin1.txt' => "caf\xe9 au CAFE\n"]);
 
-        $this->assertSame(['a.txt'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'CAFÉ', new SearchOptions(caseSensitive: false)), 'path'));
-        $this->assertSame(['latin1.txt'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'cafe', new SearchOptions(caseSensitive: false)), 'path'));
+        $this->assertSame(['a.txt'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'CAFÉ', options: new SearchOptions(caseSensitive: false)), 'path'));
+        $this->assertSame(['latin1.txt'], \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'cafe', options: new SearchOptions(caseSensitive: false)), 'path'));
     }
 
     /** The PHP walk shows a hit as grep's results are shown: without its indentation. */
@@ -329,7 +333,7 @@ final class ProjectSearchTest extends TestCase
         \putenv('PATH=/nonexistent');
         $project = new TempProject(['a.php' => "<?php\n    \$needle = 1;  \n"]);
 
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle');
 
         $this->assertSame(['$needle = 1;'], \array_column($results, 'text'));
     }
@@ -350,10 +354,10 @@ final class ProjectSearchTest extends TestCase
         $project = new TempProject(['src/A.php' => \str_repeat('a', times: 30)."!\nz\nneedle\n"]);
         $search = new ProjectSearch($project->dir);
 
-        $this->awaitSearch($search, "(a+)+\nz", options: new SearchOptions(regex: true));
+        $this->awaitSearch($search, query: "(a+)+\nz", options: new SearchOptions(regex: true));
         $this->assertTrue($search->gaveUp(), 'the first search gave up');
 
-        $this->awaitSearch($search, 'needle');
+        $this->awaitSearch($search, query: 'needle');
         $this->assertFalse($search->gaveUp(), 'and the next one does not inherit it');
     }
 
@@ -363,7 +367,7 @@ final class ProjectSearchTest extends TestCase
             'src/A.php' => "<?php\nfunction foo()\n{\n    return 1;\n}\n",
             'src/B.php' => "<?php\nfunction foo() { return 2; }\n", // one line → no cross-line match
         ]);
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), "foo()\n{");
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: "foo()\n{");
 
         $this->assertCount(1, $results, 'only the file whose foo() spans lines matches');
         $this->assertSame('src/A.php', $results[0]['path']);
@@ -376,7 +380,7 @@ final class ProjectSearchTest extends TestCase
     public function testMultilineQueryMatchesACrlfFile(): void
     {
         $project = new TempProject(['src/A.php' => "<?php\r\nfunction foo()\r\n{\r\n    return 1;\r\n}\r\n"]);
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), "foo()\n{");
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: "foo()\n{");
 
         $this->assertCount(1, $results);
         $this->assertSame(1, $results[0]['line']);
@@ -388,9 +392,9 @@ final class ProjectSearchTest extends TestCase
     {
         $search = new ProjectSearch('/p');
 
-        $this->assertSame("a\r\nX\r\nY\r\nc\r\n", $search->applyReplacement("a\r\nb\r\nc\r\n", "\nb\n", "\nX\nY\n", new SearchOptions()));
-        $this->assertSame("a\nX\nY\nc\n", $search->applyReplacement("a\nb\nc\n", "\nb\n", "\nX\nY\n", new SearchOptions()), 'an LF file stays LF');
-        $this->assertSame("a\rX\rY\rc\r", $search->applyReplacement("a\rb\rc\r", "\rb\r", "\nX\nY\n", new SearchOptions()), 'and a CR file, CR');
+        $this->assertSame("a\r\nX\r\nY\r\nc\r\n", $search->applyReplacement("a\r\nb\r\nc\r\n", query: "\nb\n", replacement: "\nX\nY\n", options: new SearchOptions()));
+        $this->assertSame("a\nX\nY\nc\n", $search->applyReplacement("a\nb\nc\n", query: "\nb\n", replacement: "\nX\nY\n", options: new SearchOptions()), 'an LF file stays LF');
+        $this->assertSame("a\rX\rY\rc\r", $search->applyReplacement("a\rb\rc\r", query: "\rb\r", replacement: "\nX\nY\n", options: new SearchOptions()), 'and a CR file, CR');
     }
 
     public function testMultilineScanDeduplicatesSkipsBinaryAndCaps(): void
@@ -400,13 +404,13 @@ final class ProjectSearchTest extends TestCase
             'src/bin.dat' => "foo\nbar\n\0\n", // contains a NUL → skipped as binary
         ]);
         // Overlapping scopes (the file and its directory) must still match A.php once.
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), "foo\nbar", scope: ['src/A.php', 'src']);
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: "foo\nbar", scope: ['src/A.php', 'src']);
         $paths = \array_column($results, 'path');
         $this->assertSame(['src/A.php'], $paths, 'deduplicated across overlapping scopes; the binary file is skipped');
 
         // The result cap applies to the whole-file scan too.
         $many = new TempProject(['big.txt' => \str_repeat("A\nB\n", ProjectSearch::MAX_RESULTS + 5)]);
-        $capped = $this->awaitSearch(new ProjectSearch($many->dir), "A\nB");
+        $capped = $this->awaitSearch(new ProjectSearch($many->dir), query: "A\nB");
         $this->assertCount(ProjectSearch::MAX_RESULTS, $capped);
     }
 
@@ -414,7 +418,7 @@ final class ProjectSearchTest extends TestCase
     {
         // An empty scope (e.g. Open Files with nothing open) short-circuits to no results.
         $project = new TempProject(['src/A.php' => "<?php\n// needle\n"]);
-        $this->assertSame([], $this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: []));
+        $this->assertSame([], $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: []));
     }
 
     public function testScopeListOfExplicitFilesAndDirsDeduplicates(): void
@@ -426,7 +430,7 @@ final class ProjectSearchTest extends TestCase
             'other/C.php' => "<?php\n// needle in C\n",
         ]);
         // 'src/A.php' (a file) overlaps 'src' (a dir); A.php is matched once, C.php stays out of scope.
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: ['src/A.php', 'src']), 'path');
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: ['src/A.php', 'src']), 'path');
         \sort($paths);
         $this->assertSame(['src/A.php', 'src/B.php'], $paths);
     }
@@ -435,11 +439,11 @@ final class ProjectSearchTest extends TestCase
     {
         $project = $this->fixtures();
         // Also exercise the binary-file and oversized-file skips
-        $project->write('src/bin.dat', "nee\0dle");
+        $project->write('src/bin.dat', content: "nee\0dle");
         $project->write('src/huge.txt', \str_repeat('needle filler ', times: 80_000)); // > 1 MB, skipped
         \putenv('PATH=/nonexistent');
 
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle');
 
         $paths = \array_column($results, 'path');
         \sort($paths);
@@ -462,21 +466,21 @@ final class ProjectSearchTest extends TestCase
     public function testGrepMatchRangesAreDisplayColumns(): void
     {
         // "the needle here" → 'needle' starts at column 4, length 6.
-        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'the needle here', 'needle'));
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, content: 'the needle here', query: 'needle'));
         // Regex matches map the same way.
-        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'the needle here', 'ne+dle', options: new SearchOptions(regex: true)));
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, content: 'the needle here', query: 'ne+dle', options: new SearchOptions(regex: true)));
         // A multibyte prefix ("café " is 6 bytes but 5 display columns) → start 5.
-        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, 'café needle x', 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, content: 'café needle x', query: 'needle'));
         // The same word written e + U+0301 is still five columns as the panel
         // draws it; summing code points put the highlight one column late.
-        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, "cafe\u{0301} needle x", 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::Grep, content: "cafe\u{0301} needle x", query: 'needle'));
     }
 
     public function testPhpFallbackMatchRangesMatchGrep(): void
     {
-        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, 'the needle here', 'needle'));
-        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, 'café needle x', 'needle'));
-        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, "cafe\u{0301} needle x", 'needle'));
+        $this->assertSame([['start' => 4, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, content: 'the needle here', query: 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, content: 'café needle x', query: 'needle'));
+        $this->assertSame([['start' => 5, 'length' => 6]], $this->rangesOf(SearchBackend::PhpFallback, content: "cafe\u{0301} needle x", query: 'needle'));
     }
 
     /** @return list<string> sorted result paths for a mask over a fixed fixture */
@@ -490,7 +494,7 @@ final class ProjectSearchTest extends TestCase
         if (SearchBackend::PhpFallback === $backend) {
             \putenv('PATH=/nonexistent');
         }
-        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', mask: $mask), 'path');
+        $paths = \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', mask: $mask), 'path');
         \sort($paths);
 
         return $paths;
@@ -498,15 +502,15 @@ final class ProjectSearchTest extends TestCase
 
     public function testFileMaskRestrictsMatchedFilesWithGrep(): void
     {
-        $this->assertSame(['src/A.php'], $this->maskedPaths(SearchBackend::Grep, '*.php'));
-        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::Grep, '*.{php,js}'), 'brace mask');
-        $this->assertSame(['src/A.php', 'src/C.twig'], $this->maskedPaths(SearchBackend::Grep, '*.php, *.twig'), 'comma mask');
+        $this->assertSame(['src/A.php'], $this->maskedPaths(SearchBackend::Grep, mask: '*.php'));
+        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::Grep, mask: '*.{php,js}'), 'brace mask');
+        $this->assertSame(['src/A.php', 'src/C.twig'], $this->maskedPaths(SearchBackend::Grep, mask: '*.php, *.twig'), 'comma mask');
     }
 
     public function testFileMaskRestrictsMatchedFilesWithPhpFallback(): void
     {
-        $this->assertSame(['src/A.php'], $this->maskedPaths(SearchBackend::PhpFallback, '*.php'));
-        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::PhpFallback, '*.{php,js}'), 'brace mask via Finder');
+        $this->assertSame(['src/A.php'], $this->maskedPaths(SearchBackend::PhpFallback, mask: '*.php'));
+        $this->assertSame(['src/A.php', 'src/B.js'], $this->maskedPaths(SearchBackend::PhpFallback, mask: '*.{php,js}'), 'brace mask via Finder');
     }
 
     /**
@@ -524,7 +528,7 @@ final class ProjectSearchTest extends TestCase
             \putenv('PATH=/nonexistent');
         }
 
-        return \array_column($this->awaitSearch(new ProjectSearch($project->dir), 'needle', scope: $scope, mask: $mask), 'path');
+        return \array_column($this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', scope: $scope, mask: $mask), 'path');
     }
 
     /**
@@ -538,17 +542,17 @@ final class ProjectSearchTest extends TestCase
     {
         foreach ([SearchBackend::Grep, SearchBackend::PhpFallback] as $backend) {
             $name = $backend->name;
-            $this->assertSame(['src/A.php'], $this->fileScopePaths($backend, 'src/A.php', '*.php'), $name.': the mask admits the named file');
-            $this->assertSame([], $this->fileScopePaths($backend, 'src/B.js', '*.php'), $name.': the mask excludes the named file');
-            $this->assertSame(['src/B.js'], $this->fileScopePaths($backend, 'src/B.js', ''), $name.': no mask, so the named file is searched');
-            $this->assertSame(['src/B.js'], $this->fileScopePaths($backend, 'src/B.js', '*.{php,js}'), $name.': a later glob in the mask admits it');
+            $this->assertSame(['src/A.php'], $this->fileScopePaths($backend, scope: 'src/A.php', mask: '*.php'), $name.': the mask admits the named file');
+            $this->assertSame([], $this->fileScopePaths($backend, scope: 'src/B.js', mask: '*.php'), $name.': the mask excludes the named file');
+            $this->assertSame(['src/B.js'], $this->fileScopePaths($backend, scope: 'src/B.js', mask: ''), $name.': no mask, so the named file is searched');
+            $this->assertSame(['src/B.js'], $this->fileScopePaths($backend, scope: 'src/B.js', mask: '*.{php,js}'), $name.': a later glob in the mask admits it');
         }
     }
 
     public function testEmptyQueryReturnsNothing(): void
     {
         $project = $this->fixtures();
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), '   ');
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: '   ');
 
         $this->assertSame([], $results);
     }
@@ -561,12 +565,12 @@ final class ProjectSearchTest extends TestCase
         $search = new ProjectSearch($project->dir);
 
         // Regex.
-        $this->assertNotSame([], $this->awaitSearch($search, 'ne+dle', options: new SearchOptions(regex: true)));
+        $this->assertNotSame([], $this->awaitSearch($search, query: 'ne+dle', options: new SearchOptions(regex: true)));
         // Case-sensitive: NEEDLES does not match lowercase "needle".
-        $lines = \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line');
+        $lines = \array_column($this->awaitSearch($search, query: 'needle', options: new SearchOptions(caseSensitive: true)), 'line');
         $this->assertNotContains(2, $lines, 'case-sensitive skips $NEEDLES');
         // Whole-word: "needle" must not match inside "needless".
-        $wordLines = \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
+        $wordLines = \array_column($this->awaitSearch($search, query: 'needle', options: new SearchOptions(wholeWord: true)), 'line');
         $this->assertNotContains(3, $wordLines, 'whole-word skips needless()');
         $this->assertContains(1, $wordLines);
     }
@@ -579,9 +583,9 @@ final class ProjectSearchTest extends TestCase
         \putenv('PATH=/nonexistent');
         $search = new ProjectSearch($project->dir);
 
-        $this->assertNotSame([], $this->awaitSearch($search, 'ne+dle', options: new SearchOptions(regex: true)));
-        $this->assertNotContains(2, \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(caseSensitive: true)), 'line'));
-        $wordLines = \array_column($this->awaitSearch($search, 'needle', options: new SearchOptions(wholeWord: true)), 'line');
+        $this->assertNotSame([], $this->awaitSearch($search, query: 'ne+dle', options: new SearchOptions(regex: true)));
+        $this->assertNotContains(2, \array_column($this->awaitSearch($search, query: 'needle', options: new SearchOptions(caseSensitive: true)), 'line'));
+        $wordLines = \array_column($this->awaitSearch($search, query: 'needle', options: new SearchOptions(wholeWord: true)), 'line');
         $this->assertNotContains(3, $wordLines);
         $this->assertContains(1, $wordLines);
     }
@@ -590,7 +594,7 @@ final class ProjectSearchTest extends TestCase
     {
         $project = $this->fixtures();
         // Unbalanced group is not a valid pattern.
-        $this->assertSame([], $this->awaitSearch(new ProjectSearch($project->dir), 'needle(', options: new SearchOptions(regex: true)));
+        $this->assertSame([], $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle(', options: new SearchOptions(regex: true)));
     }
 
     public function testApplyReplacement(): void
@@ -600,16 +604,16 @@ final class ProjectSearchTest extends TestCase
         // Fixed, literal replacement: $ and \ in the replacement stay literal.
         $this->assertSame(
             'take $5.00',
-            $search->applyReplacement('take 5 bucks', '5 bucks', '$5.00', new SearchOptions()),
+            $search->applyReplacement('take 5 bucks', query: '5 bucks', replacement: '$5.00', options: new SearchOptions()),
         );
         // Case-insensitive fixed: both casings are replaced.
-        $this->assertSame('x x', $search->applyReplacement('ab AB', 'ab', 'x', new SearchOptions()));
+        $this->assertSame('x x', $search->applyReplacement('ab AB', query: 'ab', replacement: 'x', options: new SearchOptions()));
         // Whole-word fixed: the standalone X is replaced, "Xy" is not.
-        $this->assertSame('a Y b Xy', $search->applyReplacement('a X b Xy', 'X', 'Y', new SearchOptions(caseSensitive: true, wholeWord: true)));
+        $this->assertSame('a Y b Xy', $search->applyReplacement('a X b Xy', query: 'X', replacement: 'Y', options: new SearchOptions(caseSensitive: true, wholeWord: true)));
         // Regex with a backreference.
-        $this->assertSame('b=a', $search->applyReplacement('a=b', '(\w)=(\w)', '$2=$1', new SearchOptions(regex: true, caseSensitive: true)));
+        $this->assertSame('b=a', $search->applyReplacement('a=b', query: '(\w)=(\w)', replacement: '$2=$1', options: new SearchOptions(regex: true, caseSensitive: true)));
         // Bad regex leaves the content untouched.
-        $this->assertSame('a=b', $search->applyReplacement('a=b', '(', 'X', new SearchOptions(regex: true)));
+        $this->assertSame('a=b', $search->applyReplacement('a=b', query: '(', replacement: 'X', options: new SearchOptions(regex: true)));
     }
 
     public function testApplyReplacementPreservesCase(): void
@@ -621,16 +625,16 @@ final class ProjectSearchTest extends TestCase
         // typed casing: lowercase→lower, Title→Title, UPPER→UPPER.
         $this->assertSame(
             'newname Newname NEWNAME',
-            $search->applyReplacement('oldname Oldname OLDNAME', 'oldname', 'newName', $preserve),
+            $search->applyReplacement('oldname Oldname OLDNAME', query: 'oldname', replacement: 'newName', options: $preserve),
         );
         // A mixed-case match keeps the replacement verbatim.
-        $this->assertSame('newName', $search->applyReplacement('oLdNaMe', 'oldname', 'newName', $preserve));
+        $this->assertSame('newName', $search->applyReplacement('oLdNaMe', query: 'oldname', replacement: 'newName', options: $preserve));
         // An empty replacement deletes the match (nothing to recase).
-        $this->assertSame('', $search->applyReplacement('oldname', 'oldname', '', $preserve));
+        $this->assertSame('', $search->applyReplacement('oldname', query: 'oldname', replacement: '', options: $preserve));
         // Multibyte title-case (case-sensitive match; PCRE `i` is not UTF-8-aware here).
-        $this->assertSame('Éclair', $search->applyReplacement('Ötür', 'Ötür', 'éclair', new SearchOptions(preserveCase: true, caseSensitive: true)));
+        $this->assertSame('Éclair', $search->applyReplacement('Ötür', query: 'Ötür', replacement: 'éclair', options: new SearchOptions(preserveCase: true, caseSensitive: true)));
         // Preserve-case is inert in regex mode (falls back to the plain replacement).
-        $this->assertSame('newName', $search->applyReplacement('OLDNAME', 'oldname', 'newName', new SearchOptions(regex: true, preserveCase: true)));
+        $this->assertSame('newName', $search->applyReplacement('OLDNAME', query: 'oldname', replacement: 'newName', options: new SearchOptions(regex: true, preserveCase: true)));
     }
 
     public function testResultCapWithGrep(): void
@@ -639,7 +643,7 @@ final class ProjectSearchTest extends TestCase
             'big.txt' => \str_repeat("needle\n", ProjectSearch::MAX_RESULTS + 200),
         ]);
 
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle', timeout: 5.0);
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', timeout: 5.0);
 
         $this->assertCount(ProjectSearch::MAX_RESULTS, $results);
     }
@@ -651,7 +655,7 @@ final class ProjectSearchTest extends TestCase
             'big.txt' => \str_repeat("needle\n", ProjectSearch::MAX_RESULTS + 200),
         ]);
 
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'needle', timeout: 5.0);
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle', timeout: 5.0);
 
         $this->assertCount(ProjectSearch::MAX_RESULTS, $results);
     }
@@ -666,17 +670,17 @@ final class ProjectSearchTest extends TestCase
         $project = $this->fixtures();
         $noGrep = new TempProject([], 'porta-nogrep-');
         \putenv('PATH='.$noGrep->dir);
-        $builtIn = $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $builtIn = $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle');
         $this->assertNotSame([], $builtIn, 'the premise: the built-in search finds the needle');
 
         $tools = new TempProject([], 'porta-badgrep-');
-        $badGrep = $tools->write('grep', "\x00\x01 not an executable format");
+        $badGrep = $tools->write('grep', content: "\x00\x01 not an executable format");
         \chmod($badGrep, permissions: 0o755);
         \putenv('PATH='.$tools->dir);
 
-        $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), 'needle'));
+        $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle'));
         $regex = new SearchOptions(regex: true);
-        $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), 'need+le', $regex), 'nor does asking it whether it reads PCRE');
+        $this->assertSame($builtIn, $this->awaitSearch(new ProjectSearch($project->dir), query: 'need+le', options: $regex), 'nor does asking it whether it reads PCRE');
     }
 
     /**
@@ -687,12 +691,12 @@ final class ProjectSearchTest extends TestCase
     public function testGrepResultsAreListedByPathThenLine(): void
     {
         $tools = new TempProject([], 'porta-hashgrep-');
-        $tools->write('grep', "#!/bin/sh\nprintf '%s\\n' './src/b.php:3:tok' './src/a.php:9:tok' './src/a.php:2:tok' './src/9.php:1:tok' './src/10.php:1:tok'\n");
+        $tools->write('grep', content: "#!/bin/sh\nprintf '%s\\n' './src/b.php:3:tok' './src/a.php:9:tok' './src/a.php:2:tok' './src/9.php:1:tok' './src/10.php:1:tok'\n");
         \chmod($tools->path('grep'), permissions: 0o755);
         \putenv('PATH='.$tools->dir.':/bin');
 
         $project = $this->fixtures();
-        $results = $this->awaitSearch(new ProjectSearch($project->dir), 'tok');
+        $results = $this->awaitSearch(new ProjectSearch($project->dir), query: 'tok');
 
         $this->assertSame(
             ['src/10.php:0', 'src/9.php:0', 'src/a.php:1', 'src/a.php:8', 'src/b.php:2'],
@@ -724,21 +728,21 @@ final class ProjectSearchTest extends TestCase
 
         $grep(1);
         $search = new ProjectSearch($project->dir);
-        $this->awaitSearch($search, '\d+', $regex);
-        $this->awaitSearch($search, '\d+', $regex);
+        $this->awaitSearch($search, query: '\d+', options: $regex);
+        $this->awaitSearch($search, query: '\d+', options: $regex);
         $this->assertSame(['probe', '-P -- \d+ .', '-P -- \d+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'PCRE, and grep asked once');
 
         $grep(1);
-        $this->awaitSearch(new ProjectSearch($project->dir), 'needle');
+        $this->awaitSearch(new ProjectSearch($project->dir), query: 'needle');
         $this->assertSame(['-F -- needle .'], \array_map($tail, $asked()), 'a literal asks nothing');
 
         $grep(2);
-        $this->awaitSearch(new ProjectSearch($project->dir), '\d+', $regex);
+        $this->awaitSearch(new ProjectSearch($project->dir), query: '\d+', options: $regex);
         $this->assertSame(['probe', '-E -- \d+ .'], [$asked()[0] ?? null, ...\array_map($tail, \array_slice($asked(), offset: 1))], 'no -P: ERE');
 
         $grep(1);
         $cache = new TempProject([]);
-        $this->awaitSearch(new ProjectSearch($cache->dir, new FakeRemoteTransport($project->dir)->filesystem($cache->dir)), '\d+', $regex);
+        $this->awaitSearch(new ProjectSearch($cache->dir, new FakeRemoteTransport($project->dir)->filesystem($cache->dir)), query: '\d+', options: $regex);
         $this->assertSame(['-E -- \d+ .'], \array_map($tail, $asked()), "the server's grep is not this one");
     }
 
@@ -829,7 +833,7 @@ final class ProjectSearchTest extends TestCase
         $search->search('needle', static function () use (&$firstCompleted): void {
             $firstCompleted = true;
         });
-        $results = $this->awaitSearch($search, 'needle');
+        $results = $this->awaitSearch($search, query: 'needle');
 
         $this->assertFalse($firstCompleted, 'first search superseded');
         $this->assertNotEmpty($results);

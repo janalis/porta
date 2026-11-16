@@ -13,13 +13,13 @@ final class BookmarksTest extends TestCase
     {
         $marks = new Bookmarks();
 
-        $this->assertTrue($marks->toggle('/p/a.php', 9));
-        $this->assertTrue($marks->toggle('/p/a.php', 3));
-        $this->assertTrue($marks->toggle('/p/b.php', 3));
+        $this->assertTrue($marks->toggle('/p/a.php', line: 9));
+        $this->assertTrue($marks->toggle('/p/a.php', line: 3));
+        $this->assertTrue($marks->toggle('/p/b.php', line: 3));
         $this->assertSame([3, 9], $marks->linesFor('/p/a.php'), 'ascending, whatever order they were set in');
         $this->assertSame([3], $marks->linesFor('/p/b.php'), 'files are isolated');
 
-        $this->assertFalse($marks->toggle('/p/a.php', 9), 'a second toggle clears');
+        $this->assertFalse($marks->toggle('/p/a.php', line: 9), 'a second toggle clears');
         $this->assertSame([3], $marks->linesFor('/p/a.php'));
         $this->assertSame([], $marks->linesFor('/p/never-marked.php'));
     }
@@ -27,10 +27,10 @@ final class BookmarksTest extends TestCase
     public function testClearingAFilesLastMarkDropsTheFileEntirely(): void
     {
         $marks = new Bookmarks();
-        $marks->toggle('/p/a.php', 0);
-        $marks->toggle('/p/b.php', 1);
+        $marks->toggle('/p/a.php', line: 0);
+        $marks->toggle('/p/b.php', line: 1);
 
-        $marks->toggle('/p/a.php', 0);
+        $marks->toggle('/p/a.php', line: 0);
 
         $this->assertSame(['/p/b.php' => [1]], $marks->all(), 'an emptied file leaves no husk behind to persist or list');
     }
@@ -40,16 +40,16 @@ final class BookmarksTest extends TestCase
         // The set is keyed by line, so a falsy 0 must not read as absent.
         $marks = new Bookmarks();
 
-        $this->assertTrue($marks->toggle('/p/a.php', 0));
+        $this->assertTrue($marks->toggle('/p/a.php', line: 0));
         $this->assertSame([0], $marks->linesFor('/p/a.php'));
-        $this->assertFalse($marks->toggle('/p/a.php', 0), 'and toggles off again rather than re-setting');
+        $this->assertFalse($marks->toggle('/p/a.php', line: 0), 'and toggles off again rather than re-setting');
         $this->assertSame([], $marks->all());
     }
 
     public function testReplaceAllDiscardsWhatWasThere(): void
     {
         $marks = new Bookmarks();
-        $marks->toggle('/p/stale.php', 4);
+        $marks->toggle('/p/stale.php', line: 4);
 
         $marks->replaceAll(['/p/a.php' => [7, 2]]);
 
@@ -60,11 +60,11 @@ final class BookmarksTest extends TestCase
     public function testRenameCarriesAFilesMarksToItsNewPath(): void
     {
         $marks = new Bookmarks();
-        $marks->toggle('/p/Old.php', 3);
-        $marks->toggle('/p/Old.php', 8);
-        $marks->toggle('/p/Other.php', 1);
+        $marks->toggle('/p/Old.php', line: 3);
+        $marks->toggle('/p/Old.php', line: 8);
+        $marks->toggle('/p/Other.php', line: 1);
 
-        $marks->rename('/p/Old.php', '/p/New.php');
+        $marks->rename('/p/Old.php', to: '/p/New.php');
 
         $this->assertSame([3, 8], $marks->linesFor('/p/New.php'), 'the marks came with it');
         $this->assertSame([], $marks->linesFor('/p/Old.php'), 'and nothing is left on the dead path');
@@ -76,9 +76,9 @@ final class BookmarksTest extends TestCase
         // Every rename in the project dispatches the fact; an unmarked file
         // must not leave a husk behind to persist or list.
         $marks = new Bookmarks();
-        $marks->toggle('/p/Other.php', 1);
+        $marks->toggle('/p/Other.php', line: 1);
 
-        $marks->rename('/p/Unmarked.php', '/p/Renamed.php');
+        $marks->rename('/p/Unmarked.php', to: '/p/Renamed.php');
 
         $this->assertSame(['/p/Other.php' => [1]], $marks->all());
     }
@@ -86,8 +86,8 @@ final class BookmarksTest extends TestCase
     public function testForgetDropsADeletedFilesMarks(): void
     {
         $marks = new Bookmarks();
-        $marks->toggle('/p/gone.php', 2);
-        $marks->toggle('/p/kept.php', 4);
+        $marks->toggle('/p/gone.php', line: 2);
+        $marks->toggle('/p/kept.php', line: 4);
 
         $marks->forget('/p/gone.php');
 
@@ -103,10 +103,10 @@ final class BookmarksTest extends TestCase
         // it does not match, and a fixture whose matches all come first cannot
         // tell that from stopping at the first one.
         $marks = new Bookmarks();
-        $marks->toggle('/p/keep/z.php', 1);
-        $marks->toggle('/p/old/a.php', 1);
-        $marks->toggle('/p/old/deep/b.php', 1);
-        $marks->toggle('/p/olden/c.php', 1);
+        $marks->toggle('/p/keep/z.php', line: 1);
+        $marks->toggle('/p/old/a.php', line: 1);
+        $marks->toggle('/p/old/deep/b.php', line: 1);
+        $marks->toggle('/p/olden/c.php', line: 1);
 
         $marks->forget('/p/old');
 
@@ -120,7 +120,7 @@ final class BookmarksTest extends TestCase
     public function testForgettingAPathNothingIsMarkedUnderChangesNothing(): void
     {
         $marks = new Bookmarks();
-        $marks->toggle('/p/a.php', 1);
+        $marks->toggle('/p/a.php', line: 1);
 
         $marks->forget('/p/b.php');
 
@@ -133,12 +133,12 @@ final class BookmarksTest extends TestCase
         // files in it — so an exact-match rename left every one of them on a
         // path that no longer exists.
         $marks = new Bookmarks();
-        $marks->toggle('/p/keep/z.php', 0);
-        $marks->toggle('/p/old/a.php', 1);
-        $marks->toggle('/p/old/deep/b.php', 2);
-        $marks->toggle('/p/olden/c.php', 3);
+        $marks->toggle('/p/keep/z.php', line: 0);
+        $marks->toggle('/p/old/a.php', line: 1);
+        $marks->toggle('/p/old/deep/b.php', line: 2);
+        $marks->toggle('/p/olden/c.php', line: 3);
 
-        $marks->rename('/p/old', '/p/new');
+        $marks->rename('/p/old', to: '/p/new');
 
         $this->assertSame(
             [

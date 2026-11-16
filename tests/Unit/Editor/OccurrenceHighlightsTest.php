@@ -20,17 +20,17 @@ final class OccurrenceHighlightsTest extends TestCase
     {
         $highlights = new OccurrenceHighlights();
 
-        $this->assertFalse($highlights->isFresh('/p/a.php', 1, 1, 2));
-        $this->assertSame(self::SCAN, $highlights->spansFor('/p/a.php', 1, 1, 2, self::SCAN));
+        $this->assertFalse($highlights->isFresh('/p/a.php', version: 1, line: 1, utf16Col: 2));
+        $this->assertSame(self::SCAN, $highlights->spansFor('/p/a.php', version: 1, line: 1, utf16Col: 2, fallback: self::SCAN));
     }
 
     public function testAMatchingStampWinsOverTheScan(): void
     {
         $highlights = new OccurrenceHighlights();
-        $highlights->publish('/p/a.php', 1, 1, 2, self::SERVER);
+        $highlights->publish('/p/a.php', version: 1, line: 1, utf16Col: 2, spans: self::SERVER);
 
-        $this->assertTrue($highlights->isFresh('/p/a.php', 1, 1, 2));
-        $this->assertSame(self::SERVER, $highlights->spansFor('/p/a.php', 1, 1, 2, self::SCAN));
+        $this->assertTrue($highlights->isFresh('/p/a.php', version: 1, line: 1, utf16Col: 2));
+        $this->assertSame(self::SERVER, $highlights->spansFor('/p/a.php', version: 1, line: 1, utf16Col: 2, fallback: self::SCAN));
     }
 
     /**
@@ -51,7 +51,7 @@ final class OccurrenceHighlightsTest extends TestCase
     public function testAStampForAnythingElseLosesToTheScan(string $path, int $version, int $line, int $col): void
     {
         $highlights = new OccurrenceHighlights();
-        $highlights->publish('/p/a.php', 1, 1, 2, self::SERVER);
+        $highlights->publish('/p/a.php', version: 1, line: 1, utf16Col: 2, spans: self::SERVER);
 
         $this->assertFalse($highlights->isFresh($path, $version, $line, $col));
         $this->assertSame(self::SCAN, $highlights->spansFor($path, $version, $line, $col, self::SCAN));
@@ -61,9 +61,9 @@ final class OccurrenceHighlightsTest extends TestCase
     public function testANullPathAlwaysFallsBackToTheScan(): void
     {
         $highlights = new OccurrenceHighlights();
-        $highlights->publish('/p/a.php', 1, 1, 2, self::SERVER);
+        $highlights->publish('/p/a.php', version: 1, line: 1, utf16Col: 2, spans: self::SERVER);
 
-        $this->assertSame(self::SCAN, $highlights->spansFor(null, 1, 1, 2, self::SCAN));
+        $this->assertSame(self::SCAN, $highlights->spansFor(null, version: 1, line: 1, utf16Col: 2, fallback: self::SCAN));
     }
 
     /**
@@ -74,21 +74,21 @@ final class OccurrenceHighlightsTest extends TestCase
     public function testAnEmptyAnswerSuppressesTheScanRatherThanFallingBackToIt(): void
     {
         $highlights = new OccurrenceHighlights();
-        $highlights->publish('/p/a.php', 1, 1, 2, []);
+        $highlights->publish('/p/a.php', version: 1, line: 1, utf16Col: 2, spans: []);
 
-        $this->assertSame([], $highlights->spansFor('/p/a.php', 1, 1, 2, self::SCAN));
+        $this->assertSame([], $highlights->spansFor('/p/a.php', version: 1, line: 1, utf16Col: 2, fallback: self::SCAN));
     }
 
     public function testTheCaretIsReportedMovedOncePerPosition(): void
     {
         $highlights = new OccurrenceHighlights();
 
-        $this->assertTrue($highlights->caretMovedTo(1, 0, 0), 'the first position is a move');
-        $this->assertFalse($highlights->caretMovedTo(1, 0, 0), 'a repaint at the same spot is not');
-        $this->assertTrue($highlights->caretMovedTo(1, 0, 1));
-        $this->assertTrue($highlights->caretMovedTo(1, 5, 1));
-        $this->assertTrue($highlights->caretMovedTo(2, 5, 1), 'an edit at the same spot moves it too — the answer is version-stamped');
-        $this->assertFalse($highlights->caretMovedTo(2, 5, 1));
+        $this->assertTrue($highlights->caretMovedTo(1, line: 0, col: 0), 'the first position is a move');
+        $this->assertFalse($highlights->caretMovedTo(1, line: 0, col: 0), 'a repaint at the same spot is not');
+        $this->assertTrue($highlights->caretMovedTo(1, line: 0, col: 1));
+        $this->assertTrue($highlights->caretMovedTo(1, line: 5, col: 1));
+        $this->assertTrue($highlights->caretMovedTo(2, line: 5, col: 1), 'an edit at the same spot moves it too — the answer is version-stamped');
+        $this->assertFalse($highlights->caretMovedTo(2, line: 5, col: 1));
     }
 
     /**
@@ -101,23 +101,23 @@ final class OccurrenceHighlightsTest extends TestCase
     {
         $highlights = new OccurrenceHighlights();
 
-        $this->assertTrue($highlights->caretMovedTo(1, 23, 4), 'the first position is always a move');
-        $this->assertTrue($highlights->caretMovedTo(12, 3, 4), 'a different (version, line) with the same digits is a different caret');
-        $this->assertFalse($highlights->caretMovedTo(12, 3, 4), 'and only an identical one is not');
+        $this->assertTrue($highlights->caretMovedTo(1, line: 23, col: 4), 'the first position is always a move');
+        $this->assertTrue($highlights->caretMovedTo(12, line: 3, col: 4), 'a different (version, line) with the same digits is a different caret');
+        $this->assertFalse($highlights->caretMovedTo(12, line: 3, col: 4), 'and only an identical one is not');
 
         // The same ambiguity one field along: (line 1, col 23) vs (line 12, col 3).
-        $this->assertTrue($highlights->caretMovedTo(9, 1, 23));
-        $this->assertTrue($highlights->caretMovedTo(9, 12, 3));
+        $this->assertTrue($highlights->caretMovedTo(9, line: 1, col: 23));
+        $this->assertTrue($highlights->caretMovedTo(9, line: 12, col: 3));
     }
 
     /** The freshness stamp joins the same way, and must separate the same way. */
     public function testTheFreshnessStampCannotCollideAcrossFieldBoundaries(): void
     {
         $highlights = new OccurrenceHighlights();
-        $highlights->publish('/p/a.php', 1, 23, 4, []);
+        $highlights->publish('/p/a.php', version: 1, line: 23, utf16Col: 4, spans: []);
 
-        $this->assertTrue($highlights->isFresh('/p/a.php', 1, 23, 4));
-        $this->assertFalse($highlights->isFresh('/p/a.php', 12, 3, 4), 'same digits, different position');
-        $this->assertFalse($highlights->isFresh('/p/a.php', 1, 2, 34), 'and one field along');
+        $this->assertTrue($highlights->isFresh('/p/a.php', version: 1, line: 23, utf16Col: 4));
+        $this->assertFalse($highlights->isFresh('/p/a.php', version: 12, line: 3, utf16Col: 4), 'same digits, different position');
+        $this->assertFalse($highlights->isFresh('/p/a.php', version: 1, line: 2, utf16Col: 34), 'and one field along');
     }
 }

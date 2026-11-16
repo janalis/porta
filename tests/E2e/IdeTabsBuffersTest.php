@@ -63,10 +63,10 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->requestRender(force: true);
                     $tui->processRender();
 
-                    $tree = Widgets::byId($tui, 'tree', FileTreeWidget::class);
+                    $tree = Widgets::byId($tui, id: 'tree', class: FileTreeWidget::class);
                     $this->assertNotSame('Target.php', $tree->selectedNode()?->name, 'opening a file does not reveal it in the tree');
 
-                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
+                    $tabs = Widgets::byId($tui, id: 'tabs', class: TabBarWidget::class);
                     $rect = Widgets::rectIn($ide, $tabs);
                     $anchor = $tabs->tabAnchor(1); // the Target.php tab
                     $this->assertNotNull($anchor);
@@ -149,7 +149,7 @@ final class IdeTabsBuffersTest extends TestCase
             $project->path('src/Child.php'),
             [
                 300 => static function (Tui $tui): void {
-                    Widgets::editor($tui)->getDocument()->setCursor(4, 8);
+                    Widgets::editor($tui)->getDocument()->setCursor(4, col: 8);
                     $tui->handleInput("\x15"); // ctrl+u
                 },
                 500 => function (Tui $tui, $terminal): void {
@@ -228,7 +228,7 @@ final class IdeTabsBuffersTest extends TestCase
                     // whether the switcher offers it or nothing at all —
                     // measured, by replacing every label and watching this
                     // stay green.
-                    $card = $this->card($this->screenGrid($tui, $terminal), 'Recent Files');
+                    $card = $this->card($this->screenGrid($tui, $terminal), title: 'Recent Files');
                     $this->assertStringContainsString('b.php', $card, 'the closed file is still on offer');
                     // Pre-selected, exactly as the previously-open file would be.
                     $tui->handleInput("\r");
@@ -439,8 +439,8 @@ final class IdeTabsBuffersTest extends TestCase
                     $rect = $tabsRect($tui, $ide);
                     // Right-click row 0 (C) → the tab context menu.
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + 3, $rect->row + 1));
-                    $this->awaitPainted($tui, $terminal, 'Close Others');
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-clicking a list row opened the tab menu');
+                    $this->awaitPainted($tui, $terminal, needle: 'Close Others');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'right-clicking a list row opened the tab menu');
                     $tui->handleInput("\x1b"); // Esc closes it
                 },
                 900 => function ($tui, $terminal, Ide $ide) use ($project): void {
@@ -477,13 +477,13 @@ final class IdeTabsBuffersTest extends TestCase
                     $tui->tick();
                     $tui->handleInput("\x1b[21;5~"); // Ctrl+F10 on the help viewer: the tab menu
                     $tui->tick();
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'the keyboard tab menu opened');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'the keyboard tab menu opened');
                     // A top strip anchors one row below the tab; the bottom strip anchors on
                     // its own row so the overlay's overflow flip opens the panel above it.
                     $renderer = Services::resolve($ide, Renderer::class);
                     $tabsRow = $renderer->getWidgetRect($tui->getById('tabs'))->row;
                     $overlay = Services::resolve($ide, MenuOverlayController::class);
-                    $this->assertSame($tabsRow, Probe::get($overlay, 'contextAnchorRow'));
+                    $this->assertSame($tabsRow, Probe::get($overlay, property: 'contextAnchorRow'));
                 },
             ],
         );
@@ -509,12 +509,12 @@ final class IdeTabsBuffersTest extends TestCase
                 300 => static function (Tui $tui): void {
                     // Make C (the active buffer) dirty, then Close Others from A's tab.
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
                     $editor->handleInput('x');
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click tab A
                 },
                 380 => function (Tui $tui): void {
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen());
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen());
                     $tui->handleInput("\x1b[B"); // down → Close Others
                     $tui->handleInput("\r");
                 },
@@ -523,7 +523,7 @@ final class IdeTabsBuffersTest extends TestCase
                     $this->assertStringEndsWith('A.php', (string) Widgets::editor($tui)->getFilePath());
                     // Now dirty A too, then Close All keeps both unsaved buffers.
                     $editor = Widgets::editor($tui);
-                    $editor->getDocument()->setCursor(0, 0);
+                    $editor->getDocument()->setCursor(0, col: 0);
                     $editor->handleInput('y');
                     $tui->handleInput("\x1b[<2;34;2M"); // right-click a tab
                 },
@@ -731,8 +731,8 @@ final class IdeTabsBuffersTest extends TestCase
     /** The tab names in open order, read from the tab bar's provider. */
     private function tabNames(Tui $tui): array
     {
-        $tabBar = Widgets::byId($tui, 'tabs', TabBarWidget::class);
-        $provider = Probe::get($tabBar, 'provider');
+        $tabBar = Widgets::byId($tui, id: 'tabs', class: TabBarWidget::class);
+        $provider = Probe::get($tabBar, property: 'provider');
 
         return \array_column($provider(), 'name');
     }
@@ -755,12 +755,12 @@ final class IdeTabsBuffersTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
-                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
+                    $tabs = Widgets::byId($tui, id: 'tabs', class: TabBarWidget::class);
                     $rect = Widgets::rectIn($ide, $tabs);
                     $this->assertSame(2, $rect->rows, 'forty rows: pills, the labels over their baseline');
-                    $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
+                    $zone = Probe::get($tabs, property: 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(0, $zone['labelRow'], 'its label row is the first');
-                    $shown = Probe::get($tabs, 'lastLayout')[1]; // b.php
+                    $shown = Probe::get($tabs, property: 'lastLayout')[1]; // b.php
                     $this->assertSame(
                         \str_repeat('▄', $shown['width'] - 2),
                         \mb_substr($this->screenGrid($tui, $terminal)[$rect->row - 1], $rect->col + $shown['start'] + 1, $shown['width'] - 2),
@@ -805,9 +805,9 @@ final class IdeTabsBuffersTest extends TestCase
                 200 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     Services::resolve($ide, BufferService::class)->openFile($project->path('b.php'), OpenFocus::Keep);
                     $this->frame($tui);
-                    $tabs = Widgets::byId($tui, 'tabs', TabBarWidget::class);
+                    $tabs = Widgets::byId($tui, id: 'tabs', class: TabBarWidget::class);
                     $rect = Widgets::rectIn($ide, $tabs);
-                    $zone = Probe::get($tabs, 'lastLayout')[0]; // a.php, the tab not shown
+                    $zone = Probe::get($tabs, property: 'lastLayout')[0]; // a.php, the tab not shown
                     $this->assertSame(
                         ['row' => 0, 'rows' => 1, 'labelRow' => 0],
                         ['row' => $zone['row'], 'rows' => $zone['rows'], 'labelRow' => $zone['labelRow']],

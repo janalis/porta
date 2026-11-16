@@ -122,8 +122,8 @@ final class CompletionController extends AbstractLspController implements Editor
         $asked = $this->lsp->requestAll(
             'textDocument/completion',
             $this->positionParams($path, $line, $utf16Col),
-            'completionProvider',
-            function (mixed $result, ?array $error, string $owner) use ($generation, $path): void {
+            capability: 'completionProvider',
+            onResult: function (mixed $result, ?array $error, string $owner) use ($generation, $path): void {
                 // Two different reasons to drop an answer, kept apart: one is
                 // about WHEN it arrived, the other about what it says.
                 if ($generation !== $this->completionGeneration) {
@@ -186,7 +186,7 @@ final class CompletionController extends AbstractLspController implements Editor
             return;
         }
         /** @var array<string, mixed>|bool|null $capability LSP: boolean or an InlayHintOptions object */
-        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), 'inlayHintProvider');
+        $capability = $this->lsp->serverCapability($this->editor->getFilePath(), name: 'inlayHintProvider');
         if (null === $capability || false === $capability) {
             return;
         }
@@ -272,7 +272,7 @@ final class CompletionController extends AbstractLspController implements Editor
         [$owner, $item] = ServerOwner::take($item);
         // Asked as the item is accepted: the version now is the accept's.
         $accepted = $document->version;
-        $this->lsp->requestTo($owner, 'completionItem/resolve', $item, function (mixed $result) use ($path, $document, $accepted): void {
+        $this->lsp->requestTo($owner, method: 'completionItem/resolve', params: $item, onResult: function (mixed $result) use ($path, $document, $accepted): void {
             /** @var list<array{range: array{start: array{line: int, character: int}, end: array{line: int, character: int}}, newText: string}> $edits */
             $edits = \is_array($result) ? $result['additionalTextEdits'] ?? [] : [];
             if ([] === $edits) {
@@ -319,11 +319,11 @@ final class CompletionController extends AbstractLspController implements Editor
         // point of the gate is to stop asking a server that will only answer
         // an error.
         /** @var mixed $provider */
-        $provider = $this->lsp->capabilityOf($owner, 'completionProvider');
+        $provider = $this->lsp->capabilityOf($owner, name: 'completionProvider');
         if (!\is_array($provider) || true !== ($provider['resolveProvider'] ?? false)) {
             return;
         }
-        $this->lsp->requestTo($owner, 'completionItem/resolve', $item, function (mixed $result) use ($onDetail): void {
+        $this->lsp->requestTo($owner, method: 'completionItem/resolve', params: $item, onResult: function (mixed $result) use ($onDetail): void {
             /** @var mixed $detail */
             $detail = \is_array($result) ? $result['detail'] ?? null : null;
             $documentation = \is_array($result) ? LspMapper::documentationText($result['documentation'] ?? null) : null;

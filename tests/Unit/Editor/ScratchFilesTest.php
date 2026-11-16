@@ -76,7 +76,7 @@ final class ScratchFilesTest extends TestCase
                     $this->opened[] = [$path, $focus];
                 }
             },
-            new Notifier($this->statusBar, TestTui::create(80, 24)),
+            new Notifier($this->statusBar, TestTui::create(80, rows: 24)),
             new Translator(),
         );
     }
@@ -170,7 +170,7 @@ final class ScratchFilesTest extends TestCase
         \putenv('PORTA_HOME='.$home->dir);
         // A FILE where the scratches directory needs to be: dumpFile cannot
         // mkdir through it, and the failure must not take the IDE down.
-        new Filesystem()->dumpFile($home->path('.porta/scratches'), '');
+        new Filesystem()->dumpFile($home->path('.porta/scratches'), content: '');
         $scratches = $this->scratches();
         $scratches->open();
 

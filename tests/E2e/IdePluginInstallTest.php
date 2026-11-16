@@ -94,7 +94,7 @@ final class IdePluginInstallTest extends TestCase
         if (!Services::resolve($ide, ViewRegistry::class)->isOpen('settings')) {
             Services::resolve($ide, CommandRegistry::class)->run('ide_settings');
         }
-        $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
+        $this->selectSettingsSection($this->settingsNav($tui), id: 'plugins');
         $tui->setFocus($tui->getById('settings-store'));
         // Updates, then the tab after it: Installed, whichever tab the store was left on.
         $tui->handleInput('u');
@@ -130,7 +130,7 @@ final class IdePluginInstallTest extends TestCase
                     // output — so without a real paint they asserted against
                     // whatever the boot happened to leave. It held until the
                     // pcov run, which is 2-3x slower, and failed there.
-                    $this->awaitPainted($tui, $terminal, 'Save changes to');
+                    $this->awaitPainted($tui, $terminal, needle: 'Save changes to');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertMatchesRegularExpression('/Save changes to\s+[│┃] \.porta\.json\s+▾ [│┃]/u', $screen);
                     $this->assertStringContainsString('Install from URL or path │ ⏎ to type a git URL', $screen, 'the empty install field shows its hint');
@@ -142,7 +142,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
                     // The toast is the MODEL saying so; the re-listed section is
                     // a later paint, and a bare tick() is not a frame.
-                    $this->awaitPainted($tui, $terminal, 'on · project');
+                    $this->awaitPainted($tui, $terminal, needle: 'on · project');
 
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
@@ -154,7 +154,7 @@ final class IdePluginInstallTest extends TestCase
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $this->assertContains('Hi from installee', \array_column($commands->paletteCommands(), 'label'));
                     $commands->run('installee:hi');
-                    $this->awaitPainted($tui, $terminal, 'installee says hi');
+                    $this->awaitPainted($tui, $terminal, needle: 'installee says hi');
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     // The DEFAULT KEY dispatches live too — no restart: the
@@ -163,7 +163,7 @@ final class IdePluginInstallTest extends TestCase
                     // focus dance is needed.)
                     $terminal->consumeOutput();
                     $tui->handleInput("\x1b\x17"); // ctrl+alt+w, the plugin's default key
-                    $this->awaitPainted($tui, $terminal, 'installee says hi');
+                    $this->awaitPainted($tui, $terminal, needle: 'installee says hi');
                     $this->assertStringContainsString('installee says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'the default key dispatched without a restart');
 
                     // A plugin's key reaches past the Settings window as its menu
@@ -187,14 +187,14 @@ final class IdePluginInstallTest extends TestCase
                     for ($i = 0; $i < 10; ++$i) {
                         $tui->handleInput("\x1b[A"); // clamp to the top (General)
                     }
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugins');
-                    $this->selectSettingsSection($this->settingsNav($tui), 'plugin:installee'); // the installee sub-item
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'plugins');
+                    $this->selectSettingsSection($this->settingsNav($tui), id: 'plugin:installee'); // the installee sub-item
                     $tui->handleInput("\t"); // nav → form
                     for ($i = 0; $i < 10; ++$i) {
                         $tui->handleInput("\x1b[A"); // clamp to the Enabled row: the page ends in Remove
                     }
                     $tui->handleInput("\r"); // toggle off
-                    $this->awaitPainted($tui, $terminal, 'Plugin "installee" disabled');
+                    $this->awaitPainted($tui, $terminal, needle: 'Plugin "installee" disabled');
                     $this->assertStringContainsString('Plugin "installee" disabled', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                     $config = \json_decode((string) \file_get_contents($project->path('.porta.json')), associative: true, flags: \JSON_THROW_ON_ERROR);
                     $this->assertSame(['installee'], $config['disabledPlugins'] ?? null, 'a project plugin disables via disabledPlugins');
@@ -263,7 +263,7 @@ final class IdePluginInstallTest extends TestCase
                     $tui->tick();
                     $this->assertContains('Hi from demo', \array_column($commands->paletteCommands(), 'label'), 'reinstalled live');
                     $commands->run('demo:hi');
-                    $this->awaitPainted($tui, $terminal, 'demo says hi');
+                    $this->awaitPainted($tui, $terminal, needle: 'demo says hi');
                     $this->assertStringContainsString('demo says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'and its boot-time key/handler works again');
                 },
             ],
@@ -300,7 +300,7 @@ final class IdePluginInstallTest extends TestCase
                 },
                 300 => function (Tui $tui, VirtualTerminal $terminal, Ide $ide) use ($project): void {
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
-                    $this->awaitPainted($tui, $terminal, 'on · project');
+                    $this->awaitPainted($tui, $terminal, needle: 'on · project');
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('Plugin installed', Toasts::last($ide));
                     $this->assertFileExists($project->path('.porta/plugins/cloned/porta.php'));
@@ -308,7 +308,7 @@ final class IdePluginInstallTest extends TestCase
 
                     $commands = Services::resolve($ide, CommandRegistry::class);
                     $commands->run('cloned:hi');
-                    $this->awaitPainted($tui, $terminal, 'cloned says hi');
+                    $this->awaitPainted($tui, $terminal, needle: 'cloned says hi');
                     $this->assertStringContainsString('cloned says hi', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
                 },
             ],
@@ -337,7 +337,7 @@ final class IdePluginInstallTest extends TestCase
                     // A substring that does not spell the gap: the value column is aligned
                     // per page, and a stale literal here is a ten-second timeout
                     // rather than a failure.
-                    $this->awaitPainted($tui, $terminal, '~/.porta/config.json');
+                    $this->awaitPainted($tui, $terminal, needle: '~/.porta/config.json');
                     $this->assertMatchesRegularExpression('/Save changes to\s+[│┃] ~\/\.porta\/config\.json\s+▾ [│┃]/u', AnsiUtils::stripAnsiCodes($terminal->getOutput()));
 
                     $tui->handleInput("\x1b[C"); // the install field
@@ -345,7 +345,7 @@ final class IdePluginInstallTest extends TestCase
                     $this->type($tui, $project->path('plugin-src/worldwide'));
                     $tui->handleInput("\r");
                     $this->await(static fn (): bool => \str_contains(Toasts::last($ide), 'Plugin installed'));
-                    $this->awaitPainted($tui, $terminal, 'on · global');
+                    $this->awaitPainted($tui, $terminal, needle: 'on · global');
 
                     $this->assertFileExists($home->dir.'/.porta/plugins/worldwide/porta.php');
                     $this->assertDirectoryDoesNotExist($project->path('.porta/plugins/worldwide'));
@@ -382,7 +382,7 @@ final class IdePluginInstallTest extends TestCase
             [
                 100 => function ($tui, $terminal, Ide $ide) use ($pidFile): void {
                     Services::resolve($ide, CommandRegistry::class)->run('plugins_install_tools');
-                    $this->assertNotSame([], Probe::get(Services::resolve($ide, RunningProcesses::class), 'running'), 'the manager runs, kept where quitting can reach it');
+                    $this->assertNotSame([], Probe::get(Services::resolve($ide, RunningProcesses::class), property: 'running'), 'the manager runs, kept where quitting can reach it');
                     // The manager is its own process, so waiting here for its
                     // first line does not hold up the loop it runs beside.
                     $this->await(static fn (): bool => \is_file($pidFile) && '' !== \file_get_contents($pidFile), timeout: 3.0, what: 'the manager to say who it is');

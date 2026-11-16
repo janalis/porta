@@ -103,7 +103,7 @@ final class SettingsStoreControllerTest extends TestCase
     {
         $this->store->publish('acme/porta-rector', store: ['icon' => 'https://img.test/icon.png']);
         $this->store->publish('acme/porta-other');
-        $this->store->http->bodies['https://img.test/icon.png'] = PngFixture::bytes(40, 40);
+        $this->store->http->bodies['https://img.test/icon.png'] = PngFixture::bytes(40, height: 40);
         $this->store->fill();
         $found = [];
         $this->controller()->art(static function (string $package, Art $art) use (&$found): void {
@@ -118,13 +118,13 @@ final class SettingsStoreControllerTest extends TestCase
         foreach (['acme/porta-new', 'acme/porta-current', 'janalis/porta-git', 'janalis/porta-todo', 'acme/porta-shadow'] as $package) {
             $this->store->publish($package);
         }
-        $this->store->publish('acme/porta-old', 'v1.1.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
         $this->store->publish('acme/porta-future', api: 99);
         $this->store->publish('other/porta-current');
         $this->store->publish('acme/porta-git');
         $this->store->fill();
-        $this->store->installed('acme/porta-current', 'v1.0.0');
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->installed('acme/porta-current', version: 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $this->store->bundled('git');
         $this->store->bundled('todo');
         $this->store->lifecycle->disabledNames = ['todo'];
@@ -159,7 +159,7 @@ final class SettingsStoreControllerTest extends TestCase
         $this->store->publish('acme/porta-new', store: ['title' => 'New']);
         $this->store->fill();
         $controller = $this->controller();
-        $entry = $this->entry($controller, 'acme/porta-new');
+        $entry = $this->entry($controller, package: 'acme/porta-new');
 
         $controller->press($entry);
         $this->assertStringContainsString('"acme/porta-new" is not verified by Porta', $this->store->toast());
@@ -181,8 +181,8 @@ final class SettingsStoreControllerTest extends TestCase
         $this->store->fill();
         $controller = $this->controller();
 
-        $controller->press($this->entry($controller, 'acme/porta-a'));
-        $controller->press($this->entry($controller, 'acme/porta-b')); // refused: one install at a time
+        $controller->press($this->entry($controller, package: 'acme/porta-a'));
+        $controller->press($this->entry($controller, package: 'acme/porta-b')); // refused: one install at a time
         $this->assertSame('Another install is already running', $this->store->toast());
         $this->assertSame(StoreAction::Working, self::buttons($controller)['acme/porta-a'], 'the refusal is B\'s, not A\'s');
         $this->assertSame(StoreAction::Get, self::buttons($controller)['acme/porta-b']);
@@ -197,7 +197,7 @@ final class SettingsStoreControllerTest extends TestCase
         $failing->fill();
         $controller = $this->controller($failing);
 
-        $controller->press($this->entry($controller, 'acme/porta-new'));
+        $controller->press($this->entry($controller, package: 'acme/porta-new'));
         $this->await(static fn (): bool => \str_contains($failing->toast(), 'composer require failed'), what: 'the failed install');
         $this->assertSame([], $failing->lifecycle->activated);
     }
@@ -207,32 +207,32 @@ final class SettingsStoreControllerTest extends TestCase
         $this->store->publish('acme/porta-current');
         $this->store->publish('janalis/porta-git');
         $this->store->publish('janalis/porta-todo');
-        $this->store->publish('acme/porta-old', 'v1.1.0');
+        $this->store->publish('acme/porta-old', version: 'v1.1.0');
         $this->store->publish('acme/porta-future', api: 99);
         $this->store->fill();
-        $this->store->installed('acme/porta-current', 'v1.0.0');
-        $this->store->installed('acme/porta-old', 'v1.0.0');
+        $this->store->installed('acme/porta-current', version: 'v1.0.0');
+        $this->store->installed('acme/porta-old', version: 'v1.0.0');
         $this->store->bundled('git');
         $this->store->bundled('todo');
         $this->store->lifecycle->disabledNames = ['todo'];
         $controller = $this->controller();
 
-        $controller->press($this->entry($controller, 'acme/porta-current'));
-        $controller->press($this->entry($controller, 'janalis/porta-git'));
+        $controller->press($this->entry($controller, package: 'acme/porta-current'));
+        $controller->press($this->entry($controller, package: 'janalis/porta-git'));
         $this->assertSame(['plugin:current#pluginEnabled', 'plugin:git#pluginEnabled'], $this->requested);
 
-        $controller->press($this->entry($controller, 'janalis/porta-todo'));
+        $controller->press($this->entry($controller, package: 'janalis/porta-todo'));
         $this->assertSame([['todo', true]], $this->store->lifecycle->toggled);
 
-        $controller->press($this->entry($controller, 'acme/porta-future'));
+        $controller->press($this->entry($controller, package: 'acme/porta-future'));
         $controller->press(new StoreEntry('nobody/porta-x', 'x', 'X', '', '', StoreCategory::Other, '1'));
         $this->assertSame('', $this->store->toast(), 'an inert button and an unlisted plugin do nothing');
 
-        $controller->press($this->entry($controller, 'acme/porta-old'));
+        $controller->press($this->entry($controller, package: 'acme/porta-old'));
         $this->assertSame(StoreAction::Working, self::buttons($controller)['acme/porta-old']);
         $this->await(fn (): bool => \str_starts_with($this->store->toast(), 'Updated'), what: 'the update');
 
-        $this->store->publish('acme/porta-current', 'v2.0.0');
+        $this->store->publish('acme/porta-current', version: 'v2.0.0');
         $this->store->fill();
         $controller->updateAll();
         $this->await(fn (): bool => \str_contains($this->store->toast(), 'current v2.0.0'), what: 'update all');
@@ -264,9 +264,9 @@ final class SettingsStoreControllerTest extends TestCase
         $collect = static function (string $url, ?string $body) use (&$answers): void {
             $answers[$url] = $body;
         };
-        $controller->asset('https://t.test/a.md', false, $collect);
-        $controller->asset('https://t.test/a.png', true, $collect);
-        $controller->asset('https://t.test/a.md', true, $collect);
+        $controller->asset('https://t.test/a.md', image: false, onReady: $collect);
+        $controller->asset('https://t.test/a.png', image: true, onReady: $collect);
+        $controller->asset('https://t.test/a.md', image: true, onReady: $collect);
 
         $this->assertSame(['https://t.test/a.md' => 'text', 'https://t.test/a.png' => "\x89PNG\r\n\x1a\n"], $answers);
     }
@@ -275,7 +275,7 @@ final class SettingsStoreControllerTest extends TestCase
     {
         $this->store->publish('acme/porta-one');
         $this->store->fill();
-        $this->store->installed('acme/porta-one', 'v1.0.0', InstallScope::Project);
+        $this->store->installed('acme/porta-one', version: 'v1.0.0', scope: InstallScope::Project);
         $loader = new PluginLoader($this->store->project->dir, $this->store->home->dir, new PluginSettings($this->store->project->dir, []), trusted: false);
 
         $this->assertSame(StoreAction::Get, self::buttons($this->controller(loader: $loader))['acme/porta-one']);

@@ -103,7 +103,7 @@ final class PaneLayout
         }
         $this->translator->isRtl()
             ? $this->bidi->setPaneReorder($this->segmenter, $this->reorder)
-            : $this->bidi->setPaneReorder(null, null);
+            : $this->bidi->setPaneReorder(null, reorder: null);
         // A side tab strip is placed by child order, which is physical: tell the
         // workspace which way it reads so a right-hand strip moves to the far
         // left rather than sitting between the editor and the file tree.

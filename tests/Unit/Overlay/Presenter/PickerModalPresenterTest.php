@@ -98,7 +98,7 @@ final class PickerModalPresenterTest extends TestCase
         $presenter = $this->presenter();
         $this->frame();
         $this->editor->openSearch('Search', static fn (): null => null, static fn (): null => null, static fn (): null => null);
-        $this->editor->openPrompt('Go to line', '', static fn (): null => null);
+        $this->editor->openPrompt('Go to line', initial: '', onSubmit: static fn (): null => null);
 
         $presenter->sync();
 

@@ -23,7 +23,7 @@ trait StatusReads
     private function flashText(StatusBarWidget $status): string
     {
         /** @var array{text: string}|null $flash */
-        $flash = Probe::get($status, 'flash');
+        $flash = Probe::get($status, property: 'flash');
 
         return \is_array($flash) ? $flash['text'] : '';
     }

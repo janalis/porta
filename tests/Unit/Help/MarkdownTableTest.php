@@ -70,7 +70,7 @@ final class MarkdownTableTest extends TestCase
 
     public function testACellTooWideWrapsDownItsColumnAndTheKeysKeepTheirWidth(): void
     {
-        $doc = $this->render("| Key | Guide |\n|---|---|\n| `F1` | Opens the documentation browser at the page for whatever has focus |\n", 40);
+        $doc = $this->render("| Key | Guide |\n|---|---|\n| `F1` | Opens the documentation browser at the page for whatever has focus |\n", width: 40);
         $bar = Glyphs::MD_TABLE_BAR;
         $this->assertSame(
             [
@@ -90,7 +90,7 @@ final class MarkdownTableTest extends TestCase
 
     public function testBelowTheColumnFloorTheRowIsWiderThanThePane(): void
     {
-        $doc = $this->render('| '.\implode(' | ', \array_fill(0, count: 4, value: 'abcdefghij'))." |\n|---|---|---|---|\n", 20);
+        $doc = $this->render('| '.\implode(' | ', \array_fill(0, count: 4, value: 'abcdefghij'))." |\n|---|---|---|---|\n", width: 20);
         $this->assertSame(1 + (4 * 8) + (3 * 3), AnsiUtils::visibleWidth($doc->lines[0]), 'every column at the eight-column floor; the page cuts the row');
     }
 
@@ -141,8 +141,8 @@ final class MarkdownTableTest extends TestCase
     public function testATableExactlyAsWideAsThePaneIsNotNarrowed(): void
     {
         $bar = Glyphs::MD_TABLE_BAR;
-        $this->assertSame(' '.\str_repeat('a', times: 12)." {$bar} bbbb", self::plain($this->render('| '.\str_repeat('a', times: 12)." | bbbb |\n|---|---|\n", 20))[0]);
-        $this->assertSame(' '.\str_repeat('a', times: 19), self::plain($this->render('| '.\str_repeat('a', times: 19)." |\n|---|\n", 20))[0]);
+        $this->assertSame(' '.\str_repeat('a', times: 12)." {$bar} bbbb", self::plain($this->render('| '.\str_repeat('a', times: 12)." | bbbb |\n|---|---|\n", width: 20))[0]);
+        $this->assertSame(' '.\str_repeat('a', times: 19), self::plain($this->render('| '.\str_repeat('a', times: 19)." |\n|---|\n", width: 20))[0]);
     }
 
     public function testAFootnoteInACellKeepsItsBackrefAnchor(): void

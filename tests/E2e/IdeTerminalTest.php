@@ -39,7 +39,7 @@ final class IdeTerminalTest extends TestCase
     /** @return list<\Porta\Terminal\TerminalSession> */
     private function sessions(mixed $ide): array
     {
-        $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
+        $sessions = Probe::get(Services::resolve($ide, RunController::class), property: 'sessions');
 
         return $sessions->sessions;
     }
@@ -108,7 +108,7 @@ final class IdeTerminalTest extends TestCase
                     // Ctrl+Page Up cycles back to shell 1 (widget-scope, terminal focused).
                     $tui->handleInput("\x1b[5^");
                     $run = Services::resolve($ide, RunController::class);
-                    $sessionsOf = static fn (): mixed => Probe::get($run, 'sessions');
+                    $sessionsOf = static fn (): mixed => Probe::get($run, property: 'sessions');
                     $this->assertSame('shell:1', $sessionsOf()->active()?->id, 'cycled to the first shell');
 
                     // Click shell 2's dock-strip tab label to activate it (mouse select path).
@@ -151,7 +151,7 @@ final class IdeTerminalTest extends TestCase
 
                     $this->assertCount(1, $this->sessions($ide), 'the clicked tab closed');
                     $this->assertSame('shell:2', $this->sessions($ide)[0]->id, 'the survivor is shell 2');
-                    $this->assertTrue(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'the panel stays open with one session left');
+                    $this->assertTrue(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen(), 'the panel stays open with one session left');
                     $this->assertInstanceOf(PtyProcess::class, $sessionTwoProcess);
                 },
                 900 => function (Tui $tui, $terminal, $ide): void {
@@ -159,7 +159,7 @@ final class IdeTerminalTest extends TestCase
                     // Close the last session via ctrl+shift+w → the panel closes.
                     $tui->handleInput("\x1b[119;6u");
                     $this->assertCount(0, $this->sessions($ide));
-                    $this->assertFalse(Widgets::byId($tui, 'terminal', TerminalPanelWidget::class)->isOpen(), 'closing the last session closed the panel');
+                    $this->assertFalse(Widgets::byId($tui, id: 'terminal', class: TerminalPanelWidget::class)->isOpen(), 'closing the last session closed the panel');
                 },
             ],
         );
@@ -195,7 +195,7 @@ final class IdeTerminalTest extends TestCase
                     $tui->handleInput(\sprintf("\x1b[<0;%d;%dm", $rect->col + $secondTab + 1, $rect->row + 1));
                     $this->assertSame(['shell:2', 'shell:1'], $ids(), 'the drag reordered the session tabs on the dock strip');
 
-                    $sessions = Probe::get(Services::resolve($ide, RunController::class), 'sessions');
+                    $sessions = Probe::get(Services::resolve($ide, RunController::class), property: 'sessions');
                     $this->assertSame('shell:1', $sessions->active()?->id, 'the pressed session stays active through its move');
                 },
             ],
@@ -222,7 +222,7 @@ final class IdeTerminalTest extends TestCase
 
                     $terminal->clearOutput();
                     $tui->handleInput(\sprintf("\x1b[<2;%d;%dM", $rect->col + (int) \mb_strpos($strip, needle: 'sh') + 1, $rect->row + 1));
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'right-clicking a session tab opened its menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'right-clicking a session tab opened its menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'New Session'));
                     $screen = AnsiUtils::stripAnsiCodes($terminal->getOutput());
                     $this->assertStringContainsString('New Session', $screen);
@@ -239,7 +239,7 @@ final class IdeTerminalTest extends TestCase
                     $this->assertSame('terminal', $tui->getFocus()?->getId());
                     $terminal->clearOutput();
                     $tui->handleInput("\x1b[21;5~");
-                    $this->assertTrue(Widgets::byId($tui, 'context-menu', ContextMenu::class)->isOpen(), 'Ctrl+F10 opened the session menu');
+                    $this->assertTrue(Widgets::byId($tui, id: 'context-menu', class: ContextMenu::class)->isOpen(), 'Ctrl+F10 opened the session menu');
                     $this->await(static fn (): bool => \str_contains(AnsiUtils::stripAnsiCodes($terminal->getOutput()), 'Close Session'));
                     $tui->handleInput("\x1b");
                 },
@@ -289,7 +289,7 @@ final class IdeTerminalTest extends TestCase
                     // Re-run: only this session's process is replaced (its buffer clears).
                     $countBefore = \count($this->sessions($ide));
                     $tui->handleInput("\x1b[21;2~"); // shift+f10 → run last
-                    $this->await(fn (): bool => \str_contains($this->bufferText($run), 'RAN-') && $this->bufferText($run) !== $firstOutput, 2.0);
+                    $this->await(fn (): bool => \str_contains($this->bufferText($run), 'RAN-') && $this->bufferText($run) !== $firstOutput, timeout: 2.0);
                     $this->assertCount($countBefore, $this->sessions($ide), 're-run reused the run session, no new tab');
                 },
             ],

@@ -84,9 +84,9 @@ final class UnsavedChangesGuardTest extends TestCase
     {
         $guard = $this->guard(unsent: 2);
 
-        $this->assertFalse($guard->confirmed('quit', 'press again'));
+        $this->assertFalse($guard->confirmed('quit', repeat: 'press again'));
         $this->assertSame('Some changes are not on the server yet. press again', $this->flashText($this->statusBar));
-        $this->assertTrue($guard->confirmed('quit', 'press again'));
+        $this->assertTrue($guard->confirmed('quit', repeat: 'press again'));
     }
 
     /** Unsaved edits are the bigger news, and the message keeps counting them. */
@@ -95,21 +95,21 @@ final class UnsavedChangesGuardTest extends TestCase
         $guard = $this->guard(unsent: 1);
         $this->dirty();
 
-        $guard->confirmed('quit', 'press again');
+        $guard->confirmed('quit', repeat: 'press again');
 
         $this->assertStringContainsString('1 file has', $this->flashText($this->statusBar));
     }
 
     private function dirty(): void
     {
-        $this->buffers->open('/tmp/a.php', "<?php\n")->document->insert('x');
+        $this->buffers->open('/tmp/a.php', content: "<?php\n")->document->insert('x');
     }
 
     public function testNothingDirtyProceedsWithoutSayingAnything(): void
     {
         $guard = $this->guard();
 
-        $this->assertTrue($guard->confirmed('quit', 'press again'));
+        $this->assertTrue($guard->confirmed('quit', repeat: 'press again'));
         $this->assertSame('', $this->flashText($this->statusBar));
     }
 
@@ -118,11 +118,11 @@ final class UnsavedChangesGuardTest extends TestCase
         $guard = $this->guard();
         $this->dirty();
 
-        $this->assertFalse($guard->confirmed('quit', 'press again'), 'the first ask is refused');
+        $this->assertFalse($guard->confirmed('quit', repeat: 'press again'), 'the first ask is refused');
         $this->assertStringContainsString('Unsaved changes', $this->flashText($this->statusBar));
         $this->assertStringContainsString('press again', $this->flashText($this->statusBar), 'and says how to confirm');
 
-        $this->assertTrue($guard->confirmed('quit', 'press again'), 'the second inside the window proceeds');
+        $this->assertTrue($guard->confirmed('quit', repeat: 'press again'), 'the second inside the window proceeds');
     }
 
     /**
@@ -134,11 +134,11 @@ final class UnsavedChangesGuardTest extends TestCase
     {
         $guard = $this->guard();
         $this->dirty();
-        $this->assertFalse($guard->confirmed('quit', 'press again'));
+        $this->assertFalse($guard->confirmed('quit', repeat: 'press again'));
 
         $this->clock->modify('+4 seconds');
 
-        $this->assertFalse($guard->confirmed('quit', 'press again'), 'past the window it warns again');
+        $this->assertFalse($guard->confirmed('quit', repeat: 'press again'), 'past the window it warns again');
     }
 
     /** Just inside the window still confirms — the control for the case above. */
@@ -146,11 +146,11 @@ final class UnsavedChangesGuardTest extends TestCase
     {
         $guard = $this->guard();
         $this->dirty();
-        $this->assertFalse($guard->confirmed('quit', 'press again'));
+        $this->assertFalse($guard->confirmed('quit', repeat: 'press again'));
 
         $this->clock->modify('+2 seconds');
 
-        $this->assertTrue($guard->confirmed('quit', 'press again'));
+        $this->assertTrue($guard->confirmed('quit', repeat: 'press again'));
     }
 
     /**
@@ -163,10 +163,10 @@ final class UnsavedChangesGuardTest extends TestCase
         $guard = $this->guard();
         $this->dirty();
 
-        $this->assertFalse($guard->confirmed('quit', 'press again'));
+        $this->assertFalse($guard->confirmed('quit', repeat: 'press again'));
 
-        $this->assertFalse($guard->confirmed('switch-project', 'press again'), 'the other verb is still unconfirmed');
-        $this->assertTrue($guard->confirmed('switch-project', 'press again'), 'and confirms on its own second ask');
+        $this->assertFalse($guard->confirmed('switch-project', repeat: 'press again'), 'the other verb is still unconfirmed');
+        $this->assertTrue($guard->confirmed('switch-project', repeat: 'press again'), 'and confirms on its own second ask');
     }
 
     /** The count is the file count, and it is worded for one file and for many. */
@@ -174,13 +174,13 @@ final class UnsavedChangesGuardTest extends TestCase
     {
         $guard = $this->guard();
         $this->dirty();
-        $guard->confirmed('quit', 'press again');
+        $guard->confirmed('quit', repeat: 'press again');
         $this->assertStringContainsString('1 file has', $this->flashText($this->statusBar));
 
         $guard = $this->guard();
         $this->dirty();
-        $this->buffers->open('/tmp/b.php', "<?php\n")->document->insert('y');
-        $guard->confirmed('quit', 'press again');
+        $this->buffers->open('/tmp/b.php', content: "<?php\n")->document->insert('y');
+        $guard->confirmed('quit', repeat: 'press again');
         $this->assertStringContainsString('2 files have', $this->flashText($this->statusBar));
     }
 }

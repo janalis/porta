@@ -54,19 +54,19 @@ final class StatusBarTooltipTest extends TestCase
         $status = $this->bar();
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $branch = $status->tooltipAt(0, self::columnOf($row, 'BR'));
+        $branch = $status->tooltipAt(0, self::columnOf($row, needle: 'BR'));
         $this->assertSame(['status:cell:0', 'the branch', 0, 1, 3], [$branch?->key, $branch?->text, $branch?->row, $branch?->colStart, $branch?->colEnd]);
-        $this->assertNull($status->tooltipAt(0, self::columnOf($row, 'QQ')), 'a cell with nothing to say');
+        $this->assertNull($status->tooltipAt(0, self::columnOf($row, needle: 'QQ')), 'a cell with nothing to say');
 
-        $file = $status->tooltipAt(0, self::columnOf($row, 'file.php'));
+        $file = $status->tooltipAt(0, self::columnOf($row, needle: 'file.php'));
         $this->assertSame(['status:file', "src/file.php\nUnsaved changes"], [$file?->key, $file?->text]);
-        $this->assertSame(self::columnOf($row, 'src/'), $file?->colStart, 'the span is the file part as drawn');
+        $this->assertSame(self::columnOf($row, needle: 'src/'), $file?->colStart, 'the span is the file part as drawn');
 
-        $problems = $status->tooltipAt(0, self::columnOf($row, 'AB'));
-        $this->assertSame(['status:ide_problems', 'the problems', self::columnOf($row, 'AB')], [$problems?->key, $problems?->text, $problems?->colStart]);
-        $this->assertNull($status->tooltipAt(0, self::columnOf($row, 'CD')), 'a click span with no words');
-        $this->assertNull($status->tooltipAt(0, 60), 'the gap');
-        $this->assertNull($status->tooltipAt(1, self::columnOf($row, 'BR')), 'the bar is one row');
+        $problems = $status->tooltipAt(0, self::columnOf($row, needle: 'AB'));
+        $this->assertSame(['status:ide_problems', 'the problems', self::columnOf($row, needle: 'AB')], [$problems?->key, $problems?->text, $problems?->colStart]);
+        $this->assertNull($status->tooltipAt(0, self::columnOf($row, needle: 'CD')), 'a click span with no words');
+        $this->assertNull($status->tooltipAt(0, col: 60), 'the gap');
+        $this->assertNull($status->tooltipAt(1, self::columnOf($row, needle: 'BR')), 'the bar is one row');
     }
 
     /** A path elided to fit is exactly what the tooltip is for. */
@@ -77,7 +77,7 @@ final class StatusBarTooltipTest extends TestCase
         $row = $status->render(new RenderContext(40, 1))[0];
 
         $this->assertStringNotContainsString($long, AnsiUtils::stripAnsiCodes($row));
-        $this->assertSame($long, $status->tooltipAt(0, self::columnOf($row, 'src/'))?->text);
+        $this->assertSame($long, $status->tooltipAt(0, self::columnOf($row, needle: 'src/'))?->text);
     }
 
     public function testAFlashInTheFilesPlaceSaysNothingMore(): void
@@ -86,23 +86,23 @@ final class StatusBarTooltipTest extends TestCase
         $status->flash('Saved');
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertNull($status->tooltipAt(0, self::columnOf($row, 'Saved')));
+        $this->assertNull($status->tooltipAt(0, self::columnOf($row, needle: 'Saved')));
     }
 
     /** A whole file name with nothing more to say gets no card: it would only repeat itself. */
     public function testAWholePathWithNothingMoreSaysNothing(): void
     {
-        $status = $this->bar('src/file.php', 'src/file.php');
+        $status = $this->bar('src/file.php', leftTooltip: 'src/file.php');
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertNull($status->tooltipAt(0, self::columnOf($row, 'file.php')));
+        $this->assertNull($status->tooltipAt(0, self::columnOf($row, needle: 'file.php')));
     }
 
     public function testNoFileTooltipWithoutOne(): void
     {
-        $status = $this->bar('porta — open a file', null);
+        $status = $this->bar('porta — open a file', leftTooltip: null);
         $row = $status->render(new RenderContext(self::COLUMNS, 1))[0];
 
-        $this->assertNull($status->tooltipAt(0, self::columnOf($row, 'porta')));
+        $this->assertNull($status->tooltipAt(0, self::columnOf($row, needle: 'porta')));
     }
 }

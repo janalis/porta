@@ -90,7 +90,7 @@ final class HalfRowsTest extends TestCase
 
     private function tabBar(): TabBarWidget
     {
-        $bar = Widgets::byId($this->tui, 'tabs', TabBarWidget::class);
+        $bar = Widgets::byId($this->tui, id: 'tabs', class: TabBarWidget::class);
         $this->assertInstanceOf(TabBarWidget::class, $bar);
 
         return $bar;
@@ -122,7 +122,7 @@ final class HalfRowsTest extends TestCase
         // Through the dispatcher, as the terminal sends it: the pointer in the
         // gap's lower half hovers b.php, the entry under the gap.
         $this->tui->handleInput(\sprintf("\x1b[<35;%d;%dM", ($col * 10) + 3, (($tree->row + 3) * 20) + 16));
-        $this->assertSame(1, Probe::get(Services::resolve($this->ide, FileTreeWidget::class), 'hoveredIndex'), 'b.php, the second entry');
+        $this->assertSame(1, Probe::get(Services::resolve($this->ide, FileTreeWidget::class), property: 'hoveredIndex'), 'b.php, the second entry');
     }
 
     public function testTheRuleOverTheTabStripIsTheStripsOnItsLowerHalf(): void
@@ -174,7 +174,7 @@ final class HalfRowsTest extends TestCase
         $this->assertSame($tabs->row - 2, $this->at($tabs->col + $tabs->columns, $tabs->row - 1, lower: false)->row, 'whose upper half stays the menu bar\'s');
 
         // A theme with no bar shade draws a rule over the navigation bar, which holds none of it.
-        $styles = Probe::get(Services::resolve($this->ide, WorkspaceLayout::class)->topRule, 'styles');
+        $styles = Probe::get(Services::resolve($this->ide, WorkspaceLayout::class)->topRule, property: 'styles');
         $this->assertInstanceOf(Styles::class, $styles);
         $styles->switchTo(MonochromeTheme::definition());
         Services::resolve($this->ide, ChromeInvalidator::class)->invalidateAll();
@@ -217,7 +217,7 @@ final class HalfRowsTest extends TestCase
         $this->assertSame($nav->row, $this->at($nav->col + 3, $nav->row - 1, lower: true)->row, 'the window\'s padding over the nav');
         $this->assertSame($nav->row, $this->at($nav->col + 3, $nav->row + 1, lower: false)->row, 'a gap\'s upper half: General');
         $this->assertSame($nav->row + 2, $this->at($nav->col + 3, $nav->row + 1, lower: true)->row, 'its lower half: the next');
-        $this->assertSame(0, $this->at(1, 0, lower: true)->row, 'the menu bar\'s row is nobody\'s gap');
+        $this->assertSame(0, $this->at(1, row: 0, lower: true)->row, 'the menu bar\'s row is nobody\'s gap');
         $this->assertSame($tree->row + 3, $this->at(0, $tree->row + 3, lower: true)->row, 'nor the tree\'s, behind the window');
         $this->assertSame($tabs->row - 1, $this->at($tabs->col + 3, $tabs->row - 1, lower: true)->row, 'and the tab strip is out of reach too');
     }
@@ -263,7 +263,7 @@ final class HalfRowsTest extends TestCase
         $this->assertSame($bottom - 1, $this->at($col, $bottom, lower: false)->row, 'beside the tree, the tree\'s last row\'s');
 
         // The theme every widget shares, as a theme switch swaps it.
-        $styles = Probe::get($layout->topRule, 'styles');
+        $styles = Probe::get($layout->topRule, property: 'styles');
         $this->assertInstanceOf(Styles::class, $styles);
         $styles->switchTo(MonochromeTheme::definition());
         Services::resolve($this->ide, ChromeInvalidator::class)->invalidateAll(); // the switch's sweep, which the edge rows are not in

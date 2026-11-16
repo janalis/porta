@@ -16,27 +16,27 @@ final class TerminalThemeFactoryTest extends TestCase
 {
     public function testPlainWhenAnsiDisabledRegardlessOfTheme(): void
     {
-        $this->assertInstanceOf(PlainTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Plain, 'dark'));
-        $this->assertInstanceOf(PlainTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Plain, 'light'));
+        $this->assertInstanceOf(PlainTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Plain, theme: 'dark'));
+        $this->assertInstanceOf(PlainTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Plain, theme: 'light'));
     }
 
     public function testDarkByDefault(): void
     {
-        $this->assertInstanceOf(DarkTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, 'dark'));
+        $this->assertInstanceOf(DarkTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, theme: 'dark'));
     }
 
     public function testLightWhenThemeIsLight(): void
     {
-        $this->assertInstanceOf(LightTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, 'light'));
+        $this->assertInstanceOf(LightTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, theme: 'light'));
     }
 
     public function testHighContrastWhenThemeIsHighContrast(): void
     {
-        $this->assertInstanceOf(HighContrastTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, 'high-contrast'));
+        $this->assertInstanceOf(HighContrastTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, theme: 'high-contrast'));
     }
 
     public function testUnknownThemeFallsBackToDark(): void
     {
-        $this->assertInstanceOf(DarkTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, 'solarized'));
+        $this->assertInstanceOf(DarkTerminalTheme::class, TerminalThemeFactory::create(ColorMode::Ansi, theme: 'solarized'));
     }
 }

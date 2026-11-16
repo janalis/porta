@@ -123,7 +123,7 @@ final class StoreShelf
      */
     public function flat(string $heading, array $rows): void
     {
-        $this->shelf($heading, 'all', $rows, null);
+        $this->shelf($heading, shelf: 'all', tiles: $rows, more: null);
     }
 
     /**
@@ -165,13 +165,13 @@ final class StoreShelf
         $middle = \intdiv(\count($button), num2: 2);
         foreach ($button as $i => $line) {
             $this->lines[] = AnsiText::truncate(
-                StoreTile::text($middle === $i ? $heading : '', $col, $this->direction).StoreTile::cell($this->shadeIf($line, 'update-all'), $this->direction),
+                StoreTile::text($middle === $i ? $heading : '', $col, $this->direction).StoreTile::cell($this->shadeIf($line, key: 'update-all'), $this->direction),
                 $this->width,
                 pad: true,
             );
         }
         $this->items[] = new StoreItem('update-all', StoreItemKind::UpdateAll, $row, $col, \count($button), $width, button: [$row, $col, $width, \count($button)]);
-        $this->grid($rows, 'updates', [], $row);
+        $this->grid($rows, shelf: 'updates', known: [], heading: $row);
     }
 
     /**
@@ -201,7 +201,7 @@ final class StoreShelf
             // A select never takes the keys: selected, it is shaded, its frame idle.
             $select = FieldBox::select(new FieldSpec($scope->label), $value, FieldState::Idle, $width, $this->rows, $this->styles);
             foreach ($select as $i => $line) {
-                $band[$i] = ' '.StoreTile::cell($this->shadeIf($line, 'scope'), $this->direction).'  ';
+                $band[$i] = ' '.StoreTile::cell($this->shadeIf($line, key: 'scope'), $this->direction).'  ';
             }
             $this->items[] = new StoreItem('scope', StoreItemKind::Scope, $row, $col, $this->rows, $width);
             if (!$beside) {
@@ -225,10 +225,10 @@ final class StoreShelf
             $this->styles,
         );
         foreach ($field as $i => $line) {
-            $this->lines[] = AnsiText::truncate(AnsiText::padRight($band[$i] ?? '', $col).StoreTile::cell($this->shadeIf($line, 'install'), $this->direction), $this->width, pad: true);
+            $this->lines[] = AnsiText::truncate(AnsiText::padRight($band[$i] ?? '', $col).StoreTile::cell($this->shadeIf($line, key: 'install'), $this->direction), $this->width, pad: true);
         }
         $this->items[] = new StoreItem('install', StoreItemKind::Install, $row, $col, $this->rows, $width);
-        $this->shelf($this->translator->trans('Installed'), 'installed', $installed, null, $rows);
+        $this->shelf($this->translator->trans('Installed'), shelf: 'installed', tiles: $installed, more: null, known: $rows);
         if ([] === $installed) {
             $this->say($this->translator->trans('No plugin is installed'));
         }
@@ -288,7 +288,7 @@ final class StoreShelf
     private function banner(string $heading, array $tiles): void
     {
         if (FieldBox::ROWS !== $this->rows) {
-            $this->shelf($heading, 'featured', $tiles, null);
+            $this->shelf($heading, shelf: 'featured', tiles: $tiles, more: null);
 
             return;
         }
@@ -306,7 +306,7 @@ final class StoreShelf
             $this->art,
             $this->images,
         );
-        $inner->grid($tiles, 'featured', [], -1);
+        $inner->grid($tiles, shelf: 'featured', known: [], heading: -1);
         $this->blank();
         $top = \count($this->lines);
         foreach (FieldBox::frame(new FieldSpec($heading), $inner->lines, FieldState::Idle, $this->width - 1, $this->styles) as $line) {

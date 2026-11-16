@@ -153,15 +153,15 @@ final class GithubInstallerTest extends TestCase
     {
         $this->installer($scratch, $breakAt, $binDir, $workDir, $token)->install(
             'Darwin',
-            'arm64',
-            function (string $path, string $version): void {
+            machine: 'arm64',
+            onSuccess: function (string $path, string $version): void {
                 $this->installed = $path;
                 $this->version = $version;
             },
-            function (string $why): void {
+            onFailure: function (string $why): void {
                 $this->failure = $why;
             },
-            $tag,
+            tag: $tag,
         );
     }
 
@@ -228,7 +228,7 @@ final class GithubInstallerTest extends TestCase
         \mkdir($scratch->path('bin'), permissions: 0o755, recursive: true);
         \file_put_contents($target, self::WORKING_COPY);
 
-        $this->install($scratch, 'bad-binary');
+        $this->install($scratch, breakAt: 'bad-binary');
 
         $this->assertNull($this->installed);
         $this->assertStringContainsString('does not run here', (string) $this->failure);
@@ -249,7 +249,7 @@ final class GithubInstallerTest extends TestCase
     {
         $scratch = new TempProject();
 
-        $this->install($scratch, 'no-redirect');
+        $this->install($scratch, breakAt: 'no-redirect');
 
         $this->assertNull($this->failure);
         $this->assertSame($scratch->path('bin').'/symfony-lsp', $this->installed);
@@ -268,7 +268,7 @@ final class GithubInstallerTest extends TestCase
     {
         $scratch = new TempProject();
 
-        $this->install($scratch, 'no-redirect', token: self::FIXTURE_CREDENTIAL);
+        $this->install($scratch, breakAt: 'no-redirect', token: self::FIXTURE_CREDENTIAL);
 
         $this->assertStringNotContainsString(self::FIXTURE_CREDENTIAL, $this->ran[0], 'the redirect carries no credential');
         $this->assertStringNotContainsString(self::FIXTURE_CREDENTIAL, $this->ran[1], 'the API fallback carries it, but never on the command line `ps` shows');
@@ -281,7 +281,7 @@ final class GithubInstallerTest extends TestCase
     {
         $scratch = new TempProject();
 
-        $this->install($scratch, 'rate-limited-with-token', token: self::FIXTURE_CREDENTIAL);
+        $this->install($scratch, breakAt: 'rate-limited-with-token', token: self::FIXTURE_CREDENTIAL);
 
         $this->assertStringContainsString('even with a token', (string) $this->failure);
         $this->assertStringNotContainsString('GITHUB_TOKEN', (string) $this->failure, 'advising a token to someone who has one is noise');
@@ -296,9 +296,9 @@ final class GithubInstallerTest extends TestCase
 
         $installer->install(
             'Windows',
-            'x86_64',
-            static function (string $path): void {},
-            function (string $why): void {
+            machine: 'x86_64',
+            onSuccess: static function (string $path): void {},
+            onFailure: function (string $why): void {
                 $this->failure = $why;
             },
         );
@@ -314,42 +314,42 @@ final class GithubInstallerTest extends TestCase
         // The tag lookup tries the web redirect, then the API. Each way of
         // failing gets its OWN line: they used to share one string, which is
         // true of all of them and actionable for none.
-        $this->install($scratch, 'both-exit');
+        $this->install($scratch, breakAt: 'both-exit');
         $this->assertSame('cannot reach github.com — check the network or a proxy', $this->failure);
         $this->assertCount(2, $this->ran, 'the redirect, then the API fallback');
 
         // Only the API leg errored, so github.com demonstrably answered — the
         // network is not the thing to blame, and the catch-all is honest here.
-        $this->install($scratch, 'api-exit');
+        $this->install($scratch, breakAt: 'api-exit');
         $this->assertSame('could not resolve the latest symfony-lsp release', $this->failure);
 
-        $this->install($scratch, 'api-json');
+        $this->install($scratch, breakAt: 'api-json');
         $this->assertSame('could not resolve the latest symfony-lsp release', $this->failure, 'both answered, neither parsed — the one case the old catch-all was right about');
 
-        $this->install($scratch, 'rate-limited');
+        $this->install($scratch, breakAt: 'rate-limited');
         $this->assertStringContainsString('rate limit', (string) $this->failure);
         $this->assertStringContainsString('GITHUB_TOKEN', (string) $this->failure, 'the remedy, not just the symptom');
 
-        $this->install($scratch, 'gone');
+        $this->install($scratch, breakAt: 'gone');
         $this->assertSame('no releases found for symfony/language-tools — the repo or release may have moved', $this->failure);
 
-        $this->install($scratch, 'tarball-exit');
+        $this->install($scratch, breakAt: 'tarball-exit');
         $this->assertSame('download failed: symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure);
         $this->assertCount(2, $this->ran);
 
-        $this->install($scratch, 'tarball-missing');
+        $this->install($scratch, breakAt: 'tarball-missing');
         $this->assertSame('download failed: symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure, 'exit 0 with no file on disk is still a failed download');
 
-        $this->install($scratch, 'sums-exit');
+        $this->install($scratch, breakAt: 'sums-exit');
         $this->assertSame('checksum verification failed: symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure);
 
-        $this->install($scratch, 'sums-mismatch');
+        $this->install($scratch, breakAt: 'sums-mismatch');
         $this->assertSame('checksum verification failed: symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure);
 
-        $this->install($scratch, 'tar-exit');
+        $this->install($scratch, breakAt: 'tar-exit');
         $this->assertSame('could not extract symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure);
 
-        $this->install($scratch, 'tar-empty');
+        $this->install($scratch, breakAt: 'tar-empty');
         $this->assertSame('could not extract symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure, 'a clean tar exit without the expected member is still a failure');
 
         $this->assertNull($this->installed);
@@ -442,9 +442,9 @@ final class GithubInstallerTest extends TestCase
 
         $installer->install(
             'Darwin',
-            'arm64',
-            static function (string $path): void {},
-            static function (string $why) use (&$failure): void {
+            machine: 'arm64',
+            onSuccess: static function (string $path): void {},
+            onFailure: static function (string $why) use (&$failure): void {
                 $failure = $why;
             },
         );
@@ -478,9 +478,9 @@ final class GithubInstallerTest extends TestCase
         $failure = null;
         $installer->install(
             'Darwin',
-            'arm64',
-            static function (string $path): void {},
-            static function (string $why) use (&$failure): void {
+            machine: 'arm64',
+            onSuccess: static function (string $path): void {},
+            onFailure: static function (string $why) use (&$failure): void {
                 $failure = $why;
             },
         );
@@ -544,7 +544,7 @@ final class GithubInstallerTest extends TestCase
         \touch(\dirname($leftover), $longAgo);
         \touch($workDir, $longAgo);
 
-        $this->install($scratch, 'tar-empty', workDir: $workDir);
+        $this->install($scratch, breakAt: 'tar-empty', workDir: $workDir);
 
         $this->assertSame('could not extract symfony-lsp-v9.9.9-macos-arm64.tar.gz', $this->failure, 'the stale binary was swept, so tar extracting nothing is a miss');
         $this->assertNull($this->installed);

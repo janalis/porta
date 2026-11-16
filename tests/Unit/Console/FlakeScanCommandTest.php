@@ -182,7 +182,7 @@ final class FlakeScanCommandTest extends TestCase
         // Every column keeps its name. Dropping one shifts what the reader
         // thinks each column is — with `failed` gone, `shape` sits over the rate
         // — and the table still renders, so nothing else would notice.
-        $header = $this->lineContaining($display, 'shape');
+        $header = $this->lineContaining($display, needle: 'shape');
         $this->assertStringContainsString('failed', $header);
         $this->assertStringContainsString('test and the first reason it gave', $header, 'the column says what it holds');
     }
