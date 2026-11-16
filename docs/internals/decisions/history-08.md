@@ -552,9 +552,10 @@ start, so the stale-cache test ages that file too.
 
 **A `zend_mm_heap corrupted` abort predates the round.** One paratest worker in
 `coverage:src` died that way on 3 of 7 runs with the new lock and on 1 of 2
-with the old one, always while a settings screen rendered, never with that
-test alone (30 repeats in one process were clean). That is evidence against
-the lock, not an explanation. It is still open.
+with the old one, each time after a different test (terminal, settings
+screenshot, LSP, focus cycling), never with one alone (30 repeats in one
+process were clean). CI never hit it; only the local macOS ZTS build with
+pcov does. That is evidence against the lock, not an explanation. It is still open.
 
 **mago 1.60 extended `literal-named-argument` from function calls to method
 calls** — 30,200 new findings. A throwaway Rector rule, fed mago's exact
