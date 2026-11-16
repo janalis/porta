@@ -671,11 +671,8 @@ final class CoverageCheckCommand extends Command
         $value = $metrics?->attributes();
 
         // @mago-expect analysis:impossible-null-type-comparison -- mago 1.60's stub says an attribute offset is never null; PHP gives null for a missing one (checked 2026-11-16)
-
         // @mago-expect analysis:redundant-comparison -- the same stub
-
         // @mago-expect analysis:redundant-logical-operation -- the same stub
-
         return null === $value || null === $value[$attribute] ? 0 : (int) (string) $value[$attribute];
     }
 }

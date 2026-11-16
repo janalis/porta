@@ -88,7 +88,7 @@ final class PortaCommand extends Command
      * @param (\Closure(list<string>): array{int, string})|null                $git           runs `git <args>` for --git-setup; defaults to the real binary
      * @param string                                                            $self          this binary's absolute path, the one git is told to run (bin/porta
      *                                                                                         passes the phar's or its own)
-     * @param (\Closure(list<string>, ?string=): array{int, string})|null         $process       runs `gh`/`curl`/the new phar for --self-update; defaults to real processes
+     * @param (\Closure(list<string>, ?string=): array{int, string})|null       $process       runs `gh`/`curl`/the new phar for --self-update; defaults to real processes
      * @param string                                                            $version       the version this binary is (the phar's release tag)
      * @param string                                                            $phar          the phar running, '' when not one — only a phar can update itself
      * @param array<string, string|false>                                       $env           the environment, for a GitHub token
